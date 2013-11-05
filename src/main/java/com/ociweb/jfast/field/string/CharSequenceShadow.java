@@ -1,5 +1,7 @@
 package com.ociweb.jfast.field.string;
 
+import java.util.Arrays;
+
 public class CharSequenceShadow implements CharSequence {
 
 	byte[] buffer;
@@ -33,7 +35,7 @@ public class CharSequenceShadow implements CharSequence {
 
 	@Override
 	public CharSequence subSequence(int start, int end) {
-		return new CharSequenceShadow(buffer,offset+start,end-start);
+		return new CharSequenceShadow(Arrays.copyOfRange(buffer, offset+start, offset+end),0,end-start);
 	}
 	
 	@Override

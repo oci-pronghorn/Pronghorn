@@ -34,11 +34,11 @@ public class PrimitiveReaderWriterTest {
 		                                                         }; 
 	public final static int STRING_SPEED_TEST_LIMIT = 8;
 	public final static String[] stringData =   new String[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",
-																  buildString("g",PrimitiveReader.optimizeStringMask-1),
-																  buildString("h",PrimitiveReader.optimizeStringMask),
-																  buildString("i",PrimitiveReader.optimizeStringMask+1),
-																  buildString("j",PrimitiveReader.optimizeStringMask+2),
-																  buildString("k",PrimitiveReader.optimizeStringMask*2)}
+																  buildString("g",PrimitiveReader.VERY_LONG_STRING_MASK-1),
+																  buildString("h",PrimitiveReader.VERY_LONG_STRING_MASK),
+																  buildString("i",PrimitiveReader.VERY_LONG_STRING_MASK+1),
+																  buildString("j",PrimitiveReader.VERY_LONG_STRING_MASK+2),
+																  buildString("k",PrimitiveReader.VERY_LONG_STRING_MASK*2)}
 	;
 	public final static byte[][] byteData =  new byte[][] {new byte[]{},new byte[]{1},new byte[]{1,2},new byte[]{1,2,3,4},new byte[]{1,2,3,4,5,6,7,8}};
 	

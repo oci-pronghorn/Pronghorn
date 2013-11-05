@@ -7,14 +7,8 @@ import com.ociweb.jfast.Operator;
 import com.ociweb.jfast.ValueDictionary;
 import com.ociweb.jfast.ValueDictionaryEntry;
 import com.ociweb.jfast.field.Field;
-import com.ociweb.jfast.field.FieldGroup;
-import com.ociweb.jfast.field.FieldStopper;
+import com.ociweb.jfast.field.FieldGroupNoPMAP;
 import com.ociweb.jfast.read.FieldType;
-import com.ociweb.jfast.read.ReadEntry;
-import com.ociweb.jfast.read.ReadGroupWithPMap;
-import com.ociweb.jfast.read.ReadGroupWithoutPMap;
-import com.ociweb.jfast.write.WriteEntry;
-import com.ociweb.jfast.write.WriteGroupWithoutPMap;
 
 public class GroupBuilder {
 
@@ -91,7 +85,7 @@ public class GroupBuilder {
 		
 		Field[] fields = simpleFieldArray();
 		
-		return new SimpleFieldGroup(fields);
+		return new FieldGroupNoPMAP(fields);
 		
 	}
 

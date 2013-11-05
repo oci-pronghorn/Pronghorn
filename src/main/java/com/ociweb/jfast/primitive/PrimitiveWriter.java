@@ -19,6 +19,15 @@ public final class PrimitiveWriter {
 	private byte[] buffer;
 	private int position;
 	private int limit;
+	
+	private int[] safetyStackBegin = new int[128]; //TODO; grow to needed depths?
+	private int[] safetyStackPosition = new int[128];
+	private int[] safetyStackEnd = new int[128];
+	private int   safetyStackDepth;        	//never flush after this point
+	byte pMapIdxWorking = 7;
+	byte pMapByteAccum = 0;
+	
+	
 	private long totalWritten;
 		
 	public PrimitiveWriter(FASTOutput output) {
@@ -40,7 +49,14 @@ public final class PrimitiveWriter {
     	flush(0);
     }
     
+    //only call if caller is SURE it must be done.
 	public final void flush (int need) {
+		
+		//TODO: must not call output.flush if position is not cleared to write
+		//TODO: can not always flush to limit but rather up to safety point
+		//TODO: safety may be end of data before skip or end of written pmap data.
+		
+		
 		
 		int flushed =  output.flush(buffer, position, limit);
 		totalWritten+=flushed;
@@ -610,23 +626,94 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
 
-	//PMap spport
+
+	///////////////////////////////////
+	//New PMAP writer implementation
+	///////////////////////////////////
 	
-	//called in each field to add bit
-	public void pushPMapbit(int i) {
-		// TODO Auto-generated method stub
+	//called only at the beginning of a group.
+	public void pushPMap(int maxBytes) {
+		//////
+		//write max bytes of zeros but
+		//mark the bytes so they are not flushed out.
+	    //move pointer forward for more writes
+		//////
+		
+		maxBytes++;//need one more spot for saving the bitIdx
+		if (limit > buffer.length-maxBytes) {
+			flush(maxBytes);
+		}
+		
+		//save the current partial byte.
+		int idx = safetyStackPosition[safetyStackDepth-1];
+		buffer[idx] = pMapByteAccum;//all bits set at once
+		buffer[idx+1] = pMapIdxWorking;
+		safetyStackPosition[safetyStackDepth-1] = idx+1;
+
+		//reset so we can start accumulating bits in the new pmap.
+		pMapIdxWorking = 7;
+		pMapByteAccum = 0;
+		
+		//push this new safety on the stack
+		//beginning and end of the pmap
+		safetyStackBegin[safetyStackDepth] = limit;
+		safetyStackPosition[safetyStackDepth] = limit;
+		limit += maxBytes;	
+		safetyStackEnd[safetyStackDepth++] = limit;
 		
 	}
 	
-	//called at end of writing group
-	public void writePMap() {
+	//called only at the end of a group.
+	public void popPMap() {
+		/////
+		//the PMap is ready for writing.
+		//bit writes will go to previous bitmap location
+		/////
 		
+		//TODO: need to record block to be skipped.
+		int begin = safetyStackBegin[--safetyStackDepth];		
+		int position = safetyStackPosition[safetyStackDepth];
+		while (position>begin && buffer[position]==0) {
+			position--;//do not write the trailing zeros
+		}
+		int end = safetyStackEnd[safetyStackDepth];
+		
+		//TODO: can write from begin to position
+		//TODO: must mark position to end as bytes to NOT flush.
+		
+		//TODO: THIS DESIGN WILL NOT WORK IF THE growBuffer shifts the data!!
+		
+				
+		//restore the old working bits if there is a previous pmap.
+		if (safetyStackDepth>0) {
+			pMapByteAccum = buffer[safetyStackPosition[safetyStackDepth-1]]; 
+			pMapIdxWorking = buffer[safetyStackPosition[safetyStackDepth-1]+1];
+		}
+		
+		//TODO: still must implement flush to respect the safetyStack.
 	}
 	
-	//called at beginning of group to start a new pmap.
-	public void pushPMap() {
+	//called by ever field that needs to set a bit either 1 or 0
+	//must be fast because it is frequently called.
+	public void writePMapBit(int bit) {
 		
+		pMapIdxWorking--;
+		pMapByteAccum |= (bit<<pMapIdxWorking); 
+		
+		if (0==pMapIdxWorking) {
+			//push this full byte and reset
+			int s = safetyStackDepth-1;
+			int idx = safetyStackPosition[s];
+			buffer[idx] = pMapByteAccum;//all bits set at once
+			safetyStackPosition[s] = idx+1;
+									
+			pMapIdxWorking = 7;
+			pMapByteAccum = 0;
+		}
 	}
+	
+	
+	
 	
 	
 }

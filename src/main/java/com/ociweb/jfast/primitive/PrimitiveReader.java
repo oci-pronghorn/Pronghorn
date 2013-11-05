@@ -26,6 +26,8 @@ public final class PrimitiveReader {
 	private int position;
 	private int limit;
 	private long totalReader;
+	public static final int VERY_LONG_STRING_MASK = 0x7F; 
+	
 	
 	public PrimitiveReader(FASTInput input) {
 		this(4096,input);
@@ -221,8 +223,10 @@ public final class PrimitiveReader {
 	//called at the end of each group
 	public final void popPMap() {
 		assert((pmapStack[pmapStackDepth-1]&0x80)!=0) : "stack error in pmap processing";
-		pmapIdx = pmapIdxStack[--pmapIdxStackDepth];
-		pmapStackDepth--;
+		if (pmapIdxStackDepth>0) {
+			pmapIdx = pmapIdxStack[--pmapIdxStackDepth];
+			pmapStackDepth--;
+		}
 	}
 	
 	/////////////////////////////////////
@@ -230,83 +234,7 @@ public final class PrimitiveReader {
 	/////////////////////////////////////
 	
 	
-	//will not optimize as it is this near the end of the stream but 
-	//for ascii sequences of this length it will only need fetch once.
-	public static final int optimizeStringMask = 0x7F; //optimized for strings 127 chars and less
-	
-	public final void readStopEncodedBytes(ByteConsumer target) {
-		readStopEncodedBytes(target,optimizeStringMask);
-	}
-	
-	//Used for both ASCII reading and PMap reading, expectedMaxLength must be all 1's
-	public final void readStopEncodedBytes(ByteConsumer target, int expectedMaxLength) {
 
-		if (limit - position <= expectedMaxLength) {
-			readStopEncodedBytesSlow(target); //works for all cases
-		} else {
-			//keep in case we must start over
-			int start = position;
-			
-			//can read maxLength with no worry
-			byte v = buffer[position++];
-			
-			if (0 == v) {
-				target.clear();
-				v = buffer[position++];
-				if (0x80 != (v&0xFF)) {
-					throw new UnsupportedOperationException();
-				}
-				return;
-			} else {	
-				int i = 1;
-				byte[] b = buffer;
-				int p = position;
-				while ((v&0x80)==0) {
-					if ((expectedMaxLength&i++)==0) {
-						position = start; //back up and try again due to unexpected length
-						readStopEncodedBytesSlow(target);
-						return;
-					}
-					v = b[p++];
-				}
-				position = p;
-				target.reset(buffer, start, p-start, v&0x7F);
-			}
-			
-		}
-	}
-
-
-	private final void readStopEncodedBytesSlow(ByteConsumer target) {
-		if (position>=limit) {
-			fetch(1);
-		}
-		target.clear();
-		
-		byte v = buffer[position++];
-		if (0 == v) {
-			if (position>=limit) {
-				fetch(1);
-			}
-			v = buffer[position++];
-			//System.err.println("zero length");
-			if (0x80 != (v&0xFF)) {
-				throw new UnsupportedOperationException();
-			}
-		} else {		
-			//System.err.println("start");
-			while ((v&0x80)==0) {
-				//System.err.print((char)v);
-				target.put(v);
-				if (position>=limit) {
-					fetch(1);
-				}
-				v = buffer[position++];
-			}
-			//System.err.println((char)(v&0x7F));
-			target.put((byte)(v&0x7F));
-		}
-	}
 	
 	
 	//find the stop bit for the ascii string to be used by CharSeqShadow

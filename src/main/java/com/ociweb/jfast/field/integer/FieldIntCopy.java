@@ -49,11 +49,11 @@ public final class FieldIntCopy extends Field {
 				
 		if (provided==intValue) {
 			//0 for pmap.
-			writer.pushPMapbit(0);
+			writer.writePMapBit(0);
 			
 		} else {
 			//1 for pmap.
-			writer.pushPMapbit(1);
+			writer.writePMapBit(1);
 			writer.writeSignedInteger(intValue = provider.provideInt(id));
 		}
 		
