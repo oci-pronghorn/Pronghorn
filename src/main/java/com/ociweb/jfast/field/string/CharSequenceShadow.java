@@ -2,7 +2,7 @@ package com.ociweb.jfast.field.string;
 
 import java.util.Arrays;
 
-public class CharSequenceShadow implements CharSequence {
+public final class CharSequenceShadow implements CharSequence {
 
 	byte[] buffer;
 	int offset;

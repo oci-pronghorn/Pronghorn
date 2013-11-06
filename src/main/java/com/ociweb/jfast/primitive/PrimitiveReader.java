@@ -97,7 +97,6 @@ public final class PrimitiveReader {
 		return result;
 	}
 	
-	@Deprecated //use a mutable transfer object instead if possible
 	public final byte[] getBuffer() {
 		return buffer;
 	}

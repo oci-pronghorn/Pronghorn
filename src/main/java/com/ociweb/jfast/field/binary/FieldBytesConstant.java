@@ -17,7 +17,7 @@ import com.ociweb.jfast.write.WriteEntry;
 public final class FieldBytesConstant extends Field {
 
 	private final int id;
-	private final byte[] bytes;
+	private final BytesShadow shadow;
 	private final int repeat;
 	
 	public FieldBytesConstant(int id, ValueDictionaryEntry valueDictionaryEntry) {
@@ -28,14 +28,14 @@ public final class FieldBytesConstant extends Field {
 		}
 		
 		this.id = id;		
-		this.bytes = valueDictionaryEntry.bytesValue;
+		this.shadow = new BytesShadow(valueDictionaryEntry.bytesValue,0,valueDictionaryEntry.bytesValue.length);
 		this.repeat = 1;
 	}
 
 	public final void reader(PrimitiveReader reader, FASTAccept visitor) {
 		int i = repeat;
 		while (--i>=0) {
-			visitor.accept(id, bytes, 0, bytes.length);		
+			visitor.accept(id, shadow);		
 			//end of reader
 		}
 	}

@@ -34,7 +34,7 @@ public class AccepterProviderBridge implements FASTAccept, FASTProvide {
 	int lastCharSequenceId = -1;
 	Lock lastCharSequenceLock = new ReentrantLock();
 	
-	byte[] lastBytes;
+	BytesSequence lastBytes;
 	int lastBytesId = -1;
 	Lock lastBytesLock = new ReentrantLock();
 	
@@ -57,10 +57,10 @@ public class AccepterProviderBridge implements FASTAccept, FASTProvide {
 		lastDecimal.mantissa = manissa;
 	}
 
-	public void accept(int id, byte[] buffer, int offset, int length) {
+	public void accept(int id, BytesSequence value) {
 		lastBytesLock.lock();
 		lastBytesId = id;
-		lastBytes = buffer;
+		lastBytes = value;
 	}
 
 	public void accept(int id, CharSequence value) {
@@ -104,7 +104,9 @@ public class AccepterProviderBridge implements FASTAccept, FASTProvide {
 	public byte[] provideBytes(int id) {
 		try {
 			assert(id == lastBytesId);
-			return lastBytes;
+			byte[] temp = new byte[lastBytes.length()];
+			lastBytes.copyTo(temp,0);
+			return temp;//TODO: this copy is very bad and should be replaced
 		} finally {
 			lastBytesLock.unlock();
 		}
@@ -127,6 +129,18 @@ public class AccepterProviderBridge implements FASTAccept, FASTProvide {
 		} finally {
 			lastDecimalLock.unlock();
 		}
+	}
+
+	@Override
+	public void beginGroup() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void endGroup() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

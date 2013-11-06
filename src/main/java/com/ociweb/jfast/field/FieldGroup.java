@@ -54,6 +54,8 @@ public final class FieldGroup extends Field {
 
 	public void writer(PrimitiveWriter writer, FASTProvide provider) {
 		
+		provider.beginGroup();
+		
 		writer.pushPMap(pmapMaxSize);
 		
 		int i = fields.length;
@@ -64,6 +66,7 @@ public final class FieldGroup extends Field {
 		writer.popPMap();
 		//end of writer
 		
+		provider.endGroup();
 	}
 	
 	public void reset() {

@@ -69,8 +69,9 @@ public final class PrimitiveWriter {
 			position = newPosition;
 		}
 		
-		if (buffer.length-limit<need) {
-			growBuffer(need);
+		int totalReq = limit+need;
+		if (totalReq > buffer.length) {
+			growBuffer(totalReq);
 		}
 		
 	}
@@ -78,19 +79,16 @@ public final class PrimitiveWriter {
 	private final void growBuffer(int required) {
 		//System.err.println("grow buffer :"+required);
 		//must grow buffer to fit required bytes
-		int newSize;
-		//double the larger value
-		if (required>buffer.length) {
-			newSize = required*2;
-		} else {
-			newSize = buffer.length*2;
-		}
-		System.err.println("new buffer :"+newSize);
+		int newSize = required*2;
+
+		System.err.println("new write buffer :"+newSize);
+		
 		byte[] newBuffer = new byte[newSize];
-		System.arraycopy(buffer, position, newBuffer, 0, limit-position);
+		//do not shift the data in the buffer down because pmap stacks
+		//have indexes into these locations. TODO: it it worth finding a way to do this?
+		System.arraycopy(buffer, position, newBuffer, position, limit-position);
 		buffer = newBuffer;
-		limit = limit - position;
-		position = 0;
+		//limit and position will remain unchanged.
 	}
 	
 	//this requires the null adjusted length to be written first.
@@ -680,10 +678,15 @@ public final class PrimitiveWriter {
 		
 		//TODO: can write from begin to position
 		//TODO: must mark position to end as bytes to NOT flush.
+
+		///
+		//NOTE: anything still on the safety stack is incomplete  
+		//as of begin and must not flush regardless of position.
 		
-		//TODO: THIS DESIGN WILL NOT WORK IF THE growBuffer shifts the data!!
+		//TODO: need data structure.
+		//if everything NOT on this stack is complete we need a way of
+		//recording the skip bytes for the flush
 		
-				
 		//restore the old working bits if there is a previous pmap.
 		if (safetyStackDepth>0) {
 			pMapByteAccum = buffer[safetyStackPosition[safetyStackDepth-1]]; 

@@ -46,18 +46,9 @@ public class FASTAcceptTester implements FASTAccept {
 		
 	};
 	
-	public void accept(int id, byte[] buffer, int offset, int length)	{
+	public void accept(int id, BytesSequence value)	{
 		byte[] expected = provider.provideBytes(id);
-		if (buffer==expected) {
-			return;
-		} else {
-			assertTrue(length==expected.length);
-			int i = expected.length;
-			int j = offset+length;
-			while(--i>=0) {
-				assertTrue(expected[i]==buffer[--j]);
-			}			
-		}
+		assertTrue(value.isEqual(expected));
 	}
 
 	public void accept(int id, CharSequence value) {

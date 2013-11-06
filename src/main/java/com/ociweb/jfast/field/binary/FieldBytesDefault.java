@@ -16,17 +16,19 @@ import com.ociweb.jfast.write.WriteEntry;
 public final class FieldBytesDefault extends Field {
 
 	private final int id;
-	private final byte[] bytesValue;
+	private final BytesShadow shadow;
 	private final int repeat;
 	
 	public FieldBytesDefault(int id, ValueDictionaryEntry valueDictionaryEntry) {
 		
-		this.id = id;		
-		this.bytesValue = valueDictionaryEntry.bytesValue;
 		if (valueDictionaryEntry.isNull) {
 			throw new FASTException();
 		}
+		
+		this.id = id;	
+		this.shadow = new BytesShadow(valueDictionaryEntry.bytesValue,0,valueDictionaryEntry.bytesValue.length);
 		this.repeat = 1;
+		
 	}
 	
 	public final void reader(PrimitiveReader reader, FASTAccept visitor) {
@@ -34,14 +36,18 @@ public final class FieldBytesDefault extends Field {
 		while (--i>=0) {
 			//default - must never modify the valueDictionaryEntry
 			if (reader.peekNull()) {
+				
 				reader.incPosition();
 				//default - when null value is provided send the default
-				visitor.accept(id, bytesValue, 0, bytesValue.length);
+				visitor.accept(id, shadow);
+				
 			} else {	
 				
 				int arrayLength = reader.readUnsignedIntegerNullable();
 				int pos = reader.readBytesPosition(arrayLength);
-				visitor.accept(id, reader.getBuffer(), pos, arrayLength);
+				shadow.setBacking(reader.getBuffer(), pos, arrayLength);
+				visitor.accept(id, shadow);
+				
 			}
 			//end of reader
 		}

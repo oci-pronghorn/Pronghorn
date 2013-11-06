@@ -16,6 +16,7 @@ public final class FieldBytes extends Field {
 
 	private final int id;
 	private final int repeat;
+	private final BytesShadow shadow = new BytesShadow();
 	
 	public FieldBytes(int id) {
 		this.id = id;
@@ -26,8 +27,9 @@ public final class FieldBytes extends Field {
 		int i = repeat;
 		while (--i>=0) {	
 			int arrayLength = reader.readUnsignedInteger();		
-			int pos = reader.readBytesPosition(arrayLength);				
-			visitor.accept(id, reader.getBuffer(), pos, arrayLength);
+			int pos = reader.readBytesPosition(arrayLength);
+			shadow.setBacking(reader.getBuffer(), pos, arrayLength); 	
+			visitor.accept(id, shadow);
 			
 			//end of reader
 		}

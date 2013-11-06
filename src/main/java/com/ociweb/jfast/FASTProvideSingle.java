@@ -95,4 +95,16 @@ public class FASTProvideSingle implements FASTProvide {
 		target.exponent = exponentValue;
 	}
 
+	@Override
+	public void beginGroup() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void endGroup() {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

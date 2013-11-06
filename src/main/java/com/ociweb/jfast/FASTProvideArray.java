@@ -167,4 +167,12 @@ public class FASTProvideArray implements FASTProvide {
 		target.mantissa = mantissaValue[idx++];
 	}
 
+	@Override
+	public void beginGroup() {
+	}
+
+	@Override
+	public void endGroup() {
+	}
+
 }

@@ -10,5 +10,8 @@ public interface FASTProvide {
 	byte[] provideBytes(int id);
 	CharSequence provideCharSequence(int id);
 	void provideDecimal(int id, DecimalDTO target);
+
+	void beginGroup();
+	void endGroup();
 	
 }

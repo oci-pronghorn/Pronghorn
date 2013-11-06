@@ -17,7 +17,7 @@ public class AccepterMultiplex implements FASTAccept {
 		
 	}
 
-	public void accept(int id, byte[] buffer, int offset, int length) {
+	public void accept(int id, BytesSequence value) {
 		// TODO Auto-generated method stub
 		
 	}

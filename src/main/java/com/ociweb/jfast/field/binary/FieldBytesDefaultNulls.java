@@ -15,13 +15,13 @@ import com.ociweb.jfast.write.WriteEntry;
 public final class FieldBytesDefaultNulls extends Field {
 
 	private final int id;
-	private final byte[] bytesValue;
 	private final int repeat;
+	private final BytesShadow shadow;
 	
 	public FieldBytesDefaultNulls(int id, ValueDictionaryEntry valueDictionaryEntry) {
 		
-		this.id = id;		
-		this.bytesValue = valueDictionaryEntry.bytesValue;
+		this.id = id;	
+		this.shadow = new BytesShadow(valueDictionaryEntry.bytesValue,0,valueDictionaryEntry.bytesValue.length);
 		this.repeat = 1;
 	}
 
@@ -34,11 +34,12 @@ public final class FieldBytesDefaultNulls extends Field {
 			if (reader.peekNull()) {
 				reader.incPosition();
 				//default - when null value is provided send the default
-				visitor.accept(id, bytesValue, 0, bytesValue.length);
+				visitor.accept(id, shadow);
 			} else {	
 				int arrayLength = reader.readUnsignedIntegerNullable();
 				int pos = reader.readBytesPosition(arrayLength);
-				visitor.accept(id, reader.getBuffer(), pos, arrayLength);
+				shadow.setBacking(reader.getBuffer(), pos, arrayLength);
+				visitor.accept(id, shadow);
 			}
 			//end of reader
 		}

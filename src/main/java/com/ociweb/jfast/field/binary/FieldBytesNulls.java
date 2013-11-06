@@ -16,6 +16,7 @@ public final class FieldBytesNulls extends Field {
 
 	private final int id;
 	private final int repeat;
+	private final BytesShadow shadow = new BytesShadow();
 		
 	public FieldBytesNulls(int id) {
 		
@@ -32,7 +33,8 @@ public final class FieldBytesNulls extends Field {
 			} else {	
 				int arrayLength = reader.readUnsignedIntegerNullable();
 				int pos = reader.readBytesPosition(arrayLength);
-				visitor.accept(id,reader.getBuffer(),pos,arrayLength);
+				shadow.setBacking(reader.getBuffer(), pos, arrayLength);
+				visitor.accept(id, shadow);
 			}
 			//end of reader
 		}
