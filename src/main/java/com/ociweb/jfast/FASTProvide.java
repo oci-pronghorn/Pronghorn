@@ -9,7 +9,7 @@ public interface FASTProvide {
 	int provideInt(int id);
 	byte[] provideBytes(int id);
 	CharSequence provideCharSequence(int id);
-	void provideDecimal(int id, DecimalDTO target);
+	void provideDecimal(int id, DecimalDTO target);//TODO: test change to pull both values
 
 	void beginGroup();
 	void endGroup();

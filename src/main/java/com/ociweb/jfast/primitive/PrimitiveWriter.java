@@ -20,12 +20,26 @@ public final class PrimitiveWriter {
 	private int position;
 	private int limit;
 	
+	
+	//new development for pmap writing
+	//this will be simplified after it works.
+	
+	
+	//TODO: can remove two of these stacks.
 	private int[] safetyStackBegin = new int[128]; //TODO; grow to needed depths?
 	private int[] safetyStackPosition = new int[128];
-	private int[] safetyStackEnd = new int[128];
+	private int[] safetyStackFlushIdx = new int[128];
 	private int   safetyStackDepth;        	//never flush after this point
 	byte pMapIdxWorking = 7;
 	byte pMapByteAccum = 0;
+	
+	private int[] flushSkips = new int[128];//this may grow very large
+	private int   flushSkipsLimit; //where we add the new one.
+	private int   flushSkipsPos;//next limit to use.
+
+	//TODO: if pos = limit then start flushSkips at 0 again?
+	//TODO: do move buffer if the safety stack is zero.
+	
 	
 	
 	private long totalWritten;
@@ -52,13 +66,42 @@ public final class PrimitiveWriter {
     //only call if caller is SURE it must be done.
 	public final void flush (int need) {
 		
-		//TODO: must not call output.flush if position is not cleared to write
-		//TODO: can not always flush to limit but rather up to safety point
-		//TODO: safety may be end of data before skip or end of written pmap data.
+		int flushTo = limit;
+		if (safetyStackDepth>0) {
+			//only need to check first entry on stack the rest are larger values
+			int safetyLimit = safetyStackBegin[0];
+			if (safetyLimit<flushTo) {
+				flushTo = safetyLimit;
+			}		
+		}		
 		
+		int flushed = 0;
 		
+		if (flushSkipsPos==flushSkipsLimit) {
+			//nothing to skip so flush the full block
+			flushed =  output.flush(buffer, position, flushTo);
+		} else {
+			int rollingPos = position;
+			//flush in parts that avoid the skip pos
+			while (flushSkipsLimit>flushSkipsPos && flushSkips[flushSkipsPos]<flushTo) {
+				//we have skip bytes make sure they are enforced.
+				
+				int flushRequest = flushSkips[flushSkipsPos] - rollingPos;
+				int flushComplete =  output.flush(buffer, rollingPos, flushSkips[flushSkipsPos]);
+				flushed =  (flushComplete+rollingPos) - position;
+				if (flushComplete != flushRequest) {
+					//must quit early if any flush does not write all expected
+					break;
+				}
+				//did flush up to skip so set rollingPos to after skip
+				rollingPos = flushSkips[++flushSkipsPos];
+				flushSkipsPos++;
+			} 
+			if (flushSkipsPos==flushSkipsLimit) {
+				flushSkipsPos=flushSkipsLimit=0;
+			}
+		}
 		
-		int flushed =  output.flush(buffer, position, limit);
 		totalWritten+=flushed;
 		//if this is not true not all the bytes were written.
 		int newPosition = position+flushed;
@@ -74,6 +117,13 @@ public final class PrimitiveWriter {
 			growBuffer(totalReq);
 		}
 		
+	}
+	
+	private int[] growIntegers(int[] old, int need) {
+		int newSize = need*2;
+		int[] newArray = new int[newSize];
+		System.arraycopy(old, 0, newArray, 0, old.length);
+		return newArray;
 	}
 	
 	private final void growBuffer(int required) {
@@ -643,11 +693,12 @@ public final class PrimitiveWriter {
 		}
 		
 		//save the current partial byte.
-		int idx = safetyStackPosition[safetyStackDepth-1];
-		buffer[idx] = pMapByteAccum;//all bits set at once
-		buffer[idx+1] = pMapIdxWorking;
-		safetyStackPosition[safetyStackDepth-1] = idx+1;
-
+		if (safetyStackDepth>0) {
+			int idx = safetyStackPosition[safetyStackDepth-1];
+			buffer[idx] = pMapByteAccum;//all bits set at once
+			buffer[idx+1] = pMapIdxWorking;
+			safetyStackPosition[safetyStackDepth-1] = idx+1;
+		}
 		//reset so we can start accumulating bits in the new pmap.
 		pMapIdxWorking = 7;
 		pMapByteAccum = 0;
@@ -656,8 +707,12 @@ public final class PrimitiveWriter {
 		//beginning and end of the pmap
 		safetyStackBegin[safetyStackDepth] = limit;
 		safetyStackPosition[safetyStackDepth] = limit;
+		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsLimit;
+		
+		flushSkips[flushSkipsLimit++] = limit;//this will be changed
 		limit += maxBytes;	
-		safetyStackEnd[safetyStackDepth++] = limit;
+		flushSkips[flushSkipsLimit++] = limit;//this will remain.
+				
 		
 	}
 	
@@ -668,24 +723,26 @@ public final class PrimitiveWriter {
 		//bit writes will go to previous bitmap location
 		/////
 		
-		//TODO: need to record block to be skipped.
-		int begin = safetyStackBegin[--safetyStackDepth];		
-		int position = safetyStackPosition[safetyStackDepth];
-		while (position>begin && buffer[position]==0) {
-			position--;//do not write the trailing zeros
+		{ //push open writes
+			int s = safetyStackDepth-1;
+			int idx = safetyStackPosition[s];
+			buffer[idx] = pMapByteAccum;//all bits set at once
+			safetyStackPosition[s] = idx+1; //inc to next byte
+			
+			pMapIdxWorking = 7;
+			pMapByteAccum = 0;
 		}
-		int end = safetyStackEnd[safetyStackDepth];
 		
-		//TODO: can write from begin to position
-		//TODO: must mark position to end as bytes to NOT flush.
-
-		///
-		//NOTE: anything still on the safety stack is incomplete  
-		//as of begin and must not flush regardless of position.
 		
-		//TODO: need data structure.
-		//if everything NOT on this stack is complete we need a way of
-		//recording the skip bytes for the flush
+		int begin = safetyStackBegin[--safetyStackDepth];		
+		int pos = safetyStackPosition[safetyStackDepth];
+		while (pos>begin && buffer[pos]==0) {
+			pos--;//do not write the trailing zeros
+		}
+		buffer[pos] |= 0x80;//must set stop bit now that we know where pmap stops.
+		
+		int flushIdx = safetyStackFlushIdx[safetyStackDepth];
+		flushSkips[flushIdx] = pos+1;//plus one to make this the exclusive value
 		
 		//restore the old working bits if there is a previous pmap.
 		if (safetyStackDepth>0) {
@@ -693,7 +750,6 @@ public final class PrimitiveWriter {
 			pMapIdxWorking = buffer[safetyStackPosition[safetyStackDepth-1]+1];
 		}
 		
-		//TODO: still must implement flush to respect the safetyStack.
 	}
 	
 	//called by ever field that needs to set a bit either 1 or 0
@@ -708,8 +764,8 @@ public final class PrimitiveWriter {
 			int s = safetyStackDepth-1;
 			int idx = safetyStackPosition[s];
 			buffer[idx] = pMapByteAccum;//all bits set at once
-			safetyStackPosition[s] = idx+1;
-									
+			safetyStackPosition[s] = idx+1; //inc to next byte
+			
 			pMapIdxWorking = 7;
 			pMapByteAccum = 0;
 		}

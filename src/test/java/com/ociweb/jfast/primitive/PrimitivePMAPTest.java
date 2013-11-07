@@ -3,14 +3,65 @@ package com.ociweb.jfast.primitive;
 import static org.junit.Assert.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 
 import org.junit.Test;
 
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class PrimitivePMAPTest {
 
 	private static final int bufferSize = 4096;
+	
+	@Test
+	public void testWriterSingle() {
+		
+		ByteArrayOutputStream baost = new ByteArrayOutputStream();
+		FASTOutputStream output = new FASTOutputStream(baost);
+		
+		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		
+		pw.pushPMap(10);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);		
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		
+		pw.writePMapBit(1);
+		
+		pw.popPMap();
+		pw.flush();
+		
+		byte[] data = baost.toByteArray();
+		assertEquals("01010101",toBinaryString(data[0]));
+		assertEquals("00101010",toBinaryString(data[1]));
+		assertEquals("11000000",toBinaryString(data[2]));
+		
+	}
+	
+	//not fast but it gets the job done.
+	private String toBinaryString(byte b) {
+		String result = Integer.toBinaryString(b);
+		if (result.length()>8) {
+			return result.substring(result.length()-8,result.length());
+		}
+		while (result.length()<8) {
+			result = "0"+result;
+		}
+		return result;
+	}
 	
 	@Test
 	public void testReaderSingle() {

@@ -2,23 +2,24 @@ package com.ociweb.jfast.field.binary;
 
 import com.ociweb.jfast.BytesSequence;
 
-public class BytesShadow implements BytesSequence {
+//if we end up with performance problems here delete the interface.
+public final class BytesShadow implements BytesSequence {
 
 	byte[] buffer;
 	int offset;
 	int length;
 	
 	//ensures that we provide read only access to the buffer data.
-	public BytesShadow() {
+	BytesShadow() {
 	}
 	
-	public BytesShadow(byte[] buffer, int offset, int length) {
+	BytesShadow(byte[] buffer, int offset, int length) {
 		this.buffer = buffer;
 		this.offset = offset;
 		this.length = length;
 	}
 	
-	public void setBacking(byte[] buffer, int offset, int length) {
+	void setBacking(byte[] buffer, int offset, int length) {
 		this.buffer = buffer;
 		this.offset = offset;
 		this.length = length;
@@ -32,19 +33,25 @@ public class BytesShadow implements BytesSequence {
 		return buffer[offset+index];
 	}
 	
-	public void copyTo(byte[] target, int targetOffset) {
+	public final void copyTo(byte[] target, int targetOffset) {
 		System.arraycopy(buffer, offset, target, targetOffset, length);
+	}
+	
+	public final byte[] toByteArray() {
+		byte[] result = new byte[length];
+		copyTo(result,0);
+		return result;
 	}
 
 	@Override
-	public boolean isEqual(byte[] expected) {
+	public boolean isEqual(byte[] that) {
 		
-		int i = expected.length;
+		int i = that.length;
 		if (i!=length) {
 			return false;
 		}
 		while (--i>=0) {
-			if (expected[i]!=buffer[offset+i]) {
+			if (that[i]!=buffer[offset+i]) {
 				return false;
 			}
 		}

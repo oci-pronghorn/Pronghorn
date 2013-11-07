@@ -77,7 +77,7 @@ public class GroupBuilder {
 
 	
 	private ValueDictionaryEntry dictionaryEntry(int i) {
-		return dictionary.entry[i];//TODO: need more complex logic here
+		return dictionary.entry[0];//TODO: need more complex logic here
 	}
 
 	

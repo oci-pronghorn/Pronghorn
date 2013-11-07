@@ -9,4 +9,6 @@ public interface BytesSequence {
 	int length();
 	
 	byte byteAt(int index);
+	
+	byte[] toByteArray();
 }

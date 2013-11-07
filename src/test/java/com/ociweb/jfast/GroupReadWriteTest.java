@@ -42,6 +42,7 @@ public class GroupReadWriteTest {
 	public void testInteger() {
 		testInt();
 		testIntNullable();
+		testIntNullableBoxed();
 		testIntU();
 		testIntUNullable();
 		testLong();
@@ -54,12 +55,14 @@ public class GroupReadWriteTest {
 	public void testScaled() {
 		testDecimal();
 		testDecimalNullable();
+		testDecimalNullableBoxed();
 	}
 	
 	@Test
 	public void testByteArray() {
 		testBytes();
 		testBytesNullable();
+		testBytesNullableBoxed();
 	}
 	
 	public void testDecimal() {
@@ -92,8 +95,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.Decimal;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 	
 	public void testDecimalNullable() {
@@ -138,8 +141,49 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.Decimal;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
+	}
+	
+	public void testDecimalNullableBoxed() {
+
+		//////////////////////////
+		//build test data provider
+		//////////////////////////
+		int length = PrimitiveReaderWriterTest.unsignedIntData.length+1;
+		final int testSize = cycles*length;
+		int j = testSize;
+		int k = length;
+		
+		final Integer[] exponentData = new Integer[j];
+		final Long[] mantissaData = new Long[j];
+		
+		while (--j>=0) {
+			if (k==length) {
+				exponentData[j] = null;
+				mantissaData[j] = null;
+				
+				k--;
+			} else {
+				exponentData[j] = j%5;
+				mantissaData[j] = -PrimitiveReaderWriterTest.unsignedLongData[--k];
+				
+				if (k==0) {
+					k=length;
+				}
+			}
+		}	
+		//////////////////////////
+		Callable<FASTProvide> c = new Callable<FASTProvide>() {
+			@Override
+			public FASTProvide call() throws Exception {
+				return new FASTProvideArrayBoxed(mantissaData, exponentData);
+			}			
+		};
+		
+		FieldType type = FieldType.Decimal;
+		typeSpecificTester("B_", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_DECIMAL);
+		typeSpecificTester("B_", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_DECIMAL);
 	}
 
 	public void testInt() {
@@ -167,10 +211,11 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.Int32;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 
+	
 	public void testIntNullable() {
 
 		//////////////////////////
@@ -204,10 +249,44 @@ public class GroupReadWriteTest {
 		};
 						
 		FieldType type = FieldType.Int32;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
 	}
 	
+	public void testIntNullableBoxed() {
+
+		//////////////////////////
+		//build test data provider
+		//////////////////////////
+		int length = PrimitiveReaderWriterTest.unsignedIntData.length+1;
+		final int testSize = cycles*length;
+		int j = testSize;
+		int k = length;
+		final Integer[] data = new Integer[j];
+		while (--j>=0) {
+			if (k==length) {
+				data[j] = null;
+				k--;
+			} else {
+				data[j] = -PrimitiveReaderWriterTest.unsignedIntData[--k];
+				if (k==0) {
+					k=length;
+				}
+			}
+		}	
+		//////////////////////////
+		Callable<FASTProvide> c = new Callable<FASTProvide>() {
+			@Override
+			public FASTProvide call() throws Exception {
+				return new FASTProvideArrayBoxed(data);
+			}			
+		};
+
+		FieldType type = FieldType.Int32;
+		typeSpecificTester("B_", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_INTEGER);
+		typeSpecificTester("B_", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_INTEGER);
+		
+	}
 
 	public void testIntU() {
 
@@ -234,8 +313,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.uInt32;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 	
 	public void testIntUNullable() {
@@ -271,8 +350,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.uInt32;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
 	}
 
 	public void testLong() {
@@ -299,8 +378,8 @@ public class GroupReadWriteTest {
 			}			
 		};
 		
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.Int64, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.Int64, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.Int64, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.Int64, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 
 	public void testLongNullable() {
@@ -335,8 +414,8 @@ public class GroupReadWriteTest {
 			}			
 		};
 				
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.Int64, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.Int64, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.Int64, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.Int64, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
 	}
 	
 
@@ -364,8 +443,8 @@ public class GroupReadWriteTest {
 			}			
 		};
 		
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.uInt64, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.uInt64, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.uInt64, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.uInt64, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 	
 
@@ -401,8 +480,8 @@ public class GroupReadWriteTest {
 			}			
 		};
 		
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.uInt64, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.uInt64, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.uInt64, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.uInt64, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
 	}
 	
 
@@ -432,8 +511,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.CharsASCII;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 
 	public void testStringASCIINullable() {
@@ -469,8 +548,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.CharsASCII;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None);	
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);	
 	}
 
 	public void testStringUTF8() {
@@ -499,8 +578,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.CharsUTF8;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 
 	public void testStringUTF8Nullable() {
@@ -536,8 +615,8 @@ public class GroupReadWriteTest {
 		};
 		
 		FieldType type = FieldType.CharsUTF8;
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None);	
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, type, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, type, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);	
 	}
 
 	public void testBytes() {
@@ -564,8 +643,8 @@ public class GroupReadWriteTest {
 			}			
 		};
 		
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.Bytes, 1, Necessity.mandatory, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.Bytes, WARMUP_REPEAT, Necessity.mandatory, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.Bytes, 1, Necessity.mandatory, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.Bytes, WARMUP_REPEAT, Necessity.mandatory, Operator.None, -1);
 	}
 
 	public void testBytesNullable() {
@@ -600,22 +679,54 @@ public class GroupReadWriteTest {
 			}			
 		};
 		
-		typeSpecificTester(new FASTAcceptTester(c), c, testSize, FieldType.Bytes, 1, Necessity.optional, Operator.None);
-		typeSpecificTester(NO_TESTER, c, testSize, FieldType.Bytes, WARMUP_REPEAT, Necessity.optional, Operator.None);
+		typeSpecificTester("__", new FASTAcceptTester(c), c, testSize, FieldType.Bytes, 1, Necessity.optional, Operator.None, -1);
+		typeSpecificTester("__", NO_TESTER, c, testSize, FieldType.Bytes, WARMUP_REPEAT, Necessity.optional, Operator.None, -1);
+	}
+	
+	public void testBytesNullableBoxed() {
+
+		//////////////////////////
+		//build test data provider
+		//////////////////////////
+		int length = PrimitiveReaderWriterTest.byteData.length+1;
+		final int testSize = cycles*length;
+		int j = testSize;
+		int k = length;
+		final byte[][] data = new byte[j][];
+		while (--j>=0) {
+			if (k==length) {
+				data[j] = null;
+				k--;
+			} else {
+				data[j] = PrimitiveReaderWriterTest.byteData[--k];
+				if (k==0) {
+					k=length;
+				}
+			}
+		}		
+		//////////////////////////
+		Callable<FASTProvide> c = new Callable<FASTProvide>() {
+			@Override
+			public FASTProvide call() throws Exception {
+				return new FASTProvideArrayBoxed(data);
+			}			
+		};
+		typeSpecificTester("B_", new FASTAcceptTester(c), c, testSize, FieldType.Bytes, 1, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_BYTES);
+		typeSpecificTester("B_", NO_TESTER, c, testSize, FieldType.Bytes, WARMUP_REPEAT, Necessity.optional, Operator.None, FASTProvideArrayBoxed.IDX_BYTES);
 	}
 	
 	ValueDictionaryEntry vde = new ValueDictionaryEntry(null);
 	
-	private void typeSpecificTester(FASTAccept tester, Callable<FASTProvide> testData, int total,
-								FieldType fieldType, int iterations, 
-								Necessity presence, Operator operator) {
+	private final void typeSpecificTester(String label, FASTAccept tester, Callable<FASTProvide> testData,
+								int total, FieldType fieldType, 
+								int iterations, Necessity presence, Operator operator, int id) {
 				
 		ValueDictionary dictionary = new ValueDictionary(total);
 		
 		int j = 0;
 		GroupBuilder builder = new GroupBuilder(-1,dictionary);
 		while (j<total) {
-			builder.addField(Operator.None, fieldType, presence, j);
+			builder.addField(Operator.None, fieldType, presence, id);
 			j++;
 		}
 				
@@ -675,8 +786,8 @@ public class GroupReadWriteTest {
 		
 		//only report best times if we have run at least 4 tests
 		if (iterations>4) {
-			System.err.println(fieldType.name()+'_'+presence+": "+ (smallestWriteDuration/total)+"ns per write, total time "+(smallestWriteDuration/1E+6)+"ms");
-			System.err.println(fieldType.name()+'_'+presence+": "+(smallestReadDuration/total)+"ns per read, total time "+(smallestReadDuration/1E+6)+"ms");
+			System.err.println(label+fieldType.name()+'_'+presence+": "+ (smallestWriteDuration/total)+"ns per write, total time "+(smallestWriteDuration/1E+6)+"ms");
+			System.err.println(label+fieldType.name()+'_'+presence+": "+(smallestReadDuration/total)+"ns per read, total time "+(smallestReadDuration/1E+6)+"ms");
 		}
 	}
 
