@@ -41,7 +41,7 @@ public class PrimitivePMAPTest {
 		
 		pw.writePMapBit(1);
 		
-		pw.popPMap();
+		pw.popPMap(); //skip should be 7?
 		pw.flush();
 		
 		byte[] data = baost.toByteArray();
@@ -50,6 +50,62 @@ public class PrimitivePMAPTest {
 		assertEquals("11000000",toBinaryString(data[2]));
 		
 	}
+	
+	
+	@Test
+	public void testWriterNested() {
+		
+		ByteArrayOutputStream baost = new ByteArrayOutputStream();
+		FASTOutputStream output = new FASTOutputStream(baost);
+		
+		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		
+		pw.pushPMap(10);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		
+		//push will save where we are so we can continue after pop
+		pw.pushPMap(3);
+			
+		    pw.writePMapBit(0);
+			pw.writePMapBit(0);
+			pw.writePMapBit(0);
+			pw.writePMapBit(1);
+			pw.writePMapBit(1);
+			pw.writePMapBit(1);
+			//implied zero
+			
+		//continue with parent pmap
+		pw.popPMap();
+		
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);		
+		pw.writePMapBit(1);
+		pw.writePMapBit(0);
+		
+		pw.writePMapBit(1);
+		
+		pw.popPMap();
+		pw.flush();
+		
+		byte[] data = baost.toByteArray();
+		assertEquals("01010101",toBinaryString(data[0]));
+		assertEquals("00101010",toBinaryString(data[1]));
+		assertEquals("11000000",toBinaryString(data[2]));
+		//pmap in the middle should be at the end
+		assertEquals("10001110",toBinaryString(data[3]));
+		
+		
+	}
+	
 	
 	//not fast but it gets the job done.
 	private String toBinaryString(byte b) {

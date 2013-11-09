@@ -22,7 +22,7 @@ public final class PrimitiveReader {
 	
 	private final FASTInput input;
 	
-	private byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
+	private final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
 	private int position;
 	private int limit;
 	private long totalReader;
@@ -66,7 +66,8 @@ public final class PrimitiveReader {
 		int populated = limit - position;
 		int reqiredSize = need + populated;
 		if (buffer.length<reqiredSize) {
-			grow(populated, reqiredSize);
+			//max value must be computed before startup.
+			throw new UnsupportedOperationException("internal buffer is not large enough, requres "+reqiredSize+" bytes");
 		} else {
 			System.arraycopy(buffer, position, buffer, 0, populated);
 		}
@@ -77,15 +78,6 @@ public final class PrimitiveReader {
 		limit = populated+filled;
 	}
 
-	private void grow(int populated, int reqiredSize) {
-		
-		//grow buffer
-		int newSize = reqiredSize*2;
-		//System.err.println("grow to "+newSize);
-		byte[] newBuffer = new byte[newSize];
-		System.arraycopy(buffer, position, newBuffer, 0, populated);	
-		buffer = newBuffer;
-	}
 	
 	public final int readBytesPosition(int length) {
 		//ensure all the bytes are in the buffer before calling visitor
@@ -138,10 +130,10 @@ public final class PrimitiveReader {
 	//TODO: write unit tests around these functions.
 	
 	
-	private final int INIT_PMAP_SIZE = 1024;
+	private final int INIT_PMAP_SIZE = 1024; //TODO: compute and set.
 	
-	byte[] pmapStack = new byte[INIT_PMAP_SIZE];
-	byte[] pmapIdxStack = new byte[INIT_PMAP_SIZE>>2];
+	final byte[] pmapStack = new byte[INIT_PMAP_SIZE];
+	final byte[] pmapIdxStack = new byte[INIT_PMAP_SIZE>>2];
 	
 	int pmapStackDepth = 0;
 	int pmapIdxStackDepth = 0;
@@ -168,11 +160,11 @@ public final class PrimitiveReader {
 		int needed = p-start;
 		if (pmapStackDepth+needed > pmapStack.length) {
 			//must copy and grow stack
-			pmapStack = growBytes(pmapStack, pmapStackDepth+needed);
+			throw new UnsupportedOperationException("pmapStack requires "+(pmapStackDepth+needed)+" total bytes.");
 		}
 		if (pmapIdxStackDepth == pmapIdxStack.length) {
 			//must copy and grow stack
-			pmapIdxStack = growBytes(pmapIdxStack, pmapIdxStackDepth);
+			throw new UnsupportedOperationException("pmapIdxStack requires "+pmapIdxStackDepth+" total bytes.");
 		}
 				
 		//walk back wards across these and push them on the stack
@@ -188,13 +180,6 @@ public final class PrimitiveReader {
 		//set next bit to read
 		pmapIdx = 7;
 		
-	}
-	
-	private byte[] growBytes(byte[] old, int need) {
-		int newSize = need*2;
-		byte[] newBytes = new byte[newSize];
-		System.arraycopy(old, 0, newBytes, 0, old.length);
-		return newBytes;
 	}
 
 	//called at every field to determine operation
