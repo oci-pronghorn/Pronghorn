@@ -1,7 +1,5 @@
 package com.ociweb.jfast.primitive;
 
-import com.ociweb.jfast.ByteConsumer;
-import com.ociweb.jfast.MyCharSequnce;
 import com.ociweb.jfast.field.string.CharSequenceShadow;
 
 /**
@@ -28,6 +26,14 @@ public final class PrimitiveReader {
 	private long totalReader;
 	public static final int VERY_LONG_STRING_MASK = 0x7F; 
 	
+	private final int INIT_PMAP_SIZE = 1024; //TODO: compute and set.
+	
+	final byte[] pmapStack = new byte[INIT_PMAP_SIZE];
+	final byte[] pmapIdxStack = new byte[INIT_PMAP_SIZE>>2];
+	
+	int pmapStackDepth = 0;
+	int pmapIdxStackDepth = 0;
+	int pmapIdx = -1;
 	
 	public PrimitiveReader(FASTInput input) {
 		this(4096,input);
@@ -130,14 +136,7 @@ public final class PrimitiveReader {
 	//TODO: write unit tests around these functions.
 	
 	
-	private final int INIT_PMAP_SIZE = 1024; //TODO: compute and set.
-	
-	final byte[] pmapStack = new byte[INIT_PMAP_SIZE];
-	final byte[] pmapIdxStack = new byte[INIT_PMAP_SIZE>>2];
-	
-	int pmapStackDepth = 0;
-	int pmapIdxStackDepth = 0;
-	int pmapIdx = -1;
+
 	
 	//called at the start of each group unless group knows it has no pmap
 	public final void readPMap(int pmapMaxSize) {
@@ -151,21 +150,21 @@ public final class PrimitiveReader {
 		int p = position;
 		
 		byte v = b[p++];
-		while ((v&0x80)==0) {
+		while (v>=0){//(v&0x80)==0) {
 			v = b[p++];
 		}
 		position = p;
 		
 		//ensure stack can hold p-start
-		int needed = p-start;
-		if (pmapStackDepth+needed > pmapStack.length) {
-			//must copy and grow stack
-			throw new UnsupportedOperationException("pmapStack requires "+(pmapStackDepth+needed)+" total bytes.");
-		}
-		if (pmapIdxStackDepth == pmapIdxStack.length) {
-			//must copy and grow stack
-			throw new UnsupportedOperationException("pmapIdxStack requires "+pmapIdxStackDepth+" total bytes.");
-		}
+//		int needed = p-start;
+//		if (pmapStackDepth+needed > pmapStack.length) {
+//			//must copy and grow stack
+//			throw new UnsupportedOperationException("pmapStack requires "+(pmapStackDepth+needed)+" total bytes.");
+//		}
+//		if (pmapIdxStackDepth == pmapIdxStack.length) {
+//			//must copy and grow stack
+//			throw new UnsupportedOperationException("pmapIdxStack requires "+pmapIdxStackDepth+" total bytes.");
+//		}
 				
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
@@ -194,7 +193,7 @@ public final class PrimitiveReader {
 		if (pmapIdx==0) {
 			pmapIdx=7;
 			//if we have not reached the end of the map dec to the next byte
-			if ((block&0x80)==0) {
+			if (block>=0) {
 				pmapStackDepth--;
 			} else {
 				//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
