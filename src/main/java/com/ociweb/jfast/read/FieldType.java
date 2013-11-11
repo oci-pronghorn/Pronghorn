@@ -2,8 +2,6 @@ package com.ociweb.jfast.read;
 
 import com.ociweb.jfast.Operator;
 import com.ociweb.jfast.ValueDictionaryEntry;
-import com.ociweb.jfast.field.Field;
-import com.ociweb.jfast.field.FieldNoOp;
 import com.ociweb.jfast.field.binary.FieldBytes;
 import com.ociweb.jfast.field.binary.FieldBytesConstant;
 import com.ociweb.jfast.field.binary.FieldBytesNulls;
@@ -30,6 +28,8 @@ import com.ociweb.jfast.field.string.FieldASCIINulls;
 import com.ociweb.jfast.field.string.FieldUTF8;
 import com.ociweb.jfast.field.string.FieldUTF8Constant;
 import com.ociweb.jfast.field.string.FieldUTF8Nulls;
+import com.ociweb.jfast.field.util.Field;
+import com.ociweb.jfast.field.util.FieldNoOp;
 import com.ociweb.jfast.tree.Necessity;
 
 public enum FieldType implements FieldTypeReadWrite { // rename to field type

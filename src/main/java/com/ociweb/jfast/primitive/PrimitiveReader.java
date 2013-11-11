@@ -153,19 +153,7 @@ public final class PrimitiveReader {
 		while (v>=0){//(v&0x80)==0) {
 			v = b[p++];
 		}
-		position = p;
-		
-		//ensure stack can hold p-start
-//		int needed = p-start;
-//		if (pmapStackDepth+needed > pmapStack.length) {
-//			//must copy and grow stack
-//			throw new UnsupportedOperationException("pmapStack requires "+(pmapStackDepth+needed)+" total bytes.");
-//		}
-//		if (pmapIdxStackDepth == pmapIdxStack.length) {
-//			//must copy and grow stack
-//			throw new UnsupportedOperationException("pmapIdxStack requires "+pmapIdxStackDepth+" total bytes.");
-//		}
-				
+		position = p;				
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
 		int j = position;
@@ -191,13 +179,13 @@ public final class PrimitiveReader {
 		//get next bit and decrement the bit index pmapIdx
 		int value = 1&(block>>>(--pmapIdx));
 		if (pmapIdx==0) {
-			pmapIdx=7;
+			pmapIdx = 7;
 			//if we have not reached the end of the map dec to the next byte
-			if (block>=0) {
+			if (block >= 0) {
 				pmapStackDepth--;
 			} else {
 				//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
-				pmapIdx=-1;
+				pmapIdx = -1;
 			}
 		}
 		return value;

@@ -3,7 +3,7 @@ package com.ociweb.jfast.write;
 import com.ociweb.jfast.FASTProvide;
 import com.ociweb.jfast.NullAdjuster;
 import com.ociweb.jfast.ValueDictionaryEntry;
-import com.ociweb.jfast.field.Field;
+import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.read.FASTException;
 

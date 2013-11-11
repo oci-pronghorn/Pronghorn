@@ -3,7 +3,7 @@ package com.ociweb.jfast.field.decimal;
 import com.ociweb.jfast.DecimalDTO;
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.FASTProvide;
-import com.ociweb.jfast.field.Field;
+import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 

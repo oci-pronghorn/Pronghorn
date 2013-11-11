@@ -6,8 +6,8 @@ import java.util.List;
 import com.ociweb.jfast.Operator;
 import com.ociweb.jfast.ValueDictionary;
 import com.ociweb.jfast.ValueDictionaryEntry;
-import com.ociweb.jfast.field.Field;
-import com.ociweb.jfast.field.FieldGroupNoPMAP;
+import com.ociweb.jfast.field.util.Field;
+import com.ociweb.jfast.field.util.FieldGroupNoPMAP;
 import com.ociweb.jfast.read.FieldType;
 
 public class GroupBuilder {

@@ -6,8 +6,8 @@ import java.util.concurrent.Callable;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.field.Field;
 import com.ociweb.jfast.field.integer.FieldInt;
+import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 import com.ociweb.jfast.primitive.PrimitiveWriter;

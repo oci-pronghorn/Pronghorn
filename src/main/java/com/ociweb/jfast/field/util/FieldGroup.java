@@ -1,4 +1,4 @@
-package com.ociweb.jfast.field;
+package com.ociweb.jfast.field.util;
 
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.FASTProvide;

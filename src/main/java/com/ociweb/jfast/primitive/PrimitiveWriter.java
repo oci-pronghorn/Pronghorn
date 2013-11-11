@@ -21,13 +21,6 @@ public final class PrimitiveWriter {
 	private int position;
 	private int limit;
 	
-	
-	//new development for pmap writing
-	//this will be simplified after it works.
-	
-	
-	//TODO: can remove two of these stacks.
-	private final int[] safetyStackBegin; //location where the pmap starts, needed to block flush until pmap is complete & for stopper of white scan
 	private final int[] safetyStackPosition; //location where the last byte was written to the pmap as bits are written
 	private final int[] safetyStackFlushIdx; //location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
 	private final byte[] safetyStackTemp; //working bit position 1-7 for next/last bit to be written.
@@ -41,6 +34,7 @@ public final class PrimitiveWriter {
 
 	private long totalWritten;
 		
+
 	public PrimitiveWriter(FASTOutput output) {
 		this(4096,output);
 	}
@@ -51,7 +45,6 @@ public final class PrimitiveWriter {
 		this.position = 0;
 		this.limit = 0;
 		int maxStackDepth = 128; //max nested groups
-		safetyStackBegin = new int[maxStackDepth]; //TODO; grow to needed depths?
 		safetyStackPosition = new int[maxStackDepth];
 		safetyStackFlushIdx = new int[maxStackDepth];
 		safetyStackTemp = new byte[maxStackDepth];
@@ -75,7 +68,7 @@ public final class PrimitiveWriter {
 		int flushTo = limit;
 		if (safetyStackDepth>0) {
 			//only need to check first entry on stack the rest are larger values
-			int safetyLimit = safetyStackBegin[0];
+			int safetyLimit = safetyStackPosition[0]-1;//still modifying this position but previous is ready to go.
 			if (safetyLimit < flushTo) {
 				flushTo = safetyLimit;
 			}		
@@ -500,21 +493,6 @@ public final class PrimitiveWriter {
 
 	}
 	
-	//TODO: write signed int for decimals these are between -63 and +63 inclusive!
-	//all in one method and inlined together.
-	public final void writeSignedInt6(int value) {
-		assert(value>=-63 && value<=63);
-
-		if (limit>=buffer.length) {
-			flush(1);
-		}
-		
-		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
-		
-		//TODO: needs test.
-		//what about nulled? does  that cause a problem?
-		
-	}
 	
 	public final void writeSignedIntegerNullable(int value) {
 		if (value >= 0) { 
@@ -682,9 +660,7 @@ public final class PrimitiveWriter {
 	//called only at the beginning of a group.
 	public void pushPMap(int maxBytes) {
 		
-		//System.err.println("push pmap starts with:"+limit+" pos "+position);
-		
-		maxBytes++;//need one more spot for saving the bitIdx
+		//TODO: removed maxBytes+1 and it broke
 		if (limit > buffer.length - maxBytes) {
 			flush(maxBytes);
 		}
@@ -699,16 +675,10 @@ public final class PrimitiveWriter {
 			pMapIdxWorking = 7;
 			pMapByteAccum = 0;			
 		}
-		
-		//push this new safety on the stack
-		//beginning and end of the pmap
-		safetyStackBegin[safetyStackDepth] = limit;
 		safetyStackPosition[safetyStackDepth] = limit;
 		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsIdxLimit;
-		
-		flushSkips[flushSkipsIdxLimit++] = Integer.MIN_VALUE;//dummy position.
-		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit
-						
+		flushSkips[flushSkipsIdxLimit++] = 1;//default value when it is never set.
+		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit					
 	}
 	
 	//called only at the end of a group.
@@ -720,23 +690,8 @@ public final class PrimitiveWriter {
 		//push open writes
 		--safetyStackDepth;
 	   	pushWorkingBits(safetyStackDepth, (byte)0);
-        
-		//begin location of the current PMap.							
-		int begin = safetyStackBegin[safetyStackDepth];	
-		//because extra "stuff" is put on the end we must not look at this location but the one before.
-		int pos = safetyStackPosition[safetyStackDepth]-1; //last value is exclusive limit
-		//System.err.println("scan from "+begin+" to "+pos+" at depth "+safetyStackDepth );
-		while (pos>begin && 0==buffer[pos]) {
-			pos--;//do not write the trailing zeros
-		}
-		//System.err.println("stop detected at location "+pos+" value "+Integer.toBinaryString(buffer[pos]));
-		buffer[pos] |= 0x80;//must set stop bit now that we know where pmap stops.
-
-		flushSkips[safetyStackFlushIdx[safetyStackDepth]] = pos+1;//plus one to make this the exclusive value
-		
-		//view each complete entry on skip list
-		//System.err.println("skipping from "+flushSkips[flushIdx]+" to "+flushSkips[flushIdx+1]);
-		
+		buffer[flushSkips[safetyStackFlushIdx[safetyStackDepth]] - 1] |= 0x80;//must set stop bit now that we know where pmap stops.
+				
 		//restore the old working bits if there is a previous pmap.
 		if (safetyStackDepth>0) {			
 			popWorkingBits(safetyStackDepth-1);
@@ -752,10 +707,15 @@ public final class PrimitiveWriter {
 
 	private final void pushWorkingBits(int s, byte secondByte) {
 		assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
-		
-		buffer[safetyStackPosition[s]++]   = pMapByteAccum;//final byte to be saved into the feed.
+					
+		buffer[safetyStackPosition[s]++] = pMapByteAccum;//final byte to be saved into the feed.
 		safetyStackTemp[s] = secondByte;
 		
+		if (0 != pMapByteAccum) {	
+			//set the last known non zero bit so we can avoid scanning for it. 
+			flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
+		}	
+
 		pMapIdxWorking = 7;
 		pMapByteAccum = 0;
 	}
@@ -763,9 +723,8 @@ public final class PrimitiveWriter {
 	//called by ever field that needs to set a bit either 1 or 0
 	//must be fast because it is frequently called.
 	public final void writePMapBit(int bit) {
-		
 		if (0 == --pMapIdxWorking) {
-			pMapByteAccum |= bit; 
+			pMapByteAccum |= bit; 		
 			pushWorkingBits(safetyStackDepth-1, pMapIdxWorking);
 		} else {
 			pMapByteAccum |= (bit<<pMapIdxWorking); 

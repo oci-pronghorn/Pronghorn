@@ -3,7 +3,7 @@ package com.ociweb.jfast.field.decimal;
 import com.ociweb.jfast.DecimalDTO;
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.FASTProvide;
-import com.ociweb.jfast.field.Field;
+import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -31,7 +31,7 @@ public final class FieldDecimal extends Field {
 		int i = repeat;
 		while (--i>=0) {
 			provider.provideDecimal(id, dto);
-			writer.writeSignedInt6(dto.exponent);
+			writer.writeSignedInteger(dto.exponent);
 			writer.writeSignedLong(dto.mantissa);	
 			
 			//end of writer

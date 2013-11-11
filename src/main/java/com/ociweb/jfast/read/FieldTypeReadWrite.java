@@ -2,7 +2,7 @@ package com.ociweb.jfast.read;
 
 import com.ociweb.jfast.Operator;
 import com.ociweb.jfast.ValueDictionaryEntry;
-import com.ociweb.jfast.field.Field;
+import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.tree.Necessity;
 
 public interface FieldTypeReadWrite {
