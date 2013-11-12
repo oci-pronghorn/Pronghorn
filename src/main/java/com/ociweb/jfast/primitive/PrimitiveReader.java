@@ -21,6 +21,8 @@ public final class PrimitiveReader {
 	private final FASTInput input;
 	
 	private final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
+	private final int bufferLength;
+	
 	private int position;
 	private int limit;
 	private long totalReader;
@@ -43,6 +45,7 @@ public final class PrimitiveReader {
 	public PrimitiveReader(int initBufferSize, FASTInput input) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
+		this.bufferLength = buffer.length;
 		this.position = 0;
 		this.limit = 0;
 	}
@@ -56,11 +59,11 @@ public final class PrimitiveReader {
 		if (position >= limit) {
 			position = limit = 0;
 		}
-		int remainingSpace = buffer.length-limit;
-		if (need<=remainingSpace) {	
+		int remainingSpace = bufferLength-limit;
+		if (need <= remainingSpace) {	
 			//fill remaining space if possible to reduce fetch later
 			int filled = input.fill(buffer, limit, remainingSpace);
-			totalReader+=filled;
+			totalReader += filled;
 			limit += filled;
 		} else {
 			noRoomOnFetch(need);
@@ -71,14 +74,14 @@ public final class PrimitiveReader {
 		//not enough room at end of buffer for the need
 		int populated = limit - position;
 		int reqiredSize = need + populated;
-		if (buffer.length<reqiredSize) {
+		if (bufferLength<reqiredSize) {
 			//max value must be computed before startup.
 			throw new UnsupportedOperationException("internal buffer is not large enough, requres "+reqiredSize+" bytes");
 		} else {
 			System.arraycopy(buffer, position, buffer, 0, populated);
 		}
 		//fill and return
-		int filled = input.fill(buffer, populated, buffer.length - populated);
+		int filled = input.fill(buffer, populated, bufferLength - populated);
 		totalReader+=filled;
 		position = 0;
 		limit = populated+filled;

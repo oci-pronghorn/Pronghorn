@@ -6,7 +6,6 @@ import java.util.concurrent.Callable;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.field.integer.FieldInt;
 import com.ociweb.jfast.field.util.Field;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
@@ -14,10 +13,8 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.read.FieldType;
-import com.ociweb.jfast.read.ReadEntry;
 import com.ociweb.jfast.tree.GroupBuilder;
 import com.ociweb.jfast.tree.Necessity;
-import com.ociweb.jfast.write.WriteEntry;
 
 public class GroupReadWriteTest {
 /**

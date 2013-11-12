@@ -17,7 +17,9 @@ public final class PrimitiveWriter {
 
 	private final FASTOutput output;
 	
-	private byte[] buffer;
+	private final byte[] buffer;
+	private final int bufferLength;
+	
 	private int position;
 	private int limit;
 	
@@ -42,6 +44,7 @@ public final class PrimitiveWriter {
 	public PrimitiveWriter(int initBufferSize, FASTOutput output) {
 		this.output = output;
 		this.buffer = new byte[initBufferSize];
+		this.bufferLength = buffer.length;
 		this.position = 0;
 		this.limit = 0;
 		int maxStackDepth = 128; //max nested groups
@@ -95,7 +98,7 @@ public final class PrimitiveWriter {
 		}		
 		
 //		int totalReq = limit+need;
-//		if (totalReq > buffer.length) {
+//		if (totalReq > bufferLength) {
 //			//this value should be computed before start up.
 //			throw new UnsupportedOperationException("need larger internal buffer, requires "+totalReq);		
 //		}
@@ -137,7 +140,7 @@ public final class PrimitiveWriter {
 	//this requires the null adjusted length to be written first.
 	public final void writeByteArrayData(byte[] data) {
 		final int len = data.length;
-		if (limit>buffer.length-len) {
+		if (limit>bufferLength-len) {
 			flush(len);
 		}
 		System.arraycopy(data, 0, buffer, limit, len);
@@ -152,14 +155,14 @@ public final class PrimitiveWriter {
 		
 		int length = value.length();
 		if (0==length) {
-			if (limit>buffer.length-2) {
+			if (limit>bufferLength-2) {
 				flush(2);
 			}
 			buffer[limit++] = (byte)0;
 			buffer[limit++] = (byte)0x80;
 			return;
 		}
-		if (limit>buffer.length-length) {
+		if (limit>bufferLength-length) {
 			flush(length);
 		}
 		int c = 0;
@@ -174,7 +177,7 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeNull() {
-		if (limit>=buffer.length) {
+		if (limit>=bufferLength) {
 			flush(1);
 		}
 		buffer[limit++] = (byte)0x80;
@@ -187,7 +190,7 @@ public final class PrimitiveWriter {
 		} else {
 
 			if ((value << 1) == 0) {
-				if (limit > buffer.length - 10) {
+				if (limit > bufferLength - 10) {
 					flush(10);
 				}
 				// encode the most negative possible number
@@ -214,7 +217,7 @@ public final class PrimitiveWriter {
 		} else {
 
 			if ((value << 1) == 0) {
-				if (limit > buffer.length - 10) {
+				if (limit > bufferLength - 10) {
 					flush(10);
 				}
 				// encode the most negative possible number
@@ -239,30 +242,30 @@ public final class PrimitiveWriter {
 		long absv = -value;
 		
 		if (absv <= 0x0000000000000040l) {
-			if (buffer.length - limit < 1) {
+			if (bufferLength - limit < 1) {
 				flush(1);
 			}
 		} else {
 			if (absv <= 0x0000000000002000l) {
-				if (buffer.length - limit < 2) {
+				if (bufferLength - limit < 2) {
 					flush(2);
 				}
 			} else {
 
 				if (absv <= 0x0000000000100000l) {
-					if (buffer.length - limit < 3) {
+					if (bufferLength - limit < 3) {
 						flush(3);
 					}
 				} else {
 
 					if (absv <= 0x0000000008000000l) {
-						if (buffer.length - limit < 4) {
+						if (bufferLength - limit < 4) {
 							flush(4);
 						}
 					} else {
 						if (absv <= 0x0000000400000000l) {
 					
-							if (buffer.length - limit < 5) {
+							if (bufferLength - limit < 5) {
 								flush(5);
 							}
 						} else {
@@ -283,21 +286,21 @@ public final class PrimitiveWriter {
 
 	private final void writeSignedLongNegSlow(long absv, long value) {
 		if (absv <= 0x0000020000000000l) {
-			if (buffer.length - limit < 6) {
+			if (bufferLength - limit < 6) {
 				flush(6);
 			}
 		} else {
 			if (absv <= 0x0001000000000000l) {
-				if (buffer.length - limit < 7) {
+				if (bufferLength - limit < 7) {
 					flush(7);
 				}
 			} else {
 				if (absv <= 0x0080000000000000l) {
-					if (buffer.length - limit < 8) {
+					if (bufferLength - limit < 8) {
 						flush(8);
 					}
 				} else {
-					if (buffer.length - limit < 9) {
+					if (bufferLength - limit < 9) {
 						flush(9);
 					}
 					buffer[limit++] = (byte) (((value >> 56) & 0x7F));
@@ -319,30 +322,30 @@ public final class PrimitiveWriter {
 	private final void writeSignedLongPos(long value) {
 		
 		if (value < 0x0000000000000040l) {
-			if (buffer.length - limit < 1) {
+			if (bufferLength - limit < 1) {
 				flush(1);
 			}
 		} else {
 			if (value < 0x0000000000002000l) {
-				if (buffer.length - limit < 2) {
+				if (bufferLength - limit < 2) {
 					flush(2);
 				}
 			} else {
 
 				if (value < 0x0000000000100000l) {
-					if (buffer.length - limit < 3) {
+					if (bufferLength - limit < 3) {
 						flush(3);
 					}
 				} else {
 
 					if (value < 0x0000000008000000l) {
-						if (buffer.length - limit < 4) {
+						if (bufferLength - limit < 4) {
 							flush(4);
 						}
 					} else {
 						if (value < 0x0000000400000000l) {
 					
-							if (buffer.length - limit < 5) {
+							if (bufferLength - limit < 5) {
 								flush(5);
 							}
 						} else {
@@ -362,26 +365,26 @@ public final class PrimitiveWriter {
 
 	private final void writeSignedLongPosSlow(long value) {
 		if (value < 0x0000020000000000l) {
-			if (buffer.length - limit < 6) {
+			if (bufferLength - limit < 6) {
 				flush(6);
 			}
 		} else {
 			if (value < 0x0001000000000000l) {
-				if (buffer.length - limit < 7) {
+				if (bufferLength - limit < 7) {
 					flush(7);
 				}
 			} else {
 				if (value < 0x0080000000000000l) {
-					if (buffer.length - limit < 8) {
+					if (bufferLength - limit < 8) {
 						flush(8);
 					}
 				} else {
 					if (value < 0x4000000000000000l) {
-						if (buffer.length - limit < 9) {
+						if (bufferLength - limit < 9) {
 							flush(9);
 						}
 					} else {
-						if (buffer.length - limit < 10) {
+						if (bufferLength - limit < 10) {
 							flush(10);
 						}
 						buffer[limit++] = (byte) (((value >> 63) & 0x7F));
@@ -409,30 +412,30 @@ public final class PrimitiveWriter {
 	public final void writeUnsignedLong(long value) {
 
 			if (value < 0x0000000000000080l) {
-				if (buffer.length - limit < 1) {
+				if (bufferLength - limit < 1) {
 					flush(1);
 				}
 			} else {
 				if (value < 0x0000000000004000l) {
-					if (buffer.length - limit < 2) {
+					if (bufferLength - limit < 2) {
 						flush(2);
 					}
 				} else {
 
 					if (value < 0x0000000000200000l) {
-						if (buffer.length - limit < 3) {
+						if (bufferLength - limit < 3) {
 							flush(3);
 						}
 					} else {
 
 						if (value < 0x0000000010000000l) {
-							if (buffer.length - limit < 4) {
+							if (bufferLength - limit < 4) {
 								flush(4);
 							}
 						} else {
 							if (value < 0x0000000800000000l) {
 						
-								if (buffer.length - limit < 5) {
+								if (bufferLength - limit < 5) {
 									flush(5);
 								}
 							} else {
@@ -452,26 +455,26 @@ public final class PrimitiveWriter {
 
 	private final void writeUnsignedLongSlow(long value) {
 		if (value < 0x0000040000000000l) {
-			if (buffer.length - limit < 6) {
+			if (bufferLength - limit < 6) {
 				flush(6);
 			}
 		} else {
 			if (value < 0x0002000000000000l) {
-				if (buffer.length - limit < 7) {
+				if (bufferLength - limit < 7) {
 					flush(7);
 				}
 			} else {
 				if (value < 0x0100000000000000l) {
-					if (buffer.length - limit < 8) {
+					if (bufferLength - limit < 8) {
 						flush(8);
 					}
 				} else {
 					if (value < 0x8000000000000000l) {
-						if (buffer.length - limit < 9) {
+						if (bufferLength - limit < 9) {
 							flush(9);
 						}
 					} else {
-						if (buffer.length - limit < 10) {
+						if (bufferLength - limit < 10) {
 							flush(10);
 						}
 						buffer[limit++] = (byte) (((value >> 63) & 0x7F));
@@ -499,7 +502,7 @@ public final class PrimitiveWriter {
 			writeSignedIntegerPos(value+1);
 		} else {
 			if ((value << 1) == 0) {
-				if (limit > buffer.length - 5) {
+				if (limit > bufferLength - 5) {
 					flush(5);
 				}
 				// encode the most negative possible number
@@ -519,7 +522,7 @@ public final class PrimitiveWriter {
 			writeSignedIntegerPos(value);
 		} else {
 			if ((value << 1) == 0) {
-				if (limit > buffer.length - 5) {
+				if (limit > bufferLength - 5) {
 					flush(5);
 				}
 				// encode the most negative possible number
@@ -540,26 +543,26 @@ public final class PrimitiveWriter {
 	    
 	    
 		if (absv <= 0x00000040) {
-			if (buffer.length - limit < 1) {
+			if (bufferLength - limit < 1) {
 				flush(1);
 			}
 		} else {
 			if (absv <= 0x00002000) {
-				if (buffer.length - limit < 2) {
+				if (bufferLength - limit < 2) {
 					flush(2);
 				}
 			} else {
 				if (absv <= 0x00100000) {
-					if (buffer.length - limit < 3) {
+					if (bufferLength - limit < 3) {
 						flush(3);
 					}
 				} else {
 					if (absv <= 0x08000000) {
-						if (buffer.length - limit < 4) {
+						if (bufferLength - limit < 4) {
 							flush(4);
 						}
 					} else {
-						if (buffer.length - limit < 5) {
+						if (bufferLength - limit < 5) {
 							flush(5);
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -578,26 +581,26 @@ public final class PrimitiveWriter {
 	private void writeSignedIntegerPos(int value) {
 		
 		if (value < 0x00000040) {
-			if (buffer.length - limit < 1) {
+			if (bufferLength - limit < 1) {
 				flush(1);
 			}
 		} else {
 			if (value < 0x00002000) {
-				if (buffer.length - limit < 2) {
+				if (bufferLength - limit < 2) {
 					flush(2);
 				}
 			} else {
 				if (value < 0x00100000) {
-					if (buffer.length - limit < 3) {
+					if (bufferLength - limit < 3) {
 						flush(3);
 					}
 				} else {
 					if (value < 0x08000000) {
-						if (buffer.length - limit < 4) {
+						if (bufferLength - limit < 4) {
 							flush(4);
 						}
 					} else {
-						if (buffer.length - limit < 5) {
+						if (bufferLength - limit < 5) {
 							flush(5);
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -619,26 +622,26 @@ public final class PrimitiveWriter {
 	public final void writeUnsignedInteger(int value) {
 		
 		if (value < 0x00000080) {
-			if (buffer.length - limit < 1) {
+			if (bufferLength - limit < 1) {
 				flush(1);
 			}
 		} else {
 			if (value < 0x00004000) {
-				if (buffer.length - limit < 2) {
+				if (bufferLength - limit < 2) {
 					flush(2);
 				}
 			} else {
 				if (value < 0x00200000) {
-					if (buffer.length - limit < 3) {
+					if (bufferLength - limit < 3) {
 						flush(3);
 					}
 				} else {
 					if (value < 0x10000000) {
-						if (buffer.length - limit < 4) {
+						if (bufferLength - limit < 4) {
 							flush(4);
 						}
 					} else {
-						if (buffer.length - limit < 5) {
+						if (bufferLength - limit < 5) {
 							flush(5);
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -661,7 +664,7 @@ public final class PrimitiveWriter {
 	public void pushPMap(int maxBytes) {
 		
 		//TODO: removed maxBytes+1 and it broke
-		if (limit > buffer.length - maxBytes) {
+		if (limit > bufferLength - maxBytes) {
 			flush(maxBytes);
 		}
 		
@@ -682,14 +685,13 @@ public final class PrimitiveWriter {
 	}
 	
 	//called only at the end of a group.
-	public void popPMap() {
+	public final void popPMap() {
 		/////
 		//the PMap is ready for writing.
 		//bit writes will go to previous bitmap location
 		/////
 		//push open writes
-		--safetyStackDepth;
-	   	pushWorkingBits(safetyStackDepth, (byte)0);
+	   	pushWorkingBits(--safetyStackDepth, (byte)0);
 		buffer[flushSkips[safetyStackFlushIdx[safetyStackDepth]] - 1] |= 0x80;//must set stop bit now that we know where pmap stops.
 				
 		//restore the old working bits if there is a previous pmap.
