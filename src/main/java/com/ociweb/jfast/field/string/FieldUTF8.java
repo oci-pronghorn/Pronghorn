@@ -33,6 +33,7 @@ public final class FieldUTF8 extends Field {
 		
 		CharSequence seq = provider.provideCharSequence(id);
 		writer.writeUnsignedInteger(seq.length());
+		
 		writer.writeByteArrayData(seq.toString().getBytes());
 		
 		//end of writer

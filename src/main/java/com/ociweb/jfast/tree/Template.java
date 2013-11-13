@@ -1,7 +1,7 @@
 package com.ociweb.jfast.tree;
 
 import com.ociweb.jfast.Operator;
-import com.ociweb.jfast.ValueDictionary;
+import com.ociweb.jfast.field.util.ValueDictionary;
 import com.ociweb.jfast.read.FieldType;
 
 public class Template {

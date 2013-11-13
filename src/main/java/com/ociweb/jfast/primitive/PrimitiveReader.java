@@ -28,26 +28,28 @@ public final class PrimitiveReader {
 	private long totalReader;
 	public static final int VERY_LONG_STRING_MASK = 0x7F; 
 	
-	private final int INIT_PMAP_SIZE = 1024; //TODO: compute and set.
 	
-	final byte[] pmapStack = new byte[INIT_PMAP_SIZE];
-	final byte[] pmapIdxStack = new byte[INIT_PMAP_SIZE>>2];
+	final byte[] pmapStack;
+	final byte[] pmapIdxStack;
 	
 	int pmapStackDepth = 0;
 	int pmapIdxStackDepth = 0;
 	int pmapIdx = -1;
 	
 	public PrimitiveReader(FASTInput input) {
-		this(4096,input);
+		this(4096,input,1024);
 	}
 	
 	//TODO: extract buffer wrapper so unsafe can be injected here.
-	public PrimitiveReader(int initBufferSize, FASTInput input) {
+	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
 		this.bufferLength = buffer.length;
 		this.position = 0;
 		this.limit = 0;
+		
+		this.pmapStack = new byte[maxPMapCount];
+		this.pmapIdxStack = new byte[maxPMapCount>>1];
 	}
 	
 	public long totalRead() {
@@ -145,7 +147,7 @@ public final class PrimitiveReader {
 	public final void readPMap(int pmapMaxSize) {
 		//force internal buffer to grow if its not big enough for this pmap
 		if (limit - position <= pmapMaxSize) {
-			fetch(pmapMaxSize); //largest fetch
+			fetch(pmapMaxSize); //largest fetch, TODO: Error if this spans beyond data we will HANG!!
 		}
 		//there are no zero length pmaps these are determined by the parent pmap
 		int start = position;

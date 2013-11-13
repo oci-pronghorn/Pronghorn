@@ -12,7 +12,7 @@ public class FASTOutputStream implements FASTOutput{
 	public FASTOutputStream(OutputStream ostr) {
 		this.ostr = ostr;
 	}
-	public int flush(byte[] buffer, int offset, int length, int need) {
+	public int flush(byte[] buffer, int offset, int length) {
 		try {
 			//blocks until length is written so the logic is simple
 			ostr.write(buffer, offset, length);
@@ -21,8 +21,5 @@ public class FASTOutputStream implements FASTOutput{
 			throw new FASTException(e);
 		}
 	}
-	
-	
-	
-	
+
 }

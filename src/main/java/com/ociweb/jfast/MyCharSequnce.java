@@ -158,7 +158,7 @@ public class MyCharSequnce implements CharSequence, ByteConsumer {
 		byte b = source[offset-1];
 	    int result;
 		if ( ((byte)(0xFF&(b<<2))) >=0) {
-			if ((b^0x40)!=0) {
+			if ((b&0x40)==0) {
 				target[targetIdx] = 0xFFFD; //Bad data replacement char
 				return ++offset;
 			}

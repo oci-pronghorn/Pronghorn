@@ -1,6 +1,5 @@
 package com.ociweb.jfast;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.Charset;
@@ -31,17 +30,10 @@ public class MyCharSequenceTest {
 		MyCharSequnce mcs = new MyCharSequnce();
 		
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
-
-		
-		System.err.println(unicodeTestString+" encoded as "+data.length+" bytes "+Arrays.toString(data));
-		
-		//TODO: still not working.
-		
 		char[] target = new char[unicodeTestString.length()];
 		mcs.decodeUTF8(data, 0, target, 0, target.length);
 		
-		System.err.println(new String(target));
-		
+		assertTrue("chars do not match", Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
 	}
 	

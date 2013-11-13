@@ -1,4 +1,5 @@
-package com.ociweb.jfast;
+package com.ociweb.jfast.field.util;
+
 
 
 public class ValueDictionary {

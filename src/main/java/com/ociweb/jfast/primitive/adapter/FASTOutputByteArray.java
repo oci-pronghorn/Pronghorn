@@ -17,17 +17,11 @@ public class FASTOutputByteArray implements FASTOutput {
 		position = 0;
 	}
 	
-	public final int flush(byte[] source, int offset, int length, int need) {
+	public final int flush(byte[] source, int offset, int length) {
 		//if need is >= length then this call must block until length is written
 		//else this call can return early after need is written			
-		int requiredFlush = need>=length? length : need;
-		
+
 		int remaining = buffer.length - position;
-		if (requiredFlush>remaining) {
-			
-			//TODO: we have a problem the buffer must be swapped and grown
-			
-		}		
 		
 		if (length > remaining) {
 			length = buffer.length - position;
@@ -41,5 +35,6 @@ public class FASTOutputByteArray implements FASTOutput {
 	public int position() {
 		return position;
 	}
+
 
 }

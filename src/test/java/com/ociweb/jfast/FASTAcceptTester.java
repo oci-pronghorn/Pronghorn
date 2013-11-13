@@ -1,16 +1,10 @@
 package com.ociweb.jfast;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.util.Arrays;
 import java.util.concurrent.Callable;
-
-import com.ociweb.jfast.write.WriteGroup;
 
 public class FASTAcceptTester implements FASTAccept {
 

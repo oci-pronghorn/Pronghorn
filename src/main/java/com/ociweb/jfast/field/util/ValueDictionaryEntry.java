@@ -1,4 +1,7 @@
-package com.ociweb.jfast;
+package com.ociweb.jfast.field.util;
+
+import com.ociweb.jfast.DecimalDTO;
+import com.ociweb.jfast.MyCharSequnce;
 
 
 

@@ -22,7 +22,6 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 public class PrimitiveReaderWriterTest {
 
 	private final int speedTestSize = 3000000;
-	private final int bufferSize = 4096;
 	private final int testCycles = 7;
 
 	//These common test values are used from the smallest test to the largest so results can be compared
@@ -53,9 +52,9 @@ public class PrimitiveReaderWriterTest {
 		double count = passes*stringData.length;
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);		
-		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, new FASTOutputStream(baost));
+		PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
-		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		double writeDuration = Double.MAX_VALUE;
 		double readDuration = Double.MAX_VALUE;
@@ -100,8 +99,8 @@ public class PrimitiveReaderWriterTest {
 		//ByteBuffer buffer = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
 		ByteBuffer buffer = ByteBuffer.allocate(capacity);
 		
-		pw = new PrimitiveWriter(bufferSize, new FASTOutputByteBuffer(buffer));
-		pr = new PrimitiveReader(bufferSize, new FASTInputByteBuffer(buffer));
+		pw = new PrimitiveWriter(new FASTOutputByteBuffer(buffer));
+		pr = new PrimitiveReader(new FASTInputByteBuffer(buffer));
 		
 		writeDuration = Double.MAX_VALUE;
 		readDuration = Double.MAX_VALUE;
@@ -147,10 +146,10 @@ public class PrimitiveReaderWriterTest {
 		byte[] bufferArray = new byte[capacity];
 		
 		FASTOutputByteArray byteArrayOutput = new FASTOutputByteArray(bufferArray);
-		pw = new PrimitiveWriter(bufferSize, byteArrayOutput);
+		pw = new PrimitiveWriter(byteArrayOutput);
 		
 		FASTInputByteArray byteArrayInput = new FASTInputByteArray(bufferArray);
-		pr = new PrimitiveReader(bufferSize, byteArrayInput);
+		pr = new PrimitiveReader(byteArrayInput);
 		
 		writeDuration = Double.MAX_VALUE;
 		readDuration = Double.MAX_VALUE;
@@ -177,7 +176,7 @@ public class PrimitiveReaderWriterTest {
 			byteArrayInput.reset();
 			
 			//TODO: this is NOT clear why this is required!
-			pr = new PrimitiveReader(bufferSize, byteArrayInput);
+			pr = new PrimitiveReader(byteArrayInput);
 			
 			start = System.nanoTime();
 			 p = passes;
@@ -211,7 +210,7 @@ public class PrimitiveReaderWriterTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter pw = new PrimitiveWriter(bufferSize, new FASTOutputStream(baost));
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
 		
 		int i = 0;
 		while (i<stringData.length) {
@@ -222,7 +221,7 @@ public class PrimitiveReaderWriterTest {
 		pw.flush();
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
-		final PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		i = 0;
 		while (i<stringData.length) {
@@ -281,7 +280,7 @@ public class PrimitiveReaderWriterTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter pw = new PrimitiveWriter(bufferSize, new FASTOutputStream(baost));
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
 		
 		int i = 0;
 		while (i<unsignedLongData.length) {
@@ -299,7 +298,7 @@ public class PrimitiveReaderWriterTest {
 		pw.flush();
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
-		final PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		i = 0;
 		while (i<unsignedLongData.length) {
@@ -533,7 +532,7 @@ public class PrimitiveReaderWriterTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter pw = new PrimitiveWriter(bufferSize, new FASTOutputStream(baost));
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
 	
 		int i = 0;
 		while (i<stringData.length) {
@@ -543,7 +542,7 @@ public class PrimitiveReaderWriterTest {
 		pw.flush();
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
-		final PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		i = 0;
 		CharSequenceShadow shadow = new CharSequenceShadow();
@@ -604,7 +603,7 @@ public class PrimitiveReaderWriterTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter pw = new PrimitiveWriter(bufferSize, new FASTOutputStream(baost));
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
 		
 		int i = 0;
 		while (i<byteData.length) {
@@ -614,7 +613,7 @@ public class PrimitiveReaderWriterTest {
 		pw.flush();
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
-		final PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		int largest = 0;
 		i = 0;

@@ -11,8 +11,6 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class PrimitivePMAPTest {
-
-	private static final int bufferSize = 4096;
 	
 	@Test
 	public void testWriterSingle() {
@@ -20,7 +18,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream();
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.pushPMap(10);
 		pw.writePMapBit(1);
@@ -58,7 +56,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream();
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.pushPMap(10);
 		pw.writePMapBit(1);
@@ -111,7 +109,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream();
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.pushPMap(10);
 		pw.writePMapBit(1);
@@ -178,7 +176,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream();
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(bufferSize, output);
+		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		//pw.pushPMap(3);
 		
@@ -251,7 +249,7 @@ public class PrimitivePMAPTest {
 									    ((byte)Integer.valueOf("10001011", 2).intValue())};
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(testData));
-		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		int maxPMapSize = testData.length; //in bytes
 		//open this pmap
@@ -292,7 +290,7 @@ public class PrimitivePMAPTest {
 		};
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(testData));
-		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
 		pr.readPMap(2);
@@ -358,7 +356,7 @@ public class PrimitivePMAPTest {
 		};
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(testData));
-		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
 		pr.readPMap(2);
@@ -432,7 +430,13 @@ public class PrimitivePMAPTest {
 		
     	int pmaps = 3000000;
     	int maxLength = 7;
-    	int localBufferSize = pmaps*maxLength;
+    	
+    	////////////////////////////////////
+    	//compute max bytes written to stream based on test data
+    	////////////////////////////////////
+    	int maxWrittenBytes = (int)Math.ceil((maxLength*8)/7d);
+    	
+    	int localBufferSize = pmaps*maxWrittenBytes;
     	    	
     	byte[][] testPmaps = buildTestPMapData(pmaps, maxLength);
     	
@@ -461,10 +465,7 @@ public class PrimitivePMAPTest {
 		    overhead = (System.nanoTime()-start);
     	}
     	
-    	////////////////////////////////////
-    	//compute max bytes written to stream based on test data
-    	////////////////////////////////////
-    	int maxWrittenBytes = (int)Math.ceil((maxLength*8)/7d);
+
     	    	
     	////////////////////////////////
     	//write all the bytes to the writtenBytes array
@@ -475,7 +476,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(localBufferSize);
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output);
+		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps);
 		
 		byte[] writtenBytes;
 		
@@ -508,11 +509,12 @@ public class PrimitivePMAPTest {
 			    		pw.writePMapBit((b>>7)&1);
 			    		//6 zeros are assumed 
 			    		
-			    	}			    	
-			    	
+			    	}	
 			    	pw.popPMap();
-	
 		    }
+		    //single flush, this is the bandwidth optimized approach.
+		    pw.flush();
+
 		    long duration = (System.nanoTime()-start);
 		    writtenBytes = baost.toByteArray();
 		    
@@ -542,20 +544,21 @@ public class PrimitivePMAPTest {
 		i = pmaps;
     	try {
     		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(writtenBytes));
-    		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+    		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
 			    	pr.readPMap(maxWrittenBytes);
 			    	
 			    	int j = pmapData.length;
 			    	if (j==0) {
+			    		
 			    		assertEquals(0,pr.popPMapBit());
 			    		assertEquals(0,pr.popPMapBit());
 			    		assertEquals(0,pr.popPMapBit());
 			    		assertEquals(0,pr.popPMapBit());
 			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());
-			    		//assertEquals(0,pr.popPMapBit()); //TODO: this should have been zero? but the early write is causing second byte?
+			    		assertEquals(0,pr.popPMapBit());			    		
+			    		assertEquals(0,pr.popPMapBit()); 
 			    		
 			    	} else {
 			    		int totalBits = maxWrittenBytes*7;
@@ -592,7 +595,7 @@ public class PrimitivePMAPTest {
 		i = pmaps;
     	try {
     		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(writtenBytes));
-    		PrimitiveReader pr = new PrimitiveReader(bufferSize, input);
+    		PrimitiveReader pr = new PrimitiveReader(input);
     		long start = System.nanoTime();
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
