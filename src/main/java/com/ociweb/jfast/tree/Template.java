@@ -1,8 +1,8 @@
 package com.ociweb.jfast.tree;
 
 import com.ociweb.jfast.Operator;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.field.util.ValueDictionary;
-import com.ociweb.jfast.read.FieldType;
 
 public class Template {
 
@@ -41,8 +41,8 @@ public class Template {
 		this.builder = new GroupBuilder(id,dictionary);
 	}
 			
-	public Template appendInteger(int id, Necessity presence, Operator operator, IntType type) {
-		builder.addField(operator, type.type, presence, id);
+	public Template appendInteger(int id, Necessity presence, Operator operator, Integer type) {
+		builder.addField(operator, TypeMask.IntegerSigned, presence, id);
 		return this;
 	}
 	
@@ -55,17 +55,17 @@ public class Template {
 	}
 	
 	public Template appendASCIIString(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, FieldType.CharsASCII, presence, id);
+		builder.addField(operator, TypeMask.TextASCII, presence, id);
 		return this;
 	}
 	
 	public Template appendUnicodeString(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, FieldType.CharsUTF8, presence, id);
+		builder.addField(operator, TypeMask.TextUTF8, presence, id);
 		return this;
 	}
 	
 	public Template appendByteVectorField(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, FieldType.Bytes, presence, id);
+		builder.addField(operator, TypeMask.ByteArray, presence, id);
 		return this;
 	}
 	

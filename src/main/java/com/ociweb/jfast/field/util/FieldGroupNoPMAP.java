@@ -2,10 +2,8 @@ package com.ociweb.jfast.field.util;
 
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.FASTProvide;
-import com.ociweb.jfast.field.integer.FieldInt;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class FieldGroupNoPMAP extends Field {
 

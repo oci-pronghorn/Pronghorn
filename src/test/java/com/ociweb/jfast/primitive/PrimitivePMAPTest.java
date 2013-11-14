@@ -476,7 +476,7 @@ public class PrimitivePMAPTest {
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(localBufferSize);
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps);
+		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
 		
 		byte[] writtenBytes;
 		

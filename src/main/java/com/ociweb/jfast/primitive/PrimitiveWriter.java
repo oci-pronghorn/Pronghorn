@@ -1,6 +1,5 @@
 package com.ociweb.jfast.primitive;
 
-import java.util.Arrays;
 
 
 /**
@@ -38,25 +37,38 @@ public final class PrimitiveWriter {
 
 	private long totalWritten;
 	
-	private final boolean minimizeLatency = false;
+	private final boolean minimizeLatency;
 		
 
 	public PrimitiveWriter(FASTOutput output) {
-		this(4096,output,128);
+		this(4096,output,128, false);
 	}
 	
-	public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount) {
+	public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 		this.output = output;
 		this.buffer = new byte[initBufferSize];
 		this.bufferLength = buffer.length;
 		this.position = 0;
 		this.limit = 0;
+		this.minimizeLatency = minimizeLatency;
 		//NOTE: may be able to optimize this so these 3 are shorter
 		safetyStackPosition = new int[maxGroupCount];
 		safetyStackFlushIdx = new int[maxGroupCount];
 		safetyStackTemp = new byte[maxGroupCount];
 		//max total groups
-		flushSkips = new int[maxGroupCount*2];//this may grow very large
+		flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
+	}
+	
+	public void reset() {
+		this.position = 0;
+		this.limit = 0;
+		this.safetyStackDepth = 0;
+		this.pMapIdxWorking = 7;
+		this.pMapByteAccum = 0;
+		this.flushSkipsIdxLimit = 0;
+		this.flushSkipsIdxPos = 0;
+		this.totalWritten = 0;
+		
 	}
 	
     public long totalWritten() {
@@ -81,7 +93,6 @@ public final class PrimitiveWriter {
 			if (safetyLimit < flushTo) {
 				flushTo = safetyLimit;
 			}		
-			System.err.println("flushto:"+flushTo);
 		}		
 		
 		int flushed = 0;
@@ -715,7 +726,7 @@ public final class PrimitiveWriter {
 		}
 		//TODO: need a better way? for re-setting the flushSkips back to zero if possible
 		//also needed to ensure low-latency for groups
-    	if (minimizeLatency) {//TODO: is this really part of output!!??!!
+    	if (minimizeLatency) {
     		flush(0);
     	}
 	}

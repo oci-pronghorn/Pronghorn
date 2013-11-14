@@ -3,13 +3,16 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.BytesSequence;
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.field.FieldWriterInteger;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 import static com.ociweb.jfast.field.TypeMask.*;
 import static com.ociweb.jfast.field.OperatorMask.*;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTStreamer implements FASTAccept {
+public final class FASTWriter implements FASTAccept {
+	//TODO: check all these method names against QuickFAST
 	
+	private final PrimitiveWriter writer;
 	private final FieldWriterInteger writerInteger;
 	//writerLong
 	//writerText
@@ -27,13 +30,11 @@ public final class FASTStreamer implements FASTAccept {
 	//  4 bit operation (must match method)
 	// 20 bit instance (MUST be lowest for easy mask and frequent use)
 	
-	//TODO: replace FieldWriter with this class in FASTStreamable!!!
-	//NOTE: then what does reader get? bring back provider?
-	//      may be best because then read/write compression is kept in sync.
-	//      plus this class will be the only one needing token lookup.
+
 	
-	public FASTStreamer(FieldWriterInteger writer, int[] tokenLookup) {
-		this.writerInteger = writer;
+	public FASTWriter(PrimitiveWriter writer, int intFields, int[] tokenLookup) {
+		this.writer = writer;
+		this.writerInteger = new FieldWriterInteger(writer, intFields);
 		this.tokenLookup = tokenLookup;
 	}
 	
@@ -89,8 +90,30 @@ public final class FASTStreamer implements FASTAccept {
 			case (IntegerSignedOptional<<4)|None:
 				writerInteger.writeIntegerSignedOptional(value, token);
 				break;
-			
-			
+			case (IntegerUnSigned<<4)|Constant:
+				//writer.writeIntegerUnsigned
+				break;
+			case (IntegerSigned<<4)|Constant:
+				writerInteger.writeIntegerSigned(value, token);
+				break;
+			case (IntegerUnSignedOptional<<4)|Constant:
+				//writer.writer
+				break;
+			case (IntegerSignedOptional<<4)|Constant:
+				writerInteger.writeIntegerSignedOptional(value, token);
+				break;		
+			case (IntegerUnSigned<<4)|Copy:
+				//writer.writeIntegerUnsigned
+				break;
+			case (IntegerSigned<<4)|Copy:
+				writerInteger.writeIntegerSigned(value, token);
+				break;
+			case (IntegerUnSignedOptional<<4)|Copy:
+				//writer.writer
+				break;
+			case (IntegerSignedOptional<<4)|Copy:
+				writerInteger.writeIntegerSignedOptional(value, token);
+				break;					
 			default:
 				break;
 		}
@@ -130,6 +153,18 @@ public final class FASTStreamer implements FASTAccept {
 			default:
 				break;
 		}
+	}
+
+	public void openGroup(int maxPMapBytes) {
+		writer.pushPMap(maxPMapBytes);
+	}
+
+	public void closeGroup() {
+		writer.popPMap();
+	}
+
+	public void flush() {
+		writer.flush();
 	}
 
 }

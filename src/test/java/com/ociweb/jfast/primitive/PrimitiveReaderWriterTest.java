@@ -11,7 +11,7 @@ import java.util.Arrays;
 import org.junit.Test;
 
 import com.ociweb.jfast.MyCharSequnce;
-import com.ociweb.jfast.field.string.CharSequenceShadow;
+import com.ociweb.jfast.field.util.CharSequenceShadow;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;

@@ -1,6 +1,6 @@
 package com.ociweb.jfast.primitive;
 
-import com.ociweb.jfast.field.string.CharSequenceShadow;
+import com.ociweb.jfast.field.util.CharSequenceShadow;
 
 /**
  * PrimitiveReader

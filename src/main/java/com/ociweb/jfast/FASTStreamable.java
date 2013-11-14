@@ -2,7 +2,7 @@ package com.ociweb.jfast;
 
 import com.ociweb.jfast.field.FieldReader;
 import com.ociweb.jfast.field.FieldWriterInteger;
-import com.ociweb.jfast.stream.FASTStreamer;
+import com.ociweb.jfast.stream.FASTWriter;
 
 /**
  * Use this class to add FASTStreamable capabilities to POJO
@@ -11,7 +11,7 @@ import com.ociweb.jfast.stream.FASTStreamer;
  */
 public interface FASTStreamable {
 
-	void write(FASTStreamer writer);
+	void write(FASTWriter writer);
 	
 	void read(FieldReader reader);
 	

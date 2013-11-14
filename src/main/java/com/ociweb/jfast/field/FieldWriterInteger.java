@@ -5,7 +5,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 public final class FieldWriterInteger {
 
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
-	private final int MAX_INSTANCE_VALUES = INSTANCE_MASK+1;
 	
 	private final static byte UNSET     = 0;  //use == 0 to detect (default value)
 	private final static byte SET_NULL  = -1; //use < 0 to detect
@@ -13,15 +12,14 @@ public final class FieldWriterInteger {
 	
 	private final PrimitiveWriter writer;
 	
-	//TODO: build a factory so each type can have a different length.
 	private final int[]  intValues;
 	private final byte[] intValueFlags;
 
 
-	public FieldWriterInteger(PrimitiveWriter writer) {
+	public FieldWriterInteger(PrimitiveWriter writer, int fields) {
 		this.writer = writer;
-		this.intValues = new int[MAX_INSTANCE_VALUES];
-		this.intValueFlags = new byte[MAX_INSTANCE_VALUES];
+		this.intValues = new int[fields];
+		this.intValueFlags = new byte[fields];
 	}
 	
 	//only used when -ea is on to validate the field order
@@ -40,14 +38,6 @@ public final class FieldWriterInteger {
 	 *  IntegerUnsigned
 	 *  IntegerSingedOptional
 	 *  IntegerUnsignedOptional
-	 *  Byte
-	 *  ByteOptional
-	 *  CharASCII
-	 *  CharASCIIOptional
-	 *  CharUTF8
-	 *  CharUTF8Optional
-	 * 
-	 * 
 	 * 
 	 */
 	

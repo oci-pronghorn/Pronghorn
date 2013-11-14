@@ -4,11 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.ociweb.jfast.Operator;
-import com.ociweb.jfast.field.util.Field;
-import com.ociweb.jfast.field.util.FieldGroupNoPMAP;
 import com.ociweb.jfast.field.util.ValueDictionary;
-import com.ociweb.jfast.field.util.ValueDictionaryEntry;
-import com.ociweb.jfast.read.FieldType;
 
 public class GroupBuilder {
 
@@ -18,7 +14,7 @@ public class GroupBuilder {
 	
 	private List<Operator> operators;
 	private List<Necessity> necessity;
-	private List<FieldType> types;
+	private List<Integer> types;
 	private List<Integer> ids;
 	private List<Byte> noPmapList;
 	private ValueDictionary dictionary;
@@ -28,13 +24,13 @@ public class GroupBuilder {
 		this.dictionary = dictionary;
 		this.operators = new ArrayList<Operator>();
 		this.necessity = new ArrayList<Necessity>();
-		this.types = new ArrayList<FieldType>();
+		this.types = new ArrayList<Integer>();
 		this.ids = new ArrayList<Integer>();
 		this.noPmapList   = new ArrayList<Byte>();
 	}
 	
 	///Necessity, Required
-	public void addField(Operator operator, FieldType type, Necessity necessity, int id) {
+	public void addField(Operator operator, int type, Necessity necessity, int id) {
 		
 		//common logic to determine.
 		// 1. if this field will have a bit in the pmap
@@ -76,36 +72,6 @@ public class GroupBuilder {
 	}
 
 	
-	private ValueDictionaryEntry dictionaryEntry(int i) {
-		return dictionary.entry[0];//TODO: need more complex logic here
-	}
-
-	
-	public Field buildSimpleGroup() {
-		
-		Field[] fields = simpleFieldArray();
-		
-		return new FieldGroupNoPMAP(fields);
-		
-	}
-
-	public Field[] simpleFieldArray() {
-		
-		///TODO: if fields repeat the same then we wil add a count to avoid the virtual call
-		///TODO: confirm error if 2 fields have same name with different compression scheme.
-		///TODO: store fields in lookuptable for re-use by name/namespace (may need first pass to find repeats that cant run)
-		///TODO: once product is complete review building composite fields of multiple types to remove function calls
-		
-		Field[] fields = new Field[types.size()];
-		int c = 0;
-		int j = types.size();
-		while (c<types.size()) {
-			Field f = types.get(c).newField(ids.get(c), dictionaryEntry(ids.get(c)), operators.get(c), necessity.get(c));
-			fields[--j] = f;
-			c++;
-		}
-		return fields;
-	}
 
 	
 	

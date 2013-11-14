@@ -1,4 +1,4 @@
-package com.ociweb.jfast.field.string;
+package com.ociweb.jfast.field.util;
 
 import java.util.Arrays;
 

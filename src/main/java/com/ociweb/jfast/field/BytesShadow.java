@@ -1,4 +1,4 @@
-package com.ociweb.jfast.field.binary;
+package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.BytesSequence;
 
