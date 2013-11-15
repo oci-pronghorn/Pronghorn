@@ -143,9 +143,8 @@ public final class FieldWriterInteger {
 		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
-		if (value == intValues[idx]+1) {
+		if (value == ++intValues[idx]) {
 			writer.writePMapBit(0);
-			intValues[idx]++;
 		} else {
 			writer.writePMapBit(1);
 			writer.writeSignedInteger(value);

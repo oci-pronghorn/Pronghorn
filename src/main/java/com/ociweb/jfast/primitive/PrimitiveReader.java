@@ -237,7 +237,7 @@ public final class PrimitiveReader {
 			//however the position can not be incremented or fetch may drop data.
 			int count = 0;
 			
-			while ((buffer[position+count]&0x80)==0) {
+			while (buffer[position+count]>=0) {
 				count++;
 				if (position+count>=limit) {
 					fetch(1); //CAUTION: may change value of position

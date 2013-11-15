@@ -56,8 +56,8 @@ public class PrimitiveReaderWriterTest {
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
 		PrimitiveReader pr = new PrimitiveReader(input);
 		
-		double writeDuration = Double.MAX_VALUE;
-		double readDuration = Double.MAX_VALUE;
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
 		double avgBytesWritten = 0;
 		
 		int cycles = testCycles;
@@ -71,7 +71,7 @@ public class PrimitiveReaderWriterTest {
 					pw.writeUnsignedLong(unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)count);
 			pw.flush();
 			avgBytesWritten = baost.size()/(double)count;
 			
@@ -88,7 +88,7 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)count);
 		}
 		System.out.println("ByteArray I/O StreamBuffer: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
 		
@@ -102,8 +102,8 @@ public class PrimitiveReaderWriterTest {
 		pw = new PrimitiveWriter(new FASTOutputByteBuffer(buffer));
 		pr = new PrimitiveReader(new FASTInputByteBuffer(buffer));
 		
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		avgBytesWritten = 0;
 		
 		cycles = testCycles;
@@ -119,7 +119,7 @@ public class PrimitiveReaderWriterTest {
 					pw.writeUnsignedLong(unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)count);
 			pw.flush();
 			avgBytesWritten = buffer.position()/(double)count;
 			
@@ -135,7 +135,7 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)count);
 		}
 		System.out.println("                ByteBuffer: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
 		
@@ -151,8 +151,8 @@ public class PrimitiveReaderWriterTest {
 		FASTInputByteArray byteArrayInput = new FASTInputByteArray(bufferArray);
 		pr = new PrimitiveReader(byteArrayInput);
 		
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		avgBytesWritten = 0;
 		
 		cycles = testCycles;
@@ -168,7 +168,7 @@ public class PrimitiveReaderWriterTest {
 					pw.writeUnsignedLong(unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)count);
 			pw.flush();
 			avgBytesWritten = byteArrayOutput.position()/(double)count;
 			
@@ -187,7 +187,7 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)count);
 		}
 		System.out.println("                ByteArray: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
 		
@@ -231,14 +231,12 @@ public class PrimitiveReaderWriterTest {
 		}
 		
 		int passes = speedTestSize / stringData.length;
-		double count = passes*stringData.length;
-		
+
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		double writeDuration = Double.MAX_VALUE;
-		double readDuration = Double.MAX_VALUE;
-		double avgBytesWritten = 0;
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
@@ -252,9 +250,8 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			start = System.nanoTime();
 			 p = passes;
@@ -266,9 +263,9 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
+		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		
 	}
@@ -319,9 +316,8 @@ public class PrimitiveReaderWriterTest {
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		double writeDuration = Double.MAX_VALUE;
-		double readDuration = Double.MAX_VALUE;
-		double avgBytesWritten = 0;
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
@@ -334,9 +330,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeUnsignedLong(unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			start = System.nanoTime();
 			 p = passes;
@@ -347,15 +342,15 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("unsigned long: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten+" iterations "+count);
+		System.out.println("unsigned long: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);
 		
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
@@ -367,9 +362,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeSignedLong(-unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -381,15 +375,15 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("signed long neg: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
+		System.out.println("signed long neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
@@ -401,9 +395,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeSignedLong(unsignedLongData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -415,16 +408,16 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("signed long pos: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
+		System.out.println("signed long pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		
 		//////////////////////////////////
 		//////////////////////////////////
 
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
@@ -436,9 +429,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeUnsignedInteger(unsignedIntData[j++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -450,15 +442,15 @@ public class PrimitiveReaderWriterTest {
 					j++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("unsigned integer: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);		
+		System.out.println("unsigned integer: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
 	
 		//////////////////////////////////
 		//////////////////////////////////
 
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
@@ -470,9 +462,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeSignedInteger(-unsignedIntData[j++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -484,15 +475,15 @@ public class PrimitiveReaderWriterTest {
 					j++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("signed integer neg: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten+" iterations "+count);		
+		System.out.println("signed integer neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);		
 	
 		//////////////////////////////////
 		//////////////////////////////////
 
-		writeDuration = Double.MAX_VALUE;
-		readDuration = Double.MAX_VALUE;
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
@@ -504,9 +495,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeSignedInteger(unsignedIntData[j++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -518,11 +508,15 @@ public class PrimitiveReaderWriterTest {
 					j++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);		
+		System.out.println("signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
 	
 		
+	}
+	
+	private float min(float a, float b) {
+		return a<b ? a : b;
 	}
 	
 	@Test 
@@ -552,14 +546,12 @@ public class PrimitiveReaderWriterTest {
 		}
 		
 		int passes = speedTestSize / stringData.length;
-		double count = passes*stringData.length;
-		
+
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		double writeDuration = Double.MAX_VALUE;
-		double readDuration = Double.MAX_VALUE;
-		double avgBytesWritten = 0;
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
 		
 		//limit this down to the size of the other tests to get a better comparison
 		//makes the bytesPerWrite about the same size as the others
@@ -576,9 +568,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeASCII(stringData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			start = System.nanoTime();
 			 p = passes;
@@ -589,9 +580,9 @@ public class PrimitiveReaderWriterTest {
 					i++;
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("ascii: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
+		System.out.println("ascii: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		
 	}
@@ -628,16 +619,14 @@ public class PrimitiveReaderWriterTest {
 		}
 		
 		int passes = speedTestSize / byteData.length;
-		double count = passes*byteData.length;
-		
+
 		byte[] tempTarget = new byte[largest];
 		
 		///////////////////////////////////
 		//////////////////////////////////
 		
-		double writeDuration = Double.MAX_VALUE;
-		double readDuration = Double.MAX_VALUE;
-		double avgBytesWritten = 0;
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
@@ -650,9 +639,8 @@ public class PrimitiveReaderWriterTest {
 					pw.writeByteArrayData(byteData[i++]);
 				}
 			}
-			writeDuration =  Math.min(writeDuration, (System.nanoTime()-start)/count);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			pw.flush();
-			avgBytesWritten = baost.size()/(double)count;
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
 			start = System.nanoTime();
@@ -663,9 +651,9 @@ public class PrimitiveReaderWriterTest {
 					pr.readByteData(tempTarget, 0, byteData[i++].length);
 				}
 			}
-			readDuration = Math.min(readDuration, (System.nanoTime()-start)/count);
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("byteArray: write:"+writeDuration+"ns  read:"+readDuration+"ns  bytesPerWrite:"+avgBytesWritten);
+		System.out.println("byteArray: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		
 	}

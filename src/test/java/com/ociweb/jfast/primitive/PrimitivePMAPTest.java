@@ -483,6 +483,7 @@ public class PrimitivePMAPTest {
 		int i = pmaps;
 	    try {
 	    	long start = System.nanoTime();
+	    	//pw.pushPMap(maxWrittenBytes*i);
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
 			    	//none of these are nested, we don't want to test nesting here.
@@ -498,7 +499,7 @@ public class PrimitivePMAPTest {
 			    		byte b = pmapData[j];
 			    					    		
 			    		//put in first byte
-			    		pw.writePMapBit(b&1);
+			    		pw.writePMapBit(b&1);      //so 66% of the time must be here.
 			    		pw.writePMapBit((b>>1)&1);
 			    		pw.writePMapBit((b>>2)&1);
 			    		pw.writePMapBit((b>>3)&1);
@@ -510,10 +511,11 @@ public class PrimitivePMAPTest {
 			    		//6 zeros are assumed 
 			    		
 			    	}	
-			    	pw.popPMap();
+			    	pw.popPMap(); //push/pop consumes 20% of the time.
 		    }
+		    //pw.popPMap();
 		    //single flush, this is the bandwidth optimized approach.
-		    pw.flush();
+		    pw.flush(); //as of last test this only consumes 14% of the time
 
 		    long duration = (System.nanoTime()-start);
 		    writtenBytes = baost.toByteArray();

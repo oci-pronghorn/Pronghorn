@@ -19,21 +19,23 @@ public class IntegerStreamingTest {
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
-		int warmup         = 30;
-		int sampleSize     = 100;
+		int warmup         = 50;
+		int sampleSize     = 1000;
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
 		
-		int[] types = new int[] {TypeMask.IntegerSigned,
-								  TypeMask.IntegerSignedOptional};
+		int[] types = new int[] {
+				                  TypeMask.IntegerSigned,
+								 // TypeMask.IntegerSignedOptional,
+								  };
 		
 		int[] operators = new int[] {
 				                      OperatorMask.None, 
-									  OperatorMask.Constant,
-									  OperatorMask.Copy,
-									  OperatorMask.Delta,
-									  OperatorMask.Default,
-				                      OperatorMask.Increment,
+									 // OperatorMask.Constant,
+									 // OperatorMask.Copy,
+									 // OperatorMask.Delta,
+									 // OperatorMask.Default,
+				                     // OperatorMask.Increment,
 				                      };
 		
 		
@@ -85,6 +87,9 @@ public class IntegerStreamingTest {
 					
 					//write field data here
 					fw.accept(f, f); //TODO: need better test data, also how is optional null to be tested.
+					
+					//for sending null but need to know that field is nullable.
+					//fw.accept(f);
 					
 				
 					if (--g<0) {

@@ -77,6 +77,10 @@ public final class FASTWriter implements FASTAccept {
 	public void accept(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
+		//TODO: too big for inline so now what?
+		//TODO: test nested switches first on type then operator.
+		//TODO: also test with token passed instead of lookup (this lookup may cause stall)
+		
 		switch ((token>>INST)&MASK) {
 			case (IntegerUnSigned<<4)|None:
 				//writer.writeIntegerUnsigned
@@ -94,26 +98,50 @@ public final class FASTWriter implements FASTAccept {
 				//writer.writeIntegerUnsigned
 				break;
 			case (IntegerSigned<<4)|Constant:
-				writerInteger.writeIntegerSigned(value, token);
+				writerInteger.writeIntegerSignedConstant(value, token);
 				break;
 			case (IntegerUnSignedOptional<<4)|Constant:
 				//writer.writer
 				break;
 			case (IntegerSignedOptional<<4)|Constant:
-				writerInteger.writeIntegerSignedOptional(value, token);
+				writerInteger.writeIntegerSignedConstant(value, token);
 				break;		
 			case (IntegerUnSigned<<4)|Copy:
 				//writer.writeIntegerUnsigned
 				break;
 			case (IntegerSigned<<4)|Copy:
-				writerInteger.writeIntegerSigned(value, token);
+				writerInteger.writeIntegerSignedCopy(value, token);
 				break;
 			case (IntegerUnSignedOptional<<4)|Copy:
 				//writer.writer
 				break;
 			case (IntegerSignedOptional<<4)|Copy:
-				writerInteger.writeIntegerSignedOptional(value, token);
-				break;					
+				writerInteger.writeIntegerSignedOptionalCopy(value, token);
+				break;	
+			case (IntegerUnSigned<<4)|Delta:
+				//writer.writeIntegerUnsigned
+				break;
+			case (IntegerSigned<<4)|Delta:
+				writerInteger.writeIntegerSignedDelta(value, token);
+				break;
+			case (IntegerUnSignedOptional<<4)|Delta:
+				//writer.writer
+				break;
+			case (IntegerSignedOptional<<4)|Delta:
+				writerInteger.writeIntegerSignedOptionalDelta(value, token);
+				break;
+			case (IntegerUnSigned<<4)|Increment:
+				//writer.writeIntegerUnsigned
+				break;
+			case (IntegerSigned<<4)|Increment:
+				writerInteger.writeIntegerSignedIncrement(value, token);
+				break;
+			case (IntegerUnSignedOptional<<4)|Increment:
+				//writer.writer
+				break;
+			case (IntegerSignedOptional<<4)|Increment:
+			//	writerInteger.writeIntegerSignedOptionalIncrement(value, token);
+				break;
 			default:
 				break;
 		}

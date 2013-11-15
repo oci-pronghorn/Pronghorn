@@ -32,6 +32,8 @@ public final class PrimitiveWriter {
 	byte pMapByteAccum = 0;
 	
 	private final int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	private final int flushSkipsBufLen;
+	
 	private int   flushSkipsIdxLimit; //where we add the new one, end of the list
 	private int   flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
 
@@ -57,6 +59,7 @@ public final class PrimitiveWriter {
 		safetyStackTemp = new byte[maxGroupCount];
 		//max total groups
 		flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
+		flushSkipsBufLen = flushSkips.length-2;
 	}
 	
 	public void reset() {
@@ -116,35 +119,39 @@ public final class PrimitiveWriter {
 		}						
 	}
 
+	
+	
 	private int flushWithSkips(int flushTo, int need) {
 		int rollingPos = position;
 		int flushed = 0;
 		
-		//System.err.println("flush with skips");
-		
-		int tempSkipPos = flushSkips[flushSkipsIdxPos];
+		byte[] b = buffer;
+		int[] localFlushSkips = flushSkips;
+		int localFlushSkipsIdxPos = flushSkipsIdxPos;
+		int tempSkipPos = localFlushSkips[localFlushSkipsIdxPos];
+		int lastValid = localFlushSkips.length-2; 
+		if (flushSkipsIdxLimit<lastValid) {
+			lastValid = flushSkipsIdxLimit;
+		} 
 		//flush in parts that avoid the skip pos
-		int flushSkipsLimit = flushSkips.length-2;
-		while (flushSkipsIdxLimit>flushSkipsIdxPos && //we still have skips
-				flushSkipsIdxPos< flushSkipsLimit &&
-				tempSkipPos<flushTo && //skip stops before goal
-				rollingPos<tempSkipPos) { //TODO: this may stop after skips but we may still have some left over only if fields are outside pmap?
-				
+		while (localFlushSkipsIdxPos < lastValid && //we still have skips
+				tempSkipPos < flushTo                  //skip stops before goal
+				) { //TODO: this may stop after skips but we may still have some left over only if fields are outside pmap?
+			
+			//if the skip is zero bytes just flush it all together
+			if (localFlushSkips[localFlushSkipsIdxPos+1]==tempSkipPos) {
+					++localFlushSkipsIdxPos;
+					tempSkipPos = localFlushSkips[++localFlushSkipsIdxPos];
+			}
+			
 			int flushRequest = tempSkipPos - rollingPos;
 						
-			int flushComplete = output.flush(buffer, rollingPos, flushRequest);
+			int flushComplete = output.flush(b, rollingPos, flushRequest);
 			
 			flushed += flushComplete;
 			//did flush up to skip so set rollingPos to after skip
-			rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
-			tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
-			
-			//if the skip is zero bytes just run it all together
-			if (flushSkipsIdxPos< flushSkipsLimit &&
-			    flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
-				++flushSkipsIdxPos;
-				tempSkipPos = flushSkips[++flushSkipsIdxPos];
-			}	
+			rollingPos = localFlushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
+			tempSkipPos = localFlushSkips[++localFlushSkipsIdxPos]; //beginning of new skip.
 			
 			if (flushComplete < flushRequest) {
 				//we are getting back pressure so stop flushing any more
@@ -152,9 +159,10 @@ public final class PrimitiveWriter {
 			}	
 		} 
 		
-		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-			flushSkipsIdxPos=flushSkipsIdxLimit=0;
+		if (localFlushSkipsIdxPos==flushSkipsIdxLimit) {
+			localFlushSkipsIdxPos=flushSkipsIdxLimit=0;
 		}
+		flushSkipsIdxPos = localFlushSkipsIdxPos;
 		position = rollingPos;
 		return flushed;
 	}
@@ -724,8 +732,7 @@ public final class PrimitiveWriter {
 		if (safetyStackDepth>0) {			
 			popWorkingBits(safetyStackDepth-1);
 		}
-		//TODO: need a better way? for re-setting the flushSkips back to zero if possible
-		//also needed to ensure low-latency for groups
+		//ensure low-latency for groups
     	if (minimizeLatency) {
     		flush(0);
     	}
@@ -736,20 +743,15 @@ public final class PrimitiveWriter {
 		pMapIdxWorking = safetyStackTemp[s];
 	}
 
-	private final void pushWorkingBits(int s, byte secondByte) {
+	private final void pushWorkingBits(int s, byte pmIdxWorking) {
 		assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
 				
-		int temp = safetyStackPosition[s]++;
-		buffer[temp] = pMapByteAccum;//final byte to be saved into the feed.
-		safetyStackTemp[s] = secondByte;
+		buffer[safetyStackPosition[s]++] = pMapByteAccum;//final byte to be saved into the feed.
+		safetyStackTemp[s] = pmIdxWorking;
 		
 		if (0 != pMapByteAccum) {	
 			//set the last known non zero bit so we can avoid scanning for it. 
 			flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
-		//	if (safetyStackFlushIdx[s]<200) {
-		//		System.err.println("XXX"+s+" ["+safetyStackFlushIdx[s]+"] skip "+flushSkips[safetyStackFlushIdx[s]]+" to "+flushSkips[safetyStackFlushIdx[s]+1]);
-		//	}
-		
 		}	
 
 		pMapIdxWorking = 7;
@@ -760,8 +762,22 @@ public final class PrimitiveWriter {
 	//must be fast because it is frequently called.
 	public final void writePMapBit(int bit) {
 		if (0 == --pMapIdxWorking) {
-			pMapByteAccum |= bit; 		
-			pushWorkingBits(safetyStackDepth-1, pMapIdxWorking);
+			int s = safetyStackDepth-1; 
+			
+			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
+					
+			int local = (pMapByteAccum | bit);
+			buffer[safetyStackPosition[s]++] = (byte) local;//final byte to be saved into the feed.
+			safetyStackTemp[s] = pMapIdxWorking;
+			
+			if (0 != local) {	
+				//set the last known non zero bit so we can avoid scanning for it. 
+				flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
+			}	
+			
+			pMapIdxWorking = 7;
+			pMapByteAccum = 0;
+			
 		} else {
 			pMapByteAccum |= (bit<<pMapIdxWorking); 
 		}
