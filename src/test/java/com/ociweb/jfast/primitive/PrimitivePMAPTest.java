@@ -429,7 +429,8 @@ public class PrimitivePMAPTest {
 	public void testDogFood() {
 		
     	int pmaps = 3000000;
-    	int maxLength = 7;
+    	//the longer the max PMap the faster write becomes, so the push/pop is the expensive part and each sliced flush.
+    	int maxLength = 10;// 
     	
     	////////////////////////////////////
     	//compute max bytes written to stream based on test data
@@ -445,6 +446,15 @@ public class PrimitivePMAPTest {
     	//CAUTION: this code must be identical to the code run in the test.
     	long overhead = 0;
     	{
+    		int ta;
+    		int tb;
+    		int tc;
+    		int td;
+    		int te;
+    		int tf;
+    		int tg;
+    		int th;    		
+    		
     		int i = pmaps;
     		long start = System.nanoTime();
 		    while (--i>=0) {
@@ -452,14 +462,14 @@ public class PrimitivePMAPTest {
 			    	int j = pmapData.length;
 			    	while (--j>=0) {
 			    		byte b = pmapData[j];
-			    		int ta = (b&1);
-			    		int tb = ((b>>1)&1);
-			    		int tc = ((b>>2)&1);
-			    		int td = ((b>>3)&1);
-			    		int te = ((b>>4)&1);
-			    		int tf = ((b>>5)&1);
-			    		int tg = ((b>>6)&1);
-			    		int th = ((b>>7)&1);
+			    		ta = (b&1);
+			    		tb = ((b>>1)&1);
+			    		tc = ((b>>2)&1);
+			    		td = ((b>>3)&1);
+			    		te = ((b>>4)&1);
+			    		tf = ((b>>5)&1);
+			    		tg = ((b>>6)&1);
+			    		th = ((b>>7)&1);
 			    	}			   
 		    }
 		    overhead = (System.nanoTime()-start);
@@ -477,7 +487,7 @@ public class PrimitivePMAPTest {
 		FASTOutputStream output = new FASTOutputStream(baost);
 		
 		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
-		
+
 		byte[] writtenBytes;
 		
 		int i = pmaps;
@@ -499,7 +509,7 @@ public class PrimitivePMAPTest {
 			    		byte b = pmapData[j];
 			    					    		
 			    		//put in first byte
-			    		pw.writePMapBit(b&1);      //so 66% of the time must be here.
+			    		pw.writePMapBit(b&1);      
 			    		pw.writePMapBit((b>>1)&1);
 			    		pw.writePMapBit((b>>2)&1);
 			    		pw.writePMapBit((b>>3)&1);
@@ -520,7 +530,8 @@ public class PrimitivePMAPTest {
 		    long duration = (System.nanoTime()-start);
 		    writtenBytes = baost.toByteArray();
 		    
-		    if (duration>overhead) {
+		    if (duration > overhead) {
+		    	System.err.println("total duration with overhead:"+duration+" overhead:"+overhead+" pct "+(100*overhead/(float)duration));
 		    	duration -= overhead;
 		    } else {
 		    	System.err.println();
@@ -530,8 +541,8 @@ public class PrimitivePMAPTest {
 		    }
 		    assertTrue("total duration: "+duration+"ns but nothing written.",writtenBytes.length>0);
 		    
-		    double nsPerByte = duration/(double)writtenBytes.length; 
-		    System.err.println("PMap write "+nsPerByte+"ns per byte");
+		    float nsPerByte = duration/(float)writtenBytes.length; 
+		    System.err.println("PMap write "+nsPerByte+"ns per byte. TotalBytes:"+writtenBytes.length);
 	    } finally {
 	    	int testedMaps = (pmaps-(i+1));
 	    	System.err.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+overhead);

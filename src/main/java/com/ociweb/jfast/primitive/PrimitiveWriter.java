@@ -321,24 +321,7 @@ public final class PrimitiveWriter {
 				flush(6);
 			}
 		} else {
-			if (absv <= 0x0001000000000000l) {
-				if (bufferLength - limit < 7) {
-					flush(7);
-				}
-			} else {
-				if (absv <= 0x0080000000000000l) {
-					if (bufferLength - limit < 8) {
-						flush(8);
-					}
-				} else {
-					if (bufferLength - limit < 9) {
-						flush(9);
-					}
-					buffer[limit++] = (byte) (((value >> 56) & 0x7F));
-				}
-				buffer[limit++] = (byte) (((value >> 49) & 0x7F));
-			}
-			buffer[limit++] = (byte) (((value >> 42) & 0x7F));
+			writeSignedLongNegSlow2(absv, value);
 		}
 
 		// used by all
@@ -348,6 +331,27 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value >> 14) & 0x7F));
 		buffer[limit++] = (byte) (((value >> 7) & 0x7F));
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+	}
+
+	private void writeSignedLongNegSlow2(long absv, long value) {
+		if (absv <= 0x0001000000000000l) {
+			if (bufferLength - limit < 7) {
+				flush(7);
+			}
+		} else {
+			if (absv <= 0x0080000000000000l) {
+				if (bufferLength - limit < 8) {
+					flush(8);
+				}
+			} else {
+				if (bufferLength - limit < 9) {
+					flush(9);
+				}
+				buffer[limit++] = (byte) (((value >> 56) & 0x7F));
+			}
+			buffer[limit++] = (byte) (((value >> 49) & 0x7F));
+		}
+		buffer[limit++] = (byte) (((value >> 42) & 0x7F));
 	}
 
 	private final void writeSignedLongPos(long value) {
@@ -490,31 +494,7 @@ public final class PrimitiveWriter {
 				flush(6);
 			}
 		} else {
-			if (value < 0x0002000000000000l) {
-				if (bufferLength - limit < 7) {
-					flush(7);
-				}
-			} else {
-				if (value < 0x0100000000000000l) {
-					if (bufferLength - limit < 8) {
-						flush(8);
-					}
-				} else {
-					if (value < 0x8000000000000000l) {
-						if (bufferLength - limit < 9) {
-							flush(9);
-						}
-					} else {
-						if (bufferLength - limit < 10) {
-							flush(10);
-						}
-						buffer[limit++] = (byte) (((value >> 63) & 0x7F));
-					}
-					buffer[limit++] = (byte) (((value >> 56) & 0x7F));
-				}
-				buffer[limit++] = (byte) (((value >> 49) & 0x7F));
-			}
-			buffer[limit++] = (byte) (((value >> 42) & 0x7F));
+			writeUnsignedLongSlow2(value);
 		}
 
 		// used by all
@@ -525,6 +505,34 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value >> 7) & 0x7F));
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 
+	}
+
+	private void writeUnsignedLongSlow2(long value) {
+		if (value < 0x0002000000000000l) {
+			if (bufferLength - limit < 7) {
+				flush(7);
+			}
+		} else {
+			if (value < 0x0100000000000000l) {
+				if (bufferLength - limit < 8) {
+					flush(8);
+				}
+			} else {
+				if (value < 0x8000000000000000l) {
+					if (bufferLength - limit < 9) {
+						flush(9);
+					}
+				} else {
+					if (bufferLength - limit < 10) {
+						flush(10);
+					}
+					buffer[limit++] = (byte) (((value >> 63) & 0x7F));
+				}
+				buffer[limit++] = (byte) (((value >> 56) & 0x7F));
+			}
+			buffer[limit++] = (byte) (((value >> 49) & 0x7F));
+		}
+		buffer[limit++] = (byte) (((value >> 42) & 0x7F));
 	}
 	
 	
@@ -764,7 +772,7 @@ public final class PrimitiveWriter {
 		if (0 == --pMapIdxWorking) {
 			int s = safetyStackDepth-1; 
 			
-			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
+			//assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
 					
 			int local = (pMapByteAccum | bit);
 			buffer[safetyStackPosition[s]++] = (byte) local;//final byte to be saved into the feed.
