@@ -1,6 +1,6 @@
 package com.ociweb.jfast.field.util;
 
-import com.ociweb.jfast.FASTAccept;
+import com.ociweb.jfast.FASTxmiter;
 import com.ociweb.jfast.FASTProvide;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -13,7 +13,7 @@ public class FieldNoOp extends Field {
 	}
 	
 	@Override
-	public void reader(PrimitiveReader reader, FASTAccept visitor) {
+	public void reader(PrimitiveReader reader, FASTxmiter visitor) {
 		//end of reader
 	}
 

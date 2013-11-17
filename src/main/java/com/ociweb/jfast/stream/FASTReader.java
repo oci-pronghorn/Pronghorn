@@ -21,22 +21,18 @@ public class FASTReader implements FASTProvide {
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
 	private final FieldReaderInteger readerInteger;
-	
-	private final int MASK = 0x3FF;
-	private final int INST = 20;
-	
+		
+	//See fast writer for details and mask sizes
 	private final int MASK_TYPE = 0x3F;
 	private final int SHIFT_TYPE = 24;
 	
 	private final int MASK_OPER = 0x0F;
 	private final int SHIFT_OPER = 20;
 	
-	//32 bits total
-	//two high bits set
-	//  6 bit type (must match method)
-	//  4 bit operation (must match method)
-	// 20 bit instance (MUST be lowest for easy mask and frequent use)
+	private final int MASK_PMAP_MAX = 0x7FF;
+	private final int SHIFT_PMAP_MASK = 20;
 	
+		
 	public FASTReader(PrimitiveReader reader, int fields, int[] tokenLookup) {
 		this.reader=reader;
 		this.tokenLookup = tokenLookup;
@@ -127,8 +123,11 @@ public class FASTReader implements FASTProvide {
 	}
 
 	@Override
-	public void openGroup(int maxPMapBytes) {
-		reader.readPMap(maxPMapBytes);
+	public void openGroup(int id) {
+		int token = id>=0 ? tokenLookup[id] : id;
+		
+		reader.readPMap(MASK_PMAP_MAX&(token>>SHIFT_PMAP_MASK));
+		
 	}
 
 	@Override

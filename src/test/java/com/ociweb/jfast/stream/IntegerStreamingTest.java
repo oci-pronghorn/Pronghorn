@@ -178,7 +178,11 @@ public class IntegerStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
 		}
 		int g = fieldsPerGroup;
-		fw.openGroup(maxMPapBytes);
+		
+		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+
+		
+		fw.openGroup(groupToken);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -189,7 +193,7 @@ public class IntegerStreamingTest {
 				//all tests will use the token because that bit data will 
 				//be needed to properly test each case.  The id to token lookup inside
 				//accept appears to only add 1 or 2 ns 
-				fw.accept(tokenLookup[f], testData[f]); 
+				fw.write(tokenLookup[f], testData[f]); 
 				
 				//TODO: how is optional null to be tested.
 				//pick a number from the middle and when it matches send null instead.
@@ -205,7 +209,7 @@ public class IntegerStreamingTest {
 					if (f>0 || i>0) {
 			
 						//open new group
-						fw.openGroup(maxMPapBytes);
+						fw.openGroup(groupToken);
 						
 					}				
 				}				
@@ -217,6 +221,14 @@ public class IntegerStreamingTest {
 		fw.flush();
 	}
 	
+	private int buildGroupToken(int maxPMapBytes, int repeat) {
+		
+		return 	0x80000000 |
+				maxPMapBytes<<20 |
+	            (repeat&0xFFFFF);
+		
+	}
+
 	protected void testingReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
 			int[] testData, FASTReader fr) {
 		int i = operationIters;
@@ -225,7 +237,9 @@ public class IntegerStreamingTest {
 		}
 		int g = fieldsPerGroup;
 		
-		fr.openGroup(maxMPapBytes);
+		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+
+		fr.openGroup(groupToken);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -248,7 +262,7 @@ public class IntegerStreamingTest {
 					if (f>0 || i>0) {
 			
 						//open new group
-						fr.openGroup(maxMPapBytes);
+						fr.openGroup(groupToken);
 						
 					}				
 				}				
@@ -329,12 +343,12 @@ public class IntegerStreamingTest {
 		int typeIdx = types.length-1;
 		int opsIdx = operators.length-1;
 		while (--count>=0) {
-			//two high bits set
-			//  6 bit type (must match method)
+			//high bit set
+			//  7 bit type (must match method)
 			//  4 bit operation (must match method)
 			// 20 bit instance (MUST be lowest for easy mask and frequent use)
 			
-			lookup[count] = 0xC0000000 |  
+			lookup[count] = 0x80000000 |  
 					       (types[typeIdx]<<24) |
 					       (operators[opsIdx]<<20) |
 					       count;

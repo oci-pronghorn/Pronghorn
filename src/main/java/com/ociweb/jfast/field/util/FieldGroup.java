@@ -1,6 +1,6 @@
 package com.ociweb.jfast.field.util;
 
-import com.ociweb.jfast.FASTAccept;
+import com.ociweb.jfast.FASTxmiter;
 import com.ociweb.jfast.FASTProvide;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -22,7 +22,7 @@ public final class FieldGroup extends Field {
 		this.repeat=1;
 	}
 
-	public final void reader(PrimitiveReader reader, FASTAccept visitor) {
+	public final void reader(PrimitiveReader reader, FASTxmiter visitor) {
 				
 		////////////////////////////////////
 		//load the full pmap for this group

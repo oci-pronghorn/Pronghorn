@@ -51,12 +51,6 @@ public final class PrimitiveWriter {
 	}
 	
 	public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
-
-		//TODO: using the crazy expnsive put methods of something like this will hurt in memory
-		//however they will allow for faster io write so this needs to be tested at some point.
-		//TODO: wrap all array access in an internal method so I can easily test this.
-		//ByteBuffer buf = ByteBuffer.allocateDirect(initBufferSize);
-		//buf.put(b)
 		
 		this.buffer = new byte[initBufferSize];
 		this.bufferLength = buffer.length;
