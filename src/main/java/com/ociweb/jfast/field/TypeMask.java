@@ -28,4 +28,42 @@ public final class TypeMask {
 	
 	//room for next revision (booleans/enums)
 	
+	/*
+	 * switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		case TypeMask.IntegerUnSigned:
+			break;
+		case TypeMask.IntegerUnSignedOptional:
+			break;
+		case TypeMask.IntegerSigned:
+			break;
+		case TypeMask.IntegerSignedOptional:
+			break;
+		case TypeMask.LongUnSigned:
+			break;
+		case TypeMask.LongUnSignedOptional:	
+			break;
+		case TypeMask.LongSigned:
+			break;
+		case TypeMask.LongSignedOptional:
+			break;
+		case TypeMask.TextASCII:
+			break;
+		case TypeMask.TextASCIIOptional:
+			break;
+		case TypeMask.TextUTF8:
+			break;
+		case TypeMask.TextUTF8Optional:	
+			break;
+		case TypeMask.ByteArray:
+			break;
+		case TypeMask.ByteArrayOptional:
+			break;
+		case TypeMask.Decimal:
+			break;
+		case TypeMask.DecimalOptional:
+			break;
+		default:
+			throw new UnsupportedOperationException();
+		}
+	 */
 }

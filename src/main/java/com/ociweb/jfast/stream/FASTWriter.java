@@ -3,6 +3,8 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.BytesSequence;
 import com.ociweb.jfast.FASTAccept;
 import com.ociweb.jfast.field.FieldWriterInteger;
+import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 import static com.ociweb.jfast.field.TypeMask.*;
@@ -23,6 +25,14 @@ public final class FASTWriter implements FASTAccept {
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
 	private final int MASK = 0x3FF;
+	
+	private final int MASK_TYPE = 0x3F;
+	private final int SHIFT_TYPE = 24;
+	
+	private final int MASK_OPER = 0x0F;
+	private final int SHIFT_OPER = 20;
+	
+	
 	private final int INST = 20;
 	//32 bits total
 	//two high bits set
@@ -76,78 +86,64 @@ public final class FASTWriter implements FASTAccept {
 	@Override
 	public void accept(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		
-		//TODO: too big for inline so now what?
-		//TODO: test nested switches first on type then operator.
-		//TODO: also test with token passed instead of lookup (this lookup may cause stall)
-		
-		switch ((token>>INST)&MASK) {
-			case (IntegerUnSigned<<4)|None:
-				//writer.writeIntegerUnsigned
+		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+			case TypeMask.IntegerUnSigned:
+				acceptIntegerUnsigned(token, value);
 				break;
-			case (IntegerSigned<<4)|None:
-				writerInteger.writeIntegerSigned(value, token);
+			case TypeMask.IntegerUnSignedOptional:
+				acceptIntegerUnsignedOptional(token, value);
 				break;
-			case (IntegerUnSignedOptional<<4)|None:
-				//writer.writer
+			case TypeMask.IntegerSigned:
+				acceptIntegerSigned(token, value);
 				break;
-			case (IntegerSignedOptional<<4)|None:
-				writerInteger.writeIntegerSignedOptional(value, token);
+			case TypeMask.IntegerSignedOptional:
+				acceptIntegerSignedOptional(token, value);
 				break;
-			case (IntegerUnSigned<<4)|Constant:
-				//writer.writeIntegerUnsigned
-				break;
-			case (IntegerSigned<<4)|Constant:
-				writerInteger.writeIntegerSignedConstant(value, token);
-				break;
-			case (IntegerUnSignedOptional<<4)|Constant:
-				//writer.writer
-				break;
-			case (IntegerSignedOptional<<4)|Constant:
-				writerInteger.writeIntegerSignedConstant(value, token);
-				break;		
-			case (IntegerUnSigned<<4)|Copy:
-				//writer.writeIntegerUnsigned
-				break;
-			case (IntegerSigned<<4)|Copy:
-				writerInteger.writeIntegerSignedCopy(value, token);
-				break;
-			case (IntegerUnSignedOptional<<4)|Copy:
-				//writer.writer
-				break;
-			case (IntegerSignedOptional<<4)|Copy:
-				writerInteger.writeIntegerSignedOptionalCopy(value, token);
-				break;	
-			case (IntegerUnSigned<<4)|Delta:
-				//writer.writeIntegerUnsigned
-				break;
-			case (IntegerSigned<<4)|Delta:
-				writerInteger.writeIntegerSignedDelta(value, token);
-				break;
-			case (IntegerUnSignedOptional<<4)|Delta:
-				//writer.writer
-				break;
-			case (IntegerSignedOptional<<4)|Delta:
-				writerInteger.writeIntegerSignedOptionalDelta(value, token);
-				break;
-			case (IntegerUnSigned<<4)|Increment:
-				//writer.writeIntegerUnsigned
-				break;
-			case (IntegerSigned<<4)|Increment:
-				writerInteger.writeIntegerSignedIncrement(value, token);
-				break;
-			case (IntegerUnSignedOptional<<4)|Increment:
-				//writer.writer
-				break;
-			case (IntegerSignedOptional<<4)|Increment:
-			//	writerInteger.writeIntegerSignedOptionalIncrement(value, token);
+			default://all other types should use their own method.
+				throw new UnsupportedOperationException();
+		}
+	}
+	
+	private void acceptIntegerSigned(int token, int value) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				writer.writeSignedInteger(value);
 				break;
 			default:
-				break;
+				throw new UnsupportedOperationException();
 		}
-		//int type = token>>20
+	}
+	
+	private void acceptIntegerUnsigned(int token, int value) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				writer.writeUnsignedInteger(value);
+				break;
+			default:
+				throw new UnsupportedOperationException();
+		}
 	}
 
+	private void acceptIntegerSignedOptional(int token, int value) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				writer.writeSignedIntegerNullable(value);
+				break;
+			default:
+				throw new UnsupportedOperationException();
+		}
+	}
+	
+	private void acceptIntegerUnsignedOptional(int token, int value) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				writer.writeUnsignedIntegerNullable(value);
+				break;
+			default:
+				throw new UnsupportedOperationException();
+		}
+	}
+	
 	@Override
 	public void accept(int id, int exponent, long manissa) {
 		// TODO Auto-generated method stub
@@ -174,7 +170,7 @@ public final class FASTWriter implements FASTAccept {
 				//writer.writer
 				break;
 			case (IntegerSignedOptional<<4)|None:
-				writerInteger.writeIntegerSignedOptional(token);
+				writer.writeNull();
 				break;
 			
 			
@@ -184,15 +180,19 @@ public final class FASTWriter implements FASTAccept {
 	}
 
 	public void openGroup(int maxPMapBytes) {
-		writer.pushPMap(maxPMapBytes);
+		writer.openPMap(maxPMapBytes);
 	}
 
 	public void closeGroup() {
-		writer.popPMap();
+		writer.closePMap();
 	}
 
 	public void flush() {
 		writer.flush();
+	}
+
+	public boolean isGroupOpen() {
+		return writer.isPMapOpen();
 	}
 
 }

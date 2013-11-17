@@ -47,19 +47,19 @@ public final class FieldGroup extends Field {
 
 	public void writer(PrimitiveWriter writer, FASTProvide provider) {
 		
-		provider.beginGroup();
+		provider.openGroup(0);
 		
-		writer.pushPMap(pmapMaxSize);
+		writer.openPMap(pmapMaxSize);
 		
 		int i = fields.length;
 		while (--i>=0) {
 			fields[i].writer(writer, provider);
 		}
 		
-		writer.popPMap();
+		writer.closePMap();
 		//end of writer
 		
-		provider.endGroup();
+		provider.closeGroup();
 	}
 	
 	public void reset() {

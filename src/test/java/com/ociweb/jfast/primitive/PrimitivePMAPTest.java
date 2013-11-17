@@ -7,7 +7,11 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
+
+import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class PrimitivePMAPTest {
@@ -20,7 +24,7 @@ public class PrimitivePMAPTest {
 		
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
-		pw.pushPMap(10);
+		pw.openPMap(10);
 		pw.writePMapBit(1);
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -39,7 +43,7 @@ public class PrimitivePMAPTest {
 		
 		pw.writePMapBit(1);
 		
-		pw.popPMap(); //skip should be 7?
+		pw.closePMap(); //skip should be 7?
 		pw.flush();
 		
 		byte[] data = baost.toByteArray();
@@ -58,7 +62,7 @@ public class PrimitivePMAPTest {
 		
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
-		pw.pushPMap(10);
+		pw.openPMap(10);
 		pw.writePMapBit(1);
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -68,7 +72,7 @@ public class PrimitivePMAPTest {
 		pw.writePMapBit(1);
 		
 		//push will save where we are so we can continue after pop
-		pw.pushPMap(3);
+		pw.openPMap(3);
 			
 		    pw.writePMapBit(0);
 			pw.writePMapBit(0);
@@ -79,7 +83,7 @@ public class PrimitivePMAPTest {
 			//implied zero
 			
 		//continue with parent pmap
-		pw.popPMap();
+		pw.closePMap();
 		
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -91,7 +95,7 @@ public class PrimitivePMAPTest {
 		
 		pw.writePMapBit(1);
 		
-		pw.popPMap();
+		pw.closePMap();
 		pw.flush();
 		
 		byte[] data = baost.toByteArray();
@@ -111,7 +115,7 @@ public class PrimitivePMAPTest {
 		
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
-		pw.pushPMap(10);
+		pw.openPMap(10);
 		pw.writePMapBit(1);
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -121,13 +125,13 @@ public class PrimitivePMAPTest {
 		pw.writePMapBit(1);
 		
 		//push will save where we are so we can continue after pop
-		pw.pushPMap(3);
+		pw.openPMap(3);
 			
 		    pw.writePMapBit(0);
 			pw.writePMapBit(0);
 			pw.writePMapBit(0);
 			
-			pw.pushPMap(4);
+			pw.openPMap(4);
 				pw.writePMapBit(0);
 				pw.writePMapBit(1);
 				pw.writePMapBit(0);
@@ -135,7 +139,7 @@ public class PrimitivePMAPTest {
 				pw.writePMapBit(0);
 				pw.writePMapBit(1);
 				pw.writePMapBit(0);
-			pw.popPMap();
+			pw.closePMap();
 			
 			pw.writePMapBit(1);
 			pw.writePMapBit(1);
@@ -143,7 +147,7 @@ public class PrimitivePMAPTest {
 			//implied zero
 			
 		//continue with parent pmap
-		pw.popPMap();
+		pw.closePMap();
 		
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -155,7 +159,7 @@ public class PrimitivePMAPTest {
 		
 		pw.writePMapBit(1);
 		
-		pw.popPMap();
+		pw.closePMap();
 		pw.flush();
 		
 		byte[] data = baost.toByteArray();
@@ -180,7 +184,7 @@ public class PrimitivePMAPTest {
 		
 		//pw.pushPMap(3);
 		
-		pw.pushPMap(10);
+		pw.openPMap(10);
 		pw.writePMapBit(1);
 		pw.writePMapBit(0);
 		pw.writePMapBit(1);
@@ -199,10 +203,10 @@ public class PrimitivePMAPTest {
 		
 		pw.writePMapBit(1);
 		
-		pw.popPMap();
+		pw.closePMap();
 
 		//push will save where we are so we can continue after pop
-		pw.pushPMap(3);
+		pw.openPMap(3);
 			
 	    pw.writePMapBit(0);
 		pw.writePMapBit(0);
@@ -213,7 +217,7 @@ public class PrimitivePMAPTest {
 		//implied zero
 			
 		//continue with parent pmap
-		pw.popPMap();
+		pw.closePMap();
 		
 		//pw.popPMap();
 		
@@ -482,13 +486,10 @@ public class PrimitivePMAPTest {
     	//this is timed to check performance
     	//same array will be verified for correctness in the next step.
     	//////////////////////////////
-    	
-		ByteArrayOutputStream baost = new ByteArrayOutputStream(localBufferSize);
-		FASTOutputStream output = new FASTOutputStream(baost);
+    	ByteBuffer buffer = ByteBuffer.allocate(localBufferSize);
+    	FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
 		
 		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
-
-		byte[] writtenBytes;
 		
 		int i = pmaps;
 	    try {
@@ -497,7 +498,7 @@ public class PrimitivePMAPTest {
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
 			    	//none of these are nested, we don't want to test nesting here.
-			    	pw.pushPMap(maxWrittenBytes); //many are shorter but we want to test the trailing functionality
+			    	pw.openPMap(maxWrittenBytes); //many are shorter but we want to test the trailing functionality
 			    	int j = pmapData.length;
 			    	//j=0 1 byte written - no bits are sent so its all 7 zeros
 			    	//j=1 2 bytes written  (bytes * 8)/7 to compute bytes written
@@ -521,28 +522,27 @@ public class PrimitivePMAPTest {
 			    		//6 zeros are assumed 
 			    		
 			    	}	
-			    	pw.popPMap(); //push/pop consumes 20% of the time.
+			    	pw.closePMap(); //push/pop consumes 20% of the time.
 		    }
 		    //pw.popPMap();
 		    //single flush, this is the bandwidth optimized approach.
 		    pw.flush(); //as of last test this only consumes 14% of the time
 
 		    long duration = (System.nanoTime()-start);
-		    writtenBytes = baost.toByteArray();
 		    
 		    if (duration > overhead) {
 		    	System.err.println("total duration with overhead:"+duration+" overhead:"+overhead+" pct "+(100*overhead/(float)duration));
 		    	duration -= overhead;
 		    } else {
 		    	System.err.println();
-		    	System.err.println("unable to compute overhead measurement. per byte:"+(overhead/(double)writtenBytes.length));
+		    	System.err.println("unable to compute overhead measurement. per byte:"+(overhead/(double)buffer.position()));
 		    	
 		    	overhead = 0;
 		    }
-		    assertTrue("total duration: "+duration+"ns but nothing written.",writtenBytes.length>0);
+		    assertTrue("total duration: "+duration+"ns but nothing written.",buffer.position()>0);
 		    
-		    float nsPerByte = duration/(float)writtenBytes.length; 
-		    System.err.println("PMap write "+nsPerByte+"ns per byte. TotalBytes:"+writtenBytes.length);
+		    float nsPerByte = duration/(float)buffer.position(); 
+		    System.err.println("PMap write "+nsPerByte+"ns per byte. TotalBytes:"+buffer.position());
 	    } finally {
 	    	int testedMaps = (pmaps-(i+1));
 	    	System.err.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+overhead);
@@ -556,7 +556,8 @@ public class PrimitivePMAPTest {
 	    
 		i = pmaps;
     	try {
-    		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(writtenBytes));
+    		buffer.flip();
+    		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
     		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
@@ -607,7 +608,8 @@ public class PrimitivePMAPTest {
     	////////////////////////////////////////
 		i = pmaps;
     	try {
-    		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(writtenBytes));
+    		buffer.flip();
+    		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
     		PrimitiveReader pr = new PrimitiveReader(input);
     		long start = System.nanoTime();
 		    while (--i>=0) {
@@ -630,7 +632,7 @@ public class PrimitivePMAPTest {
 		    }
 		    long duration = (System.nanoTime()-start) - overhead;
 		    		    
-		    double nsPerByte = duration/(double)writtenBytes.length; 
+		    double nsPerByte = duration/(double)buffer.position(); 
 		    System.err.println("PMap read "+nsPerByte+"ns per byte");
     	} finally {
     		int readTestMaps = (pmaps-(i+1));

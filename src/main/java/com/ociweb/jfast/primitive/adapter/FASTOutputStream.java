@@ -3,6 +3,7 @@ package com.ociweb.jfast.primitive.adapter;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.read.FASTException;
 
@@ -16,10 +17,16 @@ public class FASTOutputStream implements FASTOutput{
 		try {
 			//blocks until length is written so the logic is simple
 			ostr.write(buffer, offset, length);
+			ostr.flush();
 			return length;
 		} catch (IOException e) {
 			throw new FASTException(e);
 		}
+	}
+	@Override
+	public void init(DataTransfer dataTransfer) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

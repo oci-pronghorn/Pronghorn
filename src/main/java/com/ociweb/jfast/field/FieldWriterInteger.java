@@ -1,5 +1,7 @@
 package com.ociweb.jfast.field;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public final class FieldWriterInteger {
@@ -22,13 +24,13 @@ public final class FieldWriterInteger {
 		this.intValueFlags = new byte[fields];
 	}
 	
-	//only used when -ea is on to validate the field order
-	private boolean isExpected(int token) {
-		
-		// TODO can we write a method that knows the template and can expect the next field to be written?
-		return true;
+	public void reset() {
+		int i = intValueFlags.length;
+		while (--i>=0) {
+			intValueFlags[i] = 0;
+		}
 	}
-	
+
 	/*
 	 * Method name convention to group the work 
 	 *  write <FIELD_TYPE><OPERATOR>
@@ -41,24 +43,7 @@ public final class FieldWriterInteger {
 	 * 
 	 */
 	
-	
-	public void writeIntegerSigned(int value, int token) {
-		assert(isExpected(token));
-		writer.writeSignedInteger(value);
-	}
-	
-	public void writeIntegerSignedOptional(int value, int token) {
-		assert(isExpected(token));
-		writer.writeSignedIntegerNullable(value);
-	}
-	
-	public void writeIntegerSignedOptional(int fieldId) {
-		assert(isExpected(fieldId));
-		writer.writeNull();
-	}
-	
 	public void writeIntegerSignedCopy(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx]) {
@@ -71,7 +56,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedOptionalCopy(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx] && intValueFlags[idx]>0) {//not null and matches
@@ -85,7 +69,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedOptionalCopy(int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (intValueFlags[idx]<0) { //stored value was null;
@@ -98,13 +81,11 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedConstant(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 		writer.writeSignedInteger(intValues[idx]);
 	}
 	
 	public void writeIntegerSignedDefault(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx]) {
@@ -116,7 +97,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedOptionalDefault(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx] && intValueFlags[idx]>0) {//not null and matches
@@ -128,7 +108,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedOptionalDefault(int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (intValueFlags[idx]<0) { //stored value was null;
@@ -140,7 +119,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedIncrement(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		if (value == ++intValues[idx]) {
@@ -153,13 +131,11 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedDelta(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 		writer.writeSignedInteger(value - intValues[idx]);
 	}
 	
 	public void writeIntegerSignedOptionalDelta(int value, int token) {
-		assert(isExpected(token));
 		int idx = token & INSTANCE_MASK;
 
 		writer.writePMapBit(1);
@@ -168,7 +144,6 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedOptionalDelta(int token) {
-		assert(isExpected(token));
 		writer.writePMapBit(0);
 		writer.writeNull();
 	}

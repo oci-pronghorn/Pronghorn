@@ -154,10 +154,11 @@ public final class PrimitiveReader {
 		byte[] b = buffer;
 		int p = position;
 		
-		byte v = b[p++];
-		while (v>=0){//(v&0x80)==0) {
-			v = b[p++];
-		}
+		//scan for index of the stop bit.
+		do {			
+		} while (b[p++]>=0);
+		
+		
 		position = p;				
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
@@ -198,7 +199,6 @@ public final class PrimitiveReader {
 	
 	//called at the end of each group
 	public final void popPMap() {
-		assert((pmapStack[pmapStackDepth-1]&0x80)!=0) : "stack error in pmap processing";
 		if (pmapIdxStackDepth>0) {
 			pmapIdx = pmapIdxStack[--pmapIdxStackDepth];
 			pmapStackDepth--;
@@ -445,6 +445,10 @@ public final class PrimitiveReader {
 	    	v = buffer[position++];
 	    }
 	    return accumulator|(v&0x7F);
+	}
+
+	public boolean isPMapOpen() {
+		return pmapIdxStackDepth>0;
 	}
 
 	

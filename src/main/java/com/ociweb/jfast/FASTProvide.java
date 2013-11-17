@@ -11,7 +11,7 @@ public interface FASTProvide {
 	CharSequence provideCharSequence(int id);
 	void provideDecimal(int id, DecimalDTO target);//TODO: test change to pull both values
 
-	void beginGroup();
-	void endGroup();
+	void openGroup(int maxPMapBytes);
+	void closeGroup();
 	
 }

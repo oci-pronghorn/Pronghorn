@@ -144,11 +144,11 @@ public class FASTProvideArrayBoxed implements FASTProvide {
 	}
 
 	@Override
-	public void beginGroup() {
+	public void openGroup(int maxPMapBytes) {
 	}
 
 	@Override
-	public void endGroup() {
+	public void closeGroup() {
 	}
 
 }

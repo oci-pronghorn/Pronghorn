@@ -36,7 +36,7 @@ public class FieldGroupNoPMAP extends Field {
 	@Override
 	public final void writer(PrimitiveWriter writer, FASTProvide provider) {
 		
-		provider.beginGroup();
+		provider.openGroup(0);
 		
 		//writer.pushPMap();
 		
@@ -55,7 +55,7 @@ public class FieldGroupNoPMAP extends Field {
 		//writer.writePMap();
 	//	groupWriter
 		
-		provider.endGroup();
+		provider.closeGroup();
 		
 	}
 

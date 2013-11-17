@@ -96,13 +96,13 @@ public class FASTProvideSingle implements FASTProvide {
 	}
 
 	@Override
-	public void beginGroup() {
+	public void openGroup(int maxPMapBytes) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void endGroup() {
+	public void closeGroup() {
 		// TODO Auto-generated method stub
 		
 	}
