@@ -1,5 +1,6 @@
 package com.ociweb.jfast.primitive.adapter;
 
+import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
 
@@ -23,5 +24,11 @@ public class FASTInputByteArray implements FASTInput {
 		System.arraycopy(buffer, position, target, offset, length);
 		position+=length;
 		return length;
+	}
+
+	@Override
+	public void init(DataTransfer dataTransfer) {
+		// TODO Auto-generated method stub
+		
 	}
 }

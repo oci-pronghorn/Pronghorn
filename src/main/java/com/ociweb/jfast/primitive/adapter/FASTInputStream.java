@@ -3,6 +3,7 @@ package com.ociweb.jfast.primitive.adapter;
 import java.io.IOException;
 import java.io.InputStream;
 
+import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.read.FASTException;
 
@@ -28,6 +29,12 @@ public class FASTInputStream implements FASTInput {
 		} catch (IOException e) {
 			throw new FASTException(e);
 		}
+	}
+
+	@Override
+	public void init(DataTransfer dataTransfer) {
+		// TODO Auto-generated method stub
+		
 	}
 	
 }

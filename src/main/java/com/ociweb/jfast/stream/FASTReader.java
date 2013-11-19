@@ -1,14 +1,9 @@
 package com.ociweb.jfast.stream;
 
-import static com.ociweb.jfast.field.OperatorMask.None;
-import static com.ociweb.jfast.field.TypeMask.IntegerSigned;
-import static com.ociweb.jfast.field.TypeMask.IntegerSignedOptional;
-import static com.ociweb.jfast.field.TypeMask.IntegerUnSigned;
-import static com.ociweb.jfast.field.TypeMask.IntegerUnSignedOptional;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
 
-import com.ociweb.jfast.DecimalDTO;
 import com.ociweb.jfast.FASTProvide;
-import com.ociweb.jfast.field.FieldReader;
 import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
@@ -40,19 +35,47 @@ public class FASTReader implements FASTProvide {
 	}
 	
 	@Override
-	public boolean provideNull(int id) {
+	public long readLong(int id, long valueOfOptional) {
 		// TODO Auto-generated method stub
-		return false;
+		return 0;
 	}
-
+	
 	@Override
-	public long provideLong(int id) {
+	public long readLong(int id) {
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
+	
+	
 	@Override
-	public int provideInt(int id) {
+	public int readInt(int id, int valueOfOptional) {
+		
+		//TODO: need operation specific implementations.s
+		if (reader.peekNull()) {
+			reader.incPosition();
+			return valueOfOptional;
+		}
+		
+		
+		int token = id>=0 ? tokenLookup[id] : id;
+		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+			case TypeMask.IntegerUnSigned:
+				return readIntegerUnsigned(token);
+			case TypeMask.IntegerUnSignedOptional:
+				return readIntegerUnsignedOptional(token);
+			case TypeMask.IntegerSigned:
+				return readIntegerSigned(token);
+			case TypeMask.IntegerSignedOptional:
+				return readIntegerSignedOptional(token);
+			default://all other types should use their own method.
+				throw new UnsupportedOperationException();
+		}
+		
+	}
+
+	@Override
+	public int readInt(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.IntegerUnSigned:
@@ -105,21 +128,17 @@ public class FASTReader implements FASTProvide {
 	}
 
 	@Override
-	public byte[] provideBytes(int id) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public CharSequence provideCharSequence(int id) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void provideDecimal(int id, DecimalDTO target) {
+	public void readBytes(int id, ByteBuffer target) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public int readBytes(int id, byte[] target, int offset) {
+		// TODO Auto-generated method stub
+		
+		
+		return 0;
 	}
 
 	@Override
@@ -138,5 +157,45 @@ public class FASTReader implements FASTProvide {
 	public boolean isGroupOpen() {
 		return reader.isPMapOpen();
 	}
+
+	@Override
+	public int readDecimalExponent(int id) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public long readDecimalMantissa(int id) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int readDecimalExponent(int id, int valueOfOptional) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public void readChars(int id, CharBuffer target) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public int readChars(int id, char[] target, int offset) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public void readChars(int id, StringBuilder target) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+
+
 
 }

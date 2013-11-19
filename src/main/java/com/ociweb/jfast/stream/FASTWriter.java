@@ -3,15 +3,11 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 
-import com.ociweb.jfast.BytesSequence;
 import com.ociweb.jfast.FASTxmiter;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-
-import static com.ociweb.jfast.field.TypeMask.*;
-import static com.ociweb.jfast.field.OperatorMask.*;
 
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTWriter implements FASTxmiter {
@@ -30,7 +26,6 @@ public final class FASTWriter implements FASTxmiter {
 	
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
-	private final int MASK = 0x3FF;
 	
 	private final int MASK_TYPE = 0x7F;
 	private final int SHIFT_TYPE = 24;
@@ -41,8 +36,6 @@ public final class FASTWriter implements FASTxmiter {
 	private final int MASK_PMAP_MAX = 0x7FF;
 	private final int SHIFT_PMAP_MASK = 20;
 	
-	
-	private final int INST = 20;
 	
 	//////////////// 32 bits total ////////////////////////////////////////////
 	//  1 bit, High bit is always set to denote this as a token vs fieldId   //

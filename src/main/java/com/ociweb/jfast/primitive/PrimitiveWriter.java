@@ -1,6 +1,5 @@
 package com.ociweb.jfast.primitive;
 
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
@@ -36,6 +35,7 @@ public final class PrimitiveWriter {
 	byte pMapByteAccum = 0;
 	
 	private final int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	private final int lastValid;
 	
 	private int   flushSkipsIdxLimit; //where we add the new one, end of the list
 	private int   flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
@@ -44,8 +44,6 @@ public final class PrimitiveWriter {
 	
 	private final boolean minimizeLatency;
 		
-	private FASTOutputByteArray test;
-
 	public PrimitiveWriter(FASTOutput output) {
 		this(4096,output,128, false);
 	}
@@ -64,12 +62,9 @@ public final class PrimitiveWriter {
 		safetyStackTemp = new byte[maxGroupCount];
 		//max total groups
 		flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
-	
-		this.output = output;
+		lastValid = flushSkips.length-2;
 		
-		if (output instanceof FASTOutputByteArray) {
-			test = (FASTOutputByteArray) output;
-		}
+		this.output = output;
 		
 		output.init(new DataTransfer(this));
 	}
@@ -178,59 +173,43 @@ public final class PrimitiveWriter {
 		return flushTo;
 	}
 	
-//	boolean flushAll = false;
+	//public void 
+	 
 	
 	
 	private int flushWithSkips(final int flushTo, int need, int skipsIdxLimit) {
 		int rollingPos = position;
 		int flushed = 0;
 		
-		byte[] b = buffer;
-		int[] localFlushSkips = flushSkips;
-		int localFlushSkipsIdxPos = flushSkipsIdxPos;
-		int tempSkipPos = localFlushSkips[localFlushSkipsIdxPos];
-		int lastValid = localFlushSkips.length-2; 
+		int tempSkipPos = flushSkips[flushSkipsIdxPos];
+		
+		int localLastValid;
 		if (skipsIdxLimit<lastValid) {
-			lastValid = skipsIdxLimit;
-		} 
+			localLastValid = skipsIdxLimit;
+		} else {
+			localLastValid = lastValid;
+		}
 		
 		//flush in parts that avoid the skip pos
-		while (localFlushSkipsIdxPos < lastValid && //we still have skips
+		while (flushSkipsIdxPos < localLastValid && //we still have skips
 				tempSkipPos < flushTo                  //skip stops before goal
 				) { 
 			
 			//if the skip is zero bytes just flush it all together
-			if (localFlushSkips[localFlushSkipsIdxPos+1]==tempSkipPos) {
-					++localFlushSkipsIdxPos;
-					tempSkipPos = localFlushSkips[++localFlushSkipsIdxPos];
+			if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
+					++flushSkipsIdxPos;
+					tempSkipPos = flushSkips[++flushSkipsIdxPos];
 			}
 			
 			int flushRequest = tempSkipPos - rollingPos;
 			int flushComplete;
 			
-			if (null!=test) {
-				////////////////////////////////////////
-				//TODO: this block will not remain I am just testing the performance of inlineing this work.
-				///////////////////////////////////////
-				
-				if (1==flushRequest) {
-					test.buffer[test.position++] = b[rollingPos];
-				} else {
-				
-					System.arraycopy(b,rollingPos,test.buffer,test.position,flushRequest);
-					test.position+=flushRequest;
-				}
-				flushComplete = flushRequest;//test.flush(b, rollingPos, flushRequest);
-				
-			} else {
-			
-				flushComplete = output.flush(b, rollingPos, flushRequest);
-			
-			}
+				flushComplete = output.flush(buffer, rollingPos, flushRequest);
+
 			flushed += flushComplete;
 			//did flush up to skip so set rollingPos to after skip
-			rollingPos = localFlushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
-			tempSkipPos = localFlushSkips[++localFlushSkipsIdxPos]; //beginning of new skip.
+			rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
+			tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
 			
 			if (flushComplete < flushRequest) {
 				//we are getting back pressure so stop flushing any more
@@ -239,7 +218,6 @@ public final class PrimitiveWriter {
 		} 
 		
 		position = rollingPos;		
-		flushSkipsIdxPos = localFlushSkipsIdxPos;
 
 		return flushed;
 	}

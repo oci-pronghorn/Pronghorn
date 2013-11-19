@@ -20,7 +20,7 @@ public final class PrimitiveReader {
 	
 	private final FASTInput input;
 	
-	private final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
+	final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
 	private final int bufferLength;
 	
 	private int position;
@@ -50,6 +50,7 @@ public final class PrimitiveReader {
 		
 		this.pmapStack = new byte[maxPMapCount];
 		this.pmapIdxStack = new byte[maxPMapCount>>1];
+		input.init(new DataTransfer(this));
 	}
 	
 	public long totalRead() {

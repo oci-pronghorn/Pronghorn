@@ -246,7 +246,7 @@ public class IntegerStreamingTest {
 			
 			while (--f>=0) {
 				//System.err.println(i+" "+f);
-				int value = fr.provideInt(tokenLookup[f]);
+				int value = fr.readInt(tokenLookup[f]);
 				
 				if (testData[f]!=value) {
 					assertEquals(testData[f], value);

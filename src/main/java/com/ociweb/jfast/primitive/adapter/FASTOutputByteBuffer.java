@@ -8,6 +8,7 @@ import com.ociweb.jfast.primitive.FASTOutput;
 public class FASTOutputByteBuffer implements FASTOutput {
 
 	private final ByteBuffer byteBuffer;
+	private ByteBuffer sourceBuffer;
 	
 	public FASTOutputByteBuffer(ByteBuffer byteBuffer) {
 		this.byteBuffer = byteBuffer;
@@ -22,14 +23,18 @@ public class FASTOutputByteBuffer implements FASTOutput {
 			length = remain;
 		}	
 		
-		byteBuffer.put(source, offset, length);
+		sourceBuffer.clear();
+		sourceBuffer.position(offset);
+		sourceBuffer.limit(offset+length);
+		byteBuffer.put(sourceBuffer);
+		
+		//byteBuffer.put(source, offset, length);
 		
 		return length;
 	}
 	@Override
 	public void init(DataTransfer dataTransfer) {
-		// TODO Auto-generated method stub
-		
+		sourceBuffer = dataTransfer.wrap();
 	}
 
 }

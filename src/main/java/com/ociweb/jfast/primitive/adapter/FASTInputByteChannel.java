@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 
+import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
 public class FASTInputByteChannel implements FASTInput {
 
 	private final ReadableByteChannel channel;
+	private ByteBuffer byteBuffer;
 	
 	public FASTInputByteChannel(ReadableByteChannel sourceChannel) {
 		this.channel = sourceChannel;
@@ -18,8 +20,11 @@ public class FASTInputByteChannel implements FASTInput {
 	public int fill(byte[] buffer, int offset, int count) {
 		
 		try {
-			//TODO: poor implementation.
-			int fetched = channel.read(ByteBuffer.wrap(buffer,offset,count));
+			byteBuffer.clear();
+			byteBuffer.position(offset);
+			byteBuffer.limit(offset+count);
+			
+			int fetched = channel.read(byteBuffer);
 			if (fetched<0) {
 				return 0;
 			} else {
@@ -30,6 +35,11 @@ public class FASTInputByteChannel implements FASTInput {
 			e.printStackTrace();
 		}
 		return 0;
+	}
+
+	@Override
+	public void init(DataTransfer dataTransfer) {
+		byteBuffer = dataTransfer.wrap();
 	}
 
 }

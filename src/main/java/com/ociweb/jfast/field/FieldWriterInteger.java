@@ -1,7 +1,5 @@
 package com.ociweb.jfast.field;
 
-import java.util.Arrays;
-
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public final class FieldWriterInteger {

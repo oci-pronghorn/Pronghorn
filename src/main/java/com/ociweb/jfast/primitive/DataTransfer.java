@@ -5,18 +5,18 @@ import java.nio.ByteBuffer;
 
 public final class DataTransfer {
 
-	private PrimitiveWriter writer;
+	private ByteBuffer wrappedByteBuffer;
 		
 	public DataTransfer(PrimitiveWriter writer) {
-		this.writer = writer;
+		wrappedByteBuffer = ByteBuffer.wrap(writer.buffer);
 	}
 	
-	byte[] getBuffer() {
-		return writer.buffer;
+	public DataTransfer(PrimitiveReader reader) {
+		wrappedByteBuffer = ByteBuffer.wrap(reader.buffer);
 	}
 
 	public ByteBuffer wrap() {
-		return ByteBuffer.wrap(writer.buffer);
+		return wrappedByteBuffer;
 	}
 	
 	
