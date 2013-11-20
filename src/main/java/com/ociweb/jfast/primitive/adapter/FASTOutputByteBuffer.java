@@ -1,5 +1,6 @@
 package com.ociweb.jfast.primitive.adapter;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.primitive.DataTransfer;
@@ -9,6 +10,7 @@ public class FASTOutputByteBuffer implements FASTOutput {
 
 	private final ByteBuffer byteBuffer;
 	private ByteBuffer sourceBuffer;
+	private DataTransfer dataTransfer;
 	
 	public FASTOutputByteBuffer(ByteBuffer byteBuffer) {
 		this.byteBuffer = byteBuffer;
@@ -34,7 +36,22 @@ public class FASTOutputByteBuffer implements FASTOutput {
 	}
 	@Override
 	public void init(DataTransfer dataTransfer) {
-		sourceBuffer = dataTransfer.wrap();
+		this.sourceBuffer = dataTransfer.wrap();
+		this.dataTransfer = dataTransfer;
+	}
+	@Override
+	public void flush() {
+
+		int size = dataTransfer.nextBlockSize();
+
+		while (size>0) {
+			
+			byteBuffer.put(dataTransfer.rawBuffer(), 
+			     	       dataTransfer.nextOffset(), size);
+
+			size = dataTransfer.nextBlockSize();
+			
+		}
 	}
 
 }

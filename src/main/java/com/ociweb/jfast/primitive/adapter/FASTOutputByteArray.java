@@ -8,7 +8,8 @@ public final class FASTOutputByteArray implements FASTOutput {
 
 	public final byte[] buffer;
 	public int position;
-	
+	private DataTransfer dataTransfer;
+		
 	
 	public FASTOutputByteArray(byte[] buffer) {
 		this.buffer = buffer;
@@ -48,9 +49,22 @@ public final class FASTOutputByteArray implements FASTOutput {
 
 	@Override
 	public void init(DataTransfer dataTransfer) {
-		//dataTransfer.get
-		// TODO Auto-generated method stub
+		this.dataTransfer = dataTransfer;
+	}
+
+	@Override
+	public void flush() {
 		
+		int size = dataTransfer.nextBlockSize();
+		while (size>0) {
+			
+			System.arraycopy(dataTransfer.rawBuffer(), 
+			         		 dataTransfer.nextOffset(), 
+			         		 buffer, position, size);
+			
+			position+=size;
+			size = dataTransfer.nextBlockSize();
+		}
 	}
 
 

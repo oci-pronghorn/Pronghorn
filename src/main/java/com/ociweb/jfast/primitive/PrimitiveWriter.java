@@ -20,6 +20,24 @@ public final class PrimitiveWriter {
 
 	private final FASTOutput output;
 	
+	/*
+	 * TODO: New flush design
+	 * Fixed export block size 64Bytes - is optimal for cache lines and memory layout (mechanical sympathy)
+	 * 
+	 * upon flush must gather 64 bytes of data together and send to FASTOutput for write.
+	 * 
+	 * DataTransfer.length() <return 0-64>
+	 * DataTransfer.offset() <use with array passed in init>
+	 * 
+	 *  research JVM byte alignment. should copy start at boundaries?
+	 *  research System.arrayCopy speed.
+	 *  
+	 *  Add constant for NO_FIELD_ID and test against kryo.
+	 * 
+	 * 
+	 * 
+	 */
+	
 	final byte[] buffer;
 	private final int bufferLength;
 	private final int flushTrigger;
@@ -69,6 +87,8 @@ public final class PrimitiveWriter {
 		output.init(new DataTransfer(this));
 	}
 	
+	final boolean newFlush = false;
+	
 	public void reset() {
 		this.position = 0;
 		this.limit = 0;
@@ -85,12 +105,187 @@ public final class PrimitiveWriter {
     	return totalWritten;
     }
  	
+    final int maxBlockSize = 64;// in bytes
+    int nextBlockSize = -1;
+    int nextBlockOffset = -1; 
+    int pendingPosition = 0;
+    
+	public int nextBlockSize() {
+		//return block size if the block is available
+		if (nextBlockSize > 0) {
+			return nextBlockSize;
+		}
+		//block was not available so build it
+		int flushTo = computeFlushToIndex();		
+		
+		int toFlush = flushTo-position;
+		if (0==toFlush) {
+			nextBlockSize = 0;
+			nextBlockOffset = -1; 
+
+			//no need to do any work.
+			return 0;
+		} else if (flushSkipsIdxPos==flushSkipsIdxLimit) {
+			
+			//nothing to skip so flush the full block
+			nextBlockOffset = position;
+			
+			int avail = flushTo-position;
+			if (avail > maxBlockSize) {
+				
+				nextBlockSize = maxBlockSize;
+				pendingPosition = position+maxBlockSize;
+				
+			} else { 
+				
+				nextBlockSize = avail;
+				pendingPosition = position+avail;
+				
+			}
+			return nextBlockSize;
+		} else {
+						
+			int rollingPos = position;	
+			int tempSkipPos = flushSkips[flushSkipsIdxPos];
+			int skipsIdxLimit = flushSkipsIdxLimit;
+			
+			
+			int localLastValid;
+			if (skipsIdxLimit<lastValid) {
+				localLastValid = skipsIdxLimit;
+			} else {
+				localLastValid = lastValid;
+			}
+			
+			int x = 0;
+			int reqLength = maxBlockSize;
+			
+			//flush in parts that avoid the skip pos
+			while (flushSkipsIdxPos < localLastValid && //we still have skips
+					tempSkipPos < flushTo                  //skip stops before goal
+					) { 
+				
+				//if the skip is zero bytes just flush it all together
+				if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
+						++flushSkipsIdxPos;
+						tempSkipPos = flushSkips[++flushSkipsIdxPos];
+				}
+				
+				int flushRequest = tempSkipPos - rollingPos;
+				
+				if (flushRequest >= reqLength) {
+					//more to flush than we need
+					if (rollingPos!=x) {
+						System.arraycopy(buffer, rollingPos, buffer, x, reqLength);
+					}
+					nextBlockOffset = 0;
+					nextBlockSize = maxBlockSize;
+					pendingPosition = rollingPos+reqLength;
+							
+					return nextBlockSize;
+				} else {
+					//if (flushRequest>0) {
+						//less 
+						//keep accumulating
+						if (x != rollingPos) {
+						//		System.err.println(buffer.length+" vs "+rollingPos+" vs "+x+" vs "+flushRequest);			
+								System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+						}
+						x += flushRequest;
+						reqLength -= flushRequest;
+					//}
+				}
+											
+				
+				//did flush up to skip so set rollingPos to after skip
+				rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
+				tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
+	
+			} 
+			
+			
+			
+			//reset to zero to save space if possible
+			if (flushSkipsIdxPos==flushSkipsIdxLimit) {
+				flushSkipsIdxPos=flushSkipsIdxLimit=0;
+				
+				int flushRequest = flushTo - rollingPos;
+				
+				if (flushRequest >= reqLength) {
+					//more to flush than we need
+					if (rollingPos!=x) {
+						System.arraycopy(buffer, rollingPos, buffer, x, reqLength);
+					}
+					nextBlockOffset = 0;
+					nextBlockSize = maxBlockSize;
+					pendingPosition = rollingPos+reqLength;
+							
+					return nextBlockSize;
+				} else {
+					//if (flushRequest>0) {
+						//less 
+						//keep accumulating
+						if (rollingPos!=x) {					
+					//		System.err.println(buffer.length+" vs "+rollingPos+" vs "+x+" vs "+flushRequest);
+							System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+						}
+						x += flushRequest;
+						reqLength -= flushRequest;
+						rollingPos += flushRequest;
+					//}
+				}
+				
+			} 
+			
+			
+			nextBlockOffset = 0;
+			nextBlockSize = maxBlockSize-reqLength;
+			pendingPosition = rollingPos;	
+			
+			return nextBlockSize;
+			
+		}
+	}
+
+	public int nextOffset() {
+	
+		int nextOffset = nextBlockOffset;
+		
+		totalWritten += nextBlockSize;
+		
+		position = pendingPosition;
+		nextBlockSize = -1;
+		nextBlockOffset = -1;
+		pendingPosition = 0;
+		
+		if (position == limit &&
+		    0 == safetyStackDepth &&
+			0 == flushSkipsIdxLimit) { 
+			position = limit = 0;
+		}	
+		
+		return nextOffset;
+	}
+	
+	
+    
     public final void flush () { //flush all 
     	flush(0);
     }
     
     //only call if caller is SURE it must be done.
 	private final void flush (int need) {
+		
+		if (newFlush) {
+			output.flush();
+			return;
+		}
+		
+				
+		
+		//TODO: call dataTransfer.flush() when this fully implemented
+		//TODO: check this new design against the performance of the old design 
+		
 		//this needs to be made smaller to allow for inline!!
 
 		//System.err.println("simple flush");
@@ -851,8 +1046,7 @@ public final class PrimitiveWriter {
 	public boolean isPMapOpen() {
 		return safetyStackDepth>0;
 	}
-	
-	
+
 	
 	
 	
