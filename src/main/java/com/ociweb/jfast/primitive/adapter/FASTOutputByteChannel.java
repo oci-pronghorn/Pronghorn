@@ -20,24 +20,6 @@ public class FASTOutputByteChannel implements FASTOutput {
 	}
 
 	@Override
-	public int flush(byte[] buffer, int offset, int length) {
-		
-		try {
-			writerBuffer.clear();
-			writerBuffer.position(offset);
-			writerBuffer.limit(offset+length);
-			
-			channel.write(writerBuffer);
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return 0;
-		}
-		return length;
-	}
-
-	@Override
 	public void init(DataTransfer dataTransfer) {
 		this.writerBuffer = dataTransfer.wrap();
 		this.dataTransfer = dataTransfer;
@@ -50,9 +32,10 @@ public class FASTOutputByteChannel implements FASTOutput {
 			int size = dataTransfer.nextBlockSize();
 			while (size>0) {
 				
+				int offset = dataTransfer.nextOffset(); //must only call once per iteration
 				writerBuffer.clear();
-				writerBuffer.position(dataTransfer.nextOffset());
-				writerBuffer.limit(dataTransfer.nextOffset()+size);
+				writerBuffer.position(offset);
+				writerBuffer.limit(offset+size);
 				
 				channel.write(writerBuffer);
 				

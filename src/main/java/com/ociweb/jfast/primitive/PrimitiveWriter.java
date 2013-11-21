@@ -1,5 +1,7 @@
 package com.ociweb.jfast.primitive;
 
+import com.ociweb.jfast.read.FASTException;
+
 
 
 
@@ -40,7 +42,6 @@ public final class PrimitiveWriter {
 	
 	final byte[] buffer;
 	private final int bufferLength;
-	private final int flushTrigger;
 	
 	private int position;
 	private int limit;
@@ -61,7 +62,7 @@ public final class PrimitiveWriter {
 	private long totalWritten;
 	
 	private final boolean minimizeLatency;
-		
+	
 	public PrimitiveWriter(FASTOutput output) {
 		this(4096,output,128, false);
 	}
@@ -70,7 +71,6 @@ public final class PrimitiveWriter {
 		
 		this.buffer = new byte[initBufferSize];
 		this.bufferLength = buffer.length;
-		this.flushTrigger = Math.min(1024, bufferLength>>2);
 		this.position = 0;
 		this.limit = 0;
 		this.minimizeLatency = minimizeLatency;
@@ -87,7 +87,7 @@ public final class PrimitiveWriter {
 		output.init(new DataTransfer(this));
 	}
 	
-	final boolean newFlush = false;
+
 	
 	public void reset() {
 		this.position = 0;
@@ -105,7 +105,7 @@ public final class PrimitiveWriter {
     	return totalWritten;
     }
  	
-    final int maxBlockSize = 64;// in bytes
+    static final int BLOCK_SIZE = 256;// in bytes
     int nextBlockSize = -1;
     int nextBlockOffset = -1; 
     int pendingPosition = 0;
@@ -122,7 +122,6 @@ public final class PrimitiveWriter {
 		if (0==toFlush) {
 			nextBlockSize = 0;
 			nextBlockOffset = -1; 
-
 			//no need to do any work.
 			return 0;
 		} else if (flushSkipsIdxPos==flushSkipsIdxLimit) {
@@ -131,10 +130,10 @@ public final class PrimitiveWriter {
 			nextBlockOffset = position;
 			
 			int avail = flushTo-position;
-			if (avail > maxBlockSize) {
+			if (avail > BLOCK_SIZE) {
 				
-				nextBlockSize = maxBlockSize;
-				pendingPosition = position+maxBlockSize;
+				nextBlockSize = BLOCK_SIZE;
+				pendingPosition = position+BLOCK_SIZE;
 				
 			} else { 
 				
@@ -142,113 +141,112 @@ public final class PrimitiveWriter {
 				pendingPosition = position+avail;
 				
 			}
-			return nextBlockSize;
 		} else {
-						
-			int rollingPos = position;	
-			int tempSkipPos = flushSkips[flushSkipsIdxPos];
-			int skipsIdxLimit = flushSkipsIdxLimit;
+			buildNextBlockWithSkips(flushTo);
+		}
+		return nextBlockSize;
+	}
+
+	private void buildNextBlockWithSkips(int flushTo) {
+		int rollingPos = position;	
+		int tempSkipPos = flushSkips[flushSkipsIdxPos];
+		int skipsIdxLimit = flushSkipsIdxLimit;
+				
+		int localLastValid = computeLocalLastValid(skipsIdxLimit);
+		
+		int x = 0;
+		int reqLength = BLOCK_SIZE;
+		
+		//flush in parts that avoid the skip pos
+		while (flushSkipsIdxPos < localLastValid && //we still have skips
+				tempSkipPos < flushTo                  //skip stops before goal
+				) { 
 			
+			tempSkipPos = mergeSkips(tempSkipPos);
 			
-			int localLastValid;
-			if (skipsIdxLimit<lastValid) {
-				localLastValid = skipsIdxLimit;
+			int flushRequest = tempSkipPos - rollingPos;
+			
+			if (flushRequest >= reqLength) {
+				finishBlockAndLeaveRemaining(rollingPos, x, reqLength);
+				return;
 			} else {
-				localLastValid = lastValid;
+				//keep accumulating
+				if (x != rollingPos) {			
+						System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+				}
+				x += flushRequest;
+				reqLength -= flushRequest;
+
+			}						
+			
+			//did flush up to skip so set rollingPos to after skip
+			rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
+			tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
+
+		} 
+		
+		//reset to zero to save space if possible
+		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
+			flushSkipsIdxPos=flushSkipsIdxLimit=0;
+			
+			int flushRequest = flushTo - rollingPos;
+			
+			if (flushRequest >= reqLength) {
+				finishBlockAndLeaveRemaining(rollingPos, x, reqLength);
+				return;
+			} else {
+				//keep accumulating
+				if (rollingPos!=x) {					
+					System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+				}
+				x += flushRequest;
+				reqLength -= flushRequest;
+				rollingPos += flushRequest;
+
 			}
 			
-			int x = 0;
-			int reqLength = maxBlockSize;
-			
-			//flush in parts that avoid the skip pos
-			while (flushSkipsIdxPos < localLastValid && //we still have skips
-					tempSkipPos < flushTo                  //skip stops before goal
-					) { 
-				
-				//if the skip is zero bytes just flush it all together
-				if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
-						++flushSkipsIdxPos;
-						tempSkipPos = flushSkips[++flushSkipsIdxPos];
-				}
-				
-				int flushRequest = tempSkipPos - rollingPos;
-				
-				if (flushRequest >= reqLength) {
-					//more to flush than we need
-					if (rollingPos!=x) {
-						System.arraycopy(buffer, rollingPos, buffer, x, reqLength);
-					}
-					nextBlockOffset = 0;
-					nextBlockSize = maxBlockSize;
-					pendingPosition = rollingPos+reqLength;
-							
-					return nextBlockSize;
-				} else {
-					//if (flushRequest>0) {
-						//less 
-						//keep accumulating
-						if (x != rollingPos) {
-						//		System.err.println(buffer.length+" vs "+rollingPos+" vs "+x+" vs "+flushRequest);			
-								System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
-						}
-						x += flushRequest;
-						reqLength -= flushRequest;
-					//}
-				}
-											
-				
-				//did flush up to skip so set rollingPos to after skip
-				rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
-				tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
-	
-			} 
-			
-			
-			
-			//reset to zero to save space if possible
-			if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-				flushSkipsIdxPos=flushSkipsIdxLimit=0;
-				
-				int flushRequest = flushTo - rollingPos;
-				
-				if (flushRequest >= reqLength) {
-					//more to flush than we need
-					if (rollingPos!=x) {
-						System.arraycopy(buffer, rollingPos, buffer, x, reqLength);
-					}
-					nextBlockOffset = 0;
-					nextBlockSize = maxBlockSize;
-					pendingPosition = rollingPos+reqLength;
-							
-					return nextBlockSize;
-				} else {
-					//if (flushRequest>0) {
-						//less 
-						//keep accumulating
-						if (rollingPos!=x) {					
-					//		System.err.println(buffer.length+" vs "+rollingPos+" vs "+x+" vs "+flushRequest);
-							System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
-						}
-						x += flushRequest;
-						reqLength -= flushRequest;
-						rollingPos += flushRequest;
-					//}
-				}
-				
-			} 
-			
-			
-			nextBlockOffset = 0;
-			nextBlockSize = maxBlockSize-reqLength;
-			pendingPosition = rollingPos;	
-			
-			return nextBlockSize;
-			
+		} 
+		
+		
+		nextBlockOffset = 0;
+		nextBlockSize = BLOCK_SIZE-reqLength;
+		pendingPosition = rollingPos;
+	}
+
+	private int mergeSkips(int tempSkipPos) {
+		//if the skip is zero bytes just flush it all together
+		if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
+				++flushSkipsIdxPos;
+				tempSkipPos = flushSkips[++flushSkipsIdxPos];
 		}
+		return tempSkipPos;
+	}
+
+	private void finishBlockAndLeaveRemaining(int rollingPos, int x, int reqLength) {
+		//more to flush than we need
+		if (rollingPos!=x) {
+			System.arraycopy(buffer, rollingPos, buffer, x, reqLength);
+		}
+		nextBlockOffset = 0;
+		nextBlockSize = BLOCK_SIZE;
+		pendingPosition = rollingPos+reqLength;
+	}
+
+	private int computeLocalLastValid(int skipsIdxLimit) {
+		int localLastValid;
+		if (skipsIdxLimit<lastValid) {
+			localLastValid = skipsIdxLimit;
+		} else {
+			localLastValid = lastValid;
+		}
+		return localLastValid;
 	}
 
 	public int nextOffset() {
-	
+	    if (nextBlockSize<0) {
+	    	throw new FASTException();
+	    }
+		
 		int nextOffset = nextBlockOffset;
 		
 		totalWritten += nextBlockSize;
@@ -270,93 +268,10 @@ public final class PrimitiveWriter {
 	
     
     public final void flush () { //flush all 
-    	flush(0);
+    	output.flush();
     }
     
-    //only call if caller is SURE it must be done.
-	private final void flush (int need) {
-		
-		if (newFlush) {
-			output.flush();
-			return;
-		}
-		
-				
-		
-		//TODO: call dataTransfer.flush() when this fully implemented
-		//TODO: check this new design against the performance of the old design 
-		
-		//this needs to be made smaller to allow for inline!!
-
-		//System.err.println("simple flush");
-		
-		//compute the flushTo value from limit and the stack data
-		int flushTo = computeFlushToIndex();		
-		
-		int toFlush = flushTo-position;
-		if (0==toFlush) {
-			//no need to do any work.
-			return;
-		}
-		
-		int flushed = 0;
-		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-			//nothing to skip so flush the full block
-			flushed =  output.flush(buffer, position, flushTo-position);
-			position += flushed;
-			
-			if (flushed<4 && bufferLength-limit>need) {
-				new Exception("WASTED flush: potential:"+toFlush+" "+position+" "+limit).printStackTrace();
-			}
-			
-		} else {
-			if (0==need || minimizeLatency){
-				//write as little as one byte
-				flushed = flushWithSkips(flushTo, 0, flushSkipsIdxLimit);
-			} else {
-				//save up flushed to do gathering
-				if (toFlush>flushTrigger || position>flushTrigger) {
-					flushed = flushWithSkips(flushTo, 0, flushSkipsIdxLimit);
-					//System.err.println("flushed:"+flushed);
-				} else {
-					flushed = 0;
-				}
-			}
-			//reset to zero to save space if possible
-			if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-				flushSkipsIdxPos=flushSkipsIdxLimit=0;
-				
-				//can only be done when there are no remaining skips.
-				//if this is not written it will align with the next flush to optimize bandwidth
-				//if this is written then this data will have lower latency.
-				if (minimizeLatency) {
-					//nothing to skip so flush the full block
-					int temp = output.flush(buffer, position, flushTo-position);
-					flushed += temp; 
-					position += temp;
-				}
-				
-			}
-		}
-
-		totalWritten+=flushed; 
-
-		//when possible try to move back down the buffer to use the old space.
-		//this can only happen under special conditions where all the data has been flushed
-		//and nothing is pending.
-		if (position == limit &&
-		    0 == safetyStackDepth &&
-			0 == flushSkipsIdxLimit) { 
-			position = limit = 0;
-		}			
-		
-		if (bufferLength - limit < need) {
-			throw new UnsupportedOperationException("Unable to flush due to pending pmaps. need:"+need+" buf:"+bufferLength+" lim:"+limit+" pos:"+position);
-		}
-		
-	}
-
-	protected int computeFlushToIndex() {
+    protected int computeFlushToIndex() {
 		int flushTo = limit;
 		if (safetyStackDepth>0) {
 			//only need to check first entry on stack the rest are larger values
@@ -367,62 +282,13 @@ public final class PrimitiveWriter {
 		}
 		return flushTo;
 	}
-	
-	//public void 
-	 
-	
-	
-	private int flushWithSkips(final int flushTo, int need, int skipsIdxLimit) {
-		int rollingPos = position;
-		int flushed = 0;
-		
-		int tempSkipPos = flushSkips[flushSkipsIdxPos];
-		
-		int localLastValid;
-		if (skipsIdxLimit<lastValid) {
-			localLastValid = skipsIdxLimit;
-		} else {
-			localLastValid = lastValid;
-		}
-		
-		//flush in parts that avoid the skip pos
-		while (flushSkipsIdxPos < localLastValid && //we still have skips
-				tempSkipPos < flushTo                  //skip stops before goal
-				) { 
-			
-			//if the skip is zero bytes just flush it all together
-			if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
-					++flushSkipsIdxPos;
-					tempSkipPos = flushSkips[++flushSkipsIdxPos];
-			}
-			
-			int flushRequest = tempSkipPos - rollingPos;
-			int flushComplete;
-			
-				flushComplete = output.flush(buffer, rollingPos, flushRequest);
 
-			flushed += flushComplete;
-			//did flush up to skip so set rollingPos to after skip
-			rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
-			tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
-			
-			if (flushComplete < flushRequest) {
-				//we are getting back pressure so stop flushing any more
-				break;
-			}	
-		} 
-		
-		position = rollingPos;		
-
-		return flushed;
-	}
-		
 
 	//this requires the null adjusted length to be written first.
 	public final void writeByteArrayData(byte[] data) {
 		final int len = data.length;
 		if (limit>bufferLength-len) {
-			flush(len);
+			output.flush();
 		}
 		System.arraycopy(data, 0, buffer, limit, len);
 		limit += len;
@@ -437,14 +303,14 @@ public final class PrimitiveWriter {
 		int length = value.length();
 		if (0==length) {
 			if (limit>bufferLength-2) {
-				flush(2);
+				output.flush();
 			}
 			buffer[limit++] = (byte)0;
 			buffer[limit++] = (byte)0x80;
 			return;
 		}
 		if (limit>bufferLength-length) {
-			flush(length);
+			output.flush();
 		}
 		int c = 0;
 		byte[] b = buffer;
@@ -459,7 +325,7 @@ public final class PrimitiveWriter {
 	
 	public final void writeNull() {
 		if (limit>=bufferLength) {
-			flush(1);
+			output.flush();
 		}
 		buffer[limit++] = (byte)0x80;
 	}
@@ -472,7 +338,7 @@ public final class PrimitiveWriter {
 
 			if ((value << 1) == 0) {
 				if (limit > bufferLength - 10) {
-					flush(10);
+					output.flush();
 				}
 				// encode the most negative possible number
 				buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
@@ -499,7 +365,7 @@ public final class PrimitiveWriter {
 
 			if ((value << 1) == 0) {
 				if (limit > bufferLength - 10) {
-					flush(10);
+					output.flush();
 				}
 				// encode the most negative possible number
 				buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
@@ -524,30 +390,30 @@ public final class PrimitiveWriter {
 		
 		if (absv <= 0x0000000000000040l) {
 			if (bufferLength - limit < 1) {
-				flush(1);
+				output.flush();
 			}
 		} else {
 			if (absv <= 0x0000000000002000l) {
 				if (bufferLength - limit < 2) {
-					flush(2);
+					output.flush();
 				}
 			} else {
 
 				if (absv <= 0x0000000000100000l) {
 					if (bufferLength - limit < 3) {
-						flush(3);
+						output.flush();
 					}
 				} else {
 
 					if (absv <= 0x0000000008000000l) {
 						if (bufferLength - limit < 4) {
-							flush(4);
+							output.flush();
 						}
 					} else {
 						if (absv <= 0x0000000400000000l) {
 					
 							if (bufferLength - limit < 5) {
-								flush(5);
+								output.flush();
 							}
 						} else {
 							writeSignedLongNegSlow(absv, value);
@@ -568,7 +434,7 @@ public final class PrimitiveWriter {
 	private final void writeSignedLongNegSlow(long absv, long value) {
 		if (absv <= 0x0000020000000000l) {
 			if (bufferLength - limit < 6) {
-				flush(6);
+				output.flush();
 			}
 		} else {
 			writeSignedLongNegSlow2(absv, value);
@@ -586,16 +452,16 @@ public final class PrimitiveWriter {
 	private void writeSignedLongNegSlow2(long absv, long value) {
 		if (absv <= 0x0001000000000000l) {
 			if (bufferLength - limit < 7) {
-				flush(7);
+				output.flush();
 			}
 		} else {
 			if (absv <= 0x0080000000000000l) {
 				if (bufferLength - limit < 8) {
-					flush(8);
+					output.flush();
 				}
 			} else {
 				if (bufferLength - limit < 9) {
-					flush(9);
+					output.flush();
 				}
 				buffer[limit++] = (byte) (((value >> 56) & 0x7F));
 			}
@@ -608,30 +474,30 @@ public final class PrimitiveWriter {
 		
 		if (value < 0x0000000000000040l) {
 			if (bufferLength - limit < 1) {
-				flush(1);
+				output.flush();
 			}
 		} else {
 			if (value < 0x0000000000002000l) {
 				if (bufferLength - limit < 2) {
-					flush(2);
+					output.flush();
 				}
 			} else {
 
 				if (value < 0x0000000000100000l) {
 					if (bufferLength - limit < 3) {
-						flush(3);
+						output.flush();
 					}
 				} else {
 
 					if (value < 0x0000000008000000l) {
 						if (bufferLength - limit < 4) {
-							flush(4);
+							output.flush();
 						}
 					} else {
 						if (value < 0x0000000400000000l) {
 					
 							if (bufferLength - limit < 5) {
-								flush(5);
+								output.flush();
 							}
 						} else {
 							writeSignedLongPosSlow(value);
@@ -651,26 +517,26 @@ public final class PrimitiveWriter {
 	private final void writeSignedLongPosSlow(long value) {
 		if (value < 0x0000020000000000l) {
 			if (bufferLength - limit < 6) {
-				flush(6);
+				output.flush();
 			}
 		} else {
 			if (value < 0x0001000000000000l) {
 				if (bufferLength - limit < 7) {
-					flush(7);
+					output.flush();
 				}
 			} else {
 				if (value < 0x0080000000000000l) {
 					if (bufferLength - limit < 8) {
-						flush(8);
+						output.flush();
 					}
 				} else {
 					if (value < 0x4000000000000000l) {
 						if (bufferLength - limit < 9) {
-							flush(9);
+							output.flush();
 						}
 					} else {
 						if (bufferLength - limit < 10) {
-							flush(10);
+							output.flush();
 						}
 						buffer[limit++] = (byte) (((value >> 63) & 0x7F));
 					}
@@ -698,30 +564,30 @@ public final class PrimitiveWriter {
 
 			if (value < 0x0000000000000080l) {
 				if (bufferLength - limit < 1) {
-					flush(1);
+					output.flush();
 				}
 			} else {
 				if (value < 0x0000000000004000l) {
 					if (bufferLength - limit < 2) {
-						flush(2);
+						output.flush();
 					}
 				} else {
 
 					if (value < 0x0000000000200000l) {
 						if (bufferLength - limit < 3) {
-							flush(3);
+							output.flush();
 						}
 					} else {
 
 						if (value < 0x0000000010000000l) {
 							if (bufferLength - limit < 4) {
-								flush(4);
+								output.flush();
 							}
 						} else {
 							if (value < 0x0000000800000000l) {
 						
 								if (bufferLength - limit < 5) {
-									flush(5);
+									output.flush();
 								}
 							} else {
 								writeUnsignedLongSlow(value);
@@ -741,7 +607,7 @@ public final class PrimitiveWriter {
 	private final void writeUnsignedLongSlow(long value) {
 		if (value < 0x0000040000000000l) {
 			if (bufferLength - limit < 6) {
-				flush(6);
+				output.flush();
 			}
 		} else {
 			writeUnsignedLongSlow2(value);
@@ -760,21 +626,21 @@ public final class PrimitiveWriter {
 	private void writeUnsignedLongSlow2(long value) {
 		if (value < 0x0002000000000000l) {
 			if (bufferLength - limit < 7) {
-				flush(7);
+				output.flush();
 			}
 		} else {
 			if (value < 0x0100000000000000l) {
 				if (bufferLength - limit < 8) {
-					flush(8);
+					output.flush();
 				}
 			} else {
 				if (value < 0x8000000000000000l) {
 					if (bufferLength - limit < 9) {
-						flush(9);
+						output.flush();
 					}
 				} else {
 					if (bufferLength - limit < 10) {
-						flush(10);
+						output.flush();
 					}
 					buffer[limit++] = (byte) (((value >> 63) & 0x7F));
 				}
@@ -792,7 +658,7 @@ public final class PrimitiveWriter {
 		} else {
 			if ((value << 1) == 0) {
 				if (limit > bufferLength - 5) {
-					flush(5);
+					output.flush();
 				}
 				// encode the most negative possible number
 				buffer[limit++] = (byte) (0x7F); // .... ...7 F... ....
@@ -812,7 +678,7 @@ public final class PrimitiveWriter {
 		} else {
 			if ((value << 1) == 0) {
 				if (limit > bufferLength - 5) {
-					flush(5);
+					output.flush();
 				}
 				// encode the most negative possible number
 				buffer[limit++] = (byte) (0x7F); // .... ...7 F... ....
@@ -833,26 +699,26 @@ public final class PrimitiveWriter {
 	    
 		if (absv <= 0x00000040) {
 			if (bufferLength - limit < 1) {
-				flush(1);
+				output.flush();
 			}
 		} else {
 			if (absv <= 0x00002000) {
 				if (bufferLength - limit < 2) {
-					flush(2);
+					output.flush();
 				}
 			} else {
 				if (absv <= 0x00100000) {
 					if (bufferLength - limit < 3) {
-						flush(3);
+						output.flush();
 					}
 				} else {
 					if (absv <= 0x08000000) {
 						if (bufferLength - limit < 4) {
-							flush(4);
+							output.flush();
 						}
 					} else {
 						if (bufferLength - limit < 5) {
-							flush(5);
+							output.flush();
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
 					}
@@ -871,26 +737,26 @@ public final class PrimitiveWriter {
 		
 		if (value < 0x00000040) {
 			if (bufferLength - limit < 1) {
-				flush(1);
+				output.flush();
 			}
 		} else {
 			if (value < 0x00002000) {
 				if (bufferLength - limit < 2) {
-					flush(2);
+					output.flush();
 				}
 			} else {
 				if (value < 0x00100000) {
 					if (bufferLength - limit < 3) {
-						flush(3);
+						output.flush();
 					}
 				} else {
 					if (value < 0x08000000) {
 						if (bufferLength - limit < 4) {
-							flush(4);
+							output.flush();
 						}
 					} else {
 						if (bufferLength - limit < 5) {
-							flush(5);
+							output.flush();
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
 					}
@@ -912,26 +778,26 @@ public final class PrimitiveWriter {
 		
 		if (value < 0x00000080) {
 			if (bufferLength - limit < 1) {
-				flush(1);
+				output.flush();
 			}
 		} else {
 			if (value < 0x00004000) {
 				if (bufferLength - limit < 2) {
-					flush(2);
+					output.flush();
 				}
 			} else {
 				if (value < 0x00200000) {
 					if (bufferLength - limit < 3) {
-						flush(3);
+						output.flush();
 					}
 				} else {
 					if (value < 0x10000000) {
 						if (bufferLength - limit < 4) {
-							flush(4);
+							output.flush();
 						}
 					} else {
 						if (bufferLength - limit < 5) {
-							flush(5);
+							output.flush();
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
 					}
@@ -953,19 +819,28 @@ public final class PrimitiveWriter {
 	public final void openPMap(int maxBytes) {
 		
 		if (limit > bufferLength - maxBytes) {
-			flush(maxBytes);
+			output.flush();
 		}
 		
 		//save the current partial byte.
 		//always save because pop will always load
 		if (safetyStackDepth>0) {			
-			pushWorkingBits(safetyStackDepth-1, pMapIdxWorking);
-		} else {
-			//reset so we can start accumulating bits in the new pmap.
-			//not sure what old values might be in here so clear it.
-			pMapIdxWorking = 7;
-			pMapByteAccum = 0;			
-		}
+			int s = safetyStackDepth-1;
+			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
+					
+			buffer[safetyStackPosition[s]++] = pMapByteAccum;//final byte to be saved into the feed.
+			safetyStackTemp[s] = pMapIdxWorking;
+			
+			if (0 != pMapByteAccum) {	
+				//set the last known non zero bit so we can avoid scanning for it. 
+				flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
+			}	
+			
+		} 
+		//reset so we can start accumulating bits in the new pmap.
+		pMapIdxWorking = 7;
+		pMapByteAccum = 0;			
+		
 		safetyStackPosition[safetyStackDepth] = limit;
 
 		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsIdxLimit;
@@ -991,10 +866,11 @@ public final class PrimitiveWriter {
 		}
 		//ensure low-latency for groups, or flush if we have no open groups
     	if (minimizeLatency) {
-    		flush(0);
+    		output.flush();
     	}
-    	if (0==safetyStackDepth) {
-    		flush(1);
+    	//if we can reset the safety stack and we have one block ready go ahead and flush
+    	if (0==safetyStackDepth && (limit-position)>BLOCK_SIZE) {
+    		output.flush();
     	}
 	}
 

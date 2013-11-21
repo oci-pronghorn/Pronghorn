@@ -1,6 +1,7 @@
 package com.ociweb.jfast.primitive;
 
 import com.ociweb.jfast.field.util.CharSequenceShadow;
+import com.ociweb.jfast.read.FASTException;
 
 /**
  * PrimitiveReader
@@ -48,7 +49,7 @@ public final class PrimitiveReader {
 		this.position = 0;
 		this.limit = 0;
 		
-		this.pmapStack = new byte[maxPMapCount];
+		this.pmapStack = new byte[maxPMapCount];//all pmap bytes in total for maximum depth.
 		this.pmapIdxStack = new byte[maxPMapCount>>1];
 		input.init(new DataTransfer(this));
 	}
@@ -81,6 +82,7 @@ public final class PrimitiveReader {
 			//max value must be computed before startup.
 			throw new UnsupportedOperationException("internal buffer is not large enough, requres "+reqiredSize+" bytes");
 		} else {
+			
 			System.arraycopy(buffer, position, buffer, 0, populated);
 		}
 		//fill and return
@@ -147,8 +149,8 @@ public final class PrimitiveReader {
 	//called at the start of each group unless group knows it has no pmap
 	public final void readPMap(int pmapMaxSize) {
 		//force internal buffer to grow if its not big enough for this pmap
-		if (limit - position <= pmapMaxSize) {
-			fetch(pmapMaxSize); //largest fetch, TODO: Error if this spans beyond data we will HANG!!
+		if (limit - position < pmapMaxSize) {
+			fetch(pmapMaxSize); //largest fetch
 		}
 		//there are no zero length pmaps these are determined by the parent pmap
 		int start = position;
@@ -156,7 +158,11 @@ public final class PrimitiveReader {
 		int p = position;
 		
 		//scan for index of the stop bit.
+		int validation = pmapMaxSize;
 		do {			
+			if (--validation<0) {
+				throw new FASTException("Can not find end of PMAP in given max length.");
+			}
 		} while (b[p++]>=0);
 		
 		

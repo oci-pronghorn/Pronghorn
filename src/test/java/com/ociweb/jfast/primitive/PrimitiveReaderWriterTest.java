@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.Pipe;
 import java.util.Arrays;
 
@@ -106,8 +107,7 @@ public class PrimitiveReaderWriterTest {
 		/////////////////
 		/////////////////		
 		
-		//ByteBuffer buffer = ByteBuffer.allocateDirect(capacity).order(ByteOrder.nativeOrder());
-		ByteBuffer buffer = ByteBuffer.allocate(capacity);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(capacity);
 		
 		pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer), (int) count, minimizeLatency);
 		pr = new PrimitiveReader(new FASTInputByteBuffer(buffer));
@@ -147,7 +147,7 @@ public class PrimitiveReaderWriterTest {
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
-		System.out.println("                ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
+		System.out.println("    Direct      ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		
 		/////////////////
 		/////////////////
@@ -162,7 +162,7 @@ public class PrimitiveReaderWriterTest {
 			//TODO: should flush rather than run out of space. set buffer size very small here after fix.
 			//BUT we must flush between Groups/pmaps because attempting in the middle does not move position!!
 			
-			pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteChannel(pipe.sink()), testCycles*passes, minimizeLatency);
+			pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteChannel(pipe.sink()), (int) count, minimizeLatency);
 			pr = new PrimitiveReader(new FASTInputByteChannel(pipe.source()));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -212,7 +212,7 @@ public class PrimitiveReaderWriterTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
-		
+	
 		/////////////////
 		/////////////////
 		/////////////////
@@ -264,7 +264,8 @@ public class PrimitiveReaderWriterTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
 		System.out.println("                ByteArray: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
-		
+		//clean up before next test.
+		Runtime.getRuntime().gc();
 	}
 
 

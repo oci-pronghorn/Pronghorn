@@ -38,7 +38,7 @@ public class FASTOutputStream implements FASTOutput{
 		try {
 			int size = dataTransfer.nextBlockSize();
 			while (size>0) {
-				System.err.println("flush:"+size);
+			//	System.err.println("flush:"+size);
 				
 				ostr.write(dataTransfer.rawBuffer(), 
 				     	   dataTransfer.nextOffset(), size);

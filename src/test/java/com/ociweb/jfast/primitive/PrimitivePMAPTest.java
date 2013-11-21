@@ -639,6 +639,9 @@ public class PrimitivePMAPTest {
     		System.err.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+overhead);
     	}
 		//  */
+    	//cleanup before next test
+    	Runtime.getRuntime().gc();
+    	
 	}
 
 

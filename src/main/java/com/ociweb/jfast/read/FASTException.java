@@ -15,4 +15,8 @@ public class FASTException extends RuntimeException {
 	public FASTException(FASTError error) {
 		super(error.toString());
 	}
+
+	public FASTException(String error) {
+		super(error);
+	}
 }
