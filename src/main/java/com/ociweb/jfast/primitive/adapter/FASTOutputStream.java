@@ -15,18 +15,7 @@ public class FASTOutputStream implements FASTOutput{
 	public FASTOutputStream(OutputStream ostr) {
 		this.ostr = ostr;
 	}
-	
-	public int flush(byte[] buffer, int offset, int length) {
-		try {
-			//blocks until length is written so the logic is simple
-			ostr.write(buffer, offset, length);
-			ostr.flush();
-			return length;
-		} catch (IOException e) {
-			throw new FASTException(e);
-		}
-	}
-	
+
 	@Override
 	public void init(DataTransfer dataTransfer) {
 		this.dataTransfer = dataTransfer;
@@ -34,19 +23,14 @@ public class FASTOutputStream implements FASTOutput{
 	
 	@Override
 	public void flush() {
-		
 		try {
 			int size = dataTransfer.nextBlockSize();
 			while (size>0) {
-			//	System.err.println("flush:"+size);
-				
 				ostr.write(dataTransfer.rawBuffer(), 
 				     	   dataTransfer.nextOffset(), size);
-
-				size = dataTransfer.nextBlockSize();
-				
-				ostr.flush();
+				size = dataTransfer.nextBlockSize();		
 			}
+			ostr.flush();
 		} catch (IOException e) {
 			throw new FASTException(e);
 		} 

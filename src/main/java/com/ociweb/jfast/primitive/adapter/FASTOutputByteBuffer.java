@@ -24,7 +24,6 @@ public class FASTOutputByteBuffer implements FASTOutput {
 		int size = dataTransfer.nextBlockSize();
 
 		while (size>0) {
-			
 			byteBuffer.put(dataTransfer.rawBuffer(), 
 			     	       dataTransfer.nextOffset(), size);
 

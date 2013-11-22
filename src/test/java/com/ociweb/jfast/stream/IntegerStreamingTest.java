@@ -81,15 +81,16 @@ public class IntegerStreamingTest {
 				//run test			
 				long start = System.nanoTime();
 				testingWriteLoop(fields, fieldsPerGroup, maxMPapBytes, operationIters, tokenLookup, testData, fw);
+				fw.flush();
 				long duration = System.nanoTime() - start;
-			
-				pw.flush();
+				
 				if (w<sampleSize) {
 					if (0==totalDuration) {
-						System.out.println("finished warmup...");
 						writtenData = baost.toByteArray();
 						byteCount = pw.totalWritten();
 						assertEquals(byteCount,writtenData.length);
+						assertEquals(530966,byteCount);
+						System.out.println("finished warmup...  wrote:"+byteCount);
 					}
 					
 					maxOverhead = Math.max(overhead, maxOverhead);

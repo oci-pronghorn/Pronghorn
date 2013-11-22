@@ -105,7 +105,9 @@ public final class PrimitiveWriter {
     	return totalWritten;
     }
  	
+    //TODO: there is some write bug that becomes obvious by changing this value.
     static final int BLOCK_SIZE = 256;// in bytes
+    
     int nextBlockSize = -1;
     int nextBlockOffset = -1; 
     int pendingPosition = 0;
@@ -126,36 +128,47 @@ public final class PrimitiveWriter {
 			return 0;
 		} else if (flushSkipsIdxPos==flushSkipsIdxLimit) {
 			
+			//all the data we have lines up with the end of the skip limit			
 			//nothing to skip so flush the full block
+			
 			nextBlockOffset = position;
 			
-			int avail = flushTo-position;
-			if (avail > BLOCK_SIZE) {
-				
+			int avail = flushTo - position;
+			if (avail >= BLOCK_SIZE) {
 				nextBlockSize = BLOCK_SIZE;
 				pendingPosition = position+BLOCK_SIZE;
-				
 			} else { 
-				
+				//not enough to fill a block so we must flush what we have.
 				nextBlockSize = avail;
 				pendingPosition = position+avail;
-				
 			}
 		} else {
-			buildNextBlockWithSkips(flushTo);
+			buildNextBlockWithSkips();
 		}
 		return nextBlockSize;
 	}
 
-	private void buildNextBlockWithSkips(int flushTo) {
-		int rollingPos = position;	
-		int tempSkipPos = flushSkips[flushSkipsIdxPos];
-		int skipsIdxLimit = flushSkipsIdxLimit;
-				
-		int localLastValid = computeLocalLastValid(skipsIdxLimit);
+	private void buildNextBlockWithSkips() {
+			
+		/*
+		 * 		tempSkipPos = mergeSkips(tempSkipPos);
+				int temp = flushSkipsIdxPos+1;
+				if (temp<flushSkipsIdxLimit) {
+								
+					//TODO: move first block ? 
+					//System.err.println("first block "+(tempSkipPos - position)+
+					// " first skip "+( flushSkips[flushSkipsIdxPos+1]-tempSkipPos ));									
+				}
+		 */
 		
-		int x = 0;
-		int reqLength = BLOCK_SIZE;
+		int flushTo = limit;
+		int copyFromOffset = position;
+		int copyToOffset = position;
+	    int reqLength = BLOCK_SIZE;	
+		
+		int tempSkipPos = flushSkips[flushSkipsIdxPos];
+				
+		int localLastValid = computeLocalLastValid(flushSkipsIdxLimit);
 		
 		//flush in parts that avoid the skip pos
 		while (flushSkipsIdxPos < localLastValid && //we still have skips
@@ -164,58 +177,59 @@ public final class PrimitiveWriter {
 			
 			tempSkipPos = mergeSkips(tempSkipPos);
 			
-			int flushRequest = tempSkipPos - rollingPos;
+			int flushRequest = tempSkipPos - copyFromOffset;
 			
 			if (flushRequest >= reqLength) {
-				finishBlockAndLeaveRemaining(rollingPos, x, reqLength);
+				finishBlockAndLeaveRemaining(copyFromOffset, copyToOffset, reqLength);
 				return;
 			} else {
 				//keep accumulating
-				if (x != rollingPos) {			
-						System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+				if (copyToOffset != copyFromOffset) {			
+						System.arraycopy(buffer, copyFromOffset, buffer, copyToOffset, flushRequest);
 				}
-				x += flushRequest;
+				copyToOffset += flushRequest;
 				reqLength -= flushRequest;
 
 			}						
 			
 			//did flush up to skip so set rollingPos to after skip
-			rollingPos = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
+			copyFromOffset = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
 			tempSkipPos = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
 
 		} 
-		
+
 		//reset to zero to save space if possible
 		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
 			flushSkipsIdxPos=flushSkipsIdxLimit=0;
 			
-			int flushRequest = flushTo - rollingPos;
+			int flushRequest = flushTo - copyFromOffset;
 			
 			if (flushRequest >= reqLength) {
-				finishBlockAndLeaveRemaining(rollingPos, x, reqLength);
+				finishBlockAndLeaveRemaining(copyFromOffset, copyToOffset, reqLength);
 				return;
 			} else {
 				//keep accumulating
-				if (rollingPos!=x) {					
-					System.arraycopy(buffer, rollingPos, buffer, x, flushRequest);
+				if (copyFromOffset!=copyToOffset) {					
+					System.arraycopy(buffer, copyFromOffset, buffer, copyToOffset, flushRequest);
 				}
-				x += flushRequest;
+				copyToOffset += flushRequest;
 				reqLength -= flushRequest;
-				rollingPos += flushRequest;
-
+				copyFromOffset += flushRequest;
 			}
-			
 		} 
 		
 		
 		nextBlockOffset = 0;
-		nextBlockSize = BLOCK_SIZE-reqLength;
-		pendingPosition = rollingPos;
+		nextBlockSize = BLOCK_SIZE - reqLength;
+		pendingPosition = copyFromOffset;
+				
 	}
 
 	private int mergeSkips(int tempSkipPos) {
 		//if the skip is zero bytes just flush it all together
-		if (flushSkips[flushSkipsIdxPos+1]==tempSkipPos) {
+		int temp = flushSkipsIdxPos+1;
+		
+		if (temp<flushSkipsIdxLimit && flushSkips[temp]==tempSkipPos) {
 				++flushSkipsIdxPos;
 				tempSkipPos = flushSkips[++flushSkipsIdxPos];
 		}
@@ -246,7 +260,6 @@ public final class PrimitiveWriter {
 	    if (nextBlockSize<0) {
 	    	throw new FASTException();
 	    }
-		
 		int nextOffset = nextBlockOffset;
 		
 		totalWritten += nextBlockSize;
@@ -864,12 +877,10 @@ public final class PrimitiveWriter {
 		if (safetyStackDepth>0) {			
 			popWorkingBits(safetyStackDepth-1);
 		}
-		//ensure low-latency for groups, or flush if we have no open groups
-    	if (minimizeLatency) {
-    		output.flush();
-    	}
+		
+		//ensure low-latency for groups, or 
     	//if we can reset the safety stack and we have one block ready go ahead and flush
-    	if (0==safetyStackDepth && (limit-position)>BLOCK_SIZE) {
+    	if (minimizeLatency || (0==safetyStackDepth && (limit-position)>(BLOCK_SIZE) )) { //one block and a bit left over so we need bigger.
     		output.flush();
     	}
 	}
