@@ -1,5 +1,8 @@
 package com.ociweb.jfast.primitive;
 
+import java.nio.CharBuffer;
+
+import com.ociweb.jfast.MyCharSequnce;
 import com.ociweb.jfast.field.util.CharSequenceShadow;
 import com.ociweb.jfast.read.FASTException;
 
@@ -27,7 +30,7 @@ public final class PrimitiveReader {
 	private int position;
 	private int limit;
 	private long totalReader;
-	public static final int VERY_LONG_STRING_MASK = 0x7F; 
+	public static final int VERY_LONG_STRING_MASK = 0x0F;//0x7F; 
 	
 	
 	final byte[] pmapStack;
@@ -219,43 +222,7 @@ public final class PrimitiveReader {
 	
 
 	
-	
-	//find the stop bit for the ascii string to be used by CharSeqShadow
-	public final void readASCII(CharSequenceShadow shadow) {
-		//read until stop bit is encountered.
-		//may need to shift fetch and even grow buffer to ensure its all in one block.
 
-		if (limit - position < 2) {
-			fetch(2);
-		}
-		
-		//can read maxLength with no worry
-		byte v = buffer[position];
-		
-		if (0 == v) {
-			v = buffer[position+1];
-			if (0x80 != (v&0xFF)) {
-				throw new UnsupportedOperationException();
-			}
-			shadow.setBacking(buffer, position, 0);
-			position+=2;
-		} else {	
-			//must use count because the base of position will be in motion.
-			//however the position can not be incremented or fetch may drop data.
-			int count = 0;
-			
-			while (buffer[position+count]>=0) {
-				count++;
-				if (position+count>=limit) {
-					fetch(1); //CAUTION: may change value of position
-				}
-			}
-			count++;
-			shadow.setBacking(buffer, position, count);
-			position+=count;			
-		}
-		
-	}
 	
 	
 	
@@ -456,6 +423,356 @@ public final class PrimitiveReader {
 
 	public boolean isPMapOpen() {
 		return pmapIdxStackDepth>0;
+	}
+
+	public void readTextASCII(CharBuffer target) {
+		if (limit - position < 2) {
+			fetch(2);
+		}
+		
+		//can read maxLength with no worry
+		byte v = buffer[position];
+		
+		if (0 == v) {
+			v = buffer[position+1];
+			if (0x80 != (v&0xFF)) {
+				throw new UnsupportedOperationException();
+			}
+			//nothing to change in the target
+			position+=2;
+		} else {	
+			//must use count because the base of position will be in motion.
+			//however the position can not be incremented or fetch may drop data.
+
+			while (buffer[position]>=0) {
+				target.append((char)(buffer[position]));
+				position++;
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
+			}
+			target.append((char)(0x7F & buffer[position]));
+			
+			position++;				
+			
+		}
+	}
+
+	public int readTextASCII(char[] target, int offset) {
+		if (limit - position < 2) {
+			fetch(2);
+		}
+		
+		//can read maxLength with no worry
+		byte v = buffer[position];
+		
+		if (0 == v) {
+			v = buffer[position+1];
+			if (0x80 != (v&0xFF)) {
+				throw new UnsupportedOperationException();
+			}
+			//nothing to change in the target
+			position+=2;
+		} else {	
+			//must use count because the base of position will be in motion.
+			//however the position can not be incremented or fetch may drop data.
+
+			while (buffer[position]>=0) {
+				target[offset++]=(char)(buffer[position++]);
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
+			}
+			target[offset++]=(char)(0x7F & buffer[position++]);
+		}
+		return offset;//TODO: return new position instead of length? confirm this is right?
+	}
+
+	public void readTextASCII(StringBuilder target) {
+		if (limit - position < 2) {
+			fetch(2);
+		}
+		
+		//can read maxLength with no worry
+		byte v = buffer[position];
+		
+		if (0 == v) {
+			v = buffer[position+1];
+			if (0x80 != (v&0xFF)) {
+				throw new UnsupportedOperationException();
+			}
+			//nothing to change in the target
+			position+=2;
+		} else {	
+			//must use count because the base of position will be in motion.
+			//however the position can not be incremented or fetch may drop data.
+			while (buffer[position]>=0) {
+				target.append((char)(buffer[position]));
+				position++;
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
+			}
+			target.append((char)(0x7F & buffer[position]));
+			
+			position++;		
+			
+		}
+	}
+
+	public void readTextUTF8(int charCount, CharBuffer target) {
+		while (--charCount>=0) {
+			byte b = buffer[position++];
+			if (b>=0) {
+				//code point 7
+				target.append((char)b);
+			} else {
+				decodeUTF8(buffer, target);
+			}
+		}
+	}
+
+	public void readTextUTF8(int charCount, StringBuilder target) {
+		while (--charCount>=0) {
+			byte b = buffer[position++];
+			if (b>=0) {
+				//code point 7
+				target.append((char)b);
+			} else {
+				decodeUTF8(buffer, target);
+			}
+		}
+	}
+	
+	public void readTextUTF8(char[] target, int offset, int charCount) {
+		while (--charCount>=0) {
+			byte b = buffer[position++];
+			if (b>=0) {
+				//code point 7
+				target[offset++] = (char)b;
+			} else {
+				decodeUTF8(buffer, target, offset++);
+			}
+		}
+	}
+	
+	//convert single char that is not the simple case
+			private void decodeUTF8(byte[] source, StringBuilder target) {
+
+				byte b = source[position-1];
+			    int result;
+				if ( ((byte)(0xFF&(b<<2))) >=0) {
+					if ((b&0x40)==0) {
+						target.append((char)0xFFFD); //Bad data replacement char
+						++position;
+						return; 
+					}
+					//code point 11	
+					result  = (b&0x1F);	
+				} else {
+					if (((byte)(0xFF&(b<<3)))>=0) {
+						//code point 16
+						result = (b&0x0F);
+					}  else {
+						if (((byte)(0xFF&(b<<4)))>=0) {
+							//code point 21
+							result = (b&0x07);
+						} else {
+							if (((byte)(0xFF&(b<<5)))>=0) {
+								//code point 26
+								result = (b&0x03);
+							} else {
+								if (((byte)(0xFF&(b<<6)))>=0) {
+									//code point 31
+									result = (b&0x01);
+								} else {
+									//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
+									//the high bit should never be set
+									target.append((char)0xFFFD); //Bad data replacement char
+									position+=5; 
+									return; 
+								}
+								
+								if ((source[position]&0xC0)!=0x80) {
+									target.append((char)0xFFFD); //Bad data replacement char
+									position+=5; 
+									return; 
+								}
+								result = (result<<6)|(source[position++]&0x3F);
+							}						
+							if ((source[position]&0xC0)!=0x80) {
+								target.append((char)0xFFFD); //Bad data replacement char
+								position+=4; 
+								return; 
+							}
+							result = (result<<6)|(source[position++]&0x3F);
+						}
+						if ((source[position]&0xC0)!=0x80) {
+							target.append((char)0xFFFD); //Bad data replacement char
+							position+=3; 
+							return; 
+						}
+						result = (result<<6)|(source[position++]&0x3F);
+					}
+					if ((source[position]&0xC0)!=0x80) {
+						target.append((char)0xFFFD); //Bad data replacement char
+						position+=2;
+						return; 
+					}
+					result = (result<<6)|(source[position++]&0x3F);
+				}
+				if ((source[position]&0xC0)!=0x80) {
+					target.append((char)0xFFFD); //Bad data replacement char
+					position+=1;
+					return; 
+				}
+				target.append((char)((result<<6)|(source[position++]&0x3F)));
+			}
+	
+	//convert single char that is not the simple case
+		private void decodeUTF8(byte[] source, CharBuffer target) {
+
+			byte b = source[position-1];
+		    int result;
+			if ( ((byte)(0xFF&(b<<2))) >=0) {
+				if ((b&0x40)==0) {
+					target.append((char)0xFFFD); //Bad data replacement char
+					++position;
+					return; 
+				}
+				//code point 11	
+				result  = (b&0x1F);	
+			} else {
+				if (((byte)(0xFF&(b<<3)))>=0) {
+					//code point 16
+					result = (b&0x0F);
+				}  else {
+					if (((byte)(0xFF&(b<<4)))>=0) {
+						//code point 21
+						result = (b&0x07);
+					} else {
+						if (((byte)(0xFF&(b<<5)))>=0) {
+							//code point 26
+							result = (b&0x03);
+						} else {
+							if (((byte)(0xFF&(b<<6)))>=0) {
+								//code point 31
+								result = (b&0x01);
+							} else {
+								//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
+								//the high bit should never be set
+								target.append((char)0xFFFD); //Bad data replacement char
+								position+=5; 
+								return; 
+							}
+							
+							if ((source[position]&0xC0)!=0x80) {
+								target.append((char)0xFFFD); //Bad data replacement char
+								position+=5; 
+								return; 
+							}
+							result = (result<<6)|(source[position++]&0x3F);
+						}						
+						if ((source[position]&0xC0)!=0x80) {
+							target.append((char)0xFFFD); //Bad data replacement char
+							position+=4; 
+							return; 
+						}
+						result = (result<<6)|(source[position++]&0x3F);
+					}
+					if ((source[position]&0xC0)!=0x80) {
+						target.append((char)0xFFFD); //Bad data replacement char
+						position+=3; 
+						return; 
+					}
+					result = (result<<6)|(source[position++]&0x3F);
+				}
+				if ((source[position]&0xC0)!=0x80) {
+					target.append((char)0xFFFD); //Bad data replacement char
+					position+=2;
+					return; 
+				}
+				result = (result<<6)|(source[position++]&0x3F);
+			}
+			if ((source[position]&0xC0)!=0x80) {
+				target.append((char)0xFFFD); //Bad data replacement char
+				position+=1;
+				return; 
+			}
+			target.append((char)((result<<6)|(source[position++]&0x3F)));
+		}
+	
+	//convert single char that is not the simple case
+	private void decodeUTF8(byte[] source, char[] target, int targetIdx) {
+
+		byte b = source[position-1];
+	    int result;
+		if ( ((byte)(0xFF&(b<<2))) >=0) {
+			if ((b&0x40)==0) {
+				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				++position;
+				return; 
+			}
+			//code point 11	
+			result  = (b&0x1F);	
+		} else {
+			if (((byte)(0xFF&(b<<3)))>=0) {
+				//code point 16
+				result = (b&0x0F);
+			}  else {
+				if (((byte)(0xFF&(b<<4)))>=0) {
+					//code point 21
+					result = (b&0x07);
+				} else {
+					if (((byte)(0xFF&(b<<5)))>=0) {
+						//code point 26
+						result = (b&0x03);
+					} else {
+						if (((byte)(0xFF&(b<<6)))>=0) {
+							//code point 31
+							result = (b&0x01);
+						} else {
+							//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
+							//the high bit should never be set
+							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							position+=5; 
+							return; 
+						}
+						
+						if ((source[position]&0xC0)!=0x80) {
+							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							position+=5; 
+							return; 
+						}
+						result = (result<<6)|(source[position++]&0x3F);
+					}						
+					if ((source[position]&0xC0)!=0x80) {
+						target[targetIdx] = 0xFFFD; //Bad data replacement char
+						position+=4; 
+						return; 
+					}
+					result = (result<<6)|(source[position++]&0x3F);
+				}
+				if ((source[position]&0xC0)!=0x80) {
+					target[targetIdx] = 0xFFFD; //Bad data replacement char
+					position+=3; 
+					return; 
+				}
+				result = (result<<6)|(source[position++]&0x3F);
+			}
+			if ((source[position]&0xC0)!=0x80) {
+				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				position+=2;
+				return; 
+			}
+			result = (result<<6)|(source[position++]&0x3F);
+		}
+		if ((source[position]&0xC0)!=0x80) {
+			target[targetIdx] = 0xFFFD; //Bad data replacement char
+			position+=1;
+			return; 
+		}
+		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}
 
 	

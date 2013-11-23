@@ -13,6 +13,11 @@ public class FASTInputByteArray implements FASTInput {
 		this.buffer = buffer;
 	}
 	
+	public void reset(byte[] buffer) {
+		this.position = 0;
+		this.buffer = buffer;
+	}
+	
 	public void reset() {
 		position = 0;
 	}

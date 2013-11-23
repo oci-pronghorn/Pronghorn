@@ -35,8 +35,8 @@ public class PrimitiveReaderWriterTest {
 	public final static int[] unsignedIntData =   new int[]  {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,2097152,268435456,
 		                                                         Integer.MAX_VALUE-1 //must be 1 less so there is room for the nulled form of uInt
 		                                                         }; 
-	public final static int STRING_SPEED_TEST_LIMIT = 8;
-	public final static String[] stringData =   new String[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",
+	
+	public final static CharSequence[] stringData =   new CharSequence[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",
 																  buildString("g",PrimitiveReader.VERY_LONG_STRING_MASK-1),
 																  buildString("h",PrimitiveReader.VERY_LONG_STRING_MASK),
 																  buildString("i",PrimitiveReader.VERY_LONG_STRING_MASK+1),
@@ -51,7 +51,11 @@ public class PrimitiveReaderWriterTest {
 	
 	@Test
 	public void testBufferSpeed() {
-		//ByteBuffer vs ByteArrayOutputStream
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
+		}
 		
 		int fieldSize = 10;
 		int capacity = speedTestSize*fieldSize;
@@ -102,52 +106,11 @@ public class PrimitiveReaderWriterTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
 		System.out.println("ByteArray I/O StreamBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
-		
-		/////////////////
-		/////////////////
-		/////////////////		
-		
-		ByteBuffer buffer = ByteBuffer.allocateDirect(capacity);
-		
-		pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer), (int) count, minimizeLatency);
-		pr = new PrimitiveReader(new FASTInputByteBuffer(buffer));
-		
-		writeDurationIOSpeed = Float.MAX_VALUE;
-		readDuration = Float.MAX_VALUE;
-		
-		cycles = testCycles;
-		while (--cycles>=0) {
-			//byte buffer specific clear
-			buffer.clear();
-			
-			long start = System.nanoTime();
-			int p = passes;
-			while (--p>=0) {
-				int i = 0;
-				while (i<unsignedLongData.length) {
-					speedWriteTest(i++);
-				}
-			}
-			pwIOSpeed.flush();
-			long duration = System.nanoTime()-start;
-			totalBytesWritten = baost.toByteArray().length;
-			writeDurationIOSpeed =  min(writeDurationIOSpeed, duration/(float)totalBytesWritten);
-			
-			//must reset byte buffer back to beginning
-			buffer.flip();
-			
-			start = System.nanoTime();
-			 p = passes;
-			while (--p>=0) {
-				int i = 0;
-				while (i<unsignedLongData.length) {
-					speedReadTest(pr);
-					i++;
-				}
-			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
 		}
-		System.out.println("    Direct      ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		
 		/////////////////
 		/////////////////
@@ -212,10 +175,64 @@ public class PrimitiveReaderWriterTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
-	
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
+		}
 		/////////////////
 		/////////////////
 		/////////////////
+		ByteBuffer buffer = ByteBuffer.allocateDirect(capacity);
+		
+		pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer), (int) count, minimizeLatency);
+		pr = new PrimitiveReader(new FASTInputByteBuffer(buffer));
+		
+		writeDurationIOSpeed = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		
+		cycles = testCycles;
+		while (--cycles>=0) {
+			//byte buffer specific clear
+			buffer.clear();
+			
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				int i = 0;
+				while (i<unsignedLongData.length) {
+					speedWriteTest(i++);
+				}
+			}
+			pwIOSpeed.flush();
+			long duration = System.nanoTime()-start;
+			totalBytesWritten = baost.toByteArray().length;
+			writeDurationIOSpeed =  min(writeDurationIOSpeed, duration/(float)totalBytesWritten);
+			
+			//must reset byte buffer back to beginning
+			buffer.flip();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				int i = 0;
+				while (i<unsignedLongData.length) {
+					speedReadTest(pr);
+					i++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
+		}
+		System.out.println("    Direct      ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
+		}
+		/////////////////
+		/////////////////
+		/////////////////		
+
 		
 		byte[] bufferArray = new byte[capacity];
 		
@@ -264,8 +281,11 @@ public class PrimitiveReaderWriterTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
 		System.out.println("                ByteArray: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
-		//clean up before next test.
-		Runtime.getRuntime().gc();
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
+		}
 	}
 
 
@@ -288,7 +308,7 @@ public class PrimitiveReaderWriterTest {
 	private static String buildString(String value, int i) {
 		StringBuffer result = new StringBuffer();
 		while (--i>=0) {
-			result.append(value);
+			result.append( ((i&1)==0 ? value : ('0'+(i&0x1F))));
 		}
 		return result.toString();
 	}
@@ -632,14 +652,19 @@ public class PrimitiveReaderWriterTest {
 		
 		pw.flush();
 		
-		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
+		
+		byte[] byteArray = baost.toByteArray();
+		assertEquals(pw.totalWritten(),byteArray.length);
+		
+		FASTInputByteArray input = new FASTInputByteArray(byteArray);
 		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		i = 0;
-		CharSequenceShadow shadow = new CharSequenceShadow();
+		StringBuilder builder = new StringBuilder();
 		while (i<stringData.length) {
-			pr.readASCII(shadow);
-			assertEquals(stringData[i++],shadow.toString());
+			builder.setLength(0);
+			pr.readTextASCII(builder);
+			assertEquals(stringData[i++],builder.toString());
 		}
 		
 		int passes = speedTestSize / stringData.length;
@@ -652,34 +677,40 @@ public class PrimitiveReaderWriterTest {
 		
 		//limit this down to the size of the other tests to get a better comparison
 		//makes the bytesPerWrite about the same size as the others
-		int trunkTestLimit = Math.min(STRING_SPEED_TEST_LIMIT,stringData.length);
+		int trunkTestLimit = stringData.length;//Much faster with larger strings.
+		System.gc();
 		
+		char[] target = new char[PrimitiveReader.VERY_LONG_STRING_MASK*3];
 		int cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
+			assertTrue(baost.size()==0);
+			
 			long start = System.nanoTime();
 			int p = passes;			
 			while (--p>=0) {
-				i = 0;
-				while (i<trunkTestLimit) {
-					pw.writeASCII(stringData[i++]);
+				i = trunkTestLimit;
+				while (--i>=0) {
+					pw.writeASCII(stringData[i]);
 				}
 			}
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
-			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
+			
+			//new bigger byte array for all the passes.
+			input.reset(baost.toByteArray());
+			
 			start = System.nanoTime();
-			 p = passes;
+			p = passes;
 			while (--p>=0) {
-				i = 0;
-				while (i<trunkTestLimit) {
-					pr.readASCII(shadow);
-					i++;
+				i = trunkTestLimit;
+				while (--i>=0) {
+					pr.readTextASCII(target, 0);
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
-		System.out.println("ascii: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
+		System.out.println("ascii: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte ");
 		
 		
 	}

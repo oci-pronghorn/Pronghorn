@@ -489,7 +489,8 @@ public class PrimitivePMAPTest {
     	ByteBuffer buffer = ByteBuffer.allocate(localBufferSize);
     	FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
 		
-		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
+    	//TODO:bug here if latency set to false and block set small to 32
+		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, true);
 		
 		int i = pmaps;
 	    try {
@@ -531,21 +532,21 @@ public class PrimitivePMAPTest {
 		    long duration = (System.nanoTime()-start);
 		    
 		    if (duration > overhead) {
-		    	System.err.println("total duration with overhead:"+duration+" overhead:"+overhead+" pct "+(100*overhead/(float)duration));
+		    	System.out.println("total duration with overhead:"+duration+" overhead:"+overhead+" pct "+(100*overhead/(float)duration));
 		    	duration -= overhead;
 		    } else {
-		    	System.err.println();
-		    	System.err.println("unable to compute overhead measurement. per byte:"+(overhead/(double)buffer.position()));
+		    	System.out.println();
+		    	System.out.println("unable to compute overhead measurement. per byte:"+(overhead/(double)buffer.position()));
 		    	
 		    	overhead = 0;
 		    }
 		    assertTrue("total duration: "+duration+"ns but nothing written.",buffer.position()>0);
 		    
 		    float nsPerByte = duration/(float)buffer.position(); 
-		    System.err.println("PMap write "+nsPerByte+"ns per byte. TotalBytes:"+buffer.position());
+		    System.out.println("pure PMap write "+nsPerByte+"ns per byte. TotalBytes:"+buffer.position());
 	    } finally {
 	    	int testedMaps = (pmaps-(i+1));
-	    	System.err.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+overhead);
+	    	System.out.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+overhead);
 	    }
 	    
 	    ////////////////////////////////////
@@ -600,7 +601,7 @@ public class PrimitivePMAPTest {
 		    
     	} finally {
     		int readTestMaps = (pmaps-(i+1));
-    		System.err.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+overhead);
+    		System.out.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+overhead);
     	}
     	
     	/////////////////////////////////////////
@@ -633,10 +634,10 @@ public class PrimitivePMAPTest {
 		    long duration = (System.nanoTime()-start) - overhead;
 		    		    
 		    double nsPerByte = duration/(double)buffer.position(); 
-		    System.err.println("PMap read "+nsPerByte+"ns per byte");
+		    System.out.println("pure PMap read "+nsPerByte+"ns per byte");
     	} finally {
     		int readTestMaps = (pmaps-(i+1));
-    		System.err.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+overhead);
+    		System.out.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+overhead);
     	}
 		//  */
     	//cleanup before next test

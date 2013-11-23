@@ -420,8 +420,8 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharBufferASCIIOptional(int token, CharBuffer buffer) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeASCII(buffer);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -430,8 +430,8 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharBufferASCII(int token, CharBuffer buffer) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeASCII(buffer);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
