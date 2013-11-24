@@ -8,7 +8,7 @@ public class FASTException extends RuntimeException {
 		
 	}
 
-	public FASTException(IOException e) {
+	public FASTException(Exception e) {
 		super(e);
 	}
 

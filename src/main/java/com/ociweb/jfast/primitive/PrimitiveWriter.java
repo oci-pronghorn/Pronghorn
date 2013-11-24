@@ -303,32 +303,7 @@ public final class PrimitiveWriter {
 		limit += len;
 		
 	}
-	
-	//TODO: if it is myCharSeq or byteSeq build custom writer to avoid value.charAt() repeated call.
-    //       this will be helpful in copy, tail, delta operations.
-	
-	public final void writeASCII(CharSequence value) {
 		
-		int length = value.length();
-		if (0==length) {
-			if (limit>buffer.length-2) {
-				output.flush();
-			}
-			buffer[limit++] = (byte)0;
-			buffer[limit++] = (byte)0x80;
-			return;
-		}
-		if (limit>buffer.length-length) {
-			output.flush();
-		}
-		int c = 0;
-		while (--length>0) {
-			buffer[limit++] = (byte)value.charAt(c++);
-		}
-		buffer[limit++] = (byte)(0x80|value.charAt(c));
-		
-	}
-	
 	public final void writeNull() {
 		if (limit>=buffer.length) {
 			output.flush();
@@ -929,8 +904,122 @@ public final class PrimitiveWriter {
 	public boolean isPMapOpen() {
 		return safetyStackDepth>0;
 	}
+	
+	public final void writeASCII(CharSequence value) {
+		
+		int length = value.length();
+		if (0==length) {
+			encodeZeroLengthASCII();
+			return;
+		} else	if (limit>buffer.length-length) {
+			//if it was not zero and was too long flush
+			output.flush();
+		}
+		int c = 0;
+		while (--length>0) {
+			buffer[limit++] = (byte)value.charAt(c++);
+		}
+		buffer[limit++] = (byte)(0x80|value.charAt(c));
+		
+	}
 
-	
-	
+	private void encodeZeroLengthASCII() {
+		if (limit>buffer.length-2) {
+			output.flush();
+		}
+		buffer[limit++] = (byte)0;
+		buffer[limit++] = (byte)0x80;
+	}
+
+	public void writeASCII(char[] value, int offset, int length) {
+
+		if (0==length) {
+			encodeZeroLengthASCII();
+			return;
+		} else	if (limit>buffer.length-length) {
+			//if it was not zero and was too long flush
+			output.flush();
+		}
+		while (--length>0) {
+			buffer[limit++] = (byte)value[offset++];
+		}
+		buffer[limit++] = (byte)(0x80|value[offset]);
+	}
+
+	public void writeUTF(CharSequence value) {
+		int len = value.length();
+		int c = 0;
+		while (c<len) {
+			encodeSingleChar(value.charAt(c++));
+		}		
+	}
+
+	public void writeUTF(char[] value, int offset, int length) {
+		while (--length>=0) {
+			encodeSingleChar(value[offset++]);
+		}
+	}
+
+	private void encodeSingleChar(int c) {
+		
+		if (c<=0x007F) {
+			//code point 7
+			if (limit>buffer.length-1) {
+				output.flush();
+			}
+			buffer[limit++] = (byte)c;
+		} else {
+			if (c<=0x07FF) {
+				//code point 11
+				if (limit>buffer.length-2) {
+					output.flush();
+				}
+				buffer[limit++] = (byte)(0xC0|((c>>6)&0x1F));
+			} else {
+				if (c<=0xFFFF) {
+					//code point 16
+					if (limit>buffer.length-3) {
+						output.flush();
+					}
+					buffer[limit++] = (byte)(0xE0|((c>>12)&0x0F));
+				} else {
+					encodeSingleCharSlow(c);
+				}
+				buffer[limit++] = (byte)(0x80 |((c>>6) &0x3F));
+			}
+			buffer[limit++] = (byte)(0x80 |((c)   &0x3F));
+		}
+	}
+
+	protected void encodeSingleCharSlow(int c) {
+		if (c<0x1FFFFF) {
+			//code point 21
+			if (limit>buffer.length-4) {
+				output.flush();
+			}
+			buffer[limit++] = (byte)(0xF0|((c>>18)&0x07));
+		} else {
+			if (c<0x3FFFFFF) {
+				//code point 26
+				if (limit>buffer.length-5) {
+					output.flush();
+				}
+				buffer[limit++] = (byte)(0xF8|((c>>24)&0x03));
+			} else {
+				if (c<0x7FFFFFFF) {
+					//code point 31
+					if (limit>buffer.length-6) {
+						output.flush();
+					}
+					buffer[limit++] = (byte)(0xFC|((c>>30)&0x01));
+				} else {
+					throw new UnsupportedOperationException("can not encode char with value: "+c);
+				}
+				buffer[limit++] = (byte)(0x80 |((c>>24) &0x3F));
+			}
+			buffer[limit++] = (byte)(0x80 |((c>>18) &0x3F));
+		}						
+		buffer[limit++] = (byte)(0x80 |((c>>12) &0x3F));
+	}
 	
 }

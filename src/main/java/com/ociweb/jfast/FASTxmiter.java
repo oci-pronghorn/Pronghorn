@@ -16,8 +16,7 @@ public interface FASTxmiter {
 	void write(int id, ByteBuffer buffer);
 	
 	//multiple ways to send chars
-	void write(int id, CharSequence value); //String is a CharSequence
-	void write(int id, CharBuffer buffer);
+	void write(int id, CharSequence value); //Strings & CharBuffers are CharSequence
 	void write(int id, char[] value, int offset, int length);
 		
 	void write(int id);//null

@@ -6,48 +6,48 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
+import com.ociweb.jfast.read.FASTException;
 
 
 
-public class IntegerStreamingTest extends BaseStreamingTest {
+public class TextStreamingTest extends BaseStreamingTest {
 
 	final int fields         = 30000;
-	final int[] testData    = buildTestDataUnsigned(fields);
+	final CharSequence[] testData    = buildTestData(fields);
 	
 	@Test
-	public void integerUnsignedNoOpTest() {
+	public void asciiTest() {
 		int[] types = new int[] {
-                  TypeMask.IntegerUnSigned,
-				  TypeMask.IntegerUnSignedOptional,
-				  };
-		tester(types,"UnsignedInteger");
+                   TypeMask.TextASCII,
+                   TypeMask.TextASCIIOptional,
+				 };
+		tester(types,"ASCII");
 	}
 	
 	@Test
-	public void integerSignedNoOpTest() {
+	public void utf8Test() {
 		int[] types = new int[] {
-                  TypeMask.IntegerSigned,
-				  TypeMask.IntegerSignedOptional,
-				  };
-		tester(types,"SignedInteger");
+				  TypeMask.TextUTF8,
+				  TypeMask.TextUTF8Optional,
+				 };
+		tester(types,"UTF8");
 	}
 	
-	
-	private void tester(int[] types, String label) {	
+	private void tester(int[] types, String label) {
 		
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
 		int warmup         = 50;
-		int sampleSize     = 1000;
-		String readLabel = "Read "+label+" NoOpp in groups of "+fieldsPerGroup;
-		String writeLabel = "Write "+label+" NoOpp in groups of "+fieldsPerGroup;
+		int sampleSize     = 100;
+		int avgFieldSize   = PrimitiveReader.VERY_LONG_STRING_MASK*2+1;
+		String readLabel = "Read "+label+"Text NoOpp in groups of "+fieldsPerGroup;
+		String writeLabel = "Write "+label+"Text NoOpp in groups of "+fieldsPerGroup;
 		
-		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
+		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*avgFieldSize));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-
 		
 		int[] operators = new int[] {
 				                      OperatorMask.None, 
@@ -60,8 +60,8 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		
 		
 		int[] tokenLookup = buildTokens(fields, types, operators);
-		
 		byte[] writeBuffer = new byte[streamByteSize];
+		
 
 		///////////////////////////////
 		//test the writing performance.
@@ -120,7 +120,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-								FASTReader fr) {
+								 FASTReader fr) {
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
@@ -130,6 +130,8 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 		
 		fr.openGroup(groupToken);
+		
+		char[] target = new char[PrimitiveReader.VERY_LONG_STRING_MASK*3];
 		
 		while (--i>=0) {
 			int f = fields;
@@ -143,9 +145,22 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 						assertEquals(Integer.MIN_VALUE, value);
 					}
 				} else { 
-					int value = fr.readInt(tokenLookup[f]);
-					if (testData[f]!=value) {
-						assertEquals(testData[f], value);
+					try {
+						int len = fr.readChars(tokenLookup[f], target, 0);
+						CharSequence expected = testData[f];
+						if (len!=testData[f].length()) {
+							assertEquals(expected,new String(target,0,len));
+						} else {
+							int j = len;
+							while (--j>=0) {
+								if (expected.charAt(j)!=target[j]) {
+									assertEquals(expected,new String(target,0,len));
+								}
+							}						
+						}	
+					} catch (Exception e) {
+						System.err.println("xxx: expected "+testData[f]);
+						throw new FASTException(e);
 					}
 				}
 
@@ -161,12 +176,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	}
 
 
-	private int[] buildTestDataUnsigned(int count) {
+	private CharSequence[] buildTestData(int count) {
 		
-		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
+		CharSequence[] seedData = PrimitiveReaderWriterTest.stringData;
 		int s = seedData.length;
 		int i = count;
-		int[] target = new int[count];
+		CharSequence[] target = new CharSequence[count];
 		while (--i>=0) {
 			target[i] = seedData[--s];
 			if (0==s) {

@@ -1,5 +1,6 @@
 package com.ociweb.jfast.primitive;
 
+import java.io.IOException;
 import java.nio.CharBuffer;
 
 import com.ociweb.jfast.MyCharSequnce;
@@ -39,6 +40,17 @@ public final class PrimitiveReader {
 	int pmapStackDepth = 0;
 	int pmapIdxStackDepth = 0;
 	int pmapIdx = -1;
+	
+	
+	public void reset() {
+		totalReader = 0;
+		position = 0;
+		limit = 0;
+		pmapStackDepth = 0;
+		pmapIdxStackDepth = 0;
+		pmapIdx = -1;
+		
+	}
 	
 	public PrimitiveReader(FASTInput input) {
 		this(4096,input,1024);
@@ -425,7 +437,7 @@ public final class PrimitiveReader {
 		return pmapIdxStackDepth>0;
 	}
 
-	public void readTextASCII(CharBuffer target) {
+	public void readTextASCII(Appendable target) {
 		if (limit - position < 2) {
 			fetch(2);
 		}
@@ -445,13 +457,21 @@ public final class PrimitiveReader {
 			//however the position can not be incremented or fetch may drop data.
 
 			while (buffer[position]>=0) {
-				target.append((char)(buffer[position]));
+				try {
+					target.append((char)(buffer[position]));
+				} catch (IOException e) {
+					throw new FASTException(e);
+				}
 				position++;
 				if (position>=limit) {
 					fetch(1); //CAUTION: may change value of position
 				}
 			}
-			target.append((char)(0x7F & buffer[position]));
+			try {
+				target.append((char)(0x7F & buffer[position]));
+			} catch (IOException e) {
+				throw new FASTException(e);
+			}
 			
 			position++;				
 			
@@ -488,56 +508,18 @@ public final class PrimitiveReader {
 		return offset;//TODO: return new position instead of length? confirm this is right?
 	}
 
-	public void readTextASCII(StringBuilder target) {
-		if (limit - position < 2) {
-			fetch(2);
-		}
-		
-		//can read maxLength with no worry
-		byte v = buffer[position];
-		
-		if (0 == v) {
-			v = buffer[position+1];
-			if (0x80 != (v&0xFF)) {
-				throw new UnsupportedOperationException();
-			}
-			//nothing to change in the target
-			position+=2;
-		} else {	
-			//must use count because the base of position will be in motion.
-			//however the position can not be incremented or fetch may drop data.
-			while (buffer[position]>=0) {
-				target.append((char)(buffer[position]));
-				position++;
-				if (position>=limit) {
-					fetch(1); //CAUTION: may change value of position
+	
+	//TODO: if this does not perform well after in-line remove the interface and return to concrete
+	public void readTextUTF8(int charCount, Appendable target) {
+		while (--charCount>=0) {
+			byte b = buffer[position++];
+			if (b>=0) {
+				//code point 7
+				try {
+					target.append((char)b);
+				} catch (IOException e) {
+					throw new FASTException(e);
 				}
-			}
-			target.append((char)(0x7F & buffer[position]));
-			
-			position++;		
-			
-		}
-	}
-
-	public void readTextUTF8(int charCount, CharBuffer target) {
-		while (--charCount>=0) {
-			byte b = buffer[position++];
-			if (b>=0) {
-				//code point 7
-				target.append((char)b);
-			} else {
-				decodeUTF8(buffer, target);
-			}
-		}
-	}
-
-	public void readTextUTF8(int charCount, StringBuilder target) {
-		while (--charCount>=0) {
-			byte b = buffer[position++];
-			if (b>=0) {
-				//code point 7
-				target.append((char)b);
 			} else {
 				decodeUTF8(buffer, target);
 			}
@@ -557,86 +539,17 @@ public final class PrimitiveReader {
 	}
 	
 	//convert single char that is not the simple case
-			private void decodeUTF8(byte[] source, StringBuilder target) {
-
-				byte b = source[position-1];
-			    int result;
-				if ( ((byte)(0xFF&(b<<2))) >=0) {
-					if ((b&0x40)==0) {
-						target.append((char)0xFFFD); //Bad data replacement char
-						++position;
-						return; 
-					}
-					//code point 11	
-					result  = (b&0x1F);	
-				} else {
-					if (((byte)(0xFF&(b<<3)))>=0) {
-						//code point 16
-						result = (b&0x0F);
-					}  else {
-						if (((byte)(0xFF&(b<<4)))>=0) {
-							//code point 21
-							result = (b&0x07);
-						} else {
-							if (((byte)(0xFF&(b<<5)))>=0) {
-								//code point 26
-								result = (b&0x03);
-							} else {
-								if (((byte)(0xFF&(b<<6)))>=0) {
-									//code point 31
-									result = (b&0x01);
-								} else {
-									//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
-									//the high bit should never be set
-									target.append((char)0xFFFD); //Bad data replacement char
-									position+=5; 
-									return; 
-								}
-								
-								if ((source[position]&0xC0)!=0x80) {
-									target.append((char)0xFFFD); //Bad data replacement char
-									position+=5; 
-									return; 
-								}
-								result = (result<<6)|(source[position++]&0x3F);
-							}						
-							if ((source[position]&0xC0)!=0x80) {
-								target.append((char)0xFFFD); //Bad data replacement char
-								position+=4; 
-								return; 
-							}
-							result = (result<<6)|(source[position++]&0x3F);
-						}
-						if ((source[position]&0xC0)!=0x80) {
-							target.append((char)0xFFFD); //Bad data replacement char
-							position+=3; 
-							return; 
-						}
-						result = (result<<6)|(source[position++]&0x3F);
-					}
-					if ((source[position]&0xC0)!=0x80) {
-						target.append((char)0xFFFD); //Bad data replacement char
-						position+=2;
-						return; 
-					}
-					result = (result<<6)|(source[position++]&0x3F);
-				}
-				if ((source[position]&0xC0)!=0x80) {
-					target.append((char)0xFFFD); //Bad data replacement char
-					position+=1;
-					return; 
-				}
-				target.append((char)((result<<6)|(source[position++]&0x3F)));
-			}
-	
-	//convert single char that is not the simple case
-		private void decodeUTF8(byte[] source, CharBuffer target) {
+		private void decodeUTF8(byte[] source, Appendable target) {
 
 			byte b = source[position-1];
 		    int result;
 			if ( ((byte)(0xFF&(b<<2))) >=0) {
 				if ((b&0x40)==0) {
-					target.append((char)0xFFFD); //Bad data replacement char
+					try {
+						target.append((char)0xFFFD); //Bad data replacement char
+					} catch (IOException e) {
+						throw new FASTException(e);
+					}
 					++position;
 					return; 
 				}
@@ -661,45 +574,73 @@ public final class PrimitiveReader {
 							} else {
 								//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
 								//the high bit should never be set
-								target.append((char)0xFFFD); //Bad data replacement char
+								try{
+									target.append((char)0xFFFD); //Bad data replacement char
+								} catch (IOException e) {
+									throw new FASTException(e);
+								}
 								position+=5; 
 								return; 
 							}
 							
 							if ((source[position]&0xC0)!=0x80) {
-								target.append((char)0xFFFD); //Bad data replacement char
+								try {
+									target.append((char)0xFFFD); //Bad data replacement char
+								} catch (IOException e) {
+									throw new FASTException(e);
+								}
 								position+=5; 
 								return; 
 							}
 							result = (result<<6)|(source[position++]&0x3F);
 						}						
 						if ((source[position]&0xC0)!=0x80) {
-							target.append((char)0xFFFD); //Bad data replacement char
+							try{
+								target.append((char)0xFFFD); //Bad data replacement char
+							} catch (IOException e) {
+								throw new FASTException(e);
+							}
 							position+=4; 
 							return; 
 						}
 						result = (result<<6)|(source[position++]&0x3F);
 					}
 					if ((source[position]&0xC0)!=0x80) {
-						target.append((char)0xFFFD); //Bad data replacement char
+						try {
+							target.append((char)0xFFFD); //Bad data replacement char
+						} catch (IOException e) {
+							throw new FASTException(e);
+						}
 						position+=3; 
 						return; 
 					}
 					result = (result<<6)|(source[position++]&0x3F);
 				}
 				if ((source[position]&0xC0)!=0x80) {
-					target.append((char)0xFFFD); //Bad data replacement char
+					try {
+						target.append((char)0xFFFD); //Bad data replacement char
+					} catch (IOException e) {
+						throw new FASTException(e);
+					}
 					position+=2;
 					return; 
 				}
 				result = (result<<6)|(source[position++]&0x3F);
 			}
 			if ((source[position]&0xC0)!=0x80) {
-				target.append((char)0xFFFD); //Bad data replacement char
+				try {
+					target.append((char)0xFFFD); //Bad data replacement char
+				} catch (IOException e) {
+					throw new FASTException(e);
+				}
 				position+=1;
 				return; 
 			}
-			target.append((char)((result<<6)|(source[position++]&0x3F)));
+			try {
+				target.append((char)((result<<6)|(source[position++]&0x3F)));
+			} catch (IOException e) {
+				throw new FASTException(e);
+			}
 		}
 	
 	//convert single char that is not the simple case
@@ -774,6 +715,8 @@ public final class PrimitiveReader {
 		}
 		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}
+
+
 
 	
 }

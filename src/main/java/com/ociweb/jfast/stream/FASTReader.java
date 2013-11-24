@@ -177,7 +177,7 @@ public class FASTReader implements FASTProvide {
 	}
 
 	@Override
-	public void readChars(int id, CharBuffer target) {
+	public void readChars(int id, Appendable target) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.TextASCII:
@@ -197,7 +197,7 @@ public class FASTReader implements FASTProvide {
 		}
 	}
 
-	private void readTextUTF8Optional(int token, CharBuffer target) {
+	private void readTextUTF8Optional(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				int length = reader.readUnsignedInteger()-1;
@@ -208,7 +208,7 @@ public class FASTReader implements FASTProvide {
 		}
 	}
 
-	private void readTextUTF8(int token, CharBuffer target) {
+	private void readTextUTF8(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				int length = reader.readUnsignedInteger();
@@ -219,7 +219,7 @@ public class FASTReader implements FASTProvide {
 		}
 	}
 
-	private void readTextASCIIOptional(int token, CharBuffer target) {
+	private void readTextASCIIOptional(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				reader.readTextASCII(target);
@@ -229,7 +229,7 @@ public class FASTReader implements FASTProvide {
 		}
 	}
 
-	private void readTextASCII(int token, CharBuffer target) {
+	private void readTextASCII(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				reader.readTextASCII(target);
@@ -295,72 +295,6 @@ public class FASTReader implements FASTProvide {
 				throw new UnsupportedOperationException();
 		}
 	}
-
-	@Override
-	public void readChars(int id, StringBuilder target) {
-		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.TextASCII:
-					readTextASCII(token, target);
-				break;
-			case TypeMask.TextASCIIOptional:
-					readTextASCIIOptional(token, target);
-				break;
-			case TypeMask.TextUTF8:
-					readTextUTF8(token,target);
-				break;
-			case TypeMask.TextUTF8Optional:
-					readTextUTF8Optional(token, target);
-			    break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void readTextUTF8Optional(int token, StringBuilder target) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				int length = reader.readUnsignedInteger()-1;
-				reader.readTextUTF8(length, target);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void readTextUTF8(int token, StringBuilder target) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				int length = reader.readUnsignedInteger();
-				reader.readTextUTF8(length, target);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void readTextASCIIOptional(int token, StringBuilder target) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				reader.readTextASCII(target);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void readTextASCII(int token, StringBuilder target) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				reader.readTextASCII(target);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-
-
 
 
 }

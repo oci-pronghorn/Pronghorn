@@ -2,7 +2,6 @@ package com.ociweb.jfast.tree;
 
 import com.ociweb.jfast.Operator;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.field.util.ValueDictionary;
 
 public class Template {
 
@@ -12,7 +11,6 @@ public class Template {
 	//dictionary { "template" | "type" | "global" | string }
     //lookup the right dictionary and set it here instead of the string.	
 	private String dictionaryAttr;
-	private ValueDictionary dictionary = new ValueDictionary(Short.MAX_VALUE);
 	//TODO: xml parse will need to convert strings into ids for use if possible
 	
 	private String typeRef;
@@ -23,14 +21,14 @@ public class Template {
 		this.templateName = templateNsName;
 		this.id = id;
 		
-		this.builder = new GroupBuilder(id,dictionary);
+		this.builder = new GroupBuilder(id);
 	}
 	public Template(String templateNsName,int id,String dictionaryAttr) {
 		this.templateName = templateNsName;
 		this.id = id;
 		this.dictionaryAttr = dictionaryAttr;
 		
-		this.builder = new GroupBuilder(id,dictionary);
+		this.builder = new GroupBuilder(id);
 	}
 	public Template(String templateNsName,int id,String dictionaryAttr,String typeRef) {
 		this.templateName = templateNsName;
@@ -38,7 +36,7 @@ public class Template {
 		this.dictionaryAttr = dictionaryAttr;
 		this.typeRef = typeRef;
 		
-		this.builder = new GroupBuilder(id,dictionary);
+		this.builder = new GroupBuilder(id);
 	}
 			
 	public Template appendInteger(int id, Necessity presence, Operator operator, Integer type) {

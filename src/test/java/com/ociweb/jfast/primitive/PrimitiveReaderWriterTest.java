@@ -43,7 +43,17 @@ public class PrimitiveReaderWriterTest {
 																  buildString("j",PrimitiveReader.VERY_LONG_STRING_MASK+2),
 																  buildString("k",PrimitiveReader.VERY_LONG_STRING_MASK*2)};
 	
-	public final static byte[][] byteData =  new byte[][] {new byte[]{},new byte[]{1},new byte[]{1,2},new byte[]{1,2,3,4},new byte[]{1,2,3,4,5,6,7,8}};
+	public final static byte[][] byteData =  new byte[][] {new byte[]{},new byte[]{1},new byte[]{1,2},new byte[]{1,2,3,4},
+		                                                       new byte[]{1,2,3,4,5,6,7,8},
+		                                                       new byte[]{1,2,3,4,5,6,7,8,9},
+		                                                       new byte[]{1,2,3,4,5,6,7,8,9,10},
+		                                                       new byte[]{1,2,3,4,5,6,7,8,9,10,11},
+		                                                       new byte[]{1,2,3,4,5,6,7,8,9,10,11,12},
+		                                                       new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13},
+															   new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14},
+															   new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15},
+															   new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}
+	};
 	
 	//needed for threaded test.
 	private PrimitiveWriter pwIOSpeed;
@@ -316,32 +326,33 @@ public class PrimitiveReaderWriterTest {
 
 	@Test 
 	public void testNulls() {
-		int fieldSize = 3;
-		int capacity = speedTestSize*fieldSize;
 		
-		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
+		int fieldSize = 2;
+		int nullLoops = 10000;
+		int capacity = speedTestSize*fieldSize*nullLoops;
 		
-		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
+		byte[] buffer = new byte[capacity];		
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputByteArray(buffer));
 		
 		int i = 0;
-		while (i<stringData.length) {
+		while (i<nullLoops) {
 			pw.writeNull();
 			i++;
 		}
 		
 		pw.flush();
 		
-		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
+		FASTInputByteArray input = new FASTInputByteArray(buffer);
 		final PrimitiveReader pr = new PrimitiveReader(input);
 		
 		i = 0;
-		while (i<stringData.length) {
+		while (i<nullLoops) {
 			assertTrue(pr.peekNull());
 			pr.incPosition();
 			i++;
 		}
 		
-		int passes = speedTestSize / stringData.length;
+		int passes = speedTestSize / nullLoops;
 
 		///////////////////////////////////
 		//////////////////////////////////
@@ -351,33 +362,37 @@ public class PrimitiveReaderWriterTest {
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
-			baost.reset();
+			pw.reset();
+			int tp = passes*nullLoops;
+			
 			long start = System.nanoTime();
-			int p = passes;			
-			while (--p>=0) {
-				i = 0;
-				while (i<stringData.length) {
-					pw.writeNull();
-					i++;
-				}
+
+			int j = tp;
+			while (--j>=0) {				
+				pw.writeNull();				
 			}
+
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
-			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.totalWritten());
+			
+			input.reset(buffer);
+			
 			start = System.nanoTime();
-			 p = passes;
-			while (--p>=0) {
-				i = 0;
-				while (i<stringData.length) {
-					pr.peekNull();
-					pr.incPosition();
-					i++;
-				}
+			j = tp;
+			while (--j>=0) {
+				
+				pr.peekNull();
+				pr.incPosition();
+					
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.totalWritten());
 		}
-		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
-		
+		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte  totalWritten:"+pw.totalWritten());
+		System.gc();
+		try {
+			Thread.currentThread().sleep(1000);
+		} catch (InterruptedException e1) {
+		}
 		
 	}
 	
@@ -635,6 +650,9 @@ public class PrimitiveReaderWriterTest {
 	private float min(float a, float b) {
 		return a<b ? a : b;
 	}
+	
+	//TODO: add utf8 test here
+	//TODO: add utf8 encoder/decoder test here.
 	
 	@Test 
 	public void testStrings() {

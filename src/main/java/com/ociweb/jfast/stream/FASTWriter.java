@@ -339,8 +339,9 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeUnsignedInteger(value.length()+1);
+				writer.writeUTF(value);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -349,8 +350,9 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharSequenceUTF8(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeUnsignedInteger(value.length());
+				writer.writeUTF(value);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -359,8 +361,8 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeASCII(value);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -369,68 +371,7 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharSequenceASCII(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	@Override
-	public void write(int id, CharBuffer buffer) {
-		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.TextASCII: 
-				acceptCharBufferASCII(token,buffer);
-				break;
-			case TypeMask.TextASCIIOptional:
-				acceptCharBufferASCIIOptional(token,buffer);
-				break;
-			case TypeMask.TextUTF8: 
-				acceptCharBufferUTF8(token,buffer);
-				break;
-			case TypeMask.TextUTF8Optional:
-				acceptCharBufferUTF8Optional(token,buffer);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void acceptCharBufferUTF8Optional(int token, CharBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void acceptCharBufferUTF8(int token, CharBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void acceptCharBufferASCIIOptional(int token, CharBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeASCII(buffer);
-				break;
-			default:
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void acceptCharBufferASCII(int token, CharBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeASCII(buffer);
+				writer.writeASCII(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -463,8 +404,9 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeUnsignedInteger(length+1);
+				writer.writeUTF(value,offset,length);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -473,8 +415,9 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeUnsignedInteger(length);
+				writer.writeUTF(value,offset,length);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -483,8 +426,8 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeASCII(value,offset,length);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -493,8 +436,8 @@ public final class FASTWriter implements FASTxmiter {
 	private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
+				writer.writeASCII(value,offset,length);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.ociweb.jfast.Operator;
-import com.ociweb.jfast.field.util.ValueDictionary;
 
 public class GroupBuilder {
 
@@ -17,11 +16,9 @@ public class GroupBuilder {
 	private List<Integer> types;
 	private List<Integer> ids;
 	private List<Byte> noPmapList;
-	private ValueDictionary dictionary;
 	
-	public GroupBuilder(int id, ValueDictionary dictionary) {
+	public GroupBuilder(int id) {
 		this.id = id;
-		this.dictionary = dictionary;
 		this.operators = new ArrayList<Operator>();
 		this.necessity = new ArrayList<Necessity>();
 		this.types = new ArrayList<Integer>();
