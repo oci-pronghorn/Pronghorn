@@ -429,7 +429,8 @@ public class PrimitivePMAPTest {
 		
 	}
 	
-    @Test
+    @SuppressWarnings("unused")
+	@Test
 	public void testDogFood() {
 		
     	int pmaps = 3000000;

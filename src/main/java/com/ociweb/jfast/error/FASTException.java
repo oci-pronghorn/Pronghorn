@@ -1,14 +1,15 @@
-package com.ociweb.jfast.read;
+package com.ociweb.jfast.error;
 
-import java.io.IOException;
 
 public class FASTException extends RuntimeException {
+
+	private static final long serialVersionUID = 8294717647055016321L;
 
 	public FASTException() {
 		
 	}
 
-	public FASTException(Exception e) {
+	public FASTException(Throwable e) {
 		super(e);
 	}
 

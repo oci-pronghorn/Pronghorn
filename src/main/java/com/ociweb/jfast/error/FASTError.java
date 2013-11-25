@@ -1,4 +1,4 @@
-package com.ociweb.jfast.read;
+package com.ociweb.jfast.error;
 
 public enum FASTError {
 	NO_OP_NO_PMAP("Field must not appear in pmap."), 

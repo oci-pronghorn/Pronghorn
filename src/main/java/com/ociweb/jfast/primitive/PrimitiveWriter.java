@@ -1,6 +1,6 @@
 package com.ociweb.jfast.primitive;
 
-import com.ociweb.jfast.read.FASTException;
+import com.ociweb.jfast.error.FASTException;
 
 
 
@@ -37,6 +37,7 @@ public final class PrimitiveWriter {
 	private int position;
 	private int limit;
 	
+	//TODO: due to the complexity here a stack of longs may work much better!
 	private final int[] safetyStackPosition; //location where the last byte was written to the pmap as bits are written
 	private final int[] safetyStackFlushIdx; //location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
 	private final byte[] safetyStackTemp; //working bit position 1-7 for next/last bit to be written.
@@ -859,21 +860,6 @@ public final class PrimitiveWriter {
 	private final void popWorkingBits(int s) {
 		pMapByteAccum = buffer[safetyStackPosition[s]--];
 		pMapIdxWorking = safetyStackTemp[s];
-	}
-
-	private final void pushWorkingBits(int s, byte pmIdxWorking) {
-		assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
-				
-		buffer[safetyStackPosition[s]++] = pMapByteAccum;//final byte to be saved into the feed.
-		safetyStackTemp[s] = pmIdxWorking;
-		
-		if (0 != pMapByteAccum) {	
-			//set the last known non zero bit so we can avoid scanning for it. 
-			flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
-		}	
-
-		pMapIdxWorking = 7;
-		pMapByteAccum = 0;
 	}
 	
 	//called by ever field that needs to set a bit either 1 or 0

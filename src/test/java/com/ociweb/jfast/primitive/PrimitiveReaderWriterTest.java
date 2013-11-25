@@ -7,13 +7,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.channels.Pipe;
 import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.field.util.CharSequenceShadow;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteChannel;
@@ -63,7 +61,7 @@ public class PrimitiveReaderWriterTest {
 	public void testBufferSpeed() {
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 		
@@ -118,7 +116,7 @@ public class PrimitiveReaderWriterTest {
 		System.out.println("ByteArray I/O StreamBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 		
@@ -187,7 +185,7 @@ public class PrimitiveReaderWriterTest {
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 		/////////////////
@@ -236,7 +234,7 @@ public class PrimitiveReaderWriterTest {
 		System.out.println("    Direct      ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 		/////////////////
@@ -293,7 +291,7 @@ public class PrimitiveReaderWriterTest {
 		System.out.println("                ByteArray: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 	}
@@ -390,7 +388,7 @@ public class PrimitiveReaderWriterTest {
 		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte  totalWritten:"+pw.totalWritten());
 		System.gc();
 		try {
-			Thread.currentThread().sleep(1000);
+			Thread.sleep(1000);
 		} catch (InterruptedException e1) {
 		}
 		

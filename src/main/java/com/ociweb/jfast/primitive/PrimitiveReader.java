@@ -1,11 +1,8 @@
 package com.ociweb.jfast.primitive;
 
 import java.io.IOException;
-import java.nio.CharBuffer;
 
-import com.ociweb.jfast.MyCharSequnce;
-import com.ociweb.jfast.field.util.CharSequenceShadow;
-import com.ociweb.jfast.read.FASTException;
+import com.ociweb.jfast.error.FASTException;
 
 /**
  * PrimitiveReader
@@ -345,12 +342,8 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readSignedIntegerNullable() {
-		//TODO:rewrite
 		int temp = readSignedInteger();
-		if (temp>0) {
-			return temp-1;
-		}
-		return temp;
+		return (temp>0 ? temp-1 : temp);
 	}
 	
 	public final int readSignedInteger () {

@@ -4,6 +4,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderInteger {
 	
+	//crazy big value?
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
 	
 	private final static byte UNSET     = 0;  //use == 0 to detect (default value)
@@ -25,17 +26,47 @@ public class FieldReaderInteger {
 	public void reset() {
 		int i = intValueFlags.length;
 		while (--i>=0) {
-			intValueFlags[i] = 0;
+			intValueFlags[i] = UNSET;
+		}
+	}
+
+	public int readUnsignedInteger(int token) {
+		//no need to set initValueFlags for field that can never be null
+		return intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger();
+	}
+
+	public int readUnsignedIntegerOptional(int token, int valueOfOptional) {
+		if (reader.peekNull()) {
+			reader.incPosition();
+			intValueFlags[token & INSTANCE_MASK] = SET_NULL;
+			return valueOfOptional;
+		} else {
+			int instance = token & INSTANCE_MASK;
+			intValueFlags[instance] = SET_VALUE;
+			return intValues[instance] = reader.readUnsignedIntegerNullable();
 		}
 	}
 	
-	//only used when -ea is on to validate the field order
-	private boolean isExpected(int token) {
-		
-		// TODO can we write a method that knows the template and can expect the next field to be written?
-		return true;
+	public int readSignedInteger(int token) {
+		//no need to set initValueFlags for field that can never be null
+		return intValues[token & INSTANCE_MASK] = reader.readSignedInteger();
 	}
-	
+
+	public int readSignedIntegerOptional(int token, int valueOfOptional) {
+		if (reader.peekNull()) {
+			reader.incPosition();
+			intValueFlags[token & INSTANCE_MASK] = SET_NULL;
+			return valueOfOptional;
+		} else {
+			int instance = token & INSTANCE_MASK;
+			intValueFlags[instance] = SET_VALUE;
+			return intValues[instance] = reader.readSignedIntegerNullable();
+		}
+	}
+
+	public int readUnsignedIntegerConstant(int token, int valueOfOptional) {
+		return (reader.popPMapBit()==0 ? valueOfOptional : intValues[token & INSTANCE_MASK]);
+	}
 	
 	
 	

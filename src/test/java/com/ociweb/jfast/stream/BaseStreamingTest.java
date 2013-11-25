@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 public abstract class BaseStreamingTest {
 
 	
-	private final float PCT_LIMIT = 20; //if avg is 10 pct above min then fail
+	private final float PCT_LIMIT = 40; //if avg is 40 pct above min then fail
 	private final float MAX_X_LIMIT = 4f;//if max is 4x larger than avg then fail
 	
 	
@@ -106,7 +106,7 @@ public abstract class BaseStreamingTest {
 		
 	}
 
-	protected int groupManagementRead(int fieldsPerGroup, FASTReader fr, int i, int g, int groupToken, int f) {
+	protected int groupManagementRead(int fieldsPerGroup, FASTStaticReader fr, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
 			fr.closeGroup();
@@ -122,7 +122,7 @@ public abstract class BaseStreamingTest {
 		return g;
 	}
 
-	protected int groupManagementWrite(int fieldsPerGroup, FASTWriter fw, int i, int g, int groupToken, int f) {
+	protected int groupManagementWrite(int fieldsPerGroup, FASTStaticWriter fw, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
 			fw.closeGroup();
@@ -139,7 +139,7 @@ public abstract class BaseStreamingTest {
 	}
 
 	protected abstract long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-									FASTReader fr);
+									FASTStaticReader fr);
 
 	protected void performanceReadTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
@@ -171,7 +171,7 @@ public abstract class BaseStreamingTest {
 						input.reset();
 						pr.reset();
 						
-						FASTReader fr = new FASTReader(pr, fields, tokenLookup);
+						FASTStaticReader fr = new FASTStaticReader(pr, fields, tokenLookup);
 						
 			
 						//compute overhead
@@ -210,7 +210,7 @@ public abstract class BaseStreamingTest {
 
 	protected abstract long timeWriteLoop(int fields, 
 			int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-			FASTWriter fw);
+			FASTStaticWriter fw);
 
 	protected long performanceWriteTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, 
@@ -240,7 +240,7 @@ public abstract class BaseStreamingTest {
 						output.reset();
 						pw.reset();
 						
-						FASTWriter fw = new FASTWriter(pw, fields, tokenLookup);
+						FASTStaticWriter fw = new FASTStaticWriter(pw, fields, tokenLookup);
 						
 						//compute overhead
 						long overhead = emptyLoop(operationIters, fields, fieldsPerGroup);

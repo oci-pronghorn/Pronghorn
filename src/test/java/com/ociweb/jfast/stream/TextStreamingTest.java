@@ -4,11 +4,11 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
-import com.ociweb.jfast.read.FASTException;
 
 
 
@@ -81,7 +81,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
-			int[] tokenLookup, FASTWriter fw) {
+			int[] tokenLookup, FASTStaticWriter fw) {
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
@@ -120,7 +120,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-								 FASTReader fr) {
+								 FASTStaticReader fr) {
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
