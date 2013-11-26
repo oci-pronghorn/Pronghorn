@@ -43,7 +43,7 @@ public class FASTStaticReader implements FASTReader {
 		
 	    switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.IntegerUnSigned:
-				readIntegerUnsigned(token);
+				readIntegerUnsigned(token,0);
 				break;
 			case TypeMask.IntegerUnSignedOptional:
 				readIntegerUnsignedOptional(token,0);
@@ -139,7 +139,7 @@ public class FASTStaticReader implements FASTReader {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.IntegerUnSigned:
-				return readIntegerUnsigned(token);
+				return readIntegerUnsigned(token, valueOfOptional);
 			case TypeMask.IntegerUnSignedOptional:
 				return readIntegerUnsignedOptional(token, valueOfOptional);
 			case TypeMask.IntegerSigned:
@@ -176,17 +176,21 @@ public class FASTStaticReader implements FASTReader {
 				return readerInteger.readUnsignedIntegerOptional(token,valueOfOptional);
 			case OperatorMask.Constant:
 				return readerInteger.readUnsignedIntegerConstant(token,valueOfOptional);
+			case OperatorMask.Copy:
+				return readerInteger.readUnsignedIntegerOptionalCopy(token,valueOfOptional);
 			default:
 				throw new UnsupportedOperationException();
 		}
 	}
 
-	private int readIntegerUnsigned(int token) {
+	private int readIntegerUnsigned(int token, int defaultValue) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				return readerInteger.readUnsignedInteger(token);
-	//		case OperatorMask.Constant:
-	//			return readerInteger.readUnsignedIntegerConstant(token); //What is the return value?
+			case OperatorMask.Constant:
+				return readerInteger.readUnsignedIntegerConstant(token, defaultValue);
+			case OperatorMask.Copy:
+				return readerInteger.readUnsignedIntegerCopy(token);
 			default:
 				throw new UnsupportedOperationException();
 		}

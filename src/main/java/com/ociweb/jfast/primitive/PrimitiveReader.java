@@ -238,7 +238,7 @@ public final class PrimitiveReader {
 	
 	//only moves the position forward if a null was found
 	public final boolean peekNull() {
-		if (position>=limit) {
+		if (position>=limit) {//TODO: must move this to incPosition?? but how.
 			fetch(1);
 		}
 		return (0x80 == (buffer[position]&0xFF));	
@@ -265,7 +265,7 @@ public final class PrimitiveReader {
 			int v = buffer[position++];
 			long accumulator = ((v&0x40)==0) ? 0 :0xFFFFFFFFFFFFFF80l;
 
-		    while ((v & 0x80)==0) {
+		    while (v>=0) { //(v & 0x80)==0) {
 		    	if (position>=limit) {
 					fetch(1);
 				}
@@ -282,7 +282,7 @@ public final class PrimitiveReader {
 		byte v = buff[p++];
 		long accumulator = ((v&0x40)==0) ? 0 :0xFFFFFFFFFFFFFF80l;
 
-	    while ((v & 0x80)==0) {
+	    while (v>=0) { //(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
 	    	v = buff[p++];
 	    }
@@ -301,7 +301,7 @@ public final class PrimitiveReader {
 			}
 			byte v = buffer[position++];
 			long accumulator;
-			if ((v & 0x80)==0) {
+			if (v>=0) { //(v & 0x80)==0) {
 				accumulator = v<<7;
 			} else {
 				return (v&0x7F);
@@ -312,7 +312,7 @@ public final class PrimitiveReader {
 			}
 			v = buffer[position++];
 			
-		    while ((v & 0x80)==0) {
+		    while (v>=0) { //(v & 0x80)==0) {
 		    	accumulator = (accumulator|v)<<7;
 		    	
 		    	if (position>=limit) {
@@ -327,14 +327,14 @@ public final class PrimitiveReader {
 
 		byte v = buf[position++];
 		long accumulator;
-		if ((v & 0x80)==0) {
+		if (v>=0) {//(v & 0x80)==0) {
 			accumulator = v<<7;
 		} else {
 			return (v&0x7F);
 		}
 		
 		v = buf[position++];
-	    while ((v & 0x80)==0) {
+	    while (v>=0) {//(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
 	    	v = buf[position++];
 	    }
@@ -351,10 +351,10 @@ public final class PrimitiveReader {
 			if (position>=limit) {
 				fetch(1);
 			}
-			int v = buffer[position++];
+			byte v = buffer[position++];
 			int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
 
-		    while ((v & 0x80)==0) {
+		    while (v>=0) {  //(v & 0x80)==0) {
 		    	if (position>=limit) {
 					fetch(1);
 				}
@@ -371,7 +371,7 @@ public final class PrimitiveReader {
 		byte v = buff[p++];
 		int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
 
-	    while ((v & 0x80)==0) {
+	    while (v>=0) {  //(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
 	    	v = buff[p++];
 	    }
@@ -390,7 +390,7 @@ public final class PrimitiveReader {
 			}
 			byte v = buffer[position++];
 			int accumulator;
-			if ((v & 0x80)==0) {
+			if (v>=0) { //(v & 0x80)==0) {
 				accumulator = v<<7;
 			} else {
 				return (v&0x7F);
@@ -401,7 +401,7 @@ public final class PrimitiveReader {
 			}
 			v = buffer[position++];
 
-		    while ((v & 0x80)==0) {
+		    while (v>=0) { //(v & 0x80)==0) {
 		    	accumulator = (accumulator|v)<<7;
 		    	if (position>=limit) {
 					fetch(1);
@@ -412,14 +412,14 @@ public final class PrimitiveReader {
 		}
 		byte v = buffer[position++];
 		int accumulator;
-		if ((v & 0x80)==0) {
+		if (v>=0) {//(v & 0x80)==0) {
 			accumulator = v<<7;
 		} else {
 			return (v&0x7F);
 		}
 		
 		v = buffer[position++];
-	    while ((v & 0x80)==0) {
+	    while (v>=0) { //(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
 	    	v = buffer[position++];
 	    }

@@ -67,6 +67,33 @@ public class FieldReaderInteger {
 	public int readUnsignedIntegerConstant(int token, int valueOfOptional) {
 		return (reader.popPMapBit()==0 ? valueOfOptional : intValues[token & INSTANCE_MASK]);
 	}
+
+	public int readUnsignedIntegerCopy(int token) {
+		return (reader.popPMapBit()==0 ? 
+				 intValues[token & INSTANCE_MASK] : 
+			     (intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger()));
+	}
+
+	public int readUnsignedIntegerOptionalCopy(int token, int valueOfOptional) {
+		
+		if (reader.popPMapBit()==0) {
+			if (intValueFlags[token & INSTANCE_MASK] < 0) {
+				return valueOfOptional;
+			} else {
+				return intValues[token & INSTANCE_MASK];
+			}
+		} else {
+			if (reader.peekNull()) {
+				reader.incPosition();
+				intValueFlags[token & INSTANCE_MASK] = SET_NULL;
+				return valueOfOptional;
+			} else {
+				int instance = token & INSTANCE_MASK;
+				intValueFlags[instance] = SET_VALUE;
+				return intValues[instance] = reader.readUnsignedIntegerNullable();
+			}
+		}
+	}
 	
 	
 	
