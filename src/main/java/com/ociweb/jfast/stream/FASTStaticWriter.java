@@ -61,13 +61,13 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void write(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-		case OperatorMask.None:
-			writer.writeNull();
-			break;
-		default:
-			//TODO: other operators may have different pmap assignments for null
-			throw new UnsupportedOperationException();
-	}
+			case OperatorMask.None:
+				writer.writeNull();
+				break;
+			default:
+				//TODO: other operators may have different pmap assignments for null
+				throw new UnsupportedOperationException();
+		}
 	}
 	
 	/**
@@ -177,6 +177,21 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeUnsignedInteger(value);
 				break;
+			case OperatorMask.Constant:
+				writerInteger.writeIntegerUnsignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerUnsignedCopy(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerInteger.writeIntegerUnsignedDelta(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerUnsignedIncrement(value, token);
+				break;
+			case OperatorMask.Default:
+				writerInteger.writeIntegerUnsignedDefault(value, token);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -196,6 +211,21 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeUnsignedIntegerNullable(value);
+				break;
+//			case OperatorMask.Constant:
+//				writerInteger.writeIntegerUnsignedConstant(value, token);
+//				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerUnsignedOptionalCopy(value, token);
+				break;
+//			case OperatorMask.Delta:
+//				writerInteger.writeIntegerUnsignedOptionalDelta(value, token);
+//				break;	
+//			case OperatorMask.Increment:
+//				writerInteger.writeIntegerUnsignedOptionalIncrement(value, token);
+//				break;
+			case OperatorMask.Default:
+				writerInteger.writeIntegerUnsignedOptionalDefault(value, token);
 				break;
 			default:
 				throw new UnsupportedOperationException();

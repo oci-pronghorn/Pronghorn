@@ -52,7 +52,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		int[] operators = new int[] {
 				                      OperatorMask.None, 
 									 // OperatorMask.Constant,
-									 // OperatorMask.Copy,
+									//  OperatorMask.Copy,
 									 // OperatorMask.Delta,
 									 // OperatorMask.Default,
 				                     // OperatorMask.Increment,

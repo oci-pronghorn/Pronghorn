@@ -95,7 +95,33 @@ public class FieldReaderInteger {
 		}
 	}
 	
+	public int readUnsignedIntegerDelta(int token) {
+		
+		int index = token & INSTANCE_MASK;
+		return (intValues[index] = intValues[index]+reader.readSignedInteger());
+		
+	}
 	
+	public int readUnsignedIntegerOptionalDelta(int token, int valueOfOptional) {
+		
+		if (reader.popPMapBit()==0) {
+			if (intValueFlags[token & INSTANCE_MASK] < 0) {
+				return valueOfOptional;
+			} else {
+				return intValues[token & INSTANCE_MASK];
+			}
+		} else {
+			if (reader.peekNull()) {
+				reader.incPosition();
+				intValueFlags[token & INSTANCE_MASK] = SET_NULL;
+				return valueOfOptional;
+			} else {
+				int instance = token & INSTANCE_MASK;
+				intValueFlags[instance] = SET_VALUE;
+				return (intValues[instance] = intValues[instance]+reader.readSignedInteger());
+			}
+		}
+	}
 	
 	
 }

@@ -41,32 +41,32 @@ public final class FieldWriterInteger {
 	 * 
 	 */
 	
-	public void writeIntegerSignedCopy(int value, int token) {
+	public void writeIntegerUnsignedCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx]) {
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeSignedInteger(value);
+			writer.writeUnsignedInteger(value);
 			intValues[idx] = value;
 		}
 	}
 	
-	public void writeIntegerSignedOptionalCopy(int value, int token) {
+	public void writeIntegerUnsignedOptionalCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx] && intValueFlags[idx]>0) {//not null and matches
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeSignedIntegerNullable(value);
+			writer.writeUnsignedIntegerNullable(value);
 			intValues[idx] = value;
 			intValueFlags[idx] = SET_VALUE;
 		}
 	}
 	
-	public void writeIntegerSignedOptionalCopy(int token) {
+	public void writeIntegerUnsignedOptionalCopy(int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (intValueFlags[idx]<0) { //stored value was null;
@@ -78,34 +78,34 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerSignedConstant(int value, int token) {
+	public void writeIntegerUnsignedConstant(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		writer.writeSignedInteger(intValues[idx]);
+		writer.writeUnsignedInteger(intValues[idx]);
 	}
 	
-	public void writeIntegerSignedDefault(int value, int token) {
+	public void writeIntegerUnsignedDefault(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx]) {
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeSignedInteger(value);
+			writer.writeUnsignedInteger(value);
 		}
 	}
 	
-	public void writeIntegerSignedOptionalDefault(int value, int token) {
+	public void writeIntegerUnsignedOptionalDefault(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx] && intValueFlags[idx]>0) {//not null and matches
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeSignedIntegerNullable(value);
+			writer.writeUnsignedIntegerNullable(value);
 		}
 	}
 	
-	public void writeIntegerSignedOptionalDefault(int token) {
+	public void writeIntegerUnignedOptionalDefault(int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (intValueFlags[idx]<0) { //stored value was null;
@@ -116,32 +116,32 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerSignedIncrement(int value, int token) {
+	public void writeIntegerUnsignedIncrement(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == ++intValues[idx]) {
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeSignedInteger(value);
+			writer.writeUnsignedInteger(value);
 			intValues[idx] = value;
 		}
 	}
 	
-	public void writeIntegerSignedDelta(int value, int token) {
+	public void writeIntegerUnsignedDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeSignedInteger(value - intValues[idx]);
 	}
 	
-	public void writeIntegerSignedOptionalDelta(int value, int token) {
+	public void writeIntegerUnsgnedOptionalDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		writer.writePMapBit(1);
-		writer.writeSignedIntegerNullable(value - intValues[idx]);
+		writer.writeUnsignedIntegerNullable(value - intValues[idx]);
 		
 	}
 	
-	public void writeIntegerSignedOptionalDelta(int token) {
+	public void writeIntegerUnsignedOptionalDelta(int token) {
 		writer.writePMapBit(0);
 		writer.writeNull();
 	}
