@@ -99,7 +99,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptLongSignedOptional(int token, long value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeSignedLongNullable(value);
+				writer.writeLongSignedOptional(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -109,7 +109,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptLongSigned(int token, long value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeSignedLong(value);
+				writer.writeLongSigned(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -119,7 +119,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptLongUnsignedOptional(int token, long value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedLongNullable(value);
+				writer.writeLongUnsignedOptional(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -129,7 +129,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptLongUnsigned(int token, long value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedLong(value);
+				writer.writeLongUnsigned(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -165,7 +165,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptIntegerSigned(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeSignedInteger(value);
+				writer.writeIntegerSigned(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -175,7 +175,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptIntegerUnsigned(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedInteger(value);
+				writer.writeIntegerUnsigned(value);
 				break;
 			case OperatorMask.Constant:
 				writerInteger.writeIntegerUnsignedConstant(value, token);
@@ -200,7 +200,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptIntegerSignedOptional(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeSignedIntegerNullable(value);
+				writer.writeIntegerSignedOptional(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -210,7 +210,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptIntegerUnsignedOptional(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedIntegerNullable(value);
+				writer.writeIntegerUnsignedOptional(value);
 				break;
 			case OperatorMask.Constant:
 				//can not be optional so down grade to required
@@ -220,13 +220,13 @@ public final class FASTStaticWriter implements FASTWriter {
 				writerInteger.writeIntegerUnsignedOptionalCopy(value, token);
 				break;
 			case OperatorMask.Delta:
-				writerInteger.writeIntegerUnsignedOptionalDelta(value, token);
+				writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
 				break;	
 			case OperatorMask.Increment:
 				writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
 				break;
 			case OperatorMask.Default:
-				writerInteger.writeIntegerUnsignedOptionalDefault(value, token);
+				writerInteger.writeIntegerUnsignedDefaultOptional(value, token);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -263,8 +263,8 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				
-				writer.writeSignedIntegerNullable(exponent+1);
-				writer.writeSignedLongNullable(mantissa);
+				writer.writeIntegerSignedOptional(exponent+1);
+				writer.writeLongSignedOptional(mantissa);
 				
 				break;
 			default:
@@ -276,8 +276,8 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				
-				writer.writeSignedInteger(exponent);
-				writer.writeSignedLong(mantissa);
+				writer.writeIntegerSigned(exponent);
+				writer.writeLongSigned(mantissa);
 				
 				break;
 			default:
@@ -380,8 +380,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedInteger(value.length()+1);
-				writer.writeUTF(value);
+				writer.writeIntegerUnsigned(value.length()+1);
+				writer.writeTextUTF(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -391,8 +391,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharSequenceUTF8(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedInteger(value.length());
-				writer.writeUTF(value);
+				writer.writeIntegerUnsigned(value.length());
+				writer.writeTextUTF(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -402,7 +402,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeASCII(value);
+				writer.writeTextASCII(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -412,7 +412,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharSequenceASCII(int token, CharSequence value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeASCII(value);
+				writer.writeTextASCII(value);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -445,8 +445,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedInteger(length+1);
-				writer.writeUTF(value,offset,length);
+				writer.writeIntegerUnsigned(length+1);
+				writer.writeTextUTF(value,offset,length);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -456,8 +456,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeUnsignedInteger(length);
-				writer.writeUTF(value,offset,length);
+				writer.writeIntegerUnsigned(length);
+				writer.writeTextUTF(value,offset,length);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -467,7 +467,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeASCII(value,offset,length);
+				writer.writeTextASCII(value,offset,length);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -477,7 +477,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeASCII(value,offset,length);
+				writer.writeTextASCII(value,offset,length);
 				break;
 			default:
 				throw new UnsupportedOperationException();

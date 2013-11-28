@@ -299,16 +299,16 @@ public class PrimitiveReaderWriterTest {
 
 	private final void speedReadTest(PrimitiveReader pr) {
 		pr.readPMap(10);
-		pr.readUnsignedLong();
-		pr.readSignedLong();
+		pr.readLongUnsigned();
+		pr.readLongSigned();
 		pr.popPMap();
 	}
 
 
 	private final void speedWriteTest(int i) {
 		pwIOSpeed.openPMap(10);
-		pwIOSpeed.writeUnsignedLong(unsignedLongData[i]);
-		pwIOSpeed.writeSignedLong(-unsignedLongData[i]);		
+		pwIOSpeed.writeLongUnsigned(unsignedLongData[i]);
+		pwIOSpeed.writeLongSigned(-unsignedLongData[i]);		
 		pwIOSpeed.closePMap();
 	}
 	
@@ -410,15 +410,15 @@ public class PrimitiveReaderWriterTest {
 		
 		int i = 0;
 		while (i<unsignedLongData.length) {
-			pw.writeUnsignedLong(unsignedLongData[i]);
-			pw.writeSignedLong(unsignedLongData[i]);
-			pw.writeSignedLong(-unsignedLongData[i++]);
+			pw.writeLongUnsigned(unsignedLongData[i]);
+			pw.writeLongSigned(unsignedLongData[i]);
+			pw.writeLongSigned(-unsignedLongData[i++]);
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
-			pw.writeSignedInteger(unsignedIntData[i]);
-			pw.writeSignedInteger(-unsignedIntData[i]);			
-			pw.writeUnsignedInteger(unsignedIntData[i++]);
+			pw.writeIntegerSigned(unsignedIntData[i]);
+			pw.writeIntegerSigned(-unsignedIntData[i]);			
+			pw.writeIntegerUnsigned(unsignedIntData[i++]);
 		}
 		
 		pw.flush();
@@ -429,15 +429,15 @@ public class PrimitiveReaderWriterTest {
 		
 		i = 0;
 		while (i<unsignedLongData.length) {
-			assertEquals(unsignedLongData[i], pr.readUnsignedLong());
-			assertEquals(unsignedLongData[i], pr.readSignedLong());
-			assertEquals(-unsignedLongData[i++], pr.readSignedLong());
+			assertEquals(unsignedLongData[i], pr.readLongUnsigned());
+			assertEquals(unsignedLongData[i], pr.readLongSigned());
+			assertEquals(-unsignedLongData[i++], pr.readLongSigned());
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
-			assertEquals(unsignedIntData[i], pr.readSignedInteger());
-			assertEquals(-unsignedIntData[i], pr.readSignedInteger());
-			assertEquals(unsignedIntData[i++], pr.readUnsignedInteger());
+			assertEquals(unsignedIntData[i], pr.readIntegerSigned());
+			assertEquals(-unsignedIntData[i], pr.readIntegerSigned());
+			assertEquals(unsignedIntData[i++], pr.readIntegerUnsigned());
 		}
 		
 
@@ -456,7 +456,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pw.writeUnsignedLong(unsignedLongData[i++]);
+					pw.writeLongUnsigned(unsignedLongData[i++]);
 				}
 			}
 			pw.flush();
@@ -467,7 +467,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readUnsignedLong();
+					pr.readLongUnsigned();
 					i++;
 				}
 			}
@@ -488,7 +488,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pw.writeSignedLong(-unsignedLongData[i++]);
+					pw.writeLongSigned(-unsignedLongData[i++]);
 				}
 			}
 			pw.flush();
@@ -500,7 +500,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readSignedLong();
+					pr.readLongSigned();
 					i++;
 				}
 			}
@@ -521,7 +521,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pw.writeSignedLong(unsignedLongData[i++]);
+					pw.writeLongSigned(unsignedLongData[i++]);
 				}
 			}
 			pw.flush();
@@ -533,7 +533,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readSignedLong();
+					pr.readLongSigned();
 					i++;
 				}
 			}
@@ -555,7 +555,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pw.writeUnsignedInteger(unsignedIntData[j++]);
+					pw.writeIntegerUnsigned(unsignedIntData[j++]);
 				}
 			}
 			pw.flush();
@@ -568,7 +568,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedLongData.length) {
-					pr.readUnsignedInteger();
+					pr.readIntegerUnsigned();
 					j++;
 				}
 			}
@@ -589,7 +589,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pw.writeSignedInteger(-unsignedIntData[j++]);
+					pw.writeIntegerSigned(-unsignedIntData[j++]);
 				}
 			}
 			pw.flush();
@@ -601,7 +601,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readSignedInteger();
+					pr.readIntegerSigned();
 					j++;
 				}
 			}
@@ -622,7 +622,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pw.writeSignedInteger(unsignedIntData[j++]);
+					pw.writeIntegerSigned(unsignedIntData[j++]);
 				}
 			}
 			pw.flush();
@@ -634,7 +634,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readSignedInteger();
+					pr.readIntegerSigned();
 					j++;
 				}
 			}
@@ -663,7 +663,7 @@ public class PrimitiveReaderWriterTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			pw.writeASCII(stringData[i++]);
+			pw.writeTextASCII(stringData[i++]);
 		}
 		
 		pw.flush();
@@ -707,7 +707,7 @@ public class PrimitiveReaderWriterTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					pw.writeASCII(stringData[i]);
+					pw.writeTextASCII(stringData[i]);
 				}
 			}
 			pw.flush();

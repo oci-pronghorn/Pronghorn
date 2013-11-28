@@ -249,16 +249,16 @@ public final class PrimitiveReader {
 		position++;
 	}
 	
-	public final long readSignedLongNullable() {
+	public final long readLongSignedOptional() {
 		//TODO:rewrite
-		long temp = readSignedLong();
+		long temp = readLongSigned();
 		if (temp>0) {
 			return temp-1;
 		}
 		return temp;
 	}
 	
-	public final long readSignedLong () {
+	public final long readLongSigned () {
 		if (limit-position<=10) {
 			if (position>=limit) {
 				fetch(1);
@@ -291,11 +291,11 @@ public final class PrimitiveReader {
 	    return accumulator|(v&0x7F);
 	}
 	
-	public final long readUnsignedLongNullable() {
-		return readUnsignedLong()-1;
+	public final long readLongUnsignedOptional() {
+		return readLongUnsigned()-1;
 	}
 	
-	public final long readUnsignedLong () {
+	public final long readLongUnsigned () {
 		if (position>limit-10) {
 			if (position>=limit) {
 				fetch(1);
@@ -342,12 +342,12 @@ public final class PrimitiveReader {
 	    return accumulator|(v&0x7F);
 	}
 	
-	public final int readSignedIntegerNullable() {
-		int temp = readSignedInteger();
+	public final int readIntegerSignedOptional() {
+		int temp = readIntegerSigned();
 		return (temp>0 ? temp-1 : temp);
 	}
 	
-	public final int readSignedInteger () {
+	public final int readIntegerSigned () {
 		if (limit-position<=10) {
 			if (position>=limit) {
 				fetch(1);
@@ -380,11 +380,11 @@ public final class PrimitiveReader {
 	    return accumulator|(v&0x7F);
 	}
 	
-	public final int readUnsignedIntegerNullable() {
-		return readUnsignedInteger()-1;
+	public final int readIntegerUnsignedOptional() {
+		return readIntegerUnsigned()-1;
 	}
 	
-	public final int readUnsignedInteger() {
+	public final int readIntegerUnsigned() {
 		if (position>limit-10) {
 			if (position>=limit) {
 				fetch(1);

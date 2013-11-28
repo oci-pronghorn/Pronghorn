@@ -312,10 +312,10 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte)0x80;
 	}
 	
-	public final void writeSignedLongNullable(long value) {
+	public final void writeLongSignedOptional(long value) {
 
 		if (value >= 0) {
-			writeSignedLongPos(value+1);
+			writeLongSignedPos(value+1);
 		} else {
 
 			if ((value << 1) == 0) {
@@ -334,15 +334,15 @@ public final class PrimitiveWriter {
 				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
 				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
 			} else {
-				writeSignedLongNeg(value);
+				writeLongSignedNeg(value);
 			}
 		}
 	}
 	
-	public final void writeSignedLong(long value) {
+	public final void writeLongSigned(long value) {
 
 		if (value >= 0) {
-			writeSignedLongPos(value);
+			writeLongSignedPos(value);
 		} else {
 
 			if ((value << 1) == 0) {
@@ -361,12 +361,12 @@ public final class PrimitiveWriter {
 				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
 				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
 			} else {
-				writeSignedLongNeg(value);
+				writeLongSignedNeg(value);
 			}
 		}
 	}
 
-	private final void writeSignedLongNeg(long value) {
+	private final void writeLongSignedNeg(long value) {
 		// using absolute value avoids tricky word length issues
 		long absv = -value;
 		
@@ -398,7 +398,7 @@ public final class PrimitiveWriter {
 								output.flush();
 							}
 						} else {
-							writeSignedLongNegSlow(absv, value);
+							writeLongSignedNegSlow(absv, value);
 							return;
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -413,13 +413,13 @@ public final class PrimitiveWriter {
 
 	}
 
-	private final void writeSignedLongNegSlow(long absv, long value) {
+	private final void writeLongSignedNegSlow(long absv, long value) {
 		if (absv <= 0x0000020000000000l) {
 			if (buffer.length - limit < 6) {
 				output.flush();
 			}
 		} else {
-			writeSignedLongNegSlow2(absv, value);
+			writeLongSignedNegSlow2(absv, value);
 		}
 
 		// used by all
@@ -431,7 +431,7 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
 
-	private void writeSignedLongNegSlow2(long absv, long value) {
+	private void writeLongSignedNegSlow2(long absv, long value) {
 		if (absv <= 0x0001000000000000l) {
 			if (buffer.length - limit < 7) {
 				output.flush();
@@ -452,7 +452,7 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value >> 42) & 0x7F));
 	}
 
-	private final void writeSignedLongPos(long value) {
+	private final void writeLongSignedPos(long value) {
 		
 		if (value < 0x0000000000000040l) {
 			if (buffer.length - limit < 1) {
@@ -482,7 +482,7 @@ public final class PrimitiveWriter {
 								output.flush();
 							}
 						} else {
-							writeSignedLongPosSlow(value);
+							writeLongSignedPosSlow(value);
 							return;
 						}
 						buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -496,7 +496,7 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
 
-	private final void writeSignedLongPosSlow(long value) {
+	private final void writeLongSignedPosSlow(long value) {
 		if (value < 0x0000020000000000l) {
 			if (buffer.length - limit < 6) {
 				output.flush();
@@ -538,11 +538,11 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
 
-	public final void writeUnsignedLongNullable(long value) {
-		writeUnsignedLong(value+1);
+	public final void writeLongUnsignedOptional(long value) {
+		writeLongUnsigned(value+1);
 	}
 	
-	public final void writeUnsignedLong(long value) {
+	public final void writeLongUnsigned(long value) {
 
 			if (value < 0x0000000000000080l) {
 				if (buffer.length - limit < 1) {
@@ -572,7 +572,7 @@ public final class PrimitiveWriter {
 									output.flush();
 								}
 							} else {
-								writeUnsignedLongSlow(value);
+								writeLongUnsignedSlow(value);
 								return;
 							}
 							buffer[limit++] = (byte)(((value >> 28) & 0x7F));
@@ -586,13 +586,13 @@ public final class PrimitiveWriter {
 			buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
 
-	private final void writeUnsignedLongSlow(long value) {
+	private final void writeLongUnsignedSlow(long value) {
 		if (value < 0x0000040000000000l) {
 			if (buffer.length - limit < 6) {
 				output.flush();
 			}
 		} else {
-			writeUnsignedLongSlow2(value);
+			writeLongUnsignedSlow2(value);
 		}
 
 		// used by all
@@ -605,7 +605,7 @@ public final class PrimitiveWriter {
 
 	}
 
-	private void writeUnsignedLongSlow2(long value) {
+	private void writeLongUnsignedSlow2(long value) {
 		if (value < 0x0002000000000000l) {
 			if (buffer.length - limit < 7) {
 				output.flush();
@@ -634,9 +634,9 @@ public final class PrimitiveWriter {
 	}
 	
 	
-	public final void writeSignedIntegerNullable(int value) {
+	public final void writeIntegerSignedOptional(int value) {
 		if (value >= 0) { 
-			writeSignedIntegerPos(value+1);
+			writeIntegerSignedPos(value+1);
 		} else {
 			if ((value << 1) == 0) {
 				if (limit > buffer.length - 5) {
@@ -649,14 +649,14 @@ public final class PrimitiveWriter {
 				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
 				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
 			} else {
-				writeSignedIntegerNeg(value);
+				writeIntegerSignedNeg(value);
 			}
 		}
 	}
 	
-	public final void writeSignedInteger(int value) {
+	public final void writeIntegerSigned(int value) {
 		if (value >= 0) { 
-			writeSignedIntegerPos(value);
+			writeIntegerSignedPos(value);
 		} else {
 			if ((value << 1) == 0) {
 				if (limit > buffer.length - 5) {
@@ -669,12 +669,12 @@ public final class PrimitiveWriter {
 				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
 				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
 			} else {
-				writeSignedIntegerNeg(value);
+				writeIntegerSignedNeg(value);
 			}
 		}
 	}
 
-	private void writeSignedIntegerNeg(int value) {
+	private void writeIntegerSignedNeg(int value) {
 	    // using absolute value avoids tricky word length issues
 	    int absv = -value;
 	    
@@ -715,7 +715,7 @@ public final class PrimitiveWriter {
 	    
 	}
 
-	private void writeSignedIntegerPos(int value) {
+	private void writeIntegerSignedPos(int value) {
 		
 		if (value < 0x00000040) {
 			if (buffer.length - limit < 1) {
@@ -752,11 +752,11 @@ public final class PrimitiveWriter {
 				
 	}
 	
-	public final void writeUnsignedIntegerNullable(int value) {
-		writeUnsignedInteger(value+1);
+	public final void writeIntegerUnsignedOptional(int value) {
+		writeIntegerUnsigned(value+1);
 	}
 	
-	public final void writeUnsignedInteger(int value) {
+	public final void writeIntegerUnsigned(int value) {
 		
 		if (value < 0x00000080) {
 			if (buffer.length - limit < 1) {
@@ -891,7 +891,7 @@ public final class PrimitiveWriter {
 		return safetyStackDepth>0;
 	}
 	
-	public final void writeASCII(CharSequence value) {
+	public final void writeTextASCII(CharSequence value) {
 		
 		int length = value.length();
 		if (0==length) {
@@ -917,7 +917,7 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte)0x80;
 	}
 
-	public void writeASCII(char[] value, int offset, int length) {
+	public void writeTextASCII(char[] value, int offset, int length) {
 
 		if (0==length) {
 			encodeZeroLengthASCII();
@@ -932,7 +932,7 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte)(0x80|value[offset]);
 	}
 
-	public void writeUTF(CharSequence value) {
+	public void writeTextUTF(CharSequence value) {
 		int len = value.length();
 		int c = 0;
 		while (c<len) {
@@ -940,7 +940,7 @@ public final class PrimitiveWriter {
 		}		
 	}
 
-	public void writeUTF(char[] value, int offset, int length) {
+	public void writeTextUTF(char[] value, int offset, int length) {
 		while (--length>=0) {
 			encodeSingleChar(value[offset++]);
 		}

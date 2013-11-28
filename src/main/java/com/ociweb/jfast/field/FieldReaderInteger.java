@@ -32,7 +32,7 @@ public class FieldReaderInteger {
 
 	public int readIntegerUnsigned(int token) {
 		//no need to set initValueFlags for field that can never be null
-		return intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger();
+		return intValues[token & INSTANCE_MASK] = reader.readIntegerUnsigned();
 	}
 
 	public int readIntegerUnsignedOptional(int token, int valueOfOptional) {
@@ -43,16 +43,16 @@ public class FieldReaderInteger {
 		} else {
 			int instance = token & INSTANCE_MASK;
 			intValueFlags[instance] = SET_VALUE;
-			return intValues[instance] = reader.readUnsignedIntegerNullable();
+			return intValues[instance] = reader.readIntegerUnsignedOptional();
 		}
 	}
 	
-	public int readSignedInteger(int token) {
+	public int readIntegerSigned(int token) {
 		//no need to set initValueFlags for field that can never be null
-		return intValues[token & INSTANCE_MASK] = reader.readSignedInteger();
+		return intValues[token & INSTANCE_MASK] = reader.readIntegerSigned();
 	}
 
-	public int readSignedIntegerOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedOptional(int token, int valueOfOptional) {
 		if (reader.peekNull()) {
 			reader.incPosition();
 			intValueFlags[token & INSTANCE_MASK] = SET_NULL;
@@ -60,7 +60,7 @@ public class FieldReaderInteger {
 		} else {
 			int instance = token & INSTANCE_MASK;
 			intValueFlags[instance] = SET_VALUE;
-			return intValues[instance] = reader.readSignedIntegerNullable();
+			return intValues[instance] = reader.readIntegerSignedOptional();
 		}
 	}
 
@@ -71,7 +71,7 @@ public class FieldReaderInteger {
 	public int readIntegerUnsignedCopy(int token) {
 		return (reader.popPMapBit()==0 ? 
 				 intValues[token & INSTANCE_MASK] : 
-			     (intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger()));
+			     (intValues[token & INSTANCE_MASK] = reader.readIntegerUnsigned()));
 	}
 
 	public int readIntegerUnsignedCopyOptional(int token, int valueOfOptional) {
@@ -90,7 +90,7 @@ public class FieldReaderInteger {
 			} else {
 				int instance = token & INSTANCE_MASK;
 				intValueFlags[instance] = SET_VALUE;
-				return intValues[instance] = reader.readUnsignedIntegerNullable();
+				return intValues[instance] = reader.readIntegerUnsignedOptional();
 			}
 		}
 	}
@@ -98,11 +98,11 @@ public class FieldReaderInteger {
 	public int readIntegerUnsignedDelta(int token) {
 		
 		int index = token & INSTANCE_MASK;
-		return (intValues[index] = intValues[index]+reader.readSignedInteger());
+		return (intValues[index] = intValues[index]+reader.readIntegerSigned());
 		
 	}
 	
-	public int readUnsignedIntegerOptionalDelta(int token, int valueOfOptional) {
+	public int readIntegerUnsignedDeltaOptional(int token, int valueOfOptional) {
 		
 		if (reader.popPMapBit()==0) {
 			if (intValueFlags[token & INSTANCE_MASK] < 0) {
@@ -118,7 +118,7 @@ public class FieldReaderInteger {
 			} else {
 				int instance = token & INSTANCE_MASK;
 				intValueFlags[instance] = SET_VALUE;
-				return (intValues[instance] = intValues[instance]+reader.readSignedInteger());
+				return (intValues[instance] = intValues[instance]+reader.readIntegerSigned());
 			}
 		}
 	}

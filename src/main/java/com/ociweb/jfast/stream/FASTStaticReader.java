@@ -155,7 +155,7 @@ public class FASTStaticReader implements FASTReader {
 	private int readIntegerSignedOptional(int token, int valueOfOptional) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				return readerInteger.readSignedIntegerOptional(token, valueOfOptional);
+				return readerInteger.readIntegerSignedOptional(token, valueOfOptional);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -164,7 +164,7 @@ public class FASTStaticReader implements FASTReader {
 	private int readIntegerSigned(int token) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				return readerInteger.readSignedInteger(token);
+				return readerInteger.readIntegerSigned(token);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -260,7 +260,7 @@ public class FASTStaticReader implements FASTReader {
 			return valueOfOptional;
 		}
 		
-		return reader.readSignedIntegerNullable();
+		return reader.readIntegerSignedOptional();
 		
 	}
 	
@@ -295,7 +295,7 @@ public class FASTStaticReader implements FASTReader {
 	private void readTextUTF8Optional(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				int length = reader.readUnsignedInteger()-1;
+				int length = reader.readIntegerUnsigned()-1;
 				reader.readTextUTF8(length, target);
 				break;
 			default:
@@ -306,7 +306,7 @@ public class FASTStaticReader implements FASTReader {
 	private void readTextUTF8(int token, Appendable target) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				int length = reader.readUnsignedInteger();
+				int length = reader.readIntegerUnsigned();
 				reader.readTextUTF8(length, target);
 				break;
 			default:
@@ -354,7 +354,7 @@ public class FASTStaticReader implements FASTReader {
 	private int readTextUTF8Optional(int token, char[] target, int offset) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				int length = reader.readUnsignedInteger()-1;
+				int length = reader.readIntegerUnsigned()-1;
 				reader.readTextUTF8(target,offset,length);
 				return length;
 			default:
@@ -365,7 +365,7 @@ public class FASTStaticReader implements FASTReader {
 	private int readTextUTF8(int token, char[] target, int offset) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				int length = reader.readUnsignedInteger();
+				int length = reader.readIntegerUnsigned();
 				reader.readTextUTF8(target,offset,length);
 				return length;
 			default:
