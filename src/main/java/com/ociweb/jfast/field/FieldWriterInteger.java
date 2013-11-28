@@ -41,6 +41,12 @@ public final class FieldWriterInteger {
 	 * 
 	 */
 	
+	public void writeIntegerUnsigned(int value, int token) {
+		int idx = token & INSTANCE_MASK;
+		intValues[idx] = value;//TODO: not sure if this feature will be needed.
+		writer.writeUnsignedInteger(value);
+	}
+	
 	public void writeIntegerUnsignedCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
@@ -133,17 +139,28 @@ public final class FieldWriterInteger {
 		writer.writeSignedInteger(value - intValues[idx]);
 	}
 	
-	public void writeIntegerUnsgnedOptionalDelta(int value, int token) {
+	
+	public void writeIntegerUnsignedOptionalDelta(int token) {
+		writer.writePMapBit(0);
+		writer.writeNull();
+	}
+
+	public void flush() {
+		writer.flush();
+	}
+
+	public void writeIntegerUnsignedIncrementOptional(int value, int token) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public void writeIntegerUnsignedOptionalDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		writer.writePMapBit(1);
 		writer.writeUnsignedIntegerNullable(value - intValues[idx]);
 		
 	}
-	
-	public void writeIntegerUnsignedOptionalDelta(int token) {
-		writer.writePMapBit(0);
-		writer.writeNull();
-	}
+
 	
 }

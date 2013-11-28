@@ -47,6 +47,7 @@ public final class PrimitiveReader {
 		pmapIdxStackDepth = 0;
 		pmapIdx = -1;
 		
+		
 	}
 	
 	public PrimitiveReader(FASTInput input) {

@@ -212,18 +212,19 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeUnsignedIntegerNullable(value);
 				break;
-//			case OperatorMask.Constant:
-//				writerInteger.writeIntegerUnsignedConstant(value, token);
-//				break;
+			case OperatorMask.Constant:
+				//can not be optional so down grade to required
+				writerInteger.writeIntegerUnsignedConstant(value, token);
+				break;
 			case OperatorMask.Copy:
 				writerInteger.writeIntegerUnsignedOptionalCopy(value, token);
 				break;
-//			case OperatorMask.Delta:
-//				writerInteger.writeIntegerUnsignedOptionalDelta(value, token);
-//				break;	
-//			case OperatorMask.Increment:
-//				writerInteger.writeIntegerUnsignedOptionalIncrement(value, token);
-//				break;
+			case OperatorMask.Delta:
+				writerInteger.writeIntegerUnsignedOptionalDelta(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
+				break;
 			case OperatorMask.Default:
 				writerInteger.writeIntegerUnsignedOptionalDefault(value, token);
 				break;
@@ -521,6 +522,12 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	public boolean isGroupOpen() {//TODO: is this feature really needed?
 		return writer.isPMapOpen();
+	}
+
+	
+	public void reset() {
+		//reset all values to unset
+		writerInteger.reset();
 	}
 
 

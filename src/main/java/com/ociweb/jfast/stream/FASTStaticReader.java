@@ -173,24 +173,37 @@ public class FASTStaticReader implements FASTReader {
 	private int readIntegerUnsignedOptional(int token, int valueOfOptional) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				return readerInteger.readUnsignedIntegerOptional(token,valueOfOptional);
+				return readerInteger.readIntegerUnsignedOptional(token,valueOfOptional);
 			case OperatorMask.Constant:
-				return readerInteger.readUnsignedIntegerConstant(token,valueOfOptional);
+				//down grade to non optional rather than fail
+				return readerInteger.readIntegerUnsignedConstant(token,valueOfOptional);
 			case OperatorMask.Copy:
-				return readerInteger.readUnsignedIntegerOptionalCopy(token,valueOfOptional);
+				return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
+			case OperatorMask.Default:
+				return readerInteger.readIntegerUnsignedDefaultOptional(token);
+			case OperatorMask.Delta:
+				return readerInteger.readIntegerUnsignedDeltaOptional(token);
+			case OperatorMask.Increment:
+				return readerInteger.readIntegerUnsignedIncrementOptional(token);	
 			default:
 				throw new UnsupportedOperationException();
 		}
 	}
 
-	private int readIntegerUnsigned(int token, int defaultValue) {
+	private int readIntegerUnsigned(int token, int valueOfOptional) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				return readerInteger.readUnsignedInteger(token);
+				return readerInteger.readIntegerUnsigned(token);
 			case OperatorMask.Constant:
-				return readerInteger.readUnsignedIntegerConstant(token, defaultValue);
+				return readerInteger.readIntegerUnsignedConstant(token, valueOfOptional);
 			case OperatorMask.Copy:
-				return readerInteger.readUnsignedIntegerCopy(token);
+				return readerInteger.readIntegerUnsignedCopy(token);
+			case OperatorMask.Default:
+				return readerInteger.readIntegerUnsignedDefault(token);
+			case OperatorMask.Delta:
+				return readerInteger.readIntegerUnsignedDelta(token);
+			case OperatorMask.Increment:
+				return readerInteger.readIntegerUnsignedIncrement(token);		
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -376,6 +389,12 @@ public class FASTStaticReader implements FASTReader {
 			default:
 				throw new UnsupportedOperationException();
 		}
+	}
+
+	public void reset() {
+		//clear all previous values to unset
+		readerInteger.reset();
+		
 	}
 
 

@@ -30,12 +30,12 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readUnsignedInteger(int token) {
+	public int readIntegerUnsigned(int token) {
 		//no need to set initValueFlags for field that can never be null
 		return intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger();
 	}
 
-	public int readUnsignedIntegerOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedOptional(int token, int valueOfOptional) {
 		if (reader.peekNull()) {
 			reader.incPosition();
 			intValueFlags[token & INSTANCE_MASK] = SET_NULL;
@@ -64,17 +64,17 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readUnsignedIntegerConstant(int token, int valueOfOptional) {
+	public int readIntegerUnsignedConstant(int token, int valueOfOptional) {
 		return (reader.popPMapBit()==0 ? valueOfOptional : intValues[token & INSTANCE_MASK]);
 	}
 
-	public int readUnsignedIntegerCopy(int token) {
+	public int readIntegerUnsignedCopy(int token) {
 		return (reader.popPMapBit()==0 ? 
 				 intValues[token & INSTANCE_MASK] : 
 			     (intValues[token & INSTANCE_MASK] = reader.readUnsignedInteger()));
 	}
 
-	public int readUnsignedIntegerOptionalCopy(int token, int valueOfOptional) {
+	public int readIntegerUnsignedCopyOptional(int token, int valueOfOptional) {
 		
 		if (reader.popPMapBit()==0) {
 			if (intValueFlags[token & INSTANCE_MASK] < 0) {
@@ -95,7 +95,7 @@ public class FieldReaderInteger {
 		}
 	}
 	
-	public int readUnsignedIntegerDelta(int token) {
+	public int readIntegerUnsignedDelta(int token) {
 		
 		int index = token & INSTANCE_MASK;
 		return (intValues[index] = intValues[index]+reader.readSignedInteger());
@@ -121,6 +121,31 @@ public class FieldReaderInteger {
 				return (intValues[instance] = intValues[instance]+reader.readSignedInteger());
 			}
 		}
+	}
+
+	public int readIntegerUnsignedDefault(int token) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int readIntegerUnsignedIncrement(int token) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int readIntegerUnsignedDefaultOptional(int token) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int readIntegerUnsignedIncrementOptional(int token) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int readIntegerUnsignedDeltaOptional(int token) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 	
 	

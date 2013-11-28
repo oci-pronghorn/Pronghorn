@@ -12,7 +12,7 @@ public abstract class BaseStreamingTest {
 
 	
 	private final float PCT_LIMIT = 40; //if avg is 40 pct above min then fail
-	private final float MAX_X_LIMIT = 4f;//if max is 4x larger than avg then fail
+	private final float MAX_X_LIMIT = 10f;//if max is 4x larger than avg then fail
 	
 	
 	protected long emptyLoop(int iterations, int fields, int fieldsPerGroup) {
@@ -78,7 +78,7 @@ public abstract class BaseStreamingTest {
 	}
 
 	protected void printResults(int sampleSize, long maxOverhead, long totalOverhead, long minOverhead, long maxDuration, long totalDuration,
-			long minDuration, long byteCount, String label) {
+			long minDuration, long byteCount, String label, long totalWritten) {
 		
 				System.out.println("---------"+label);
 				float avgOverhead = totalOverhead/(float)sampleSize;
@@ -90,8 +90,9 @@ public abstract class BaseStreamingTest {
 				float perByteAvg = (avgDuration-avgOverhead)/(float)byteCount;
 				float perByteMax = (maxDuration-maxOverhead)/(float)byteCount;
 				float pctAvgVsMin = 100f*((perByteAvg/perByteMin)-1);
-				String msg = "PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns";
-				System.out.println(msg);
+				String msg = "PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns ";
+				String writtenBytes = "  finished after:"+totalWritten+" bytes";
+				System.out.println(msg+writtenBytes);
 
 				assertTrue("Avg is too large vs min:"+pctAvgVsMin+" "+msg,pctAvgVsMin<PCT_LIMIT);
 				assertTrue("Max is too large vs avg: "+msg,perByteMax < (MAX_X_LIMIT*perByteAvg));
@@ -183,9 +184,6 @@ public abstract class BaseStreamingTest {
 														fr);
 					
 						if (w<sampleSize) {
-							if (0==totalDuration) {
-								System.out.println("finished warmup...");
-							}
 							
 							maxOverhead = Math.max(overhead, maxOverhead);
 							totalOverhead += overhead;
@@ -196,15 +194,13 @@ public abstract class BaseStreamingTest {
 							minDuration = Math.min(duration, minDuration);
 							
 						}	
-						
 					}
 					
 					
-					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
-			                maxDuration, totalDuration, minDuration,
-			                byteCount, label);
 				} finally {
-					System.out.println("finished test after:"+pr.totalRead()+" bytes");
+					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
+							maxDuration, totalDuration, minDuration,
+							byteCount, label, pr.totalRead());
 				}
 			}
 
@@ -252,7 +248,6 @@ public abstract class BaseStreamingTest {
 						if (w<sampleSize) {
 							if (0==totalDuration) {
 								byteCount = pw.totalWritten();
-								System.out.println("finished warmup...  wrote:"+byteCount);
 							}
 							
 							maxOverhead = Math.max(overhead, maxOverhead);
@@ -267,11 +262,10 @@ public abstract class BaseStreamingTest {
 					}
 					
 			
-					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
-							                 maxDuration, totalDuration, minDuration,
-							                 byteCount, writeLabel);
 				} finally {
-					System.out.println("finished test after:"+pw.totalWritten()+" bytes");
+					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
+							maxDuration, totalDuration, minDuration,
+							byteCount, writeLabel, pw.totalWritten());
 				}
 				return byteCount;
 			}

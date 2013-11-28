@@ -32,4 +32,9 @@ public class FASTOutputByteBuffer implements FASTOutput {
 		}
 	}
 
+	public void reset() {
+		byteBuffer.clear();
+		
+	}
+
 }

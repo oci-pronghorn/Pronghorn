@@ -23,25 +23,43 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 	
 	@Test
-	public void integerUnsignedNoOpTest() {
+	public void integerUnsignedTest() {
 		int[] types = new int[] {
                   TypeMask.IntegerUnSigned,
 				  TypeMask.IntegerUnSignedOptional,
 				  };
-		tester(types,"UnsignedInteger");
+		
+		int[] operators = new int[] {
+                OperatorMask.None, 
+                OperatorMask.Copy,
+				 // OperatorMask.Constant, //can not be optional must be in different test
+				 // OperatorMask.Delta,
+				 // OperatorMask.Default,
+               // OperatorMask.Increment,
+                };
+		tester(types, operators, "UnsignedInteger");
 	}
 	
 	@Test
-	public void integerSignedNoOpTest() {
+	public void integerSignedTest() {
 		int[] types = new int[] {
                   TypeMask.IntegerSigned,
 				  TypeMask.IntegerSignedOptional,
 				  };
-		tester(types,"SignedInteger");
+		
+		int[] operators = new int[] {
+                OperatorMask.None, 
+                //  OperatorMask.Copy,
+				 // OperatorMask.Constant,
+				 // OperatorMask.Delta,
+				 // OperatorMask.Default,
+               // OperatorMask.Increment,
+                };
+		tester(types, operators, "SignedInteger");
 	}
 	
 	
-	private void tester(int[] types, String label) {	
+	private void tester(int[] types, int[] operators, String label) {	
 		
 		int operationIters = 7;
 		int warmup         = 50;
@@ -51,17 +69,6 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-
-		
-		int[] operators = new int[] {
-				                      OperatorMask.None, 
-									 // OperatorMask.Constant,
-									//  OperatorMask.Copy,
-									 // OperatorMask.Delta,
-									 // OperatorMask.Default,
-				                     // OperatorMask.Increment,
-				                      };
 		
 		
 		int[] tokenLookup = buildTokens(fields, types, operators);
@@ -175,54 +182,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		}
 	}
 
-	public void caliperRun() {
-		
-		int operationIters = fields;
-		int[] types = new int[] {
-				  TypeMask.IntegerUnSigned,
-				  TypeMask.IntegerUnSignedOptional,
-				  };
-		
-		int[] operators = new int[] {
-                OperatorMask.None, 
-				 // OperatorMask.Constant,
-				//  OperatorMask.Copy,
-				 // OperatorMask.Delta,
-				 // OperatorMask.Default,
-               // OperatorMask.Increment,
-                };
 
-		int[] tokenLookup = buildTokens(fields, types, operators);
-		
-		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
-		
-		byte[] writeBuffer = new byte[streamByteSize];
-		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-		FASTOutputByteArray output = new FASTOutputByteArray(writeBuffer);
-		PrimitiveWriter pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
-		FASTStaticWriter fw = new FASTStaticWriter(pw, fields, tokenLookup);
-		
-		FASTInputByteArray input = new FASTInputByteArray(writeBuffer);
-		PrimitiveReader pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
-		FASTStaticReader fr = new FASTStaticReader(pr, fields, tokenLookup);
-				
-		writeReadTest(fields, fieldsPerGroup, operationIters, tokenLookup, output, pw, fw, input, pr, fr);
-		
-	}
-
-	protected void writeReadTest(int fields, int fieldsPerGroup, int operationIters, int[] tokenLookup, FASTOutputByteArray output, PrimitiveWriter pw,
-			FASTStaticWriter fw, FASTInputByteArray input, PrimitiveReader pr, FASTStaticReader fr) {
-		output.reset();
-		pw.reset();
-		input.reset();
-		pr.reset();
-		
-		writeData(fields, fieldsPerGroup, operationIters, tokenLookup, fw, groupToken);
-		readData(fields, fieldsPerGroup, operationIters, tokenLookup, fr);
-		//System.err.println("wrote/read size:"+pr.totalRead());
-	}
-	
 
 	int[] buildTestDataUnsigned(int count) {
 		

@@ -34,4 +34,8 @@ public class FASTInputByteBuffer implements FASTInput {
 	public void init(DataTransfer dataTransfer) {
 		targetBuffer = dataTransfer.wrap();
 	}
+
+	public void reset() {
+		byteBuffer.flip();
+	}
 }
