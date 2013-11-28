@@ -6,14 +6,21 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
 public class IntegerStreamingTest extends BaseStreamingTest {
 
-	final int fields         = 30000;
+	final int fields         = 1000;
 	final int[] testData    = buildTestDataUnsigned(fields);
+	final int fieldsPerGroup = 10;
+	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
+	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 	
 	@Test
 	public void integerUnsignedNoOpTest() {
@@ -36,8 +43,6 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	
 	private void tester(int[] types, String label) {	
 		
-		int fieldsPerGroup = 10;
-		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
 		int warmup         = 50;
 		int sampleSize     = 1000;
@@ -82,15 +87,22 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, FASTStaticWriter fw) {
+		
 		long start = System.nanoTime();
-		int i = operationIters;
-		if (i<3) {
-			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
+		if (operationIters<3) {
+			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
+				
+		writeData(fields, fieldsPerGroup, operationIters, tokenLookup, fw, groupToken);
+				
+		return System.nanoTime() - start;
+	}
+
+	protected void writeData(int fields, int fieldsPerGroup, int operationIters,
+								int[] tokenLookup,
+								FASTStaticWriter fw, int groupToken) {
+		int i = operationIters;
 		int g = fieldsPerGroup;
-		
-		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
-		
 		fw.openGroup(groupToken);
 		
 		while (--i>=0) {
@@ -114,20 +126,27 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		}
 		fw.flush();
 		fw.flush();
+	}
+
+	@Override
+	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
+			                      int operationIters, int[] tokenLookup,
+								  FASTStaticReader fr) {
+		long start = System.nanoTime();
+		if (operationIters<3) {
+			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
+		}
+			
+		readData(fields, fieldsPerGroup, operationIters, tokenLookup, fr);
+			
 		long duration = System.nanoTime() - start;
 		return duration;
 	}
 
-	@Override
-	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-								FASTStaticReader fr) {
-		long start = System.nanoTime();
+	protected void readData(int fields, int fieldsPerGroup, int operationIters,
+			                  int[] tokenLookup, FASTStaticReader fr) {
 		int i = operationIters;
-		if (i<3) {
-			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
-		}
 		int g = fieldsPerGroup;
-		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 		
 		fr.openGroup(groupToken);
 		
@@ -148,20 +167,64 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 						assertEquals(testData[f], value);
 					}
 				}
-
-			
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			
 		}
 		if (fr.isGroupOpen()) {
 			fr.closeGroup();
 		}
-		long duration = System.nanoTime() - start;
-		return duration;
 	}
 
+	public void caliperRun() {
+		
+		int operationIters = fields;
+		int[] types = new int[] {
+				  TypeMask.IntegerUnSigned,
+				  TypeMask.IntegerUnSignedOptional,
+				  };
+		
+		int[] operators = new int[] {
+                OperatorMask.None, 
+				 // OperatorMask.Constant,
+				//  OperatorMask.Copy,
+				 // OperatorMask.Delta,
+				 // OperatorMask.Default,
+               // OperatorMask.Increment,
+                };
 
-	private int[] buildTestDataUnsigned(int count) {
+		int[] tokenLookup = buildTokens(fields, types, operators);
+		
+		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
+		
+		byte[] writeBuffer = new byte[streamByteSize];
+		int maxGroupCount = operationIters*fields/fieldsPerGroup;
+		
+		FASTOutputByteArray output = new FASTOutputByteArray(writeBuffer);
+		PrimitiveWriter pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+		FASTStaticWriter fw = new FASTStaticWriter(pw, fields, tokenLookup);
+		
+		FASTInputByteArray input = new FASTInputByteArray(writeBuffer);
+		PrimitiveReader pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
+		FASTStaticReader fr = new FASTStaticReader(pr, fields, tokenLookup);
+				
+		writeReadTest(fields, fieldsPerGroup, operationIters, tokenLookup, output, pw, fw, input, pr, fr);
+		
+	}
+
+	protected void writeReadTest(int fields, int fieldsPerGroup, int operationIters, int[] tokenLookup, FASTOutputByteArray output, PrimitiveWriter pw,
+			FASTStaticWriter fw, FASTInputByteArray input, PrimitiveReader pr, FASTStaticReader fr) {
+		output.reset();
+		pw.reset();
+		input.reset();
+		pr.reset();
+		
+		writeData(fields, fieldsPerGroup, operationIters, tokenLookup, fw, groupToken);
+		readData(fields, fieldsPerGroup, operationIters, tokenLookup, fr);
+		//System.err.println("wrote/read size:"+pr.totalRead());
+	}
+	
+
+	int[] buildTestDataUnsigned(int count) {
 		
 		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
 		int s = seedData.length;

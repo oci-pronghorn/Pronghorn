@@ -98,7 +98,7 @@ public abstract class BaseStreamingTest {
 								
 			}
 
-	protected int buildGroupToken(int maxPMapBytes, int repeat) {
+	public int buildGroupToken(int maxPMapBytes, int repeat) {
 		
 		return 	0x80000000 |
 				maxPMapBytes<<20 |
@@ -213,8 +213,7 @@ public abstract class BaseStreamingTest {
 			FASTStaticWriter fw);
 
 	protected long performanceWriteTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
-			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, 
-			byte[] writeBuffer
+			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
 		
@@ -277,4 +276,6 @@ public abstract class BaseStreamingTest {
 				return byteCount;
 			}
 
+	
+	
 }
