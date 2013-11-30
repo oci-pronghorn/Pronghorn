@@ -49,38 +49,12 @@ public abstract class BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 
-	protected int[] buildTokens(int count, int[] types, int[] operators) {
-		int[] lookup = new int[count];
-		int typeIdx = types.length-1;
-		int opsIdx = operators.length-1;
-		while (--count>=0) {
-			//high bit set
-			//  7 bit type (must match method)
-			//  4 bit operation (must match method)
-			// 20 bit instance (MUST be lowest for easy mask and frequent use)
-			
-			lookup[count] = 0x80000000 |  
-					       (types[typeIdx]<<24) |
-					       (operators[opsIdx]<<20) |
-					       count;
-					
-			//find next pattern to be used, rotating over them all.
-			
-			if (--typeIdx<0) {
-				if (--opsIdx<0) {
-					opsIdx = operators.length-1;
-				}
-				typeIdx = types.length-1;
-			}
-		}
-		return lookup;
-		
-	}
 
 	protected void printResults(int sampleSize, long maxOverhead, long totalOverhead, long minOverhead, long maxDuration, long totalDuration,
 			long minDuration, long byteCount, String label, long totalWritten) {
 		
-				System.out.println("---------"+label);
+				assertTrue(label+" did not write any bytes "+byteCount+" vs "+totalWritten,byteCount>0);
+		
 				float avgOverhead = totalOverhead/(float)sampleSize;
 				//System.out.println("Overhead Min:"+minOverhead+" Max:"+maxOverhead+" Avg:"+avgOverhead);
 				float avgDuration = totalDuration/(float)sampleSize;
@@ -90,12 +64,14 @@ public abstract class BaseStreamingTest {
 				float perByteAvg = (avgDuration-avgOverhead)/(float)byteCount;
 				float perByteMax = (maxDuration-maxOverhead)/(float)byteCount;
 				float pctAvgVsMin = 100f*((perByteAvg/perByteMin)-1);
-				String msg = "PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns ";
+				String msg = "  PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns ";
 				String writtenBytes = "  finished after:"+totalWritten+" bytes";
-				System.out.println(msg+writtenBytes);
+				System.out.println(label+msg+writtenBytes);
 
-				assertTrue("Avg is too large vs min:"+pctAvgVsMin+" "+msg,pctAvgVsMin<PCT_LIMIT);
-				assertTrue("Max is too large vs avg: "+msg,perByteMax < (MAX_X_LIMIT*perByteAvg));
+				if (!Double.isNaN(pctAvgVsMin)) {
+					assertTrue("Avg is too large vs min:"+pctAvgVsMin+" "+msg,pctAvgVsMin<PCT_LIMIT);
+				}
+				assertTrue("Max is too large vs avg: "+msg,perByteMax <= (MAX_X_LIMIT*perByteAvg));
 								
 			}
 

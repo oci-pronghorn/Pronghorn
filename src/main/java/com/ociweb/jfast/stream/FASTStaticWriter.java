@@ -61,11 +61,21 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void write(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeNull();
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerUnsignedIncrementOptional(token);
+				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerUnsignedCopyOptional(token);
+				break;
+			case OperatorMask.Default:	
+				writerInteger.writeIntegerUnsignedDefaultOptional(token);
+				break;
+			case OperatorMask.None: //no pmap
+			case OperatorMask.Delta:				
+				writerInteger.writeIntegerNull(token);
 				break;
 			default:
-				//TODO: other operators may have different pmap assignments for null
+				//constant can not be optional and will throw
 				throw new UnsupportedOperationException();
 		}
 	}
@@ -145,10 +155,10 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void write(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.IntegerUnSigned:
+			case TypeMask.IntegerUnsigned:
 				acceptIntegerUnsigned(token, value);
 				break;
-			case TypeMask.IntegerUnSignedOptional:
+			case TypeMask.IntegerUnsignedOptional:
 				acceptIntegerUnsignedOptional(token, value);
 				break;
 			case TypeMask.IntegerSigned:
@@ -217,7 +227,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				writerInteger.writeIntegerUnsignedConstant(value, token);
 				break;
 			case OperatorMask.Copy:
-				writerInteger.writeIntegerUnsignedOptionalCopy(value, token);
+				writerInteger.writeIntegerUnsignedCopyOptional(value, token);
 				break;
 			case OperatorMask.Delta:
 				writerInteger.writeIntegerUnsignedDeltaOptional(value, token);

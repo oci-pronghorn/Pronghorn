@@ -38,6 +38,7 @@ public final class PrimitiveWriter {
 	private int limit;
 	
 	//TODO: due to the complexity here a stack of longs may work much better!
+	//private final long[] safetyStack;
 	private final int[] safetyStackPosition; //location where the last byte was written to the pmap as bits are written
 	private final int[] safetyStackFlushIdx; //location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
 	private final byte[] safetyStackTemp; //working bit position 1-7 for next/last bit to be written.
@@ -46,10 +47,9 @@ public final class PrimitiveWriter {
 	private byte pMapByteAccum = 0;
 	
 	
-	//these 3 fields are probably their own mini class
-	private final int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
-	private int   flushSkipsIdxLimit; //where we add the new one, end of the list
-	private int   flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
+	public int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	public int   flushSkipsIdxLimit; //where we add the new one, end of the list
+	public int   flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
 
 	
 	private long totalWritten;
@@ -77,13 +77,13 @@ public final class PrimitiveWriter {
 		this.limit = 0;
 		this.minimizeLatency = minimizeLatency;
 		//NOTE: may be able to optimize this so these 3 are shorter
-		safetyStackPosition = new int[maxGroupCount];
-		safetyStackFlushIdx = new int[maxGroupCount];
-		safetyStackTemp = new byte[maxGroupCount];
-		//max total groups
-		flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
-		
+		//this.safetyStack = new long[maxGroupCount];
+		this.safetyStackPosition = new int[maxGroupCount];
+		this.safetyStackFlushIdx = new int[maxGroupCount];
+		this.safetyStackTemp = new byte[maxGroupCount];
+				
 		this.output = output;
+		this.flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
 		
 		output.init(new DataTransfer(this));
 	}
@@ -98,6 +98,7 @@ public final class PrimitiveWriter {
 		this.pMapByteAccum = 0;
 		this.flushSkipsIdxLimit = 0;
 		this.flushSkipsIdxPos = 0;
+
 		this.totalWritten = 0;
 		
 	}

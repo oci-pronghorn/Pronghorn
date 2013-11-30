@@ -5,8 +5,8 @@ public final class TypeMask {
 	//need 6 bits total for type mask
 	//each group of "similar" types must stay together as a block.
 	
-	public final static int IntegerUnSigned			= 0x00;//000000   even
-	public final static int IntegerUnSignedOptional	= 0x01;//000001   odd for optional
+	public final static int IntegerUnsigned			= 0x00;//000000   even
+	public final static int IntegerUnsignedOptional	= 0x01;//000001   odd for optional
 	public final static int IntegerSigned           	= 0x02;//000010   even
 	public final static int IntegerSignedOptional		= 0x03;//000011   odd
 	

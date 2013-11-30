@@ -6,11 +6,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
@@ -21,22 +17,31 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+
+	boolean sendNulls = true;
+	
+	//NO PMAP
+	//NONE, DELTA, and CONSTANT(non-optional)
+	
+	//Constant can never be optional but can have pmap.
+	
 	
 	@Test
 	public void integerUnsignedTest() {
 		int[] types = new int[] {
-                  TypeMask.IntegerUnSigned,
-				  TypeMask.IntegerUnSignedOptional,
+                  TypeMask.IntegerUnsigned,
+		    	  TypeMask.IntegerUnsignedOptional,
 				  };
 		
 		int[] operators = new int[] {
-                OperatorMask.None, 
+                OperatorMask.None,  //no need for pmap
+                OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-				 // OperatorMask.Constant, //can not be optional must be in different test
-				 // OperatorMask.Delta,
-				 // OperatorMask.Default,
-               // OperatorMask.Increment,
+                OperatorMask.Increment,
+                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Default
                 };
+				
 		tester(types, operators, "UnsignedInteger");
 	}
 	
@@ -64,14 +69,14 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		int operationIters = 7;
 		int warmup         = 50;
 		int sampleSize     = 1000;
-		String readLabel = "Read "+label+" NoOpp in groups of "+fieldsPerGroup;
-		String writeLabel = "Write "+label+" NoOpp in groups of "+fieldsPerGroup;
+		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
+		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
 		
-		int[] tokenLookup = buildTokens(fields, types, operators);
+		int[] tokenLookup = HomogeniousRecordWriteReadBenchmark.buildTokens(fields, types, operators);
 		
 		byte[] writeBuffer = new byte[streamByteSize];
 
@@ -104,6 +109,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				
 		return System.nanoTime() - start;
 	}
+	
 
 	protected void writeData(int fields, int fieldsPerGroup, int operationIters,
 								int[] tokenLookup,
@@ -119,7 +125,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (((f&0xF)==0) && (0!=(token&0x1000000))) {
+				if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
 					fw.write(token);
 				} else {
 					fw.write(token, testData[f]); 
@@ -163,7 +169,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				if ((f&0xF)==0 && (0!=(token&0x1000000))) {
+				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
 		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 					if (Integer.MIN_VALUE!=value) {
 						assertEquals(Integer.MIN_VALUE, value);

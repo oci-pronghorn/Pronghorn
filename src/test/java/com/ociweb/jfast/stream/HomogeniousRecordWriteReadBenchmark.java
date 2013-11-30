@@ -3,17 +3,12 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 
 import com.google.caliper.Benchmark;
-import com.google.caliper.runner.CaliperMain;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
-import com.ociweb.jfast.stream.FASTStaticReader;
-import com.ociweb.jfast.stream.FASTStaticWriter;
 
 public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 
@@ -43,8 +38,8 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	
 	//list all types
 	static final int[] types = new int[] {
-			  TypeMask.IntegerUnSigned,
-			  TypeMask.IntegerUnSignedOptional,
+			  TypeMask.IntegerUnsigned,
+			  TypeMask.IntegerUnsignedOptional,
 		  };
 	
 	//list all operators
@@ -89,16 +84,35 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 			lookup[count] = buildToken(tokenType, tokenOpp, count);
 					
 			//find next pattern to be used, rotating over them all.
-			
+			do {
 			if (--typeIdx<0) {
 				if (--opsIdx<0) {
 					opsIdx = operators.length-1;
 				}
 				typeIdx = types.length-1;
 			}
+			} while (isInValidCombo(types[typeIdx],operators[opsIdx]));
 		}
 		return lookup;
 		
+	}
+
+	private static boolean isInValidCombo(int type, int operator) {
+		boolean isOptional = 1==(type&0x01);
+		
+		if (OperatorMask.Constant==operator & isOptional) {
+			//constant operator can never be of type optional
+			return true;
+		}
+		
+		if (type>=0 && type<=TypeMask.LongSignedOptional) {
+			//integer/long types do not support tail
+			if (OperatorMask.Tail==operator) {
+				return true;
+			}
+		}		
+		
+		return false;
 	}
 
 	protected static int buildToken(int tokenType, int tokenOpp, int count) {
@@ -111,7 +125,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedNone(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSigned,
+							TypeMask.IntegerUnsigned,
 							OperatorMask.None, 
 							0));
 	}
@@ -119,7 +133,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedNoneOptional(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSignedOptional,
+							TypeMask.IntegerUnsignedOptional,
 							OperatorMask.None, 
 							0));
 	}
@@ -128,7 +142,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedCopy(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSigned,
+							TypeMask.IntegerUnsigned,
 						    OperatorMask.Copy, 
 						     0));
 	}
@@ -136,7 +150,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedCopyOptional(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSignedOptional,
+							TypeMask.IntegerUnsignedOptional,
 						    OperatorMask.Copy, 
 						     0));
 	}
@@ -144,7 +158,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedConstant(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(//special because there is no optional constant
-							TypeMask.IntegerUnSigned, //constant operator can not be optional
+							TypeMask.IntegerUnsigned, //constant operator can not be optional
 						    OperatorMask.Constant, 
 						     0));
 	}
@@ -152,7 +166,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedDefault(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSigned, 
+							TypeMask.IntegerUnsigned, 
 						    OperatorMask.Default, 
 						     0));
 	}
@@ -160,31 +174,32 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedDefaultOptional(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSignedOptional, 
+							TypeMask.IntegerUnsignedOptional, 
 						    OperatorMask.Default, 
-						     0));
-	}
-	
-	public int timeStaticIntegerUnsignedDeltaOptional(int reps) {
-		return staticWriteReadIntegerGroup(reps, 
-				buildToken(
-							TypeMask.IntegerUnSignedOptional, 
-						    OperatorMask.Delta, 
 						     0));
 	}
 	
 	public int timeStaticIntegerUnsignedDelta(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSigned, 
+						TypeMask.IntegerUnsigned, 
+						OperatorMask.Delta, 
+						0));
+	}
+
+	public int timeStaticIntegerUnsignedDeltaOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerUnsignedOptional, 
 						    OperatorMask.Delta, 
 						     0));
 	}
 	
+	
 	public int timeStaticIntegerUnsignedIncrement(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSigned, 
+							TypeMask.IntegerUnsigned, 
 						    OperatorMask.Increment, 
 						     0));
 	}
@@ -192,7 +207,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	public int timeStaticIntegerUnsignedIncrementOptional(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
-							TypeMask.IntegerUnSignedOptional, 
+							TypeMask.IntegerUnsignedOptional, 
 						    OperatorMask.Increment, 
 						     0));
 	}

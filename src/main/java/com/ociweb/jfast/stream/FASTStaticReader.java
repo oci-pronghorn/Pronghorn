@@ -42,10 +42,10 @@ public class FASTStaticReader implements FASTReader {
 		//TODO: must also detect null.
 		
 	    switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.IntegerUnSigned:
+			case TypeMask.IntegerUnsigned:
 				readIntegerUnsigned(token,0);
 				break;
-			case TypeMask.IntegerUnSignedOptional:
+			case TypeMask.IntegerUnsignedOptional:
 				readIntegerUnsignedOptional(token,0);
 				break;
 			case TypeMask.IntegerSigned:
@@ -138,9 +138,9 @@ public class FASTStaticReader implements FASTReader {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.IntegerUnSigned:
+			case TypeMask.IntegerUnsigned:
 				return readIntegerUnsigned(token, valueOfOptional);
-			case TypeMask.IntegerUnSignedOptional:
+			case TypeMask.IntegerUnsignedOptional:
 				return readIntegerUnsignedOptional(token, valueOfOptional);
 			case TypeMask.IntegerSigned:
 				return readIntegerSigned(token);
@@ -180,11 +180,11 @@ public class FASTStaticReader implements FASTReader {
 			case OperatorMask.Copy:
 				return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
 			case OperatorMask.Default:
-				return readerInteger.readIntegerUnsignedDefaultOptional(token);
+				return readerInteger.readIntegerUnsignedDefaultOptional(token,valueOfOptional);
 			case OperatorMask.Delta:
-				return readerInteger.readIntegerUnsignedDeltaOptional(token);
+				return readerInteger.readIntegerUnsignedDeltaOptional(token,valueOfOptional);
 			case OperatorMask.Increment:
-				return readerInteger.readIntegerUnsignedIncrementOptional(token);	
+				return readerInteger.readIntegerUnsignedIncrementOptional(token,valueOfOptional);	
 			default:
 				throw new UnsupportedOperationException();
 		}

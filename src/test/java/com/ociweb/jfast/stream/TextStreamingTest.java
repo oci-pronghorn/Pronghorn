@@ -59,7 +59,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 				                      };
 		
 		
-		int[] tokenLookup = buildTokens(fields, types, operators);
+		int[] tokenLookup = HomogeniousRecordWriteReadBenchmark.buildTokens(fields, types, operators);
 		byte[] writeBuffer = new byte[streamByteSize];
 		
 

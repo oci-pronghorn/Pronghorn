@@ -59,15 +59,14 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerUnsignedOptionalCopy(int value, int token) {
+	public void writeIntegerUnsignedCopyOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == intValues[idx] && intValueFlags[idx]>0) {//not null and matches
 			writer.writePMapBit(0);
 		} else {
 			writer.writePMapBit(1);
-			writer.writeIntegerUnsignedOptional(value);
-			intValues[idx] = value;
+			writer.writeIntegerUnsignedOptional(intValues[idx] = value);
 			intValueFlags[idx] = SET_VALUE;
 		}
 	}
@@ -86,7 +85,15 @@ public final class FieldWriterInteger {
 	
 	public void writeIntegerUnsignedConstant(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		writer.writeIntegerUnsigned(intValues[idx]);
+		
+		//value must equal constant
+		if (intValueFlags[idx]>0 && value==intValues[idx] ) {
+			writer.writePMapBit(0);//use constant value
+		} else {
+			writer.writePMapBit(1);
+			writer.writeIntegerUnsigned(intValues[idx]=value);
+		}	
+		
 	}
 	
 	public void writeIntegerUnsignedDefault(int value, int token) {
@@ -134,32 +141,72 @@ public final class FieldWriterInteger {
 		}
 	}
 	
+
+	public void writeIntegerUnsignedIncrementOptional(int value, int token) {
+
+		int idx = token & INSTANCE_MASK;
+		int old = intValues[idx];
+
+		if (intValueFlags[idx]>0 && value == old+1) {//not null and matches
+			writer.writePMapBit(0);
+			intValues[idx] = old+1;
+			//use the last value plus 1
+		} else {
+			writer.writePMapBit(1);
+			writer.writeIntegerUnsignedOptional(value);
+			intValues[idx] = value;
+			intValueFlags[idx] = SET_VALUE;
+		}
+	}
+	
 	public void writeIntegerUnsignedDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeIntegerSigned(value - intValues[idx]);
+		intValues[idx] = value;		
+		//no need to set because this is never optional
+		//intValueFlags[idx] = SET_VALUE;
 	}
 	
-	
-	public void writeIntegerUnsignedDeltaOptional(int token) {
-		writer.writePMapBit(0);
-		writer.writeNull();
-	}
+
 
 	public void flush() {
 		writer.flush();
 	}
 
-	public void writeIntegerUnsignedIncrementOptional(int value, int token) {
-		// TODO Auto-generated method stub
-		
-	}
 
 	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
+		writer.writeLongSignedOptional(value - intValues[idx]);
+		intValueFlags[idx] = SET_VALUE;
+		intValues[idx] = value;	
+	}
 
-		writer.writePMapBit(1);
-		writer.writeIntegerUnsignedOptional(value - intValues[idx]);
+	public void writeIntegerNull(int token) {
+		int idx = token & INSTANCE_MASK;
+		writer.writeNull();
+		intValueFlags[idx] = SET_NULL;
 		
+	}
+	
+	public void writeIntegerUnsignedIncrementOptional(int token) {
+			int idx = token & INSTANCE_MASK;
+			writer.writePMapBit(1);
+			writer.writeNull();
+			intValueFlags[idx] = SET_NULL;
+	}
+
+	public void writeIntegerUnsignedCopyOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		writer.writePMapBit(1);
+		writer.writeNull();
+		intValueFlags[idx] = SET_NULL;
+	}
+
+	public void writeIntegerUnsignedDefaultOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		writer.writePMapBit(1);
+		writer.writeNull();
+		intValueFlags[idx] = SET_NULL;
 	}
 
 	
