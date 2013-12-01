@@ -2,27 +2,27 @@ package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public final class FieldWriterInteger {
+public final class FieldWriterLong {
 
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
 	
-	private final static byte UNSET     = 0;  //use == 0 to detect (and/or default value)
+	private final static byte UNSET     = 0;  //use == 0 to detect (default value)
 	private final static byte SET_NULL  = -1; //use < 0 to detect
 	private final static byte SET_VALUE = 1;  //use > 0 to detect
 	
 	private final PrimitiveWriter writer;
 	
-	private final int[]  lastValue;
+	private final long[] lastValue;
 	private final byte[] lastValueFlag;
 
 
-	public FieldWriterInteger(PrimitiveWriter writer, int fields) {
+	public FieldWriterLong(PrimitiveWriter writer, int fields) {
 		this.writer = writer;
-		this.lastValue = new int[fields];
+		this.lastValue = new long[fields];
 		this.lastValueFlag = new byte[fields];
 	}
 	
-	public void initValue(int token, int value) {
+	public void initValue(int token, long value) {
 		int idx = token & INSTANCE_MASK;
 		lastValue[idx] = value;
 		assert(lastValueFlag[idx]==UNSET);
@@ -31,8 +31,7 @@ public final class FieldWriterInteger {
 	public void reset() {
 		int i = lastValueFlag.length;
 		while (--i>=0) {
-			//UNSET is also used for constant/default so the value is not lost on reset.
-			lastValueFlag[i] = UNSET;
+			lastValueFlag[i] = 0;
 		}
 	}
 
@@ -43,14 +42,14 @@ public final class FieldWriterInteger {
 	}
 	
 
-	public void writeIntegerNull(int token) {
+	public void writeLongNull(int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeNull();
 		lastValueFlag[idx] = SET_NULL;
 		
 	}
 	
-	public void writeIntegerNullPMap(int token) {
+	public void writeLongNullPMap(int token) {
 			int idx = token & INSTANCE_MASK;
 			writer.writePMapBit((byte)1);
 			writer.writeNull();
@@ -62,46 +61,46 @@ public final class FieldWriterInteger {
 	 *  write <FIELD_TYPE><OPERATOR>
 	 *  
 	 *  example FIELD_TYPES 
-	 *  IntegerSigned
-	 *  IntegerUnsigned
-	 *  IntegerSingedOptional
-	 *  IntegerUnsignedOptional
+	 *  LongSigned
+	 *  LongUnsigned
+	 *  LongSingedOptional
+	 *  LongUnsignedOptional
 	 * 
 	 */
 	
-	public void writeIntegerUnsigned(int value, int token) {
+	public void writeLongUnsigned(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
-		writer.writeIntegerUnsigned(value);
+		writer.writeLongUnsigned(value);
 	}
 	
-	public void writeIntegerUnsignedCopy(int value, int token) {
+	public void writeLongUnsignedCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
+			writer.writeLongUnsigned(value);
 			lastValue[idx] = value;
 		}
 	}
 	
-	public void writeIntegerUnsignedCopyOptional(int value, int token) {
+	public void writeLongUnsignedCopyOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsignedOptional(lastValue[idx] = value);
+			writer.writeLongUnsignedOptional(lastValue[idx] = value);
 			lastValueFlag[idx] = SET_VALUE;
 		}
 	}
 	
 
 	
-	public void writeIntegerUnsignedConstant(int value, int token) {
+	public void writeLongUnsignedConstant(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		//value must equal constant
@@ -109,34 +108,34 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);//use constant value
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx]=value);
+			writer.writeLongUnsigned(lastValue[idx]=value);
 		}	
 		
 	}
 	
-	public void writeIntegerUnsignedDefault(int value, int token) {
+	public void writeLongUnsignedDefault(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
+			writer.writeLongUnsigned(value);
 		}
 	}
 	
-	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
+	public void writeLongUnsignedDefaultOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsignedOptional(value);
+			writer.writeLongUnsignedOptional(value);
 		}
 	}
 	
-	public void writeIntegerUnsignedDefaultOptional(int token) {
+	public void writeLongUnsignedDefaultOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (lastValueFlag[idx]<0) { //stored value was null;
@@ -147,43 +146,43 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerUnsignedIncrement(int value, int token) {
+	public void writeLongUnsignedIncrement(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		long incVal = lastValue[idx]+1;
 		
 		if (value == incVal) {
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
+			writer.writeLongUnsigned(value);
 			lastValue[idx] = value;
 		}
 	}
 	
 
-	public void writeIntegerUnsignedIncrementOptional(int value, int token) {
+	public void writeLongUnsignedIncrementOptional(int value, int token) {
 
 		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		long incVal = lastValue[idx]+1;
 
 		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsignedOptional(lastValue[idx] = value);
+			writer.writeLongUnsignedOptional(lastValue[idx] = value);
 			lastValueFlag[idx] = SET_VALUE;
 		}
 	}
 
-	public void writeIntegerUnsignedDelta(int value, int token) {
+	public void writeLongUnsignedDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		writer.writeIntegerSigned(value - lastValue[idx]);
+		writer.writeLongSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
-	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
+	public void writeLongUnsignedDeltaOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSignedOptional(value - lastValue[idx]);
 		lastValueFlag[idx] = SET_VALUE;
@@ -194,39 +193,39 @@ public final class FieldWriterInteger {
 	///////////////
 	////////////////
 	
-	public void writeIntegerSigned(int value, int token) {
+	public void writeLongSigned(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
-		writer.writeIntegerSigned(value);
+		writer.writeLongSigned(value);
 	}
 	
-	public void writeIntegerSignedCopy(int value, int token) {
+	public void writeLongSignedCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
+			writer.writeLongSigned(value);
 			lastValue[idx] = value;
 		}
 	}
 	
-	public void writeIntegerSignedCopyOptional(int value, int token) {
+	public void writeLongSignedCopyOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSignedOptional(lastValue[idx] = value);
+			writer.writeLongSignedOptional(lastValue[idx] = value);
 			lastValueFlag[idx] = SET_VALUE;
 		}
 	}
 	
 
 	
-	public void writeIntegerSignedConstant(int value, int token) {
+	public void writeLongSignedConstant(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		//value must equal constant
@@ -234,34 +233,34 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);//use constant value
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(lastValue[idx]=value);
+			writer.writeLongSigned(lastValue[idx]=value);
 		}	
 		
 	}
 	
-	public void writeIntegerSignedDefault(int value, int token) {
+	public void writeLongSignedDefault(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
+			writer.writeLongSigned(value);
 		}
 	}
 	
-	public void writeIntegerSignedDefaultOptional(int value, int token) {
+	public void writeLongSignedDefaultOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSignedOptional(value);
+			writer.writeLongSignedOptional(value);
 		}
 	}
 	
-	public void writeIntegerSignedDefaultOptional(int token) {
+	public void writeLongSignedDefaultOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (lastValueFlag[idx]<0) { //stored value was null;
@@ -272,43 +271,43 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerSignedIncrement(int value, int token) {
+	public void writeLongSignedIncrement(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		long incVal = lastValue[idx]+1;
 		
 		if (value == incVal) {
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
+			writer.writeLongSigned(value);
 			lastValue[idx] = value;
 		}
 	}
 	
 
-	public void writeIntegerSignedIncrementOptional(int value, int token) {
+	public void writeLongSignedIncrementOptional(int value, int token) {
 
 		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		long incVal = lastValue[idx]+1;
 
 		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSignedOptional(lastValue[idx] = value);
+			writer.writeLongSignedOptional(lastValue[idx] = value);
 			lastValueFlag[idx] = SET_VALUE;
 		}
 	}
 
-	public void writeIntegerSignedDelta(int value, int token) {
+	public void writeLongSignedDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
-		writer.writeIntegerSigned(value - lastValue[idx]);
+		writer.writeLongSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
-	public void writeIntegerSignedDeltaOptional(int value, int token) {
+	public void writeLongSignedDeltaOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSignedOptional(value - lastValue[idx]);
 		lastValueFlag[idx] = SET_VALUE;

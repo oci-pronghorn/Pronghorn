@@ -1,102 +1,40 @@
 package com.ociweb.jfast.tree;
 
-import com.ociweb.jfast.Operator;
-import com.ociweb.jfast.field.TypeMask;
+import java.util.Iterator;
 
-public class Template {
+import javax.xml.stream.events.Attribute;
+import javax.xml.stream.events.XMLEvent;
 
-	private final String templateName; 
-	private final int id;
-	
-	//dictionary { "template" | "type" | "global" | string }
-    //lookup the right dictionary and set it here instead of the string.	
-	private String dictionaryAttr;
-	//TODO: xml parse will need to convert strings into ids for use if possible
-	
-	private String typeRef;
-	
-	private GroupBuilder builder;
+public class Template extends Group {
 
-	public Template(String templateNsName,int id) {
-		this.templateName = templateNsName;
-		this.id = id;
+	//TODO: do not use strings instead use primitve fields to switch templates without GC.
+	final String id;
+	final String name;
+	final String dictionary;
+	
+	public Template(Iterator<Attribute> attributes) {
 		
-		this.builder = new GroupBuilder(id);
-	}
-	public Template(String templateNsName,int id,String dictionaryAttr) {
-		this.templateName = templateNsName;
-		this.id = id;
-		this.dictionaryAttr = dictionaryAttr;
+		String localId = "";
+		String localName = "";
+		String localDictionary = "";
+
+		while (attributes.hasNext()) {
+			Attribute att = attributes.next();
+			String name = att.getName().getLocalPart();
+						
+			if ("id".equals(name)) {
+				localId = att.getValue();
+			} else if ("name".equals(name)) {
+				localName = att.getValue();
+			} else if ("dictionary".equals(name)) {
+				localDictionary = att.getValue();
+			}
+		}
 		
-		this.builder = new GroupBuilder(id);
-	}
-	public Template(String templateNsName,int id,String dictionaryAttr,String typeRef) {
-		this.templateName = templateNsName;
-		this.id = id;
-		this.dictionaryAttr = dictionaryAttr;
-		this.typeRef = typeRef;
+		this.id = localId;
+		this.name = localName;
+		this.dictionary = localDictionary;
 		
-		this.builder = new GroupBuilder(id);
 	}
-			
-	public Template appendInteger(int id, Necessity presence, Operator operator, Integer type) {
-		builder.addField(operator, TypeMask.IntegerSigned, presence, id);
-		return this;
-	}
-	
-	public Template appendDecimal(int id, Necessity presence, Operator exponentOperator, Operator mantissaOperator) {
-		
-	//	builder.addField(exponentOperator, FieldType.Scaled, presence, id);
-	//	builder.addField(mantissaOperator, FieldType.Scaled, presence, id);
-				
-		return this;
-	}
-	
-	public Template appendASCIIString(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, TypeMask.TextASCII, presence, id);
-		return this;
-	}
-	
-	public Template appendUnicodeString(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, TypeMask.TextUTF8, presence, id);
-		return this;
-	}
-	
-	public Template appendByteVectorField(int id, Necessity presence, Operator operator) {
-		builder.addField(operator, TypeMask.ByteArray, presence, id);
-		return this;
-	}
-	
-	public Sequence appendSequence(int id, Necessity presence, String dictionary, String typeRef) {
-		
-		Sequence sequence = new Sequence(this, id, presence, dictionary, typeRef);
-		
-		return sequence;
-	}
-	
-	public Group appendGroup(int id, Necessity presence, String dictionary, String typeRef) {
-		
-		Group group = new Group(this, id, presence, dictionary, typeRef);
-		
-		return group;
-	}
-	
-	
-	
-	
-	
-	public Template appendTemplateRef() {
-		//TODO: not sure what to do here.
-		return this;
-	}
-	
-	
-	//Template
-	//Instruction
-	
-	// new Template(dictionaryid, int, String).
-	//  add uint32 mandatory/optional id name  operation
-	//append(Type,Presence,int,String,operation) //type may be sequence or group? but need closing?
-	
-	
+
 }

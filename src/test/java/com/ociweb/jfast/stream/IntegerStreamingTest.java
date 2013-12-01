@@ -25,6 +25,8 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	
 	//Constant can never be optional but can have pmap.
 	
+	//TODO: once these ints all work duplicate class for long
+	//TODO: once longs all work Text,Decimals,Bytes
 	
 	@Test
 	public void integerUnsignedTest() {
@@ -53,12 +55,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				  };
 		
 		int[] operators = new int[] {
-                OperatorMask.None, 
-                //  OperatorMask.Copy,
-				 // OperatorMask.Constant,
-				 // OperatorMask.Delta,
-				 // OperatorMask.Default,
-               // OperatorMask.Increment,
+                OperatorMask.None,  //no need for pmap
+                OperatorMask.Delta, //no need for pmap
+                OperatorMask.Copy,
+                OperatorMask.Increment,
+                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Default
                 };
 		tester(types, operators, "SignedInteger");
 	}

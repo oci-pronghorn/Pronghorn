@@ -211,7 +211,7 @@ public abstract class BaseStreamingTest {
 						output.reset();
 						pw.reset();
 						
-						FASTStaticWriter fw = new FASTStaticWriter(pw, fields, tokenLookup);
+						FASTStaticWriter fw = new FASTStaticWriter(pw, fields, fields, tokenLookup);
 						
 						//compute overhead
 						long overhead = emptyLoop(operationIters, fields, fieldsPerGroup);

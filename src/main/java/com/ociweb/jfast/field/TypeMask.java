@@ -10,7 +10,7 @@ public final class TypeMask {
 	public final static int IntegerSigned           	= 0x02;//000010   even
 	public final static int IntegerSignedOptional		= 0x03;//000011   odd
 	
-	public final static int LongUnSigned				= 0x04;//000100
+	public final static int LongUnsigned				= 0x04;//000100
 	public final static int LongUnSignedOptional		= 0x05;//000101
 	public final static int LongSigned				= 0x06;//000110
 	public final static int LongSignedOptional		= 0x07;//000111

@@ -865,17 +865,14 @@ public final class PrimitiveWriter {
 	
 	//called by ever field that needs to set a bit either 1 or 0
 	//must be fast because it is frequently called.
-	public final void writePMapBit(int bit) {
+	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
 			int s = safetyStackDepth-1; 
 			
 			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
 					
-			int local = (pMapByteAccum | bit);
-			buffer[safetyStackPosition[s]++] = (byte) local;//final byte to be saved into the feed.
-			safetyStackTemp[s] = pMapIdxWorking;
-			
-			if (0 != local) {	
+			//save this byte and if it was not a zero save that fact as well
+			if (0 != (buffer[safetyStackPosition[s]++] = (byte) (pMapByteAccum | bit))) {	
 				//set the last known non zero bit so we can avoid scanning for it. 
 				flushSkips[safetyStackFlushIdx[s]] = safetyStackPosition[s];// one has been added for exclusive use of range
 			}	
@@ -884,7 +881,7 @@ public final class PrimitiveWriter {
 			pMapByteAccum = 0;
 			
 		} else {
-			pMapByteAccum |= (bit<<pMapIdxWorking); 
+			pMapByteAccum |= (bit<<pMapIdxWorking);
 		}
 	}
 

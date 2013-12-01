@@ -1,10 +1,10 @@
 package com.ociweb.jfast.tree;
 
-public class Sequence {
+import java.util.Iterator;
 
-	//GroupBuilder
-	
-	public Sequence(Template template, int id, Necessity presence, String dictionary, String typeRef) {
+public class Sequence extends Group {
+
+	public Sequence(Iterator attributes) {
 		// TODO Auto-generated constructor stub
 	}
 

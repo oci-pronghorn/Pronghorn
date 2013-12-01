@@ -25,23 +25,23 @@ public class PrimitivePMAPTest {
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.openPMap(10);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
 		
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);		
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);		
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
 		
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
 		
 		pw.closePMap(); //skip should be 7?
 		pw.flush();
@@ -63,37 +63,37 @@ public class PrimitivePMAPTest {
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.openPMap(10);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
 		
 		//push will save where we are so we can continue after pop
 		pw.openPMap(3);
 			
-		    pw.writePMapBit(0);
-			pw.writePMapBit(0);
-			pw.writePMapBit(0);	
-			pw.writePMapBit(1);
-			pw.writePMapBit(1);
-			pw.writePMapBit(1);
+		    pw.writePMapBit((byte)0);
+			pw.writePMapBit((byte)0);
+			pw.writePMapBit((byte)0);	
+			pw.writePMapBit((byte)1);
+			pw.writePMapBit((byte)1);
+			pw.writePMapBit((byte)1);
 			//implied zero
 			
 		//continue with parent pmap
 		pw.closePMap();
 		
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);		
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);		
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
 		
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
 		
 		pw.closePMap();
 		pw.flush();
@@ -116,48 +116,48 @@ public class PrimitivePMAPTest {
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
 		pw.openPMap(10);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
 		
 		//push will save where we are so we can continue after pop
 		pw.openPMap(3);
 			
-		    pw.writePMapBit(0);
-			pw.writePMapBit(0);
-			pw.writePMapBit(0);
+		    pw.writePMapBit((byte)0);
+			pw.writePMapBit((byte)0);
+			pw.writePMapBit((byte)0);
 			
 			pw.openPMap(4);
-				pw.writePMapBit(0);
-				pw.writePMapBit(1);
-				pw.writePMapBit(0);
-				pw.writePMapBit(1);
-				pw.writePMapBit(0);
-				pw.writePMapBit(1);
-				pw.writePMapBit(0);
+				pw.writePMapBit((byte)0);
+				pw.writePMapBit((byte)1);
+				pw.writePMapBit((byte)0);
+				pw.writePMapBit((byte)1);
+				pw.writePMapBit((byte)0);
+				pw.writePMapBit((byte)1);
+				pw.writePMapBit((byte)0);
 			pw.closePMap();
 			
-			pw.writePMapBit(1);
-			pw.writePMapBit(1);
-			pw.writePMapBit(1);
+			pw.writePMapBit((byte)1);
+			pw.writePMapBit((byte)1);
+			pw.writePMapBit((byte)1);
 			//implied zero
 			
 		//continue with parent pmap
 		pw.closePMap();
 		
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);		
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);		
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
 		
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
 		
 		pw.closePMap();
 		pw.flush();
@@ -185,35 +185,35 @@ public class PrimitivePMAPTest {
 		//pw.pushPMap(3);
 		
 		pw.openPMap(10);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
 		
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);		
-		pw.writePMapBit(1);
-		pw.writePMapBit(0);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);		
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)0);
 		
-		pw.writePMapBit(1);
+		pw.writePMapBit((byte)1);
 		
 		pw.closePMap();
 
 		//push will save where we are so we can continue after pop
 		pw.openPMap(3);
 			
-	    pw.writePMapBit(0);
-		pw.writePMapBit(0);
-		pw.writePMapBit(0);	
-		pw.writePMapBit(1);
-		pw.writePMapBit(1);
-		pw.writePMapBit(1);
+	    pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)0);
+		pw.writePMapBit((byte)0);	
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)1);
+		pw.writePMapBit((byte)1);
 		//implied zero
 			
 		//continue with parent pmap
@@ -512,15 +512,15 @@ public class PrimitivePMAPTest {
 			    		byte b = pmapData[j];
 			    					    		
 			    		//put in first byte
-			    		pw.writePMapBit(b&1);      
-			    		pw.writePMapBit((b>>1)&1);
-			    		pw.writePMapBit((b>>2)&1);
-			    		pw.writePMapBit((b>>3)&1);
-			    		pw.writePMapBit((b>>4)&1);
-			    		pw.writePMapBit((b>>5)&1);
-			    		pw.writePMapBit((b>>6)&1);
+			    		pw.writePMapBit((byte)(b&1));      
+			    		pw.writePMapBit((byte)((b>>1)&1));
+			    		pw.writePMapBit((byte)((b>>2)&1));
+			    		pw.writePMapBit((byte)((b>>3)&1));
+			    		pw.writePMapBit((byte)((b>>4)&1));
+			    		pw.writePMapBit((byte)((b>>5)&1));
+			    		pw.writePMapBit((byte)((b>>6)&1));
 			    		//put in next byte
-			    		pw.writePMapBit((b>>7)&1);
+			    		pw.writePMapBit((byte)((b>>7)&1));
 			    		//6 zeros are assumed 
 			    		
 			    	}	

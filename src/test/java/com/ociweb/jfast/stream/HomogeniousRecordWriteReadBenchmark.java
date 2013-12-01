@@ -40,6 +40,8 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	static final int[] types = new int[] {
 			  TypeMask.IntegerUnsigned,
 			  TypeMask.IntegerUnsignedOptional,
+			  TypeMask.IntegerSigned,
+			  TypeMask.IntegerSignedOptional,
 		  };
 	
 	//list all operators
@@ -55,7 +57,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
 		
-	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, fields, tokenLookup);
+	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, fields, fields, tokenLookup);
 	static final FASTStaticReader staticReader = new FASTStaticReader(pr, fields, tokenLookup);
 	
 	static final int groupToken = buildGroupToken(10,0);
@@ -214,6 +216,96 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	
 	//Integer does not support Tail operator
 
+	public int timeStaticIntegerSignedNone(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSigned,
+							OperatorMask.None, 
+							0));
+	}
+	
+	public int timeStaticIntegerSignedNoneOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSignedOptional,
+							OperatorMask.None, 
+							0));
+	}
+
+	
+	public int timeStaticIntegerSignedCopy(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSigned,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedCopyOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSignedOptional,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedConstant(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(//special because there is no optional constant
+							TypeMask.IntegerSigned, //constant operator can not be optional
+						    OperatorMask.Constant, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedDefault(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSigned, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedDefaultOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedDelta(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+						TypeMask.IntegerSigned, 
+						OperatorMask.Delta, 
+						0));
+	}
+
+	public int timeStaticIntegerSignedDeltaOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Delta, 
+						     0));
+	}
+	
+	
+	public int timeStaticIntegerSignedIncrement(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSigned, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
+	public int timeStaticIntegerSignedIncrementOptional(int reps) {
+		return staticWriteReadIntegerGroup(reps, 
+				buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
 	protected int staticWriteReadIntegerGroup(int reps, int token) {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {

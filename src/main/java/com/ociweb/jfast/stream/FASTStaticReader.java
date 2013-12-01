@@ -49,12 +49,12 @@ public class FASTStaticReader implements FASTReader {
 				readIntegerUnsignedOptional(token,0);
 				break;
 			case TypeMask.IntegerSigned:
-				readIntegerSigned(token);
+				readIntegerSigned(token,0);
 				break;
 			case TypeMask.IntegerSignedOptional:
 				readIntegerSignedOptional(token,0);
 				break;
-			case TypeMask.LongUnSigned:
+			case TypeMask.LongUnsigned:
 				readLongUnsigned(token);
 				break;
 			case TypeMask.LongUnSignedOptional:
@@ -100,7 +100,7 @@ public class FASTStaticReader implements FASTReader {
 	public long readLong(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.LongUnSigned:
+			case TypeMask.LongUnsigned:
 				return readLongUnsigned(token);
 			case TypeMask.LongUnSignedOptional:
 				return readLongUnsignedOptional(token, valueOfOptional);
@@ -143,7 +143,7 @@ public class FASTStaticReader implements FASTReader {
 			case TypeMask.IntegerUnsignedOptional:
 				return readIntegerUnsignedOptional(token, valueOfOptional);
 			case TypeMask.IntegerSigned:
-				return readIntegerSigned(token);
+				return readIntegerSigned(token, valueOfOptional);
 			case TypeMask.IntegerSignedOptional:
 				return readIntegerSignedOptional(token, valueOfOptional);
 			default://all other types should use their own method.
@@ -154,19 +154,40 @@ public class FASTStaticReader implements FASTReader {
 
 	private int readIntegerSignedOptional(int token, int valueOfOptional) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				return readerInteger.readIntegerSignedOptional(token, valueOfOptional);
-			default:
-				throw new UnsupportedOperationException();
+		case OperatorMask.None:
+			return readerInteger.readIntegerSignedOptional(token,valueOfOptional);
+		case OperatorMask.Constant:
+			//down grade to non optional rather than fail
+			return readerInteger.readIntegerSignedConstant(token,valueOfOptional);
+		case OperatorMask.Copy:
+			return readerInteger.readIntegerSignedCopyOptional(token,valueOfOptional);
+		case OperatorMask.Default:
+			return readerInteger.readIntegerSignedDefaultOptional(token,valueOfOptional);
+		case OperatorMask.Delta:
+			return readerInteger.readIntegerSignedDeltaOptional(token,valueOfOptional);
+		case OperatorMask.Increment:
+			return readerInteger.readIntegerSignedIncrementOptional(token,valueOfOptional);	
+		default:
+			throw new UnsupportedOperationException();
 		}
 	}
 
-	private int readIntegerSigned(int token) {
+	private int readIntegerSigned(int token, int valueOfOptional) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				return readerInteger.readIntegerSigned(token);
-			default:
-				throw new UnsupportedOperationException();
+		case OperatorMask.None:
+			return readerInteger.readIntegerSigned(token);
+		case OperatorMask.Constant:
+			return readerInteger.readIntegerSignedConstant(token, valueOfOptional);
+		case OperatorMask.Copy:
+			return readerInteger.readIntegerSignedCopy(token);
+		case OperatorMask.Default:
+			return readerInteger.readIntegerSignedDefault(token);
+		case OperatorMask.Delta:
+			return readerInteger.readIntegerSignedDelta(token);
+		case OperatorMask.Increment:
+			return readerInteger.readIntegerSignedIncrement(token);		
+		default:
+			throw new UnsupportedOperationException();
 		}
 	}
 
