@@ -3,6 +3,7 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.FieldReaderInteger;
+import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -15,7 +16,8 @@ public class FASTStaticReader implements FASTReader {
 	
 	//package protected so DynamicReader can use these instances
 	final FieldReaderInteger readerInteger;
-		
+	final FieldReaderLong readerLong;
+	
 	//See fast writer for details and mask sizes
 	private final int MASK_TYPE = 0x3F;
 	private final int SHIFT_TYPE = 24;
@@ -27,20 +29,28 @@ public class FASTStaticReader implements FASTReader {
 	private final int SHIFT_PMAP_MASK = 20;
 	
 		
-	public FASTStaticReader(PrimitiveReader reader, int fields, int[] tokenLookup) {
+	public FASTStaticReader(PrimitiveReader reader, DictionaryFactory dcr, int[] tokenLookup) {
 		this.reader=reader;
 		this.tokenLookup = tokenLookup;
 		
-		this.readerInteger = new FieldReaderInteger(reader,fields);
+		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary(), dcr.integerDictionaryFlags());
+		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary(), dcr.longDictionaryFlags());
+		
 	}
+	
+
+	public void reset(DictionaryFactory df) {
+		//clear all previous values to unset
+		readerInteger.reset(df);
+		readerLong.reset(df);
+	}
+
 	
 	//package protected, unless we find a need to expose it?
 	void readToken(int token) {
 		//used by groups which hold list of tokens
 		//at end of each group call back may be done and FASTDynamicReader used.
-		
-		//TODO: must also detect null.
-		
+
 	    switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.IntegerUnsigned:
 				readIntegerUnsigned(token,0);
@@ -55,13 +65,13 @@ public class FASTStaticReader implements FASTReader {
 				readIntegerSignedOptional(token,0);
 				break;
 			case TypeMask.LongUnsigned:
-				readLongUnsigned(token);
+				readLongUnsigned(token,0);
 				break;
-			case TypeMask.LongUnSignedOptional:
+			case TypeMask.LongUnsignedOptional:
 				readLongUnsignedOptional(token,0);
 				break;
 			case TypeMask.LongSigned:
-				readLongSigned(token);
+				readLongSigned(token,0);
 				break;
 			case TypeMask.LongSignedOptional:
 				readLongSignedOptional(token,0);
@@ -101,11 +111,11 @@ public class FASTStaticReader implements FASTReader {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
 			case TypeMask.LongUnsigned:
-				return readLongUnsigned(token);
-			case TypeMask.LongUnSignedOptional:
+				return readLongUnsigned(token, valueOfOptional);
+			case TypeMask.LongUnsignedOptional:
 				return readLongUnsignedOptional(token, valueOfOptional);
 			case TypeMask.LongSigned:
-				return readLongSigned(token);
+				return readLongSigned(token, valueOfOptional);
 			case TypeMask.LongSignedOptional:
 				return readLongSignedOptional(token, valueOfOptional);
 			default://all other types should use their own method.
@@ -114,23 +124,81 @@ public class FASTStaticReader implements FASTReader {
 	}
 	
 	private long readLongSignedOptional(int token, long valueOfOptional) {
-		// TODO Auto-generated method stub
-		return 0;
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		case OperatorMask.None:
+			return readerLong.readLongSignedOptional(token,valueOfOptional);
+		case OperatorMask.Constant:
+			//down grade to non optional rather than fail
+			return readerLong.readLongSignedConstant(token,valueOfOptional);
+		case OperatorMask.Copy:
+			return readerLong.readLongSignedCopyOptional(token,valueOfOptional);
+		case OperatorMask.Default:
+			return readerLong.readLongSignedDefaultOptional(token,valueOfOptional);
+		case OperatorMask.Delta:
+			return readerLong.readLongSignedDeltaOptional(token,valueOfOptional);
+		case OperatorMask.Increment:
+			return readerLong.readLongSignedIncrementOptional(token,valueOfOptional);	
+		default:
+			throw new UnsupportedOperationException();
+		}
 	}
 
-	private long readLongSigned(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+	private long readLongSigned(int token, long valueOfOptional) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		case OperatorMask.None:
+			return readerLong.readLongSigned(token);
+		case OperatorMask.Constant:
+			return readerLong.readLongSignedConstant(token, valueOfOptional);
+		case OperatorMask.Copy:
+			return readerLong.readLongSignedCopy(token);
+		case OperatorMask.Default:
+			return readerLong.readLongSignedDefault(token);
+		case OperatorMask.Delta:
+			return readerLong.readLongSignedDelta(token);
+		case OperatorMask.Increment:
+			return readerLong.readLongSignedIncrement(token);		
+		default:
+			throw new UnsupportedOperationException();
+		}
 	}
 
 	private long readLongUnsignedOptional(int token, long valueOfOptional) {
-		// TODO Auto-generated method stub
-		return 0;
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				return readerLong.readLongUnsignedOptional(token,valueOfOptional);
+			case OperatorMask.Constant:
+				//down grade to non optional rather than fail
+				return readerLong.readLongUnsignedConstant(token,valueOfOptional);
+			case OperatorMask.Copy:
+				return readerLong.readLongUnsignedCopyOptional(token,valueOfOptional);
+			case OperatorMask.Default:
+				return readerLong.readLongUnsignedDefaultOptional(token,valueOfOptional);
+			case OperatorMask.Delta:
+				return readerLong.readLongUnsignedDeltaOptional(token,valueOfOptional);
+			case OperatorMask.Increment:
+				return readerLong.readLongUnsignedIncrementOptional(token,valueOfOptional);	
+			default:
+				throw new UnsupportedOperationException();
+		}
 	}
 
-	private long readLongUnsigned(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+	private long readLongUnsigned(int token, long valueOfOptional) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None:
+				return readerLong.readLongUnsigned(token);
+			case OperatorMask.Constant:
+				return readerLong.readLongUnsignedConstant(token, valueOfOptional);
+			case OperatorMask.Copy:
+				return readerLong.readLongUnsignedCopy(token);
+			case OperatorMask.Default:
+				return readerLong.readLongUnsignedDefault(token);
+			case OperatorMask.Delta:
+				return readerLong.readLongUnsignedDelta(token);
+			case OperatorMask.Increment:
+				return readerLong.readLongUnsignedIncrement(token);		
+			default:
+				throw new UnsupportedOperationException();
+		}
 	}
 
 	@Override
@@ -410,12 +478,6 @@ public class FASTStaticReader implements FASTReader {
 			default:
 				throw new UnsupportedOperationException();
 		}
-	}
-
-	public void reset() {
-		//clear all previous values to unset
-		readerInteger.reset();
-		
 	}
 
 

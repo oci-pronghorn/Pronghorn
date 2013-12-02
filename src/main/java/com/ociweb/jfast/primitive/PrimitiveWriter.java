@@ -175,16 +175,20 @@ public final class PrimitiveWriter {
 				sourceStop < endOfData              //skip stops before goal
 				) { 
 			
-			sourceStop = mergeSkips(sourceStop);
+			
+			//TODO: this causes soruceStop to boundce to zero at times!!!
+			//sourceStop = mergeSkips(sourceStop);
 			
 			int flushRequest = sourceStop - sourceOffset;
 			
+		
 			if (flushRequest >= reqLength) {
 				finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
 				return;
 			} else {
 				//keep accumulating
-				if (targetOffset != sourceOffset) {			
+				if (targetOffset != sourceOffset) {		
+					//System.err.println(sourceOffset+" "+targetOffset+" "+flushRequest+" "+buffer.length);
 					System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
 				}
 				//increment by byte written to build a contiguous block
@@ -224,16 +228,17 @@ public final class PrimitiveWriter {
 				
 	}
 
-	private int mergeSkips(int tempSkipPos) {
-		//if the skip is zero bytes just flush it all together
-		int temp = flushSkipsIdxPos+1;
-		
-		if (temp<flushSkipsIdxLimit && flushSkips[temp]==tempSkipPos) {
-				++flushSkipsIdxPos;
-				tempSkipPos = flushSkips[++flushSkipsIdxPos];
-		}
-		return tempSkipPos;
-	}
+	//not working as expected.
+//	private int mergeSkips(int tempSkipPos) {
+//		//if the skip is zero bytes just flush it all together
+//		int temp = flushSkipsIdxPos+1;
+//		
+//		if (temp<flushSkipsIdxLimit && flushSkips[temp]==tempSkipPos && flushSkips[temp+1]>tempSkipPos) {
+//				++flushSkipsIdxPos;
+//				tempSkipPos = flushSkips[++flushSkipsIdxPos];
+//		}
+//		return tempSkipPos;
+//	}
 
 	private void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength) {
 		//more to flush than we need

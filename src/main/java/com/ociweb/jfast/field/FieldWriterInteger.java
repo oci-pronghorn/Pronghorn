@@ -1,6 +1,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.stream.DictionaryFactory;
 
 public final class FieldWriterInteger {
 
@@ -16,27 +17,15 @@ public final class FieldWriterInteger {
 	private final byte[] lastValueFlag;
 
 
-	public FieldWriterInteger(PrimitiveWriter writer, int fields) {
+	public FieldWriterInteger(PrimitiveWriter writer, int[] values, byte[] flags) {
 		this.writer = writer;
-		this.lastValue = new int[fields];
-		this.lastValueFlag = new byte[fields];
+		this.lastValue = values;
+		this.lastValueFlag = flags;
 	}
 	
-	public void initValue(int token, int value) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		assert(lastValueFlag[idx]==UNSET);
-	}
-	
-	public void reset() {
-		int i = lastValueFlag.length;
-		while (--i>=0) {
-			//UNSET is also used for constant/default so the value is not lost on reset.
-			lastValueFlag[i] = UNSET;
-		}
-	}
-
-	
+	public void reset(DictionaryFactory df) {
+		df.reset(lastValue,lastValueFlag);
+	}	
 	
 	public void flush() {
 		writer.flush();
@@ -156,8 +145,7 @@ public final class FieldWriterInteger {
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-			lastValue[idx] = value;
+			writer.writeIntegerUnsigned(lastValue[idx] = value);
 		}
 	}
 	
@@ -167,7 +155,7 @@ public final class FieldWriterInteger {
 		int idx = token & INSTANCE_MASK;
 		int incVal = lastValue[idx]+1;
 
-		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
+		if (value == incVal && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
@@ -281,8 +269,7 @@ public final class FieldWriterInteger {
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-			lastValue[idx] = value;
+			writer.writeIntegerSigned(lastValue[idx] = value);
 		}
 	}
 	
@@ -292,7 +279,7 @@ public final class FieldWriterInteger {
 		int idx = token & INSTANCE_MASK;
 		int incVal = lastValue[idx]+1;
 
-		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
+		if (value == incVal && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {

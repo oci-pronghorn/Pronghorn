@@ -10,10 +10,10 @@ import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
 
 
-public class IntegerStreamingTest extends BaseStreamingTest {
+public class LongStreamingTest extends BaseStreamingTest {
 
 	final int fields         = 1000;
-	final int[] testData     = buildTestDataUnsigned(fields);
+	final long[] testData     = buildTestDataUnsigned(fields);
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
@@ -24,12 +24,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	//NONE, DELTA, and CONSTANT(non-optional)
 	
 	//Constant can never be optional but can have pmap.
-	
+		
 	@Test
-	public void integerUnsignedTest() {
+	public void longUnsignedTest() {
 		int[] types = new int[] {
-                  TypeMask.IntegerUnsigned,
-		    	  TypeMask.IntegerUnsignedOptional,
+                  TypeMask.LongUnsigned,
+		    	  TypeMask.LongUnsignedOptional,
 				  };
 		
 		int[] operators = new int[] {
@@ -41,15 +41,15 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.Default
                 };
 				
-		tester(types, operators, "UnsignedInteger");
+		tester(types, operators, "UnsignedLong");
 	}
 	
 	@Test
-	public void integerSignedTest() {
+	public void longSignedTest() {
 		int[] types = new int[] {
-                  TypeMask.IntegerSigned,
-				  TypeMask.IntegerSignedOptional,
-				  };
+                  TypeMask.LongSigned,
+				  TypeMask.LongSignedOptional,
+				};
 		
 		int[] operators = new int[] {
                 OperatorMask.None,  //no need for pmap
@@ -59,7 +59,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.Constant, //test runner knows not to use with optional
                 OperatorMask.Default
                 };
-		tester(types, operators, "SignedInteger");
+		tester(types, operators, "SignedLong");
 	}
 	
 	
@@ -157,6 +157,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 
 	protected void readData(int fields, int fieldsPerGroup, int operationIters,
 			                  int[] tokenLookup, FASTStaticReader fr) {
+		
+		long none = Integer.MIN_VALUE/2;
+		
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
@@ -169,12 +172,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 	
 				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-					if (Integer.MIN_VALUE!=value) {
-						assertEquals(Integer.MIN_VALUE, value);
+		     		long value = fr.readLong(tokenLookup[f], none);
+					if (none!=value) {
+						assertEquals(none, value);
 					}
 				} else { 
-					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
+					long value = fr.readLong(tokenLookup[f], none);
 					if (testData[f]!=value) {
 						assertEquals(testData[f], value);
 					}
@@ -188,13 +191,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	}
 
 
-
-	int[] buildTestDataUnsigned(int count) {
+	long[] buildTestDataUnsigned(int count) {
 		
-		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
+		long[] seedData = PrimitiveReaderWriterTest.unsignedLongData;
 		int s = seedData.length;
 		int i = count;
-		int[] target = new int[count];
+		long[] target = new long[count];
 		while (--i>=0) {
 			target[i] = seedData[--s];
 			if (0==s) {

@@ -6,7 +6,12 @@ public class RunCaliper {
 
 	public static void main(String[] args) {
 		//  -XX:+UseNUMA
-		args = new String[]{"-r","HomogeniousRecordWriteReadBenchmark"};
+		args = new String[]{"-r","HomogeniousRecordWriteReadBenchmark",
+				             "-C","=5ms"};
+		
+		//-h
+		//-C 5ms
+		//--verbose
 		
 		CaliperMain.main(HomogeniousRecordWriteReadBenchmark.class, args); 
 

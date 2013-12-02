@@ -4,6 +4,11 @@ import java.util.Iterator;
 
 public class Group {
 
+	//single FASTManger will keep the arrays with default values populated
+	//This group class only holds the needed data and will be able to 
+	//populate part of that list upon request.  This call is cascaded from Template.
+	
+	
 	protected Group() {
 		
 	}

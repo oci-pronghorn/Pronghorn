@@ -25,6 +25,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	static final int internalBufferSize = 1024;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
+	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,fields,fields);
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 	
@@ -35,6 +36,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	static final PrimitiveReader pr = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
+	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	
 	//list all types
 	static final int[] types = new int[] {
@@ -42,6 +44,10 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 			  TypeMask.IntegerUnsignedOptional,
 			  TypeMask.IntegerSigned,
 			  TypeMask.IntegerSignedOptional,
+			  TypeMask.LongUnsigned,
+			  TypeMask.LongUnsignedOptional,
+			  TypeMask.LongSigned,
+			  TypeMask.LongSignedOptional,
 		  };
 	
 	//list all operators
@@ -57,8 +63,8 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
 		
-	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, fields, fields, tokenLookup);
-	static final FASTStaticReader staticReader = new FASTStaticReader(pr, fields, tokenLookup);
+	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr, tokenLookup);
+	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr, tokenLookup);
 	
 	static final int groupToken = buildGroupToken(10,0);
 
@@ -124,6 +130,201 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 				       count;
 	}
 	
+	//
+	////
+	/////
+	////
+	//
+	
+	
+	public long timeStaticLongUnsignedNone(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsigned,
+							OperatorMask.None, 
+							0));
+	}
+	
+	public long timeStaticLongUnsignedNoneOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsignedOptional,
+							OperatorMask.None, 
+							0));
+	}
+
+	
+	public long timeStaticLongUnsignedCopy(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsigned,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedCopyOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsignedOptional,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedConstant(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(//special because there is no optional constant
+							TypeMask.LongUnsigned, //constant operator can not be optional
+						    OperatorMask.Constant, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedDefault(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsigned, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedDefaultOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsignedOptional, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedDelta(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+						TypeMask.LongUnsigned, 
+						OperatorMask.Delta, 
+						0));
+	}
+
+	public long timeStaticLongUnsignedDeltaOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsignedOptional, 
+						    OperatorMask.Delta, 
+						     0));
+	}
+	
+	
+	public long timeStaticLongUnsignedIncrement(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsigned, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
+	public long timeStaticLongUnsignedIncrementOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongUnsignedOptional, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
+	//Long does not support Tail operator
+
+	public long timeStaticLongSignedNone(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSigned,
+							OperatorMask.None, 
+							0));
+	}
+	
+	public long timeStaticLongSignedNoneOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSignedOptional,
+							OperatorMask.None, 
+							0));
+	}
+
+	
+	public long timeStaticLongSignedCopy(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSigned,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedCopyOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSignedOptional,
+						    OperatorMask.Copy, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedConstant(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(//special because there is no optional constant
+							TypeMask.LongSigned, //constant operator can not be optional
+						    OperatorMask.Constant, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedDefault(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSigned, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedDefaultOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSignedOptional, 
+						    OperatorMask.Default, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedDelta(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+						TypeMask.LongSigned, 
+						OperatorMask.Delta, 
+						0));
+	}
+
+	public long timeStaticLongSignedDeltaOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSignedOptional, 
+						    OperatorMask.Delta, 
+						     0));
+	}
+	
+	
+	public long timeStaticLongSignedIncrement(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSigned, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
+	public long timeStaticLongSignedIncrementOptional(int reps) {
+		return staticWriteReadLongGroup(reps, 
+				buildToken(
+							TypeMask.LongSignedOptional, 
+						    OperatorMask.Increment, 
+						     0));
+	}
+	
+	//
+	////
+	//////
+	////
+	//  
+		
 	public int timeStaticIntegerUnsignedNone(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				buildToken(
@@ -306,12 +507,23 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 						     0));
 	}
 	
+	//*/
+	
+	//
+	////
+	//////
+	////
+	//
+	
+
+	
+	
 	protected int staticWriteReadIntegerGroup(int reps, int token) {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
-			staticWriter.reset(); //reset message to clear out old values;
+			staticWriter.reset(dcr); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter
@@ -328,7 +540,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			pr.reset();//for testing clear any data found in reader 
 			
-			staticReader.reset(); //reset message to clear the previous values
+			staticReader.reset(dcr); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken);
 			j = intTestData.length;
@@ -340,5 +552,38 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 		return result;
 	}
 	
+	protected long staticWriteReadLongGroup(int reps, int token) {
+		long result = 0;
+		for (int i = 0; i < reps; i++) {
+			output.reset(); //reset output to start of byte buffer
+			pw.reset(); //clear any values found in writer
+			staticWriter.reset(dcr); //reset message to clear out old values;
+			
+			//////////////////////////////////////////////////////////////////
+			//This is an example of how to use the staticWriter
+			//Note that this is fast but does not allow for dynamic templates
+			//////////////////////////////////////////////////////////////////
+			staticWriter.openGroup(groupToken);
+			int j = longTestData.length;
+			while (--j>=0) {
+				staticWriter.write(token, longTestData[j]);
+			}
+			staticWriter.closeGroup();
+			staticWriter.flush();
+
+			input.reset(); //for testing reset bytes back to the beginning.
+			pr.reset();//for testing clear any data found in reader 
+			
+			staticReader.reset(dcr); //reset message to clear the previous values
+			
+			staticReader.openGroup(groupToken);
+			j = intTestData.length;
+			while (--j>=0) {
+				result |= staticReader.readLong(token, 0);
+			}
+			staticReader.closeGroup();
+		}
+		return result;
+	}
 	
 }

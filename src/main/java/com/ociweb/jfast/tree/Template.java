@@ -36,5 +36,12 @@ public class Template extends Group {
 		this.dictionary = localDictionary;
 		
 	}
+	
+	//FASTManager must have already determined the maximum field counts
+	
+	//happens only once on start up.
+	public void populateInitialValues() {
+		
+	}
 
 }

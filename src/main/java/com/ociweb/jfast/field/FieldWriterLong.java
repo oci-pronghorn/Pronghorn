@@ -1,6 +1,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.stream.DictionaryFactory;
 
 public final class FieldWriterLong {
 
@@ -16,25 +17,15 @@ public final class FieldWriterLong {
 	private final byte[] lastValueFlag;
 
 
-	public FieldWriterLong(PrimitiveWriter writer, int fields) {
+	public FieldWriterLong(PrimitiveWriter writer, long[] values, byte[] flags) {
 		this.writer = writer;
-		this.lastValue = new long[fields];
-		this.lastValueFlag = new byte[fields];
+		this.lastValue = values;
+		this.lastValueFlag = flags;
 	}
 	
-	public void initValue(int token, long value) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		assert(lastValueFlag[idx]==UNSET);
+	public void reset(DictionaryFactory df) {
+		df.reset(lastValue,lastValueFlag);
 	}
-	
-	public void reset() {
-		int i = lastValueFlag.length;
-		while (--i>=0) {
-			lastValueFlag[i] = 0;
-		}
-	}
-
 	
 	
 	public void flush() {
@@ -68,13 +59,13 @@ public final class FieldWriterLong {
 	 * 
 	 */
 	
-	public void writeLongUnsigned(int value, int token) {
+	public void writeLongUnsigned(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
 		writer.writeLongUnsigned(value);
 	}
 	
-	public void writeLongUnsignedCopy(int value, int token) {
+	public void writeLongUnsignedCopy(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
@@ -86,7 +77,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongUnsignedCopyOptional(int value, int token) {
+	public void writeLongUnsignedCopyOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
@@ -100,11 +91,11 @@ public final class FieldWriterLong {
 	
 
 	
-	public void writeLongUnsignedConstant(int value, int token) {
+	public void writeLongUnsignedConstant(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		//value must equal constant
-		if (lastValueFlag[idx]>0 && value==lastValue[idx] ) {
+		if (value==lastValue[idx] && lastValueFlag[idx]>0) {
 			writer.writePMapBit((byte)0);//use constant value
 		} else {
 			writer.writePMapBit((byte)1);
@@ -113,7 +104,7 @@ public final class FieldWriterLong {
 		
 	}
 	
-	public void writeLongUnsignedDefault(int value, int token) {
+	public void writeLongUnsignedDefault(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
@@ -124,7 +115,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongUnsignedDefaultOptional(int value, int token) {
+	public void writeLongUnsignedDefaultOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
@@ -146,7 +137,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongUnsignedIncrement(int value, int token) {
+	public void writeLongUnsignedIncrement(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		long incVal = lastValue[idx]+1;
 		
@@ -155,18 +146,17 @@ public final class FieldWriterLong {
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(value);
-			lastValue[idx] = value;
+			writer.writeLongUnsigned(lastValue[idx] = value);
 		}
 	}
 	
 
-	public void writeLongUnsignedIncrementOptional(int value, int token) {
+	public void writeLongUnsignedIncrementOptional(long value, int token) {
 
 		int idx = token & INSTANCE_MASK;
 		long incVal = lastValue[idx]+1;
 
-		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
+		if (value == incVal && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
@@ -176,13 +166,13 @@ public final class FieldWriterLong {
 		}
 	}
 
-	public void writeLongUnsignedDelta(int value, int token) {
+	public void writeLongUnsignedDelta(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
-	public void writeLongUnsignedDeltaOptional(int value, int token) {
+	public void writeLongUnsignedDeltaOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSignedOptional(value - lastValue[idx]);
 		lastValueFlag[idx] = SET_VALUE;
@@ -193,13 +183,13 @@ public final class FieldWriterLong {
 	///////////////
 	////////////////
 	
-	public void writeLongSigned(int value, int token) {
+	public void writeLongSigned(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
 		writer.writeLongSigned(value);
 	}
 	
-	public void writeLongSignedCopy(int value, int token) {
+	public void writeLongSignedCopy(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
@@ -211,7 +201,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongSignedCopyOptional(int value, int token) {
+	public void writeLongSignedCopyOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
@@ -225,7 +215,7 @@ public final class FieldWriterLong {
 	
 
 	
-	public void writeLongSignedConstant(int value, int token) {
+	public void writeLongSignedConstant(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		//value must equal constant
@@ -238,7 +228,7 @@ public final class FieldWriterLong {
 		
 	}
 	
-	public void writeLongSignedDefault(int value, int token) {
+	public void writeLongSignedDefault(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx]) {
@@ -249,7 +239,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongSignedDefaultOptional(int value, int token) {
+	public void writeLongSignedDefaultOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
 		if (value == lastValue[idx] && lastValueFlag[idx]>0) {//not null and matches
@@ -271,7 +261,7 @@ public final class FieldWriterLong {
 		}
 	}
 	
-	public void writeLongSignedIncrement(int value, int token) {
+	public void writeLongSignedIncrement(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		long incVal = lastValue[idx]+1;
 		
@@ -280,18 +270,17 @@ public final class FieldWriterLong {
 			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(value);
-			lastValue[idx] = value;
+			writer.writeLongSigned(lastValue[idx] = value);
 		}
 	}
 	
 
-	public void writeLongSignedIncrementOptional(int value, int token) {
+	public void writeLongSignedIncrementOptional(long value, int token) {
 
 		int idx = token & INSTANCE_MASK;
 		long incVal = lastValue[idx]+1;
 
-		if (lastValueFlag[idx]>0 && value == incVal) {//not null and matches
+		if (value == incVal && lastValueFlag[idx]>0) {//not null and matches
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
@@ -301,13 +290,13 @@ public final class FieldWriterLong {
 		}
 	}
 
-	public void writeLongSignedDelta(int value, int token) {
+	public void writeLongSignedDelta(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
-	public void writeLongSignedDeltaOptional(int value, int token) {
+	public void writeLongSignedDeltaOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writeLongSignedOptional(value - lastValue[idx]);
 		lastValueFlag[idx] = SET_VALUE;

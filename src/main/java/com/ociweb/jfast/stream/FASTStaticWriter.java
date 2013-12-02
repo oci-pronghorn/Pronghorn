@@ -41,14 +41,13 @@ public final class FASTStaticWriter implements FASTWriter {
 	private final int SHIFT_PMAP_MASK = 20;
 	
 	//TODO: need to add dictionary id
-	//use top of 20 bit block for dictionary with 0 as global.
-	//template and appType mapped to custom string implementation.
-	// 6 bits on top for dictionary so old behavior remains.
-	//14 bits for field id
 	
-	//Limitations:
-	//            max 64 dictionaries 
-	//            max 16384 fields per type in one template
+	//TODO: these can all be run together with variable lengths
+	//each field has a unique string id and the class for generating the ids will
+	//have the scopes needed to know if a new instance or old one should be used.
+	//TODO: What is the unqie id is it name or id?
+	//TODO: How is this converted into simple field id of int type?
+	
 	
 	//////////////// 32 bits total ////////////////////////////////////////////
 	//  1 bit, High bit is always set to denote this as a token vs fieldId   //
@@ -62,14 +61,17 @@ public final class FASTStaticWriter implements FASTWriter {
 	//    together, this same mapping applies to the group.
 
 	
-	public FASTStaticWriter(PrimitiveWriter writer, int intFields, int longFields, int[] tokenLookup) {
+	public FASTStaticWriter(PrimitiveWriter writer, DictionaryFactory dcr, int[] tokenLookup) {
 		//TODO: must set the initial values for default/constants from the template here.
 		//TODO: perhaps the arrays should be allocated external so template parser can manage it?
 		
 		this.writer = writer;
-		this.writerInteger = new FieldWriterInteger(writer, intFields);
-		this.writerLong    = new FieldWriterLong(writer,longFields);
 		this.tokenLookup = tokenLookup;
+		
+		this.writerInteger = new FieldWriterInteger(writer, dcr.integerDictionary(), dcr.integerDictionaryFlags());
+		this.writerLong    = new FieldWriterLong(writer,dcr.longDictionary(), dcr.longDictionaryFlags());
+		
+		
 		
 	}
 	
@@ -79,21 +81,55 @@ public final class FASTStaticWriter implements FASTWriter {
 	 */
 	@Override
 	public void write(int id) {
+		
+		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.Increment:
-			case OperatorMask.Copy:
-			case OperatorMask.Default:	
-				writerInteger.writeIntegerNullPMap(token);//sets 1
+		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+			case TypeMask.IntegerUnsigned:
+			case TypeMask.IntegerUnsignedOptional:
+			case TypeMask.IntegerSigned:
+			case TypeMask.IntegerSignedOptional:
+				switch ((token>>SHIFT_OPER)&MASK_OPER) {
+					case OperatorMask.Increment:
+					case OperatorMask.Copy:
+					case OperatorMask.Default:	
+						writerInteger.writeIntegerNullPMap(token);//sets 1
+						break;
+					case OperatorMask.None: //no pmap
+					case OperatorMask.Delta:				
+						writerInteger.writeIntegerNull(token);
+						break;
+					default:
+						//constant can not be optional and will throw
+						throw new UnsupportedOperationException();
+				}				
 				break;
-			case OperatorMask.None: //no pmap
-			case OperatorMask.Delta:				
-				writerInteger.writeIntegerNull(token);
-				break;
-			default:
-				//constant can not be optional and will throw
+			case TypeMask.LongUnsigned:
+			case TypeMask.LongUnsignedOptional:
+			case TypeMask.LongSigned:
+			case TypeMask.LongSignedOptional:
+				switch ((token>>SHIFT_OPER)&MASK_OPER) {
+					case OperatorMask.Increment:
+					case OperatorMask.Copy:
+					case OperatorMask.Default:	
+						writerLong.writeLongNullPMap(token);//sets 1
+						break;
+					case OperatorMask.None: //no pmap
+					case OperatorMask.Delta:				
+						writerLong.writeLongNull(token);
+						break;
+					default:
+						//constant can not be optional and will throw
+						throw new UnsupportedOperationException();
+				}				
+				break;		
+			default://all other types should use their own method.
 				throw new UnsupportedOperationException();
 		}
+		
+		
+		
+
 	}
 	
 	/**
@@ -108,7 +144,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			case TypeMask.LongUnsigned:
 				acceptLongUnsigned(token, value);
 				break;
-			case TypeMask.LongUnSignedOptional:
+			case TypeMask.LongUnsignedOptional:
 				acceptLongUnsignedOptional(token, value);
 				break;
 			case TypeMask.LongSigned:
@@ -127,6 +163,22 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeLongSignedOptional(value);
 				break;
+			case OperatorMask.Constant:
+				//can not be optional so down grade to required
+				writerLong.writeLongSignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerLong.writeLongSignedCopyOptional(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerLong.writeLongSignedDeltaOptional(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerLong.writeLongSignedIncrementOptional(value, token);
+				break;
+			case OperatorMask.Default:
+				writerLong.writeLongSignedDefaultOptional(value, token);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -136,6 +188,21 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongSigned(value);
+				break;
+			case OperatorMask.Constant:
+				writerLong.writeLongSignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerLong.writeLongSignedCopy(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerLong.writeLongSignedDelta(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerLong.writeLongSignedIncrement(value, token);
+				break;
+			case OperatorMask.Default:
+				writerLong.writeLongSignedDefault(value, token);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -147,6 +214,22 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeLongUnsignedOptional(value);
 				break;
+			case OperatorMask.Constant:
+				//can not be optional so down grade to required
+				writerLong.writeLongUnsignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerLong.writeLongUnsignedCopyOptional(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerLong.writeLongUnsignedDeltaOptional(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerLong.writeLongUnsignedIncrementOptional(value, token);
+				break;
+			case OperatorMask.Default:
+				writerLong.writeLongUnsignedDefaultOptional(value, token);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -156,6 +239,21 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongUnsigned(value);
+				break;
+			case OperatorMask.Constant:
+				writerLong.writeLongUnsignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerLong.writeLongUnsignedCopy(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerLong.writeLongUnsignedDelta(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerLong.writeLongUnsignedIncrement(value, token);
+				break;
+			case OperatorMask.Default:
+				writerLong.writeLongUnsignedDefault(value, token);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -240,27 +338,27 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptIntegerSignedOptional(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-		case OperatorMask.None:
-			writer.writeIntegerSignedOptional(value);
-			break;
-		case OperatorMask.Constant:
-			//can not be optional so down grade to required
-			writerInteger.writeIntegerSignedConstant(value, token);
-			break;
-		case OperatorMask.Copy:
-			writerInteger.writeIntegerSignedCopyOptional(value, token);
-			break;
-		case OperatorMask.Delta:
-			writerInteger.writeIntegerSignedDeltaOptional(value, token);
-			break;	
-		case OperatorMask.Increment:
-			writerInteger.writeIntegerSignedIncrementOptional(value, token);
-			break;
-		case OperatorMask.Default:
-			writerInteger.writeIntegerSignedDefaultOptional(value, token);
-			break;
-		default:
-			throw new UnsupportedOperationException();
+			case OperatorMask.None:
+				writer.writeIntegerSignedOptional(value);
+				break;
+			case OperatorMask.Constant:
+				//can not be optional so down grade to required
+				writerInteger.writeIntegerSignedConstant(value, token);
+				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerSignedCopyOptional(value, token);
+				break;
+			case OperatorMask.Delta:
+				writerInteger.writeIntegerSignedDeltaOptional(value, token);
+				break;	
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerSignedIncrementOptional(value, token);
+				break;
+			case OperatorMask.Default:
+				writerInteger.writeIntegerSignedDefaultOptional(value, token);
+				break;
+			default:
+				throw new UnsupportedOperationException();
 		}
 	}
 	
@@ -582,10 +680,10 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	
-	public void reset() {
+	public void reset(DictionaryFactory df) {
 		//reset all values to unset
-		writerInteger.reset();
-		writerLong.reset();
+		writerInteger.reset(df);
+		writerLong.reset(df);
 	}
 
 

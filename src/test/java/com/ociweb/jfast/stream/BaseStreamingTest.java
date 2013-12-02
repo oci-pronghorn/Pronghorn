@@ -122,6 +122,9 @@ public abstract class BaseStreamingTest {
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 				
+
+	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
+	    
 				long maxOverhead;
 				long totalOverhead;
 				long minOverhead;
@@ -148,7 +151,7 @@ public abstract class BaseStreamingTest {
 						input.reset();
 						pr.reset();
 						
-						FASTStaticReader fr = new FASTStaticReader(pr, fields, tokenLookup);
+						FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
 						
 			
 						//compute overhead
@@ -188,6 +191,7 @@ public abstract class BaseStreamingTest {
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
+		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
 		
 		    long byteCount=0;
 		
@@ -211,7 +215,7 @@ public abstract class BaseStreamingTest {
 						output.reset();
 						pw.reset();
 						
-						FASTStaticWriter fw = new FASTStaticWriter(pw, fields, fields, tokenLookup);
+						FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
 						
 						//compute overhead
 						long overhead = emptyLoop(operationIters, fields, fieldsPerGroup);
@@ -237,7 +241,8 @@ public abstract class BaseStreamingTest {
 						}			
 					}
 					
-			
+				} catch (Throwable t) {
+					t.printStackTrace();
 				} finally {
 					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
 							maxDuration, totalDuration, minDuration,
