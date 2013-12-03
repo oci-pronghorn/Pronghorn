@@ -86,26 +86,27 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 			//  7 bit type (must match method)
 			//  4 bit operation (must match method)
 			// 20 bit instance (MUST be lowest for easy mask and frequent use)
+
+			//find next pattern to be used, rotating over them all.
+			do {
+				if (--typeIdx<0) {
+					if (--opsIdx<0) {
+						opsIdx = operators.length-1;
+					}
+					typeIdx = types.length-1;
+				}
+			} while (isInValidCombo(types[typeIdx],operators[opsIdx]));
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
 			lookup[count] = buildToken(tokenType, tokenOpp, count);
 					
-			//find next pattern to be used, rotating over them all.
-			do {
-			if (--typeIdx<0) {
-				if (--opsIdx<0) {
-					opsIdx = operators.length-1;
-				}
-				typeIdx = types.length-1;
-			}
-			} while (isInValidCombo(types[typeIdx],operators[opsIdx]));
 		}
 		return lookup;
 		
 	}
 
-	private static boolean isInValidCombo(int type, int operator) {
+	public static boolean isInValidCombo(int type, int operator) {
 		boolean isOptional = 1==(type&0x01);
 		
 		if (OperatorMask.Constant==operator & isOptional) {
@@ -136,6 +137,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	////
 	//
 	
+	/*
 	
 	public long timeStaticLongUnsignedNone(int reps) {
 		return staticWriteReadLongGroup(reps, 
@@ -318,6 +320,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 						    OperatorMask.Increment, 
 						     0));
 	}
+	*/
 	
 	//
 	////

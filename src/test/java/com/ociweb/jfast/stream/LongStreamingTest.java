@@ -34,11 +34,11 @@ public class LongStreamingTest extends BaseStreamingTest {
 		
 		int[] operators = new int[] {
                 OperatorMask.None,  //no need for pmap
-                OperatorMask.Delta, //no need for pmap
-                OperatorMask.Copy,
-                OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
+          //      OperatorMask.Delta, //no need for pmap
+           //     OperatorMask.Copy,
+           //    OperatorMask.Increment,
+           //     OperatorMask.Constant, //test runner knows not to use with optional
+           //     OperatorMask.Default
                 };
 				
 		tester(types, operators, "UnsignedLong");
@@ -53,11 +53,11 @@ public class LongStreamingTest extends BaseStreamingTest {
 		
 		int[] operators = new int[] {
                 OperatorMask.None,  //no need for pmap
-                OperatorMask.Delta, //no need for pmap
-                OperatorMask.Copy,
-                OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
+             //   OperatorMask.Delta, //no need for pmap
+             //   OperatorMask.Copy,
+            //    OperatorMask.Increment,
+            //    OperatorMask.Constant, //test runner knows not to use with optional
+            //    OperatorMask.Default
                 };
 		tester(types, operators, "SignedLong");
 	}

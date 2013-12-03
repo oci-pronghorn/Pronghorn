@@ -296,15 +296,20 @@ public class DictionaryFactory {
 	}
 
 	public void reset(int[] values, byte[] flags) {
-		int i = flags.length;
-		while (--i>=0) {
-			flags[i] = 0;
-			values[i] = 0;
+		int i;
+		if (null!=flags) {
+			i = flags.length;
+			while (--i>=0) {
+				flags[i] = 0;
+			}
 		}
 		i = integerInitCount;
 		while (--i>=0) {
-			values[integerInitIndex[i]] = integerInitValue[i];
-			flags[integerInitIndex[i]] = HAS_VALUE;
+			int j = integerInitIndex[i];
+			values[j] = integerInitValue[i];
+			if (null!=flags) {
+				flags[j] = HAS_VALUE;
+			}
 		}
 	}
 
@@ -312,12 +317,12 @@ public class DictionaryFactory {
 		int i = flags.length;
 		while (--i>=0) {
 			flags[i] = 0;
-			values[i] = 0;
 		}
 		i = longInitCount;
 		while (--i>=0) {
-			values[longInitIndex[i]] = longInitValue[i];
-			flags[longInitIndex[i]] = HAS_VALUE;
+			int j = longInitIndex[i];
+			values[j] = longInitValue[i];
+			flags[j] = HAS_VALUE;
 		}
 	}
 	
@@ -325,23 +330,23 @@ public class DictionaryFactory {
 		int i = exponentFlags.length;
 		while (--i>=0) {
 			exponentFlags[i] = 0;
-			exponents[i] = 0;
 		}
 		i = decimalExponentInitCount;
 		while (--i>=0) {
-			exponents[decimalExponentInitIndex[i]] = decimalExponentInitValue[i];
-			exponentFlags[decimalExponentInitIndex[i]] = HAS_VALUE;
+			int j = decimalExponentInitIndex[i];
+			exponents[j] = decimalExponentInitValue[i];
+			exponentFlags[j] = HAS_VALUE;
 		}
 		
 		i = mantissaFlags.length;
 		while (--i>=0) {
 			mantissaFlags[i] = 0;
-			mantissa[i] = 0;
 		}
 		i = decimalMantissaInitCount;
 		while (--i>=0) {
-			mantissa[decimalMantissaInitIndex[i]] = decimalMantissaInitValue[i];
-			mantissaFlags[decimalMantissaInitIndex[i]] = HAS_VALUE;
+			int j = decimalMantissaInitIndex[i];
+			mantissa[j] = decimalMantissaInitValue[i];
+			mantissaFlags[j] = HAS_VALUE;
 		}
 	}
 	
@@ -349,12 +354,12 @@ public class DictionaryFactory {
 		int i = flags.length;
 		while (--i>=0) {
 			flags[i] = 0;
-			values[i] = null;//TODO: this is not needed and may be a very bad idea.
 		}
 		i = charInitCount;
 		while (--i>=0) {
-			values[charInitIndex[i]] = charInitValue[i];
-			flags[charInitIndex[i]] = HAS_VALUE;
+			int j = charInitIndex[i];
+			values[j] = charInitValue[i];
+			flags[j] = HAS_VALUE;
 		}
 	}
 	
@@ -362,12 +367,12 @@ public class DictionaryFactory {
 		int i = flags.length;
 		while (--i>=0) {
 			flags[i] = 0;
-			values[i] = null;//TODO: this is not needed and may be a very bad idea.
 		}
 		i = byteInitCount;
 		while (--i>=0) {
-			values[byteInitIndex[i]] = byteInitValue[i];
-			flags[byteInitIndex[i]] = HAS_VALUE;
+			int j = byteInitIndex[i];
+			values[j] = byteInitValue[i];
+			flags[j] = HAS_VALUE;
 		}
 	}
 	

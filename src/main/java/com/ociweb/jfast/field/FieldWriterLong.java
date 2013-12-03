@@ -40,9 +40,9 @@ public final class FieldWriterLong {
 		
 	}
 	
-	public void writeLongNullPMap(int token) {
+	public void writeLongNullPMap(int token, byte bit) {
 			int idx = token & INSTANCE_MASK;
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit(bit);
 			writer.writeNull();
 			lastValueFlag[idx] = SET_NULL;
 	}

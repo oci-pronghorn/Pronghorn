@@ -20,6 +20,11 @@ public final class TypeMask {
 	public final static int TextUTF8					= 0x0A;//001010
 	public final static int TextUTF8Optional			= 0x0B;//001011
 	
+	//TODO: what if single/twin is an artifact of the parser only then
+	//here we just mege the operation type of exponent into the type
+	//copy, delta, default, const, none, shared 6 values? and one token?
+	//if we define all the decimals first they can use the same index.
+	
 	public final static int DecimalSingle				= 0x0C;//001100
 	public final static int DecimalSingleOptional  	= 0x0D;//001101
 	public final static int DecimalTwin	        	= 0x0E;//001110

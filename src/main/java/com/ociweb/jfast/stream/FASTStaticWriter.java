@@ -23,9 +23,11 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 	private final FieldWriterInteger writerInteger;
 	private final FieldWriterLong writerLong;
+	private final FieldWriterInteger writerDecimalExponent;
+	private final FieldWriterLong writerDecimalMantissa;
+	
 	//writerText
 	//writerByteArray
-	//writerDecimal
 	
 	
 	private final int[] tokenLookup; //array of tokens as field id locations
@@ -68,9 +70,14 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.writer = writer;
 		this.tokenLookup = tokenLookup;
 		
-		this.writerInteger = new FieldWriterInteger(writer, dcr.integerDictionary(), dcr.integerDictionaryFlags());
-		this.writerLong    = new FieldWriterLong(writer,dcr.longDictionary(), dcr.longDictionaryFlags());
-		
+		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
+		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary(), dcr.longDictionaryFlags());
+		//decimal does the same as above but both parts work together for each whole value
+		//TODO: it may be a better design to only use this for the singles and put the twins in the above structure?
+		this.writerDecimalExponent = new FieldWriterInteger(writer, dcr.decimalExponentDictionary());
+		this.writerDecimalMantissa = new FieldWriterLong(writer,dcr.decimalMantissaDictionary(), dcr.decimalDictionaryFlags());
+		//
+		//TODO: add the Text and Bytes
 		
 		
 	}
@@ -92,12 +99,17 @@ public final class FASTStaticWriter implements FASTWriter {
 				switch ((token>>SHIFT_OPER)&MASK_OPER) {
 					case OperatorMask.Increment:
 					case OperatorMask.Copy:
-					case OperatorMask.Default:	
-						writerInteger.writeIntegerNullPMap(token);//sets 1
+						writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
 						break;
 					case OperatorMask.None: //no pmap
-					case OperatorMask.Delta:				
 						writerInteger.writeIntegerNull(token);
+						break;
+					case OperatorMask.Delta:
+						writer.writePMapBit((byte)0);
+						break;
+					case OperatorMask.Default: //does not change dictionary	
+					case OperatorMask.Constant:
+						writer.writeNull();
 						break;
 					default:
 						//constant can not be optional and will throw
@@ -111,18 +123,28 @@ public final class FASTStaticWriter implements FASTWriter {
 				switch ((token>>SHIFT_OPER)&MASK_OPER) {
 					case OperatorMask.Increment:
 					case OperatorMask.Copy:
-					case OperatorMask.Default:	
-						writerLong.writeLongNullPMap(token);//sets 1
+						writerLong.writeLongNullPMap(token,(byte)1);//sets 1
 						break;
 					case OperatorMask.None: //no pmap
-					case OperatorMask.Delta:				
 						writerLong.writeLongNull(token);
+						break;
+					case OperatorMask.Delta:			
+						writer.writePMapBit((byte)0);
+						break;
+					case OperatorMask.Default: //does not change dictionary	
+					case OperatorMask.Constant:
+						writer.writeNull();
 						break;
 					default:
 						//constant can not be optional and will throw
 						throw new UnsupportedOperationException();
 				}				
 				break;		
+			case TypeMask.DecimalSingle:
+			case TypeMask.DecimalSingleOptional:
+			case TypeMask.DecimalTwin:
+			case TypeMask.DecimalTwinOptional:
+
 			default://all other types should use their own method.
 				throw new UnsupportedOperationException();
 		}
@@ -162,10 +184,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongSignedOptional(value);
-				break;
-			case OperatorMask.Constant:
-				//can not be optional so down grade to required
-				writerLong.writeLongSignedConstant(value, token);
 				break;
 			case OperatorMask.Copy:
 				writerLong.writeLongSignedCopyOptional(value, token);
@@ -213,10 +231,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongUnsignedOptional(value);
-				break;
-			case OperatorMask.Constant:
-				//can not be optional so down grade to required
-				writerLong.writeLongUnsignedConstant(value, token);
 				break;
 			case OperatorMask.Copy:
 				writerLong.writeLongUnsignedCopyOptional(value, token);
@@ -341,10 +355,6 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeIntegerSignedOptional(value);
 				break;
-			case OperatorMask.Constant:
-				//can not be optional so down grade to required
-				writerInteger.writeIntegerSignedConstant(value, token);
-				break;
 			case OperatorMask.Copy:
 				writerInteger.writeIntegerSignedCopyOptional(value, token);
 				break;
@@ -366,10 +376,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsignedOptional(value);
-				break;
-			case OperatorMask.Constant:
-				//can not be optional so down grade to required
-				writerInteger.writeIntegerUnsignedConstant(value, token);
 				break;
 			case OperatorMask.Copy:
 				writerInteger.writeIntegerUnsignedCopyOptional(value, token);

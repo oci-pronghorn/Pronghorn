@@ -4,6 +4,8 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.FieldReaderLong;
+import com.ociweb.jfast.field.FieldWriterInteger;
+import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -16,7 +18,9 @@ public class FASTStaticReader implements FASTReader {
 	
 	//package protected so DynamicReader can use these instances
 	final FieldReaderInteger readerInteger;
-	final FieldReaderLong readerLong;
+	final FieldReaderLong    readerLong;
+	final FieldReaderInteger readerDecimalExponent;
+	final FieldReaderLong    readerDecimalMantissa;
 	
 	//See fast writer for details and mask sizes
 	private final int MASK_TYPE = 0x3F;
@@ -35,6 +39,13 @@ public class FASTStaticReader implements FASTReader {
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary(), dcr.integerDictionaryFlags());
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary(), dcr.longDictionaryFlags());
+		//decimal does the same as above but both parts work together for each whole value
+		this.readerDecimalExponent = new FieldReaderInteger(reader, dcr.decimalExponentDictionary(), dcr.decimalDictionaryFlags());
+		this.readerDecimalMantissa = new FieldReaderLong(reader,dcr.decimalMantissaDictionary(), dcr.decimalDictionaryFlags());
+		//
+		//TODO: add text and bytes
+		
+		
 		
 	}
 	
@@ -127,9 +138,6 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 		case OperatorMask.None:
 			return readerLong.readLongSignedOptional(token,valueOfOptional);
-		case OperatorMask.Constant:
-			//down grade to non optional rather than fail
-			return readerLong.readLongSignedConstant(token,valueOfOptional);
 		case OperatorMask.Copy:
 			return readerLong.readLongSignedCopyOptional(token,valueOfOptional);
 		case OperatorMask.Default:
@@ -166,9 +174,6 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				return readerLong.readLongUnsignedOptional(token,valueOfOptional);
-			case OperatorMask.Constant:
-				//down grade to non optional rather than fail
-				return readerLong.readLongUnsignedConstant(token,valueOfOptional);
 			case OperatorMask.Copy:
 				return readerLong.readLongUnsignedCopyOptional(token,valueOfOptional);
 			case OperatorMask.Default:
@@ -224,9 +229,6 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 		case OperatorMask.None:
 			return readerInteger.readIntegerSignedOptional(token,valueOfOptional);
-		case OperatorMask.Constant:
-			//down grade to non optional rather than fail
-			return readerInteger.readIntegerSignedConstant(token,valueOfOptional);
 		case OperatorMask.Copy:
 			return readerInteger.readIntegerSignedCopyOptional(token,valueOfOptional);
 		case OperatorMask.Default:
@@ -245,7 +247,7 @@ public class FASTStaticReader implements FASTReader {
 		case OperatorMask.None:
 			return readerInteger.readIntegerSigned(token);
 		case OperatorMask.Constant:
-			return readerInteger.readIntegerSignedConstant(token, valueOfOptional);
+			return readerInteger.readIntegerSignedConstant(token);
 		case OperatorMask.Copy:
 			return readerInteger.readIntegerSignedCopy(token);
 		case OperatorMask.Default:
@@ -263,9 +265,6 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				return readerInteger.readIntegerUnsignedOptional(token,valueOfOptional);
-			case OperatorMask.Constant:
-				//down grade to non optional rather than fail
-				return readerInteger.readIntegerUnsignedConstant(token,valueOfOptional);
 			case OperatorMask.Copy:
 				return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
 			case OperatorMask.Default:
@@ -284,7 +283,7 @@ public class FASTStaticReader implements FASTReader {
 			case OperatorMask.None:
 				return readerInteger.readIntegerUnsigned(token);
 			case OperatorMask.Constant:
-				return readerInteger.readIntegerUnsignedConstant(token, valueOfOptional);
+				return readerInteger.readIntegerUnsignedConstant(token);
 			case OperatorMask.Copy:
 				return readerInteger.readIntegerUnsignedCopy(token);
 			case OperatorMask.Default:

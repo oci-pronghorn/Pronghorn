@@ -45,10 +45,10 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerUnsignedConstant(int token, int valueOfOptional) {
+	public int readIntegerUnsignedConstant(int token) {
 		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					(lastValueFlag[idx]<=0?valueOfOptional:lastValue[idx]):
+					lastValue[idx]:
 					reader.readIntegerUnsigned()	
 				);
 	}
@@ -86,14 +86,12 @@ public class FieldReaderInteger {
 	
 	public int readIntegerUnsignedDeltaOptional(int token, int valueOfOptional) {
 		int instance = token & INSTANCE_MASK;
-		if (reader.peekNull()) {
-			reader.incPosition();
-			lastValueFlag[instance] = SET_NULL;
+		if (reader.popPMapBit()==0) {
 			return valueOfOptional;
 		} else {
 			int prevFlag = lastValueFlag[instance];
 			lastValueFlag[instance] = SET_VALUE;
-			return lastValue[instance] = (int)((prevFlag <= 0) ? reader.readLongSignedOptional() : lastValue[instance]+reader.readLongSignedOptional());
+			return lastValue[instance] = (int)((prevFlag <= 0) ? reader.readLongSigned() : lastValue[instance]+reader.readLongSigned());
 		}
 	}
 
@@ -183,10 +181,10 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerSignedConstant(int token, int valueOfOptional) {
+	public int readIntegerSignedConstant(int token) {
 		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					(lastValueFlag[idx]<=0?valueOfOptional:lastValue[idx]):
+					lastValue[idx]:
 					reader.readIntegerSigned()	
 				);
 	}
@@ -224,14 +222,12 @@ public class FieldReaderInteger {
 	
 	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {
 		int instance = token & INSTANCE_MASK;
-		if (reader.peekNull()) {
-			reader.incPosition();
-			lastValueFlag[instance] = SET_NULL;
+		if (reader.popPMapBit()==0) {
 			return valueOfOptional;
 		} else {
 			int prevFlag = lastValueFlag[instance];
 			lastValueFlag[instance] = SET_VALUE;
-			return lastValue[instance] = (int)((prevFlag <= 0) ? reader.readLongSignedOptional() : lastValue[instance]+reader.readLongSignedOptional());
+			return lastValue[instance] = (int)((prevFlag <= 0) ? reader.readLongSigned() : lastValue[instance]+reader.readLongSigned());
 		}
 	}
 
@@ -248,23 +244,14 @@ public class FieldReaderInteger {
 	public int readIntegerSignedDefaultOptional(int token, int valueOfOptional) {
 		if (reader.popPMapBit()==0) {
 			
-			if (lastValueFlag[token & INSTANCE_MASK] < 0) {
-				//default value is null so return optional.
-				return valueOfOptional;
-			} else {
-				//default value 
-				return lastValue[token & INSTANCE_MASK];
-			}
+			return lastValue[token & INSTANCE_MASK];
 			
 		} else {
-			if (reader.peekNull()) {
-				
-				reader.incPosition();
+			int value = reader.readIntegerSigned();
+			if (value==0) {
 				return valueOfOptional;
-				
 			} else {
-				//override value, but do not replace the default
-				return reader.readIntegerSignedOptional();
+				return --value;
 			}
 		}
 	}

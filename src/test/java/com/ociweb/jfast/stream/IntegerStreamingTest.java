@@ -36,9 +36,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-                OperatorMask.Increment,
+           //     OperatorMask.Increment,
                 OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
+           //     OperatorMask.Default
                 };
 				
 		tester(types, operators, "UnsignedInteger");
@@ -55,9 +55,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-                OperatorMask.Increment,
+           //     OperatorMask.Increment,
                 OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
+        //        OperatorMask.Default
                 };
 		tester(types, operators, "SignedInteger");
 	}
@@ -140,6 +140,25 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		fw.flush();
 	}
 
+	private void tokenPrint(int token) {
+		
+		//return 0x80000000 |  
+			//       (tokenType<<24) |
+			  //     (tokenOpp<<20) |
+			    //   count;
+		
+		int type = (token>>24)&0x3F; //6 bits
+		int opp  = (token>>20)&0x0F; //4 bits
+		
+		if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp)) {
+			throw new UnsupportedOperationException("bad token");
+		};
+		
+		System.err.println("token: type:"+type+" opp:"+opp);
+		// TODO Auto-generated method stub
+		
+	}
+
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
@@ -168,6 +187,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
+				
 				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
 		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 					if (Integer.MIN_VALUE!=value) {

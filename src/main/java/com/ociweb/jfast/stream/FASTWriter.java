@@ -18,7 +18,7 @@ public interface FASTWriter {
 	void write(int id, CharSequence value); //Strings & CharBuffers are CharSequence
 	void write(int id, char[] value, int offset, int length);
 		
-	void write(int id);//null
+	void write(int id);//null, takes exponent id for decimal
 	
 	void openGroup(int id);
 	void openGroup(int id, int repeat);
