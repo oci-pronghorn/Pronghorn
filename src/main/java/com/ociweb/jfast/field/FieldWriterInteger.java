@@ -5,6 +5,7 @@ import com.ociweb.jfast.stream.DictionaryFactory;
 
 public final class FieldWriterInteger {
 
+	//crazy big value? TODO: make smaller mask based on exact length of array.
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
 	
 	private final PrimitiveWriter writer;
@@ -112,11 +113,12 @@ public final class FieldWriterInteger {
 	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
+		value++;//room for zero
 		if (value == lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value+1);
+			writer.writeIntegerUnsigned(value);
 		}
 	}
 	
@@ -127,7 +129,8 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeNull();
+			writer.writeIntegerUnsigned(0);
+			//writer.writeNull(); //TODO: confirm these are equal?
 		}
 	}
 	
@@ -149,17 +152,28 @@ public final class FieldWriterInteger {
 
 		int idx = token & INSTANCE_MASK;
 
-		value++;// make room for null
-		int incVal = lastValue[idx]+1;
-
-		if (value == incVal) {//not null and matches
+		value++;
+		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
-			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(lastValue[idx] = value);
 		}
 	}
+	
+	public void writeIntegerUnsignedIncrementOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+
+		if (lastValue[idx]==0) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			//writer.writeNull(); //TODO: confirm these are equal?
+			writer.writeIntegerUnsigned(0);
+			lastValue[idx] = 0;
+		}
+	}
+	
 
 	public void writeIntegerUnsignedDelta(int value, int token) {
 		int idx = token & INSTANCE_MASK;
@@ -170,8 +184,21 @@ public final class FieldWriterInteger {
 	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writePMapBit((byte)1);	
-		writer.writeLongSigned(value - lastValue[idx]);
+		writer.writeLongSigned(1+(value - lastValue[idx]));
 		lastValue[idx] = value;	
+	}
+	
+	public void writeIntegerUnsignedDeltaOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (lastValue[idx]==0) {
+			writer.writePMapBit((byte)0);
+		}else {
+			writer.writePMapBit((byte)1);	
+		    writer.writeLongSigned(0);
+			lastValue[idx] = 0;	
+		}
+		
 	}
 
 	////////////////
@@ -279,19 +306,33 @@ public final class FieldWriterInteger {
 	public void writeIntegerSignedIncrementOptional(int value, int token) {
 
 		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
-		
+
 		if (value>=0) {
 			value++;
 		}
-
-		if (value == incVal) {//not null and matches
+		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
-			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerSigned(lastValue[idx] = value);
 		}
+			
+	}
+	
+	public void writeIntegerSignedIncrementOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+
+		if (lastValue[idx]==0) { //stored value was null;
+		//	System.err.println("A write zero");
+			writer.writePMapBit((byte)0);
+		} else {
+		//	System.err.println("B write zero");
+			writer.writePMapBit((byte)1);
+			//writer.writeNull(); //TODO: confirm these are equal?
+			writer.writeIntegerSigned(0);
+			lastValue[idx] = 0;
+		}
+		
 	}
 
 	public void writeIntegerSignedDelta(int value, int token) {
@@ -303,7 +344,7 @@ public final class FieldWriterInteger {
 	public void writeIntegerSignedDeltaOptional(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		writer.writePMapBit((byte)1);	
-		writer.writeLongSigned(value - lastValue[idx]);
+		writer.writeLongSigned(1+(value - lastValue[idx]));
 		lastValue[idx] = value;	
 	}
 	

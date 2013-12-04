@@ -37,10 +37,10 @@ public class FASTStaticReader implements FASTReader {
 		this.reader=reader;
 		this.tokenLookup = tokenLookup;
 		
-		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary(), dcr.integerDictionaryFlags());
+		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary(), dcr.longDictionaryFlags());
 		//decimal does the same as above but both parts work together for each whole value
-		this.readerDecimalExponent = new FieldReaderInteger(reader, dcr.decimalExponentDictionary(), dcr.decimalDictionaryFlags());
+		this.readerDecimalExponent = new FieldReaderInteger(reader, dcr.decimalExponentDictionary());
 		this.readerDecimalMantissa = new FieldReaderLong(reader,dcr.decimalMantissaDictionary(), dcr.decimalDictionaryFlags());
 		//
 		//TODO: add text and bytes

@@ -18,7 +18,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 
-	boolean sendNulls = true;
+	boolean sendNulls = false;
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -36,9 +36,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-           //     OperatorMask.Increment,
+                OperatorMask.Increment,
                 OperatorMask.Constant, //test runner knows not to use with optional
-           //     OperatorMask.Default
+                OperatorMask.Default
                 };
 				
 		tester(types, operators, "UnsignedInteger");
@@ -55,9 +55,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-           //     OperatorMask.Increment,
+                OperatorMask.Increment,
                 OperatorMask.Constant, //test runner knows not to use with optional
-        //        OperatorMask.Default
+                OperatorMask.Default
                 };
 		tester(types, operators, "SignedInteger");
 	}
@@ -149,12 +149,13 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		
 		int type = (token>>24)&0x3F; //6 bits
 		int opp  = (token>>20)&0x0F; //4 bits
+		int count = token & 0xFFFFF; //20 bits
 		
 		if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp)) {
 			throw new UnsupportedOperationException("bad token");
 		};
 		
-		System.err.println("token: type:"+type+" opp:"+opp);
+		System.err.println("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp)+" "+count);
 		// TODO Auto-generated method stub
 		
 	}
@@ -196,6 +197,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				} else { 
 					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 					if (testData[f]!=value) {
+						tokenPrint(tokenLookup[f]);
 						assertEquals(testData[f], value);
 					}
 				}

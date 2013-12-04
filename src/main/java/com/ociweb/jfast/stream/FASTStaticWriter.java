@@ -92,59 +92,24 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.IntegerUnsigned:
 			case TypeMask.IntegerUnsignedOptional:
-			case TypeMask.IntegerSigned:
+				writeIntegerUnsignedOptional(token);				
+			break;
 			case TypeMask.IntegerSignedOptional:
-				switch ((token>>SHIFT_OPER)&MASK_OPER) {
-					case OperatorMask.Increment:
-					case OperatorMask.Copy:
-						writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
-						break;
-					case OperatorMask.None: //no pmap
-						writerInteger.writeIntegerNull(token);
-						break;
-					case OperatorMask.Delta:
-						writer.writePMapBit((byte)0);
-						break;
-					case OperatorMask.Default: //does not change dictionary	
-					case OperatorMask.Constant:
-						writer.writeNull();
-						break;
-					default:
-						//constant can not be optional and will throw
-						throw new UnsupportedOperationException();
-				}				
-				break;
-			case TypeMask.LongUnsigned:
+				writeIntegerSignedOptional(token);				
+			break;
 			case TypeMask.LongUnsignedOptional:
-			case TypeMask.LongSigned:
+				writeLongUnsignedOptional(token);				
+			break;	
 			case TypeMask.LongSignedOptional:
-				switch ((token>>SHIFT_OPER)&MASK_OPER) {
-					case OperatorMask.Increment:
-					case OperatorMask.Copy:
-						writerLong.writeLongNullPMap(token,(byte)1);//sets 1
-						break;
-					case OperatorMask.None: //no pmap
-						writerLong.writeLongNull(token);
-						break;
-					case OperatorMask.Delta:			
-						writer.writePMapBit((byte)0);
-						break;
-					case OperatorMask.Default: //does not change dictionary	
-					case OperatorMask.Constant:
-						writer.writeNull();
-						break;
-					default:
-						//constant can not be optional and will throw
-						throw new UnsupportedOperationException();
-				}				
-				break;		
-			case TypeMask.DecimalSingle:
+			    writeLongUnsignedOptional(token);				
+			break;		
 			case TypeMask.DecimalSingleOptional:
-			case TypeMask.DecimalTwin:
 			case TypeMask.DecimalTwinOptional:
-
+			case TypeMask.TextASCIIOptional:
+			case TypeMask.TextUTF8Optional:
+				writer.writeNull();
+				break;
 			default://all other types should use their own method.
 				throw new UnsupportedOperationException();
 		}
@@ -152,6 +117,80 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		
 
+	}
+
+	private void writeLongUnsignedOptional(int token) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		case OperatorMask.Increment:
+		case OperatorMask.Copy:
+			writerLong.writeLongNullPMap(token,(byte)1);//sets 1
+			break;
+		case OperatorMask.None: //no pmap
+			writerLong.writeLongNull(token);
+			break;
+		case OperatorMask.Delta:			
+			writer.writePMapBit((byte)0);
+			break;
+		case OperatorMask.Default: //does not change dictionary	
+		case OperatorMask.Constant:
+			writer.writeNull();
+			break;
+		default:
+			//constant can not be optional and will throw
+			throw new UnsupportedOperationException();
+}
+	}
+
+	private void writeIntegerSignedOptional(int token) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerSignedIncrementOptional(token);
+				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
+				break;
+			case OperatorMask.None: //no pmap
+				writerInteger.writeIntegerNull(token);
+				break;
+			case OperatorMask.Delta:
+				writer.writePMapBit((byte)0);
+				break;
+			case OperatorMask.Default: //does not change dictionary	
+				writerInteger.writeIntegerUnsignedDefaultOptional(token);
+				break;
+			case OperatorMask.Constant:
+				writer.writeNull();
+				break;
+			default:
+				//constant can not be optional and will throw
+				throw new UnsupportedOperationException();
+		}
+	}
+
+	private void writeIntegerUnsignedOptional(int token) {
+		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+			case OperatorMask.None: //no pmap
+				writerInteger.writeIntegerNull(token);
+				break;
+			case OperatorMask.Copy:
+				writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
+				break;
+			case OperatorMask.Constant:
+				writer.writeNull();
+				break;
+			case OperatorMask.Default: //does not change dictionary	
+				writerInteger.writeIntegerSignedDefaultOptional(token);
+				break;
+			case OperatorMask.Delta:
+				writerInteger.writeIntegerUnsignedDeltaOptional(token);
+				break;
+			case OperatorMask.Increment:
+				writerInteger.writeIntegerUnsignedIncrementOptional(token);
+				break;
+			default:
+				//constant can not be optional and will throw
+				throw new UnsupportedOperationException();
+		}
 	}
 	
 	/**

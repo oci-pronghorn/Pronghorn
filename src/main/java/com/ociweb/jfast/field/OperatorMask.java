@@ -15,5 +15,37 @@ public class OperatorMask {
 	public static final int Increment = 0x05;  //101
 	public static final int Tail      = 0x06;  //110
 	
+	private static String prefix(int len, char c, String value) {
+		StringBuilder builder = new StringBuilder();
+		int add = len -value.length();
+		while (--add>=0) {
+			builder.append(c);
+		}
+		builder.append(value);
+		return builder.toString();
+		
+	}
+	
+	//This method for debugging and therefore can produce garbage.
+	public static String toString(int opp) {
+		switch(opp) {
+			case None:
+				return "None:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Copy:
+				return "Copy:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Constant:
+				return "Constant:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Default:
+				return "Default:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Delta:
+				return "Delta:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Increment:
+				return "Increment:"+prefix(6,'0',Integer.toBinaryString(opp));
+			case Tail:
+				return "Tail:"+prefix(6,'0',Integer.toBinaryString(opp));
+			default:	
+				return "unknown operation:"+prefix(6,'0',Integer.toBinaryString(opp));
+		}
+	}
 	
 }
