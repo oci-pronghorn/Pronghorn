@@ -295,34 +295,21 @@ public class DictionaryFactory {
 		return array;
 	}
 
-	public void reset(int[] values, byte[] flags) {
+	public void reset(int[] values) {
 		int i;
-		if (null!=flags) {
-			i = flags.length;
-			while (--i>=0) {
-				flags[i] = 0;
-			}
-		}
 		i = integerInitCount;
 		while (--i>=0) {
 			int j = integerInitIndex[i];
 			values[j] = integerInitValue[i];
-			if (null!=flags) {
-				flags[j] = HAS_VALUE;
-			}
 		}
 	}
 
-	public void reset(long[] values, byte[] flags) {
-		int i = flags.length;
-		while (--i>=0) {
-			flags[i] = 0;
-		}
+	public void reset(long[] values) {
+		int i;
 		i = longInitCount;
 		while (--i>=0) {
 			int j = longInitIndex[i];
 			values[j] = longInitValue[i];
-			flags[j] = HAS_VALUE;
 		}
 	}
 	
@@ -363,16 +350,12 @@ public class DictionaryFactory {
 		}
 	}
 	
-	public void reset(byte[][] values, byte[] flags) {
-		int i = flags.length;
-		while (--i>=0) {
-			flags[i] = 0;
-		}
+	public void reset(byte[][] values) {
+		int i;
 		i = byteInitCount;
 		while (--i>=0) {
 			int j = byteInitIndex[i];
 			values[j] = byteInitValue[i];
-			flags[j] = HAS_VALUE;
 		}
 	}
 	

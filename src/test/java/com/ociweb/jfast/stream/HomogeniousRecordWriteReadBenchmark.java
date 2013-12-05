@@ -137,8 +137,6 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	////
 	//
 	
-	/*
-	
 	public long timeStaticLongUnsignedNone(int reps) {
 		return staticWriteReadLongGroup(reps, 
 				buildToken(
@@ -320,7 +318,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 						    OperatorMask.Increment, 
 						     0));
 	}
-	*/
+
 	
 	//
 	////

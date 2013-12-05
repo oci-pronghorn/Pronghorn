@@ -20,7 +20,7 @@ public final class FieldWriterInteger {
 	}
 	
 	public void reset(DictionaryFactory df) {
-		df.reset(lastValue,null); //TODO: remove null.
+		df.reset(lastValue);
 	}	
 	
 	public void flush() {

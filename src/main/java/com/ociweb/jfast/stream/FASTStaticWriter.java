@@ -71,11 +71,11 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.tokenLookup = tokenLookup;
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
-		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary(), dcr.longDictionaryFlags());
+		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//decimal does the same as above but both parts work together for each whole value
 		//TODO: it may be a better design to only use this for the singles and put the twins in the above structure?
 		this.writerDecimalExponent = new FieldWriterInteger(writer, dcr.decimalExponentDictionary());
-		this.writerDecimalMantissa = new FieldWriterLong(writer,dcr.decimalMantissaDictionary(), dcr.decimalDictionaryFlags());
+		this.writerDecimalMantissa = new FieldWriterLong(writer,dcr.decimalMantissaDictionary());
 		//
 		//TODO: add the Text and Bytes
 		

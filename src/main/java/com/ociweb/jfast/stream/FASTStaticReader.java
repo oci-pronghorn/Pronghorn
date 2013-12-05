@@ -38,10 +38,10 @@ public class FASTStaticReader implements FASTReader {
 		this.tokenLookup = tokenLookup;
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
-		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary(), dcr.longDictionaryFlags());
+		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
 		//decimal does the same as above but both parts work together for each whole value
 		this.readerDecimalExponent = new FieldReaderInteger(reader, dcr.decimalExponentDictionary());
-		this.readerDecimalMantissa = new FieldReaderLong(reader,dcr.decimalMantissaDictionary(), dcr.decimalDictionaryFlags());
+		this.readerDecimalMantissa = new FieldReaderLong(reader,dcr.decimalMantissaDictionary());
 		//
 		//TODO: add text and bytes
 		
@@ -156,7 +156,7 @@ public class FASTStaticReader implements FASTReader {
 		case OperatorMask.None:
 			return readerLong.readLongSigned(token);
 		case OperatorMask.Constant:
-			return readerLong.readLongSignedConstant(token, valueOfOptional);
+			return readerLong.readLongSignedConstant(token);
 		case OperatorMask.Copy:
 			return readerLong.readLongSignedCopy(token);
 		case OperatorMask.Default:
@@ -192,7 +192,7 @@ public class FASTStaticReader implements FASTReader {
 			case OperatorMask.None:
 				return readerLong.readLongUnsigned(token);
 			case OperatorMask.Constant:
-				return readerLong.readLongUnsignedConstant(token, valueOfOptional);
+				return readerLong.readLongUnsignedConstant(token);
 			case OperatorMask.Copy:
 				return readerLong.readLongUnsignedCopy(token);
 			case OperatorMask.Default:

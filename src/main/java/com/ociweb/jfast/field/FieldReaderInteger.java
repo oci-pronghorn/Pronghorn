@@ -20,7 +20,7 @@ public class FieldReaderInteger {
 	}
 	
 	public void reset(DictionaryFactory df) {
-		df.reset(lastValue,null);
+		df.reset(lastValue);
 	}
 
 	public int readIntegerUnsigned(int token) {
