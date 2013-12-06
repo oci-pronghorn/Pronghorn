@@ -78,11 +78,7 @@ public class FieldReaderInteger {
 		int instance = token & INSTANCE_MASK;
 		if (reader.popPMapBit()==0) {
 			int result = lastValue[instance];
-			if (0==result) {
-				return valueOfOptional;
-			} else {
-				return result;
-			}
+			return (result == 0 ? valueOfOptional: result);
 		} else {
 			//1 in pmap so sending delta or non value
 			long value = reader.readLongSigned();
@@ -218,7 +214,8 @@ public class FieldReaderInteger {
 	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()==0) {
-			return (lastValue[idx] == 0 ? valueOfOptional: lastValue[idx]-1);
+			int result = lastValue[idx];
+			return (result == 0 ? valueOfOptional: result-1);
 		} else {
 			long value = reader.readLongSigned();
 			if (0==value) {
@@ -285,7 +282,7 @@ public class FieldReaderInteger {
 				lastValue[instance] = 0;
 				return valueOfOptional;
 			} else {
-				return (lastValue[instance] = value)-(value>0?1:0);
+				return value>0 ? (lastValue[instance] = value)-1 : (lastValue[instance] = value);
 			}
 		}
 		

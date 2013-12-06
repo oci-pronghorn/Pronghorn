@@ -152,12 +152,11 @@ public final class FieldWriterLong {
 
 		int idx = token & INSTANCE_MASK;
 
-		value++;
-		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
+		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(lastValue[idx] = value);
+			writer.writeLongUnsigned(lastValue[idx] = 1+value);
 		}
 	}
 	

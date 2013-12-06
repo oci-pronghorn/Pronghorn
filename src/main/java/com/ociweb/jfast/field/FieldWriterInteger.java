@@ -152,12 +152,11 @@ public final class FieldWriterInteger {
 
 		int idx = token & INSTANCE_MASK;
 
-		value++;
-		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
+		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx] = value);
+			writer.writeIntegerUnsigned(lastValue[idx] = 1+value);
 		}
 	}
 	
@@ -195,7 +194,7 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);
 		}else {
 			writer.writePMapBit((byte)1);	
-		    writer.writeLongSigned(0);
+		    writer.writeNull();//LongSigned(0);
 			lastValue[idx] = 0;	
 		}
 		

@@ -22,7 +22,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	//This is NOT the same as the other tests which measure the duration to produce 1 byte on the stream.
 	//--The ns/byte tests are an estimate of how much bandwidth can be saturated given the CPU available.
 	
-	static final int internalBufferSize = 1024;
+	static final int internalBufferSize = 512;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
 	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,fields,fields);
@@ -66,7 +66,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr, tokenLookup);
 	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr, tokenLookup);
 	
-	static final int groupToken = buildGroupToken(10,0);
+	static final int groupToken = buildGroupToken(2,0);
 
 	
 	public static int buildGroupToken(int maxPMapBytes, int repeat) {

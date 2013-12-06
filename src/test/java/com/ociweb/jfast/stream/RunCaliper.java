@@ -7,7 +7,8 @@ public class RunCaliper {
 	public static void main(String[] args) {
 		//  -XX:+UseNUMA
 		args = new String[]{"-r","HomogeniousRecordWriteReadBenchmark",
-				             "-C","=5ms"};
+				             //"-t","3",
+				             "-Cinstrument.micro.options.warmup=1s"};
 		
 		//-h
 		//-C 5ms
