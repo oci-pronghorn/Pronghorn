@@ -42,7 +42,7 @@ public final class PrimitiveWriter {
 	
 	
 	private static final int POS_POS_SHIFT = 28;
-	private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
+	private static int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
 	
 	private final int[] safetyStackFlushIdx; //location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
 	private final int[] safetyStackPosPos;//low 28, location where the last byte was written to the pmap as bits are written
@@ -72,6 +72,9 @@ public final class PrimitiveWriter {
 	}
 	
 	public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
+		
+		//TODO POS_POS_MASK can be shortened to only match the length of buffer.
+		//but then buffer always must be a power of two.
 		
 		if (initBufferSize<BLOCK_SIZE_LAZY*2) {
 			initBufferSize = BLOCK_SIZE_LAZY*2;
@@ -131,17 +134,8 @@ public final class PrimitiveWriter {
 			//all the data we have lines up with the end of the skip limit			
 			//nothing to skip so flush the full block
 			
-			nextBlockOffset = position;
-			
-			int avail = flushTo - position;
-			if (avail >= BLOCK_SIZE) {
-				nextBlockSize = BLOCK_SIZE;
-				pendingPosition = position+BLOCK_SIZE;
-			} else { 
-				//not enough to fill a block so we must flush what we have.
-				nextBlockSize = avail;
-				pendingPosition = position+avail;
-			}
+			int avail = flushTo - (nextBlockOffset = position);
+			pendingPosition = position+(nextBlockSize = (avail >= BLOCK_SIZE) ? BLOCK_SIZE : avail);
 		} else {
 			buildNextBlockWithSkips();
 		}
@@ -172,59 +166,50 @@ public final class PrimitiveWriter {
 		int sourceStop = flushSkips[flushSkipsIdxPos];
 				
 		int localLastValid = computeLocalLastValid(flushSkipsIdxLimit);
+		int flushRequest = sourceStop - sourceOffset;
 		
 		//flush in parts that avoid the skip pos
 		while (flushSkipsIdxPos < localLastValid && //we still have skips
-				sourceStop < endOfData              //skip stops before goal
+				sourceStop < endOfData &&            //skip stops before goal
+				flushRequest < reqLength             //keep accumulating
 				) { 
 			
-			int flushRequest = sourceStop - sourceOffset;
-			
-		
-			if (flushRequest >= reqLength) {
-				finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
-				return;
-			} else {
-				//keep accumulating
-				if (targetOffset != sourceOffset) {		
-					//System.err.println(sourceOffset+" "+targetOffset+" "+flushRequest+" "+buffer.length);
-					System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
-				}
-				//increment by byte written to build a contiguous block
-				targetOffset += flushRequest;
-				//decrement by bytes written to track how many more before block boundary.
-				reqLength -= flushRequest;
+			//keep accumulating
+			if (targetOffset != sourceOffset) {		
+				//System.err.println(sourceOffset+" "+targetOffset+" "+flushRequest+" "+buffer.length);
+				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
+			}
+			//increment by byte written to build a contiguous block
+			targetOffset += flushRequest;
+			//decrement by bytes written to track how many more before block boundary.
+			reqLength -= flushRequest;
 
-			}						
-			
-			//did flush up to skip so set rollingPos to after skip
+			//finished flush up to skip so set positions to after skip
+
 			sourceOffset = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
 			sourceStop = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
+			flushRequest = sourceStop - sourceOffset;
 
 		} 
+		finishBuildingBlock(endOfData, sourceOffset, targetOffset, reqLength);
+	}
 
+	private void finishBuildingBlock(final int endOfData, int sourceOffset, int targetOffset, int reqLength) {
 		//reset to zero to save space if possible
 		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
 			flushSkipsIdxPos=flushSkipsIdxLimit=0;
-			
-			int flushRequest = endOfData - sourceOffset;
-			
-			if (flushRequest >= reqLength) {
-				finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
-				return;
-			} else {
-				//keep accumulating
-				if (sourceOffset!=targetOffset) {					
-					System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
-				}
-				targetOffset += flushRequest;
-				reqLength -= flushRequest;
-				sourceOffset += flushRequest;
+		} 		
+		int flushRequest = endOfData - sourceOffset;		
+		if (flushRequest >= reqLength) {
+			finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
+		} else {
+			//keep accumulating
+			if (sourceOffset!=targetOffset) {					
+				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
 			}
-		} 
-		nextBlockSize = BLOCK_SIZE - reqLength;
-		pendingPosition = sourceOffset;
-				
+			nextBlockSize = BLOCK_SIZE - (reqLength-flushRequest);
+			pendingPosition = sourceOffset+flushRequest;
+		}
 	}
 
 	private void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength) {
@@ -525,10 +510,6 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value >> 7) & 0x7F));
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	}
-
-	public final void writeLongUnsignedOptional(long value) {
-		writeLongUnsigned(value+1);
-	}
 	
 	public final void writeLongUnsigned(long value) {
 
@@ -738,10 +719,6 @@ public final class PrimitiveWriter {
 		}
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 				
-	}
-	
-	public final void writeIntegerUnsignedOptional(int value) {
-		writeIntegerUnsigned(value+1);
 	}
 	
 	public final void writeIntegerUnsigned(int value) {

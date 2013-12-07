@@ -2,8 +2,14 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.field.FieldReaderBytes;
+import com.ociweb.jfast.field.FieldReaderChar;
+import com.ociweb.jfast.field.FieldReaderDecimal;
 import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.FieldReaderLong;
+import com.ociweb.jfast.field.FieldWriterBytes;
+import com.ociweb.jfast.field.FieldWriterChar;
+import com.ociweb.jfast.field.FieldWriterDecimal;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.OperatorMask;
@@ -17,10 +23,14 @@ public class FASTStaticReader implements FASTReader {
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
 	//package protected so DynamicReader can use these instances
-	final FieldReaderInteger readerInteger;
-	final FieldReaderLong    readerLong;
-	final FieldReaderInteger readerDecimalExponent;
-	final FieldReaderLong    readerDecimalMantissa;
+	private final FieldReaderInteger readerInteger;
+	private final FieldReaderLong    readerLong;
+	private final FieldReaderInteger readerDecimalExponent;
+	private final FieldReaderLong    readerDecimalMantissa;
+	
+	private final FieldReaderDecimal readerDecimal;
+	private final FieldReaderChar readerChar;
+	private final FieldReaderBytes readerBytes;
 	
 	//See fast writer for details and mask sizes
 	private final int MASK_TYPE = 0x3F;
@@ -43,7 +53,9 @@ public class FASTStaticReader implements FASTReader {
 		this.readerDecimalExponent = new FieldReaderInteger(reader, dcr.decimalExponentDictionary());
 		this.readerDecimalMantissa = new FieldReaderLong(reader,dcr.decimalMantissaDictionary());
 		//
-		//TODO: add text and bytes
+		this.readerBytes = null;
+		this.readerChar = null;
+		this.readerDecimal = null;
 		
 		
 		

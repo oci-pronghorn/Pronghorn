@@ -71,9 +71,7 @@ public class HomogeniousRecordWriteReadBenchmark extends Benchmark {
 	
 	public static int buildGroupToken(int maxPMapBytes, int repeat) {
 		
-		return 	0x80000000 |
-				maxPMapBytes<<20 |
-	            (repeat&0xFFFFF);
+		return 	0x80000000 | maxPMapBytes<<20 | (repeat&0xFFFFF);
 		
 	}
 	

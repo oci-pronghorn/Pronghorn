@@ -248,52 +248,6 @@ public class DictionaryFactory {
 		return array;
 	}
 	
-	private static final byte HAS_VALUE = 1;
-	
-	public byte[] integerDictionaryFlags() {
-		byte[] array = new byte[integerCount];
-		int i = integerInitCount;
-		while (--i>=0) {
-			array[integerInitIndex[i]] = HAS_VALUE;
-		}
-		return array;
-	}
-	
-	public byte[] longDictionaryFlags() {
-		byte[] array = new byte[longCount];
-		int i = longInitCount;
-		while (--i>=0) {
-			array[longInitIndex[i]] = HAS_VALUE;
-		}
-		return array;
-	}
-	
-	public byte[] decimalDictionaryFlags() {
-		byte[] array = new byte[decimalCount];
-		int i = decimalExponentInitCount;
-		while (--i>=0) {
-			array[decimalExponentInitIndex[i]] = HAS_VALUE;
-		}
-		return array;
-	}
-	
-	public byte[] charDictionaryFlags() {
-		byte[] array = new byte[charCount];
-		int i = charInitCount;
-		while (--i>=0) {
-			array[charInitIndex[i]] = HAS_VALUE;
-		}
-		return array;
-	}
-	
-	public byte[] byteDictionaryFlags() {
-		byte[] array = new byte[bytesCount];
-		int i = byteInitCount;
-		while (--i>=0) {
-			array[byteInitIndex[i]] = HAS_VALUE;
-		}
-		return array;
-	}
 
 	public void reset(int[] values) {
 		int i;
@@ -313,46 +267,31 @@ public class DictionaryFactory {
 		}
 	}
 	
-	public void reset(int[] exponents, byte[] exponentFlags, long[] mantissa, byte[] mantissaFlags) {
-		int i = exponentFlags.length;
-		while (--i>=0) {
-			exponentFlags[i] = 0;
-		}
-		i = decimalExponentInitCount;
+	public void reset(int[] exponents, long[] mantissa) {
+
+		int i = decimalExponentInitCount;
 		while (--i>=0) {
 			int j = decimalExponentInitIndex[i];
 			exponents[j] = decimalExponentInitValue[i];
-			exponentFlags[j] = HAS_VALUE;
 		}
-		
-		i = mantissaFlags.length;
-		while (--i>=0) {
-			mantissaFlags[i] = 0;
-		}
+
 		i = decimalMantissaInitCount;
 		while (--i>=0) {
 			int j = decimalMantissaInitIndex[i];
 			mantissa[j] = decimalMantissaInitValue[i];
-			mantissaFlags[j] = HAS_VALUE;
 		}
 	}
 	
-	public void reset(char[][] values, byte[] flags) {
-		int i = flags.length;
-		while (--i>=0) {
-			flags[i] = 0;
-		}
-		i = charInitCount;
+	public void reset(char[][] values) {
+		int i = charInitCount;
 		while (--i>=0) {
 			int j = charInitIndex[i];
 			values[j] = charInitValue[i];
-			flags[j] = HAS_VALUE;
 		}
 	}
 	
 	public void reset(byte[][] values) {
-		int i;
-		i = byteInitCount;
+		int i = byteInitCount;
 		while (--i>=0) {
 			int j = byteInitIndex[i];
 			values[j] = byteInitValue[i];

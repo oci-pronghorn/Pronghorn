@@ -487,7 +487,7 @@ public class PrimitivePMAPTest {
     	//this is timed to check performance
     	//same array will be verified for correctness in the next step.
     	//////////////////////////////
-    	ByteBuffer buffer = ByteBuffer.allocate(localBufferSize);
+    	ByteBuffer buffer = ByteBuffer.allocateDirect(localBufferSize);
     	FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
 		
     	//TODO:bug here if latency set to false and block set small to 32

@@ -8,9 +8,7 @@ public class FieldReaderLong {
 	//crazy big value? TODO: make smaller mask based on exact length of array.
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
 	
-	
 	private final PrimitiveReader reader;
-	
 	private final long[]  lastValue;
 
 

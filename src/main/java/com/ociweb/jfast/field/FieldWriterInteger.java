@@ -8,12 +8,13 @@ public final class FieldWriterInteger {
 	//crazy big value? TODO: make smaller mask based on exact length of array.
 	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
 	
-	private final PrimitiveWriter writer;
 	
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
 	private final int[]  lastValue;
+	private final PrimitiveWriter writer;
 
+	
 	public FieldWriterInteger(PrimitiveWriter writer, int[] values) {
 		this.writer = writer;
 		this.lastValue = values;
@@ -129,8 +130,7 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(0);
-			//writer.writeNull(); //TODO: confirm these are equal?
+			writer.writeNull();
 		}
 	}
 	
@@ -167,8 +167,7 @@ public final class FieldWriterInteger {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			//writer.writeNull(); //TODO: confirm these are equal?
-			writer.writeIntegerUnsigned(0);
+			writer.writeNull();
 			lastValue[idx] = 0;
 		}
 	}
@@ -327,8 +326,7 @@ public final class FieldWriterInteger {
 		} else {
 		//	System.err.println("B write zero");
 			writer.writePMapBit((byte)1);
-			//writer.writeNull(); //TODO: confirm these are equal?
-			writer.writeIntegerSigned(0);
+			writer.writeNull();
 			lastValue[idx] = 0;
 		}
 		

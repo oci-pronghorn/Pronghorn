@@ -2,6 +2,9 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.field.FieldWriterBytes;
+import com.ociweb.jfast.field.FieldWriterChar;
+import com.ociweb.jfast.field.FieldWriterDecimal;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.OperatorMask;
@@ -23,12 +26,14 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 	private final FieldWriterInteger writerInteger;
 	private final FieldWriterLong writerLong;
+	
 	private final FieldWriterInteger writerDecimalExponent;
 	private final FieldWriterLong writerDecimalMantissa;
 	
-	//writerText
-	//writerByteArray
-	
+	private final FieldWriterDecimal writerDecimal;
+	private final FieldWriterChar writerChar;
+	private final FieldWriterBytes writerBytes;
+		
 	
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
@@ -50,6 +55,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	//TODO: What is the unqie id is it name or id?
 	//TODO: How is this converted into simple field id of int type?
 	
+	// 
+	//
 	
 	//////////////// 32 bits total ////////////////////////////////////////////
 	//  1 bit, High bit is always set to denote this as a token vs fieldId   //
@@ -77,6 +84,9 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.writerDecimalExponent = new FieldWriterInteger(writer, dcr.decimalExponentDictionary());
 		this.writerDecimalMantissa = new FieldWriterLong(writer,dcr.decimalMantissaDictionary());
 		//
+		this.writerChar = null;
+		this.writerBytes = null;
+		this.writerDecimal = null;
 		//TODO: add the Text and Bytes
 		
 		
@@ -269,7 +279,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptLongUnsignedOptional(int token, long value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeLongUnsignedOptional(value);
+				writer.writeLongUnsigned(value+1);//should be in writerLong
 				break;
 			case OperatorMask.Copy:
 				writerLong.writeLongUnsignedCopyOptional(value, token);
@@ -414,7 +424,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptIntegerUnsignedOptional(int token, int value) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				writer.writeIntegerUnsignedOptional(value);
+				writer.writeIntegerUnsigned(value+1);//should be in writerInteger
 				break;
 			case OperatorMask.Copy:
 				writerInteger.writeIntegerUnsignedCopyOptional(value, token);
@@ -442,18 +452,22 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void write(int id, int exponent, long mantissa) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
-			case TypeMask.DecimalSingle:
+			
+		    case TypeMask.DecimalSingle:
 				acceptDecimal(token, exponent, mantissa);
 				break;
 			case TypeMask.DecimalSingleOptional:
 				acceptDecimalOptional(token, exponent, mantissa);
 				break;
+				
+				
 			case TypeMask.DecimalTwin:
 				acceptDecimal(token, exponent, mantissa);
 				break;
 			case TypeMask.DecimalTwinOptional:
 				acceptDecimalOptional(token, exponent, mantissa);
 				break;
+				
 			default://all other types should use their own method.
 				throw new UnsupportedOperationException();
 		}
@@ -462,11 +476,23 @@ public final class FASTStaticWriter implements FASTWriter {
 	private void acceptDecimalOptional(int token, int exponent, long mantissa) {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
-				
-				writer.writeIntegerSignedOptional(exponent+1);
-				writer.writeLongSignedOptional(mantissa);
-				
-				break;
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Constant:
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Copy:
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Delta:
+				throw new UnsupportedOperationException();
+	//			break;	
+			case OperatorMask.Increment:
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Default:
+				throw new UnsupportedOperationException();
+	//			break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -476,10 +502,32 @@ public final class FASTStaticWriter implements FASTWriter {
 		switch ((token>>SHIFT_OPER)&MASK_OPER) {
 			case OperatorMask.None:
 				
-				writer.writeIntegerSigned(exponent);
-				writer.writeLongSigned(mantissa);
+				//this.writerDecimalExponent.write
 				
+				
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Constant:
+				
+				//possible way to  deal with single operation?
+				this.writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
+				this.writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
+			
+				
+	//			throw new UnsupportedOperationException();
 				break;
+			case OperatorMask.Copy:
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Delta:
+				throw new UnsupportedOperationException();
+	//			break;	
+			case OperatorMask.Increment:
+				throw new UnsupportedOperationException();
+	//			break;
+			case OperatorMask.Default:
+				throw new UnsupportedOperationException();
+	//			break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -583,6 +631,18 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeIntegerUnsigned(value.length()+1);
 				writer.writeTextUTF(value);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -594,6 +654,18 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeIntegerUnsigned(value.length());
 				writer.writeTextUTF(value);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -604,6 +676,18 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeTextASCII(value);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -614,6 +698,18 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeTextASCII(value);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -648,6 +744,18 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeIntegerUnsigned(length+1);
 				writer.writeTextUTF(value,offset,length);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -659,6 +767,18 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeIntegerUnsigned(length);
 				writer.writeTextUTF(value,offset,length);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -669,6 +789,18 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeTextASCII(value,offset,length);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -679,6 +811,18 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.None:
 				writer.writeTextASCII(value,offset,length);
 				break;
+			case OperatorMask.Copy:
+				break;
+			case OperatorMask.Constant:
+				break;
+			case OperatorMask.Default:
+				break;
+			case OperatorMask.Delta:
+				break;	
+			case OperatorMask.Increment:
+				break;
+			case OperatorMask.Tail:
+				break;	
 			default:
 				throw new UnsupportedOperationException();
 		}
