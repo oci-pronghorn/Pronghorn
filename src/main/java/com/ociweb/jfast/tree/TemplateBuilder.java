@@ -231,7 +231,7 @@ public class TemplateBuilder {
 			if (OperatorMask.Constant==operation2) {
 				isFieldValueOptional = 0;//constant is never optional
 			}
-			group.append((TypeMask.DecimalTwin|isFieldValueOptional),operation2,value2,fieldId,fieldName, fieldKey, fieldDictionary, fieldNamespace); //TODO; this is a problem 
+			group.append((TypeMask.Decimal|isFieldValueOptional),operation2,value2,fieldId,fieldName, fieldKey, fieldDictionary, fieldNamespace); //TODO; this is a problem 
 				break;
 			case 6:				//"byteVector",
 				int operation1 = 0;

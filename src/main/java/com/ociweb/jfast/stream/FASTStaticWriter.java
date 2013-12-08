@@ -8,6 +8,7 @@ import com.ociweb.jfast.field.FieldWriterDecimal;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -26,10 +27,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 	private final FieldWriterInteger writerInteger;
 	private final FieldWriterLong writerLong;
-	
-	private final FieldWriterInteger writerDecimalExponent;
-	private final FieldWriterLong writerDecimalMantissa;
-	
 	private final FieldWriterDecimal writerDecimal;
 	private final FieldWriterChar writerChar;
 	private final FieldWriterBytes writerBytes;
@@ -37,38 +34,8 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
-	
-	private final int MASK_TYPE = 0x7F;
-	private final int SHIFT_TYPE = 24;
-	
-	private final int MASK_OPER = 0x0F;
-	private final int SHIFT_OPER = 20;
-	
-	private final int MASK_PMAP_MAX = 0x7FF;
-	private final int SHIFT_PMAP_MASK = 20;
-	
-	//TODO: need to add dictionary id
-	
-	//TODO: these can all be run together with variable lengths
-	//each field has a unique string id and the class for generating the ids will
-	//have the scopes needed to know if a new instance or old one should be used.
-	//TODO: What is the unqie id is it name or id?
-	//TODO: How is this converted into simple field id of int type?
-	
-	// 
-	//
-	
-	//////////////// 32 bits total ////////////////////////////////////////////
-	//  1 bit, High bit is always set to denote this as a token vs fieldId   //
-	//    Regular fields               #    Field Groups (need maxPMap bytes)
-	//  6 bit type                     #               
-	//  1 bit optional field **        #      
-	//  4 bit operation                #      11 bit PMap max bytes (2048 max or zero)       )
-	// 20 bit instance(1M fields/type) #      20 bit sequence length (1M max or reference)  
-	//
-	// ** this is read as the odd flag inside the type so all 7 bits are read
-	//    together, this same mapping applies to the group.
 
+	
 	
 	public FASTStaticWriter(PrimitiveWriter writer, DictionaryFactory dcr, int[] tokenLookup) {
 		//TODO: must set the initial values for default/constants from the template here.
@@ -79,14 +46,10 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
-		//decimal does the same as above but both parts work together for each whole value
-		//TODO: it may be a better design to only use this for the singles and put the twins in the above structure?
-		this.writerDecimalExponent = new FieldWriterInteger(writer, dcr.decimalExponentDictionary());
-		this.writerDecimalMantissa = new FieldWriterLong(writer,dcr.decimalMantissaDictionary());
 		//
+		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
 		this.writerChar = null;
 		this.writerBytes = null;
-		this.writerDecimal = null;
 		//TODO: add the Text and Bytes
 		
 		
@@ -101,7 +64,7 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.IntegerUnsignedOptional:
 				writeIntegerUnsignedOptional(token);				
 			break;
@@ -114,8 +77,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			case TypeMask.LongSignedOptional:
 			    writeLongUnsignedOptional(token);				
 			break;		
-			case TypeMask.DecimalSingleOptional:
-			case TypeMask.DecimalTwinOptional:
+			case TypeMask.DecimalOptional:
 			case TypeMask.TextASCIIOptional:
 			case TypeMask.TextUTF8Optional:
 				writer.writeNull();
@@ -130,7 +92,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void writeLongUnsignedOptional(int token) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 		case OperatorMask.Increment:
 		case OperatorMask.Copy:
 			writerLong.writeLongNullPMap(token,(byte)1);//sets 1
@@ -152,7 +114,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void writeIntegerSignedOptional(int token) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.Increment:
 				writerInteger.writeIntegerSignedIncrementOptional(token);
 				break;
@@ -178,7 +140,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void writeIntegerUnsignedOptional(int token) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None: //no pmap
 				writerInteger.writeIntegerNull(token);
 				break;
@@ -211,7 +173,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, long value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.LongUnsigned:
 				acceptLongUnsigned(token, value);
 				break;
@@ -230,7 +192,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptLongSignedOptional(int token, long value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongSignedOptional(value);
 				break;
@@ -252,7 +214,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptLongSigned(int token, long value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongSigned(value);
 				break;
@@ -277,7 +239,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptLongUnsignedOptional(int token, long value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongUnsigned(value+1);//should be in writerLong
 				break;
@@ -299,7 +261,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptLongUnsigned(int token, long value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeLongUnsigned(value);
 				break;
@@ -331,7 +293,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.IntegerUnsigned:
 				acceptIntegerUnsigned(token, value);
 				break;
@@ -350,7 +312,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 	
 	private void acceptIntegerSigned(int token, int value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 		case OperatorMask.None:
 			writer.writeIntegerSigned(value);
 			break;
@@ -375,7 +337,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 	
 	private void acceptIntegerUnsigned(int token, int value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(value);
 				break;
@@ -400,7 +362,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptIntegerSignedOptional(int token, int value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerSignedOptional(value);
 				break;
@@ -422,7 +384,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 	
 	private void acceptIntegerUnsignedOptional(int token, int value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(value+1);//should be in writerInteger
 				break;
@@ -450,93 +412,38 @@ public final class FASTStaticWriter implements FASTWriter {
 	 */
 	@Override
 	public void write(int id, int exponent, long mantissa) {
+				
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			
-		    case TypeMask.DecimalSingle:
+		    case TypeMask.Decimal:
 				acceptDecimal(token, exponent, mantissa);
 				break;
-			case TypeMask.DecimalSingleOptional:
+			case TypeMask.DecimalOptional:
 				acceptDecimalOptional(token, exponent, mantissa);
 				break;
-				
-				
-			case TypeMask.DecimalTwin:
-				acceptDecimal(token, exponent, mantissa);
-				break;
-			case TypeMask.DecimalTwinOptional:
-				acceptDecimalOptional(token, exponent, mantissa);
-				break;
-				
+								
 			default://all other types should use their own method.
 				throw new UnsupportedOperationException();
 		}
 	}
 
 	private void acceptDecimalOptional(int token, int exponent, long mantissa) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Constant:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Copy:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Delta:
-				throw new UnsupportedOperationException();
-	//			break;	
-			case OperatorMask.Increment:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Default:
-				throw new UnsupportedOperationException();
-	//			break;
-			default:
-				throw new UnsupportedOperationException();
-		}
+		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
+		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
+		writerDecimal.writeDecimalOptional(token, oppExp, oppMant, exponent, mantissa);
 	}
 
 	private void acceptDecimal(int token, int exponent, long mantissa) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
-			case OperatorMask.None:
-				
-				//this.writerDecimalExponent.write
-				
-				
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Constant:
-				
-				//possible way to  deal with single operation?
-				this.writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
-				this.writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
-			
-				
-	//			throw new UnsupportedOperationException();
-				break;
-			case OperatorMask.Copy:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Delta:
-				throw new UnsupportedOperationException();
-	//			break;	
-			case OperatorMask.Increment:
-				throw new UnsupportedOperationException();
-	//			break;
-			case OperatorMask.Default:
-				throw new UnsupportedOperationException();
-	//			break;
-			default:
-				throw new UnsupportedOperationException();
-		}
+		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
+		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
+		writerDecimal.writeDecimal(token, oppExp, oppMant, exponent, mantissa);
 	}
 
 	@Override
 	public void write(int id, byte[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.ByteArray:
 				acceptByteArray(token, value, offset, length);
 				break;
@@ -549,7 +456,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptByteArrayOptional(int token, byte[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				throw new UnsupportedOperationException();
 				//break;
@@ -559,7 +466,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptByteArray(int token, byte[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				throw new UnsupportedOperationException();
 				//break;
@@ -571,7 +478,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, ByteBuffer buffer) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.ByteArray: 
 				acceptByteBuffer(token, buffer);
 				break;
@@ -584,7 +491,7 @@ public final class FASTStaticWriter implements FASTWriter {
 
 
 	private void acceptByteBufferOptional(int token, ByteBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				throw new UnsupportedOperationException();
 				//break;
@@ -594,7 +501,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptByteBuffer(int token, ByteBuffer buffer) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				throw new UnsupportedOperationException();
 				//break;
@@ -606,7 +513,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, CharSequence value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.TextASCII: 
 				acceptCharSequenceASCII(token, value);
 				break;
@@ -626,7 +533,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 
 	private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(value.length()+1);
 				writer.writeTextUTF(value);
@@ -649,7 +556,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharSequenceUTF8(int token, CharSequence value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(value.length());
 				writer.writeTextUTF(value);
@@ -672,7 +579,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeTextASCII(value);
 				break;
@@ -694,7 +601,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharSequenceASCII(int token, CharSequence value) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeTextASCII(value);
 				break;
@@ -718,7 +625,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, char[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>SHIFT_TYPE)&MASK_TYPE) {
+		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
 			case TypeMask.TextASCII: 
 				acceptCharArrayASCII(token,value,offset,length);
 				break;
@@ -739,7 +646,7 @@ public final class FASTStaticWriter implements FASTWriter {
 
 
 	private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(length+1);
 				writer.writeTextUTF(value,offset,length);
@@ -762,7 +669,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeIntegerUnsigned(length);
 				writer.writeTextUTF(value,offset,length);
@@ -785,7 +692,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeTextASCII(value,offset,length);
 				break;
@@ -807,7 +714,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
-		switch ((token>>SHIFT_OPER)&MASK_OPER) {
+		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				writer.writeTextASCII(value,offset,length);
 				break;
@@ -839,7 +746,7 @@ public final class FASTStaticWriter implements FASTWriter {
 		//if sequence is not set by writer must use sequence provided
 	    //0 equals 1	
 		
-		writer.openPMap(MASK_PMAP_MAX&(token>>SHIFT_PMAP_MASK));
+		writer.openPMap(TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK));
 	}
 	
 	@Override
@@ -848,7 +755,7 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		//repeat count provided
 		
-		writer.openPMap(MASK_PMAP_MAX&(token>>SHIFT_PMAP_MASK));
+		writer.openPMap(TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK));
 				
 		//TODO: is this the point when we write the repeat?
 		

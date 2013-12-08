@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
@@ -140,25 +141,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		fw.flush();
 	}
 
-	private void tokenPrint(int token) {
-		
-		//return 0x80000000 |  
-			//       (tokenType<<24) |
-			  //     (tokenOpp<<20) |
-			    //   count;
-		
-		int type = (token>>24)&0x3F; //6 bits
-		int opp  = (token>>20)&0x0F; //4 bits
-		int count = token & 0xFFFFF; //20 bits
-		
-		if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp)) {
-			throw new UnsupportedOperationException("bad token");
-		};
-		
-		System.err.println("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp)+" "+count);
-		// TODO Auto-generated method stub
-		
-	}
+
 
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
@@ -197,7 +180,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				} else { 
 					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 					if (testData[f]!=value) {
-						tokenPrint(tokenLookup[f]);
+						TokenBuilder.tokenPrint(tokenLookup[f]);
 						assertEquals(testData[f], value);
 					}
 				}
