@@ -230,12 +230,17 @@ public class DictionaryFactory {
 		return array;
 	}
 	
-	public char[][] charDictionary() {
-		char[][] array = new char[charCount][];
-		int i = charInitCount;
-		while (--i>=0) {
-			array[charInitIndex[i]] = charInitValue[i];
-		}
+	public char[] charDictionary() {
+		int maxiNominalTextLength = 10;
+		char[] array = new char[charCount*maxiNominalTextLength];
+		
+		//TODO: where do the values start/stop in a clob like this?
+		//must pre populate with constants etc.
+		
+//		int i = charInitCount;
+//		while (--i>=0) {
+//			array[charInitIndex[i]] = charInitValue[i];
+//		}
 		return array;
 	}
 	

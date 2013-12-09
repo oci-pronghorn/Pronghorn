@@ -48,8 +48,9 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.writerChar = null;
-		this.writerBytes = null;
+		this.writerChar 			= null;//new FieldWriterChar(writer,dcr.charDictionary());
+		this.writerBytes 			= null;
+		
 		//TODO: add the Text and Bytes
 		
 		
