@@ -1,5 +1,8 @@
 package com.ociweb.jfast.field;
 
+import java.util.Arrays;
+
+
 /**
  * Manage all the text (char sequences) for all the fields.
  * * Must maintain a minimum count of pointers to reduce GC overhead.
@@ -19,6 +22,9 @@ public class TextHeap {
 	private final int gapCount;
 	private final char[] data;
 	
+	//remain true unless memory gets low and it has to give up any margin
+	private boolean preserveWorkspace = true;
+	
 	//text allocation table
 	private final int[] tat;
 	//4 ints per text body.
@@ -28,20 +34,20 @@ public class TextHeap {
 	//max postfix append
 	
 	
-	public TextHeap(int maxiNominalTextSize, int fixedTextItemCount) {
+	public TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
 		gapCount = fixedTextItemCount+1;
-		data = new char[maxiNominalTextSize*gapCount];
-		tat = new int[fixedTextItemCount<<1];
-		//each string must be equal distance apart for growth at the front or back
-		int stepSize = data.length/gapCount;
+		data = new char[(singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount)];
+		tat = new int[fixedTextItemCount<<2];
 		
 		int i = tat.length;
-		int j = data.length;
+		int j = data.length+(singleTextSize>>1);
 		while (--i>=0) {
-			int idx = (j-=stepSize);
+			int idx = (j-=(singleTextSize+singleGapSize));
+			i--;
+			i--;
 			tat[i--]=idx;
-			tat[i]=idx;			
-		}		
+			tat[i]=idx;		
+		}	
 	}
 	
 	//simple replacement of last value
@@ -53,9 +59,9 @@ public class TextHeap {
 		
 		int offset = idx<<2;
 		
-		int prevTextStop  = offset   == 0           ? 0           : tat[offset-1];
-		int nextTextStart = offset+4 >= data.length ? data.length : tat[offset+4];
-		int space = nextTextStart-prevTextStop;
+		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+		int nextTextStart = offset+4 >= tat.length  ? data.length  : tat[offset+4];
+		int space = nextTextStart - prevTextStop;
 		int middleIdx = (space-sourceLen)>>1;
 		
 		if (sourceLen<=space) {
@@ -64,13 +70,14 @@ public class TextHeap {
 			//we do not have enough space move to the bigger side.
 			makeRoom(offset, middleIdx>(data.length>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
             
-    		prevTextStop  = offset   == 0           ? 0           : tat[offset-1];
+    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
     		nextTextStart = offset+4 >= data.length ? data.length : tat[offset+4];
+    		
             simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, ((nextTextStart-prevTextStop)-sourceLen)>>1);         
 		}
 	}
 
-	private void makeRoom(int offsetNeedingRoom, boolean startBefore, int totalDesired) throws OutOfMemoryError {
+	private void makeRoom(int offsetNeedingRoom, boolean startBefore, int totalDesired) {
 
 		if (startBefore) {
 			totalDesired = makeRoomBeforeFirst(offsetNeedingRoom, totalDesired);			
@@ -78,12 +85,11 @@ public class TextHeap {
 			totalDesired = makeRoomAfterFirst(offsetNeedingRoom, totalDesired);
 		}
 		if (totalDesired>0) {
-			throw new OutOfMemoryError("TextHeap must be initialized with more ram for required text");
+			throw new RuntimeException("TextHeap must be initialized with more ram for required text");
 		}
 	}
 
 	private int makeRoomAfterFirst(int offsetNeedingRoom, int totalDesired) {
-		boolean preserveWorkspace = true;
 		//compress rear its larger
 		totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired, preserveWorkspace);
 		if (totalDesired>0) {
@@ -100,7 +106,6 @@ public class TextHeap {
 	}
 
 	private int makeRoomBeforeFirst(int offsetNeedingRoom, int totalDesired) {
-		boolean preserveWorkspace = true;
 		//compress front its larger
 		totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired, preserveWorkspace);
 		if (totalDesired>0) {
@@ -119,83 +124,151 @@ public class TextHeap {
 	private void simpleReplace(char[] source, int sourceIdx, int sourceLen, int offset, int prevTextStop, int middleIdx) {
 		//write and return because we have enough space
 		int target = prevTextStop+middleIdx;
+		if (target<0) {
+			target=0;
+		}
+		int limit = target+sourceLen;
+		if (limit>data.length) {
+			target = data.length-sourceLen;
+		}
+		
 		System.arraycopy(source, sourceIdx, data, target, sourceLen);
 		//full replace
 		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
 		tat[offset] = target;
-		tat[offset+1] = target+sourceLen;
+		tat[offset+1] = limit;
 	}
 	
-	private int compressBefore(int offset, int totalDesired, boolean preserveWorkspace) {
+	private int compressBefore(int stopOffset, int totalDesired, boolean preserveWorkspace) {
 		//moving everything to the left until totalDesired
 		//start at zero and move everything needed if possible.
 		int dataIdx = 0;
-		int i = 0;
-		while (i<offset && totalDesired>0) {
+		int offset = 0;
+		while (offset<=stopOffset) {
 			
-			int required = tat[offset+1]-tat[offset];
-			int padding = 0;
 			int leftBound = 0;
+			int rightBound = 0;
+			int textLength = tat[offset+1] - tat[offset]; 
+			int totalNeed = textLength;
 			
 			if (preserveWorkspace) {
+				int padding = 0;
 				leftBound = tat[offset+2]; 
+				rightBound = tat[offset+3];
 				
 				padding += leftBound;
 				padding += tat[offset+3];
 				int avgPadding = (data.length - (this.totalContent+this.totalWorkspace))/gapCount;
+				if (avgPadding<0) {
+					avgPadding = 0;
+				}
+				
 				padding += avgPadding;
 				
-				leftBound += (avgPadding>>1);
+				int halfPad = avgPadding>>1;
+				leftBound += halfPad;
+				rightBound += halfPad;
+				
+				totalNeed += padding;
 			}
-			
-			int totalNeed = required + padding;
-			
-			
+					
 			int copyTo = dataIdx+leftBound;
 			
-			
-			
-			
-			//
-			
-			//TODO: must compute, the surrounding spacing.
-			
-			
-			
-			
-			
-			
-			//System.arraycopy(data, tat[offset], data, dataIdx, length);
-			
-			
-			
-			//TODO: move each over until we get enough space
-			
-			
-			
-			i+=4;
+			if (copyTo<tat[offset]) {
+				//copy down and save some room.
+				System.arraycopy(data, tat[offset], data, copyTo, textLength);
+				tat[offset] = copyTo;
+				int oldStop = tat[offset+1];
+				int newStop = copyTo+textLength;
+				tat[offset+1] = newStop;
+				
+				totalDesired -= (oldStop-newStop);
+				
+				dataIdx = dataIdx+totalNeed;
+			} else {
+				//it is already lower than this point.
+				dataIdx = tat[offset+1]+rightBound;
+			}
+			offset+=4;
 		}
 	
 		return totalDesired;
 	}
 
-	private int compressAfter(int offset, int totalDesired, boolean preserveWorkspace) {
+	private int compressAfter(int stopOffset, int totalDesired, boolean preserveWorkspace) {
 		//moving everything to the right until totalDesired
 		//start at zero and move everything needed if possible.
-		int i = data.length-4;
-		while (i>offset && totalDesired>0) {
+		int dataIdx = data.length;
+		int offset = tat.length-4;
+		while (offset>=stopOffset) {
 			
-			//TODO: move each over until we get enough space
+			int leftBound = 0;
+			int rightBound = 0;
+			int textLength = tat[offset+1] - tat[offset]; 
+			int totalNeed = textLength;
 			
-			//working space includes pre/post and average gap between each.
+			if (preserveWorkspace) {
+				int padding = 0;
+				leftBound = tat[offset+2]; 
+				rightBound = tat[offset+3];
+				
+				padding += leftBound;
+				padding += tat[offset+3];
+				int avgPadding = (data.length - (this.totalContent+this.totalWorkspace))/gapCount;
+				if (avgPadding<0) {
+					avgPadding = 0;
+				}
+				
+				padding += avgPadding;
+				
+				int halfPad = avgPadding>>1;
+				leftBound += halfPad;
+				rightBound += halfPad;
+				
+				totalNeed += padding;
+			}
+					
+			int newStart = dataIdx-(rightBound+textLength);
+			StringBuilder builder = new StringBuilder();
+			inspectHeap(builder);
+			//System.err.println("before:"+builder.toString());
+			if (newStart>tat[offset]) {
+				//copy up and save some room.
+				System.arraycopy(data, tat[offset], data, newStart, textLength);
+				int oldStart = tat[offset];
+				tat[offset] = newStart;
+				totalDesired -= (newStart-oldStart);
+				tat[offset+1] = newStart+textLength;
+				dataIdx = dataIdx - totalNeed;
+			} else {
+				//it is already greater than this point.
+				dataIdx = tat[offset]-leftBound;
+			}
 			
+			builder.setLength(0);
+			inspectHeap(builder);
+			//System.err.println("after :"+builder.toString());
 			
-			i-=4;
+			offset-=4;
 		}
 	
 		return totalDesired;
 	}
 
+	private void inspectHeap(StringBuilder target) {
+		target.append('[');
+		int i=0;
+		while (i<data.length) {
+			if (data[i]==0) {
+				target.append('_');
+			} else {
+				target.append(data[i]);
+			}
+			i++;			
+		}
+		target.append(']');
+		
+	}
 
 
 	//append chars on to the end of the text after applying trim
@@ -206,11 +279,22 @@ public class TextHeap {
 		int offset = idx<<2;
 		
 		int stop = tat[offset+1]+(sourceLen-trimTail);
-		if (stop>=data.length || stop>=tat[offset+4]) {
-			//must make room and may need to shift root to the left.
+		int limit = offset+4<tat.length ? tat[offset+4] : data.length;
+		
+		if (stop>=limit) {
+			int floor = offset-3>=0 ? tat[offset-3] : 0;
+			int space = limit- floor;
+			int need = stop - tat[offset];
 			
-			throw new UnsupportedOperationException("no support for move yet.");
-			//TODO: something
+			if (need>space) {
+				makeRoom(offset, false, need);			
+			}
+			//we have some space so just shift the existing data.
+			int len = tat[offset+1]-tat[offset];
+			System.arraycopy(data, tat[offset], data, floor, len);
+			tat[offset] = floor;
+			tat[offset+1] = floor+len;
+
 		}
 		//everything is now ready to trim and copy.
 		
@@ -236,12 +320,25 @@ public class TextHeap {
 		int offset = idx<<2;
 		
 		int start = tat[offset]-(sourceLen-trimHead);
-		if (start<0 || start<tat[offset-3]) {
-			//must make room and may need to shift root to the right.
+		int limit = offset-3<0 ? 0 : tat[offset-3];
+		
+		
+		if (start<limit) {
+			int stop = offset+4<tat.length ? tat[offset+4] : data.length;
+			int space = stop - limit;
+			int need = tat[offset+1]-start;
 			
-			throw new UnsupportedOperationException("no support for move yet.");
-			//TODO: something	
+			if (need>space) {
+				makeRoom(offset, true, need);			
+			}
+			//we have some space so just shift the existing data.
+			int len = tat[offset+1] - tat[offset];
+			System.arraycopy(data, tat[offset], data, start, len);
+			tat[offset] = start;
+			tat[offset+1] = start+len;
+			
 		}
+		//everything is now ready to trim and copy.
 		
 		//keep the max head append size
 		int maxHead = tat[offset+2];
@@ -264,7 +361,7 @@ public class TextHeap {
 	//////////
 	//////////
 	
-	private void get(int idx, char[] target, int targetIdx) {
+	public void get(int idx, char[] target, int targetIdx) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
@@ -273,7 +370,7 @@ public class TextHeap {
 		System.arraycopy(data, pos, target, targetIdx, len);
 	}
 	
-	private void get(int idx, StringBuilder target) {
+	public void get(int idx, StringBuilder target) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];

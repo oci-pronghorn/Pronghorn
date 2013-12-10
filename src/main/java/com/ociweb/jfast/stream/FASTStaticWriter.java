@@ -48,7 +48,7 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.writerChar 			= null;//new FieldWriterChar(writer,dcr.charDictionary());
+		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary());
 		this.writerBytes 			= null;
 		
 		//TODO: add the Text and Bytes
@@ -540,16 +540,16 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextUTF(value);
 				break;
 			case OperatorMask.Copy:
-				break;
-			case OperatorMask.Constant:
+				writerChar.writeUTF8CopyOptional(token,value);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeUTF8DefaultOptional(token,value);
 				break;
 			case OperatorMask.Delta:
-				break;	
-			case OperatorMask.Increment:
+				writerChar.writeUTF8DeltaOptional(token,value);
 				break;
 			case OperatorMask.Tail:
+				writerChar.writeUTF8TailOptional(token,value);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -563,16 +563,19 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextUTF(value);
 				break;
 			case OperatorMask.Copy:
+				writerChar.writeUTF8Copy(token,value);
 				break;
 			case OperatorMask.Constant:
+				writerChar.writeUTF8Constant(token,value);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeUTF8Default(token,value);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeUTF8Delta(token,value);
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
+				writerChar.writeUTF8Tail(token,value);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -585,16 +588,16 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextASCII(value);
 				break;
 			case OperatorMask.Copy:
-				break;
-			case OperatorMask.Constant:
+				writerChar.writeASCIICopyOptional(token,value);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeASCIIDefaultOptional(token,value);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeASCIIDeltaOptional(token,value);
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
+				writerChar.writeASCIITailOptional(token,value);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -607,16 +610,19 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextASCII(value);
 				break;
 			case OperatorMask.Copy:
+				writerChar.writeASCIICopy(token,value);
 				break;
 			case OperatorMask.Constant:
+				writerChar.writeASCIIConstant(token,value);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeASCIIDefault(token,value);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeASCIIDelta(token,value);
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
+				writerChar.writeASCIITail(token,value);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -660,8 +666,6 @@ public final class FASTStaticWriter implements FASTWriter {
 				break;
 			case OperatorMask.Delta:
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
 				break;	
 			default:
@@ -682,8 +686,6 @@ public final class FASTStaticWriter implements FASTWriter {
 			case OperatorMask.Default:
 				break;
 			case OperatorMask.Delta:
-				break;	
-			case OperatorMask.Increment:
 				break;
 			case OperatorMask.Tail:
 				break;	
@@ -705,8 +707,6 @@ public final class FASTStaticWriter implements FASTWriter {
 				break;
 			case OperatorMask.Delta:
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
 				break;	
 			default:
@@ -727,8 +727,6 @@ public final class FASTStaticWriter implements FASTWriter {
 				break;
 			case OperatorMask.Delta:
 				break;	
-			case OperatorMask.Increment:
-				break;
 			case OperatorMask.Tail:
 				break;	
 			default:

@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.field.TextHeap;
+
 
 /**
  * Holds count of how many of each type of field is required and what the default values are.
@@ -29,7 +31,7 @@ public class DictionaryFactory {
 	private int[] longInitIndex;
 	private long[] longInitValue;
 		
-	private int charInitCount;
+	private int charInitCount;	
 	private int[] charInitIndex;
 	private char[][] charInitValue;
 	
@@ -230,18 +232,18 @@ public class DictionaryFactory {
 		return array;
 	}
 	
-	public char[] charDictionary() {
-		int maxiNominalTextLength = 10;
-		char[] array = new char[charCount*maxiNominalTextLength];
+	public TextHeap charDictionary() {
 		
-		//TODO: where do the values start/stop in a clob like this?
-		//must pre populate with constants etc.
+		int singleTextSize = 0; //TODO: how is this set?
+		int singleGapSize = 0; //TODO: how is this set?
 		
-//		int i = charInitCount;
-//		while (--i>=0) {
-//			array[charInitIndex[i]] = charInitValue[i];
-//		}
-		return array;
+		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, charCount);
+		
+		int i = charInitCount;
+		while (--i>=0) {
+			heap.set(charInitIndex[i], charInitValue[i], 0, charInitValue[i].length);
+		}
+		return heap;
 	}
 	
 	public byte[][] byteDictionary() {
