@@ -659,14 +659,16 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextUTF(value,offset,length);
 				break;
 			case OperatorMask.Copy:
-				break;
-			case OperatorMask.Constant:
+				writerChar.writeUTF8CopyOptional(token, value, offset, length);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeUTF8DefaultOptional(token, value, offset, length);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeUTF8DeltaOptional(token, value, offset, length);
 				break;	
 			case OperatorMask.Tail:
+				writerChar.writeUTF8TailOptional(token, value, offset, length);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -680,14 +682,19 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextUTF(value,offset,length);
 				break;
 			case OperatorMask.Copy:
+				writerChar.writeUTF8Copy(token, value, offset, length);
 				break;
 			case OperatorMask.Constant:
+				writerChar.writeUTF8Constant(token, value, offset, length);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeUTF8Default(token, value, offset, length);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeUTF8Delta(token, value, offset, length);
 				break;
 			case OperatorMask.Tail:
+				writerChar.writeUTF8Tail(token, value, offset, length);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -700,14 +707,16 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextASCII(value,offset,length);
 				break;
 			case OperatorMask.Copy:
-				break;
-			case OperatorMask.Constant:
+				writerChar.writeASCIICopyOptional(token, value, offset, length);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeASCIIDefaultOptional(token, value, offset, length);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeASCIIDeltaOptional(token, value, offset, length);
 				break;	
 			case OperatorMask.Tail:
+				writerChar.writeASCIITailOptional(token, value, offset, length);
 				break;	
 			default:
 				throw new UnsupportedOperationException();
@@ -720,14 +729,19 @@ public final class FASTStaticWriter implements FASTWriter {
 				writer.writeTextASCII(value,offset,length);
 				break;
 			case OperatorMask.Copy:
+				writerChar.writeASCIICopy(token, value, offset, length);
 				break;
 			case OperatorMask.Constant:
+				writerChar.writeASCIIConstant(token, value, offset, length);
 				break;
 			case OperatorMask.Default:
+				writerChar.writeASCIIDefault(token, value, offset, length);
 				break;
 			case OperatorMask.Delta:
+				writerChar.writeASCIIDelta(token, value, offset, length);
 				break;	
 			case OperatorMask.Tail:
+				writerChar.writeASCIITail(token, value, offset, length);
 				break;	
 			default:
 				throw new UnsupportedOperationException();

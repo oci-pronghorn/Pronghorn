@@ -30,6 +30,7 @@ public class TextHeapTest {
 			builder.setLength(0);
 			th.get(i,builder);
 			assertEquals(testData[i],builder.toString());
+			assertTrue(th.equals(i, testData[i]));
 		}
 		
 		i = testData.length;
@@ -38,6 +39,41 @@ public class TextHeapTest {
 			char[] target = new char[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
+			assertTrue(th.equals(i, testData[i]));
+		}
+		
+	}
+	
+	@Test
+	public void simpleStringWriteReadTest() {
+		
+		String[] testData = new String[] {
+			"a","b","c","hello","world"	
+		};
+		
+		TextHeap th = new TextHeap(6,6, testData.length);
+		
+		int i = testData.length;
+		while (--i>=0) {
+			th.set(i, testData[i]);
+		}
+		
+		i = testData.length;
+		StringBuilder builder = new StringBuilder();
+		while (--i>=0) {
+			builder.setLength(0);
+			th.get(i,builder);
+			assertEquals(testData[i],builder.toString());
+			assertTrue(th.equals(i, testData[i]));
+		}
+		
+		i = testData.length;
+		while (--i>=0) {
+			char[] data = testData[i].toCharArray();
+			char[] target = new char[data.length];
+			th.get(i,target, 0);
+			assertTrue(Arrays.equals(data,target));
+			assertTrue(th.equals(i, testData[i]));
 		}
 		
 	}
@@ -71,6 +107,7 @@ public class TextHeapTest {
 			builder.setLength(0);
 			th.get(i,builder);
 			assertEquals(testData[i],builder.toString());
+			assertTrue(th.equals(i, testData[i]));
 		}
 		
 		i = testData.length;
@@ -79,6 +116,48 @@ public class TextHeapTest {
 			char[] target = new char[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
+			assertTrue(th.equals(i, testData[i]));
+		}
+		
+	}
+	
+	@Test
+	public void simpleReplacementStringTest() {
+		
+		String[] testData = new String[] {
+			"a","b","c","hello","world","string"	
+		};
+		
+		TextHeap th = new TextHeap(6,6, testData.length);
+		
+		//write each test value into the heap
+		int i = testData.length;
+		while (--i>=0) {
+			th.set(testData.length-(i+1), testData[i]);
+		}
+		//now replace each backwards so they have something shorter or longer
+		i = testData.length;
+		while (--i>=0) {
+			th.set(i, testData[i]);
+		}
+		
+		
+		i = testData.length;
+		StringBuilder builder = new StringBuilder();
+		while (--i>=0) {
+			builder.setLength(0);
+			th.get(i,builder);
+			assertEquals(testData[i],builder.toString());
+			assertTrue(th.equals(i, testData[i]));
+		}
+		
+		i = testData.length;
+		while (--i>=0) {
+			char[] data = testData[i].toCharArray();
+			char[] target = new char[data.length];
+			th.get(i,target, 0);
+			assertTrue(Arrays.equals(data,target));
+			assertTrue(th.equals(i, testData[i]));
 		}
 		
 	}
@@ -104,6 +183,9 @@ public class TextHeapTest {
 		builder.setLength(0);
 		th.get(2, builder);
 		assertEquals(root+replace,builder.toString());
+		assertTrue(th.equals(2, root+replace));
+		assertEquals(root.length(), th.countHeadMatch(2, root));
+		assertEquals(replace.length(), th.countTailMatch(2, replace));
 	}
 	
 	@Test
@@ -127,6 +209,10 @@ public class TextHeapTest {
 		builder.setLength(0);
 		th.get(2, builder);
 		assertEquals(replace+root,builder.toString());
+		assertTrue(th.equals(2, replace+root));
+		assertFalse(th.equals(2, replace));
+		assertEquals(replace.length(), th.countHeadMatch(2, replace));
+		assertEquals(root.length(), th.countTailMatch(2, root));
 	}
 	
 	private static final String[] buildTestData = new String[] {"abcd","efgh","ijkl","mnop"};

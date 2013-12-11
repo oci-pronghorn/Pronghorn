@@ -1,6 +1,9 @@
 package com.ociweb.jfast.field;
 
+import java.io.IOException;
 import java.util.Arrays;
+
+import com.ociweb.jfast.error.FASTException;
 
 
 /**
@@ -77,6 +80,29 @@ public class TextHeap {
 		}
 	}
 
+	public void set(int idx, CharSequence charSequence) {
+		
+		int offset = idx<<2;
+		
+		int sourceLen = charSequence.length();
+		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+		int nextTextStart = offset+4 >= tat.length  ? data.length  : tat[offset+4];
+		int space = nextTextStart - prevTextStop;
+		int middleIdx = (space-sourceLen)>>1;
+		
+		if (sourceLen<=space) {
+			simpleReplace(charSequence, offset, prevTextStop, middleIdx);
+		} else {
+			//we do not have enough space move to the bigger side.
+			makeRoom(offset, middleIdx>(data.length>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
+            
+    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+    		nextTextStart = offset+4 >= data.length ? data.length : tat[offset+4];
+    		
+            simpleReplace(charSequence, offset, prevTextStop, ((nextTextStart-prevTextStop)-sourceLen)>>1);         
+		}
+	}
+	
 	private void makeRoom(int offsetNeedingRoom, boolean startBefore, int totalDesired) {
 
 		if (startBefore) {
@@ -135,6 +161,28 @@ public class TextHeap {
 		System.arraycopy(source, sourceIdx, data, target, sourceLen);
 		//full replace
 		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
+		tat[offset] = target;
+		tat[offset+1] = limit;
+	}
+	
+	private void simpleReplace(CharSequence charSequence, int offset, int prevTextStop, int middleIdx) {
+		//write and return because we have enough space
+		int target = prevTextStop+middleIdx;
+		if (target<0) {
+			target=0;
+		}
+		int limit = target+charSequence.length();
+		if (limit>data.length) {
+			target = data.length-charSequence.length();
+		}
+		
+		int j = target+charSequence.length();
+		int i = charSequence.length();
+		while (--i>=0) {
+			data[--j] = charSequence.charAt(i);
+		}
+		//full replace
+		totalContent+=(charSequence.length()-(tat[offset+1]-tat[offset]));
 		tat[offset] = target;
 		tat[offset+1] = limit;
 	}
@@ -370,14 +418,99 @@ public class TextHeap {
 		System.arraycopy(data, pos, target, targetIdx, len);
 	}
 	
-	public void get(int idx, StringBuilder target) {
+	public void get(int idx, Appendable target) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
 		int lim = tat[offset+1];
 		
-		while (pos<lim) {
-			target.append(data[pos++]);
+		try {
+			while (pos<lim) {
+					target.append(data[pos++]);
+			}
+		} catch (IOException e) {
+			throw new FASTException(e);
 		}
+	}
+	
+	public int countHeadMatch(int idx, CharSequence value) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		int i = 0;
+		int limit = Math.min(value.length(),lim-pos);
+		while (i<limit && data[pos+i]==value.charAt(i)) {
+			i++;
+		}
+		return i;
+	}
+	
+	public int countTailMatch(int idx, CharSequence value) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		int vlim = value.length();
+		
+		int limit = Math.min(vlim,lim-pos);
+		int i = 1;
+		while (i<=limit && data[lim-i]==value.charAt(vlim-i)) {
+			i++;
+		}
+		return i-1;
+	}
+	
+
+	public boolean equals(int idx, CharSequence value) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		int i = value.length();
+		if (lim-pos!=i) {
+			return false;
+		}
+		while (--i>=0) {
+			if (value.charAt(i)!=data[pos+i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public int countHeadMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		int i = 0;
+		int limit = Math.min(sourceLength,lim-pos);
+		while (i<limit && data[pos+i]==source[sourceIdx+i]) {
+			i++;
+		}
+		return i;
+	}
+	
+	public boolean equals(int idx, char[] source, int sourceIdx, int sourceLength) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		int i = sourceLength;
+		if (lim-pos!=i) {
+			return false;
+		}
+		int j = pos+i;
+		while (--i>=0) {
+			if (source[sourceIdx+i]!=data[--j]) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

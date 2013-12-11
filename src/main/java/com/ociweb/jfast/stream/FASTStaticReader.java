@@ -382,6 +382,18 @@ public class FASTStaticReader implements FASTReader {
 				int length = reader.readIntegerUnsigned()-1;
 				reader.readTextUTF8(length, target);
 				break;
+			case OperatorMask.Copy:
+				readerChar.readUTF8CopyOptional(token, target);
+				break;
+			case OperatorMask.Default:
+				readerChar.readUTF8DefaultOptional(token, target);
+				break;
+			case OperatorMask.Delta:
+				readerChar.readUTF8DeltaOptional(token, target);
+				break;
+			case OperatorMask.Tail:
+				readerChar.readUTF8TailOptional(token, target);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -393,6 +405,21 @@ public class FASTStaticReader implements FASTReader {
 				int length = reader.readIntegerUnsigned();
 				reader.readTextUTF8(length, target);
 				break;
+			case OperatorMask.Copy:
+				readerChar.readUTF8Copy(token, target);
+				break;
+			case OperatorMask.Constant:
+				readerChar.readUTF8Constant(token, target);
+				break;
+			case OperatorMask.Default:
+				readerChar.readUTF8Default(token, target);
+				break;
+			case OperatorMask.Delta:
+				readerChar.readUTF8Delta(token, target);
+				break;
+			case OperatorMask.Tail:
+				readerChar.readUTF8Tail(token, target);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -403,6 +430,18 @@ public class FASTStaticReader implements FASTReader {
 			case OperatorMask.None:
 				reader.readTextASCII(target);
 				break;
+			case OperatorMask.Copy:
+				readerChar.readASCIICopyOptional(token, target);
+				break;
+			case OperatorMask.Default:
+				readerChar.readASCIIDefaultOptional(token, target);
+				break;
+			case OperatorMask.Delta:
+				readerChar.readASCIIDeltaOptional(token, target);
+				break;
+			case OperatorMask.Tail:
+				readerChar.readASCIITailOptional(token, target);
+				break;
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -412,6 +451,21 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				reader.readTextASCII(target);
+				break;
+			case OperatorMask.Copy:
+				readerChar.readASCIICopy(token, target);
+				break;
+			case OperatorMask.Constant:
+				readerChar.readASCIIConstant(token, target);
+				break;
+			case OperatorMask.Default:
+				readerChar.readASCIIDefault(token, target);
+				break;
+			case OperatorMask.Delta:
+				readerChar.readASCIIDelta(token, target);
+				break;
+			case OperatorMask.Tail:
+				readerChar.readASCIITail(token, target);
 				break;
 			default:
 				throw new UnsupportedOperationException();
@@ -441,6 +495,14 @@ public class FASTStaticReader implements FASTReader {
 				int length = reader.readIntegerUnsigned()-1;
 				reader.readTextUTF8(target,offset,length);
 				return length;
+			case OperatorMask.Copy:
+				return readerChar.readUTF8CopyOptional(token, target, offset);
+			case OperatorMask.Default:
+				return readerChar.readUTF8DefaultOptional(token, target, offset);
+			case OperatorMask.Delta:
+				return readerChar.readUTF8DeltaOptional(token, target, offset);
+			case OperatorMask.Tail:
+				return readerChar.readUTF8TailOptional(token, target, offset);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -452,6 +514,16 @@ public class FASTStaticReader implements FASTReader {
 				int length = reader.readIntegerUnsigned();
 				reader.readTextUTF8(target,offset,length);
 				return length;
+			case OperatorMask.Copy:
+				return readerChar.readUTF8Copy(token, target, offset);
+			case OperatorMask.Constant:
+				return readerChar.readUTF8Constant(token, target, offset);
+			case OperatorMask.Default:
+				return readerChar.readUTF8Default(token, target, offset);
+			case OperatorMask.Delta:
+				return readerChar.readUTF8Delta(token, target, offset);
+			case OperatorMask.Tail:
+				return readerChar.readUTF8Tail(token, target, offset);
 			default:
 				throw new UnsupportedOperationException();
 	}
@@ -461,6 +533,14 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				return reader.readTextASCII(target,offset);
+			case OperatorMask.Copy:
+				return readerChar.readASCIICopyOptional(token, target, offset);
+			case OperatorMask.Default:
+				return readerChar.readASCIIDefaultOptional(token, target, offset);
+			case OperatorMask.Delta:
+				return readerChar.readASCIIDeltaOptional(token, target, offset);
+			case OperatorMask.Tail:
+				return readerChar.readASCIITailOptional(token, target, offset);
 			default:
 				throw new UnsupportedOperationException();
 		}
@@ -470,6 +550,16 @@ public class FASTStaticReader implements FASTReader {
 		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
 			case OperatorMask.None:
 				return reader.readTextASCII(target,offset);
+			case OperatorMask.Copy:
+				return readerChar.readASCIICopy(token, target, offset);
+			case OperatorMask.Constant:
+				return readerChar.readASCIIConstant(token, target, offset);
+			case OperatorMask.Default:
+				return readerChar.readASCIIDefault(token, target, offset);
+			case OperatorMask.Delta:
+				return readerChar.readASCIIDelta(token, target, offset);
+			case OperatorMask.Tail:
+				return readerChar.readASCIITail(token, target, offset);
 			default:
 				throw new UnsupportedOperationException();
 		}
