@@ -899,8 +899,12 @@ public final class PrimitiveWriter {
 	}
 
 	public void writeTextUTF(CharSequence value) {
+		writeTextUTF(0,value);
+	}
+	
+	public void writeTextUTF(int start, CharSequence value) {
 		int len = value.length();
-		int c = 0;
+		int c = start;
 		while (c<len) {
 			encodeSingleChar(value.charAt(c++));
 		}		

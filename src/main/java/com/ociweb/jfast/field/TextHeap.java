@@ -513,4 +513,13 @@ public class TextHeap {
 		}
 		return true;
 	}
+
+	public int length(int idx) {
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		return lim-pos;
+	}
 }

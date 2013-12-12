@@ -20,17 +20,25 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		
 		if (heap.equals(idx, value)) {
-			
-		};
-		// TODO Auto-generated method stub
-		
-		//heap.s
-		
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(value.length()+1);
+			writer.writeTextUTF(value);
+			heap.set(idx, value);
+		}
 	}
 
 	public void writeUTF8DefaultOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(value.length()+1);
+			writer.writeTextUTF(value);
+		}
 	}
 
 	public void writeUTF8DeltaOptional(int token, CharSequence value) {
@@ -41,26 +49,55 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8TailOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
-		//count matching front chars
+		int headCount = heap.countHeadMatch(idx, value);
 		
+		int trimTail = heap.length(idx)-headCount;
 		
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = value.length()-headCount;
+		writer.writeIntegerUnsigned(valueSend);		
+		writer.writeTextUTF(headCount,value);
+			
 	}
 
 	public void writeUTF8Copy(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(value.length());
+			writer.writeTextUTF(value);
+			heap.set(idx, value);
+		}
 	}
 
 	public void writeUTF8Constant(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(value.length());
+			writer.writeTextUTF(value);
+		}
 	}
 
 	public void writeUTF8Default(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(value.length());
+			writer.writeTextUTF(value);
+		}
 	}
 
 	public void writeUTF8Delta(int token, CharSequence value) {
@@ -69,18 +106,40 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8Tail(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		int headCount = heap.countHeadMatch(idx, value);
+		
+		int trimTail = heap.length(idx)-headCount;
+		
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = value.length()-headCount;
+		writer.writeIntegerUnsigned(valueSend);		
+		writer.writeTextUTF(headCount,value);
 	}
 
 	public void writeASCIICopyOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value);
+			heap.set(idx, value);
+		}
 	}
 
 	public void writeASCIIDefaultOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value);
+		}
 	}
 
 	public void writeASCIIDeltaOptional(int token, CharSequence value) {
@@ -89,23 +148,51 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIITailOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		int headCount = heap.countHeadMatch(idx, value);
+		
+		int trimTail = heap.length(idx)-headCount;
+		
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = value.length()-headCount;
+	//	writer.writeIntegerUnsigned(valueSend);		
+	//	TODO:  writer.writeTextASCII(headCount,value);
 	}
 
 	public void writeASCIICopy(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value);
+			heap.set(idx, value);
+		}
 	}
 
 	public void writeASCIIConstant(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value);
+		}
 	}
 
 	public void writeASCIIDefault(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value);
+		}
 	}
 
 	public void writeASCIIDelta(int token, CharSequence value) {
@@ -119,13 +206,28 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8CopyOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length+1);
+			writer.writeTextUTF(value,offset,length);
+			heap.set(idx, value, offset, length);
+		}
 	}
 
 	public void writeUTF8DefaultOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length+1);
+			writer.writeTextUTF(value,offset,length);
+		}
 	}
 
 	public void writeUTF8DeltaOptional(int token, char[] value, int offset, int length) {
@@ -139,18 +241,40 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8Copy(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length);
+			writer.writeTextUTF(value,offset,length);
+			heap.set(idx, value, offset, length);
+		}
 	}
 
 	public void writeUTF8Constant(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length);
+			writer.writeTextUTF(value,offset,length);
+		}
 	}
 
 	public void writeUTF8Default(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length);
+			writer.writeTextUTF(value,offset,length);
+		}
 	}
 
 	public void writeUTF8Delta(int token, char[] value, int offset, int length) {
@@ -164,13 +288,26 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIICopyOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+			heap.set(idx, value, offset, length);
+		}
 	}
 
 	public void writeASCIIDefaultOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+		}
 	}
 
 	public void writeASCIIDeltaOptional(int token, char[] value, int offset, int length) {
@@ -184,18 +321,37 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIICopy(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+			heap.set(idx, value, offset, length);
+		}
 	}
 
 	public void writeASCIIConstant(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+		}
 	}
 
 	public void writeASCIIDefault(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+		}
 	}
 
 	public void writeASCIIDelta(int token, char[] value, int offset, int length) {
