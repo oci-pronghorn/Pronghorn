@@ -787,6 +787,7 @@ public final class PrimitiveWriter {
 		safetyStackPosPos[safetyStackDepth] = limit;
 		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsIdxLimit;
 		flushSkips[flushSkipsIdxLimit++] = limit+1;//default minimum size for present PMap
+		//TODO: need to detect writes past this point and fail!!
 		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit					
 		
 		//reset so we can start accumulating bits in the new pmap.
@@ -874,6 +875,24 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte)(0x80|value.charAt(c));
 		
 	}
+	
+	public final void writeTextASCIIAfter(int start, CharSequence value) {
+		
+		int length = value.length()-start;
+		if (0==length) {
+			encodeZeroLengthASCII();
+			return;
+		} else	if (limit>buffer.length-length) {
+			//if it was not zero and was too long flush
+			output.flush();
+		}
+		int c = start;
+		while (--length>0) {
+			buffer[limit++] = (byte)value.charAt(c++);
+		}
+		buffer[limit++] = (byte)(0x80|value.charAt(c));
+		
+	}
 
 	private void encodeZeroLengthASCII() {
 		if (limit>buffer.length-2) {
@@ -897,12 +916,16 @@ public final class PrimitiveWriter {
 		}
 		buffer[limit++] = (byte)(0x80|value[offset]);
 	}
-
+	
 	public void writeTextUTF(CharSequence value) {
-		writeTextUTF(0,value);
+		int len = value.length();
+		int c = 0;
+		while (c<len) {
+			encodeSingleChar(value.charAt(c++));
+		}
 	}
 	
-	public void writeTextUTF(int start, CharSequence value) {
+	public void writeTextUTFAfter(int start, CharSequence value) {
 		int len = value.length();
 		int c = start;
 		while (c<len) {

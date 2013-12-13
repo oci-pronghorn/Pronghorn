@@ -174,7 +174,7 @@ public final class PrimitiveReader {
 		int validation = pmapMaxSize;
 		do {			
 			if (--validation<0) {
-				throw new FASTException("Can not find end of PMAP in given max length.");
+				throw new FASTException("Can not find end of PMAP in given max byte length of "+pmapMaxSize+".");
 			}
 		} while (b[p++]>=0);
 		

@@ -135,7 +135,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 			}			
 		}
 		if (fw.isGroupOpen()) {
-			fw.closeGroup();
+			fw.closeGroup(groupToken);
 		}
 		fw.flush();
 		fw.flush();
@@ -188,7 +188,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 			}			
 		}
 		if (fr.isGroupOpen()) {
-			fr.closeGroup();
+			fr.closeGroup(groupToken);
 		}
 	}
 

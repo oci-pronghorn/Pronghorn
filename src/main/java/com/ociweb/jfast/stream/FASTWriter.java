@@ -22,7 +22,7 @@ public interface FASTWriter {
 	
 	void openGroup(int id);
 	void openGroup(int id, int repeat);
-	void closeGroup();
+	void closeGroup(int id);
 	void flush();
 	
 }

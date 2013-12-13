@@ -36,9 +36,8 @@ public class FieldReaderLong {
 	}
 
 	public long readLongUnsignedConstant(int token) {
-		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					lastValue[idx]:
+					lastValue[token & INSTANCE_MASK]:
 					reader.readLongUnsigned()	
 				);
 	}
@@ -50,44 +49,34 @@ public class FieldReaderLong {
 	}
 
 	public long readLongUnsignedCopyOptional(int token, long valueOfOptional) {
-		//if zero then use old value.
-		int idx = token & INSTANCE_MASK;
+		long value;
 		if (reader.popPMapBit()==0) {
-			return (lastValue[idx] == 0 ? valueOfOptional: lastValue[idx]-1);
+			value = lastValue[token & INSTANCE_MASK];
 		} else {
-			long value = lastValue[idx] = reader.readLongUnsigned();
-			if (0==value) {
-				return valueOfOptional;
-			} else {
-				return value-1;
-			}
+			lastValue[token & INSTANCE_MASK] = value = reader.readLongUnsigned();
 		}
+		return (0 == value ? valueOfOptional: value-1);
 	}
 	
 	
 	public long readLongUnsignedDelta(int token) {
-		
+		//Delta opp never uses PMAP
 		int index = token & INSTANCE_MASK;
 		return (lastValue[index] = (lastValue[index]+reader.readLongSigned()));
 		
 	}
 	
 	public long readLongUnsignedDeltaOptional(int token, long valueOfOptional) {
-		int instance = token & INSTANCE_MASK;
-		if (reader.popPMapBit()==0) {
-			long result = lastValue[instance];
-			return (result == 0 ? valueOfOptional: result);
+		//Delta opp never uses PMAP
+		long value = reader.readLongSigned();
+		if (0==value) {
+			lastValue[token & INSTANCE_MASK]=0;
+			return valueOfOptional;
 		} else {
-			//1 in pmap so sending delta or non value
-			long value = reader.readLongSigned();
-			if (0==value) {
-				lastValue[instance]=0;
-				return valueOfOptional;
-			} else {
-				return lastValue[instance] += (value-1);
-				
-			}
+			return lastValue[token & INSTANCE_MASK] += (value-1);
+			
 		}
+
 	}
 
 	public long readLongUnsignedDefault(int token) {
@@ -160,10 +149,8 @@ public class FieldReaderLong {
 	}
 
 	public long readLongSignedOptional(int token, long valueOfOptional) {
-		int instance = token & INSTANCE_MASK;
-		
 		long value = reader.readLongSigned();
-		lastValue[instance] = value;//needed for dynamic read behavior.
+		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
 		if (0==value) {
 			return valueOfOptional;
 		} else {
@@ -172,9 +159,8 @@ public class FieldReaderLong {
 	}
 
 	public long readLongSignedConstant(int token) {
-		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					lastValue[idx]:
+					lastValue[token & INSTANCE_MASK]:
 					reader.readLongSigned()	
 				);
 	}
@@ -187,42 +173,33 @@ public class FieldReaderLong {
 
 	public long readLongSignedCopyOptional(int token, long valueOfOptional) {
 		//if zero then use old value.
-		int idx = token & INSTANCE_MASK;
+		long value;
 		if (reader.popPMapBit()==0) {
-			return (lastValue[idx] == 0 ? valueOfOptional: lastValue[idx]-1);
+			value = lastValue[token & INSTANCE_MASK];
 		} else {
-			long value = reader.readLongSigned();
-			lastValue[idx] = value;
-			if (0==value) {
-				return valueOfOptional;
-			} else {
-				return (value>0 ? value-1 : value);
-			}
+			lastValue[token & INSTANCE_MASK] = value = reader.readLongSigned();
 		}
+		return (0 == value ? valueOfOptional: (value>0 ? value-1 : value));
 	}
 	
 	
 	public long readLongSignedDelta(int token) {
-		
+		//Delta opp never uses PMAP
 		int index = token & INSTANCE_MASK;
 		return (lastValue[index] = (lastValue[index]+reader.readLongSigned()));
 		
 	}
 	
 	public long readLongSignedDeltaOptional(int token, long valueOfOptional) {
-		int idx = token & INSTANCE_MASK;
-		if (reader.popPMapBit()==0) {
-			long result = lastValue[idx];
-			return (result == 0 ? valueOfOptional: result-1);
+		//Delta opp never uses PMAP
+		long value = reader.readLongSigned();
+		if (0==value) {
+			lastValue[token & INSTANCE_MASK]=0;
+			return valueOfOptional;
 		} else {
-			long value = reader.readLongSigned();
-			if (0==value) {
-				lastValue[idx]=0;
-				return valueOfOptional;
-			} else {
-				return lastValue[idx] += (value-1);
-			}
+			return lastValue[token & INSTANCE_MASK] += (value>0 ? value-1 : value);
 		}
+
 	}
 
 	public long readLongSignedDefault(int token) {
@@ -258,13 +235,12 @@ public class FieldReaderLong {
 	}
 
 	public long readLongSignedIncrement(int token) {
-		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()==0) {
 			//increment old value
-			return ++lastValue[idx];
+			return ++lastValue[token & INSTANCE_MASK];
 		} else {
 			//assign and return new value
-			return lastValue[idx] = reader.readLongSigned();
+			return lastValue[token & INSTANCE_MASK] = reader.readLongSigned();
 		}
 	}
 

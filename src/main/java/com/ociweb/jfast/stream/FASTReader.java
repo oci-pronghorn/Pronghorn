@@ -28,7 +28,7 @@ public interface FASTReader {
 	int readChars(int id, char[] target, int offset);
 	
 	void openGroup(int id);
-	void closeGroup();
+	void closeGroup(int id);
 	
 	//TODO: new future api ideas
 	//void readBytes(int id, ByteIterator iterator); //iterator knows length and next 

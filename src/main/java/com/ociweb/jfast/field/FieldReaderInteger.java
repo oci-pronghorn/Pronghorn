@@ -38,9 +38,8 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerUnsignedConstant(int token) {
-		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					lastValue[idx]:
+					lastValue[token & INSTANCE_MASK]:
 					reader.readIntegerUnsigned()	
 				);
 	}
@@ -52,43 +51,32 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerUnsignedCopyOptional(int token, int valueOfOptional) {
-		//if zero then use old value.
-		int idx = token & INSTANCE_MASK;
+		int value;
 		if (reader.popPMapBit()==0) {
-			return (lastValue[idx] == 0 ? valueOfOptional: lastValue[idx]-1);
+			value = lastValue[token & INSTANCE_MASK];
 		} else {
-			int value = lastValue[idx] = reader.readIntegerUnsigned();
-			if (0==value) {
-				return valueOfOptional;
-			} else {
-				return value-1;
-			}
+			lastValue[token & INSTANCE_MASK] = value = reader.readIntegerUnsigned();
 		}
+		return (0 == value ? valueOfOptional: value-1);
 	}
 	
 	
 	public int readIntegerUnsignedDelta(int token) {
-		
+		//Delta opp never uses PMAP
 		int index = token & INSTANCE_MASK;
 		return (lastValue[index] = (lastValue[index]+reader.readIntegerSigned()));
 		
 	}
 	
 	public int readIntegerUnsignedDeltaOptional(int token, int valueOfOptional) {
-		int instance = token & INSTANCE_MASK;
-		if (reader.popPMapBit()==0) {
-			int result = lastValue[instance];
-			return (result == 0 ? valueOfOptional: result);
+		//Delta opp never uses PMAP
+		long value = reader.readLongSigned();
+		if (0==value) {
+			lastValue[token & INSTANCE_MASK]=0;
+			return valueOfOptional;
 		} else {
-			//1 in pmap so sending delta or non value
-			long value = reader.readLongSigned();
-			if (0==value) {
-				lastValue[instance]=0;
-				return valueOfOptional;
-			} else {
-				return lastValue[instance] += (value-1);
-				
-			}
+			return lastValue[token & INSTANCE_MASK] += (value>0 ? value-1 : value);
+			
 		}
 	}
 
@@ -162,10 +150,8 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerSignedOptional(int token, int valueOfOptional) {
-		int instance = token & INSTANCE_MASK;
-		
 		int value = reader.readIntegerSigned();
-		lastValue[instance] = value;//needed for dynamic read behavior.
+		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
 		if (0==value) {
 			return valueOfOptional;
 		} else {
@@ -174,9 +160,8 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerSignedConstant(int token) {
-		int idx = token & INSTANCE_MASK;
 		return (reader.popPMapBit()==0 ? 
-					lastValue[idx]:
+					lastValue[token & INSTANCE_MASK]:
 					reader.readIntegerSigned()	
 				);
 	}
@@ -189,41 +174,31 @@ public class FieldReaderInteger {
 
 	public int readIntegerSignedCopyOptional(int token, int valueOfOptional) {
 		//if zero then use old value.
-		int idx = token & INSTANCE_MASK;
+		int value;
 		if (reader.popPMapBit()==0) {
-			return (lastValue[idx] == 0 ? valueOfOptional: lastValue[idx]-1);
+			value = lastValue[token & INSTANCE_MASK];
 		} else {
-			int value = reader.readIntegerSigned();
-			lastValue[idx] = value;
-			if (0==value) {
-				return valueOfOptional;
-			} else {
-				return (value>0 ? value-1 : value);
-			}
+			lastValue[token & INSTANCE_MASK] = value = reader.readIntegerSigned();
 		}
+		return (0 == value ? valueOfOptional: (value>0 ? value-1 : value));
 	}
 	
 	
 	public int readIntegerSignedDelta(int token) {
-		
+		//Delta opp never uses PMAP
 		int index = token & INSTANCE_MASK;
 		return (lastValue[index] = (lastValue[index]+reader.readIntegerSigned()));
 		
 	}
 	
 	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {
-		int idx = token & INSTANCE_MASK;
-		if (reader.popPMapBit()==0) {
-			int result = lastValue[idx];
-			return (result == 0 ? valueOfOptional: result-1);
+		//Delta opp never uses PMAP
+		long value = reader.readLongSigned();
+		if (0==value) {
+			lastValue[token & INSTANCE_MASK]=0;
+			return valueOfOptional;
 		} else {
-			long value = reader.readLongSigned();
-			if (0==value) {
-				lastValue[idx]=0;
-				return valueOfOptional;
-			} else {
-				return lastValue[idx] += (value-1);
-			}
+			return lastValue[token & INSTANCE_MASK] += (value>0?value-1:value);
 		}
 	}
 
@@ -260,13 +235,12 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerSignedIncrement(int token) {
-		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()==0) {
 			//increment old value
-			return ++lastValue[idx];
+			return ++lastValue[token & INSTANCE_MASK];
 		} else {
 			//assign and return new value
-			return lastValue[idx] = reader.readIntegerSigned();
+			return lastValue[token & INSTANCE_MASK] = reader.readIntegerSigned();
 		}
 	}
 

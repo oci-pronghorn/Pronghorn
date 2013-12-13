@@ -67,7 +67,7 @@ public class FASTDynamicReader  implements FASTReader {
 	}
 
 	@Override
-	public void closeGroup() {
+	public void closeGroup(int id) {
 		// TODO Auto-generated method stub
 		
 	}

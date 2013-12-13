@@ -42,9 +42,33 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8DeltaOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
 		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			//replace tail
+			int trimTail = heap.length(idx)-headCount;
+			writer.writeIntegerUnsigned(trimTail);
+			
+			int valueSend = value.length()-headCount;
+			writer.writeIntegerUnsigned(valueSend);		
+			writer.writeTextUTFAfter(headCount,value);
+			
+		} else {
+			//replace head
+			int trimHead = heap.length(idx)-tailCount;
+			writer.writeIntegerUnsigned(-trimHead);
+			
+			int valueSend = value.length()-tailCount;
+			writer.writeIntegerUnsigned(valueSend);		
+			
+			//TODO: write before
+			//writer.writeTextUTFAfter(headCount,value);
+			
+		}
+		
 		
 	}
 
@@ -58,8 +82,8 @@ public class FieldWriterChar {
 		writer.writeIntegerUnsigned(trimTail);
 		
 		int valueSend = value.length()-headCount;
-		writer.writeIntegerUnsigned(valueSend);		
-		writer.writeTextUTF(headCount,value);
+		writer.writeIntegerUnsigned(valueSend+1);//plus 1 for optional		
+		writer.writeTextUTFAfter(headCount,value);
 			
 	}
 
@@ -116,7 +140,7 @@ public class FieldWriterChar {
 		
 		int valueSend = value.length()-headCount;
 		writer.writeIntegerUnsigned(valueSend);		
-		writer.writeTextUTF(headCount,value);
+		writer.writeTextUTFAfter(headCount,value);
 	}
 
 	public void writeASCIICopyOptional(int token, CharSequence value) {
@@ -155,10 +179,7 @@ public class FieldWriterChar {
 		int trimTail = heap.length(idx)-headCount;
 		
 		writer.writeIntegerUnsigned(trimTail);
-		
-		int valueSend = value.length()-headCount;
-	//	writer.writeIntegerUnsigned(valueSend);		
-	//	TODO:  writer.writeTextASCII(headCount,value);
+		writer.writeTextASCIIAfter(headCount,value);
 	}
 
 	public void writeASCIICopy(int token, CharSequence value) {

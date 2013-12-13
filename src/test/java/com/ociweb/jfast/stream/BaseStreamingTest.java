@@ -86,7 +86,7 @@ public abstract class BaseStreamingTest {
 	protected int groupManagementRead(int fieldsPerGroup, FASTStaticReader fr, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
-			fr.closeGroup();
+			fr.closeGroup(groupToken);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
@@ -102,7 +102,7 @@ public abstract class BaseStreamingTest {
 	protected int groupManagementWrite(int fieldsPerGroup, FASTStaticWriter fw, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
-			fw.closeGroup();
+			fw.closeGroup(groupToken);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {

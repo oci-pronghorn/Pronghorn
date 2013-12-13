@@ -110,7 +110,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 			}			
 		}
 		if (fw.isGroupOpen()) {
-			fw.closeGroup();
+			fw.closeGroup(groupToken);
 		}
 		fw.flush();
 		fw.flush();
@@ -170,7 +170,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 			}			
 		}
 		if (fr.isGroupOpen()) {
-			fr.closeGroup();
+			fr.closeGroup(groupToken);
 		}
 		long duration = System.nanoTime() - start;
 		return duration;

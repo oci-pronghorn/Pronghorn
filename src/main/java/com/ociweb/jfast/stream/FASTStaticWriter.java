@@ -31,6 +31,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	private final FieldWriterChar writerChar;
 	private final FieldWriterBytes writerBytes;
 		
+	//TODO: constant logic is not built for the optional/pmap case
 	
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
@@ -758,8 +759,10 @@ public final class FASTStaticWriter implements FASTWriter {
 		//int repeat = 
 		//if sequence is not set by writer must use sequence provided
 	    //0 equals 1	
-		
-		writer.openPMap(TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK));
+		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		if (maxBytes>0) {
+			writer.openPMap(maxBytes);
+		}
 	}
 	
 	@Override
@@ -768,15 +771,22 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 		//repeat count provided
 		
-		writer.openPMap(TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK));
-				
+		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		if (maxBytes>0) {
+			writer.openPMap(maxBytes);
+		}
 		//TODO: is this the point when we write the repeat?
 		
 	}
 
 	@Override
-	public void closeGroup() {
-		writer.closePMap();
+	public void closeGroup(int id) {
+		//must have same token used for opening the group.
+		int token = id>=0 ? tokenLookup[id] : id;
+		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		if (maxBytes>0) {
+			writer.closePMap();
+		}
 	}
 
 	@Override

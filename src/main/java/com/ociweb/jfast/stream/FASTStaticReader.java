@@ -29,7 +29,7 @@ public class FASTStaticReader implements FASTReader {
 	
 		
 	public FASTStaticReader(PrimitiveReader reader, DictionaryFactory dcr, int[] tokenLookup) {
-		this.reader=reader;
+		this.reader = reader;
 		this.tokenLookup = tokenLookup;
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
@@ -317,13 +317,21 @@ public class FASTStaticReader implements FASTReader {
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		reader.readPMap(TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK));
+		int pmapMaxSize = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		if (pmapMaxSize>0) {
+			reader.readPMap(pmapMaxSize);
+		}
 		
 	}
 
 	@Override
-	public void closeGroup() {
-		reader.popPMap();
+	public void closeGroup(int id) {
+		//must have same token that was used when opening the group.
+		int token = id>=0 ? tokenLookup[id] : id;
+		int pmapMaxSize = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		if (pmapMaxSize>0) {
+			reader.popPMap();
+		}
 	}
 
 	public boolean isGroupOpen() {
@@ -336,9 +344,9 @@ public class FASTStaticReader implements FASTReader {
 		int optional = ((token>>TokenBuilder.SHIFT_TYPE)&1);
 		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
 		if (0==optional) {
-			return readerDecimal.readDecimalExponentOptional(token, oppExp, valueOfOptional);
-		} else {
 			return readerDecimal.readDecimalExponent(token, oppExp, valueOfOptional);
+		} else {
+			return readerDecimal.readDecimalExponentOptional(token, oppExp, valueOfOptional);
 		}
 	}
 	
@@ -349,9 +357,9 @@ public class FASTStaticReader implements FASTReader {
 		int optional = ((token>>TokenBuilder.SHIFT_TYPE)&1);
 		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
 		if (0==optional) {
-			return readerDecimal.readDecimalMantissaOptional(token, oppMant, valueOfOptional);
-		} else {
 			return readerDecimal.readDecimalMantissa(token, oppMant, valueOfOptional);
+		} else {
+			return readerDecimal.readDecimalMantissaOptional(token, oppMant, valueOfOptional);
 		}
 	}
 

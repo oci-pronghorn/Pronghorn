@@ -174,28 +174,25 @@ public final class FieldWriterInteger {
 	
 
 	public void writeIntegerUnsignedDelta(int value, int token) {
+		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
 		writer.writeIntegerSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
 	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
+		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		writer.writePMapBit((byte)1);	
-		writer.writeLongSigned(1+(value - lastValue[idx]));
+		int delta = value - lastValue[idx];
+		writer.writeLongSigned(delta>=0?1+delta:delta);
 		lastValue[idx] = value;	
 	}
 	
 	public void writeIntegerUnsignedDeltaOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (lastValue[idx]==0) {
-			writer.writePMapBit((byte)0);
-		}else {
-			writer.writePMapBit((byte)1);	
-		    writer.writeNull();//LongSigned(0);
-			lastValue[idx] = 0;	
-		}
+		//Delta opp never uses PMAP
+		int idx = token & INSTANCE_MASK;	
+	    writer.writeNull();
+		lastValue[idx] = 0;	
 		
 	}
 
@@ -333,15 +330,18 @@ public final class FieldWriterInteger {
 	}
 
 	public void writeIntegerSignedDelta(int value, int token) {
+		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
 		writer.writeIntegerSigned(value - lastValue[idx]);
 		lastValue[idx] = value;		
 	}
 	
 	public void writeIntegerSignedDeltaOptional(int value, int token) {
+		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		writer.writePMapBit((byte)1);	
-		writer.writeLongSigned(1+(value - lastValue[idx]));
+		
+		int dif = value - lastValue[idx];
+		writer.writeLongSigned(dif>=0 ? 1+dif : dif);
 		lastValue[idx] = value;	
 	}
 	
