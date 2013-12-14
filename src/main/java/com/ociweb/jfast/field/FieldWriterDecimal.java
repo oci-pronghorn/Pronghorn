@@ -26,89 +26,155 @@ public class FieldWriterDecimal {
 		
 	}
 
-	public void writeDecimalOptional(int token, int oppExp, int oppMant, int exponent, long mantissa) {
-		switch(oppExp) {
-			case OperatorMask.None:
-				writerDecimalExponent.writeIntegerSigned(1+exponent, token);
-			break;
-			case OperatorMask.Copy:
-				writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
-			break;
-			case OperatorMask.Default:
+	public void writeDecimalOptional(int token, int exponent, long mantissa) {
+		//oppExp
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			//none, constant, delta
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//none, delta
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//none
+					writerDecimalExponent.writeIntegerSigned(1+exponent, token);
+				} else {
+					//delta
+					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);
+				}	
+			} else {
+				//constant
+				//ERR
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//copy, increment
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//copy
+					writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
+				} else {
+					//increment
+					writerDecimalExponent.writeIntegerSignedIncrementOptional(exponent, token);
+				}	
+			} else {
+				// default
 				writerDecimalExponent.writeIntegerSignedDefaultOptional(exponent, token);
-			break;
-			case OperatorMask.Delta:
-				writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);
-			break;	
-			case OperatorMask.Increment:
-				writerDecimalExponent.writeIntegerSignedIncrementOptional(exponent, token);
-			break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
+		}
+				
+		
+		//oppMaint
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerDecimalMantissa.writeLongSigned(1+mantissa, token);
+				} else {
+					//delta
+					writerDecimalMantissa.writeLongSignedDeltaOptional(mantissa, token);
+				}	
+			} else {
+				//constant
+				//ERROR
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerDecimalMantissa.writeLongSignedCopyOptional(mantissa, token);
+				} else {
+					//increment
+					writerDecimalMantissa.writeLongSignedIncrementOptional(mantissa, token);
+				}	
+			} else {
+				// default
+				writerDecimalMantissa.writeLongSignedDefaultOptional(mantissa, token);
+			}		
 		}
 		
-		switch(oppMant) {
-			case OperatorMask.None:
-				writerDecimalMantissa.writeLongSigned(1+mantissa, token);
-			break;
-			case OperatorMask.Copy:
-				writerDecimalMantissa.writeLongSignedCopyOptional(mantissa, token);
-			break;
-			case OperatorMask.Default:
-				writerDecimalMantissa.writeLongSignedDefaultOptional(mantissa, token);
-			break;
-			case OperatorMask.Delta:
-				writerDecimalMantissa.writeLongSignedDeltaOptional(mantissa, token);
-			break;	
-			case OperatorMask.Increment:
-				writerDecimalMantissa.writeLongSignedIncrementOptional(mantissa, token);
-			break;
-			default:
-				throw new UnsupportedOperationException();
-		}
 	}
 
-	public void writeDecimal(int token, int oppExp, int oppMant, int exponent, long mantissa) {
-		switch(oppExp) {
-			case OperatorMask.None:
-				writerDecimalExponent.writeIntegerSigned(exponent, token);
-			break;
-			case OperatorMask.Constant:
+	//remove two opp arguments!
+	public void writeDecimal(int token, int exponent, long mantissa) {
+		
+		//oppExp
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			//none, constant, delta
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//none, delta
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//none
+					writerDecimalExponent.writeIntegerSigned(exponent, token);
+				} else {
+					//delta
+					writerDecimalExponent.writeIntegerSignedDelta(exponent, token);
+				}	
+			} else {
+				//constant
 				writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
-			break;
-			case OperatorMask.Copy:
-				writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
-			break;
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//copy, increment
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//copy
+					writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
+				} else {
+					//increment
+					writerDecimalExponent.writeIntegerSignedIncrement(exponent, token);
+				}	
+			} else {
+				// default
 				writerDecimalExponent.writeIntegerSignedDefault(exponent, token);
-			break;
-			case OperatorMask.Delta:
-				writerDecimalExponent.writeIntegerSignedDelta(exponent, token);
-			break;	
-			case OperatorMask.Increment:
-				writerDecimalExponent.writeIntegerSignedIncrement(exponent, token);
-			break;
+			}		
+		}
+				
+		
+		//oppMaint
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerDecimalMantissa.writeLongSigned(mantissa, token);
+				} else {
+					//delta
+					writerDecimalMantissa.writeLongSignedDelta(mantissa, token);
+				}	
+			} else {
+				//constant
+				writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerDecimalMantissa.writeLongSignedCopy(mantissa, token);
+				} else {
+					//increment
+					writerDecimalMantissa.writeLongSignedIncrement(mantissa, token);
+				}	
+			} else {
+				// default
+				writerDecimalMantissa.writeLongSignedDefault(mantissa, token);
+			}		
 		}
 		
-		switch(oppMant) {
-			case OperatorMask.None:
-				writerDecimalMantissa.writeLongSigned(mantissa, token);
-			break;
-			case OperatorMask.Constant:
-				writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
-			break;
-			case OperatorMask.Copy:
-				writerDecimalMantissa.writeLongSignedCopy(mantissa, token);
-			break;
-			case OperatorMask.Default:
-				writerDecimalMantissa.writeLongSignedDefault(mantissa, token);
-			break;
-			case OperatorMask.Delta:
-				writerDecimalMantissa.writeLongSignedDelta(mantissa, token);
-			break;	
-			case OperatorMask.Increment:
-				writerDecimalMantissa.writeLongSignedIncrement(mantissa, token);
-			break;
-		}
+	
+	}
+
+	public void writeNull(int token) {
+		writerDecimalExponent.writeNull(token); //TODO: this is not done yet
+		writerDecimalMantissa.writeNull(token);
 	}
 }

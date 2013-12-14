@@ -121,19 +121,7 @@ public final class FieldWriterLong {
 			writer.writeLongUnsigned(value);
 		}
 	}
-	
-	public void writeLongUnsignedDefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(0);
-			//writer.writeNull(); //TODO: confirm these are equal?
-		}
-	}
-	
+		
 	public void writeLongUnsignedIncrement(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 		long incVal = lastValue[idx]+1;
@@ -159,20 +147,6 @@ public final class FieldWriterLong {
 			writer.writeLongUnsigned(lastValue[idx] = 1+value);
 		}
 	}
-	
-	public void writeLongUnsignedIncrementOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			//writer.writeNull(); //TODO: confirm these are equal?
-			writer.writeLongUnsigned(0);
-			lastValue[idx] = 0;
-		}
-	}
-	
 
 	public void writeLongUnsignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
@@ -187,14 +161,6 @@ public final class FieldWriterLong {
 		long delta = value - lastValue[idx];
 		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 		lastValue[idx] = value;	
-	}
-	
-	public void writeLongUnsignedDeltaOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-
-	    writer.writeLongSigned(0);
-		lastValue[idx] = 0;	
-		
 	}
 
 	////////////////
@@ -315,22 +281,6 @@ public final class FieldWriterLong {
 			
 	}
 	
-	public void writeLongSignedIncrementOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
-		//	System.err.println("A write zero");
-			writer.writePMapBit((byte)0);
-		} else {
-		//	System.err.println("B write zero");
-			writer.writePMapBit((byte)1);
-			//writer.writeNull(); //TODO: confirm these are equal?
-			writer.writeLongSigned(0);
-			lastValue[idx] = 0;
-		}
-		
-	}
-
 	public void writeLongSignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
@@ -344,5 +294,60 @@ public final class FieldWriterLong {
 		long delta = value - lastValue[idx];
 		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 		lastValue[idx] = value;	
+	}
+
+	public void writeNull(int token) {
+		
+		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				//None and Delta (both do not use pmap)
+				writeClearNull(token);              //no pmap, yes change to last value
+			} else {
+				//Copy and Increment
+				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+			}
+		} else {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+					//const
+					writer.writeNull();                 //no pmap,  no change to last value  
+				} else {
+					//const optional
+					writer.writePMapBit((byte)0);       //pmap only
+				}			
+			} else {	
+				//default
+				writePMapNull(token);  //yes pmap,  no change to last value
+			}	
+		}
+		
+	}
+	
+	private void writeClearNull(int token) {
+		writer.writeNull();
+		lastValue[token & INSTANCE_MASK] = 0;
+	}
+	
+	
+	private void writePMapAndClearNull(int token) {
+		int idx = token & INSTANCE_MASK;
+
+		if (lastValue[idx]==0) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+			lastValue[idx] =0;
+		}
+	}
+	
+	
+	private void writePMapNull(int token) {
+		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+		}
 	}
 }

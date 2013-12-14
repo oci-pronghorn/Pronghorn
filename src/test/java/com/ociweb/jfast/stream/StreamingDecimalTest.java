@@ -5,63 +5,45 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
 
 
-public class IntegerStreamingTest extends BaseStreamingTest {
+public class StreamingDecimalTest extends BaseStreamingTest {
 
 	final int fields         = 1000;
-	final int[] testData     = buildTestDataUnsigned(fields);
+	final long[] testData     = buildTestDataUnsigned(fields);
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 
-	boolean sendNulls = false;
+	boolean sendNulls = true;
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
 	
 	//Constant can never be optional but can have pmap.
-	
+		
 	@Test
-	public void integerUnsignedTest() {
+	public void decimalTest() {
 		int[] types = new int[] {
-                  TypeMask.IntegerUnsigned,
-		    	  TypeMask.IntegerUnsignedOptional,
+                  TypeMask.Decimal,
+		    	  TypeMask.DecimalOptional,
 				  };
 		
 		int[] operators = new int[] {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-                OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
+            //    OperatorMask.Increment,
+           //     OperatorMask.Constant, //test runner knows not to use with optional
+             //   OperatorMask.Default
                 };
 				
-		tester(types, operators, "UnsignedInteger");
+		tester(types, operators, "Decimal");
 	}
 	
-	@Test
-	public void integerSignedTest() {
-		int[] types = new int[] {
-                  TypeMask.IntegerSigned,
-				  TypeMask.IntegerSignedOptional,
-				  };
-		
-		int[] operators = new int[] {
-                OperatorMask.None,  //no need for pmap
-                OperatorMask.Delta, //no need for pmap
-                OperatorMask.Copy,
-                OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
-                OperatorMask.Default
-                };
-		tester(types, operators, "SignedInteger");
-	}
 	
 	
 	private void tester(int[] types, int[] operators, String label) {	
@@ -76,7 +58,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
 		
-		int[] tokenLookup = HomogeniousRecordWriteReadBenchmark.buildTokens(fields, types, operators);
+		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
 		
 		byte[] writeBuffer = new byte[streamByteSize];
 
@@ -128,7 +110,7 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 				if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
 					fw.write(token);
 				} else {
-					fw.write(token, testData[f]); 
+					fw.write(token, 1, testData[f]); 
 				}
 							
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
@@ -140,8 +122,6 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 		fw.flush();
 		fw.flush();
 	}
-
-
 
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
@@ -160,6 +140,9 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 
 	protected void readData(int fields, int fieldsPerGroup, int operationIters,
 			                  int[] tokenLookup, FASTStaticReader fr) {
+		
+		long none = Integer.MIN_VALUE/2;
+		
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
@@ -171,17 +154,17 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				
 				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-					if (Integer.MIN_VALUE!=value) {
-						assertEquals(Integer.MIN_VALUE, value);
+					int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+		     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
+					if (none!=man) {
+						assertEquals(none, man);
 					}
 				} else { 
-					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
-					if (testData[f]!=value) {
-						TokenBuilder.tokenPrint(tokenLookup[f]);
-						assertEquals(testData[f], value);
+					int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+					long man = fr.readDecimalMantissa(tokenLookup[f], none);
+					if (testData[f]!=man) {
+						assertEquals(testData[f], man);
 					}
 				}
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
@@ -193,13 +176,12 @@ public class IntegerStreamingTest extends BaseStreamingTest {
 	}
 
 
-
-	int[] buildTestDataUnsigned(int count) {
+	long[] buildTestDataUnsigned(int count) {
 		
-		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
+		long[] seedData = PrimitiveReaderWriterTest.unsignedLongData;
 		int s = seedData.length;
 		int i = count;
-		int[] target = new int[count];
+		long[] target = new long[count];
 		while (--i>=0) {
 			target[i] = seedData[--s];
 			if (0==s) {

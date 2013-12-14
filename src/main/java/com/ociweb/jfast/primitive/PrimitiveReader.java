@@ -196,25 +196,29 @@ public final class PrimitiveReader {
 	}
 
 	//called at every field to determine operation
-	public final int popPMapBit() {
+	public final byte popPMapBit() {
 		if (pmapIdx<0) {
 			//must return all the trailing zeros for the bit map after hit end of map. see (a1)
 			return 0;
 		}
 		byte block = pmapStack[pmapStackDepth-1];
 		//get next bit and decrement the bit index pmapIdx
-		int value = 1&(block>>>(--pmapIdx));
+		byte value = (byte)(1&(block>>>(--pmapIdx)));
 		if (pmapIdx==0) {
-			pmapIdx = 7;
-			//if we have not reached the end of the map dec to the next byte
-			if (block >= 0) {
-				pmapStackDepth--;
-			} else {
-				//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
-				pmapIdx = -1;
-			}
+			resetToNextSeven(block);
 		}
 		return value;
+	}
+
+	private void resetToNextSeven(byte block) {
+		pmapIdx = 7;
+		//if we have not reached the end of the map dec to the next byte
+		if (block >= 0) {
+			pmapStackDepth--;
+		} else {
+			//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
+			pmapIdx = -1;
+		}
 	}	
 	
 	//called at the end of each group

@@ -1,6 +1,6 @@
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.stream.HomogeniousRecordWriteReadBenchmark;
+import com.ociweb.jfast.stream.HomogeniousRecordWriteReadLongBenchmark;
 
 public class TokenBuilder {
 
@@ -73,17 +73,17 @@ public class TokenBuilder {
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
 			int opp1 = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
 			int opp2 = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-			if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp1)) {
+			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp1)) {
 				throw new UnsupportedOperationException("bad token");
 			};
-			if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp2)) {
+			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp2)) {
 				throw new UnsupportedOperationException("bad token");
 			};
 			System.err.println("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp1)+" "+OperatorMask.toString(opp2)+" "+count);
 			
 		} else {
 			int opp  = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
-			if (HomogeniousRecordWriteReadBenchmark.isInValidCombo(type,opp)) {
+			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp)) {
 				throw new UnsupportedOperationException("bad token");
 			};
 			

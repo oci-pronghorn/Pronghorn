@@ -12,7 +12,7 @@ public abstract class BaseStreamingTest {
 
 	
 	private final float PCT_LIMIT = 40; //if avg is 40 pct above min then fail
-	private final float MAX_X_LIMIT = 10f;//if max is 4x larger than avg then fail
+	private final float MAX_X_LIMIT = 20f;//if max is 20x larger than avg then fail
 	
 	
 	protected long emptyLoop(int iterations, int fields, int fieldsPerGroup) {

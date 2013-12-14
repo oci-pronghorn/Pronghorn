@@ -110,180 +110,337 @@ public class FASTStaticReader implements FASTReader {
 	@Override
 	public long readLong(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.LongUnsigned:
+		
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			//not optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
 				return readLongUnsigned(token);
-			case TypeMask.LongUnsignedOptional:
-				return readLongUnsignedOptional(token, valueOfOptional);
-			case TypeMask.LongSigned:
+			} else {
 				return readLongSigned(token);
-			case TypeMask.LongSignedOptional:
+			}
+		} else {
+			//optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				return readLongUnsignedOptional(token, valueOfOptional);
+			} else {
 				return readLongSignedOptional(token, valueOfOptional);
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}	
 		}
+		
 	}
 	
 	private long readLongSignedOptional(int token, long valueOfOptional) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.None:
-			return readerLong.readLongSignedOptional(token,valueOfOptional);
-		case OperatorMask.Copy:
-			return readerLong.readLongSignedCopyOptional(token,valueOfOptional);
-		case OperatorMask.Default:
-			return readerLong.readLongSignedDefaultOptional(token,valueOfOptional);
-		case OperatorMask.Delta:
-			return readerLong.readLongSignedDeltaOptional(token,valueOfOptional);
-		case OperatorMask.Increment:
-			return readerLong.readLongSignedIncrementOptional(token,valueOfOptional);	
-		default:
-			throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerLong.readLongSignedOptional(token,valueOfOptional);
+				} else {
+					//delta
+					return readerLong.readLongSignedDeltaOptional(token,valueOfOptional);
+				}	
+			} else {
+				//constant
+				//writerInteger.writeIntegerUnsignedConstant(value, token);
+				return 0;
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerLong.readLongSignedCopyOptional(token,valueOfOptional);
+				} else {
+					//increment
+					return readerLong.readLongSignedIncrementOptional(token,valueOfOptional);
+				}	
+			} else {
+				// default
+				return readerLong.readLongSignedDefaultOptional(token,valueOfOptional);
+			}		
 		}
+		
 	}
 
 	private long readLongSigned(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.None:
-			return readerLong.readLongSigned(token);
-		case OperatorMask.Constant:
-			return readerLong.readLongSignedConstant(token);
-		case OperatorMask.Copy:
-			return readerLong.readLongSignedCopy(token);
-		case OperatorMask.Default:
-			return readerLong.readLongSignedDefault(token);
-		case OperatorMask.Delta:
-			return readerLong.readLongSignedDelta(token);
-		case OperatorMask.Increment:
-			return readerLong.readLongSignedIncrement(token);		
-		default:
-			throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerLong.readLongSigned(token);
+				} else {
+					//delta
+					return readerLong.readLongSignedDelta(token);
+				}	
+			} else {
+				//constant
+				return readerLong.readLongSignedConstant(token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerLong.readLongSignedCopy(token);
+				} else {
+					//increment
+					return readerLong.readLongSignedIncrement(token);	
+				}	
+			} else {
+				// default
+				return readerLong.readLongSignedDefault(token);
+			}		
 		}
+		
 	}
 
 	private long readLongUnsignedOptional(int token, long valueOfOptional) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				return readerLong.readLongUnsignedOptional(token,valueOfOptional);
-			case OperatorMask.Copy:
-				return readerLong.readLongUnsignedCopyOptional(token,valueOfOptional);
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerLong.readLongUnsignedOptional(token,valueOfOptional);
+				} else {
+					//delta
+					return readerLong.readLongUnsignedDeltaOptional(token,valueOfOptional);
+				}	
+			} else {
+				//constant
+				return readerLong.readLongSignedConstant(token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerLong.readLongUnsignedCopyOptional(token,valueOfOptional);
+				} else {
+					//increment
+					return readerLong.readLongUnsignedIncrementOptional(token,valueOfOptional);
+				}	
+			} else {
+				// default
 				return readerLong.readLongUnsignedDefaultOptional(token,valueOfOptional);
-			case OperatorMask.Delta:
-				return readerLong.readLongUnsignedDeltaOptional(token,valueOfOptional);
-			case OperatorMask.Increment:
-				return readerLong.readLongUnsignedIncrementOptional(token,valueOfOptional);	
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+
 	}
 
 	private long readLongUnsigned(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				return readerLong.readLongUnsigned(token);
-			case OperatorMask.Constant:
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerLong.readLongUnsigned(token);
+				} else {
+					//delta
+					return readerLong.readLongUnsignedDelta(token);
+				}	
+			} else {
+				//constant
 				return readerLong.readLongUnsignedConstant(token);
-			case OperatorMask.Copy:
-				return readerLong.readLongUnsignedCopy(token);
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerLong.readLongUnsignedCopy(token);
+				} else {
+					//increment
+					return readerLong.readLongUnsignedIncrement(token);		
+				}	
+			} else {
+				// default
 				return readerLong.readLongUnsignedDefault(token);
-			case OperatorMask.Delta:
-				return readerLong.readLongUnsignedDelta(token);
-			case OperatorMask.Increment:
-				return readerLong.readLongUnsignedIncrement(token);		
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+		
 	}
 
 	@Override
 	public int readInt(int id, int valueOfOptional) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.IntegerUnsigned:
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			//not optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
 				return readIntegerUnsigned(token);
-			case TypeMask.IntegerUnsignedOptional:
-				return readIntegerUnsignedOptional(token, valueOfOptional);
-			case TypeMask.IntegerSigned:
+			} else {
 				return readIntegerSigned(token);
-			case TypeMask.IntegerSignedOptional:
+			}
+		} else {
+			//optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				return readIntegerUnsignedOptional(token, valueOfOptional);
+			} else {
 				return readIntegerSignedOptional(token, valueOfOptional);
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}	
+		}		
+	}
+
+	private int readIntegerSignedOptional(int token, int valueOfOptional) {
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerInteger.readIntegerSignedOptional(token,valueOfOptional);
+				} else {
+					//delta
+					return readerInteger.readIntegerSignedDeltaOptional(token,valueOfOptional);
+				}	
+			} else {
+				//constant
+				//writerInteger.writeIntegerUnsignedConstant(value, token);
+				return 0;
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerInteger.readIntegerSignedCopyOptional(token,valueOfOptional);
+				} else {
+					//increment
+					return readerInteger.readIntegerSignedIncrementOptional(token,valueOfOptional);
+				}	
+			} else {
+				// default
+				return readerInteger.readIntegerSignedDefaultOptional(token,valueOfOptional);
+			}		
 		}
 		
 	}
 
-	private int readIntegerSignedOptional(int token, int valueOfOptional) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.None:
-			return readerInteger.readIntegerSignedOptional(token,valueOfOptional);
-		case OperatorMask.Copy:
-			return readerInteger.readIntegerSignedCopyOptional(token,valueOfOptional);
-		case OperatorMask.Default:
-			return readerInteger.readIntegerSignedDefaultOptional(token,valueOfOptional);
-		case OperatorMask.Delta:
-			return readerInteger.readIntegerSignedDeltaOptional(token,valueOfOptional);
-		case OperatorMask.Increment:
-			return readerInteger.readIntegerSignedIncrementOptional(token,valueOfOptional);	
-		default:
-			throw new UnsupportedOperationException();
-		}
-	}
-
 	private int readIntegerSigned(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.None:
-			return readerInteger.readIntegerSigned(token);
-		case OperatorMask.Constant:
-			return readerInteger.readIntegerSignedConstant(token);
-		case OperatorMask.Copy:
-			return readerInteger.readIntegerSignedCopy(token);
-		case OperatorMask.Default:
-			return readerInteger.readIntegerSignedDefault(token);
-		case OperatorMask.Delta:
-			return readerInteger.readIntegerSignedDelta(token);
-		case OperatorMask.Increment:
-			return readerInteger.readIntegerSignedIncrement(token);		
-		default:
-			throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerInteger.readIntegerSigned(token);
+				} else {
+					//delta
+					return readerInteger.readIntegerSignedDelta(token);
+				}	
+			} else {
+				//constant
+				return readerInteger.readIntegerSignedConstant(token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerInteger.readIntegerSignedCopy(token);
+				} else {
+					//increment
+					return readerInteger.readIntegerSignedIncrement(token);	
+				}	
+			} else {
+				// default
+				return readerInteger.readIntegerSignedDefault(token);
+			}		
 		}
 	}
 
 	private int readIntegerUnsignedOptional(int token, int valueOfOptional) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				return readerInteger.readIntegerUnsignedOptional(token,valueOfOptional);
-			case OperatorMask.Copy:
-				return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerInteger.readIntegerUnsignedOptional(token,valueOfOptional);
+				} else {
+					//delta
+					return readerInteger.readIntegerUnsignedDeltaOptional(token,valueOfOptional);
+				}	
+			} else {
+				//constant
+				//writerInteger.writeIntegerUnsignedConstant(value, token);
+				return 0;
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
+				} else {
+					//increment
+					return readerInteger.readIntegerUnsignedIncrementOptional(token,valueOfOptional);	
+				}	
+			} else {
+				// default
 				return readerInteger.readIntegerUnsignedDefaultOptional(token,valueOfOptional);
-			case OperatorMask.Delta:
-				return readerInteger.readIntegerUnsignedDeltaOptional(token,valueOfOptional);
-			case OperatorMask.Increment:
-				return readerInteger.readIntegerUnsignedIncrementOptional(token,valueOfOptional);	
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+	
 	}
 
 	private int readIntegerUnsigned(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				return readerInteger.readIntegerUnsigned(token);
-			case OperatorMask.Constant:
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return readerInteger.readIntegerUnsigned(token);
+				} else {
+					//delta
+					return readerInteger.readIntegerUnsignedDelta(token);
+				}	
+			} else {
+				//constant
 				return readerInteger.readIntegerUnsignedConstant(token);
-			case OperatorMask.Copy:
-				return readerInteger.readIntegerUnsignedCopy(token);
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return readerInteger.readIntegerUnsignedCopy(token);
+				} else {
+					//increment
+					return readerInteger.readIntegerUnsignedIncrement(token);
+				}	
+			} else {
+				// default
 				return readerInteger.readIntegerUnsignedDefault(token);
-			case OperatorMask.Delta:
-				return readerInteger.readIntegerUnsignedDelta(token);
-			case OperatorMask.Increment:
-				return readerInteger.readIntegerUnsignedIncrement(token);		
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 
@@ -341,10 +498,15 @@ public class FASTStaticReader implements FASTReader {
 	@Override
 	public int readDecimalExponent(int id, int valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		int optional = ((token>>TokenBuilder.SHIFT_TYPE)&1);
+		
+		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
 		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
-		if (0==optional) {
-			return readerDecimal.readDecimalExponent(token, oppExp, valueOfOptional);
+
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+			return readerDecimal.readDecimalExponent(token, valueOfOptional);
 		} else {
 			return readerDecimal.readDecimalExponentOptional(token, oppExp, valueOfOptional);
 		}
@@ -354,12 +516,17 @@ public class FASTStaticReader implements FASTReader {
 	@Override
 	public long readDecimalMantissa(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		int optional = ((token>>TokenBuilder.SHIFT_TYPE)&1);
+		
+		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
 		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-		if (0==optional) {
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 			return readerDecimal.readDecimalMantissa(token, oppMant, valueOfOptional);
 		} else {
-			return readerDecimal.readDecimalMantissaOptional(token, oppMant, valueOfOptional);
+			return readerDecimal.readDecimalMantissaOptional(token, valueOfOptional);
 		}
 	}
 

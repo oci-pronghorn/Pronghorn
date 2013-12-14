@@ -385,4 +385,11 @@ public class FieldWriterChar {
 		
 	}
 
+	public void writeNull(int token) {
+		// TODO Auto-generated method stub
+		
+		//TODO: copy int impl once its done.
+		
+	}
+
 }

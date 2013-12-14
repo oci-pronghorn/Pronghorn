@@ -28,19 +28,6 @@ public final class FieldWriterInteger {
 		writer.flush();
 	}
 	
-
-	public void writeIntegerNull(int token) {
-		int idx = token & INSTANCE_MASK;
-		writer.writeNull();
-		lastValue[idx] = 0;
-	}
-	
-	public void writeIntegerNullPMap(int token, byte bit) {
-		int idx = token & INSTANCE_MASK;
-		writer.writePMapBit(bit);
-		writer.writeNull();
-		lastValue[idx] = 0;
-	}
 	
 	/*
 	 * Method name convention to group the work 
@@ -61,27 +48,22 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerUnsignedCopy(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
+		if (value == lastValue[token & INSTANCE_MASK]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(value);
-			lastValue[idx] = value;
+			lastValue[token & INSTANCE_MASK] = value;
 		}
 	}
 	
 	public void writeIntegerUnsignedCopyOptional(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		value++;//zero is held for null
-		
-		if (value == lastValue[idx]) {//not null and matches
+		//zero is reserved for null
+		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx] = value);
+			writer.writeIntegerUnsigned(lastValue[token & INSTANCE_MASK] = value);
 		}
 	}
 	
@@ -122,17 +104,8 @@ public final class FieldWriterInteger {
 			writer.writeIntegerUnsigned(value);
 		}
 	}
-	
-	public void writeIntegerUnsignedDefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
 
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
+
 	
 	public void writeIntegerUnsignedIncrement(int value, int token) {
 		int idx = token & INSTANCE_MASK;
@@ -160,17 +133,7 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerUnsignedIncrementOptional(int token) {
-		int idx = token & INSTANCE_MASK;
 
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-			lastValue[idx] = 0;
-		}
-	}
 	
 
 	public void writeIntegerUnsignedDelta(int value, int token) {
@@ -188,13 +151,6 @@ public final class FieldWriterInteger {
 		lastValue[idx] = value;	
 	}
 	
-	public void writeIntegerUnsignedDeltaOptional(int token) {
-		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;	
-	    writer.writeNull();
-		lastValue[idx] = 0;	
-		
-	}
 
 	////////////////
 	///////////////
@@ -273,16 +229,7 @@ public final class FieldWriterInteger {
 		}
 	}
 	
-	public void writeIntegerSignedDefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
 
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
 	
 	public void writeIntegerSignedIncrement(int value, int token) {
 		int idx = token & INSTANCE_MASK;
@@ -313,21 +260,7 @@ public final class FieldWriterInteger {
 		}
 			
 	}
-	
-	public void writeIntegerSignedIncrementOptional(int token) {
-		int idx = token & INSTANCE_MASK;
 
-		if (lastValue[idx]==0) { //stored value was null;
-		//	System.err.println("A write zero");
-			writer.writePMapBit((byte)0);
-		} else {
-		//	System.err.println("B write zero");
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-			lastValue[idx] = 0;
-		}
-		
-	}
 
 	public void writeIntegerSignedDelta(int value, int token) {
 		//Delta opp never uses PMAP
@@ -343,6 +276,61 @@ public final class FieldWriterInteger {
 		int dif = value - lastValue[idx];
 		writer.writeLongSigned(dif>=0 ? 1+dif : dif);
 		lastValue[idx] = value;	
+	}
+
+	public void writeNull(int token) {
+		
+		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				//None and Delta (both do not use pmap)
+				writeClearNull(token);              //no pmap, yes change to last value
+			} else {
+				//Copy and Increment
+				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+			}
+		} else {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+					//const
+					writer.writeNull();                 //no pmap,  no change to last value  
+				} else {
+					//const optional
+					writer.writePMapBit((byte)0);       //pmap only
+				}			
+			} else {	
+				//default
+				writePMapNull(token);  //yes pmap,  no change to last value
+			}	
+		}
+		
+	}
+	
+	private void writeClearNull(int token) {
+		writer.writeNull();
+		lastValue[token & INSTANCE_MASK] = 0;
+	}
+	
+	
+	private void writePMapAndClearNull(int token) {
+		int idx = token & INSTANCE_MASK;
+
+		if (lastValue[idx]==0) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+			lastValue[idx] =0;
+		}
+	}
+	
+	
+	private void writePMapNull(int token) {
+		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+		}
 	}
 	
 }

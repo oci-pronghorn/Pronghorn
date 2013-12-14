@@ -5,31 +5,32 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
 
 
-public class LongStreamingTest extends BaseStreamingTest {
+public class StreamingIntegerTest extends BaseStreamingTest {
 
 	final int fields         = 1000;
-	final long[] testData     = buildTestDataUnsigned(fields);
+	final int[] testData     = buildTestDataUnsigned(fields);
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 
-	boolean sendNulls = true;
+	boolean sendNulls = false;
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
 	
 	//Constant can never be optional but can have pmap.
-		
+	
 	@Test
-	public void longUnsignedTest() {
+	public void integerUnsignedTest() {
 		int[] types = new int[] {
-                  TypeMask.LongUnsigned,
-		    	  TypeMask.LongUnsignedOptional,
+                  TypeMask.IntegerUnsigned,
+		    	  TypeMask.IntegerUnsignedOptional,
 				  };
 		
 		int[] operators = new int[] {
@@ -41,15 +42,15 @@ public class LongStreamingTest extends BaseStreamingTest {
                 OperatorMask.Default
                 };
 				
-		tester(types, operators, "UnsignedLong");
+		tester(types, operators, "UnsignedInteger");
 	}
 	
 	@Test
-	public void longSignedTest() {
+	public void integerSignedTest() {
 		int[] types = new int[] {
-                  TypeMask.LongSigned,
-				  TypeMask.LongSignedOptional,
-				};
+                  TypeMask.IntegerSigned,
+				  TypeMask.IntegerSignedOptional,
+				  };
 		
 		int[] operators = new int[] {
                 OperatorMask.None,  //no need for pmap
@@ -59,7 +60,7 @@ public class LongStreamingTest extends BaseStreamingTest {
                 OperatorMask.Constant, //test runner knows not to use with optional
                 OperatorMask.Default
                 };
-		tester(types, operators, "SignedLong");
+		tester(types, operators, "SignedInteger");
 	}
 	
 	
@@ -75,7 +76,7 @@ public class LongStreamingTest extends BaseStreamingTest {
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
 		
-		int[] tokenLookup = HomogeniousRecordWriteReadBenchmark.buildTokens(fields, types, operators);
+		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
 		
 		byte[] writeBuffer = new byte[streamByteSize];
 
@@ -140,6 +141,8 @@ public class LongStreamingTest extends BaseStreamingTest {
 		fw.flush();
 	}
 
+
+
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
@@ -157,9 +160,6 @@ public class LongStreamingTest extends BaseStreamingTest {
 
 	protected void readData(int fields, int fieldsPerGroup, int operationIters,
 			                  int[] tokenLookup, FASTStaticReader fr) {
-		
-		long none = Integer.MIN_VALUE/2;
-		
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
@@ -171,14 +171,16 @@ public class LongStreamingTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
+				
 				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-		     		long value = fr.readLong(tokenLookup[f], none);
-					if (none!=value) {
-						assertEquals(none, value);
+		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
+					if (Integer.MIN_VALUE!=value) {
+						assertEquals(Integer.MIN_VALUE, value);
 					}
 				} else { 
-					long value = fr.readLong(tokenLookup[f], none);
+					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 					if (testData[f]!=value) {
+						TokenBuilder.tokenPrint(tokenLookup[f]);
 						assertEquals(testData[f], value);
 					}
 				}
@@ -191,12 +193,13 @@ public class LongStreamingTest extends BaseStreamingTest {
 	}
 
 
-	long[] buildTestDataUnsigned(int count) {
+
+	int[] buildTestDataUnsigned(int count) {
 		
-		long[] seedData = PrimitiveReaderWriterTest.unsignedLongData;
+		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
 		int s = seedData.length;
 		int i = count;
-		long[] target = new long[count];
+		int[] target = new int[count];
 		while (--i>=0) {
 			target[i] = seedData[--s];
 			if (0==s) {

@@ -63,109 +63,42 @@ public final class FASTStaticWriter implements FASTWriter {
 	 */
 	@Override
 	public void write(int id) {
-		
+		//TODO: write null value into this optional type.
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.IntegerUnsignedOptional:
-				writeIntegerUnsignedOptional(token);				
-			break;
-			case TypeMask.IntegerSignedOptional:
-				writeIntegerSignedOptional(token);				
-			break;
-			case TypeMask.LongUnsignedOptional:
-				writeLongUnsignedOptional(token);				
-			break;	
-			case TypeMask.LongSignedOptional:
-			    writeLongUnsignedOptional(token);				
-			break;		
-			case TypeMask.DecimalOptional:
-			case TypeMask.TextASCIIOptional:
-			case TypeMask.TextUTF8Optional:
-				writer.writeNull();
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+		
+		//only optional field types can use this method.
+		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));
+		
+		//select on type, each dictionary will need to remember the null was written
+		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+			// int long
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				// int
+				writerInteger.writeNull(token);
+			} else {
+				// long
+				writerLong.writeNull(token);
+			}	
+		} else {
+			// text decimal bytes
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				// text
+				writerChar.writeNull(token);
+			} else {
+				// decimal bytes
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					// decimal
+					writerDecimal.writeNull(token);					
+				} else {
+					// byte
+					writerBytes.writeNull(token);
+				}	
+			}	
 		}
 		
-		
-		
-
 	}
 
-	private void writeLongUnsignedOptional(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.Increment:
-		case OperatorMask.Copy:
-			writerLong.writeLongNullPMap(token,(byte)1);//sets 1
-			break;
-		case OperatorMask.None: //no pmap
-			writerLong.writeLongNull(token);
-			break;
-		case OperatorMask.Delta:			
-			writer.writePMapBit((byte)0);
-			break;
-		case OperatorMask.Default: //does not change dictionary	
-		case OperatorMask.Constant:
-			writer.writeNull();
-			break;
-		default:
-			//constant can not be optional and will throw
-			throw new UnsupportedOperationException();
-}
-	}
-
-	private void writeIntegerSignedOptional(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.Increment:
-				writerInteger.writeIntegerSignedIncrementOptional(token);
-				break;
-			case OperatorMask.Copy:
-				writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
-				break;
-			case OperatorMask.None: //no pmap
-				writerInteger.writeIntegerNull(token);
-				break;
-			case OperatorMask.Delta:
-				writer.writePMapBit((byte)0);
-				break;
-			case OperatorMask.Default: //does not change dictionary	
-				writerInteger.writeIntegerUnsignedDefaultOptional(token);
-				break;
-			case OperatorMask.Constant:
-				writer.writeNull();
-				break;
-			default:
-				//constant can not be optional and will throw
-				throw new UnsupportedOperationException();
-		}
-	}
-
-	private void writeIntegerUnsignedOptional(int token) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None: //no pmap
-				writerInteger.writeIntegerNull(token);
-				break;
-			case OperatorMask.Copy:
-				writerInteger.writeIntegerNullPMap(token,(byte)1);//sets 1
-				break;
-			case OperatorMask.Constant:
-				writer.writeNull();
-				break;
-			case OperatorMask.Default: //does not change dictionary	
-				writerInteger.writeIntegerSignedDefaultOptional(token);
-				break;
-			case OperatorMask.Delta:
-				writerInteger.writeIntegerUnsignedDeltaOptional(token);
-				break;
-			case OperatorMask.Increment:
-				writerInteger.writeIntegerUnsignedIncrementOptional(token);
-				break;
-			default:
-				//constant can not be optional and will throw
-				throw new UnsupportedOperationException();
-		}
-	}
 	
 	/**
 	 * Method for writing signed unsigned and/or optional longs.
@@ -175,115 +108,165 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, long value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.LongUnsigned:
+		
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			//not optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
 				acceptLongUnsigned(token, value);
-				break;
-			case TypeMask.LongUnsignedOptional:
-				acceptLongUnsignedOptional(token, value);
-				break;
-			case TypeMask.LongSigned:
+			} else {
 				acceptLongSigned(token, value);
-				break;
-			case TypeMask.LongSignedOptional:
+			}
+		} else {
+			//optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				acceptLongUnsignedOptional(token, value);
+			} else {
 				acceptLongSignedOptional(token, value);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}	
 		}
 	}
 
 	private void acceptLongSignedOptional(int token, long value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeLongSignedOptional(value);
-				break;
-			case OperatorMask.Copy:
-				writerLong.writeLongSignedCopyOptional(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerLong.writeLongSignedDeltaOptional(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerLong.writeLongSignedIncrementOptional(value, token);
-				break;
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeLongSignedOptional(value);
+				} else {
+					//delta
+					writerLong.writeLongSignedDeltaOptional(value, token);
+				}	
+			} else {
+				//constant
+				//err
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerLong.writeLongSignedCopyOptional(value, token);
+				} else {
+					//increment
+					writerLong.writeLongSignedIncrementOptional(value, token);
+				}	
+			} else {
+				// default
 				writerLong.writeLongSignedDefaultOptional(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 
 	private void acceptLongSigned(int token, long value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeLongSigned(value);
-				break;
-			case OperatorMask.Constant:
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeLongSigned(value);
+				} else {
+					//delta
+					writerLong.writeLongSignedDelta(value, token);
+				}	
+			} else {
+				//constant
 				writerLong.writeLongSignedConstant(value, token);
-				break;
-			case OperatorMask.Copy:
-				writerLong.writeLongSignedCopy(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerLong.writeLongSignedDelta(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerLong.writeLongSignedIncrement(value, token);
-				break;
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerLong.writeLongSignedCopy(value, token);
+				} else {
+					//increment
+					writerLong.writeLongSignedIncrement(value, token);
+				}	
+			} else {
+				// default
 				writerLong.writeLongSignedDefault(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+		
 	}
 
 	private void acceptLongUnsignedOptional(int token, long value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeLongUnsigned(value+1);//should be in writerLong
-				break;
-			case OperatorMask.Copy:
-				writerLong.writeLongUnsignedCopyOptional(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerLong.writeLongUnsignedDeltaOptional(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerLong.writeLongUnsignedIncrementOptional(value, token);
-				break;
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeLongUnsigned(value+1);//should be in writerLong
+				} else {
+					//delta
+					writerLong.writeLongUnsignedDeltaOptional(value, token);
+				}	
+			} else {
+				//constant
+				//ERR
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerLong.writeLongUnsignedCopyOptional(value, token);
+				} else {
+					//increment
+					writerLong.writeLongUnsignedIncrementOptional(value, token);
+				}	
+			} else {
+				// default
 				writerLong.writeLongUnsignedDefaultOptional(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 
 	private void acceptLongUnsigned(int token, long value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeLongUnsigned(value);
-				break;
-			case OperatorMask.Constant:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeLongUnsigned(value);
+				} else {
+					//delta
+					writerLong.writeLongUnsignedDelta(value, token);
+				}	
+			} else {
+				//constant
 				writerLong.writeLongUnsignedConstant(value, token);
-				break;
-			case OperatorMask.Copy:
-				writerLong.writeLongUnsignedCopy(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerLong.writeLongUnsignedDelta(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerLong.writeLongUnsignedIncrement(value, token);
-				break;
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerLong.writeLongUnsignedCopy(value, token);
+				} else {
+					//increment
+					writerLong.writeLongUnsignedIncrement(value, token);
+				}	
+			} else {
+				// default
 				writerLong.writeLongUnsignedDefault(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 
@@ -295,115 +278,160 @@ public final class FASTStaticWriter implements FASTWriter {
 	@Override
 	public void write(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.IntegerUnsigned:
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			//not optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
 				acceptIntegerUnsigned(token, value);
-				break;
-			case TypeMask.IntegerUnsignedOptional:
-				acceptIntegerUnsignedOptional(token, value);
-				break;
-			case TypeMask.IntegerSigned:
+			} else {
 				acceptIntegerSigned(token, value);
-				break;
-			case TypeMask.IntegerSignedOptional:
+			}
+		} else {
+			//optional
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				acceptIntegerUnsignedOptional(token, value);
+			} else {
 				acceptIntegerSignedOptional(token, value);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}	
 		}
 	}
 	
 	private void acceptIntegerSigned(int token, int value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-		case OperatorMask.None:
-			writer.writeIntegerSigned(value);
-			break;
-		case OperatorMask.Constant:
-			writerInteger.writeIntegerSignedConstant(value, token);
-			break;
-		case OperatorMask.Copy:
-			writerInteger.writeIntegerSignedCopy(value, token);
-			break;
-		case OperatorMask.Delta:
-			writerInteger.writeIntegerSignedDelta(value, token);
-			break;	
-		case OperatorMask.Increment:
-			writerInteger.writeIntegerSignedIncrement(value, token);
-			break;
-		case OperatorMask.Default:
-			writerInteger.writeIntegerSignedDefault(value, token);
-			break;
-		default:
-			throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeIntegerSigned(value);
+				} else {
+					//delta
+					writerInteger.writeIntegerSignedDelta(value, token);
+				}	
+			} else {
+				//constant
+				writerInteger.writeIntegerSignedConstant(value, token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerInteger.writeIntegerSignedCopy(value, token);
+				} else {
+					//increment
+					writerInteger.writeIntegerSignedIncrement(value, token);
+				}	
+			} else {
+				// default
+				writerInteger.writeIntegerSignedDefault(value, token);
+			}		
 		}
 	}
 	
 	private void acceptIntegerUnsigned(int token, int value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(value);
-				break;
-			case OperatorMask.Constant:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeIntegerUnsigned(value);
+				} else {
+					//delta
+					writerInteger.writeIntegerUnsignedDelta(value, token);
+				}	
+			} else {
+				//constant
 				writerInteger.writeIntegerUnsignedConstant(value, token);
-				break;
-			case OperatorMask.Copy:
-				writerInteger.writeIntegerUnsignedCopy(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerInteger.writeIntegerUnsignedDelta(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerInteger.writeIntegerUnsignedIncrement(value, token);
-				break;
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerInteger.writeIntegerUnsignedCopy(value, token);
+				} else {
+					//increment
+					writerInteger.writeIntegerUnsignedIncrement(value, token);
+				}	
+			} else {
+				// default
 				writerInteger.writeIntegerUnsignedDefault(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 
 	private void acceptIntegerSignedOptional(int token, int value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerSignedOptional(value);
-				break;
-			case OperatorMask.Copy:
-				writerInteger.writeIntegerSignedCopyOptional(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerInteger.writeIntegerSignedDeltaOptional(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerInteger.writeIntegerSignedIncrementOptional(value, token);
-				break;
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeIntegerSignedOptional(value);
+				} else {
+					//delta
+					writerInteger.writeIntegerSignedDeltaOptional(value, token);
+				}	
+			} else {
+				//constant
+				//writerInteger.writeIntegerSignedConstantOptional(value, token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerInteger.writeIntegerSignedCopyOptional(value, token);
+				} else {
+					//increment
+					writerInteger.writeIntegerSignedIncrementOptional(value, token);
+				}	
+			} else {
+				// default
 				writerInteger.writeIntegerSignedDefaultOptional(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 	
 	private void acceptIntegerUnsignedOptional(int token, int value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(value+1);//should be in writerInteger
-				break;
-			case OperatorMask.Copy:
-				writerInteger.writeIntegerUnsignedCopyOptional(value, token);
-				break;
-			case OperatorMask.Delta:
-				writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
-				break;	
-			case OperatorMask.Increment:
-				writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
-				break;
-			case OperatorMask.Default:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writer.writeIntegerUnsigned(value+1);
+				} else {
+					//delta
+					writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
+				}	
+			} else {
+				//constant
+				//writerInteger.writeIntegerUnsignedConstantOptional(value, token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					writerInteger.writeIntegerUnsignedCopyOptional(value, token);
+				} else {
+					//increment
+					writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
+				}	
+			} else {
+				// default
 				writerInteger.writeIntegerUnsignedDefaultOptional(value, token);
-				break;
-			default:
-				throw new UnsupportedOperationException();
+			}		
 		}
 	}
 	
@@ -416,44 +444,30 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void write(int id, int exponent, long mantissa) {
 				
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			
-		    case TypeMask.Decimal:
-				acceptDecimal(token, exponent, mantissa);
-				break;
-			case TypeMask.DecimalOptional:
-				acceptDecimalOptional(token, exponent, mantissa);
-				break;
-								
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+		
+		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+			writerDecimal.writeDecimal(token, exponent, mantissa);			
+		} else {
+			writerDecimal.writeDecimalOptional(token, exponent, mantissa);			
 		}
-	}
-
-	private void acceptDecimalOptional(int token, int exponent, long mantissa) {
-		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
-		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-		writerDecimal.writeDecimalOptional(token, oppExp, oppMant, exponent, mantissa);
-	}
-
-	private void acceptDecimal(int token, int exponent, long mantissa) {
-		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
-		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-		writerDecimal.writeDecimal(token, oppExp, oppMant, exponent, mantissa);
 	}
 
 	@Override
 	public void write(int id, byte[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.ByteArray:
-				acceptByteArray(token, value, offset, length);
-				break;
-			case TypeMask.ByteArrayOptional:
-				acceptByteArrayOptional(token, value, offset, length);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+		
+		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+			acceptByteArray(token, value, offset, length);			
+		} else {
+			acceptByteArrayOptional(token, value, offset, length);
 		}
 	}
 

@@ -16,75 +16,155 @@ public class FieldReaderDecimal {
 	}
 
 	public int readDecimalExponentOptional(int token, int oppExp, int valueOfOptional) {
-		switch (oppExp) {
-			case OperatorMask.None:
-				return exponent.readIntegerSignedOptional(token,valueOfOptional);
-			case OperatorMask.Copy:
-				return exponent.readIntegerSignedCopyOptional(token,valueOfOptional);
-			case OperatorMask.Default:
-				return exponent.readIntegerSignedDefaultOptional(token, valueOfOptional);
-			case OperatorMask.Delta:
-				return exponent.readIntegerSignedDeltaOptional(token, valueOfOptional);
-			case OperatorMask.Increment:
-				return exponent.readIntegerSignedIncrementOptional(token, valueOfOptional);
-		    default:
-				throw new UnsupportedOperationException();
-		}
+		
+		//oppExp
+				if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//none, constant, delta
+					if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+						//none, delta
+						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+							//none
+							return exponent.readIntegerSignedOptional(token,valueOfOptional);
+						} else {
+							//delta
+							return exponent.readIntegerSignedDeltaOptional(token, valueOfOptional);
+						}	
+					} else {
+						//constant
+						//ERR
+						return 0;
+					}
+					
+				} else {
+					//copy, default, increment
+					if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+						//copy, increment
+						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+							//copy
+							return exponent.readIntegerSignedCopyOptional(token,valueOfOptional);
+						} else {
+							//increment
+							return exponent.readIntegerSignedIncrementOptional(token, valueOfOptional);
+						}	
+					} else {
+						// default
+						return exponent.readIntegerSignedDefaultOptional(token, valueOfOptional);
+					}		
+				}
+				
 	}
 
-	public int readDecimalExponent(int token, int oppExp, int valueOfOptional) {
-		switch (oppExp) {
-			case OperatorMask.None:
-				return exponent.readIntegerSigned(token);
-			case OperatorMask.Constant:
+	public int readDecimalExponent(int token, int valueOfOptional) {
+		
+		//oppExp
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			//none, constant, delta
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//none, delta
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//none
+					return exponent.readIntegerSigned(token);
+				} else {
+					//delta
+					return exponent.readIntegerSignedDelta(token);
+				}	
+			} else {
+				//constant
 				return exponent.readIntegerSignedConstant(token);
-			case OperatorMask.Copy:
-				return exponent.readIntegerSignedCopy(token);
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				//copy, increment
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+					//copy
+					return exponent.readIntegerSignedCopy(token);
+				} else {
+					//increment
+					return exponent.readIntegerSignedIncrement(token);
+				}	
+			} else {
+				// default
 				return exponent.readIntegerSignedDefault(token);
-			case OperatorMask.Delta:
-				return exponent.readIntegerSignedDelta(token);
-			case OperatorMask.Increment:
-				return exponent.readIntegerSignedIncrement(token);
-		    default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+		
 	}
 
-	public long readDecimalMantissaOptional(int token, int oppMant, long valueOfOptional) {
-		switch (oppMant) {
-			case OperatorMask.None:
-				return mantissa.readLongSignedOptional(token,valueOfOptional);
-			case OperatorMask.Copy:
-				return mantissa.readLongSignedCopyOptional(token,valueOfOptional);
-			case OperatorMask.Default:
-				return mantissa.readLongSignedDefaultOptional(token, valueOfOptional);
-			case OperatorMask.Delta:
-				return mantissa.readLongSignedDeltaOptional(token, valueOfOptional);
-			case OperatorMask.Increment:
-				return mantissa.readLongSignedIncrementOptional(token, valueOfOptional);
-		    default:
-				throw new UnsupportedOperationException();
-		}
+	public long readDecimalMantissaOptional(int token, long valueOfOptional) {
+		//oppMaint
+				if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+					//none, constant, delta
+					if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+						//none, delta
+						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+							//none
+							return mantissa.readLongSignedOptional(token,valueOfOptional);
+						} else {
+							//delta
+							return mantissa.readLongSignedDeltaOptional(token, valueOfOptional);
+						}	
+					} else {
+						//constant
+						//ERROR
+						return 0;
+					}
+					
+				} else {
+					//copy, default, increment
+					if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+						//copy, increment
+						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+							//copy
+							return mantissa.readLongSignedCopyOptional(token,valueOfOptional);
+						} else {
+							//increment
+							return mantissa.readLongSignedIncrementOptional(token, valueOfOptional);
+						}	
+					} else {
+						// default
+						return mantissa.readLongSignedDefaultOptional(token, valueOfOptional);
+					}		
+				}
+		
 	}
 
 	public long readDecimalMantissa(int token, int oppMant, long valueOfOptional) {
-		switch (oppMant) {
-			case OperatorMask.None:
-				return mantissa.readLongSigned(token);
-			case OperatorMask.Constant:
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//none, constant, delta
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//none, delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					return mantissa.readLongSigned(token);
+				} else {
+					//delta
+					return mantissa.readLongSignedDelta(token);
+				}	
+			} else {
+				//constant
 				return mantissa.readLongSignedConstant(token);
-			case OperatorMask.Copy:
-				return mantissa.readLongSignedCopy(token);
-			case OperatorMask.Default:
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+				//copy, increment
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//copy
+					return mantissa.readLongSignedCopy(token);
+				} else {
+					//increment
+					return mantissa.readLongSignedIncrement(token);
+				}	
+			} else {
+				// default
 				return mantissa.readLongSignedDefault(token);
-			case OperatorMask.Delta:
-				return mantissa.readLongSignedDelta(token);
-			case OperatorMask.Increment:
-				return mantissa.readLongSignedIncrement(token);
-		    default:
-				throw new UnsupportedOperationException();
+			}		
 		}
+		
+		
 	}
 
 }
