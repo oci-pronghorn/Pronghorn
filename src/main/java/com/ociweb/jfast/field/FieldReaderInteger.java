@@ -4,21 +4,29 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.DictionaryFactory;
 
 public class FieldReaderInteger {
-	
-	//crazy big value? TODO: make smaller mask based on exact length of array.
-	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
-	
-	
-	private final PrimitiveReader reader;
-	
+
+	private final int INSTANCE_MASK;
+	private final PrimitiveReader reader;	
 	private final int[]  lastValue;
 
-
 	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
+
+		assert(values.length<TokenBuilder.MAX_INSTANCE);
+		assert(isPowerOfTwo(values.length));
+		
+		this.INSTANCE_MASK = (values.length-1);
 		this.reader = reader;
 		this.lastValue = values;
 	}
 	
+	static boolean isPowerOfTwo(int length) {
+		
+		while (0==(length&1)) {
+			length = length>>1;
+		}
+		return length==1;
+	}
+
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
 	}

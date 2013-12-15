@@ -4,17 +4,18 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.DictionaryFactory;
 
 public final class FieldWriterLong {
-
-	//crazy big value? TODO: make smaller mask based on exact length of array.
-	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
-	
-	private final PrimitiveWriter writer;
 	
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
 	private final long[]  lastValue;
+	private final int INSTANCE_MASK;
+	private final PrimitiveWriter writer;
 
 	public FieldWriterLong(PrimitiveWriter writer, long[] values) {
+		assert(values.length<TokenBuilder.MAX_INSTANCE);
+		assert(FieldReaderInteger.isPowerOfTwo(values.length));
+		
+		this.INSTANCE_MASK = (values.length-1);
 		this.writer = writer;
 		this.lastValue = values;
 	}

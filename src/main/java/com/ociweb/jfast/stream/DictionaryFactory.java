@@ -196,8 +196,21 @@ public class DictionaryFactory {
 		
 	}	
 	
+	public int nextPowerOfTwo(int value) {
+		int temp = value;
+		int result = 0;
+		while (0!=temp) {
+			temp = temp>>1;
+			result++;
+		}
+		//System.err.println(value+" -> "+(1<<result));
+		
+		return 1<<result;
+	}
+	
+	
 	public int[] integerDictionary() {
-		int[] array = new int[integerCount];
+		int[] array = new int[nextPowerOfTwo(integerCount)];
 		int i = integerInitCount;
 		while (--i>=0) {
 			array[integerInitIndex[i]] = integerInitValue[i];
@@ -206,7 +219,7 @@ public class DictionaryFactory {
 	}
 	
 	public long[] longDictionary() {
-		long[] array = new long[longCount];
+		long[] array = new long[nextPowerOfTwo(longCount)];
 		int i = longInitCount;
 		while (--i>=0) {
 			array[longInitIndex[i]] = longInitValue[i];
@@ -215,7 +228,7 @@ public class DictionaryFactory {
 	}
 	
 	public int[] decimalExponentDictionary() {
-		int[] array = new int[decimalCount];
+		int[] array = new int[nextPowerOfTwo(decimalCount)];
 		int i = decimalExponentInitCount;
 		while (--i>=0) {
 			array[decimalExponentInitIndex[i]] = decimalExponentInitValue[i];
@@ -224,7 +237,7 @@ public class DictionaryFactory {
 	}
 	
 	public long[] decimalMantissaDictionary() {
-		long[] array = new long[decimalCount];
+		long[] array = new long[nextPowerOfTwo(decimalCount)];
 		int i = decimalMantissaInitCount;
 		while (--i>=0) {
 			array[decimalMantissaInitIndex[i]] = decimalMantissaInitValue[i];
@@ -247,7 +260,7 @@ public class DictionaryFactory {
 	}
 	
 	public byte[][] byteDictionary() {
-		byte[][] array = new byte[bytesCount][];
+		byte[][] array = new byte[nextPowerOfTwo(bytesCount)][];
 		int i = byteInitCount;
 		while (--i>=0) {
 			array[byteInitIndex[i]] = byteInitValue[i];

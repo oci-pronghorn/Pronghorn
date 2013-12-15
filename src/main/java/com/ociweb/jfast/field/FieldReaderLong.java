@@ -5,14 +5,18 @@ import com.ociweb.jfast.stream.DictionaryFactory;
 
 public class FieldReaderLong {
 	
-	//crazy big value? TODO: make smaller mask based on exact length of array.
-	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
-	
+	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;
 	private final long[]  lastValue;
 
 
 	public FieldReaderLong(PrimitiveReader reader, long[] values) {
+		
+		assert(values.length<TokenBuilder.MAX_INSTANCE);
+		assert(FieldReaderInteger.isPowerOfTwo(values.length));
+		
+		this.INSTANCE_MASK = (values.length-1);
+		
 		this.reader = reader;
 		this.lastValue = values;
 	}

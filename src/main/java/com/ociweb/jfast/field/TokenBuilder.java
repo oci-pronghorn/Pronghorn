@@ -26,7 +26,6 @@ public class TokenBuilder {
 	//4 bits of base 2 exponent 2^0 to 2^15 (shift count)
 	//5 bits of mantissa 0-32
 	
-	
 	public static final int MAX_INSTANCE = 0xFFFFF;
 	//See fast writer for details and mask sizes
 	public static final int MASK_TYPE = 0x1F; //5 bits
@@ -65,7 +64,7 @@ public class TokenBuilder {
 		}
 	}
 	
-	public static void tokenPrint(int token) {
+	public static String tokenToString(int token) {
 		
 		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
 		int count = token & TokenBuilder.MAX_INSTANCE;
@@ -79,7 +78,7 @@ public class TokenBuilder {
 			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp2)) {
 				throw new UnsupportedOperationException("bad token");
 			};
-			System.err.println("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp1)+" "+OperatorMask.toString(opp2)+" "+count);
+			return ("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp1)+" "+OperatorMask.toString(opp2)+" "+count);
 			
 		} else {
 			int opp  = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
@@ -87,7 +86,7 @@ public class TokenBuilder {
 				throw new UnsupportedOperationException("bad token");
 			};
 			
-			System.err.println("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp)+" "+count);
+			return ("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp)+" "+count);
 		}
 		
 	}

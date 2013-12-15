@@ -765,6 +765,8 @@ public final class PrimitiveWriter {
 	//called only at the beginning of a group.
 	public final void openPMap(int maxBytes) {
 		
+		assert(maxBytes>0) : "Do not call openPMap if it is not expected to be used.";
+		
 		if (limit > buffer.length - maxBytes) {
 			output.flush();
 		}
@@ -777,8 +779,10 @@ public final class PrimitiveWriter {
 
 			//NOTE: can inc pos pos because it will not overflow.
 			if (0 != (buffer[POS_POS_MASK&safetyStackPosPos[s]++] = pMapByteAccum)) {	
-				//set the last known non zero bit so we can avoid scanning for it. 
-				flushSkips[safetyStackFlushIdx[s]] = safetyStackPosPos[s]&POS_POS_MASK;
+				//set the last known non zero bit so we can avoid scanning for it.
+				int lastPopulatedIdx = safetyStackPosPos[s]&POS_POS_MASK;
+				assert (lastPopulatedIdx <= flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
+				flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx;
 			}							
 			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (safetyStackPosPos[s]&POS_POS_MASK);
 
@@ -787,7 +791,6 @@ public final class PrimitiveWriter {
 		safetyStackPosPos[safetyStackDepth] = limit;
 		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsIdxLimit;
 		flushSkips[flushSkipsIdxLimit++] = limit+1;//default minimum size for present PMap
-		//TODO: need to detect writes past this point and fail!!
 		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit					
 		
 		//reset so we can start accumulating bits in the new pmap.
@@ -809,10 +812,12 @@ public final class PrimitiveWriter {
 
 		if (0 != (buffer[(POS_POS_MASK&safetyStackPosPos[s]++)] = pMapByteAccum)) {	
 			//set the last known non zero bit so we can avoid scanning for it. 
-			buffer[(flushSkips[safetyStackFlushIdx[s]] = (safetyStackPosPos[s]&POS_POS_MASK))-1] |= 0x80;
+			int lastPopulatedIdx = safetyStackPosPos[s]&POS_POS_MASK;
+			assert (lastPopulatedIdx <= flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
+			buffer[(flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx)-1] |= 0x80;
 		}	else {
 			//must set stop bit now that we know where pmap stops.
-			buffer[ flushSkips[safetyStackFlushIdx[s]]                                       -1] |= 0x80;
+			buffer[ flushSkips[safetyStackFlushIdx[s]]                    -1] |= 0x80;
 		}
 		
 				
@@ -843,7 +848,9 @@ public final class PrimitiveWriter {
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
 			if (0 != (buffer[POS_POS_MASK&safetyStackPosPos[s]++] = (byte) (pMapByteAccum | bit))) {	
 				//set the last known non zero bit so we can avoid scanning for it. 
-				flushSkips[safetyStackFlushIdx[s]] = POS_POS_MASK&safetyStackPosPos[s];// one has been added for exclusive use of range
+				int lastPopulatedIdx = POS_POS_MASK&safetyStackPosPos[s];// one has been added for exclusive use of range
+				assert (lastPopulatedIdx<=flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
+				flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx;
 			}	
 			
 			pMapIdxWorking = 7;

@@ -499,9 +499,9 @@ public class FASTStaticReader implements FASTReader {
 	public int readDecimalExponent(int id, int valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
-		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
-		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		
 		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
 
@@ -517,9 +517,9 @@ public class FASTStaticReader implements FASTReader {
 	public long readDecimalMantissa(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
-		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
-		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		
 		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
 		

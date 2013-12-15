@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
@@ -16,7 +17,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	final long[] testData     = buildTestDataUnsigned(fields);
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
-	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+	//Must double because we may need 1 bit for exponent and another for mantissa
+	final int groupToken = buildGroupToken(maxMPapBytes*2,0);//TODO: repeat still unsupported
 
 	boolean sendNulls = true;
 	
@@ -36,9 +38,9 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 OperatorMask.None,  //no need for pmap
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
-            //    OperatorMask.Increment,
-           //     OperatorMask.Constant, //test runner knows not to use with optional
-             //   OperatorMask.Default
+                OperatorMask.Increment,
+     //           OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Default
                 };
 				
 		tester(types, operators, "Decimal");
@@ -158,7 +160,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 					int exp = fr.readDecimalExponent(tokenLookup[f], 0);
 		     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
 					if (none!=man) {
-						assertEquals(none, man);
+						assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
 					}
 				} else { 
 					int exp = fr.readDecimalExponent(tokenLookup[f], 0);

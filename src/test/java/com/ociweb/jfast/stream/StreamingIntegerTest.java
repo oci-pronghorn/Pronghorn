@@ -180,7 +180,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else { 
 					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 					if (testData[f]!=value) {
-						TokenBuilder.tokenPrint(tokenLookup[f]);
+						System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 						assertEquals(testData[f], value);
 					}
 				}

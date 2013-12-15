@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 public abstract class BaseStreamingTest {
 
 	
-	private final float PCT_LIMIT = 40; //if avg is 40 pct above min then fail
+	private final float PCT_LIMIT = 80; //if avg is 80 pct above min then fail
 	private final float MAX_X_LIMIT = 20f;//if max is 20x larger than avg then fail
 	
 	
