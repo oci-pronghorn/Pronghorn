@@ -21,22 +21,17 @@ public final class PrimitiveReader {
 	//TODO: must add skip bytes methods
 	
 	private final FASTInput input;
-	
+	private long totalReader;
 	final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
-	private final int bufferLength;
+	private final byte[] pmapStack;	
+	private int pmapStackDepth = 0;
 	
 	private int position;
 	private int limit;
-	private long totalReader;
-	public static final int VERY_LONG_STRING_MASK = 0x0F;//0x7F; 
 	
-	
-	final byte[] pmapStack;
-	final byte[] pmapIdxStack;
-	
-	int pmapStackDepth = 0;
-	int pmapIdxStackDepth = 0;
-	int pmapIdx = -1;
+	//both bytes but class def likes int much better for alignment
+	private int pmapIdx = -1; //-1 -> 7
+	private int bitBlock = 0;
 	
 	
 	public void reset() {
@@ -44,7 +39,6 @@ public final class PrimitiveReader {
 		position = 0;
 		limit = 0;
 		pmapStackDepth = 0;
-		pmapIdxStackDepth = 0;
 		pmapIdx = -1;
 		
 		
@@ -58,12 +52,10 @@ public final class PrimitiveReader {
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
-		this.bufferLength = buffer.length;
 		this.position = 0;
 		this.limit = 0;
 		
 		this.pmapStack = new byte[maxPMapCount];//all pmap bytes in total for maximum depth.
-		this.pmapIdxStack = new byte[maxPMapCount>>1];
 		input.init(new DataTransfer(this));
 	}
 	
@@ -76,7 +68,7 @@ public final class PrimitiveReader {
 		if (position >= limit) {
 			position = limit = 0;
 		}
-		int remainingSpace = bufferLength-limit;
+		int remainingSpace = buffer.length-limit;
 		if (need <= remainingSpace) {	
 			//fill remaining space if possible to reduce fetch later
 			int filled = input.fill(buffer, limit, remainingSpace);
@@ -91,7 +83,7 @@ public final class PrimitiveReader {
 		//not enough room at end of buffer for the need
 		int populated = limit - position;
 		int reqiredSize = need + populated;
-		if (bufferLength<reqiredSize) {
+		if (buffer.length<reqiredSize) {
 			//max value must be computed before startup.
 			throw new UnsupportedOperationException("internal buffer is not large enough, requres "+reqiredSize+" bytes");
 		} else {
@@ -99,7 +91,7 @@ public final class PrimitiveReader {
 			System.arraycopy(buffer, position, buffer, 0, populated);
 		}
 		//fill and return
-		int filled = input.fill(buffer, populated, bufferLength - populated);
+		int filled = input.fill(buffer, populated, buffer.length - populated);
 		totalReader+=filled;
 		position = 0;
 		limit = populated+filled;
@@ -156,7 +148,6 @@ public final class PrimitiveReader {
 	//TODO: duplicate this for the writer logic accumulating bits to be written on a single list
 	//TODO: write unit tests around these functions.
 	
-	
 
 	
 	//called at the start of each group unless group knows it has no pmap
@@ -178,18 +169,21 @@ public final class PrimitiveReader {
 			}
 		} while (b[p++]>=0);
 		
+		//push the old index for resume
+		if (pmapIdx>0) {
+			pmapStack[pmapStackDepth++] = (byte)pmapIdx;
+		}
 		
 		position = p;				
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
 		int j = position;
-		while (--j>=start) {			
+		
+		while (--j>=start) {
 			pmapStack[pmapStackDepth++] = b[j];
 		}
-		//push the old index for resume
-		if (pmapIdx>0) {
-			pmapIdxStack[pmapIdxStackDepth++]=(byte) pmapIdx;
-		}
+		bitBlock = pmapStack[pmapStackDepth-1];
+		
 		//set next bit to read
 		pmapIdx = 7;
 		
@@ -201,20 +195,21 @@ public final class PrimitiveReader {
 			//must return all the trailing zeros for the bit map after hit end of map. see (a1)
 			return 0;
 		}
-		byte block = pmapStack[pmapStackDepth-1];
+		//byte block = pmapStack[pmapStackDepth-1];
 		//get next bit and decrement the bit index pmapIdx
-		byte value = (byte)(1&(block>>>(--pmapIdx)));
+		byte value = (byte)(1&(bitBlock>>>(--pmapIdx)));
 		if (pmapIdx==0) {
-			resetToNextSeven(block);
+			resetToNextSeven();
 		}
 		return value;
 	}
 
-	private void resetToNextSeven(byte block) {
+	private void resetToNextSeven() {
 		pmapIdx = 7;
 		//if we have not reached the end of the map dec to the next byte
-		if (block >= 0) {
+		if (bitBlock >= 0) {
 			pmapStackDepth--;
+			bitBlock = pmapStack[pmapStackDepth-1];
 		} else {
 			//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
 			pmapIdx = -1;
@@ -223,9 +218,10 @@ public final class PrimitiveReader {
 	
 	//called at the end of each group
 	public final void popPMap() {
-		if (pmapIdxStackDepth>0) {
-			pmapIdx = pmapIdxStack[--pmapIdxStackDepth];
+		if (pmapStackDepth>2) {
 			pmapStackDepth--;
+			pmapIdx = pmapStack[--pmapStackDepth];
+			bitBlock = pmapStack[pmapStackDepth-1];
 		}
 	}
 	
@@ -233,25 +229,6 @@ public final class PrimitiveReader {
 	/////////////////////////////////////
 	/////////////////////////////////////
 	
-	
-
-	
-
-	
-	
-	
-	
-	//only moves the position forward if a null was found
-	public final boolean peekNull() {
-		if (position>=limit) {//TODO: must move this to incPosition?? but how.
-			fetch(1);
-		}
-		return (0x80 == (buffer[position]&0xFF));	
-	}
-	
-	public final void incPosition() {
-		position++;
-	}
 	
 	public final long readLongSignedOptional() {
 		//TODO:rewrite
@@ -352,7 +329,7 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerSigned () {
-		if (limit-position<=10) {
+		if (limit-position<=6) {
 			if (position>=limit) {
 				fetch(1);
 			}
@@ -389,7 +366,7 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerUnsigned() {
-		if (position>limit-10) {
+		if (position>limit-6) {
 			if (position>=limit) {
 				fetch(1);
 			}
@@ -432,7 +409,7 @@ public final class PrimitiveReader {
 	}
 
 	public boolean isPMapOpen() {
-		return pmapIdxStackDepth>0;
+		return pmapStackDepth>0;
 	}
 
 	public void readTextASCII(Appendable target) {

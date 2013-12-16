@@ -6,11 +6,13 @@ public class FieldWriterChar {
 
 	private final TextHeap heap;
 	private final PrimitiveWriter writer;
-	
-	//crazy big value? TODO: make smaller mask based on exact length of array.
-	private final int INSTANCE_MASK = 0xFFFFF;//20 BITS
+	private final int INSTANCE_MASK;
 	
 	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
+		assert(charDictionary.textCount()<TokenBuilder.MAX_INSTANCE);
+		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.textCount()));
+		
+		this.INSTANCE_MASK = (charDictionary.textCount()-1);
 		this.heap = charDictionary;
 		this.writer = writer;
 	}

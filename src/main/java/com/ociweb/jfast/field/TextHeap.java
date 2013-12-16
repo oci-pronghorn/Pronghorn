@@ -514,6 +514,10 @@ public class TextHeap {
 		return true;
 	}
 
+	public int textCount() {
+		return tat.length>>2;
+	}
+	
 	public int length(int idx) {
 		int offset = idx<<2;
 		

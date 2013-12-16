@@ -250,7 +250,7 @@ public class DictionaryFactory {
 		int singleTextSize = 0; //TODO: how is this set?
 		int singleGapSize = 0; //TODO: how is this set?
 		
-		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, charCount);
+		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount));
 		
 		int i = charInitCount;
 		while (--i>=0) {

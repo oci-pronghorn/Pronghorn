@@ -1,6 +1,6 @@
 package com.ociweb.jfast;
 
-import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
 public class MyCharSequnce implements CharSequence, ByteConsumer {
 
@@ -10,7 +10,7 @@ public class MyCharSequnce implements CharSequence, ByteConsumer {
 	
 	//TODO: perhaps another interface may be good for streaming the write here
 	public MyCharSequnce() {
-		seq = new char[PrimitiveReader.VERY_LONG_STRING_MASK];//make the same optimization assumption here
+		seq = new char[PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK];//make the same optimization assumption here
 		limit = 0;
 	}
 	

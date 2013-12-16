@@ -23,48 +23,33 @@ public final class PrimitiveWriter {
     //TODO: there is some write PMAP bug that becomes obvious by changing this very small.
     private static final int BLOCK_SIZE = 64;// in bytes
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
+    private static final int POS_POS_SHIFT = 28;
+    private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
     
 	private final FASTOutput output;
-	
-	/*
-	 * TODO:   Add constant for NO_FIELD_ID and test against kryo.
-	 * 
-	 * 
-	 * 
-	 */
-	
 	final byte[] buffer;
+		
+	private final int minimizeLatency;
+	private final long[] safetyStackPosPos;//low 28, location where the last byte was written to the pmap as bits are written
+                                             //mid 04, working bit position 1-7 for next/last bit to be written.
+											 //top 32, location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
+	
+	private int safetyStackDepth;         //maximum depth of the stacks above
 	private int position;
 	private int limit;
 	
-	//TODO: due to the complexity here a stack of longs may work much better!
-	//private final long[] safetyStack; //flushIdx high and stackPosition low 32
-	
-	
-	private static final int POS_POS_SHIFT = 28;
-	private static int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
-	
-	private final int[] safetyStackFlushIdx; //location (in skip list) where location of stopBytes+1 and end of max pmap length is found.
-	private final int[] safetyStackPosPos;//low 28, location where the last byte was written to the pmap as bits are written
-                                            //top 04, working bit position 1-7 for next/last bit to be written.
-	
-	private int   safetyStackDepth;       //maximum depth of the stacks above
-	private byte pMapIdxWorking = 7;
-	private byte pMapByteAccum = 0;
-	
-	
-	public int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
-	public int   flushSkipsIdxLimit; //where we add the new one, end of the list
-	public int   flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
-
-	
+	//both bytes but class def likes int much better for alignment
+	private int pMapIdxWorking = 7;
+	private int pMapByteAccum = 0;
+		
 	private long totalWritten;
+	private int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	private int flushSkipsIdxLimit; //where we add the new one, end of the list
+	private int flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
 	
-	private final boolean minimizeLatency;
-	    
-    int nextBlockSize = -1;
-    int nextBlockOffset = -1; 
-    int pendingPosition = 0;
+    private int nextBlockSize = -1;    //not bigger than BLOCK_SIZE
+    private int nextBlockOffset = -1;  //position to begin copy data from
+    private int pendingPosition = 0;   //new position after the read
     
     
 	public PrimitiveWriter(FASTOutput output) {
@@ -84,10 +69,8 @@ public final class PrimitiveWriter {
 		this.buffer = new byte[initBufferSize];
 		this.position = 0;
 		this.limit = 0;
-		this.minimizeLatency = minimizeLatency;
-
-		this.safetyStackPosPos = new int[maxGroupCount];
-		this.safetyStackFlushIdx = new int[maxGroupCount];
+		this.minimizeLatency = minimizeLatency? 1:0;
+		this.safetyStackPosPos = new long[maxGroupCount];
 				
 		this.output = output;
 		this.flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
@@ -258,7 +241,7 @@ public final class PrimitiveWriter {
 		int flushTo = limit;
 		if (safetyStackDepth>0) {
 			//only need to check first entry on stack the rest are larger values
-			int safetyLimit = (safetyStackPosPos[0]&POS_POS_MASK)-1;//still modifying this position but previous is ready to go.
+			int safetyLimit = (int)(safetyStackPosPos[0]&POS_POS_MASK)-1;//still modifying this position but previous is ready to go.
 			if (safetyLimit < flushTo) {
 				flushTo = safetyLimit;
 			}		
@@ -778,25 +761,30 @@ public final class PrimitiveWriter {
 			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";		
 
 			//NOTE: can inc pos pos because it will not overflow.
-			if (0 != (buffer[POS_POS_MASK&safetyStackPosPos[s]++] = pMapByteAccum)) {	
+			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte)pMapByteAccum)) {	
+				long stackFrame = safetyStackPosPos[s];
 				//set the last known non zero bit so we can avoid scanning for it.
-				int lastPopulatedIdx = safetyStackPosPos[s]&POS_POS_MASK;
-				assert (lastPopulatedIdx <= flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
-				flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx;
+				int lastPopulatedIdx = (int)(stackFrame&POS_POS_MASK);
+				assert (lastPopulatedIdx <= flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}							
 			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (safetyStackPosPos[s]&POS_POS_MASK);
 
 		} 		
 		//NOTE: pos pos, new position storage so top bits are always unset and no need to set.
-		safetyStackPosPos[safetyStackDepth] = limit;
-		safetyStackFlushIdx[safetyStackDepth++] = flushSkipsIdxLimit;
+
+		safetyStackPosPos[safetyStackDepth] =   ( ((long)flushSkipsIdxLimit) <<32) | limit;
+
+		safetyStackDepth++;
 		flushSkips[flushSkipsIdxLimit++] = limit+1;//default minimum size for present PMap
 		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit					
 		
 		//reset so we can start accumulating bits in the new pmap.
 		pMapIdxWorking = 7;
 		pMapByteAccum = 0;			
+		
 	}
+
 	
 	//called only at the end of a group.
 	public final void closePMap() {
@@ -810,31 +798,33 @@ public final class PrimitiveWriter {
 						
 		//final byte to be saved into the feed. //NOTE: pos pos can inc because it does not roll over.
 
-		if (0 != (buffer[(POS_POS_MASK&safetyStackPosPos[s]++)] = pMapByteAccum)) {	
+		if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte)pMapByteAccum)) {	
+			long stackFrame = safetyStackPosPos[s];
 			//set the last known non zero bit so we can avoid scanning for it. 
-			int lastPopulatedIdx = safetyStackPosPos[s]&POS_POS_MASK;
-			assert (lastPopulatedIdx <= flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
-			buffer[(flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx)-1] |= 0x80;
+			int lastPopulatedIdx = (int)(stackFrame&POS_POS_MASK);
+			assert (lastPopulatedIdx <= flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+			buffer[(flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx)-1] |= 0x80;
 		}	else {
 			//must set stop bit now that we know where pmap stops.
-			buffer[ flushSkips[safetyStackFlushIdx[s]]                    -1] |= 0x80;
+			buffer[ flushSkips[(int)(safetyStackPosPos[s]>>32)]          -1] |= 0x80;
 		}
-		
 				
 		//restore the old working bits if there is a previous pmap.
 		if (safetyStackDepth>0) {	
+		
 			//NOTE: pos pos will not roll under so we can just subtract
-			int posPos = safetyStackPosPos[safetyStackDepth-1]--;
-			pMapByteAccum = buffer[posPos&POS_POS_MASK];
-			pMapIdxWorking = (byte)(posPos>>POS_POS_SHIFT);
+			long posPos = safetyStackPosPos[safetyStackDepth-1]--;
+			pMapByteAccum = buffer[(int)(posPos&POS_POS_MASK)];
+			pMapIdxWorking = (byte)(0xF&(posPos>>POS_POS_SHIFT));
 
 		}
 		
 		//ensure low-latency for groups, or 
     	//if we can reset the safety stack and we have one block ready go ahead and flush
-    	if (minimizeLatency || (0==safetyStackDepth && (limit-position)>(BLOCK_SIZE_LAZY) )) { //one block and a bit left over so we need bigger.
+    	if (minimizeLatency!=0 || (0==safetyStackDepth && (limit-position)>(BLOCK_SIZE_LAZY) )) { //one block and a bit left over so we need bigger.
     		output.flush();
     	}
+    	
 	}
 
 	//called by ever field that needs to set a bit either 1 or 0
@@ -846,11 +836,12 @@ public final class PrimitiveWriter {
 			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
 					
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
-			if (0 != (buffer[POS_POS_MASK&safetyStackPosPos[s]++] = (byte) (pMapByteAccum | bit))) {	
+			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte) (pMapByteAccum | bit))) {	
+				long stackFrame = safetyStackPosPos[s];
 				//set the last known non zero bit so we can avoid scanning for it. 
-				int lastPopulatedIdx = POS_POS_MASK&safetyStackPosPos[s];// one has been added for exclusive use of range
-				assert (lastPopulatedIdx<=flushSkips[safetyStackFlushIdx[s]+1]):"Too many bits in PMAP.";
-				flushSkips[safetyStackFlushIdx[s]] = lastPopulatedIdx;
+				int lastPopulatedIdx = (int)(POS_POS_MASK&stackFrame);// one has been added for exclusive use of range
+				assert (lastPopulatedIdx<=flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}	
 			
 			pMapIdxWorking = 7;
@@ -931,6 +922,15 @@ public final class PrimitiveWriter {
 			encodeSingleChar(value.charAt(c++));
 		}
 	}
+	
+	public void writeTextUTFBefore(CharSequence value, int stop) {
+		int len = stop;
+		int c = 0;
+		while (c<len) {
+			encodeSingleChar(value.charAt(c++));
+		}		
+	}
+	
 	
 	public void writeTextUTFAfter(int start, CharSequence value) {
 		int len = value.length();

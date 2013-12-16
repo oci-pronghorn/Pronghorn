@@ -35,11 +35,11 @@ public class PrimitiveReaderWriterTest {
 		                                                         }; 
 	
 	public final static CharSequence[] stringData =   new CharSequence[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",
-																  buildString("g",PrimitiveReader.VERY_LONG_STRING_MASK-1),
-																  buildString("h",PrimitiveReader.VERY_LONG_STRING_MASK),
-																  buildString("i",PrimitiveReader.VERY_LONG_STRING_MASK+1),
-																  buildString("j",PrimitiveReader.VERY_LONG_STRING_MASK+2),
-																  buildString("k",PrimitiveReader.VERY_LONG_STRING_MASK*2)};
+																  buildString("g",PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK-1),
+																  buildString("h",PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK),
+																  buildString("i",PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK+1),
+																  buildString("j",PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK+2),
+																  buildString("k",PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK*2)};
 	
 	public final static byte[][] byteData =  new byte[][] {new byte[]{},new byte[]{1},new byte[]{1,2},new byte[]{1,2,3,4},
 		                                                       new byte[]{1,2,3,4,5,6,7,8},
@@ -56,6 +56,7 @@ public class PrimitiveReaderWriterTest {
 	//needed for threaded test.
 	private PrimitiveWriter pwIOSpeed;
 	private float writeDurationIOSpeed;
+	public static final int VERY_LONG_STRING_MASK = 0x0F;//0x7F; 
 	
 	@Test
 	public void testBufferSpeed() {
@@ -345,8 +346,7 @@ public class PrimitiveReaderWriterTest {
 		
 		i = 0;
 		while (i<nullLoops) {
-			assertTrue(pr.peekNull());
-			pr.incPosition();
+			assertEquals(0,pr.readIntegerUnsigned());
 			i++;
 		}
 		
@@ -373,15 +373,13 @@ public class PrimitiveReaderWriterTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.totalWritten());
 			
-			input.reset(buffer);
+			input.reset(buffer);	
+			pr.reset();
 			
 			start = System.nanoTime();
 			j = tp;
 			while (--j>=0) {
-				
-				pr.peekNull();
-				pr.incPosition();
-					
+				pr.readIntegerUnsigned();					
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.totalWritten());
 		}
@@ -696,7 +694,7 @@ public class PrimitiveReaderWriterTest {
 		int trunkTestLimit = stringData.length;//Much faster with larger strings.
 		System.gc();
 		
-		char[] target = new char[PrimitiveReader.VERY_LONG_STRING_MASK*3];
+		char[] target = new char[PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK*3];
 		int cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();
