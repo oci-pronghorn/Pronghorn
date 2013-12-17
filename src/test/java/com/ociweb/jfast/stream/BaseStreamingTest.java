@@ -1,12 +1,8 @@
 package com.ociweb.jfast.stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
-import static org.junit.Assert.*;
+import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 
 public abstract class BaseStreamingTest {
 
@@ -116,12 +112,13 @@ public abstract class BaseStreamingTest {
 	}
 
 	protected abstract long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-									FASTStaticReader fr);
+									DictionaryFactory dcr);
 
+
+	
 	protected void performanceReadTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
-				
 
 	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
 	    
@@ -139,28 +136,20 @@ public abstract class BaseStreamingTest {
 				totalDuration = 0;
 				minDuration = Long.MAX_VALUE;
 				
-				FASTInputByteArray input = new FASTInputByteArray(writtenData);
+				buildInputReader(streamByteSize, maxGroupCount, writtenData);
 				
-				PrimitiveReader pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
-				
-				assertEquals(0,pr.totalRead());
 				try {
 					int w = warmup+sampleSize;
 					while (--w>=0) {
 
-						input.reset();
-						pr.reset();
+						resetInputReader();
 						
-						FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
-						
-			
 						//compute overhead
 						long overhead = emptyLoop(operationIters, fields, fieldsPerGroup);
 						
 						//run test, note that timer does not cross virtual call boundary			
 						long duration = timeReadLoop(fields, fieldsPerGroup, maxMPapBytes, operationIters,
-														tokenLookup,
-														fr);
+														tokenLookup, dcr);
 					
 						if (w<sampleSize) {
 							
@@ -179,14 +168,24 @@ public abstract class BaseStreamingTest {
 				} finally {
 					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
 							maxDuration, totalDuration, minDuration,
-							byteCount, label, pr.totalRead());
+							byteCount, label, totalRead());
 				}
 			}
 
+	protected abstract long totalRead();
+	protected abstract void resetInputReader();
+	protected abstract void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData);
+	
+	protected  abstract long totalWritten();
+	protected abstract void resetOutputWriter();
+	protected abstract void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer);
+	
+	
 	protected abstract long timeWriteLoop(int fields, 
 			int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-			FASTStaticWriter fw);
+			DictionaryFactory dcr);
 
+	
 	protected long performanceWriteTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
@@ -202,32 +201,26 @@ public abstract class BaseStreamingTest {
 				long maxDuration = Long.MIN_VALUE;
 				long totalDuration = 0;
 				long minDuration = Long.MAX_VALUE;
-		
-		
-				FASTOutputByteArray output = new FASTOutputByteArray(writeBuffer);
 				
-				PrimitiveWriter pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+				buildOutputWriter(streamByteSize, maxGroupCount, writeBuffer);
+				
 				try {
 					
 					int w = warmup+sampleSize;
 					while (--w>=0) {
 					
-						output.reset();
-						pw.reset();
-						
-						FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
+						resetOutputWriter();
 						
 						//compute overhead
 						long overhead = emptyLoop(operationIters, fields, fieldsPerGroup);
 						
 						//run test			
 						long duration = timeWriteLoop(fields, fieldsPerGroup, maxMPapBytes, 
-								                       operationIters, tokenLookup,
-								                       fw);
+								                       operationIters, tokenLookup, dcr);
 						
 						if (w<sampleSize) {
 							if (0==totalDuration) {
-								byteCount = pw.totalWritten();
+								byteCount = totalWritten();
 							}
 							
 							maxOverhead = Math.max(overhead, maxOverhead);
@@ -246,11 +239,42 @@ public abstract class BaseStreamingTest {
 				} finally {
 					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
 							maxDuration, totalDuration, minDuration,
-							byteCount, writeLabel, pw.totalWritten());
+							byteCount, writeLabel, totalWritten());
 				}
 				return byteCount;
 			}
 
+
+
+	public int[] buildTestDataUnsigned(int count) {
+		
+		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
+		int s = seedData.length;
+		int i = count;
+		int[] target = new int[count];
+		while (--i>=0) {
+			target[i] = seedData[--s];
+			if (0==s) {
+				s=seedData.length;
+			}
+		}
+		return target;
+	}
 	
+
+	public long[] buildTestDataUnsignedLong(int count) {
+		
+		long[] seedData = PrimitiveReaderWriterTest.unsignedLongData;
+		int s = seedData.length;
+		int i = count;
+		long[] target = new long[count];
+		while (--i>=0) {
+			target[i] = seedData[--s];
+			if (0==s) {
+				s=seedData.length;
+			}
+		}
+		return target;
+	}
 	
 }

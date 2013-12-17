@@ -26,7 +26,6 @@ public class FASTInputByteBuffer implements FASTInput {
 		targetBuffer.put(byteBuffer);
 		byteBuffer.limit(temp);
 		
-//		byteBuffer.get(target, offset, length);
 		return length;
 	}
 

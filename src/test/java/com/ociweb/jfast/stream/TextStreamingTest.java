@@ -7,7 +7,11 @@ import org.junit.Test;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
@@ -15,6 +19,12 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	final int fields         = 30000;
 	final CharSequence[] testData    = buildTestData(fields);
+	
+	FASTOutputByteArray output;
+	PrimitiveWriter pw;
+	
+	FASTInputByteArray input;
+	PrimitiveReader pr;
 	
 	@Test
 	public void asciiTest() {
@@ -80,7 +90,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
-			int[] tokenLookup, FASTStaticWriter fw) {
+			int[] tokenLookup, DictionaryFactory dcr) {
+		
+		FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
+		
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
@@ -119,7 +132,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
-								 FASTStaticReader fr) {
+									DictionaryFactory dcr) {
+		
+		FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
+		
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
@@ -189,6 +205,34 @@ public class TextStreamingTest extends BaseStreamingTest {
 			}
 		}
 		return target;
+	}
+	
+	public long totalWritten() {
+		return pw.totalWritten();
+	}
+	
+	protected void resetOutputWriter() {
+		output.reset();
+		pw.reset();
+	}
+
+	protected void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer) {
+		output = new FASTOutputByteArray(writeBuffer);
+		pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+	}
+	
+	protected long totalRead() {
+		return pr.totalRead();
+	}
+	
+	protected void resetInputReader() {
+		input.reset();
+		pr.reset();
+	}
+
+	protected void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData) {
+		input = new FASTInputByteArray(writtenData);
+		pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
 	}
 	
 }

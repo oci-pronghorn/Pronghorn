@@ -44,6 +44,9 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8DeltaOptional(int token, CharSequence value) {
+		
+		//TODO: how is null written?
+		
 		int idx = token & INSTANCE_MASK;
 		
 		//count matching front or back chars
@@ -55,23 +58,19 @@ public class FieldWriterChar {
 			writer.writeIntegerUnsigned(trimTail);
 			
 			int valueSend = value.length()-headCount;
-			writer.writeIntegerUnsigned(valueSend);		
+			writer.writeIntegerUnsigned(valueSend); //positive for tail append		
 			writer.writeTextUTFAfter(headCount,value);
 			
 		} else {
-			//replace head
+			//replace head, tail matches to tailCount
 			int trimHead = heap.length(idx)-tailCount;
-			writer.writeIntegerUnsigned(-trimHead);
+			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
 			
 			int valueSend = value.length()-tailCount;
-			writer.writeIntegerUnsigned(valueSend);		
-			
-			//TODO: write before
-			//writer.writeTextUTFAfter(headCount,value);
+			writer.writeIntegerUnsigned(valueSend); 		
+			writer.writeTextUTFBefore(value, trimHead);
 			
 		}
-		
-		
 	}
 
 	public void writeUTF8TailOptional(int token, CharSequence value) {
@@ -127,8 +126,30 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8Delta(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			//replace tail
+			int trimTail = heap.length(idx)-headCount;
+			writer.writeIntegerUnsigned(trimTail);
+			
+			int valueSend = value.length()-headCount;
+			writer.writeIntegerUnsigned(valueSend); //positive for tail append		
+			writer.writeTextUTFAfter(headCount,value);
+			
+		} else {
+			//replace head, tail matches to tailCount
+			int trimHead = heap.length(idx)-tailCount;
+			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
+			
+			int valueSend = value.length()-tailCount;
+			writer.writeIntegerUnsigned(valueSend); 		
+			writer.writeTextUTFBefore(value, trimHead);
+			
+		}
 	}
 
 	public void writeUTF8Tail(int token, CharSequence value) {
@@ -169,8 +190,28 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIIDeltaOptional(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		//TODO: how is null written?
 		
+		int idx = token & INSTANCE_MASK;
+		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			//replace tail
+			int trimTail = heap.length(idx)-headCount;
+			writer.writeIntegerUnsigned(trimTail);
+			
+			writer.writeTextASCIIAfter(headCount, value);
+			
+		} else {
+			//replace head, tail matches to tailCount
+			int trimHead = heap.length(idx)-tailCount;
+			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
+			
+			writer.writeTextASCIIBefore(value,trimHead);
+						
+		}
 	}
 
 	public void writeASCIITailOptional(int token, CharSequence value) {
@@ -219,13 +260,38 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIIDelta(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			//replace tail
+			int trimTail = heap.length(idx)-headCount;
+			writer.writeIntegerUnsigned(trimTail);
+			
+			writer.writeTextASCIIAfter(headCount, value);
+			
+		} else {
+			//replace head, tail matches to tailCount
+			int trimHead = heap.length(idx)-tailCount;
+			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
+			
+			writer.writeTextASCIIBefore(value,trimHead);
+						
+		}
 	}
 
 	public void writeASCIITail(int token, CharSequence value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		int headCount = heap.countHeadMatch(idx, value);
+		
+		int trimTail = heap.length(idx)-headCount;
+		
+		writer.writeIntegerUnsigned(trimTail);
+		
+		writer.writeTextASCIIAfter(headCount, value);
 	}
 
 	public void writeUTF8CopyOptional(int token, char[] value, int offset, int length) {
@@ -254,12 +320,46 @@ public class FieldWriterChar {
 	}
 
 	public void writeUTF8DeltaOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		//TODO: how is null written?
 		
+		int idx = token & INSTANCE_MASK;
+		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value, offset, length);
+		int tailCount = heap.countTailMatch(idx, value, offset, length);
+		if (headCount>tailCount) {
+			//replace tail
+			int trimTail = heap.length(idx)-headCount;
+			writer.writeIntegerUnsigned(trimTail);
+			
+			int valueSend = length-headCount;
+			writer.writeIntegerUnsigned(valueSend); //positive for tail append		
+			writer.writeTextUTF(value, offset+headCount, length-headCount);
+			
+		} else {
+			//replace head, tail matches to tailCount
+			int trimHead = heap.length(idx)-tailCount;
+			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
+			
+			int valueSend = length-tailCount;
+			writer.writeIntegerUnsigned(valueSend); 
+			writer.writeTextUTF(value, offset, length-tailCount);
+		}
 	}
 
 	public void writeUTF8TailOptional(int token, char[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		// TODO how is null written?
+		int idx = token & INSTANCE_MASK;
+		
+		int headCount = heap.countHeadMatch(idx, value, offset, length);
+		
+		int trimTail = heap.length(idx)-headCount;
+		
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = length-headCount;
+		writer.writeIntegerUnsigned(valueSend);
+		writer.writeTextUTF(value, offset+headCount, length-headCount);
 		
 	}
 
@@ -388,10 +488,59 @@ public class FieldWriterChar {
 	}
 
 	public void writeNull(int token) {
-		// TODO Auto-generated method stub
 		
-		//TODO: copy int impl once its done.
+		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				//None and Delta (both do not use pmap)
+		//		writeClearNull(token);              //no pmap, yes change to last value
+			} else {
+				//Copy and Increment
+		//		writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+			}
+		} else {
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+					//const
+					writer.writeNull();                 //no pmap,  no change to last value  
+				} else {
+					//const optional
+					writer.writePMapBit((byte)0);       //pmap only
+				}			
+			} else {	
+				//default
+		//		writePMapNull(token);  //yes pmap,  no change to last value
+			}	
+		}
 		
 	}
+	
+//	private void writeClearNull(int token) {
+//		writer.writeNull();
+//		lastValue[token & INSTANCE_MASK] = 0;
+//	}
+//	
+//	
+//	private void writePMapAndClearNull(int token) {
+//		int idx = token & INSTANCE_MASK;
+//
+//		if (lastValue[idx]==0) { //stored value was null;
+//			writer.writePMapBit((byte)0);
+//		} else {
+//			writer.writePMapBit((byte)1);
+//			writer.writeNull();
+//			lastValue[idx] =0;
+//		}
+//	}
+//	
+//	
+//	private void writePMapNull(int token) {
+//		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
+//			writer.writePMapBit((byte)0);
+//		} else {
+//			writer.writePMapBit((byte)1);
+//			writer.writeNull();
+//		}
+//	}
+	
 
 }

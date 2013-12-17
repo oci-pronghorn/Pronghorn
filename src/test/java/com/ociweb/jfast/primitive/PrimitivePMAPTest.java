@@ -115,7 +115,7 @@ public class PrimitivePMAPTest {
 		
 		PrimitiveWriter pw = new PrimitiveWriter(output);
 		
-		pw.openPMap(10);
+		pw.openPMap(3);
 		pw.writePMapBit((byte)1);
 		pw.writePMapBit((byte)0);
 		pw.writePMapBit((byte)1);

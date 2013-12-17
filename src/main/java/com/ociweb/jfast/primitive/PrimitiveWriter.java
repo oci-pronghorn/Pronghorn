@@ -765,7 +765,7 @@ public final class PrimitiveWriter {
 				long stackFrame = safetyStackPosPos[s];
 				//set the last known non zero bit so we can avoid scanning for it.
 				int lastPopulatedIdx = (int)(stackFrame&POS_POS_MASK);
-				assert (lastPopulatedIdx <= flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+				assert (lastPopulatedIdx < flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
 				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}							
 			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (safetyStackPosPos[s]&POS_POS_MASK);
@@ -799,11 +799,11 @@ public final class PrimitiveWriter {
 		//final byte to be saved into the feed. //NOTE: pos pos can inc because it does not roll over.
 
 		if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte)pMapByteAccum)) {	
+			//close is too late to discover overflow so it is NOT done here.
+			//
 			long stackFrame = safetyStackPosPos[s];
 			//set the last known non zero bit so we can avoid scanning for it. 
-			int lastPopulatedIdx = (int)(stackFrame&POS_POS_MASK);
-			assert (lastPopulatedIdx <= flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
-			buffer[(flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx)-1] |= 0x80;
+			buffer[(flushSkips[(int)(stackFrame>>32)] = (int)(stackFrame&POS_POS_MASK))-1] |= 0x80;
 		}	else {
 			//must set stop bit now that we know where pmap stops.
 			buffer[ flushSkips[(int)(safetyStackPosPos[s]>>32)]          -1] |= 0x80;
@@ -840,7 +840,8 @@ public final class PrimitiveWriter {
 				long stackFrame = safetyStackPosPos[s];
 				//set the last known non zero bit so we can avoid scanning for it. 
 				int lastPopulatedIdx = (int)(POS_POS_MASK&stackFrame);// one has been added for exclusive use of range
-				assert (lastPopulatedIdx<=flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+				//writing the pmap bit is the ideal place to detect overflow of the bits based on expectations.
+				assert (lastPopulatedIdx<flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
 				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}	
 			
@@ -892,6 +893,24 @@ public final class PrimitiveWriter {
 		
 	}
 
+	public final void writeTextASCIIBefore(CharSequence value, int stop) {
+		
+		int length = stop;
+		if (0==length) {
+			encodeZeroLengthASCII();
+			return;
+		} else	if (limit>buffer.length-length) {
+			//if it was not zero and was too long flush
+			output.flush();
+		}
+		int c = 0;
+		while (--length>0) {
+			buffer[limit++] = (byte)value.charAt(c++);
+		}
+		buffer[limit++] = (byte)(0x80|value.charAt(c));
+		
+	}
+	
 	private void encodeZeroLengthASCII() {
 		if (limit>buffer.length-2) {
 			output.flush();

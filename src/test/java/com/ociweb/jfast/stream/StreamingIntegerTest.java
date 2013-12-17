@@ -7,7 +7,10 @@ import org.junit.Test;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
+import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
@@ -17,9 +20,17 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	final int[] testData     = buildTestDataUnsigned(fields);
 	final int fieldsPerGroup = 10;
 	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
-	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+	final int groupToken 	  = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 
 	boolean sendNulls = false;
+	
+	
+	
+	FASTOutputByteArray output;
+	PrimitiveWriter pw;
+	
+	FASTInputByteArray input;
+	PrimitiveReader pr;
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -63,6 +74,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		tester(types, operators, "SignedInteger");
 	}
 	
+
 	
 	private void tester(int[] types, int[] operators, String label) {	
 		
@@ -98,22 +110,15 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
-			int[] tokenLookup, FASTStaticWriter fw) {
+			int[] tokenLookup, DictionaryFactory dcr) {
+		
+		FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 				
-		writeData(fields, fieldsPerGroup, operationIters, tokenLookup, fw, groupToken);
-				
-		return System.nanoTime() - start;
-	}
-	
-
-	protected void writeData(int fields, int fieldsPerGroup, int operationIters,
-								int[] tokenLookup,
-								FASTStaticWriter fw, int groupToken) {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		fw.openGroup(groupToken);
@@ -138,28 +143,21 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 			fw.closeGroup(groupToken);
 		}
 		fw.flush();
-		fw.flush();
+				
+		return System.nanoTime() - start;
 	}
-
-
-
+	
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
-			                      int operationIters, int[] tokenLookup,
-								  FASTStaticReader fr) {
+			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
+		
+		FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
+		
 		long start = System.nanoTime();
 		if (operationIters<3) {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 			
-		readData(fields, fieldsPerGroup, operationIters, tokenLookup, fr);
-			
-		long duration = System.nanoTime() - start;
-		return duration;
-	}
-
-	protected void readData(int fields, int fieldsPerGroup, int operationIters,
-			                  int[] tokenLookup, FASTStaticReader fr) {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
@@ -190,23 +188,39 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		if (fr.isGroupOpen()) {
 			fr.closeGroup(groupToken);
 		}
+			
+		long duration = System.nanoTime() - start;
+		return duration;
+	}
+
+	public long totalWritten() {
+		return pw.totalWritten();
+	}
+	
+	protected void resetOutputWriter() {
+		output.reset();
+		pw.reset();
+	}
+
+	protected void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer) {
+		output = new FASTOutputByteArray(writeBuffer);
+		pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
 	}
 
 
-
-	int[] buildTestDataUnsigned(int count) {
-		
-		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
-		int s = seedData.length;
-		int i = count;
-		int[] target = new int[count];
-		while (--i>=0) {
-			target[i] = seedData[--s];
-			if (0==s) {
-				s=seedData.length;
-			}
-		}
-		return target;
+	protected long totalRead() {
+		return pr.totalRead();
 	}
+	
+	protected void resetInputReader() {
+		input.reset();
+		pr.reset();
+	}
+
+	protected void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData) {
+		input = new FASTInputByteArray(writtenData);
+		pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
+	}
+
 	
 }
