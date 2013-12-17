@@ -210,7 +210,7 @@ public final class PrimitiveWriter {
 	}
 
 	public int nextOffset() {
-	    if (nextBlockSize<0) {
+	    if (nextBlockSize<=0) {
 	    	throw new FASTException();
 	    }
 		int nextOffset = nextBlockOffset;
@@ -764,9 +764,7 @@ public final class PrimitiveWriter {
 			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte)pMapByteAccum)) {	
 				long stackFrame = safetyStackPosPos[s];
 				//set the last known non zero bit so we can avoid scanning for it.
-				int lastPopulatedIdx = (int)(stackFrame&POS_POS_MASK);
-				assert (lastPopulatedIdx < flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
-				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
+				flushSkips[(int)(stackFrame>>32)] = (int)(stackFrame&POS_POS_MASK);
 			}							
 			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (safetyStackPosPos[s]&POS_POS_MASK);
 
@@ -831,13 +829,11 @@ public final class PrimitiveWriter {
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
-			int s = safetyStackDepth-1; 
-			
-			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
+			assert(safetyStackDepth-1>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
 					
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
-			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte) (pMapByteAccum | bit))) {	
-				long stackFrame = safetyStackPosPos[s];
+			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++)] = (byte) (pMapByteAccum | bit))) {	
+				long stackFrame = safetyStackPosPos[safetyStackDepth-1];
 				//set the last known non zero bit so we can avoid scanning for it. 
 				int lastPopulatedIdx = (int)(POS_POS_MASK&stackFrame);// one has been added for exclusive use of range
 				//writing the pmap bit is the ideal place to detect overflow of the bits based on expectations.

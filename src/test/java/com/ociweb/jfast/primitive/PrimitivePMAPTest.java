@@ -435,16 +435,16 @@ public class PrimitivePMAPTest {
 		
     	int pmaps = 3000000;
     	//the longer the max PMap the faster write becomes, so the push/pop is the expensive part and each sliced flush.
-    	int maxLength = 10;// 
+    	int maxDataBytes = 2;//this is 16 PMap bits, a good sized record 
     	
     	////////////////////////////////////
     	//compute max bytes written to stream based on test data
     	////////////////////////////////////
-    	int maxWrittenBytes = (int)Math.ceil((maxLength*8)/7d);
+    	int maxWrittenBytes = (int)Math.ceil((maxDataBytes*8)/7d);
     	
     	int localBufferSize = pmaps*maxWrittenBytes;
     	    	
-    	byte[][] testPmaps = buildTestPMapData(pmaps, maxLength);
+    	byte[][] testPmaps = buildTestPMapData(pmaps, maxDataBytes);
     	
     	//Run through our testing loops without calling any of the methods we want to test
     	//this gives us the total time our testing framework is consuming.
@@ -490,8 +490,7 @@ public class PrimitivePMAPTest {
     	ByteBuffer buffer = ByteBuffer.allocateDirect(localBufferSize);
     	FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
 		
-    	//TODO:bug here if latency set to false and block set small to 32
-		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, true);
+		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
 		
 		int i = pmaps;
 	    try {
@@ -647,14 +646,14 @@ public class PrimitivePMAPTest {
 	}
 
 
-	private byte[][] buildTestPMapData(int pmaps, int maxLength) {
+	private byte[][] buildTestPMapData(int pmaps, int maxLengthBytes) {
 		byte[][] testPmaps = new byte[pmaps][];
     	
     	double r = 0d;
     	double step = (2d*Math.PI)/(double)(pmaps);
     	
     	int i = pmaps;
-    	int len = maxLength;
+    	int len = maxLengthBytes;
     	while (--i>=0) {
     	    byte[] newPmap = new byte[len];
     	    int j = len;
@@ -666,7 +665,7 @@ public class PrimitivePMAPTest {
     	  //  System.err.println(Arrays.toString(newPmap));
     		testPmaps[i] = newPmap;
     		if (--len<0) {
-    			len = maxLength;
+    			len = maxLengthBytes;
     		}
     	}
 		return testPmaps;

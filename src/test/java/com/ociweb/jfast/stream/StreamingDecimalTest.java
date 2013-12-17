@@ -17,10 +17,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingDecimalTest extends BaseStreamingTest {
 
-	final int fields         = 1000;
 	final long[] testData     = buildTestDataUnsignedLong(fields);
-	final int fieldsPerGroup = 10;
-	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	//Must double because we may need 1 bit for exponent and another for mantissa
 	final int groupToken = buildGroupToken(maxMPapBytes*2,0);//TODO: repeat still unsupported
 
@@ -59,37 +56,6 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	
 	
 	
-	private void tester(int[] types, int[] operators, String label) {	
-		
-		int operationIters = 7;
-		int warmup         = 50;
-		int sampleSize     = 1000;
-		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
-		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
-		
-		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
-		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-		
-		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
-		
-		byte[] writeBuffer = new byte[streamByteSize];
-
-		///////////////////////////////
-		//test the writing performance.
-		//////////////////////////////
-		
-		long byteCount = performanceWriteTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
-				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
-
-		///////////////////////////////
-		//test the reading performance.
-		//////////////////////////////
-		
-		performanceReadTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
-				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
-		
-	}
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
@@ -190,9 +156,9 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		pw.reset();
 	}
 
-	protected void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer) {
+	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
 	}
 	
 	protected long totalRead() {
@@ -204,9 +170,9 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		pr.reset();
 	}
 
-	protected void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData) {
+	protected void buildInputReader(int maxGroupCount, byte[] writtenData) {
 		input = new FASTInputByteArray(writtenData);
-		pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
+		pr = new PrimitiveReader(4096, input, maxGroupCount*10);
 	}
 	
 }

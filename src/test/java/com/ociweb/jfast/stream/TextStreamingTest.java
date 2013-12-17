@@ -216,9 +216,9 @@ public class TextStreamingTest extends BaseStreamingTest {
 		pw.reset();
 	}
 
-	protected void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer) {
+	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
 	}
 	
 	protected long totalRead() {
@@ -230,9 +230,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 		pr.reset();
 	}
 
-	protected void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData) {
+	protected void buildInputReader(int maxGroupCount, byte[] writtenData) {
 		input = new FASTInputByteArray(writtenData);
-		pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
+		//TODO: bug here requires larger buffer.
+		pr = new PrimitiveReader(writtenData.length*10, input, maxGroupCount*10);
 	}
 	
 }

@@ -10,6 +10,43 @@ public abstract class BaseStreamingTest {
 	private final float PCT_LIMIT = 80; //if avg is 80 pct above min then fail
 	private final float MAX_X_LIMIT = 20f;//if max is 20x larger than avg then fail
 	
+	protected final int fields         = 1000;
+	protected final int fieldsPerGroup = 10;
+	protected final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
+	
+	
+	protected void tester(int[] types, int[] operators, String label) {	
+		
+		int operationIters = 7;
+		int warmup         = 50;
+		int sampleSize     = 1000;
+		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
+		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
+		
+		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
+		int maxGroupCount = operationIters*fields/fieldsPerGroup;
+		
+		
+		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
+		
+		byte[] writeBuffer = new byte[streamByteSize];
+
+		///////////////////////////////
+		//test the writing performance.
+		//////////////////////////////
+		
+		long byteCount = performanceWriteTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
+
+		///////////////////////////////
+		//test the reading performance.
+		//////////////////////////////
+		
+		performanceReadTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
+		
+	}
+	
 	
 	protected long emptyLoop(int iterations, int fields, int fieldsPerGroup) {
 		
@@ -136,7 +173,7 @@ public abstract class BaseStreamingTest {
 				totalDuration = 0;
 				minDuration = Long.MAX_VALUE;
 				
-				buildInputReader(streamByteSize, maxGroupCount, writtenData);
+				buildInputReader(maxGroupCount, writtenData);
 				
 				try {
 					int w = warmup+sampleSize;
@@ -174,11 +211,11 @@ public abstract class BaseStreamingTest {
 
 	protected abstract long totalRead();
 	protected abstract void resetInputReader();
-	protected abstract void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData);
+	protected abstract void buildInputReader(int maxGroupCount, byte[] writtenData);
 	
 	protected  abstract long totalWritten();
 	protected abstract void resetOutputWriter();
-	protected abstract void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer);
+	protected abstract void buildOutputWriter(int maxGroupCount, byte[] writeBuffer);
 	
 	
 	protected abstract long timeWriteLoop(int fields, 
@@ -202,7 +239,7 @@ public abstract class BaseStreamingTest {
 				long totalDuration = 0;
 				long minDuration = Long.MAX_VALUE;
 				
-				buildOutputWriter(streamByteSize, maxGroupCount, writeBuffer);
+				buildOutputWriter(maxGroupCount, writeBuffer);
 				
 				try {
 					

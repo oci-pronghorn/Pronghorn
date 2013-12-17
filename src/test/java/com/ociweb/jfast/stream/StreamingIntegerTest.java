@@ -15,27 +15,17 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 public class StreamingIntegerTest extends BaseStreamingTest {
-
-	final int fields         = 1000;
-	final int[] testData     = buildTestDataUnsigned(fields);
-	final int fieldsPerGroup = 10;
-	final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
+	
 	final int groupToken 	  = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
-
+	final int[] testData     = buildTestDataUnsigned(fields);
 	boolean sendNulls = false;
-	
-	
-	
+		
 	FASTOutputByteArray output;
 	PrimitiveWriter pw;
 	
 	FASTInputByteArray input;
 	PrimitiveReader pr;
 	
-	//NO PMAP
-	//NONE, DELTA, and CONSTANT(non-optional)
-	
-	//Constant can never be optional but can have pmap.
 	
 	@Test
 	public void integerUnsignedTest() {
@@ -72,40 +62,6 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 OperatorMask.Default
                 };
 		tester(types, operators, "SignedInteger");
-	}
-	
-
-	
-	private void tester(int[] types, int[] operators, String label) {	
-		
-		int operationIters = 7;
-		int warmup         = 50;
-		int sampleSize     = 1000;
-		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
-		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
-		
-		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
-		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-		
-		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
-		
-		byte[] writeBuffer = new byte[streamByteSize];
-
-		///////////////////////////////
-		//test the writing performance.
-		//////////////////////////////
-		
-		long byteCount = performanceWriteTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
-				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
-
-		///////////////////////////////
-		//test the reading performance.
-		//////////////////////////////
-		
-		performanceReadTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
-				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
-		
 	}
 
 	@Override
@@ -202,9 +158,9 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		pw.reset();
 	}
 
-	protected void buildOutputWriter(int streamByteSize, int maxGroupCount, byte[] writeBuffer) {
+	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(streamByteSize, output, maxGroupCount, false);
+		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
 	}
 
 
@@ -217,9 +173,9 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		pr.reset();
 	}
 
-	protected void buildInputReader(int streamByteSize, int maxGroupCount, byte[] writtenData) {
+	protected void buildInputReader(int maxGroupCount, byte[] writtenData) {
 		input = new FASTInputByteArray(writtenData);
-		pr = new PrimitiveReader(streamByteSize*10, input, maxGroupCount*10);
+		pr = new PrimitiveReader(4096, input, maxGroupCount*10);
 	}
 
 	
