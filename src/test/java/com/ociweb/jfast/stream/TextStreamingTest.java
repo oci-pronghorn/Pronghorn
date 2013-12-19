@@ -8,8 +8,8 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
@@ -51,7 +51,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int operationIters = 7;
 		int warmup         = 50;
 		int sampleSize     = 100;
-		int avgFieldSize   = PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK*2+1;
+		int avgFieldSize   = ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2+1;
 		String readLabel = "Read "+label+"Text NoOpp in groups of "+fieldsPerGroup;
 		String writeLabel = "Write "+label+"Text NoOpp in groups of "+fieldsPerGroup;
 		
@@ -146,7 +146,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 		
 		fr.openGroup(groupToken);
 		
-		char[] target = new char[PrimitiveReaderWriterTest.VERY_LONG_STRING_MASK*3];
+		char[] target = new char[ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*3];
 		
 		while (--i>=0) {
 			int f = fields;
@@ -194,7 +194,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	private CharSequence[] buildTestData(int count) {
 		
-		CharSequence[] seedData = PrimitiveReaderWriterTest.stringData;
+		CharSequence[] seedData = ReaderWriterPrimitiveTest.stringData;
 		int s = seedData.length;
 		int i = count;
 		CharSequence[] target = new CharSequence[count];

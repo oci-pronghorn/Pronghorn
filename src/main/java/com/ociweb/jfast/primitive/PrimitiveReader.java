@@ -22,7 +22,7 @@ public final class PrimitiveReader {
 	
 	private final FASTInput input;
 	private long totalReader;
-	final byte[] buffer; //TODO: build an Unsafe version of Reader and Writer for fastest performance on server.
+	final byte[] buffer;
 	private final byte[] pmapStack;	
 	private int pmapStackDepth = 0;
 	

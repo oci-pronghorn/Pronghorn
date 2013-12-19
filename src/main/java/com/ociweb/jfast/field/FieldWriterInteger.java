@@ -273,7 +273,6 @@ public final class FieldWriterInteger {
 	public void writeIntegerSignedDeltaOptional(int value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		
 		int dif = value - lastValue[idx];
 		writer.writeLongSigned(dif>=0 ? 1+dif : dif);
 		lastValue[idx] = value;	

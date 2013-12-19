@@ -198,7 +198,7 @@ public class FieldReaderLong {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {
-			lastValue[token & INSTANCE_MASK]=0;
+			lastValue[token & INSTANCE_MASK] = 0;
 			return valueOfOptional;
 		} else {
 			return lastValue[token & INSTANCE_MASK] += (value>0 ? value-1 : value);

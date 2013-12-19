@@ -7,7 +7,6 @@ import org.junit.Test;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;

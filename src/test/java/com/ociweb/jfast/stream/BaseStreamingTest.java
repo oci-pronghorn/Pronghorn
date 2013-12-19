@@ -2,7 +2,7 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertTrue;
 
-import com.ociweb.jfast.primitive.PrimitiveReaderWriterTest;
+import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {
 
@@ -285,7 +285,7 @@ public abstract class BaseStreamingTest {
 
 	public int[] buildTestDataUnsigned(int count) {
 		
-		int[] seedData = PrimitiveReaderWriterTest.unsignedIntData;
+		int[] seedData = ReaderWriterPrimitiveTest.unsignedIntData;
 		int s = seedData.length;
 		int i = count;
 		int[] target = new int[count];
@@ -301,7 +301,7 @@ public abstract class BaseStreamingTest {
 
 	public long[] buildTestDataUnsignedLong(int count) {
 		
-		long[] seedData = PrimitiveReaderWriterTest.unsignedLongData;
+		long[] seedData = ReaderWriterPrimitiveTest.unsignedLongData;
 		int s = seedData.length;
 		int i = count;
 		long[] target = new long[count];

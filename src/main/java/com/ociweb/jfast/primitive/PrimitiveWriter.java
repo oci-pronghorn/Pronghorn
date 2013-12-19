@@ -21,7 +21,7 @@ import com.ociweb.jfast.error.FASTException;
 public final class PrimitiveWriter {
 
     //TODO: there is some write PMAP bug that becomes obvious by changing this very small.
-    private static final int BLOCK_SIZE = 64;// in bytes
+    private static final int BLOCK_SIZE = 64;//64;// in bytes
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
@@ -667,6 +667,10 @@ public final class PrimitiveWriter {
 	    
 	}
 
+	//TODO: Kryo is 2x faster than this.
+	// 1. in the test it is writing directly to ByteBuffer with no internal buffer.
+	// 2. it copies one int at a time into byte buffer.
+	
 	private void writeIntegerSignedPos(int value) {
 		
 		if (value < 0x00000040) {
@@ -761,12 +765,12 @@ public final class PrimitiveWriter {
 			assert(s>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";		
 
 			//NOTE: can inc pos pos because it will not overflow.
-			if (0 != (buffer[(int)(POS_POS_MASK&safetyStackPosPos[s]++)] = (byte)pMapByteAccum)) {	
-				long stackFrame = safetyStackPosPos[s];
+			long stackFrame = safetyStackPosPos[s];
+			if (0 != (buffer[(int)(POS_POS_MASK&stackFrame)] = (byte)pMapByteAccum)) {	
 				//set the last known non zero bit so we can avoid scanning for it.
 				flushSkips[(int)(stackFrame>>32)] = (int)(stackFrame&POS_POS_MASK);
 			}							
-			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (safetyStackPosPos[s]&POS_POS_MASK);
+			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (stackFrame&POS_POS_MASK);
 
 		} 		
 		//NOTE: pos pos, new position storage so top bits are always unset and no need to set.
@@ -802,7 +806,7 @@ public final class PrimitiveWriter {
 			long stackFrame = safetyStackPosPos[s];
 			//set the last known non zero bit so we can avoid scanning for it. 
 			buffer[(flushSkips[(int)(stackFrame>>32)] = (int)(stackFrame&POS_POS_MASK))-1] |= 0x80;
-		}	else {
+		} else {
 			//must set stop bit now that we know where pmap stops.
 			buffer[ flushSkips[(int)(safetyStackPosPos[s]>>32)]          -1] |= 0x80;
 		}
@@ -811,7 +815,7 @@ public final class PrimitiveWriter {
 		if (safetyStackDepth>0) {	
 		
 			//NOTE: pos pos will not roll under so we can just subtract
-			long posPos = safetyStackPosPos[safetyStackDepth-1]--;
+			long posPos = safetyStackPosPos[safetyStackDepth-1];
 			pMapByteAccum = buffer[(int)(posPos&POS_POS_MASK)];
 			pMapIdxWorking = (byte)(0xF&(posPos>>POS_POS_SHIFT));
 
