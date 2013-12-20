@@ -423,7 +423,7 @@ public class ReaderWriterPrimitiveTest {
 		buffer.flip();
 		
 		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
-		final PrimitiveReader pr = new PrimitiveReader(input);
+		final PrimitiveReader pr = new PrimitiveReader(capacity, input, 10);
 		
 		i = 0;
 		while (i<unsignedLongData.length) {
@@ -548,6 +548,7 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
+			pr.reset();
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
@@ -560,12 +561,13 @@ public class ReaderWriterPrimitiveTest {
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			
 			buffer.flip();
+			pr.reset();
 			
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
 				int j = 0;
-				while (j<unsignedLongData.length) {
+				while (j<unsignedIntData.length) {
 					pr.readIntegerUnsigned();
 					j++;
 				}
@@ -582,6 +584,7 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
+			pw.reset();
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
@@ -593,7 +596,7 @@ public class ReaderWriterPrimitiveTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
-			
+			pr.reset();
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
@@ -615,6 +618,7 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
+			pw.reset();
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
@@ -626,7 +630,7 @@ public class ReaderWriterPrimitiveTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
-			
+			pr.reset();
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
@@ -637,8 +641,9 @@ public class ReaderWriterPrimitiveTest {
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+
 		}
-		System.out.println("signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
+		System.out.println("signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte, total bytes "+buffer.position());		
 	
 		
 	}

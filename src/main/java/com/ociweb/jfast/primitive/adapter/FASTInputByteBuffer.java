@@ -17,6 +17,10 @@ public class FASTInputByteBuffer implements FASTInput {
 	public int fill(byte[] target, int offset, int length) {
 		if (length > byteBuffer.remaining()) {
 			length = byteBuffer.remaining();
+			
+			if (length==0) {
+				return 0;
+			}
 		}
 		targetBuffer.clear();
 		targetBuffer.position(offset);
@@ -25,6 +29,8 @@ public class FASTInputByteBuffer implements FASTInput {
 		byteBuffer.limit(byteBuffer.position()+length);
 		targetBuffer.put(byteBuffer);
 		byteBuffer.limit(temp);
+		
+		//new Exception("Finished reading everything from byte buffer. Remaining:"+byteBuffer.remaining()).printStackTrace();
 		
 		return length;
 	}

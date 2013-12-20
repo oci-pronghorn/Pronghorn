@@ -20,8 +20,10 @@ import com.ociweb.jfast.error.FASTException;
 
 public final class PrimitiveWriter {
 
-    //TODO: there is some write PMAP bug that becomes obvious by changing this very small.
-    private static final int BLOCK_SIZE = 64;//64;// in bytes
+    //TODO: the write to output is not implemented right it must send one giant block when possible
+	//TODO: we should have min and max block size? this may cover all cases.
+	
+    private static final int BLOCK_SIZE = 64;// in bytes
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
@@ -409,7 +411,7 @@ public final class PrimitiveWriter {
 	}
 
 	private final void writeLongSignedPos(long value) {
-		
+				
 		if (value < 0x0000000000000040l) {
 			if (buffer.length - limit < 1) {
 				output.flush();

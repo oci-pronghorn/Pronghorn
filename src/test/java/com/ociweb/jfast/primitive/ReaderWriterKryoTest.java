@@ -135,10 +135,12 @@ public class ReaderWriterKryoTest {
 	}
 	
 	@Test 
-	public void testIntegers() {
+	public void testIntegersByteBuffer() {
 		int fieldSize = 7;
 		
 		int intSpeedTestSize = 3000000;
+		
+		String name = "KryoByteBuffer ";
 		
 		int passes = intSpeedTestSize / unsignedLongData.length;
 		double count = passes*unsignedLongData.length;
@@ -194,6 +196,7 @@ public class ReaderWriterKryoTest {
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
+			pw.clear();
 			pw.setPosition(0);
 			buffer.clear();
 			
@@ -206,7 +209,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,outputStream.size());
@@ -221,9 +224,9 @@ public class ReaderWriterKryoTest {
 					i++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo unsigned long: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);
+		System.out.println(name+" unsigned long: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);
 		
 		///////////////////////////////////
 		//////////////////////////////////
@@ -232,6 +235,7 @@ public class ReaderWriterKryoTest {
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
+			pw.clear();
 			pw.setPosition(0);
 			buffer.clear();
 			long start = System.nanoTime();
@@ -243,7 +247,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,outputStream.size());
 			outputStream.reset();
@@ -257,9 +261,9 @@ public class ReaderWriterKryoTest {
 					i++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo signed long neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
+		System.out.println(name+" signed long neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		///////////////////////////////////
 		//////////////////////////////////
@@ -279,7 +283,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,pw.total());
 			
@@ -292,9 +296,9 @@ public class ReaderWriterKryoTest {
 					i++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo signed long pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
+		System.out.println(name+" signed long pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
 		
 		
 		//////////////////////////////////
@@ -304,6 +308,7 @@ public class ReaderWriterKryoTest {
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
+			pw.clear();
 			outputStream.reset();
 			pw.setPosition(0);
 			buffer.clear();
@@ -316,7 +321,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,outputStream.size());
@@ -331,9 +336,9 @@ public class ReaderWriterKryoTest {
 					j++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo unsigned integer: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
+		System.out.println(name+" unsigned integer: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
 	
 		//////////////////////////////////
 		//////////////////////////////////
@@ -342,6 +347,7 @@ public class ReaderWriterKryoTest {
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
 		while (--cycles>=0) {
+			pw.clear();
 			pw.setPosition(0);
 			buffer.clear();
 			long start = System.nanoTime();
@@ -353,7 +359,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,outputStream.size());
 			outputStream.reset();
@@ -367,9 +373,9 @@ public class ReaderWriterKryoTest {
 					j++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo signed integer neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);		
+		System.out.println(name+" signed integer neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);		
 	
 		//////////////////////////////////
 		//////////////////////////////////
@@ -380,6 +386,7 @@ public class ReaderWriterKryoTest {
 		while (--cycles>=0) {
 			outputStream.reset();
 			pw.setPosition(0);
+			pw.clear();
 			buffer.clear();
 			long start = System.nanoTime();
 			int p = passes;
@@ -390,7 +397,7 @@ public class ReaderWriterKryoTest {
 				}
 			}
 			pw.flush();
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 			buffer.flip();
 			pr = new ByteBufferInput(buffer,0,outputStream.size());
 			outputStream.reset();
@@ -404,13 +411,285 @@ public class ReaderWriterKryoTest {
 					j++;
 				}
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)buffer.position());
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}
-		System.out.println("Kryo signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
+		System.out.println(name+" signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte, total bytes "+pw.total());		
 	
 		
 	}
 	
+	@Test 
+	public void testIntegersByteArray() {
+		int fieldSize = 7;
+		
+		int intSpeedTestSize = 3000000;
+		
+		String name = "KryoByteArray ";
+		
+		int passes = intSpeedTestSize / unsignedLongData.length;
+		double count = passes*unsignedLongData.length;
+		int capacity = intSpeedTestSize*fieldSize;
+				
+		byte[] buffer = new byte[capacity];
+		
+		final Output pw = new Output(buffer);
+		
+		int i = 0;
+		while (i<unsignedLongData.length) {
+			pw.writeVarLong(unsignedLongData[i],true);
+			pw.writeVarLong(unsignedLongData[i],true);
+			pw.writeVarLong(-unsignedLongData[i++],false);
+		}
+		i=0;
+		while (i<unsignedIntData.length) {	
+			pw.writeVarInt(unsignedIntData[i],true);
+			pw.writeVarInt(-unsignedIntData[i],false);			
+			pw.writeVarInt(unsignedIntData[i++],true);
+		}
+		
+		pw.flush();
+		
+		Input pr = new Input(buffer);
+		
+		i = 0;
+		while (i<unsignedLongData.length) {
+			assertEquals(unsignedLongData[i], pr.readVarLong(true));
+			assertEquals(unsignedLongData[i], pr.readVarLong(true));
+			assertEquals(-unsignedLongData[i++], pr.readVarLong(false));
+		}
+		i=0;
+		while (i<unsignedIntData.length) {	
+			assertEquals(unsignedIntData[i], pr.readVarInt(true));
+			assertEquals(-unsignedIntData[i], pr.readVarInt(false));
+			assertEquals(unsignedIntData[i++], pr.readVarInt(true));
+		}
+		
+
+		
+		///////////////////////////////////
+		//////////////////////////////////
+		
+		
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream(capacity*10);
+		pw.setOutputStream(outputStream);
+		
+		
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
+		
+		int cycles = testCycles;
+		while (--cycles>=0) {
+			pw.clear();
+			pw.setPosition(0);
+			
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pw.writeVarLong(unsignedLongData[i++],true);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			
+			pr = new Input(buffer);
+			
+			outputStream.reset();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pr.readVarLong(true);
+					i++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" unsigned long: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);
+		
+		///////////////////////////////////
+		//////////////////////////////////
+		
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		cycles = testCycles;
+		while (--cycles>=0) {
+			pw.clear();
+			pw.setPosition(0);
+			
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pw.writeVarLong(-unsignedLongData[i++],false);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			pr = new Input(buffer);
+			outputStream.reset();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pr.readVarLong(false);
+					i++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" signed long neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
+		
+		///////////////////////////////////
+		//////////////////////////////////
+		
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		cycles = testCycles;
+		while (--cycles>=0) {
+			pw.clear();
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pw.writeVarLong(unsignedLongData[i++],true);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			pr = new Input(buffer);
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				i = 0;
+				while (i<unsignedLongData.length) {
+					pr.readVarLong(true);
+					i++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" signed long pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");
+		
+		
+		//////////////////////////////////
+		//////////////////////////////////
+
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		cycles = testCycles;
+		while (--cycles>=0) {
+			pw.clear();
+			outputStream.reset();
+			pw.setPosition(0);
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pw.writeVarInt(unsignedIntData[j++],true);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			
+			pr = new Input(buffer);
+			outputStream.reset();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pr.readVarInt(true);
+					j++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" unsigned integer: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte");		
+	
+		//////////////////////////////////
+		//////////////////////////////////
+
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		cycles = testCycles;
+		while (--cycles>=0) {
+			pw.clear();
+			pw.setPosition(0);
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pw.writeVarInt(-unsignedIntData[j++],false);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			pr = new Input(buffer);
+			outputStream.reset();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pr.readVarInt(false);
+					j++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" signed integer neg: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte,  iterations "+count);		
+	
+		//////////////////////////////////
+		//////////////////////////////////
+
+		writeDuration = Float.MAX_VALUE;
+		readDuration = Float.MAX_VALUE;
+		cycles = testCycles;
+		while (--cycles>=0) {
+			outputStream.reset();
+			pw.setPosition(0);
+			pw.clear();
+			long start = System.nanoTime();
+			int p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pw.writeVarInt(unsignedIntData[j++],true);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
+			pr = new Input(buffer);
+			outputStream.reset();
+			
+			start = System.nanoTime();
+			 p = passes;
+			while (--p>=0) {
+				int j = 0;
+				while (j<unsignedIntData.length) {
+					pr.readVarInt(true);
+					j++;
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
+		}
+		System.out.println(name+" signed integer pos: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte, total bytes "+pw.total());		
+	
+		
+	}
 /*
  * 
 	//TODO: add utf8 test here

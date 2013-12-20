@@ -63,7 +63,6 @@ public final class PrimitiveReader {
 	}
 	
 	private final void fetch(int need) {
-		//System.err.println("need more");
 		if (position >= limit) {
 			position = limit = 0;
 		}
@@ -76,6 +75,12 @@ public final class PrimitiveReader {
 		} else {
 			noRoomOnFetch(need);
 		}
+	
+// TODO: this exposed a problem that still needs to be fixed.		
+//		if (limit-position<need) {
+//			throw new UnsupportedOperationException("bad read "+position+","+limit+","+need);
+//		}
+		
 	}
 
 	private void noRoomOnFetch(int need) {
@@ -328,36 +333,35 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerSigned () {
-		if (limit-position<=6) {
-			if (position>=limit) {
-				fetch(1);
-			}
-			byte v = buffer[position++];
-			int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
-
-		    while (v>=0) {  //(v & 0x80)==0) {
-		    	if (position>=limit) {
-					fetch(1);
-				}
-		    	accumulator = (accumulator|v)<<7;
-		    	v = buffer[position++];
-		    }
-		    return accumulator|(v&0x7F);
+		if (limit-position<=5) {
+			return readIntegerSignedSlow();
 		}
 		
-		int p = position;
-		byte[] buff = this.buffer;
-		
-		
-		byte v = buff[p++];
+		byte v = buffer[position++];
 		int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
 
 	    while (v>=0) {  //(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
-	    	v = buff[p++];
+	    	v = buffer[position++];
 	    }
-	    position = p;
 	    return accumulator|(v&0x7F);
+	}
+
+	private int readIntegerSignedSlow() {
+		if (position>=limit) {
+			fetch(1);
+		}
+		byte v = buffer[position++];
+		int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
+
+		while (v>=0) {  //(v & 0x80)==0) {
+			if (position>=limit) {
+				fetch(1);
+			}
+			accumulator = (accumulator|v)<<7;
+			v = buffer[position++];
+		}
+		return accumulator|(v&0x7F);
 	}
 	
 	public final int readIntegerUnsignedOptional() {
@@ -365,31 +369,8 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerUnsigned() {
-		if (position>limit-6) {
-			if (position>=limit) {
-				fetch(1);
-			}
-			byte v = buffer[position++];
-			int accumulator;
-			if (v>=0) { //(v & 0x80)==0) {
-				accumulator = v<<7;
-			} else {
-				return (v&0x7F);
-			}
-			
-			if (position>=limit) {
-				fetch(1);
-			}
-			v = buffer[position++];
-
-		    while (v>=0) { //(v & 0x80)==0) {
-		    	accumulator = (accumulator|v)<<7;
-		    	if (position>=limit) {
-					fetch(1);
-				}
-		    	v = buffer[position++];
-		    }
-		    return accumulator|(v&0x7F);
+		if (position>limit-5) {//near the end so must do it the slow way?
+			return readIntegerUnsignedSlow();
 		}
 		byte v = buffer[position++];
 		int accumulator;
@@ -405,6 +386,33 @@ public final class PrimitiveReader {
 	    	v = buffer[position++];
 	    }
 	    return accumulator|(v&0x7F);
+	}
+
+	private int readIntegerUnsignedSlow() {
+		if (position>=limit) {
+			fetch(1);
+		}
+		byte v = buffer[position++];
+		int accumulator;
+		if (v>=0) { //(v & 0x80)==0) {
+			accumulator = v<<7;
+		} else {
+			return (v&0x7F);
+		}
+		
+		if (position>=limit) {
+			fetch(1);
+		}
+		v = buffer[position++];
+
+		while (v>=0) { //(v & 0x80)==0) {
+			accumulator = (accumulator|v)<<7;
+			if (position>=limit) {
+				fetch(1);
+			}
+			v = buffer[position++];
+		}
+		return accumulator|(v&0x7F);
 	}
 
 	public boolean isPMapOpen() {
