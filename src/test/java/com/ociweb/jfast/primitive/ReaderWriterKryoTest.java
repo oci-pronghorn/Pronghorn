@@ -582,7 +582,8 @@ public class ReaderWriterKryoTest {
 		
 		//////////////////////////////////
 		//////////////////////////////////
-
+        int tempInt = 0; //TODO: stop HotSpot from eliminating code, must add to all tests
+        
 		writeDuration = Float.MAX_VALUE;
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
@@ -609,7 +610,7 @@ public class ReaderWriterKryoTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readVarInt(true);
+					tempInt |= pr.readVarInt(true);
 					j++;
 				}
 			}
@@ -620,6 +621,7 @@ public class ReaderWriterKryoTest {
 		//////////////////////////////////
 		//////////////////////////////////
 
+        
 		writeDuration = Float.MAX_VALUE;
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
@@ -644,7 +646,7 @@ public class ReaderWriterKryoTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readVarInt(false);
+					tempInt |= pr.readVarInt(false);
 					j++;
 				}
 			}
@@ -655,6 +657,7 @@ public class ReaderWriterKryoTest {
 		//////////////////////////////////
 		//////////////////////////////////
 
+		
 		writeDuration = Float.MAX_VALUE;
 		readDuration = Float.MAX_VALUE;
 		cycles = testCycles;
@@ -680,7 +683,7 @@ public class ReaderWriterKryoTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readVarInt(true);
+					tempInt |= pr.readVarInt(true);
 					j++;
 				}
 			}

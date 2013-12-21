@@ -396,6 +396,9 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			}
 			staticWriter.closeGroup(groupToken);
 			staticWriter.flush();
+			
+			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
+			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			pr.reset();//for testing clear any data found in reader 

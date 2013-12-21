@@ -31,7 +31,7 @@ public class TextHeap {
 	//text allocation table
 	private final int[] tat;
 	//4 ints per text body.
-	//start index position.
+	//start index position (inclusive)
 	//stop index limit (exclusive)
 	//max prefix append
 	//max postfix append
@@ -51,6 +51,16 @@ public class TextHeap {
 			tat[i--]=idx;
 			tat[i]=idx;		
 		}	
+	}
+	
+	public void setNull(int idx) {
+		int offset = idx<<2;
+		tat[offset+1] = tat[offset]-1;
+	}
+	
+	public boolean isNull(int idx) {
+		int offset = idx<<2;
+		return tat[offset+1] == tat[offset]-1;
 	}
 	
 	//simple replacement of last value
@@ -326,6 +336,12 @@ public class TextHeap {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		int offset = idx<<2;
 		
+		if (tat[offset]>=tat[offset+1]) {
+			//null or empty string detected so change to simple set
+			set(idx,source,sourceIdx,sourceLen);
+			return;
+		}
+		
 		int stop = tat[offset+1]+(sourceLen-trimTail);
 		int limit = offset+4<tat.length ? tat[offset+4] : data.length;
 		
@@ -366,6 +382,12 @@ public class TextHeap {
 	public void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking before first because thats where we want to copy the head.
 		int offset = idx<<2;
+		
+		if (tat[offset]>=tat[offset+1]) {
+			//null or empty string detected so change to simple set
+			set(idx,source,sourceIdx,sourceLen);
+			return;
+		}
 		
 		int start = tat[offset]-(sourceLen-trimHead);
 		int limit = offset-3<0 ? 0 : tat[offset-3];
@@ -536,11 +558,7 @@ public class TextHeap {
 	
 	public int length(int idx) {
 		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int lim = tat[offset+1];
-		
-		return lim-pos;
+		return tat[offset+1] - tat[offset];
 	}
 
 	//convert single char that is not the simple case

@@ -768,11 +768,12 @@ public final class PrimitiveWriter {
 
 			//NOTE: can inc pos pos because it will not overflow.
 			long stackFrame = safetyStackPosPos[s];
-			if (0 != (buffer[(int)(POS_POS_MASK&stackFrame)] = (byte)pMapByteAccum)) {	
+			int idx = (int)stackFrame & POS_POS_MASK;
+			if (0 != (buffer[idx] = (byte)pMapByteAccum)) {	
 				//set the last known non zero bit so we can avoid scanning for it.
-				flushSkips[(int)(stackFrame>>32)] = (int)(stackFrame&POS_POS_MASK);
+				flushSkips[(int)(stackFrame>>32)] = idx;
 			}							
-			safetyStackPosPos[s] = (((int)pMapIdxWorking)<<POS_POS_SHIFT) | (stackFrame&POS_POS_MASK);
+			safetyStackPosPos[s] = (((long)pMapIdxWorking)<<POS_POS_SHIFT) | idx;
 
 		} 		
 		//NOTE: pos pos, new position storage so top bits are always unset and no need to set.

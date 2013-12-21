@@ -162,29 +162,23 @@ public final class PrimitiveReader {
 		}
 		//there are no zero length pmaps these are determined by the parent pmap
 		int start = position;
-		byte[] b = buffer;
-		int p = position;
-		
+		 
 		//scan for index of the stop bit.
-		int validation = pmapMaxSize;
-		do {			
-			if (--validation<0) {
-				throw new FASTException("Can not find end of PMAP in given max byte length of "+pmapMaxSize+".");
-			}
-		} while (b[p++]>=0);
+		do {
+		} while (buffer[position++]>=0);
+		
+		assert(position-start<=pmapMaxSize) : "Unable to find end of PMAP";
 		
 		//push the old index for resume
 		if (pmapIdx>0) {
 			pmapStack[pmapStackDepth++] = (byte)pmapIdx;
 		}
-		
-		position = p;				
+						
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
 		int j = position;
-		
 		while (--j>=start) {
-			pmapStack[pmapStackDepth++] = b[j];
+			pmapStack[pmapStackDepth++] = buffer[j];
 		}
 		bitBlock = pmapStack[pmapStackDepth-1];
 		
@@ -209,11 +203,11 @@ public final class PrimitiveReader {
 	}
 
 	private void resetToNextSeven() {
-		pmapIdx = 7;
 		//if we have not reached the end of the map dec to the next byte
 		if (bitBlock >= 0) {
 			pmapStackDepth--;
 			bitBlock = pmapStack[pmapStackDepth-1];
+			pmapIdx = 7;
 		} else {
 			//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
 			pmapIdx = -1;
@@ -222,6 +216,7 @@ public final class PrimitiveReader {
 	
 	//called at the end of each group
 	public final void popPMap() {
+	    //the first pmap need not restore any values!
 		if (pmapStackDepth>2) {
 			pmapStackDepth--;
 			pmapIdx = pmapStack[--pmapStackDepth];
