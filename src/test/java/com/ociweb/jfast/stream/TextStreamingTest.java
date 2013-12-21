@@ -32,7 +32,7 @@ public class TextStreamingTest extends BaseStreamingTest {
                    TypeMask.TextASCII,
                    TypeMask.TextASCIIOptional,
 				 };
-		tester(types,"ASCII");
+//		tester(types,"ASCII");
 	}
 	
 	@Test
@@ -41,7 +41,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 				  TypeMask.TextUTF8,
 				  TypeMask.TextUTF8Optional,
 				 };
-		tester(types,"UTF8");
+//		tester(types,"UTF8");
 	}
 	
 	private void tester(int[] types, String label) {

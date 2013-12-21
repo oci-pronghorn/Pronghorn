@@ -472,22 +472,22 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptByteArrayOptional(int token, byte[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			throw new UnsupportedOperationException();
+			
+		} else {
+			throw new UnsupportedOperationException();
+			
 		}
 	}
 
 	private void acceptByteArray(int token, byte[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			throw new UnsupportedOperationException();
+			
+		} else {
+			throw new UnsupportedOperationException();
+			
 		}
 	}
 
@@ -507,260 +507,369 @@ public final class FASTStaticWriter implements FASTWriter {
 
 
 	private void acceptByteBufferOptional(int token, ByteBuffer buffer) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			throw new UnsupportedOperationException();
+			
+		} else {
+			throw new UnsupportedOperationException();
+			
 		}
 	}
 
 	private void acceptByteBuffer(int token, ByteBuffer buffer) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				throw new UnsupportedOperationException();
-				//break;
-			default:
-				throw new UnsupportedOperationException();
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			throw new UnsupportedOperationException();
+			
+		} else {
+			throw new UnsupportedOperationException();
+			
 		}
 	}
 
 	@Override
 	public void write(int id, CharSequence value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.TextASCII: 
+		
+		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				//ascii
 				acceptCharSequenceASCII(token, value);
-				break;
-			case TypeMask.TextASCIIOptional:
-				acceptCharSequenceASCIIOptional(token, value);
-				break;
-			case TypeMask.TextUTF8: 
+			} else {
+				//utf8
 				acceptCharSequenceUTF8(token, value);
-				break;
-			case TypeMask.TextUTF8Optional:
+			}
+		} else {
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				//ascii optional
+				acceptCharSequenceASCIIOptional(token, value);
+			} else {
+				//utf8 optional
 				acceptCharSequenceUTF8Optional(token, value);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}
 		}
 	}
 	
 
 	private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(value.length()+1);
-				writer.writeTextUTF(value);
-				break;
-			case OperatorMask.Copy:
-				writerChar.writeUTF8CopyOptional(token,value);
-				break;
-			case OperatorMask.Default:
-				writerChar.writeUTF8DefaultOptional(token,value);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeUTF8DeltaOptional(token,value);
-				break;
-			case OperatorMask.Tail:
-				writerChar.writeUTF8TailOptional(token,value);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeIntegerUnsigned(value.length()+1);
+					writer.writeTextUTF(value);
+				} else {
+					//tail
+					writerChar.writeUTF8TailOptional(token,value);					
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					
+				} else {
+					//delta
+					writerChar.writeUTF8DeltaOptional(token,value);					
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
+				writerChar.writeUTF8CopyOptional(token,value);				
+			} else {
+				//default
+				writerChar.writeUTF8DefaultOptional(token,value);				
+			}
 		}
 	}
 
 	private void acceptCharSequenceUTF8(int token, CharSequence value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(value.length());
-				writer.writeTextUTF(value);
-				break;
-			case OperatorMask.Copy:
-				writerChar.writeUTF8Copy(token,value);
-				break;
-			case OperatorMask.Constant:
-				writerChar.writeUTF8Constant(token,value);
-				break;
-			case OperatorMask.Default:
-				writerChar.writeUTF8Default(token,value);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeUTF8Delta(token,value);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeUTF8Tail(token,value);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeIntegerUnsigned(value.length());
+					writer.writeTextUTF(value);
+				} else {
+					//tail
+					writerChar.writeUTF8Tail(token,value);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					writerChar.writeUTF8Constant(token,value);					
+				} else {
+					//delta
+					writerChar.writeUTF8Delta(token,value);					
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
+				writerChar.writeUTF8Copy(token,value);			
+			} else {
+				//default
+				writerChar.writeUTF8Default(token,value);				
+			}
 		}
+
 	}
 
 	private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeTextASCII(value);
-				break;
-			case OperatorMask.Copy:
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeTextASCII(value);
+				} else {
+					//tail
+					writerChar.writeASCIITailOptional(token,value);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					
+				} else {
+					//delta
+					writerChar.writeASCIIDeltaOptional(token,value);
+					
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeASCIICopyOptional(token,value);
-				break;
-			case OperatorMask.Default:
+				
+			} else {
+				//default
 				writerChar.writeASCIIDefaultOptional(token,value);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeASCIIDeltaOptional(token,value);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeASCIITailOptional(token,value);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+				
+			}
 		}
+
 	}
 
 	private void acceptCharSequenceASCII(int token, CharSequence value) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeTextASCII(value);
-				break;
-			case OperatorMask.Copy:
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeTextASCII(value);
+				} else {
+					//tail
+					writerChar.writeASCIITail(token,value);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					writerChar.writeASCIIConstant(token,value);
+				} else {
+					//delta
+					writerChar.writeASCIIDelta(token,value);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeASCIICopy(token,value);
-				break;
-			case OperatorMask.Constant:
-				writerChar.writeASCIIConstant(token,value);
-				break;
-			case OperatorMask.Default:
+			} else {
+				//default
 				writerChar.writeASCIIDefault(token,value);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeASCIIDelta(token,value);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeASCIITail(token,value);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+			}
 		}
+
 	}
 
 	@Override
 	public void write(int id, char[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.TextASCII: 
+		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				//ascii
 				acceptCharArrayASCII(token,value,offset,length);
-				break;
-			case TypeMask.TextASCIIOptional:
-				acceptCharArrayASCIIOptional(token,value,offset,length);
-				break;
-			case TypeMask.TextUTF8: 
+			} else {
+				//utf8
 				acceptCharArrayUTF8(token,value,offset,length);
-				break;
-			case TypeMask.TextUTF8Optional:
+			}
+		} else {
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+				//ascii optional
+				acceptCharArrayASCIIOptional(token,value,offset,length);
+			} else {
+				//utf8 optional
 				acceptCharArrayUTF8Optional(token,value,offset,length);
-				break;
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+			}
 		}
 	}
 
 
 
 	private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(length+1);
-				writer.writeTextUTF(value,offset,length);
-				break;
-			case OperatorMask.Copy:
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeIntegerUnsigned(length+1);
+					writer.writeTextUTF(value,offset,length);
+				} else {
+					//tail
+					writerChar.writeUTF8TailOptional(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					
+				} else {
+					//delta
+					writerChar.writeUTF8DeltaOptional(token, value, offset, length);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeUTF8CopyOptional(token, value, offset, length);
-				break;
-			case OperatorMask.Default:
+			} else {
+				//default
 				writerChar.writeUTF8DefaultOptional(token, value, offset, length);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeUTF8DeltaOptional(token, value, offset, length);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeUTF8TailOptional(token, value, offset, length);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+			}
 		}
+		
 	}
 
 	private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeIntegerUnsigned(length);
-				writer.writeTextUTF(value,offset,length);
-				break;
-			case OperatorMask.Copy:
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeIntegerUnsigned(length);
+					writer.writeTextUTF(value,offset,length);
+				} else {
+					//tail
+					writerChar.writeUTF8Tail(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					writerChar.writeUTF8Constant(token, value, offset, length);
+				} else {
+					//delta
+					writerChar.writeUTF8Delta(token, value, offset, length);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeUTF8Copy(token, value, offset, length);
-				break;
-			case OperatorMask.Constant:
-				writerChar.writeUTF8Constant(token, value, offset, length);
-				break;
-			case OperatorMask.Default:
+			} else {
+				//default
 				writerChar.writeUTF8Default(token, value, offset, length);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeUTF8Delta(token, value, offset, length);
-				break;
-			case OperatorMask.Tail:
-				writerChar.writeUTF8Tail(token, value, offset, length);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+			}
 		}
+
 	}
 
 	private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeTextASCII(value,offset,length);
-				break;
-			case OperatorMask.Copy:
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeTextASCII(value,offset,length);
+				} else {
+					//tail
+					writerChar.writeASCIITailOptional(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					
+				} else {
+					//delta
+					writerChar.writeASCIIDeltaOptional(token, value, offset, length);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeASCIICopyOptional(token, value, offset, length);
-				break;
-			case OperatorMask.Default:
+			} else {
+				//default
 				writerChar.writeASCIIDefaultOptional(token, value, offset, length);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeASCIIDeltaOptional(token, value, offset, length);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeASCIITailOptional(token, value, offset, length);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+			}
 		}
+
 	}
 
 	private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
-		switch ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER) {
-			case OperatorMask.None:
-				writer.writeTextASCII(value,offset,length);
-				break;
-			case OperatorMask.Copy:
+		
+		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+					//none
+					writer.writeTextASCII(value,offset,length);
+				} else {
+					//tail
+					writerChar.writeASCIITail(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+					//constant
+					writerChar.writeASCIIConstant(token, value, offset, length);
+				} else {
+					//delta
+					writerChar.writeASCIIDelta(token, value, offset, length);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+				//copy
 				writerChar.writeASCIICopy(token, value, offset, length);
-				break;
-			case OperatorMask.Constant:
-				writerChar.writeASCIIConstant(token, value, offset, length);
-				break;
-			case OperatorMask.Default:
+			} else {
+				//default
 				writerChar.writeASCIIDefault(token, value, offset, length);
-				break;
-			case OperatorMask.Delta:
-				writerChar.writeASCIIDelta(token, value, offset, length);
-				break;	
-			case OperatorMask.Tail:
-				writerChar.writeASCIITail(token, value, offset, length);
-				break;	
-			default:
-				throw new UnsupportedOperationException();
+			}
 		}
+		
 	}
 
 	@Override
