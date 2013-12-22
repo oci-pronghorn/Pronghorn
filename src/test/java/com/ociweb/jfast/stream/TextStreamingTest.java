@@ -218,7 +218,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
+		//TODO: this hack is not right
+		pw = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
 	}
 	
 	protected long totalRead() {

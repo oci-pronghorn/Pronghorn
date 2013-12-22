@@ -30,7 +30,9 @@ public class FASTInputByteBuffer implements FASTInput {
 		targetBuffer.put(byteBuffer);
 		byteBuffer.limit(temp);
 		
-		//new Exception("Finished reading everything from byte buffer. Remaining:"+byteBuffer.remaining()).printStackTrace();
+		
+//		System.err.println("Fill input:"+length+" bytes");
+//		new Exception("Finished reading everything from byte buffer. Remaining:"+byteBuffer.remaining()).printStackTrace();
 		
 		return length;
 	}

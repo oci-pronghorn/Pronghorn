@@ -23,7 +23,7 @@ public final class PrimitiveWriter {
     //TODO: the write to output is not implemented right it must send one giant block when possible
 	//TODO: we should have min and max block size? this may cover all cases.
 	
-    private static final int BLOCK_SIZE = 64;// in bytes
+    private static final int BLOCK_SIZE = 128;// in bytes
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
@@ -45,7 +45,7 @@ public final class PrimitiveWriter {
 	private int pMapByteAccum = 0;
 		
 	private long totalWritten;
-	private int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	private final int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
 	private int flushSkipsIdxLimit; //where we add the new one, end of the list
 	private int flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
 	
@@ -103,23 +103,16 @@ public final class PrimitiveWriter {
     
 	public int nextBlockSize() {
 		//return block size if the block is available
-		if (nextBlockSize > 0) {
+		if (nextBlockSize > 0 || position==limit) {
+			assert(nextBlockSize!=0 || position==limit) : "nextBlockSize must be zero of position is at limit";
 			return nextBlockSize;
 		}
 		//block was not available so build it
-		int flushTo = computeFlushToIndex();		
-		
-		if (flushTo==position) {
-			nextBlockSize = 0;
-			nextBlockOffset = -1; 
-			//no need to do any work.
-			return 0;
-		} else if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-			
+		//This check greatly helps None/Delta operations which do not use pmap.
+		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
 			//all the data we have lines up with the end of the skip limit			
 			//nothing to skip so flush the full block
-			
-			int avail = flushTo - (nextBlockOffset = position);
+			int avail = computeFlushToIndex() - (nextBlockOffset = position);
 			pendingPosition = position+(nextBlockSize = (avail >= BLOCK_SIZE) ? BLOCK_SIZE : avail);
 		} else {
 			buildNextBlockWithSkips();
@@ -140,7 +133,6 @@ public final class PrimitiveWriter {
 				}
 		 */
 		
-		final int endOfData = limit;
 		int sourceOffset = position;
 		int targetOffset = position;
 	    int reqLength = BLOCK_SIZE;	
@@ -148,15 +140,24 @@ public final class PrimitiveWriter {
 	    //do not change this value after this point we are committed to this location.
 	    nextBlockOffset = targetOffset;
 		
-		int sourceStop = flushSkips[flushSkipsIdxPos];
-				
-		int localLastValid = computeLocalLastValid(flushSkipsIdxLimit);
-		int flushRequest = sourceStop - sourceOffset;
+	    int localFlushSkipsIdxPos = flushSkipsIdxPos;
+	    
+		int sourceStop = flushSkips[localFlushSkipsIdxPos];
 		
+		//invariant for the loop
+		final int localLastValid = computeLocalLastValid(flushSkipsIdxLimit);
+		final int endOfData = limit;
+		final int finalStop = targetOffset+reqLength;
+
+		int flushRequest = sourceStop - sourceOffset;
+		int targetStop = targetOffset+flushRequest;
+		
+		
+		//this loop may have many more iterations than one might expect, ensure it only uses final and local values.
 		//flush in parts that avoid the skip pos
-		while (flushSkipsIdxPos < localLastValid && //we still have skips
-				sourceStop < endOfData &&            //skip stops before goal
-				flushRequest < reqLength             //keep accumulating
+		while (localFlushSkipsIdxPos < localLastValid && //stop if there are no more skip blocks
+				sourceStop < endOfData &&   //stop at the end of the data
+				targetStop <= finalStop     //stop at the end if the BLOCK
 				) { 
 			
 			//keep accumulating
@@ -164,30 +165,31 @@ public final class PrimitiveWriter {
 				//System.err.println(sourceOffset+" "+targetOffset+" "+flushRequest+" "+buffer.length);
 				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
 			}
-			//increment by byte written to build a contiguous block
-			targetOffset += flushRequest;
-			//decrement by bytes written to track how many more before block boundary.
-			reqLength -= flushRequest;
-
-			//finished flush up to skip so set positions to after skip
-
-			sourceOffset = flushSkips[++flushSkipsIdxPos]; //new position in second part of flush skips
-			sourceStop = flushSkips[++flushSkipsIdxPos]; //beginning of new skip.
-			flushRequest = sourceStop - sourceOffset;
+			sourceOffset = flushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
+			sourceStop = flushSkips[++localFlushSkipsIdxPos]; //beginning of new skip.
+			//stop becomes start so we can build a contiguous block
+			targetOffset = targetStop;
+			targetStop = targetOffset+(flushRequest = sourceStop - sourceOffset);
 
 		} 
+		
+		reqLength = finalStop-targetOffset; //remaining bytes required
+		flushSkipsIdxPos=localFlushSkipsIdxPos; //write back the local changes
+		
 		finishBuildingBlock(endOfData, sourceOffset, targetOffset, reqLength);
 	}
 
 	private void finishBuildingBlock(final int endOfData, int sourceOffset, int targetOffset, int reqLength) {
-		//reset to zero to save space if possible
-		if (flushSkipsIdxPos==flushSkipsIdxLimit) {
-			flushSkipsIdxPos=flushSkipsIdxLimit=0;
-		} 		
 		int flushRequest = endOfData - sourceOffset;		
 		if (flushRequest >= reqLength) {
 			finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
 		} else {
+			//not enough data to fill full block, we are out of data to push.
+			
+			//reset to zero to save space if possible
+			if (flushSkipsIdxPos==flushSkipsIdxLimit) {
+				flushSkipsIdxPos=flushSkipsIdxLimit=0;
+			} 		
 			//keep accumulating
 			if (sourceOffset!=targetOffset) {					
 				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
@@ -240,15 +242,13 @@ public final class PrimitiveWriter {
     }
     
     protected int computeFlushToIndex() {
-		int flushTo = limit;
 		if (safetyStackDepth>0) {
 			//only need to check first entry on stack the rest are larger values
-			int safetyLimit = (int)(safetyStackPosPos[0]&POS_POS_MASK)-1;//still modifying this position but previous is ready to go.
-			if (safetyLimit < flushTo) {
-				flushTo = safetyLimit;
-			}		
+			int safetyLimit = (((int)safetyStackPosPos[0])&POS_POS_MASK) -1;//still modifying this position but previous is ready to go.
+			return (safetyLimit < limit ? safetyLimit :limit);
+		} else {
+			return limit;
 		}
-		return flushTo;
 	}
 
 

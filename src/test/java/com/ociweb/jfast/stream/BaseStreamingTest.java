@@ -228,7 +228,11 @@ public abstract class BaseStreamingTest {
 			) {
 				
 		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
-		
+		    
+		    //TODO: need to pass these values in?
+		    dcr.setTextSize(32, 16);
+		    
+		    
 		    long byteCount=0;
 		
 				long maxOverhead = Long.MIN_VALUE;

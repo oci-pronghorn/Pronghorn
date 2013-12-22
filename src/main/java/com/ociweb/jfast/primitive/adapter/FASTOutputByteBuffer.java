@@ -24,16 +24,19 @@ public class FASTOutputByteBuffer implements FASTOutput {
 		int size = dataTransfer.nextBlockSize();
 
 		int total = 0;
-		int c = 0;
+	//	int c = 0;
+	//	StringBuilder temp = new StringBuilder();
 		while (size>0) {
+			//temp = temp.append(size).append(",");
+		//	c++;
+
 			byteBuffer.put(dataTransfer.rawBuffer(), 
 			     	       dataTransfer.nextOffset(), size);
 
 			size = dataTransfer.nextBlockSize();
 			total+=size;
-			c++;
 		}
-//		System.out.println("flush out :"+total+" in "+c+" parts");
+	//	System.out.println("flush out :"+total+" in "+c+" parts "+temp);
 		
 	}
 

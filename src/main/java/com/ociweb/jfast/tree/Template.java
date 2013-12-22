@@ -7,7 +7,7 @@ import javax.xml.stream.events.XMLEvent;
 
 public class Template extends Group {
 
-	//TODO: do not use strings instead use primitve fields to switch templates without GC.
+	//TODO: do not use strings instead use primitve fields to change templates without GC.
 	final String id;
 	final String name;
 	final String dictionary;

@@ -27,7 +27,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	//This is NOT the same as the other tests which measure the duration to produce 1 byte on the stream.
 	//--The ns/byte tests are an estimate of how much bandwidth can be saturated given the CPU available.
 	
-	static final int internalBufferSize = 512;
+	static final int internalBufferSize = 4096;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
 	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,fields,fields);

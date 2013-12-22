@@ -611,7 +611,7 @@ public class PrimitivePMAPTest {
     	try {
     		buffer.flip();
     		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
-    		PrimitiveReader pr = new PrimitiveReader(input);
+    		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
     		long start = System.nanoTime();
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];

@@ -46,6 +46,10 @@ public class DictionaryFactory {
 	private int byteInitCount;
 	private int[] byteInitIndex;
 	private byte[][] byteInitValue;
+		
+	private int singleTextSize = 0;
+	private int singleGapSize = 0;
+	
 	
 
 	
@@ -244,11 +248,14 @@ public class DictionaryFactory {
 		}
 		return array;
 	}
+
+	public void setTextSize(int size, int gap) {
+		this.singleTextSize = size;
+		this.singleGapSize = gap;
+	}
 	
 	public TextHeap charDictionary() {
 		
-		int singleTextSize = 0; //TODO: how is this set?
-		int singleGapSize = 0; //TODO: how is this set?
 		
 		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount));
 		
