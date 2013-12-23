@@ -470,19 +470,20 @@ public final class PrimitiveReader {
 			}
 			//nothing to change in the target
 			position+=2;
+			return 0; //zero length string
 		} else {	
 			//must use count because the base of position will be in motion.
 			//however the position can not be incremented or fetch may drop data.
-
+            int idx = offset;
 			while (buffer[position]>=0) {
-				target[offset++]=(char)(buffer[position++]);
+				target[idx++]=(char)(buffer[position++]);
 				if (position>=limit) {
 					fetch(1); //CAUTION: may change value of position
 				}
 			}
-			target[offset++]=(char)(0x7F & buffer[position++]);
+			target[idx++]=(char)(0x7F & buffer[position++]);
+			return idx-offset;//length of string
 		}
-		return offset;//TODO: return new position instead of length? confirm this is right?
 	}
 
 	

@@ -6,20 +6,46 @@ public class FieldReaderChar {
 
 	private final PrimitiveReader reader;
 	private final TextHeap charDictionary;
+	private final int INSTANCE_MASK;
 	
 	public FieldReaderChar(PrimitiveReader reader, TextHeap charDictionary) {
+		
+		assert(charDictionary.textCount()<TokenBuilder.MAX_INSTANCE);
+		assert(isPowerOfTwo(charDictionary.textCount()));
+		
+		this.INSTANCE_MASK = (charDictionary.textCount()-1);
+		
 		this.reader = reader;
 		this.charDictionary = charDictionary;
 	}
+	
+	static boolean isPowerOfTwo(int length) {
+		
+		while (0==(length&1)) {
+			length = length>>1;
+		}
+		return length==1;
+	}
 
 	public int readASCIICopy(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
+		
+		if (reader.popPMapBit()==0) {
+			return charDictionary.get(token & INSTANCE_MASK, target, offset);
+		} else {
+			//don't know length so must write it someplace to find out.
+			int length = reader.readTextASCII(target,offset); 
+			//update dictionary requires copy. TODO: re-evaluate this when the rest of the methods are done.
+			charDictionary.set(token & INSTANCE_MASK, target,offset,length);
+			return length;
+		}
 	}
 
 	public int readASCIIConstant(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
+		if (reader.popPMapBit()==0) {
+			return charDictionary.get(token & INSTANCE_MASK, target, offset);
+		} else {
+			return reader.readTextASCII(target,offset); 
+		}
 	}
 
 	public int readASCIIDefault(int token, char[] target, int offset) {
@@ -58,13 +84,30 @@ public class FieldReaderChar {
 	}
 
 	public int readUTF8Copy(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
+		
+		if (reader.popPMapBit()==0) {
+			return charDictionary.get(token & INSTANCE_MASK, target, offset);
+		} else {
+			//don't know length so must write it someplace to find out.
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(target, offset, length);
+			//update dictionary requires copy. TODO: re-evaluate this when the rest of the methods are done.
+			charDictionary.set(token & INSTANCE_MASK, target, offset, length);
+			return length;
+		}
+		
 	}
 
 	public int readUTF8Constant(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
+		
+		if (reader.popPMapBit()==0) {
+			return charDictionary.get(token & INSTANCE_MASK, target, offset);
+		} else {
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(target, offset, length);
+			return length;
+		}
+		
 	}
 
 	public int readUTF8Default(int token, char[] target, int offset) {

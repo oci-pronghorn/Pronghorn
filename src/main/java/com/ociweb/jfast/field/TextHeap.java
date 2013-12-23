@@ -431,13 +431,14 @@ public class TextHeap {
 	//////////
 	//////////
 	
-	public void get(int idx, char[] target, int targetIdx) {
+	public int get(int idx, char[] target, int targetIdx) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
 		int len = tat[offset+1]-pos;
 		
 		System.arraycopy(data, pos, target, targetIdx, len);
+		return len;
 	}
 	
 	public void get(int idx, Appendable target) {

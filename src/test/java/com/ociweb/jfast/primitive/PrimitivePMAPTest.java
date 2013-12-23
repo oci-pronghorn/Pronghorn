@@ -527,8 +527,9 @@ public class PrimitivePMAPTest {
 		    }
 		    //pw.popPMap();
 		    //single flush, this is the bandwidth optimized approach.
-		    pw.flush(); //as of last test this only consumes 14% of the time
 
+		    //NOTE: flush now takes 22% of pmap test
+		    pw.flush(); //as of last test this only consumes 14% of the time
 		    long duration = (System.nanoTime()-start);
 		    
 		    if (duration > overhead) {

@@ -23,7 +23,7 @@ public final class PrimitiveWriter {
     //TODO: the write to output is not implemented right it must send one giant block when possible
 	//TODO: we should have min and max block size? this may cover all cases.
 	
-    private static final int BLOCK_SIZE = 128;// in bytes
+    private static final int BLOCK_SIZE = 4096;//128;// in bytes
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
@@ -161,8 +161,7 @@ public final class PrimitiveWriter {
 				) { 
 			
 			//keep accumulating
-			if (targetOffset != sourceOffset) {		
-				//System.err.println(sourceOffset+" "+targetOffset+" "+flushRequest+" "+buffer.length);
+			if (targetOffset != sourceOffset) {	
 				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
 			}
 			sourceOffset = flushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
@@ -778,9 +777,7 @@ public final class PrimitiveWriter {
 		} 		
 		//NOTE: pos pos, new position storage so top bits are always unset and no need to set.
 
-		safetyStackPosPos[safetyStackDepth] =   ( ((long)flushSkipsIdxLimit) <<32) | limit;
-
-		safetyStackDepth++;
+		safetyStackPosPos[safetyStackDepth++] =   ( ((long)flushSkipsIdxLimit) <<32) | limit;
 		flushSkips[flushSkipsIdxLimit++] = limit+1;//default minimum size for present PMap
 		flushSkips[flushSkipsIdxLimit++] = (limit += maxBytes);//this will remain as the fixed limit					
 		
@@ -826,7 +823,8 @@ public final class PrimitiveWriter {
 		
 		//ensure low-latency for groups, or 
     	//if we can reset the safety stack and we have one block ready go ahead and flush
-    	if (minimizeLatency!=0 || (0==safetyStackDepth && (limit-position)>(BLOCK_SIZE_LAZY) )) { //one block and a bit left over so we need bigger.
+    	if (minimizeLatency!=0 ||
+    		(0==safetyStackDepth && (limit-position)>(BLOCK_SIZE_LAZY) )) { //one block and a bit left over so we need bigger.
     		output.flush();
     	}
     	
