@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
+import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;

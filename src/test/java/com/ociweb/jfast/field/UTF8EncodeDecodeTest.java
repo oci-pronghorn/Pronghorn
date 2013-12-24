@@ -1,4 +1,4 @@
-package com.ociweb.jfast;
+package com.ociweb.jfast.field;
 
 import static org.junit.Assert.assertTrue;
 

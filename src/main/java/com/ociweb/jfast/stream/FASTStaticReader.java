@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.FieldReaderDecimal;

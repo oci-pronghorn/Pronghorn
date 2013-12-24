@@ -1,6 +1,6 @@
 package com.ociweb.jfast.context;
 
-import com.ociweb.jfast.stream.DictionaryFactory;
+import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.stream.FASTStaticReader;
 import com.ociweb.jfast.stream.FASTStaticWriter;
 

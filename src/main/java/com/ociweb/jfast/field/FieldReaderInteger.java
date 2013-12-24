@@ -1,7 +1,6 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.stream.DictionaryFactory;
 
 public class FieldReaderInteger {
 

@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertTrue;
 
+import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {

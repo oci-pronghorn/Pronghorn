@@ -1,7 +1,6 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.stream.DictionaryFactory;
 
 public final class FieldWriterLong {
 	

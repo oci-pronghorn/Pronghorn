@@ -37,7 +37,7 @@ public class TextHeap {
 	//max postfix append
 	
 	
-	public TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
+	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
 		gapCount = fixedTextItemCount+1;
 		data = new char[(singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount)];
 		tat = new int[fixedTextItemCount<<2];
@@ -53,7 +53,7 @@ public class TextHeap {
 		}	
 	}
 	
-	public void setNull(int idx) {
+	void setNull(int idx) {
 		int offset = idx<<2;
 		tat[offset+1] = tat[offset]-1;
 	}
@@ -68,7 +68,7 @@ public class TextHeap {
 	//between the one in front and the one behind.
 	//if this is large it may need to move surrounding text and 
 	//may throw if there is no more room in the heap.
-	public void set(int idx, char[] source, int sourceIdx, int sourceLen) {
+	void set(int idx, char[] source, int sourceIdx, int sourceLen) {
 		
 		int offset = idx<<2;
 		
@@ -90,7 +90,7 @@ public class TextHeap {
 		}
 	}
 
-	public void set(int idx, CharSequence charSequence) {
+	void set(int idx, CharSequence charSequence) {
 		
 		int offset = idx<<2;
 		
@@ -332,7 +332,7 @@ public class TextHeap {
 	//append chars on to the end of the text after applying trim
 	//may need to move existing text or following texts
 	//if there is no room after moving everything throws
-	public void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
+	void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		int offset = idx<<2;
 		
@@ -379,7 +379,7 @@ public class TextHeap {
 	//append chars on to the front of the text after applying trim
 	//may need to move existing text or previous texts
 	//if there is no room after moving everything throws
-	public void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
+	void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking before first because thats where we want to copy the head.
 		int offset = idx<<2;
 		
@@ -563,7 +563,7 @@ public class TextHeap {
 	}
 
 	//convert single char that is not the simple case
-	public static int decodeUTF8(byte[] source, int offset, char[] target, int targetIdx) {
+	private static int decodeUTF8(byte[] source, int offset, char[] target, int targetIdx) {
 	
 		byte b = source[offset-1];
 	    int result;
@@ -630,7 +630,7 @@ public class TextHeap {
 	}
 
 	//convert to full char array from byte array
-	public static void decodeUTF8(byte[] source, int offset, char[] target, int charTarget, int charCount) {
+	static void decodeUTF8(byte[] source, int offset, char[] target, int charTarget, int charCount) {
 		while (--charCount>=0) {
 			byte b = source[offset++];
 			if (b>=0) {
@@ -644,7 +644,7 @@ public class TextHeap {
 	}
 
 	//convert to full byte array from char array
-	public static void encodeUTF8(char[] source, int sourceOffset, int charCount, byte[] target, int targetOffset) {
+	static void encodeUTF8(char[] source, int sourceOffset, int charCount, byte[] target, int targetOffset) {
 		while (--charCount>=0) {
 			int c = source[sourceOffset++];
 			

@@ -1,6 +1,5 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.field.TextHeap;
 
 
 /**
