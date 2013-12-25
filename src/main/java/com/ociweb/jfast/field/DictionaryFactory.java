@@ -183,6 +183,19 @@ public class DictionaryFactory {
 		
 	}	
 	
+	private char[] ZERO_LENGTH_CHARS = new char[0];
+	
+	public char[] getInitChars(int idx) {
+		int i = charInitCount;
+		while (--i>=0) {
+			if (idx == charInitIndex[i]) {
+				return charInitValue[i];
+			}
+		}
+		return ZERO_LENGTH_CHARS; 
+	}
+	
+	
 	public void addInit(int idx, byte[] value) {
 		
 		byteInitIndex[byteInitCount] = idx;

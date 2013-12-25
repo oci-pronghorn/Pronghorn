@@ -431,6 +431,11 @@ public class TextHeap {
 	//////////
 	//////////
 	
+
+	public char getChar(int idx, int index) {
+		return data[tat[idx<<2]];
+	}
+	
 	public int get(int idx, char[] target, int targetIdx) {
 		int offset = idx<<2;
 		
@@ -686,4 +691,5 @@ public class TextHeap {
 			}
 		}		
 	}
+
 }
