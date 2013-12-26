@@ -419,7 +419,6 @@ public final class PrimitiveReader {
 			fetch(2);
 		}
 		
-		//can read maxLength with no worry
 		byte v = buffer[position];
 		
 		if (0 == v) {
@@ -460,7 +459,6 @@ public final class PrimitiveReader {
 			fetch(2);
 		}
 		
-		//can read maxLength with no worry
 		byte v = buffer[position];
 		
 		if (0 == v) {
@@ -486,7 +484,14 @@ public final class PrimitiveReader {
 		}
 	}
 
-	
+	//keep calling while byte is >=0
+	public byte readTextASCIIByte() {
+		if (position>=limit) {
+			fetch(1); //CAUTION: may change value of position
+		}
+		return buffer[position++];
+	}
+		
 	//TODO: if this does not perform well after in-line remove the interface and return to concrete
 	public void readTextUTF8(int charCount, Appendable target) {
 		while (--charCount>=0) {

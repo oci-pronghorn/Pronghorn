@@ -27,17 +27,42 @@ public class FieldReaderChar {
 		return length==1;
 	}
 
-	public int readASCIICopy(int token, char[] target, int offset) {
+	public void readASCIICopy(int token, TextDelegate delegate) {
+		int idx = token & INSTANCE_MASK;
 		
-		if (reader.popPMapBit()==0) {
-			return charDictionary.get(token & INSTANCE_MASK, target, offset);
-		} else {
-			//don't know length so must write it someplace to find out.
-			int length = reader.readTextASCII(target,offset); 
-			//update dictionary requires copy. TODO: re-evaluate this when the rest of the methods are done.
-			charDictionary.set(token & INSTANCE_MASK, target,offset,length);
-			return length;
+		if (reader.popPMapBit()!=0) {
+			charDictionary.setZeroLength(idx);
+			byte val = reader.readTextASCIIByte();
+			while (val>=0) {
+				charDictionary.appendTail(idx, (char)val);
+				val = reader.readTextASCIIByte();
+			}
+			//val is last byte
+			if (0x80!=val) {
+				charDictionary.appendTail(idx, (char)(0x7F & val));
+			}
 		}
+		delegate.setValue(idx);		
+	}
+	
+	public int readASCIICopy(int token, char[] target, int offset) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()!=0) {
+			charDictionary.setZeroLength(idx);
+			byte val = reader.readTextASCIIByte();
+			while (val>=0) {
+				charDictionary.appendTail(idx, (char)val);
+				val = reader.readTextASCIIByte();
+			}
+			//val is last byte
+			if (0x80!=val) {
+				charDictionary.appendTail(idx, (char)(0x7F & val));
+			}
+		}
+		
+		return charDictionary.get(idx, target, offset);
+		
 	}
 
 	public int readASCIIConstant(int token, char[] target, int offset) {

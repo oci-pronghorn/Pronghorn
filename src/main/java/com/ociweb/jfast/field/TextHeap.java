@@ -53,6 +53,17 @@ public class TextHeap {
 		}	
 	}
 	
+	//Caution: this method will create a new String instance
+	public CharSequence getSub(int idx, int start, int end) {
+		int offset = idx<<2;
+		return new String(data,tat[offset]+start,Math.min(tat[offset+1], tat[offset]+end ));
+	}
+	
+	void setZeroLength(int idx) {
+		int offset = idx<<2;
+		tat[offset+1] = tat[offset];
+	}
+	
 	void setNull(int idx) {
 		int offset = idx<<2;
 		tat[offset+1] = tat[offset]-1;
@@ -328,7 +339,38 @@ public class TextHeap {
 		
 	}
 
-
+	void appendTail(int idx, char value) {
+		//if not room make room checking after first because thats where we want to copy the tail.
+		int offset = idx<<2;
+		
+		if (tat[offset]>tat[offset+1]) {
+			//null or empty string detected so change to simple set
+			tat[offset+1]=tat[offset];
+		}
+				
+		int stop = tat[offset+1]+1;
+		int limit = offset+4<tat.length ? tat[offset+4] : data.length;
+		
+		if (stop>=limit) {
+			int floor = offset-3>=0 ? tat[offset-3] : 0;
+			int space = limit- floor;
+			int need = stop - tat[offset];
+			
+			if (need>space) {
+				makeRoom(offset, false, need);			
+			}
+			//we have some space so just shift the existing data.
+			int len = tat[offset+1]-tat[offset];
+			System.arraycopy(data, tat[offset], data, floor, len);
+			tat[offset] = floor;
+			tat[offset+1] = floor+len;
+		}
+	
+		//everything is now ready to trim and copy.
+		data[tat[offset+1]++] = value;
+	}
+	
+	
 	//append chars on to the end of the text after applying trim
 	//may need to move existing text or following texts
 	//if there is no room after moving everything throws
@@ -691,5 +733,7 @@ public class TextHeap {
 			}
 		}		
 	}
+
+
 
 }

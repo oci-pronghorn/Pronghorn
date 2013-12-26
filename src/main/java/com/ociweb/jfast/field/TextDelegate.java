@@ -15,13 +15,11 @@ import com.ociweb.jfast.error.FASTException;
  */
 public class TextDelegate implements CharSequence {
 
-	final int idx;
 	final TextHeap heap;
 	final char[] optionalConstant;
 	int choice;
 	
-	TextDelegate(int idx, TextHeap heap, char[] constant) {
-		this.idx = idx;
+	TextDelegate(TextHeap heap, char[] constant) {
 		this.heap = heap;
 		this.optionalConstant = constant;
 	}
@@ -53,13 +51,7 @@ public class TextDelegate implements CharSequence {
 			}
 			return true;
 		} else {
-			if (choice>0) {
-				//USE A SELECTED TEXT FROM THE HEAP
-				return heap.equals(choice-1,value);
-			} else {
-				//USE THE FINAL TEXT INDEX
-				return heap.equals(idx, value);
-			}
+			return heap.equals(choice, value);
 		}
 	}
 	
@@ -78,18 +70,12 @@ public class TextDelegate implements CharSequence {
 			}
 			return true;
 		} else {
-			if (choice>0) {
-				//USE A SELECTED TEXT FROM THE HEAP
-				return heap.equals(choice-1,value, valueIdx, valueLength);
-			} else {
-				//USE THE FINAL TEXT INDEX
-				return heap.equals(idx, value, valueIdx, valueLength);
-			}
+			return heap.equals(choice,value, valueIdx, valueLength);
 		}
 	}
 	
 	
-	public void get(Appendable target) {
+	public void copyTo(Appendable target) {
 		if (choice<0) {
 			//USE THE CONSTANT VALUE
 			int len = optionalConstant.length;
@@ -102,17 +88,11 @@ public class TextDelegate implements CharSequence {
 				}
 			}
 		} else {
-			if (choice>0) {
-				//USE A SELECTED TEXT FROM THE HEAP
-				heap.get(choice-1,target);
-			} else {
-				//USE THE FINAL TEXT INDEX
-				heap.get(idx, target);
-			}
+			heap.get(choice,target);
 		}
 	}
 	
-	public int get(char[] target, int targetIdx) {
+	public int copyTo(char[] target, int targetIdx) {
 		if (choice<0) {
 			//USE THE CONSTANT VALUE
 			int len = optionalConstant.length;
@@ -122,13 +102,7 @@ public class TextDelegate implements CharSequence {
 			}
 			return optionalConstant.length;
 		} else {
-			if (choice>0) {
-				//USE A SELECTED TEXT FROM THE HEAP
-				return heap.get(choice-1,target,targetIdx);
-			} else {
-				//USE THE FINAL TEXT INDEX
-				return heap.get(idx, target,targetIdx);
-			}
+			return heap.get(choice,target,targetIdx);
 		}
 	}
 
@@ -137,11 +111,7 @@ public class TextDelegate implements CharSequence {
 		if (choice<0) {
 			return optionalConstant.length;
 		} else {
-			if (choice>0) {
-				return heap.length(choice-1);
-			} else {
-				return heap.length(idx);
-			}
+			return heap.length(choice);
 		}
 	}
 
@@ -150,11 +120,7 @@ public class TextDelegate implements CharSequence {
 		if (choice<0) {
 			return optionalConstant[index];
 		} else {
-			if (choice>0) {
-				return heap.getChar(choice-1,index);
-			} else {
-				return heap.getChar(idx, index);
-			}
+			return heap.getChar(choice,index);
 		}
 	}
 
@@ -163,18 +129,9 @@ public class TextDelegate implements CharSequence {
 		//One of the few methods that will create a new object, use with care!
 		//
 		if (choice<0) {
-			
 			return new String(optionalConstant,start,end);
-
 		} else {
-			char[] sub = new char[end-start];
-			if (choice>0) {
-				
-		//TODO:		heap.getSub(choice-1,sub,start,end);
-			} else {
-		//TODO:		heap.getSub(idx,sub,start,end);
-			}
-			return new String(sub);
+			return heap.getSub(choice,start,end);
 		}
 	}
 	
