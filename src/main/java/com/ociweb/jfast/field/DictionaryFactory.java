@@ -33,6 +33,7 @@ public class DictionaryFactory {
 	private int charInitCount;	
 	private int[] charInitIndex;
 	private char[][] charInitValue;
+	private int charInitTotalLength;
 	
 	private int decimalExponentInitCount;
 	private int[] decimalExponentInitIndex;
@@ -171,6 +172,7 @@ public class DictionaryFactory {
 		
 		charInitIndex[charInitCount] = idx;
 		charInitValue[charInitCount] = value;
+		charInitTotalLength+=value.length;
 		if (++charInitCount>=charInitValue.length) {
 			int newLength = charInitValue.length+INIT_GROW_STEP;
 			int[] temp1 = new int[newLength];
@@ -269,12 +271,15 @@ public class DictionaryFactory {
 	public TextHeap charDictionary() {
 		
 		
-		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount));
+		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount),
+				                     charInitTotalLength, charInitIndex, charInitValue);
 		
-		int i = charInitCount;
-		while (--i>=0) {
-			heap.set(charInitIndex[i], charInitValue[i], 0, charInitValue[i].length);
-		}
+		
+		
+
+		
+		heap.reset();
+		
 		return heap;
 	}
 	

@@ -5,6 +5,9 @@ import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
 
+//TODO: return the idx for the new text which may point to the init
+//TODO: add init text
+
 
 /**
  * Manage all the text (char sequences) for all the fields.
@@ -25,6 +28,9 @@ public class TextHeap {
 	private final int gapCount;
 	private final char[] data;
 	
+	private final int[] initTat;
+	private final char[] initBuffer;
+	
 	//remain true unless memory gets low and it has to give up any margin
 	private boolean preserveWorkspace = true;
 	
@@ -38,9 +44,17 @@ public class TextHeap {
 	
 	
 	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
+		this(singleTextSize,singleGapSize,fixedTextItemCount,0,new int[0],new char[0][]);
+	}
+	
+	
+	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
+			int charInitTotalLength, int[] charInitIndex, char[][] charInitValue) {
+		
 		gapCount = fixedTextItemCount+1;
 		data = new char[(singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount)];
 		tat = new int[fixedTextItemCount<<2];
+		initTat = new int[fixedTextItemCount<<1];
 		
 		int i = tat.length;
 		int j = data.length+(singleTextSize>>1);
@@ -51,6 +65,28 @@ public class TextHeap {
 			tat[i--]=idx;
 			tat[i]=idx;		
 		}	
+		
+
+		initBuffer= new char[charInitTotalLength];
+		
+		int stopIdx = charInitTotalLength;
+		int startIdx = stopIdx;
+		
+		i = charInitTotalLength;
+		while (--i>=0) {
+			startIdx -= charInitValue[i].length;			
+			System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, charInitValue[i].length);
+			
+			int offset = i<<1;
+			
+			initTat[offset] = startIdx;
+			initTat[offset+1] = stopIdx;
+			//TODO: set start and stop for this index.
+			//heap.setInitialValue(charInitIndex[i], startIdx, stopIdx, charInitValue[i]); 
+						
+			stopIdx = startIdx;
+		}	
+		
 	}
 	
 	//Caution: this method will create a new String instance
@@ -732,6 +768,12 @@ public class TextHeap {
 				target[targetOffset++] = (byte)(0x80 |((c)   &0x3F));
 			}
 		}		
+	}
+
+
+	public void reset() {
+		// TODO Copy all the init values over to the text data array!
+		
 	}
 
 
