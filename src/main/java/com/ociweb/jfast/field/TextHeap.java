@@ -33,6 +33,7 @@ public class TextHeap {
 	
 	//remain true unless memory gets low and it has to give up any margin
 	private boolean preserveWorkspace = true;
+	private final int fixedTextItemCount;
 	
 	//text allocation table
 	private final int[] tat;
@@ -51,10 +52,13 @@ public class TextHeap {
 	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int charInitTotalLength, int[] charInitIndex, char[][] charInitValue) {
 		
+		this.fixedTextItemCount = fixedTextItemCount;
+		
 		gapCount = fixedTextItemCount+1;
 		data = new char[(singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount)];
 		tat = new int[fixedTextItemCount<<2];
 		initTat = new int[fixedTextItemCount<<1];
+		
 		
 		int i = tat.length;
 		int j = data.length+(singleTextSize>>1);
@@ -72,22 +76,37 @@ public class TextHeap {
 		int stopIdx = charInitTotalLength;
 		int startIdx = stopIdx;
 		
-		i = charInitTotalLength;
+		i = fixedTextItemCount;
 		while (--i>=0) {
 			startIdx -= charInitValue[i].length;			
 			System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, charInitValue[i].length);
 			
 			int offset = i<<1;
 			
+			//will be zero zero for values without constants.
 			initTat[offset] = startIdx;
 			initTat[offset+1] = stopIdx;
-			//TODO: set start and stop for this index.
-			//heap.setInitialValue(charInitIndex[i], startIdx, stopIdx, charInitValue[i]); 
-						
+									
 			stopIdx = startIdx;
 		}	
 		
 	}
+	
+
+	public void reset() {
+		// TODO Copy all the init values over to the text data array!
+		int i = fixedTextItemCount;
+		while (--i>=0) {
+			int a = i<<2;
+			int b = i<<1;
+			
+			tat[a]   = initTat[b];
+			tat[a+1] = initTat[b+1];
+			
+			
+		}
+	}
+	
 	
 	//Caution: this method will create a new String instance
 	public CharSequence getSub(int idx, int start, int end) {
@@ -771,10 +790,6 @@ public class TextHeap {
 	}
 
 
-	public void reset() {
-		// TODO Copy all the init values over to the text data array!
-		
-	}
 
 
 
