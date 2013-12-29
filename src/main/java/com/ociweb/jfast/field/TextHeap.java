@@ -5,10 +5,6 @@ import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
 
-//TODO: return the idx for the new text which may point to the init
-//TODO: add init text
-
-
 /**
  * Manage all the text (char sequences) for all the fields.
  * * Must maintain a minimum count of pointers to reduce GC overhead.
@@ -27,13 +23,14 @@ public class TextHeap {
 	
 	private final int gapCount;
 	private final char[] data;
+	private final int dataLength;
 	
 	private final int[] initTat;
 	private final char[] initBuffer;
 	
 	//remain true unless memory gets low and it has to give up any margin
 	private boolean preserveWorkspace = true;
-	private final int fixedTextItemCount;
+	private final int textItemCount;
 	
 	//text allocation table
 	private final int[] tat;
@@ -52,16 +49,17 @@ public class TextHeap {
 	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int charInitTotalLength, int[] charInitIndex, char[][] charInitValue) {
 		
-		this.fixedTextItemCount = fixedTextItemCount;
+		textItemCount = fixedTextItemCount;
 		
 		gapCount = fixedTextItemCount+1;
-		data = new char[(singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount)];
+		dataLength = (singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount);
+		data = new char[dataLength];
 		tat = new int[fixedTextItemCount<<2];
 		initTat = new int[fixedTextItemCount<<1];
 		
 		
 		int i = tat.length;
-		int j = data.length+(singleTextSize>>1);
+		int j = dataLength+(singleTextSize>>1);
 		while (--i>=0) {
 			int idx = (j-=(singleTextSize+singleGapSize));
 			i--;
@@ -71,38 +69,47 @@ public class TextHeap {
 		}	
 		
 
-		initBuffer= new char[charInitTotalLength];
-		
-		int stopIdx = charInitTotalLength;
-		int startIdx = stopIdx;
-		
-		i = fixedTextItemCount;
-		while (--i>=0) {
-			startIdx -= charInitValue[i].length;			
-			System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, charInitValue[i].length);
+		if (null==charInitValue || charInitValue.length==0) {
+			initBuffer = null;
+		} else {
+			initBuffer= new char[charInitTotalLength];
 			
-			int offset = i<<1;
+			int stopIdx = charInitTotalLength;
+			int startIdx = stopIdx;
 			
-			//will be zero zero for values without constants.
-			initTat[offset] = startIdx;
-			initTat[offset+1] = stopIdx;
-									
-			stopIdx = startIdx;
-		}	
-		
+			i = charInitValue.length;
+			while (--i>=0) {
+				int len = null==charInitValue[i]?0:charInitValue[i].length;
+				
+				
+				startIdx -= len;	
+				if (len>0) {
+					System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, len);
+				}
+				//will be zero zero for values without constants.
+				int offset = i<<1;
+				initTat[offset] = startIdx;
+				initTat[offset+1] = stopIdx;
+										
+				stopIdx = startIdx;
+			}	
+		}
 	}
 	
 
 	public void reset() {
-		// TODO Copy all the init values over to the text data array!
-		int i = fixedTextItemCount;
+	
+		int i = textItemCount;
 		while (--i>=0) {
-			int a = i<<2;
+			
 			int b = i<<1;
-			
-			tat[a]   = initTat[b];
-			tat[a+1] = initTat[b+1];
-			
+						
+			if (initTat[b]==initTat[b+1]) {
+				setNull(i);				
+			} else {
+				set(i, initBuffer, initTat[b], initTat[b+1]-initTat[b]);
+				
+			}
 			
 		}
 	}
@@ -139,7 +146,7 @@ public class TextHeap {
 		int offset = idx<<2;
 		
 		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? data.length  : tat[offset+4];
+		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
 		int space = nextTextStart - prevTextStop;
 		int middleIdx = (space-sourceLen)>>1;
 		
@@ -147,10 +154,10 @@ public class TextHeap {
 			simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, middleIdx);
 		} else {
 			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(data.length>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
+			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
             
     		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= data.length ? data.length : tat[offset+4];
+    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
     		
             simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, ((nextTextStart-prevTextStop)-sourceLen)>>1);         
 		}
@@ -162,7 +169,7 @@ public class TextHeap {
 		
 		int sourceLen = charSequence.length();
 		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? data.length  : tat[offset+4];
+		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
 		int space = nextTextStart - prevTextStop;
 		int middleIdx = (space-sourceLen)>>1;
 		
@@ -170,10 +177,10 @@ public class TextHeap {
 			simpleReplace(charSequence, offset, prevTextStop, middleIdx);
 		} else {
 			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(data.length>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
+			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
             
     		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= data.length ? data.length : tat[offset+4];
+    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
     		
             simpleReplace(charSequence, offset, prevTextStop, ((nextTextStart-prevTextStop)-sourceLen)>>1);         
 		}
@@ -230,8 +237,8 @@ public class TextHeap {
 			target=0;
 		}
 		int limit = target+sourceLen;
-		if (limit>data.length) {
-			target = data.length-sourceLen;
+		if (limit>dataLength) {
+			target = dataLength-sourceLen;
 		}
 		
 		System.arraycopy(source, sourceIdx, data, target, sourceLen);
@@ -248,8 +255,8 @@ public class TextHeap {
 			target=0;
 		}
 		int limit = target+charSequence.length();
-		if (limit>data.length) {
-			target = data.length-charSequence.length();
+		if (limit>dataLength) {
+			target = dataLength-charSequence.length();
 		}
 		
 		int j = target+charSequence.length();
@@ -282,7 +289,7 @@ public class TextHeap {
 				
 				padding += leftBound;
 				padding += tat[offset+3];
-				int avgPadding = (data.length - (this.totalContent+this.totalWorkspace))/gapCount;
+				int avgPadding = (dataLength - (this.totalContent+this.totalWorkspace))/gapCount;
 				if (avgPadding<0) {
 					avgPadding = 0;
 				}
@@ -322,7 +329,7 @@ public class TextHeap {
 	private int compressAfter(int stopOffset, int totalDesired, boolean preserveWorkspace) {
 		//moving everything to the right until totalDesired
 		//start at zero and move everything needed if possible.
-		int dataIdx = data.length;
+		int dataIdx = dataLength;
 		int offset = tat.length-4;
 		while (offset>=stopOffset) {
 			
@@ -338,7 +345,7 @@ public class TextHeap {
 				
 				padding += leftBound;
 				padding += tat[offset+3];
-				int avgPadding = (data.length - (this.totalContent+this.totalWorkspace))/gapCount;
+				int avgPadding = (dataLength - (this.totalContent+this.totalWorkspace))/gapCount;
 				if (avgPadding<0) {
 					avgPadding = 0;
 				}
@@ -382,7 +389,7 @@ public class TextHeap {
 	private void inspectHeap(StringBuilder target) {
 		target.append('[');
 		int i=0;
-		while (i<data.length) {
+		while (i<dataLength) {
 			if (data[i]==0) {
 				target.append('_');
 			} else {
@@ -404,7 +411,7 @@ public class TextHeap {
 		}
 				
 		int stop = tat[offset+1]+1;
-		int limit = offset+4<tat.length ? tat[offset+4] : data.length;
+		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
 		
 		if (stop>=limit) {
 			int floor = offset-3>=0 ? tat[offset-3] : 0;
@@ -440,7 +447,7 @@ public class TextHeap {
 		}
 		
 		int stop = tat[offset+1]+(sourceLen-trimTail);
-		int limit = offset+4<tat.length ? tat[offset+4] : data.length;
+		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
 		
 		if (stop>=limit) {
 			int floor = offset-3>=0 ? tat[offset-3] : 0;
@@ -491,7 +498,7 @@ public class TextHeap {
 		
 		
 		if (start<limit) {
-			int stop = offset+4<tat.length ? tat[offset+4] : data.length;
+			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
 			int space = stop - limit;
 			int need = tat[offset+1]-start;
 			
@@ -534,27 +541,54 @@ public class TextHeap {
 	}
 	
 	public int get(int idx, char[] target, int targetIdx) {
-		int offset = idx<<2;
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			
+			int pos = initTat[offset];
+			int len = initTat[offset+1]-pos;
+			System.arraycopy(initBuffer, pos, target, targetIdx, len);
+			return len;
+			
+		} else {
 		
-		int pos = tat[offset];
-		int len = tat[offset+1]-pos;
-		
-		System.arraycopy(data, pos, target, targetIdx, len);
-		return len;
+			int offset = idx<<2;
+			
+			int pos = tat[offset];
+			int len = tat[offset+1]-pos;
+			
+			System.arraycopy(data, pos, target, targetIdx, len);
+			return len;
+		}
 	}
 	
 	public void get(int idx, Appendable target) {
-		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int lim = tat[offset+1];
-		
-		try {
-			while (pos<lim) {
-					target.append(data[pos++]);
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			
+			int pos = initTat[offset];
+			int lim = initTat[offset+1];
+			
+			try {
+				while (pos<lim) {
+						target.append(initBuffer[pos++]);
+				}
+			} catch (IOException e) {
+				throw new FASTException(e);
 			}
-		} catch (IOException e) {
-			throw new FASTException(e);
+			
+		} else {
+			int offset = idx<<2;
+			
+			int pos = tat[offset];
+			int lim = tat[offset+1];
+			
+			try {
+				while (pos<lim) {
+						target.append(data[pos++]);
+				}
+			} catch (IOException e) {
+				throw new FASTException(e);
+			}
 		}
 	}
 	
