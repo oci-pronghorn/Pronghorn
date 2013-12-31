@@ -1,6 +1,5 @@
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.stream.HomogeniousRecordWriteReadLongBenchmark;
 
 public class TokenBuilder {
 
@@ -64,6 +63,24 @@ public class TokenBuilder {
 		}
 	}
 	
+	public static boolean isInValidCombo(int type, int operator) {
+		boolean isOptional = 1==(type&0x01);
+		
+		if (OperatorMask.Constant==operator & isOptional) {
+			//constant operator can never be of type optional
+			return true;
+		}
+		
+		if (type>=0 && type<=TypeMask.LongSignedOptional) {
+			//integer/long types do not support tail
+			if (OperatorMask.Tail==operator) {
+				return true;
+			}
+		}		
+		
+		return false;
+	}
+	
 	public static String tokenToString(int token) {
 		
 		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
@@ -72,17 +89,17 @@ public class TokenBuilder {
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
 			int opp1 = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
 			int opp2 = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp1)) {
+			if (isInValidCombo(type,opp1)) {
 				throw new UnsupportedOperationException("bad token");
 			};
-			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp2)) {
+			if (isInValidCombo(type,opp2)) {
 				throw new UnsupportedOperationException("bad token");
 			};
 			return ("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(opp1)+" "+OperatorMask.toString(opp2)+" "+count);
 			
 		} else {
 			int opp  = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
-			if (HomogeniousRecordWriteReadLongBenchmark.isInValidCombo(type,opp)) {
+			if (isInValidCombo(type,opp)) {
 				throw new UnsupportedOperationException("bad token");
 			};
 			

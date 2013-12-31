@@ -114,24 +114,43 @@ public class FieldReaderChar {
 		
 		
 		
+		//charDictionary.appendTail(idx, trimTail, source, sourceIdx, sourceLen);
+		
 		return 0;
 	}
 
 	public int readASCIICopyOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		
-		
-		
-		return 0;
+		if (reader.popPMapBit()!=0) {
+			charDictionary.setZeroLength(idx);
+			byte val = reader.readTextASCIIByte();
+			while (val>=0) {
+				charDictionary.appendTail(idx, (char)val);
+				val = reader.readTextASCIIByte();
+			}
+			//val is last byte
+			if (0x80!=val) {
+				charDictionary.appendTail(idx, (char)(0x7F & val));
+			}
+		}
+		return idx;
 	}
 
 	public int readASCIIDefaultOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		
-		
-		return 0;
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
 	}
 
 	public int readASCIIDeltaOptional(int token) {
@@ -172,9 +191,17 @@ public class FieldReaderChar {
 	public int readUTF8Default(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		
-		
-		return 0;
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
 	}
 
 	public int readUTF8Delta(int token) {
@@ -196,17 +223,32 @@ public class FieldReaderChar {
 	public int readUTF8CopyOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
+		if (reader.popPMapBit()!=0) {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+			
+		}
 		
-		
-		return 0;
+		return idx;
 	}
 
 	public int readUTF8DefaultOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		
-		
-		return 0;
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
 	}
 
 	public int readUTF8DeltaOptional(int token) {
@@ -227,17 +269,30 @@ public class FieldReaderChar {
 	}
 
 	public int readTextASCII(int token) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
+		
+		
+		return 0;
+	}
+	
+	public int readTextASCIIOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
 		return 0;
 	}
 
 	public int readTextUTF8(int token) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
+		
+		
 		return 0;
 	}
 
 	public int readTextUTF8Optional(int token) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
+		
+		
 		return 0;
 	}
 

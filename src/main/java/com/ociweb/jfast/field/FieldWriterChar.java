@@ -323,15 +323,13 @@ public class FieldWriterChar {
 		if (headCount>tailCount) {
 			//replace tail
 			int trimTail = heap.length(idx)-headCount;
-			writer.writeIntegerUnsigned(trimTail);
-			
+			writer.writeIntegerUnsigned(trimTail);			
 			writer.writeTextASCIIAfter(headCount, value);
-			
+			heap.appendTail(idx, trimTail, headCount, value);
 		} else {
 			//replace head, tail matches to tailCount
 			int trimHead = heap.length(idx)-tailCount;
 			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
-			
 			writer.writeTextASCIIBefore(value,trimHead);
 						
 		}
@@ -339,20 +337,14 @@ public class FieldWriterChar {
 
 	public void writeASCIITail(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
-		
 		int headCount = heap.countHeadMatch(idx, value);
-		
-		int trimTail = heap.length(idx)-headCount;
-		
-		writer.writeIntegerUnsigned(trimTail);
-		
+		writer.writeIntegerUnsigned(heap.length(idx)-headCount);
 		writer.writeTextASCIIAfter(headCount, value);
 	}
 
 	public void writeUTF8CopyOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
-		
-		
+				
 		if (heap.equals(idx, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
