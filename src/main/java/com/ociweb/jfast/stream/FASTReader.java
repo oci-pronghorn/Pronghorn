@@ -23,9 +23,8 @@ public interface FASTReader {
 	void readBytes(int id, ByteBuffer target);	
 	int readBytes(int id, byte[] target, int offset); //returns count of bytes written
 
-	//if chars are optionally missing the target will not be modified.
-	void readChars(int id, Appendable target);
-	int readChars(int id, char[] target, int offset);
+	//TextHeap is modified and the index into that location is returned.
+	int readChars(int id);
 	
 	void openGroup(int id);
 	void closeGroup(int id);

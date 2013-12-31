@@ -4,6 +4,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderChar {
 
+	private static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
 	private final TextHeap charDictionary;
 	private final int INSTANCE_MASK;
@@ -19,6 +20,10 @@ public class FieldReaderChar {
 		this.charDictionary = charDictionary;
 	}
 	
+	public TextHeap textHeap() {
+		return charDictionary;
+	}
+	
 	static boolean isPowerOfTwo(int length) {
 		
 		while (0==(length&1)) {
@@ -27,7 +32,7 @@ public class FieldReaderChar {
 		return length==1;
 	}
 
-	public void readASCIICopy(int token, TextDelegate delegate) {
+	public int readASCIICopy(int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
@@ -42,222 +47,199 @@ public class FieldReaderChar {
 				charDictionary.appendTail(idx, (char)(0x7F & val));
 			}
 		}
-		delegate.setValue(idx);		
+		return idx;
 	}
 	
-	public int readASCIICopy(int token, char[] target, int offset) {
+	public int readUTF8Copy(int token) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+			
+		}
+		
+		return idx;
+	}
+
+	public int readASCIIConstant(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
 			charDictionary.setZeroLength(idx);
-			byte val = reader.readTextASCIIByte();
-			while (val>=0) {
-				charDictionary.appendTail(idx, (char)val);
-				val = reader.readTextASCIIByte();
+			byte b = reader.readTextASCIIByte();
+			while (b>=0) {
+				charDictionary.appendTail(idx, (char)b);
+				b = reader.readTextASCIIByte();
 			}
-			//val is last byte
-			if (0x80!=val) {
-				charDictionary.appendTail(idx, (char)(0x7F & val));
+			charDictionary.appendTail(idx, (char)(b&0x07));
+			return idx;
+		}
+	}
+
+	
+	public int readASCIIDefault(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			charDictionary.setZeroLength(idx);
+			byte b = reader.readTextASCIIByte();
+			while (b>=0) {
+				charDictionary.appendTail(idx, (char)b);
+				b = reader.readTextASCIIByte();
 			}
-		}
-		
-		return charDictionary.get(idx, target, offset);
-		
-	}
-
-	public int readASCIIConstant(int token, char[] target, int offset) {
-		if (reader.popPMapBit()==0) {
-			return charDictionary.get(token & INSTANCE_MASK, target, offset);
-		} else {
-			return reader.readTextASCII(target,offset); 
+			charDictionary.appendTail(idx, (char)(b&0x07));
+			return idx;
 		}
 	}
 
-	public int readASCIIDefault(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIIDelta(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIIDelta(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIITail(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIITail(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIICopyOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIICopyOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIIDefaultOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIIDefaultOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIIDeltaOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIIDeltaOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
+	public int readASCIITailOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
 		return 0;
 	}
 
-	public int readASCIITailOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
 
-	public int readUTF8Copy(int token, char[] target, int offset) {
+
+	public int readUTF8Constant(int token) {
+		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return charDictionary.get(token & INSTANCE_MASK, target, offset);
+			return idx|INIT_VALUE_MASK;//use constant
 		} else {
-			//don't know length so must write it someplace to find out.
+			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(target, offset, length);
-			//update dictionary requires copy. TODO: re-evaluate this when the rest of the methods are done.
-			charDictionary.set(token & INSTANCE_MASK, target, offset, length);
-			return length;
+			reader.readTextUTF8(charDictionary.data, 
+					            charDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
 		}
-		
+				
 	}
 
-	public int readUTF8Constant(int token, char[] target, int offset) {
+	public int readUTF8Default(int token) {
+		int idx = token & INSTANCE_MASK;
 		
-		if (reader.popPMapBit()==0) {
-			return charDictionary.get(token & INSTANCE_MASK, target, offset);
-		} else {
-			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(target, offset, length);
-			return length;
-		}
 		
+		
+		return 0;
 	}
 
-	public int readUTF8Default(int token, char[] target, int offset) {
+	public int readUTF8Delta(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		return 0;
+	}
+
+	public int readUTF8Tail(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		return 0;
+	}
+
+	public int readUTF8CopyOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		return 0;
+	}
+
+	public int readUTF8DefaultOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		return 0;
+	}
+
+	public int readUTF8DeltaOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		return 0;
+	}
+
+	public int readUTF8TailOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		
+		
+		return 0;
+	}
+
+	public int readTextASCII(int token) {
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	public int readUTF8Delta(int token, char[] target, int offset) {
+	public int readTextUTF8(int token) {
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	public int readUTF8Tail(int token, char[] target, int offset) {
+	public int readTextUTF8Optional(int token) {
 		// TODO Auto-generated method stub
 		return 0;
 	}
 
-	public int readUTF8CopyOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public int readUTF8DefaultOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public int readUTF8DeltaOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public int readUTF8TailOptional(int token, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	public Object readASCIICopy(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public void readASCIIConstant(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIIDefault(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIIDelta(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIITail(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIICopyOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIIDefaultOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIIDeltaOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readASCIITailOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8Copy(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8Constant(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8Default(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8Delta(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8Tail(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8CopyOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8DefaultOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8DeltaOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void readUTF8TailOptional(int token, Appendable target) {
-		// TODO Auto-generated method stub
-		
-	}
-
+	
 }

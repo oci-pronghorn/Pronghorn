@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.DictionaryFactory;
@@ -27,6 +28,10 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	FASTInputByteArray input;
 	PrimitiveReader pr;
 	
+	@AfterClass
+	public static void cleanup() {
+		System.gc();
+	}
 	
 	@Test
 	public void integerUnsignedTest() {

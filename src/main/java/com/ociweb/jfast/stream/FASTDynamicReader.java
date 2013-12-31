@@ -49,15 +49,9 @@ public class FASTDynamicReader  implements FASTReader {
 	}
 	
 	@Override
-	public void readChars(int id, Appendable target) {
+	public int readChars(int id) {
 		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public int readChars(int id, char[] target, int offset) {
-		// TODO Auto-generated method stub
-		return 0;
+		return -1;
 	}
 
 	@Override

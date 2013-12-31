@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.DictionaryFactory;
@@ -34,7 +35,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	//NONE, DELTA, and CONSTANT(non-optional)
 	
 	//Constant can never be optional but can have pmap.
-		
+
+	@AfterClass
+	public static void cleanup() {
+		System.gc();
+	}
+	
 	@Test
 	public void decimalTest() {
 		int[] types = new int[] {

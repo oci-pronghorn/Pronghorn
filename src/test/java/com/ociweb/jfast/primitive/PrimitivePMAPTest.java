@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
+import org.junit.AfterClass;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,6 +16,11 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class PrimitivePMAPTest {
+	
+	@AfterClass
+	public static void cleanup() {
+		System.gc();
+	}
 	
 	@Test
 	public void testWriterSingle() {

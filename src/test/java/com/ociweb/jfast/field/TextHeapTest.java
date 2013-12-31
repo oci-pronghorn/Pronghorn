@@ -4,10 +4,16 @@ import static org.junit.Assert.*;
 
 import java.util.Arrays;
 
+import org.junit.AfterClass;
 import org.junit.Test;
 
 public class TextHeapTest {
 
+	
+	@AfterClass
+	public static void cleanup() {
+		System.gc();
+	}
 	
 	@Test
 	public void simpleWriteReadTest() {

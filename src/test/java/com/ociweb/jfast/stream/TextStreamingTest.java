@@ -2,11 +2,13 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -26,6 +28,11 @@ public class TextStreamingTest extends BaseStreamingTest {
 	
 	FASTInputByteArray input;
 	PrimitiveReader pr;
+	
+	@AfterClass
+	public static void cleanup() {
+		System.gc();
+	}
 	
 	@Test
 	public void asciiTest() {
@@ -136,6 +143,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
+		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -146,8 +154,6 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 		
 		fr.openGroup(groupToken);
-		
-		char[] target = new char[ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*3];
 		
 		while (--i>=0) {
 			int f = fields;
@@ -163,18 +169,21 @@ public class TextStreamingTest extends BaseStreamingTest {
 //					}
 				} else { 
 					try {
-						int len = fr.readChars(tokenLookup[f], target, 0);
+						int textIdx = fr.readChars(tokenLookup[f]);
+						
+						
 						CharSequence expected = testData[f];
-						if (len!=testData[f].length()) {
-							assertEquals(expected,new String(target,0,len));
+						if (textHeap.length(textIdx)!=testData[f].length()) {
+							assertEquals(expected,textHeap.getSub(textIdx, 0, textHeap.length(textIdx)));
 						} else {
-							int j = len;
+							int j = textHeap.length(textIdx);
 							while (--j>=0) {
-								if (expected.charAt(j)!=target[j]) {
-									assertEquals(expected,new String(target,0,len));
+								if (expected.charAt(j)!= textHeap.getChar(textHeap.length(textIdx), j)) {
+									assertEquals(expected,textHeap.getSub(textIdx, 0, textHeap.length(textIdx)));
 								}
 							}						
-						}	
+						}
+						
 					} catch (Exception e) {
 						System.err.println("xxx: expected "+testData[f]);
 						throw new FASTException(e);

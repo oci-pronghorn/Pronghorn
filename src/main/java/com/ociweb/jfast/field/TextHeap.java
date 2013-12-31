@@ -21,8 +21,8 @@ public class TextHeap {
 	private int totalContent = 0; //total chars consumed by current text.
 	private int totalWorkspace = 0; //working space around each text.
 	
+	final char[] data;
 	private final int gapCount;
-	private final char[] data;
 	private final int dataLength;
 	
 	private final int[] initTat;
@@ -150,19 +150,55 @@ public class TextHeap {
 		int space = nextTextStart - prevTextStop;
 		int middleIdx = (space-sourceLen)>>1;
 		
-		if (sourceLen<=space) {
-			simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, middleIdx);
-		} else {
+		if (sourceLen>space) {
 			//we do not have enough space move to the bigger side.
 			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
             
     		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
     		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
     		
-            simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, ((nextTextStart-prevTextStop)-sourceLen)>>1);         
+    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
 		}
+		simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, middleIdx);
 	}
 
+	int allocate(int idx, int sourceLen) {
+		
+		int offset = idx<<2;
+		
+		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
+		int space = nextTextStart - prevTextStop;
+		int middleIdx = (space-sourceLen)>>1;
+		
+		if (sourceLen>space) {
+			//we do not have enough space move to the bigger side.
+			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
+            
+    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
+    		
+    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
+		}
+		
+		//write and return because we have enough space
+		int target = prevTextStop+middleIdx;
+		if (target<0) {
+			target=0;
+		}
+		int limit = target+sourceLen;
+		if (limit>dataLength) {
+			target = dataLength-sourceLen;
+		}
+		
+		//full replace
+		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
+		tat[offset] = target;
+		tat[offset+1] = limit;
+		
+		return target;
+	}
+		
 	void set(int idx, CharSequence charSequence) {
 		
 		int offset = idx<<2;
@@ -694,8 +730,13 @@ public class TextHeap {
 	}
 	
 	public int length(int idx) {
-		int offset = idx<<2;
-		return tat[offset+1] - tat[offset];
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			return initTat[offset+1] - initTat[offset];
+		} else {
+			int offset = idx<<2;
+			return tat[offset+1] - tat[offset];
+		}
 	}
 
 	//convert single char that is not the simple case

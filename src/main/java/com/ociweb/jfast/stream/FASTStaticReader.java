@@ -9,6 +9,7 @@ import com.ociweb.jfast.field.FieldReaderDecimal;
 import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -51,6 +52,10 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	
+	public TextHeap textHeap() {
+		return readerChar.textHeap();
+	}
+	
 	//package protected, unless we find a need to expose it?
 	void readToken(int token) {
 		//used by groups which hold list of tokens
@@ -82,16 +87,16 @@ public class FASTStaticReader implements FASTReader {
 				readLongSignedOptional(token,0);
 				break;
 			case TypeMask.TextASCII:
-				readTextASCII(token, null); //TODO: these nulls are not corect but we do not need the result.
+				readTextASCII(token); //TODO: these nulls are not corect but we do not need the result.
 			    break;
 		    case TypeMask.TextASCIIOptional:
-				readTextASCIIOptional(token, null);
+				readTextASCIIOptional(token);
 			    break;
 			case TypeMask.TextUTF8:
-				readTextUTF8(token,null);
+				readTextUTF8(token);
 				break;
 			case TypeMask.TextUTF8Optional:
-				readTextUTF8Optional(token, null);
+				readTextUTF8Optional(token);
 				break;
 			case TypeMask.Decimal:
 				//readerDecimal();
@@ -532,7 +537,7 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	@Override
-	public void readChars(int id, Appendable target) {
+	public int readChars(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
@@ -540,23 +545,23 @@ public class FASTStaticReader implements FASTReader {
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii
-				readTextASCII(token, target);
+				return readTextASCII(token);
 			} else {
 				//utf8
-				readTextUTF8(token,target);
+				return readTextUTF8(token);
 			}
 		} else {
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii optional
-				readTextASCIIOptional(token, target);
+				return readTextASCIIOptional(token);
 			} else {
 				//utf8 optional
-				readTextUTF8Optional(token, target);
+				return readTextUTF8Optional(token);
 			}
 		}
 	}
 
-	private void readTextUTF8Optional(int token, Appendable target) {
+	private int readTextUTF8Optional(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 			//none constant delta tail 
@@ -564,36 +569,35 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
 					//none
-					int length = reader.readIntegerUnsigned()-1;
-					reader.readTextUTF8(length, target);
+					return readerChar.readTextUTF8Optional(token);
 				} else {
 					//tail
-					readerChar.readUTF8TailOptional(token, target);
+					return readerChar.readUTF8TailOptional(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
 					//constant
-					
+					return -1;//TODO: unimplemented.
 				} else {
 					//delta
-					readerChar.readUTF8DeltaOptional(token, target);
+					return readerChar.readUTF8DeltaOptional(token);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 				//copy
-				readerChar.readUTF8CopyOptional(token, target);
+				return readerChar.readUTF8CopyOptional(token);
 			} else {
 				//default
-				readerChar.readUTF8DefaultOptional(token, target);
+				return readerChar.readUTF8DefaultOptional(token);
 			}
 		}
 		
 	}
 
-	private void readTextUTF8(int token, Appendable target) {
+	private int readTextASCII(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 			//none constant delta tail 
@@ -601,36 +605,35 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
 					//none
-					int length = reader.readIntegerUnsigned();
-					reader.readTextUTF8(length, target);
+					return readerChar.readTextASCII(token);
 				} else {
 					//tail
-					readerChar.readUTF8Tail(token, target);
+					return readerChar.readASCIITail(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
 					//constant
-					readerChar.readUTF8Constant(token, target);
+					return readerChar.readASCIIConstant(token);
 				} else {
 					//delta
-					readerChar.readUTF8Delta(token, target);
+					return readerChar.readASCIIDelta(token);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 				//copy
-				readerChar.readUTF8Copy(token, target);
+				return readerChar.readASCIICopy(token);
 			} else {
 				//default
-				readerChar.readUTF8Default(token, target);
+				return readerChar.readASCIIDefault(token);
 			}
 		}
-	
+		
 	}
 
-	private void readTextASCIIOptional(int token, Appendable target) {
+	private int readTextUTF8(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 			//none constant delta tail 
@@ -638,35 +641,35 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
 					//none
-					reader.readTextASCII(target);
+					return readerChar.readTextUTF8(token);
 				} else {
 					//tail
-					readerChar.readASCIITailOptional(token, target);
+					return readerChar.readUTF8Tail(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
 					//constant
-					
+					return readerChar.readUTF8Constant(token);
 				} else {
 					//delta
-					readerChar.readASCIIDeltaOptional(token, target);
+					return readerChar.readUTF8Delta(token);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 				//copy
-				readerChar.readASCIICopyOptional(token, target);
+				return readerChar.readUTF8Copy(token);
 			} else {
 				//default
-				readerChar.readASCIIDefaultOptional(token, target);
+				return readerChar.readUTF8Default(token);
 			}
 		}
 		
 	}
 
-	private void readTextASCII(int token, Appendable target) {
+	private int readTextASCIIOptional(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 			//none constant delta tail 
@@ -674,147 +677,10 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
 					//none
-					reader.readTextASCII(target);
+					return readerChar.readTextASCII(token);
 				} else {
 					//tail
-					readerChar.readASCIITail(token, target);
-				}
-			} else {
-				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
-					//constant
-					readerChar.readASCIIConstant(token, target);
-				} else {
-					//delta
-					readerChar.readASCIIDelta(token, target);
-				}
-			}
-		} else {
-			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//copy
-				readerChar.readASCIICopy(token, target);
-			} else {
-				//default
-				readerChar.readASCIIDefault(token, target);
-			}
-		}
-		
-	}
-
-	@Override
-	public int readChars(int id, char[] target, int offset) {
-		int token = id>=0 ? tokenLookup[id] : id;
-		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
-		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
-		
-		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				//ascii
-				return readTextASCII(token, target, offset);
-			} else {
-				//utf8
-				return readTextUTF8(token, target, offset);
-			}
-		} else {
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				//ascii optional
-				return readTextASCIIOptional(token, target, offset);
-			} else {
-				//utf8 optional
-				return readTextUTF8Optional(token, target, offset);
-			}
-		}
-	}
-
-	private int readTextUTF8Optional(int token, char[] target, int offset) {
-		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
-					//none
-					int length = reader.readIntegerUnsigned()-1;
-					reader.readTextUTF8(target,offset,length);
-					return length;
-				} else {
-					//tail
-					return readerChar.readUTF8TailOptional(token, target, offset);
-				}
-			} else {
-				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
-					//constant
-					return -1;//TODO: undone
-				} else {
-					//delta
-					return readerChar.readUTF8DeltaOptional(token, target, offset);
-				}
-			}
-		} else {
-			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//copy
-				return readerChar.readUTF8CopyOptional(token, target, offset);
-			} else {
-				//default
-				return readerChar.readUTF8DefaultOptional(token, target, offset);
-			}
-		}
-
-	}
-
-	private int readTextUTF8(int token, char[] target, int offset) {
-		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
-					//none
-					int length = reader.readIntegerUnsigned();
-					reader.readTextUTF8(target,offset,length);
-					return length;
-				} else {
-					//tail
-					return readerChar.readUTF8Tail(token, target, offset);
-				}
-			} else {
-				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
-					//constant
-					return readerChar.readUTF8Constant(token, target, offset);
-				} else {
-					//delta
-					return readerChar.readUTF8Delta(token, target, offset);
-				}
-			}
-		} else {
-			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//copy
-				return readerChar.readUTF8Copy(token, target, offset);
-			} else {
-				//default
-				return readerChar.readUTF8Default(token, target, offset);
-			}
-		}
-		
-	}
-
-	private int readTextASCIIOptional(int token, char[] target, int offset) {
-		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
-					//none
-					return reader.readTextASCII(target,offset);
-				} else {
-					//tail
-					return readerChar.readASCIITailOptional(token, target, offset);
+					return readerChar.readASCIITailOptional(token);
 				}
 			} else {
 				// constant delta
@@ -824,56 +690,21 @@ public class FASTStaticReader implements FASTReader {
 					
 				} else {
 					//delta
-					return readerChar.readASCIIDeltaOptional(token, target, offset);
+					return readerChar.readASCIIDeltaOptional(token);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
 				//copy
-				return readerChar.readASCIICopyOptional(token, target, offset);
+				return readerChar.readASCIICopyOptional(token);
 			} else {
 				//default
-				return readerChar.readASCIIDefaultOptional(token, target, offset);
+				return readerChar.readASCIIDefaultOptional(token);
 			}
 		}
 
 	}
 
-	private int readTextASCII(int token, char[] target, int offset) {
-		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
-					//none
-					return reader.readTextASCII(target,offset);
-				} else {
-					//tail
-					return readerChar.readASCIITail(token, target, offset);
-				}
-			} else {
-				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
-					//constant
-					return readerChar.readASCIIConstant(token, target, offset);
-				} else {
-					//delta
-					return readerChar.readASCIIDelta(token, target, offset);
-				}
-			}
-		} else {
-			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
-				//copy
-				return readerChar.readASCIICopy(token, target, offset);
-			} else {
-				//default
-				return readerChar.readASCIIDefault(token, target, offset);
-			}
-		}
-		
-	}
 
 }
