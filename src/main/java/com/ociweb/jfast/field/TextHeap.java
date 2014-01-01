@@ -239,6 +239,47 @@ public class TextHeap {
 		tat[offset+1] = limit;
 	}
 	
+	void set(int idx, CharSequence charSequence, int stopAt) {
+		assert(stopAt<charSequence.length());
+		
+		int offset = idx<<2;
+		
+		int sourceLen = stopAt;
+		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
+		int space = nextTextStart - prevTextStop;
+		int middleIdx = (space-sourceLen)>>1;
+		
+		if (sourceLen>space) {
+			//we do not have enough space move to the bigger side.
+			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
+            
+    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
+    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
+    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
+		}
+		//write and return because we have enough space
+		int target = prevTextStop+middleIdx;
+		if (target<0) {
+			target=0;
+		}
+		
+		int limit = target+sourceLen;
+		if (limit>dataLength) {
+			target = dataLength-sourceLen;
+		}
+		
+		int j = target+sourceLen;
+		int i = stopAt;
+		while (--i>=0) {
+			data[--j] = charSequence.charAt(i);
+		}
+		//full replace
+		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
+		tat[offset] = target;
+		tat[offset+1] = limit;
+	}
+	
 	
 	void set(int idx, CharSequence charSequence) {
 		
@@ -653,6 +694,58 @@ public class TextHeap {
 		//everything is now ready to trim and copy.
 		int newStart = tat[offset]-dif;
 		System.arraycopy(source, sourceIdx, data, newStart, sourceLen);
+		tat[offset]=newStart;
+						
+	}
+	
+	void appendHead(int idx, int trimHead, CharSequence value) {
+		//if not room make room checking before first because thats where we want to copy the head.
+		int offset = idx<<2;
+		
+		int sourceLen = value.length()-trimHead;
+		
+		if (tat[offset]>=tat[offset+1]) {
+			//null or empty string detected so change to simple set
+			set(idx, value, value.length()-trimHead);
+			return;
+		}
+		
+		int start = tat[offset]-(sourceLen-trimHead);
+		int limit = offset-3<0 ? 0 : tat[offset-3];
+		
+		
+		if (start<limit) {
+			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
+			int space = stop - limit;
+			int need = tat[offset+1]-start;
+			
+			if (need>space) {
+				makeRoom(offset, true, need);			
+			}
+			//we have some space so just shift the existing data.
+			int len = tat[offset+1] - tat[offset];
+			System.arraycopy(data, tat[offset], data, start, len);
+			tat[offset] = start;
+			tat[offset+1] = start+len;
+			
+		}
+		//everything is now ready to trim and copy.
+		
+		//keep the max head append size
+		int maxHead = tat[offset+2];
+		int dif=(sourceLen-trimHead);
+		if (dif>maxHead) {
+			tat[offset+2] = dif;
+		}
+			
+		//everything is now ready to trim and copy.
+		int newStart = tat[offset]-dif;
+		
+		int i = sourceLen;
+		int j = newStart;
+		while (--i>=0) {
+			data[j] = value.charAt(i);
+		}
 		tat[offset]=newStart;
 						
 	}

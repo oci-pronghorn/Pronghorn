@@ -28,14 +28,5 @@ public interface FASTReader {
 	
 	void openGroup(int id);
 	void closeGroup(int id);
-	
-	//TODO: new future api ideas
-	//void readBytes(int id, ByteIterator iterator); //iterator knows length and next 
-	//void readChars(int id, CharIterator iterator); //iterator knows length and next 
-	/////Other ideas for managment of strings.
-	//TODO: if new string is "same" as old return same instance
-	//String readChars(int id, String oldValue);
-	//TODO: modify builder as needed to match new value
-	//void readChars(int id, StringBuilder value);
-	
+		
 }

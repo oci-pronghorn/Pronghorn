@@ -81,7 +81,7 @@ public class FieldWriterChar {
 				int valueSend = value.length()-headCount;
 				writer.writeIntegerUnsigned(valueSend); //positive for tail append		
 				writer.writeTextUTFAfter(headCount,value);
-	//			heap.appendTail(idx, trimTail, source, sourceIdx, sourceLen);
+				heap.appendTail(idx, trimTail, headCount, value);
 			} else {
 				//replace head, tail matches to tailCount
 				int trimHead = heap.length(idx)-tailCount;
@@ -90,7 +90,7 @@ public class FieldWriterChar {
 				int valueSend = value.length()-tailCount;
 				writer.writeIntegerUnsigned(valueSend); 		
 				writer.writeTextUTFBefore(value, trimHead);
-				
+				heap.appendHead(idx, trimHead, value);
 			}
 		}
 	}
@@ -103,7 +103,6 @@ public class FieldWriterChar {
 			heap.setNull(idx);
 		} else {
 			int headCount = heap.countHeadMatch(idx, value);
-			
 			int trimTail = heap.length(idx)-headCount;
 			
 			writer.writeIntegerUnsigned(trimTail);
@@ -111,6 +110,8 @@ public class FieldWriterChar {
 			int valueSend = value.length()-headCount;
 			writer.writeIntegerUnsigned(valueSend+1);//plus 1 for optional		
 			writer.writeTextUTFAfter(headCount,value);
+			
+			heap.appendTail(idx, trimTail, headCount, value);
 		}
 	}
 
@@ -165,7 +166,7 @@ public class FieldWriterChar {
 			int valueSend = value.length()-headCount;
 			writer.writeIntegerUnsigned(valueSend); //positive for tail append		
 			writer.writeTextUTFAfter(headCount,value);
-			
+			heap.appendTail(idx, trimTail, headCount, value);
 		} else {
 			//replace head, tail matches to tailCount
 			int trimHead = heap.length(idx)-tailCount;
@@ -174,7 +175,7 @@ public class FieldWriterChar {
 			int valueSend = value.length()-tailCount;
 			writer.writeIntegerUnsigned(valueSend); 		
 			writer.writeTextUTFBefore(value, trimHead);
-			
+			heap.appendHead(idx, trimHead, value);
 		}
 	}
 
@@ -190,6 +191,7 @@ public class FieldWriterChar {
 		int valueSend = value.length()-headCount;
 		writer.writeIntegerUnsigned(valueSend);		
 		writer.writeTextUTFAfter(headCount,value);
+		heap.appendTail(idx, trimTail, headCount, value);
 	}
 
 	public void writeASCIICopyOptional(int token, CharSequence value) {
@@ -249,16 +251,15 @@ public class FieldWriterChar {
 				writer.writeIntegerUnsigned(trimTail);
 				
 				writer.writeTextASCIIAfter(headCount, value);
-				
-			//TODO: must apply everywhere,	heap.appendTail(idx, trimTail, source, sourceIdx, sourceLen);
-				
+				heap.appendTail(idx, trimTail, headCount, value);
+							
 			} else {
 				//replace head, tail matches to tailCount
 				int trimHead = heap.length(idx)-tailCount;
 				writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
 				
 				writer.writeTextASCIIBefore(value,trimHead);
-							
+				heap.appendHead(idx, trimHead, value);			
 			}
 		}
 	}
@@ -331,7 +332,7 @@ public class FieldWriterChar {
 			int trimHead = heap.length(idx)-tailCount;
 			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
 			writer.writeTextASCIIBefore(value,trimHead);
-						
+			heap.appendHead(idx, trimHead, value);						
 		}
 	}
 
