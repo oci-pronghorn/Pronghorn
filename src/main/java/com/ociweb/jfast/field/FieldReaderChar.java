@@ -103,10 +103,19 @@ public class FieldReaderChar {
 	public int readASCIIDelta(int token) {
 		int idx = token & INSTANCE_MASK;
 		
+		int trim = reader.readIntegerSigned();
 		
-		
-		
-		return 0;
+		if (trim>=0) {
+			//append to tail
+			//reader.readTextASCIIByte()
+			//charDictionary.appendTail(idx, trim, startFrom, value);
+			
+		} else {
+			//append to head
+			
+			
+		}
+		return idx;
 	}
 
 	public int readASCIITail(int token) {
@@ -206,6 +215,21 @@ public class FieldReaderChar {
 
 	public int readUTF8Delta(int token) {
 		int idx = token & INSTANCE_MASK;
+		
+		int trim = reader.readIntegerSigned();
+		if (trim>=0) {
+			//append to tail
+			
+			int utfLength = reader.readIntegerUnsigned();
+			
+			//copy in place??
+			//reader.readTextUTF8(target, offset, charCount);
+			
+		} else {
+			//append to head
+			
+			
+		}
 		
 		
 		
