@@ -56,7 +56,7 @@ public class FieldReaderChar {
 		if (reader.popPMapBit()!=0) {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 			
@@ -154,7 +154,7 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 						
@@ -188,7 +188,7 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 						
@@ -205,7 +205,7 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 						
@@ -218,13 +218,11 @@ public class FieldReaderChar {
 		
 		int trim = reader.readIntegerSigned();
 		if (trim>=0) {
-			//append to tail
-			
+			//append to tail			
 			int utfLength = reader.readIntegerUnsigned();
-			
-			//copy in place??
-			//reader.readTextUTF8(target, offset, charCount);
-			
+			int targetOffset = charDictionary.makeSpaceForAppend(trim, idx, utfLength);	
+			reader.readTextUTF8(charDictionary.rawAccess(), targetOffset, utfLength);
+
 		} else {
 			//append to head
 			
@@ -233,7 +231,7 @@ public class FieldReaderChar {
 		
 		
 		
-		return 0;
+		return idx;
 	}
 
 	public int readUTF8Tail(int token) {
@@ -250,7 +248,7 @@ public class FieldReaderChar {
 		if (reader.popPMapBit()!=0) {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 			
@@ -267,7 +265,7 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.data, 
+			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
 						

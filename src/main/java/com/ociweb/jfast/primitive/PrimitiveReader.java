@@ -505,7 +505,7 @@ public final class PrimitiveReader {
 					throw new FASTException(e);
 				}
 			} else {
-				decodeUTF8(buffer, target);
+				decodeUTF8(target);
 			}
 		}
 	}
@@ -517,14 +517,15 @@ public final class PrimitiveReader {
 				//code point 7
 				target[offset++] = (char)b;
 			} else {
-				decodeUTF8(buffer, target, offset++);
+				decodeUTF8(target, offset++);
 			}
 		}
 	}
 	
 	//convert single char that is not the simple case
-		private void decodeUTF8(byte[] source, Appendable target) {
-
+		private void decodeUTF8(Appendable target) {
+			byte[] source = buffer;
+			
 			byte b = source[position-1];
 		    int result;
 			if ( ((byte)(0xFF&(b<<2))) >=0) {
@@ -628,8 +629,9 @@ public final class PrimitiveReader {
 		}
 	
 	//convert single char that is not the simple case
-	private void decodeUTF8(byte[] source, char[] target, int targetIdx) {
-
+	private void decodeUTF8(char[] target, int targetIdx) {
+		byte[] source = buffer;
+		
 		byte b = source[position-1];
 	    int result;
 		if ( ((byte)(0xFF&(b<<2))) >=0) {

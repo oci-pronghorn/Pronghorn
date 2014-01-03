@@ -21,7 +21,7 @@ public class TextHeap {
 	private int totalContent = 0; //total chars consumed by current text.
 	private int totalWorkspace = 0; //working space around each text.
 	
-	final char[] data;
+	private final char[] data;
 	private final int gapCount;
 	private final int dataLength;
 	
@@ -162,6 +162,10 @@ public class TextHeap {
 		simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, middleIdx);
 	}
 
+	char[] rawAccess() {
+		return data;
+	}
+	
 	int allocate(int idx, int sourceLen) {
 		
 		int offset = idx<<2;
@@ -550,70 +554,34 @@ public class TextHeap {
 	}
 	
 
-
 	public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
 		//if not room make room checking after first because thats where we want to copy the tail.
-		int offset = idx<<2;
-		
-		int sourceLen = value.length()-startFrom;
-		
-		if (tat[offset]>=tat[offset+1]) {
-			//null or empty string detected so change to simple set
-			set(idx,startFrom,value);
-			return;
-		}
-		
-		int stop = tat[offset+1]+(sourceLen-trimTail);
-		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
-		
-		if (stop>=limit) {
-			int floor = offset-3>=0 ? tat[offset-3] : 0;
-			int space = limit- floor;
-			int need = stop - tat[offset];
-			
-			if (need>space) {
-				makeRoom(offset, false, need);			
-			}
-			//we have some space so just shift the existing data.
-			int len = tat[offset+1]-tat[offset];
-			System.arraycopy(data, tat[offset], data, floor, len);
-			tat[offset] = floor;
-			tat[offset+1] = floor+len;
 
-		}
-		//everything is now ready to trim and copy.
-		
-		//keep the max head append size
-		int maxTail = tat[offset+3];
-		int dif=(sourceLen-trimTail);
-		if (dif>maxTail) {
-			tat[offset+3] = dif;
-		}
-			
-		//everything is now ready to trim and copy.
-		int targetPos = tat[offset+1]-trimTail;
-		
+		int sourceLen = value.length()-startFrom;
+		int targetPos = makeSpaceForAppend(trimTail, idx, sourceLen);
+					
 		int i = value.length();
 		int j = targetPos+sourceLen;
 		while (--i>=startFrom) {
 			data[--j] = value.charAt(i);
 		}
-		
-		tat[offset+1] = targetPos+sourceLen;
 	}
-	
-	
+
 	//append chars on to the end of the text after applying trim
 	//may need to move existing text or following texts
 	//if there is no room after moving everything throws
 	void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking after first because thats where we want to copy the tail.
+		int targetPos = makeSpaceForAppend(trimTail, idx, sourceLen);	
+		System.arraycopy(source, sourceIdx, data, targetPos, sourceLen);
+	}
+	
+	int makeSpaceForAppend(int trimTail, int idx, int sourceLen) {
 		int offset = idx<<2;
 		
 		if (tat[offset]>=tat[offset+1]) {
-			//null or empty string detected so change to simple set
-			set(idx,source,sourceIdx,sourceLen);
-			return;
+			//switch from null to zero length
+			tat[offset+1]=tat[offset];
 		}
 		
 		int stop = tat[offset+1]+(sourceLen-trimTail);
@@ -642,13 +610,14 @@ public class TextHeap {
 		if (dif>maxTail) {
 			tat[offset+3] = dif;
 		}
-			
-		//everything is now ready to trim and copy.
+		//target position
 		int targetPos = tat[offset+1]-trimTail;
-		System.arraycopy(source, sourceIdx, data, targetPos, sourceLen);
 		tat[offset+1] = targetPos+sourceLen;
-		
+		return targetPos;
 	}
+	
+	
+
 	
 	//append chars on to the front of the text after applying trim
 	//may need to move existing text or previous texts
