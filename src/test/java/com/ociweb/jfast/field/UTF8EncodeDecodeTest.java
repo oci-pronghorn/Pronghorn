@@ -8,6 +8,10 @@ import java.util.Arrays;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class UTF8EncodeDecodeTest {
 
@@ -15,12 +19,14 @@ public class UTF8EncodeDecodeTest {
 
 	@Test
 	public void testUTF8Encoder() {
-		char[] charData = unicodeTestString.toCharArray();
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		
 		byte[] myData = new byte[data.length];
-		TextHeap.encodeUTF8(charData, 0, unicodeTestString.length(), myData, 0);
 		
+		PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputByteArray(myData));
+		pw.writeTextUTF(unicodeTestString);
+		pw.flush();
+				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
 	
@@ -29,9 +35,11 @@ public class UTF8EncodeDecodeTest {
 	public void testUTF8Decoder() {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		char[] target = new char[unicodeTestString.length()];
-		TextHeap.decodeUTF8(data, 0, target, 0, target.length);
 		
-		assertTrue("chars do not match", Arrays.equals(unicodeTestString.toCharArray(), target));	
+		PrimitiveReader pr = new PrimitiveReader(new FASTInputByteArray(data));
+		pr.readTextUTF8(target, 0, unicodeTestString.length());
+		
+		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
 	}
 	

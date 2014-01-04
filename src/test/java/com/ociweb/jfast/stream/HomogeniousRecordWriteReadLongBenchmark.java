@@ -31,7 +31,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final int internalBufferSize = 4096;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
-	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,fields,fields);
+	static final int singleCharLength = 128;
+	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 	

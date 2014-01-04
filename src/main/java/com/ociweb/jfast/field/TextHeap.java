@@ -1,7 +1,6 @@
 package com.ociweb.jfast.field;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
 
@@ -101,16 +100,13 @@ public class TextHeap {
 	
 		int i = textItemCount;
 		while (--i>=0) {
-			
 			int b = i<<1;
 						
 			if (initTat[b]==initTat[b+1]) {
 				setNull(i);				
 			} else {
 				set(i, initBuffer, initTat[b], initTat[b+1]-initTat[b]);
-				
-			}
-			
+			}			
 		}
 	}
 	
@@ -118,7 +114,12 @@ public class TextHeap {
 	//Caution: this method will create a new String instance
 	public CharSequence getSub(int idx, int start, int end) {
 		int offset = idx<<2;
-		return new String(data,tat[offset]+start,Math.min(tat[offset+1], tat[offset]+end ));
+		int a = tat[offset]+start;
+		int b = Math.min(tat[offset+1], tat[offset]+end );
+		System.err.println(a+","+b+","+data.length);
+		return new String(data,
+				Math.max(0,tat[offset]+start),
+				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
 	}
 	
 	void setZeroLength(int idx) {
@@ -135,32 +136,7 @@ public class TextHeap {
 		int offset = idx<<2;
 		return tat[offset+1] == tat[offset]-1;
 	}
-	
-	//simple replacement of last value
-	//since the old value is tossed this opportunity is taken to re-center the text
-	//between the one in front and the one behind.
-	//if this is large it may need to move surrounding text and 
-	//may throw if there is no more room in the heap.
-	void set(int idx, char[] source, int sourceIdx, int sourceLen) {
-		
-		int offset = idx<<2;
-		
-		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
-		int space = nextTextStart - prevTextStop;
-		int middleIdx = (space-sourceLen)>>1;
-		
-		if (sourceLen>space) {
-			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
-            
-    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
-    		
-    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
-		}
-		simpleReplace(source, sourceIdx, sourceLen, offset, prevTextStop, middleIdx);
-	}
+
 
 	char[] rawAccess() {
 		return data;
@@ -170,26 +146,8 @@ public class TextHeap {
 		
 		int offset = idx<<2;
 		
-		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
-		int space = nextTextStart - prevTextStop;
-		int middleIdx = (space-sourceLen)>>1;
-		
-		if (sourceLen>space) {
-			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
-            
-    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
-    		
-    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
-		}
-		
-		//write and return because we have enough space
-		int target = prevTextStop+middleIdx;
-		if (target<0) {
-			target=0;
-		}
+		int target = makeRoom(offset, sourceLen);
+
 		int limit = target+sourceLen;
 		if (limit>dataLength) {
 			target = dataLength-sourceLen;
@@ -202,12 +160,9 @@ public class TextHeap {
 		
 		return target;
 	}
-		
-	void set(int idx, int startFrom, CharSequence charSequence) {
-		
-		int offset = idx<<2;
-		
-		int sourceLen = charSequence.length()-startFrom;
+
+
+	private int makeRoom(int offset, int sourceLen) {
 		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
 		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
 		int space = nextTextStart - prevTextStop;
@@ -216,95 +171,44 @@ public class TextHeap {
 		if (sourceLen>space) {
 			//we do not have enough space move to the bigger side.
 			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
-            
     		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
+    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4]; 		
     		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
 		}
-		//write and return because we have enough space
+		
 		int target = prevTextStop+middleIdx;
-		if (target<0) {
-			target=0;
-		}
+		return target<0 ? 0 : target;
+	}
 		
-		int limit = target+sourceLen;
-		if (limit>dataLength) {
-			target = dataLength-sourceLen;
-		}
+
+	void set(int idx, char[] source, int startFrom, int copyLength) {
+		int offset = idx<<2;
 		
-		int j = target+sourceLen;
-		int i = charSequence.length();
-		while (--i>=startFrom) {
-			data[--j] = charSequence.charAt(i);
-		}
-		//full replace
-		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
+		totalContent+=(copyLength-(tat[offset+1]-tat[offset]));
+		int target = makeRoom(offset, copyLength);
 		tat[offset] = target;
-		tat[offset+1] = limit;
+		tat[offset+1] = target+copyLength;
+		
+		System.arraycopy(source, startFrom, data, target, copyLength);
 	}
 	
-	void set(int idx, CharSequence charSequence, int stopAt) {
-		assert(stopAt<charSequence.length());
+	void set(int idx, CharSequence source, int startFrom, int copyLength) {
+		assert(startFrom<=source.length());
+		assert(copyLength-startFrom<source.length());
+		assert(startFrom>=0);
+		assert(copyLength>=0);
 		
 		int offset = idx<<2;
 		
-		int sourceLen = stopAt;
-		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
-		int space = nextTextStart - prevTextStop;
-		int middleIdx = (space-sourceLen)>>1;
-		
-		if (sourceLen>space) {
-			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
-            
-    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
-    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
-		}
-		//write and return because we have enough space
-		int target = prevTextStop+middleIdx;
-		if (target<0) {
-			target=0;
-		}
-		
-		int limit = target+sourceLen;
-		if (limit>dataLength) {
-			target = dataLength-sourceLen;
-		}
-		
-		int j = target+sourceLen;
-		int i = stopAt;
-		while (--i>=0) {
-			data[--j] = charSequence.charAt(i);
-		}
-		//full replace
-		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
+		totalContent+=(copyLength-(tat[offset+1]-tat[offset]));
+		int target = makeRoom(offset, copyLength);
 		tat[offset] = target;
-		tat[offset+1] = limit;
-	}
-	
-	
-	void set(int idx, CharSequence charSequence) {
+		tat[offset+1] = target+copyLength;
 		
-		int offset = idx<<2;
-		
-		int sourceLen = charSequence.length();
-		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
-		int space = nextTextStart - prevTextStop;
-		int middleIdx = (space-sourceLen)>>1;
-		
-		if (sourceLen>space) {
-			//we do not have enough space move to the bigger side.
-			makeRoom(offset, middleIdx>(dataLength>>1), (sourceLen + tat[offset+2] + tat[offset+3])-space);
-            
-    		prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-    		nextTextStart = offset+4 >= dataLength ? dataLength : tat[offset+4];
-    		
-    		middleIdx = ((nextTextStart-prevTextStop)-sourceLen)>>1;         
+		int srcLimit = copyLength+startFrom;
+		while (startFrom<srcLimit) {
+			data[target++] = source.charAt(startFrom++);
 		}
-		simpleReplace(charSequence, offset, prevTextStop, middleIdx);
 	}
 	
 	private void makeRoom(int offsetNeedingRoom, boolean startBefore, int totalDesired) {
@@ -351,45 +255,6 @@ public class TextHeap {
 		return totalDesired;
 	}
 
-	private void simpleReplace(char[] source, int sourceIdx, int sourceLen, int offset, int prevTextStop, int middleIdx) {
-		//write and return because we have enough space
-		int target = prevTextStop+middleIdx;
-		if (target<0) {
-			target=0;
-		}
-		int limit = target+sourceLen;
-		if (limit>dataLength) {
-			target = dataLength-sourceLen;
-		}
-		
-		System.arraycopy(source, sourceIdx, data, target, sourceLen);
-		//full replace
-		totalContent+=(sourceLen-(tat[offset+1]-tat[offset]));
-		tat[offset] = target;
-		tat[offset+1] = limit;
-	}
-	
-	private void simpleReplace(CharSequence charSequence, int offset, int prevTextStop, int middleIdx) {
-		//write and return because we have enough space
-		int target = prevTextStop+middleIdx;
-		if (target<0) {
-			target=0;
-		}
-		int limit = target+charSequence.length();
-		if (limit>dataLength) {
-			target = dataLength-charSequence.length();
-		}
-		
-		int j = target+charSequence.length();
-		int i = charSequence.length();
-		while (--i>=0) {
-			data[--j] = charSequence.charAt(i);
-		}
-		//full replace
-		totalContent+=(charSequence.length()-(tat[offset+1]-tat[offset]));
-		tat[offset] = target;
-		tat[offset+1] = limit;
-	}
 	
 	private int compressBefore(int stopOffset, int totalDesired, boolean preserveWorkspace) {
 		//moving everything to the left until totalDesired
@@ -522,37 +387,6 @@ public class TextHeap {
 		
 	}
 
-	void appendTail(int idx, char value) {
-		//if not room make room checking after first because thats where we want to copy the tail.
-		int offset = idx<<2;
-		
-		if (tat[offset]>tat[offset+1]) {
-			//null or empty string detected so change to simple set
-			tat[offset+1]=tat[offset];
-		}
-				
-		int stop = tat[offset+1]+1;
-		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
-		
-		if (stop>=limit) {
-			int floor = offset-3>=0 ? tat[offset-3] : 0;
-			int space = limit- floor;
-			int need = stop - tat[offset];
-			
-			if (need>space) {
-				makeRoom(offset, false, need);			
-			}
-			//we have some space so just shift the existing data.
-			int len = tat[offset+1]-tat[offset];
-			System.arraycopy(data, tat[offset], data, floor, len);
-			tat[offset] = floor;
-			tat[offset+1] = floor+len;
-		}
-	
-		//everything is now ready to trim and copy.
-		data[tat[offset+1]++] = value;
-	}
-	
 
 	public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
 		//if not room make room checking after first because thats where we want to copy the tail.
@@ -572,19 +406,63 @@ public class TextHeap {
 	//if there is no room after moving everything throws
 	void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking after first because thats where we want to copy the tail.
-		int targetPos = makeSpaceForAppend(trimTail, idx, sourceLen);	
-		System.arraycopy(source, sourceIdx, data, targetPos, sourceLen);
+		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(trimTail, idx, sourceLen), sourceLen);
+	}
+		
+	void appendTail(int idx, char value) {
+		//if not room make room checking after first because thats where we want to copy the tail.
+		int offset = idx<<2;
+		makeSpaceForAppend(offset, 1);
+		//everything is now ready to trim and copy.
+		data[tat[offset+1]++] = value;
+	}
+	
+	void trimTail(int idx, int trim) {
+		int offset = idx<<2;
+		
+		tat[offset+1] -= trim;
+		
+	}
+	
+	void trimHead(int idx, int trim) {
+		int offset = idx<<2;
+		
+		int tmp = tat[offset] + trim;
+		int stp = tat[offset+1];
+		if (tmp > stp) {
+			tmp = stp;
+		}
+		tat[offset] = tmp;
+		
 	}
 	
 	int makeSpaceForAppend(int trimTail, int idx, int sourceLen) {
+		int textLen = (sourceLen-trimTail);
+		
 		int offset = idx<<2;
 		
-		if (tat[offset]>=tat[offset+1]) {
+		makeSpaceForAppend(offset, textLen);
+		//everything is now ready to trim and copy.
+		
+		//keep the max head append size
+		int maxTail = tat[offset+3];
+		int dif=(sourceLen-trimTail);
+		if (dif>maxTail) {
+			tat[offset+3] = dif;
+		}
+		//target position
+		int targetPos = tat[offset+1]-trimTail;
+		tat[offset+1] = targetPos+sourceLen;
+		return targetPos;
+	}
+
+	private void makeSpaceForAppend(int offset, int textLen) {
+		if (tat[offset]>tat[offset+1]) {
 			//switch from null to zero length
 			tat[offset+1]=tat[offset];
 		}
 		
-		int stop = tat[offset+1]+(sourceLen-trimTail);
+		int stop = tat[offset+1]+textLen;
 		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
 		
 		if (stop>=limit) {
@@ -602,121 +480,81 @@ public class TextHeap {
 			tat[offset+1] = floor+len;
 
 		}
-		//everything is now ready to trim and copy.
-		
-		//keep the max head append size
-		int maxTail = tat[offset+3];
-		int dif=(sourceLen-trimTail);
-		if (dif>maxTail) {
-			tat[offset+3] = dif;
-		}
-		//target position
-		int targetPos = tat[offset+1]-trimTail;
-		tat[offset+1] = targetPos+sourceLen;
-		return targetPos;
 	}
-	
-	
-
 	
 	//append chars on to the front of the text after applying trim
 	//may need to move existing text or previous texts
 	//if there is no room after moving everything throws
 	void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
-		//if not room make room checking before first because thats where we want to copy the head.
-		int offset = idx<<2;
-		
-		if (tat[offset]>=tat[offset+1]) {
-			//null or empty string detected so change to simple set
-			set(idx,source,sourceIdx,sourceLen);
-			return;
-		}
-		
-		int start = tat[offset]-(sourceLen-trimHead);
-		int limit = offset-3<0 ? 0 : tat[offset-3];
-		
-		
-		if (start<limit) {
-			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
-			int space = stop - limit;
-			int need = tat[offset+1]-start;
-			
-			if (need>space) {
-				makeRoom(offset, true, need);			
-			}
-			//we have some space so just shift the existing data.
-			int len = tat[offset+1] - tat[offset];
-			System.arraycopy(data, tat[offset], data, start, len);
-			tat[offset] = start;
-			tat[offset+1] = start+len;
-			
-		}
-		//everything is now ready to trim and copy.
-		
-		//keep the max head append size
-		int maxHead = tat[offset+2];
-		int dif=(sourceLen-trimHead);
-		if (dif>maxHead) {
-			tat[offset+2] = dif;
-		}
-			
-		//everything is now ready to trim and copy.
-		int newStart = tat[offset]-dif;
-		System.arraycopy(source, sourceIdx, data, newStart, sourceLen);
-		tat[offset]=newStart;
-						
+		System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);			
 	}
 	
 	void appendHead(int idx, int trimHead, CharSequence value) {
-		//if not room make room checking before first because thats where we want to copy the head.
-		int offset = idx<<2;
-		
 		int sourceLen = value.length()-trimHead;
-		
-		if (tat[offset]>=tat[offset+1]) {
-			//null or empty string detected so change to simple set
-			set(idx, value, value.length()-trimHead);
-			return;
-		}
-		
-		int start = tat[offset]-(sourceLen-trimHead);
-		int limit = offset-3<0 ? 0 : tat[offset-3];
-		
-		
-		if (start<limit) {
-			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
-			int space = stop - limit;
-			int need = tat[offset+1]-start;
-			
-			if (need>space) {
-				makeRoom(offset, true, need);			
-			}
-			//we have some space so just shift the existing data.
-			int len = tat[offset+1] - tat[offset];
-			System.arraycopy(data, tat[offset], data, start, len);
-			tat[offset] = start;
-			tat[offset+1] = start+len;
-			
-		}
-		//everything is now ready to trim and copy.
-		
-		//keep the max head append size
-		int maxHead = tat[offset+2];
-		int dif=(sourceLen-trimHead);
-		if (dif>maxHead) {
-			tat[offset+2] = dif;
-		}
-			
-		//everything is now ready to trim and copy.
-		int newStart = tat[offset]-dif;
-		
+		int newStart = makeSpaceForPrepend(idx, trimHead, sourceLen);
+				
 		int i = sourceLen;
 		int j = newStart;
 		while (--i>=0) {
 			data[j] = value.charAt(i);
 		}
-		tat[offset]=newStart;
 						
+	}
+	
+	void appendHead(int idx, char value) {
+		//if not room make room checking after first because thats where we want to copy the tail.
+		int offset = idx<<2;
+		makeSpaceForPrepend(offset, 1);
+		//everything is now ready to trim and copy.
+		data[tat[offset+1]++] = value;
+	}
+
+	int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
+		int textLength = sourceLen-trimHead;
+		
+		//if not room make room checking before first because thats where we want to copy the head.
+		int offset = idx<<2;
+				
+		makeSpaceForPrepend(offset, textLength);
+		//everything is now ready to trim and copy.
+		
+		//keep the max head append size
+		int maxHead = tat[offset+2];
+		if (textLength>maxHead) {
+			tat[offset+2] = textLength;
+		}
+			
+		//everything is now ready to trim and copy.
+		int newStart = tat[offset]-textLength;
+		tat[offset]=newStart;
+		return newStart;
+	}
+
+
+	private void makeSpaceForPrepend(int offset, int textLength) {
+		if (tat[offset]>tat[offset+1]) {
+			//null or empty string detected so change to simple set
+			tat[offset+1]=tat[offset];
+		}
+		
+		int start = tat[offset]-textLength;
+		int limit = offset-3<0 ? 0 : tat[offset-3];
+				
+		if (start<limit) {
+			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
+			int space = stop - limit;
+			int need = tat[offset+1]-start;
+			
+			if (need>space) {
+				makeRoom(offset, true, need);			
+			}
+			//we have some space so just shift the existing data.
+			int len = tat[offset+1] - tat[offset];
+			System.arraycopy(data, tat[offset], data, start, len);
+			tat[offset] = start;
+			tat[offset+1] = start+len;
+			
+		}
 	}
 	
 	
@@ -728,7 +566,7 @@ public class TextHeap {
 	
 
 	public char getChar(int idx, int index) {
-		return data[tat[idx<<2]];
+		return data[tat[idx<<2]+index];
 	}
 	
 	public int get(int idx, char[] target, int targetIdx) {
@@ -893,135 +731,5 @@ public class TextHeap {
 			return tat[offset+1] - tat[offset];
 		}
 	}
-
-	//convert single char that is not the simple case
-	private static int decodeUTF8(byte[] source, int offset, char[] target, int targetIdx) {
-	
-		byte b = source[offset-1];
-	    int result;
-		if ( ((byte)(0xFF&(b<<2))) >=0) {
-			if ((b&0x40)==0) {
-				target[targetIdx] = 0xFFFD; //Bad data replacement char
-				return ++offset;
-			}
-			//code point 11	
-			result  = (b&0x1F);	
-		} else {
-			if (((byte)(0xFF&(b<<3)))>=0) {
-				//code point 16
-				result = (b&0x0F);
-			}  else {
-				if (((byte)(0xFF&(b<<4)))>=0) {
-					//code point 21
-					result = (b&0x07);
-				} else {
-					if (((byte)(0xFF&(b<<5)))>=0) {
-						//code point 26
-						result = (b&0x03);
-					} else {
-						if (((byte)(0xFF&(b<<6)))>=0) {
-							//code point 31
-							result = (b&0x01);
-						} else {
-							//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
-							//the high bit should never be set
-							target[targetIdx] = 0xFFFD; //Bad data replacement char
-							return offset+5; 
-						}
-						
-						if ((source[offset]&0xC0)!=0x80) {
-							target[targetIdx] = 0xFFFD; //Bad data replacement char
-							return offset+5; 
-						}
-						result = (result<<6)|(source[offset++]&0x3F);
-					}						
-					if ((source[offset]&0xC0)!=0x80) {
-						target[targetIdx] = 0xFFFD; //Bad data replacement char
-						return offset+4; 
-					}
-					result = (result<<6)|(source[offset++]&0x3F);
-				}
-				if ((source[offset]&0xC0)!=0x80) {
-					target[targetIdx] = 0xFFFD; //Bad data replacement char
-					return offset+3; 
-				}
-				result = (result<<6)|(source[offset++]&0x3F);
-			}
-			if ((source[offset]&0xC0)!=0x80) {
-				target[targetIdx] = 0xFFFD; //Bad data replacement char
-				return offset+2;
-			}
-			result = (result<<6)|(source[offset++]&0x3F);
-		}
-		if ((source[offset]&0xC0)!=0x80) {
-			target[targetIdx] = 0xFFFD; //Bad data replacement char
-			return offset+1;
-		}
-		target[targetIdx] = (char)((result<<6)|(source[offset++]&0x3F));
-		return offset;
-	}
-
-	//convert to full char array from byte array
-	static void decodeUTF8(byte[] source, int offset, char[] target, int charTarget, int charCount) {
-		while (--charCount>=0) {
-			byte b = source[offset++];
-			if (b>=0) {
-				//code point 7
-				target[charTarget++] = (char)b;
-			} else {
-			    offset = TextHeap.decodeUTF8(source, offset, target, charTarget++);
-			}
-			//System.err.println(target[charTarget-1]);
-		}
-	}
-
-	//convert to full byte array from char array
-	static void encodeUTF8(char[] source, int sourceOffset, int charCount, byte[] target, int targetOffset) {
-		while (--charCount>=0) {
-			int c = source[sourceOffset++];
-			
-			if (c<=0x007F) {
-				//code point 7
-				target[targetOffset++] = (byte)c;
-			} else {
-				if (c<=0x07FF) {
-					//code point 11
-					target[targetOffset++] = (byte)(0xC0|((c>>6)&0x1F));
-				} else {
-					if (c<=0xFFFF) {
-						//code point 16
-						target[targetOffset++] = (byte)(0xE0|((c>>12)&0x0F));
-					} else {
-						if (c<0x1FFFFF) {
-							//code point 21
-							target[targetOffset++] = (byte)(0xF0|((c>>18)&0x07));
-						} else {
-							if (c<0x3FFFFFF) {
-								//code point 26
-								target[targetOffset++] = (byte)(0xF8|((c>>24)&0x03));
-							} else {
-								if (c<0x7FFFFFFF) {
-									//code point 31
-									target[targetOffset++] = (byte)(0xFC|((c>>30)&0x01));
-								} else {
-									throw new UnsupportedOperationException("can not encode char with value: "+c);
-								}
-								target[targetOffset++] = (byte)(0x80 |((c>>24) &0x3F));
-							}
-							target[targetOffset++] = (byte)(0x80 |((c>>18) &0x3F));
-						}						
-						target[targetOffset++] = (byte)(0x80 |((c>>12) &0x3F));
-					}
-					target[targetOffset++] = (byte)(0x80 |((c>>6) &0x3F));
-				}
-				target[targetOffset++] = (byte)(0x80 |((c)   &0x3F));
-			}
-		}		
-	}
-
-
-
-
-
 
 }

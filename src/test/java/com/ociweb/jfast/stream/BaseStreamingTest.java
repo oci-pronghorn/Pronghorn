@@ -21,6 +21,7 @@ public abstract class BaseStreamingTest {
 		int operationIters = 7;
 		int warmup         = 50;
 		int sampleSize     = 1000;
+		int singleCharLength = 128;
 		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
 		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
 		
@@ -36,14 +37,14 @@ public abstract class BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 	}
@@ -154,11 +155,11 @@ public abstract class BaseStreamingTest {
 
 
 	
-	protected void performanceReadTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
+	protected void performanceReadTest(int fields, int singleCharLength, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 
-	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
+	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields);
 	    
 				long maxOverhead;
 				long totalOverhead;
@@ -224,15 +225,12 @@ public abstract class BaseStreamingTest {
 			DictionaryFactory dcr);
 
 	
-	protected long performanceWriteTest(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
+	protected long performanceWriteTest(int fields, int singleCharLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
-		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, fields, fields);
-		    
-		    //TODO: need to pass these values in?
-		    dcr.setTextSize(32, 16);
-		    
+		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields);
+   
 		    
 		    long byteCount=0;
 		

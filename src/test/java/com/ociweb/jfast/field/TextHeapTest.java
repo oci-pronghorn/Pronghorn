@@ -61,7 +61,8 @@ public class TextHeapTest {
 		
 		int i = testData.length;
 		while (--i>=0) {
-			th.set(i, testData[i]);
+			CharSequence charSequence = testData[i];
+			th.set(i, charSequence, 0, charSequence.length());
 		}
 		
 		i = testData.length;
@@ -139,12 +140,14 @@ public class TextHeapTest {
 		//write each test value into the heap
 		int i = testData.length;
 		while (--i>=0) {
-			th.set(testData.length-(i+1), testData[i]);
+			CharSequence charSequence = testData[i];
+			th.set(testData.length-(i+1), charSequence, 0, charSequence.length());
 		}
 		//now replace each backwards so they have something shorter or longer
 		i = testData.length;
 		while (--i>=0) {
-			th.set(i, testData[i]);
+			CharSequence charSequence = testData[i];
+			th.set(i, charSequence, 0, charSequence.length());
 		}
 		
 		

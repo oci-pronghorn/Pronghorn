@@ -496,6 +496,9 @@ public final class PrimitiveReader {
 	//TODO: if this does not perform well after in-line remove the interface and return to concrete
 	public void readTextUTF8(int charCount, Appendable target) {
 		while (--charCount>=0) {
+			if (position>=limit) {
+				fetch(1); //CAUTION: may change value of position
+			}
 			byte b = buffer[position++];
 			if (b>=0) {
 				//code point 7
@@ -512,6 +515,9 @@ public final class PrimitiveReader {
 	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
 		while (--charCount>=0) {
+			if (position>=limit) {
+				fetch(1); //CAUTION: may change value of position
+			}
 			byte b = buffer[position++];
 			if (b>=0) {
 				//code point 7
@@ -523,7 +529,7 @@ public final class PrimitiveReader {
 	}
 	
 	//convert single char that is not the simple case
-		private void decodeUTF8(Appendable target) {
+		private void decodeUTF8(Appendable target) {	
 			byte[] source = buffer;
 			
 			byte b = source[position-1];
@@ -534,6 +540,9 @@ public final class PrimitiveReader {
 						target.append((char)0xFFFD); //Bad data replacement char
 					} catch (IOException e) {
 						throw new FASTException(e);
+					}
+					if (position>=limit) {
+						fetch(1); //CAUTION: may change value of position
 					}
 					++position;
 					return; 
@@ -564,6 +573,9 @@ public final class PrimitiveReader {
 								} catch (IOException e) {
 									throw new FASTException(e);
 								}
+								if (limit - position < 5) {
+									fetch(5);
+								}
 								position+=5; 
 								return; 
 							}
@@ -574,8 +586,14 @@ public final class PrimitiveReader {
 								} catch (IOException e) {
 									throw new FASTException(e);
 								}
+								if (limit - position < 5) {
+									fetch(5);
+								}
 								position+=5; 
 								return; 
+							}
+							if (position>=limit) {
+								fetch(1); //CAUTION: may change value of position
 							}
 							result = (result<<6)|(source[position++]&0x3F);
 						}						
@@ -585,8 +603,14 @@ public final class PrimitiveReader {
 							} catch (IOException e) {
 								throw new FASTException(e);
 							}
+							if (limit - position < 4) {
+								fetch(4);
+							}
 							position+=4; 
 							return; 
+						}
+						if (position>=limit) {
+							fetch(1); //CAUTION: may change value of position
 						}
 						result = (result<<6)|(source[position++]&0x3F);
 					}
@@ -596,8 +620,14 @@ public final class PrimitiveReader {
 						} catch (IOException e) {
 							throw new FASTException(e);
 						}
+						if (limit - position < 3) {
+							fetch(3);
+						}
 						position+=3; 
 						return; 
+					}
+					if (position>=limit) {
+						fetch(1); //CAUTION: may change value of position
 					}
 					result = (result<<6)|(source[position++]&0x3F);
 				}
@@ -607,8 +637,14 @@ public final class PrimitiveReader {
 					} catch (IOException e) {
 						throw new FASTException(e);
 					}
+					if (limit - position < 2) {
+						fetch(2);
+					}
 					position+=2;
 					return; 
+				}
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
 				}
 				result = (result<<6)|(source[position++]&0x3F);
 			}
@@ -618,10 +654,16 @@ public final class PrimitiveReader {
 				} catch (IOException e) {
 					throw new FASTException(e);
 				}
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
 				position+=1;
 				return; 
 			}
 			try {
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
 				target.append((char)((result<<6)|(source[position++]&0x3F)));
 			} catch (IOException e) {
 				throw new FASTException(e);
@@ -630,6 +672,7 @@ public final class PrimitiveReader {
 	
 	//convert single char that is not the simple case
 	private void decodeUTF8(char[] target, int targetIdx) {
+		
 		byte[] source = buffer;
 		
 		byte b = source[position-1];
@@ -637,6 +680,9 @@ public final class PrimitiveReader {
 		if ( ((byte)(0xFF&(b<<2))) >=0) {
 			if ((b&0x40)==0) {
 				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
 				++position;
 				return; 
 			}
@@ -662,42 +708,75 @@ public final class PrimitiveReader {
 							//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
 							//the high bit should never be set
 							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							if (limit - position < 5) {
+								fetch(5);
+							}
 							position+=5; 
 							return; 
 						}
 						
 						if ((source[position]&0xC0)!=0x80) {
 							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							if (limit - position < 5) {
+								fetch(5);
+							}
 							position+=5; 
 							return; 
+						}
+						if (position>=limit) {
+							fetch(1); //CAUTION: may change value of position
 						}
 						result = (result<<6)|(source[position++]&0x3F);
 					}						
 					if ((source[position]&0xC0)!=0x80) {
 						target[targetIdx] = 0xFFFD; //Bad data replacement char
+						if (limit - position < 4) {
+							fetch(4);
+						}
 						position+=4; 
 						return; 
+					}
+					if (position>=limit) {
+						fetch(1); //CAUTION: may change value of position
 					}
 					result = (result<<6)|(source[position++]&0x3F);
 				}
 				if ((source[position]&0xC0)!=0x80) {
 					target[targetIdx] = 0xFFFD; //Bad data replacement char
+					if (limit - position < 3) {
+						fetch(3);
+					}
 					position+=3; 
 					return; 
+				}
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
 				}
 				result = (result<<6)|(source[position++]&0x3F);
 			}
 			if ((source[position]&0xC0)!=0x80) {
 				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				if (limit - position < 2) {
+					fetch(2);
+				}
 				position+=2;
 				return; 
+			}
+			if (position>=limit) {
+				fetch(1); //CAUTION: may change value of position
 			}
 			result = (result<<6)|(source[position++]&0x3F);
 		}
 		if ((source[position]&0xC0)!=0x80) {
 			target[targetIdx] = 0xFFFD; //Bad data replacement char
+			if (position>=limit) {
+				fetch(1); //CAUTION: may change value of position
+			}
 			position+=1;
 			return; 
+		}
+		if (position>=limit) {
+			fetch(1); //CAUTION: may change value of position
 		}
 		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}

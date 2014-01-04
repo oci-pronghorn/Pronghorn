@@ -14,6 +14,7 @@ package com.ociweb.jfast.field;
 public class DictionaryFactory {
 	
 	private static final int MAX_FIELDS = 1<<20; //1M
+	private static final int DEFAULT_TEXT_LENGTH = 64;
 	private static final int INIT_GROW_STEP = 16;
 		
 	private int integerCount;
@@ -47,22 +48,15 @@ public class DictionaryFactory {
 	private int[] byteInitIndex;
 	private byte[][] byteInitValue;
 		
-	private int singleTextSize = 0;
-	private int singleGapSize = 0;
-	
+	private final int singleTextSize;
+	private final int singleGapSize = 64; //default to avoid false cache sharing. 
 	
 
-	
-//	public DictionaryConstructionRules(FASTStaticReader reader) {
-//		
-//		//TODO: read all the values back in.
-//		
-//	}
 	public DictionaryFactory() {
-		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,MAX_FIELDS);
+		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,DEFAULT_TEXT_LENGTH,MAX_FIELDS,MAX_FIELDS);
 	}
 	
-	public DictionaryFactory(int integerCount, int longCount, int charCount, int decimalCount, int bytesCount) {
+	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount) {
 		 this.integerCount=integerCount;
 		 this.longCount=longCount;
 		 this.charCount=charCount;
@@ -80,6 +74,7 @@ public class DictionaryFactory {
 		 charInitCount=0;
 		 charInitIndex = new int[INIT_GROW_STEP];
 		 charInitValue = new char[INIT_GROW_STEP][];
+		 singleTextSize = singleCharLength;
 		
 		 decimalExponentInitCount=0;
 		 decimalExponentInitIndex = new int[INIT_GROW_STEP];
@@ -261,11 +256,6 @@ public class DictionaryFactory {
 			array[decimalMantissaInitIndex[i]] = decimalMantissaInitValue[i];
 		}
 		return array;
-	}
-
-	public void setTextSize(int size, int gap) {
-		this.singleTextSize = size;
-		this.singleGapSize = gap;
 	}
 	
 	public TextHeap charDictionary() {

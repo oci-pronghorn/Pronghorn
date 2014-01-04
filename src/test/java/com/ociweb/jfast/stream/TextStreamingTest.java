@@ -38,22 +38,23 @@ public class TextStreamingTest extends BaseStreamingTest {
 	public void asciiTest() {
 		int[] types = new int[] {
                    TypeMask.TextASCII,
-                   TypeMask.TextASCIIOptional,
+               //    TypeMask.TextASCIIOptional,
 				 };
-//		tester(types,"ASCII");
+	//	tester(types,"ASCII");
 	}
 	
 	@Test
 	public void utf8Test() {
 		int[] types = new int[] {
 				  TypeMask.TextUTF8,
-				  TypeMask.TextUTF8Optional,
+				//  TypeMask.TextUTF8Optional,
 				 };
-//		tester(types,"UTF8");
+		tester(types,"UTF8");
 	}
 	
 	private void tester(int[] types, String label) {
 		
+		int singleCharLength = 1024;
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
@@ -68,11 +69,11 @@ public class TextStreamingTest extends BaseStreamingTest {
 		
 		int[] operators = new int[] {
 				                      OperatorMask.None, 
-									 // OperatorMask.Constant,
+									//  OperatorMask.Constant,
 									 // OperatorMask.Copy,
-									 // OperatorMask.Delta,
+									// OperatorMask.Delta,
 									 // OperatorMask.Default,
-				                     // OperatorMask.Increment,
+				                     // OperatorMask.Tail,
 				                      };
 		
 		
@@ -84,14 +85,14 @@ public class TextStreamingTest extends BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 	}
@@ -173,19 +174,18 @@ public class TextStreamingTest extends BaseStreamingTest {
 						
 						
 						CharSequence expected = testData[f];
-						if (textHeap.length(textIdx)!=testData[f].length()) {
-							assertEquals(expected,textHeap.getSub(textIdx, 0, textHeap.length(textIdx)));
-						} else {
-							int j = textHeap.length(textIdx);
-							while (--j>=0) {
-								if (expected.charAt(j)!= textHeap.getChar(textHeap.length(textIdx), j)) {
-									assertEquals(expected,textHeap.getSub(textIdx, 0, textHeap.length(textIdx)));
-								}
-							}						
+						if (!textHeap.equals(textIdx, expected)) {
+							StringBuilder found = new StringBuilder();
+							textHeap.get(textIdx,found);
+						//	System.err.println(expected.length()+"{"+expected+"}");
+						//	System.err.println(found.length()+"{"+found.toString()+"}");
+							
+							assertEquals(expected,found.toString());
 						}
+					
 						
 					} catch (Exception e) {
-						System.err.println("xxx: expected "+testData[f]);
+						System.err.println("expected text; "+testData[f]);
 						throw new FASTException(e);
 					}
 				}

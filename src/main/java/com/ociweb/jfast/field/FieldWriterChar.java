@@ -36,7 +36,7 @@ public class FieldWriterChar {
 				writer.writePMapBit((byte)1);
 				writer.writeIntegerUnsigned(value.length()+1);
 				writer.writeTextUTF(value);
-				heap.set(idx, value);
+				heap.set(idx, value, 0, value.length());
 			}
 		}
 	}
@@ -118,7 +118,7 @@ public class FieldWriterChar {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(value.length());
 			writer.writeTextUTF(value);
-			heap.set(idx, value);
+			heap.set(idx, value, 0, value.length());
 		}
 	}
 
@@ -188,7 +188,7 @@ public class FieldWriterChar {
 			} else {
 				writer.writePMapBit((byte)1);
 				writer.writeTextASCII(value);
-				heap.set(idx, value);
+				heap.set(idx, value, 0, value.length());
 			}
 		}
 	}
@@ -264,7 +264,7 @@ public class FieldWriterChar {
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeTextASCII(value);
-			heap.set(idx, value);
+			heap.set(idx, value, 0, value.length());
 		}
 	}
 
