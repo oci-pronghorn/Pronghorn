@@ -508,31 +508,46 @@ public final class PrimitiveReader {
 					throw new FASTException(e);
 				}
 			} else {
-				decodeUTF8(target);
+				decodeUTF8(target, b);
 			}
 		}
 	}
 	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
-		while (--charCount>=0) {
-			if (position>=limit) {
-				fetch(1); //CAUTION: may change value of position
+		if (limit-position>charCount<<3) { //bigger than we will possibly needd.
+			//fast
+			while (--charCount>=0) {
+				byte b = buffer[position++];
+				if (b>=0) {
+					//code point 7
+					target[offset++] = (char)b;
+				} else {
+					//TODO: add fast impl
+					decodeUTF8(target, offset++, b);
+				}
 			}
-			byte b = buffer[position++];
-			if (b>=0) {
-				//code point 7
-				target[offset++] = (char)b;
-			} else {
-				decodeUTF8(target, offset++);
+		} else {
+		
+		
+			while (--charCount>=0) {
+				if (position>=limit) {
+					fetch(1); //CAUTION: may change value of position
+				}
+				byte b = buffer[position++];
+				if (b>=0) {
+					//code point 7
+					target[offset++] = (char)b;
+				} else {
+					decodeUTF8(target, offset++, b);
+				}
 			}
 		}
 	}
 	
 	//convert single char that is not the simple case
-		private void decodeUTF8(Appendable target) {	
+		private void decodeUTF8(Appendable target, byte b) {	
 			byte[] source = buffer;
 			
-			byte b = source[position-1];
 		    int result;
 			if ( ((byte)(0xFF&(b<<2))) >=0) {
 				if ((b&0x40)==0) {
@@ -671,11 +686,10 @@ public final class PrimitiveReader {
 		}
 	
 	//convert single char that is not the simple case
-	private void decodeUTF8(char[] target, int targetIdx) {
+	private void decodeUTF8(char[] target, int targetIdx, byte b) {
 		
 		byte[] source = buffer;
 		
-		byte b = source[position-1];
 	    int result;
 		if ( ((byte)(0xFF&(b<<2))) >=0) {
 			if ((b&0x40)==0) {

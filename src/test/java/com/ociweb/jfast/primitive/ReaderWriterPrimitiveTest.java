@@ -652,11 +652,8 @@ public class ReaderWriterPrimitiveTest {
 		return a<b ? a : b;
 	}
 	
-	//TODO: add utf8 test here
-	//TODO: add utf8 encoder/decoder test here.
-	
 	@Test 
-	public void testStrings() {
+	public void testASCIIStrings() {
 		int fieldSize = 3;
 		int capacity = speedTestSize*fieldSize;
 		
@@ -730,6 +727,88 @@ public class ReaderWriterPrimitiveTest {
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
 		}
 		System.out.println("ascii: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte ");
+		
+	}
+	
+	@Test 
+	public void testUTF8Strings() {
+		int fieldSize = 3;
+		int capacity = speedTestSize*fieldSize;
+		
+		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
+		
+		final PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputStream(baost));
+	
+		int i = 0;
+		while (i<stringData.length) {
+			pw.writeIntegerUnsigned(stringData[i].length());
+			pw.writeTextUTF(stringData[i++]);
+		}
+		
+		pw.flush();
+		
+		
+		byte[] byteArray = baost.toByteArray();
+		assertEquals(pw.totalWritten(),byteArray.length);
+		
+		FASTInputByteArray input = new FASTInputByteArray(byteArray);
+		final PrimitiveReader pr = new PrimitiveReader(input);
+		
+		i = 0;
+		StringBuilder builder = new StringBuilder();
+		while (i<stringData.length) {
+			builder.setLength(0);
+			int charCount = pr.readIntegerUnsigned();
+			pr.readTextUTF8(charCount, builder);
+			assertEquals(stringData[i++],builder.toString());
+		}
+		
+		int passes = speedTestSize / stringData.length;
+
+		///////////////////////////////////
+		//////////////////////////////////
+		
+		float writeDuration = Float.MAX_VALUE;
+		float readDuration = Float.MAX_VALUE;
+		
+		//limit this down to the size of the other tests to get a better comparison
+		//makes the bytesPerWrite about the same size as the others
+		int trunkTestLimit = stringData.length;//Much faster with larger strings.
+		System.gc();
+		
+		char[] target = new char[ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*3];
+		int cycles = testCycles;
+		while (--cycles>=0) {
+			baost.reset();
+			assertTrue(baost.size()==0);
+			
+			long start = System.nanoTime();
+			int p = passes;			
+			while (--p>=0) {
+				i = trunkTestLimit;
+				while (--i>=0) {
+					pw.writeIntegerUnsigned(stringData[i].length());
+					pw.writeTextUTF(stringData[i]);
+				}
+			}
+			pw.flush();
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
+			
+			//new bigger byte array for all the passes.
+			input.reset(baost.toByteArray());
+			
+			start = System.nanoTime();
+			p = passes;
+			while (--p>=0) {
+				i = trunkTestLimit;
+				while (--i>=0) {
+					int charCount = pr.readIntegerUnsigned();
+					pr.readTextUTF8(target, 0, charCount);
+				}
+			}
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
+		}
+		System.out.println("utf8: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte ");
 		
 		
 	}

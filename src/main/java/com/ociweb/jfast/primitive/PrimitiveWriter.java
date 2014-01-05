@@ -1027,5 +1027,7 @@ public final class PrimitiveWriter {
 		}						
 		buffer[limit++] = (byte)(0x80 |((c>>12) &0x3F));
 	}
+
+
 	
 }

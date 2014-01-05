@@ -23,6 +23,7 @@ public class TextHeap {
 	private final char[] data;
 	private final int gapCount;
 	private final int dataLength;
+	private final int tatLength;
 	
 	private final int[] initTat;
 	private final char[] initBuffer;
@@ -53,11 +54,13 @@ public class TextHeap {
 		gapCount = fixedTextItemCount+1;
 		dataLength = (singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount);
 		data = new char[dataLength];
-		tat = new int[fixedTextItemCount<<2];
+		tatLength = (fixedTextItemCount<<2);
+		tat = new int[tatLength+1];//plus 1 to get dataLength without conditional 
+		tat[tatLength]=dataLength;
 		initTat = new int[fixedTextItemCount<<1];
 		
 		
-		int i = tat.length;
+		int i = tatLength;
 		int j = dataLength+(singleTextSize>>1);
 		while (--i>=0) {
 			int idx = (j-=(singleTextSize+singleGapSize));
@@ -78,9 +81,7 @@ public class TextHeap {
 			
 			i = charInitValue.length;
 			while (--i>=0) {
-				int len = null==charInitValue[i]?0:charInitValue[i].length;
-				
-				
+				int len = null==charInitValue[i]?0:charInitValue[i].length;			
 				startIdx -= len;	
 				if (len>0) {
 					System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, len);
@@ -114,9 +115,6 @@ public class TextHeap {
 	//Caution: this method will create a new String instance
 	public CharSequence getSub(int idx, int start, int end) {
 		int offset = idx<<2;
-		int a = tat[offset]+start;
-		int b = Math.min(tat[offset+1], tat[offset]+end );
-		System.err.println(a+","+b+","+data.length);
 		return new String(data,
 				Math.max(0,tat[offset]+start),
 				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
@@ -164,7 +162,7 @@ public class TextHeap {
 
 	private int makeRoom(int offset, int sourceLen) {
 		int prevTextStop  = offset   == 0           ? 0           : tat[offset-3];
-		int nextTextStart = offset+4 >= tat.length  ? dataLength  : tat[offset+4];
+		int nextTextStart = tat[offset+4];
 		int space = nextTextStart - prevTextStop;
 		int middleIdx = (space-sourceLen)>>1;
 		
@@ -194,7 +192,7 @@ public class TextHeap {
 	
 	void set(int idx, CharSequence source, int startFrom, int copyLength) {
 		assert(startFrom<=source.length());
-		assert(copyLength-startFrom<source.length());
+		assert(copyLength-startFrom<=source.length());
 		assert(startFrom>=0);
 		assert(copyLength>=0);
 		
@@ -225,14 +223,14 @@ public class TextHeap {
 
 	private int makeRoomAfterFirst(int offsetNeedingRoom, int totalDesired) {
 		//compress rear its larger
-		totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired, preserveWorkspace);
+		totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired);
 		if (totalDesired>0) {
-			totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired, preserveWorkspace);
+			totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired);
 			if (totalDesired>0) {
 				preserveWorkspace = false;
-				totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired, preserveWorkspace);
+				totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired);
 				if (totalDesired>0) {
-					totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired, preserveWorkspace);
+					totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired);
 				}
 			}
 		}
@@ -241,14 +239,14 @@ public class TextHeap {
 
 	private int makeRoomBeforeFirst(int offsetNeedingRoom, int totalDesired) {
 		//compress front its larger
-		totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired, preserveWorkspace);
+		totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired);
 		if (totalDesired>0) {
-			totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired, preserveWorkspace);
+			totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired);
 			if (totalDesired>0) {
 				preserveWorkspace = false;
-				totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired, preserveWorkspace);
+				totalDesired = compressBefore(offsetNeedingRoom-4, totalDesired);
 				if (totalDesired>0) {
-					totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired, preserveWorkspace);
+					totalDesired = compressAfter(offsetNeedingRoom+4, totalDesired);
 				}
 			}
 		}
@@ -256,7 +254,7 @@ public class TextHeap {
 	}
 
 	
-	private int compressBefore(int stopOffset, int totalDesired, boolean preserveWorkspace) {
+	private int compressBefore(int stopOffset, int totalDesired) {
 		//moving everything to the left until totalDesired
 		//start at zero and move everything needed if possible.
 		int dataIdx = 0;
@@ -312,11 +310,11 @@ public class TextHeap {
 		return totalDesired;
 	}
 
-	private int compressAfter(int stopOffset, int totalDesired, boolean preserveWorkspace) {
+	private int compressAfter(int stopOffset, int totalDesired) {
 		//moving everything to the right until totalDesired
 		//start at zero and move everything needed if possible.
 		int dataIdx = dataLength;
-		int offset = tat.length-4;
+		int offset = tatLength-4;
 		while (offset>=stopOffset) {
 			
 			int leftBound = 0;
@@ -390,15 +388,12 @@ public class TextHeap {
 
 	public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
 		//if not room make room checking after first because thats where we want to copy the tail.
-
-		int sourceLen = value.length()-startFrom;
-		int targetPos = makeSpaceForAppend(trimTail, idx, sourceLen);
-					
-		int i = value.length();
-		int j = targetPos+sourceLen;
-		while (--i>=startFrom) {
-			data[--j] = value.charAt(i);
+		int targetPos = makeSpaceForAppend(trimTail, idx, value.length()-startFrom);	
+		int srcLimit = value.length();
+		while (startFrom<srcLimit) {
+			data[targetPos++] = value.charAt(startFrom++);
 		}
+
 	}
 
 	//append chars on to the end of the text after applying trim
@@ -408,20 +403,26 @@ public class TextHeap {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(trimTail, idx, sourceLen), sourceLen);
 	}
+	
+	int offset(int idx) {
+		return idx<<2;
+	}
+	
+	//never call without calling setZeroLength first then a sequence of these
+	//never call without calling offset() for first argument
+	void appendTail(int offset, char value) {
+
+		//setZeroLength was called first so no need to check for null 
+		if (tat[offset+1] >= tat[offset+4]) {
+			makeSpaceForAppend(offset, 1);
+		}
 		
-	void appendTail(int idx, char value) {
-		//if not room make room checking after first because thats where we want to copy the tail.
-		int offset = idx<<2;
-		makeSpaceForAppend(offset, 1);
 		//everything is now ready to trim and copy.
 		data[tat[offset+1]++] = value;
 	}
 	
 	void trimTail(int idx, int trim) {
-		int offset = idx<<2;
-		
-		tat[offset+1] -= trim;
-		
+		tat[(idx<<2)+1] -= trim;
 	}
 	
 	void trimHead(int idx, int trim) {
@@ -441,7 +442,7 @@ public class TextHeap {
 		
 		int offset = idx<<2;
 		
-		makeSpaceForAppend(offset, textLen);
+		prepForAppend(offset, textLen);
 		//everything is now ready to trim and copy.
 		
 		//keep the max head append size
@@ -456,30 +457,31 @@ public class TextHeap {
 		return targetPos;
 	}
 
-	private void makeSpaceForAppend(int offset, int textLen) {
+	private void prepForAppend(int offset, int textLen) {
 		if (tat[offset]>tat[offset+1]) {
 			//switch from null to zero length
 			tat[offset+1]=tat[offset];
 		}
 		
-		int stop = tat[offset+1]+textLen;
-		int limit = offset+4<tat.length ? tat[offset+4] : dataLength;
+		if (tat[offset+1]+textLen>=tat[offset+4]) {
+			makeSpaceForAppend(offset, textLen);
 		
-		if (stop>=limit) {
-			int floor = offset-3>=0 ? tat[offset-3] : 0;
-			int space = limit- floor;
-			int need = stop - tat[offset];
-			
-			if (need>space) {
-				makeRoom(offset, false, need);			
-			}
-			//we have some space so just shift the existing data.
-			int len = tat[offset+1]-tat[offset];
-			System.arraycopy(data, tat[offset], data, floor, len);
-			tat[offset] = floor;
-			tat[offset+1] = floor+len;
-
 		}
+	}
+
+
+	private void makeSpaceForAppend(int offset, int textLen) {
+		int floor = offset-3>=0 ? tat[offset-3] : 0;
+		int need = tat[offset+1]+textLen - tat[offset];
+		
+		if (need>(tat[offset+4] - floor)) {
+			makeRoom(offset, false, need);			
+		}
+		//we have some space so just shift the existing data.
+		int len = tat[offset+1]-tat[offset];
+		System.arraycopy(data, tat[offset], data, floor, len);
+		tat[offset] = floor;
+		tat[offset+1] = floor+len;
 	}
 	
 	//append chars on to the front of the text after applying trim
@@ -541,7 +543,7 @@ public class TextHeap {
 		int limit = offset-3<0 ? 0 : tat[offset-3];
 				
 		if (start<limit) {
-			int stop = offset+4<tat.length ? tat[offset+4] : dataLength;
+			int stop = tat[offset+4];
 			int space = stop - limit;
 			int need = tat[offset+1]-start;
 			
@@ -588,6 +590,37 @@ public class TextHeap {
 			System.arraycopy(data, pos, target, targetIdx, len);
 			return len;
 		}
+	}
+	
+	public boolean equals(int idx, CharSequence value) {
+		int pos;
+		int lim;
+		char[] buf;
+		if (idx<0) {
+			int offset = idx<<1;
+			
+			pos = initTat[offset];
+			lim = initTat[offset+1];
+			buf = initBuffer;
+			
+		} else {
+			int offset = idx<<2;
+			
+			pos = tat[offset];
+			lim = tat[offset+1];
+			buf = data;
+		}
+		
+		int i = value.length();
+		if (lim-pos!=i) {
+			return false;
+		}
+		while (--i>=0) {
+			if (value.charAt(i)!=buf[pos+i]) {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	public void get(int idx, Appendable target) {
@@ -649,51 +682,30 @@ public class TextHeap {
 		}
 		return i-1;
 	}
-	
 
-	public boolean equals(int idx, CharSequence value) {
-		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int lim = tat[offset+1];
-		
-		int i = value.length();
-		if (lim-pos!=i) {
-			return false;
-		}
-		while (--i>=0) {
-			if (value.charAt(i)!=data[pos+i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-	
 	public int countHeadMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
 		int lim = tat[offset+1];
 		
-		int i = 0;
 		int limit = Math.min(sourceLength,lim-pos);
+		int i = 0;
 		while (i<limit && data[pos+i]==source[sourceIdx+i]) {
 			i++;
 		}
 		return i;
 	}
 	
-	public int countTailMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
+	public int countTailMatch(int idx, char[] source, int sourceLength, int sourceLast) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
 		int lim = tat[offset+1];
-		int vlim = sourceLength;
 		
-		int limit = Math.min(vlim,lim-pos);
+		int limit = Math.min(sourceLength,lim-pos);
 		int i = 1;
-		int last = sourceLength+sourceIdx;
-		while (i<=limit && data[lim-i]==source[last-i]) {
+		while (i<=limit && data[lim-i]==source[sourceLast-i]) {
 			i++;
 		}
 		return i-1;
@@ -719,7 +731,7 @@ public class TextHeap {
 	}
 
 	public int textCount() {
-		return tat.length>>2;
+		return tatLength>>2;
 	}
 	
 	public int length(int idx) {
@@ -731,5 +743,4 @@ public class TextHeap {
 			return tat[offset+1] - tat[offset];
 		}
 	}
-
 }

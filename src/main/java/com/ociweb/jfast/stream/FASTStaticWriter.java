@@ -556,21 +556,21 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(value.length()+1);
-					writer.writeTextUTF(value);
+
+					writerChar.writeUTF8Optional(value);
 				} else {
 					//tail
 					writerChar.writeUTF8TailOptional(token,value);					
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					
 				} else {
@@ -580,7 +580,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeUTF8CopyOptional(token,value);				
 			} else {
@@ -592,11 +592,11 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharSequenceUTF8(int token, CharSequence value) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					writer.writeIntegerUnsigned(value.length());
 					writer.writeTextUTF(value);
@@ -606,7 +606,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					writerChar.writeUTF8Constant(token,value);					
 				} else {
@@ -616,7 +616,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeUTF8Copy(token,value);			
 			} else {
@@ -629,11 +629,11 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					writer.writeTextASCII(value);
 				} else {
@@ -642,7 +642,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					
 				} else {
@@ -653,7 +653,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeASCIICopyOptional(token,value);
 				
@@ -668,20 +668,20 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharSequenceASCII(int token, CharSequence value) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
-					//none
-					writer.writeTextASCII(value);
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none					
+					writerChar.writeASCII(value);
 				} else {
 					//tail
 					writerChar.writeASCIITail(token,value);
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					writerChar.writeASCIIConstant(token,value);
 				} else {
@@ -691,7 +691,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeASCIICopy(token,value);
 			} else {
@@ -731,21 +731,21 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(length+1);
-					writer.writeTextUTF(value,offset,length);
+					writerChar.writeUTF8Optional(value, offset, length);
+
 				} else {
 					//tail
 					writerChar.writeUTF8TailOptional(token, value, offset, length);
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					
 				} else {
@@ -755,7 +755,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeUTF8CopyOptional(token, value, offset, length);
 			} else {
@@ -767,21 +767,21 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(length);
-					writer.writeTextUTF(value,offset,length);
+					writerChar.writeUTF8(value,offset,length);
+
 				} else {
 					//tail
 					writerChar.writeUTF8Tail(token, value, offset, length);
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					writerChar.writeUTF8Constant(token, value, offset, length);
 				} else {
@@ -791,7 +791,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeUTF8Copy(token, value, offset, length);
 			} else {
@@ -803,11 +803,11 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					writer.writeTextASCII(value,offset,length);
 				} else {
@@ -816,7 +816,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					
 				} else {
@@ -826,7 +826,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeASCIICopyOptional(token, value, offset, length);
 			} else {
@@ -839,11 +839,11 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
 		
-		if (0==(token&(1<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//none tail
-				if (0==(token&(8<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					writer.writeTextASCII(value,offset,length);
 				} else {
@@ -852,7 +852,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}
 			} else {
 				// constant delta
-				if (0==(token&(4<<TokenBuilder.MASK_TYPE))) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					writerChar.writeASCIIConstant(token, value, offset, length);
 				} else {
@@ -862,7 +862,7 @@ public final class FASTStaticWriter implements FASTWriter {
 			}
 		} else {
 			//copy default
-			if (0==(token&(2<<TokenBuilder.MASK_TYPE))) {//compiler does all the work.
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				writerChar.writeASCIICopy(token, value, offset, length);
 			} else {

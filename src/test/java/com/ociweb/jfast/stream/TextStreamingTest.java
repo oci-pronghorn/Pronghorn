@@ -38,16 +38,16 @@ public class TextStreamingTest extends BaseStreamingTest {
 	public void asciiTest() {
 		int[] types = new int[] {
                    TypeMask.TextASCII,
-               //    TypeMask.TextASCIIOptional,
+                   TypeMask.TextASCIIOptional,
 				 };
-	//	tester(types,"ASCII");
+		tester(types,"ASCII");
 	}
 	
 	@Test
 	public void utf8Test() {
 		int[] types = new int[] {
 				  TypeMask.TextUTF8,
-				//  TypeMask.TextUTF8Optional,
+				  TypeMask.TextUTF8Optional,
 				 };
 		tester(types,"UTF8");
 	}
@@ -70,9 +70,9 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int[] operators = new int[] {
 				                      OperatorMask.None, 
 									//  OperatorMask.Constant,
-									 // OperatorMask.Copy,
+									//  OperatorMask.Copy,
 									// OperatorMask.Delta,
-									 // OperatorMask.Default,
+									  //OperatorMask.Default,
 				                     // OperatorMask.Tail,
 				                      };
 		

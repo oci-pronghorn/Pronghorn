@@ -41,16 +41,32 @@ public class FieldReaderChar {
 		return idx;
 	}
 
+	final byte NULL_STOP = (byte)0x80;
+	
 	private void readASCIIToHeap(int idx) {
-		charDictionary.setZeroLength(idx);
+		// 0x80 is a null string.
+		// 0x00, 0x80 is zero length string
 		byte val = reader.readTextASCIIByte();
-		while (val>=0) {
-			charDictionary.appendTail(idx, (char)val);
+		if (val==0) {
+			charDictionary.setZeroLength(idx);
+			//must move cursor off the second byte
 			val = reader.readTextASCIIByte();
-		}
-		//val is last byte
-		if (0x80!=val) {
-			charDictionary.appendTail(idx, (char)(0x7F & val));
+			//at least do a validation because we already have what we need
+			assert((val&0xFF)==0x80);
+		} else {
+			if (val==NULL_STOP) {
+				charDictionary.setNull(idx);				
+			} else {
+				charDictionary.setZeroLength(idx);
+				//will be converted to real text if a char is found
+				int offset = charDictionary.offset(idx);
+				while (val>=0) {
+					charDictionary.appendTail(offset, (char)val);
+					val = reader.readTextASCIIByte();
+				}
+				//val is last byte
+				charDictionary.appendTail(offset, (char)(0x7F & val));
+			}
 		}
 	}
 	
@@ -77,11 +93,12 @@ public class FieldReaderChar {
 		} else {
 			charDictionary.setZeroLength(idx);
 			byte b = reader.readTextASCIIByte();
+			int offset = charDictionary.offset(idx);
 			while (b>=0) {
-				charDictionary.appendTail(idx, (char)b);
+				charDictionary.appendTail(offset, (char)b);
 				b = reader.readTextASCIIByte();
 			}
-			charDictionary.appendTail(idx, (char)(b&0x07));
+			charDictionary.appendTail(offset, (char)(b&0x07));
 			return idx;
 		}
 	}
@@ -94,11 +111,12 @@ public class FieldReaderChar {
 		} else {
 			charDictionary.setZeroLength(idx);
 			byte b = reader.readTextASCIIByte();
+			int offset = charDictionary.offset(idx);
 			while (b>=0) {
-				charDictionary.appendTail(idx, (char)b);
+				charDictionary.appendTail(offset, (char)b);
 				b = reader.readTextASCIIByte();
 			}
-			charDictionary.appendTail(idx, (char)(b&0x07));
+			charDictionary.appendTail(offset, (char)(b&0x07));
 			return idx;
 		}
 	}
@@ -115,11 +133,12 @@ public class FieldReaderChar {
 		}
 		
 		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
 		while (value>=0) {
-			charDictionary.appendTail(idx, (char)value);
+			charDictionary.appendTail(offset, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(idx, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -130,11 +149,12 @@ public class FieldReaderChar {
 		charDictionary.trimTail(idx, reader.readIntegerSigned());
 				
 		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
 		while (value>=0) {
-			charDictionary.appendTail(idx, (char)value);
+			charDictionary.appendTail(offset, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(idx, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -176,11 +196,12 @@ public class FieldReaderChar {
 		}
 		
 		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
 		while (value>=0) {
-			charDictionary.appendTail(idx, (char)value);
+			charDictionary.appendTail(offset, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(idx, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -191,11 +212,12 @@ public class FieldReaderChar {
 		charDictionary.trimTail(idx, reader.readIntegerSigned());
 				
 		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
 		while (value>=0) {
-			charDictionary.appendTail(idx, (char)value);
+			charDictionary.appendTail(offset, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(idx, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -321,17 +343,17 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readTextASCII(int token) {
+	public int readASCII(int token) {
 		int idx = token & INSTANCE_MASK;
 		readASCIIToHeap(idx);
 		return idx;
 	}
 	
 	public int readTextASCIIOptional(int token) {
-		return readTextASCII(token);
+		return readASCII(token);
 	}
 
-	public int readTextUTF8(int token) {
+	public int readUTF8(int token) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
 		reader.readTextUTF8(charDictionary.rawAccess(), 
@@ -340,7 +362,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readTextUTF8Optional(int token) {
+	public int readUTF8Optional(int token) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
 		reader.readTextUTF8(charDictionary.rawAccess(), 
