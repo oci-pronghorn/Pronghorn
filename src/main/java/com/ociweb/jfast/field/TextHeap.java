@@ -408,17 +408,32 @@ public class TextHeap {
 		return idx<<2;
 	}
 	
+	int nextLimit(int offset) {
+		return tat[offset+4];
+	}
+	
+	int stopIndex(int offset) {
+		return tat[offset+1];
+	}
+	
+	int stopIndex(int offset, int value) {
+		return tat[offset+1] = value;
+	}
+	
 	//never call without calling setZeroLength first then a sequence of these
 	//never call without calling offset() for first argument
-	void appendTail(int offset, char value) {
-
+	int appendTail(int offset, int nextLimit, char value) {
+		
 		//setZeroLength was called first so no need to check for null 
-		if (tat[offset+1] >= tat[offset+4]) {
+		if (tat[offset+1] >= nextLimit) {
+	//		System.err.println("make space for "+offset);
 			makeSpaceForAppend(offset, 1);
+			nextLimit = tat[offset+4];
 		}
 		
 		//everything is now ready to trim and copy.
 		data[tat[offset+1]++] = value;
+		return nextLimit;
 	}
 	
 	void trimTail(int idx, int trim) {
@@ -470,7 +485,7 @@ public class TextHeap {
 	}
 
 
-	private void makeSpaceForAppend(int offset, int textLen) {
+	void makeSpaceForAppend(int offset, int textLen) {
 		int floor = offset-3>=0 ? tat[offset-3] : 0;
 		int need = tat[offset+1]+textLen - tat[offset];
 		
@@ -623,7 +638,7 @@ public class TextHeap {
 		return true;
 	}
 	
-	public void get(int idx, Appendable target) {
+	public Appendable get(int idx, Appendable target) {
 		if (idx<0) {
 			int offset = idx << 1; //this shift left also removes the top bit! sweet.
 			
@@ -652,6 +667,7 @@ public class TextHeap {
 				throw new FASTException(e);
 			}
 		}
+		return target;
 	}
 	
 	public int countHeadMatch(int idx, CharSequence value) {

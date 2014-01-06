@@ -40,7 +40,16 @@ public class TextStreamingTest extends BaseStreamingTest {
                    TypeMask.TextASCII,
                    TypeMask.TextASCIIOptional,
 				 };
-		tester(types,"ASCII");
+		int[] operators = new int[] {
+                  OperatorMask.None, 
+				  OperatorMask.Constant,
+				  OperatorMask.Copy,
+				  OperatorMask.Default,
+				// OperatorMask.Delta,
+                // OperatorMask.Tail,
+                };
+
+		textTester(types,operators,"ASCII");
 	}
 	
 	@Test
@@ -49,10 +58,19 @@ public class TextStreamingTest extends BaseStreamingTest {
 				  TypeMask.TextUTF8,
 				  TypeMask.TextUTF8Optional,
 				 };
-		tester(types,"UTF8");
+		int[] operators = new int[] {
+                OperatorMask.None, 
+				OperatorMask.Constant,
+			//	  OperatorMask.Copy,
+				//	OperatorMask.Default,
+				// OperatorMask.Delta,
+               // OperatorMask.Tail,
+                };
+
+		textTester(types,operators,"UTF8");
 	}
 	
-	private void tester(int[] types, String label) {
+	private void textTester(int[] types, int[] operators, String label) {
 		
 		int singleCharLength = 1024;
 		int fieldsPerGroup = 10;
@@ -67,15 +85,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*avgFieldSize));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
-		int[] operators = new int[] {
-				                      OperatorMask.None, 
-									//  OperatorMask.Constant,
-									//  OperatorMask.Copy,
-									// OperatorMask.Delta,
-									  //OperatorMask.Default,
-				                     // OperatorMask.Tail,
-				                      };
-		
+			
 		
 		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
 		byte[] writeBuffer = new byte[streamByteSize];

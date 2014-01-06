@@ -721,7 +721,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					pr.readTextASCII(target, 0);
+					pr.readTextASCII(target, 0); //TODO: unfair test because we never run like this because it could cause stack overflow.
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());

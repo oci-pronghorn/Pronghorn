@@ -32,6 +32,8 @@ public class FieldReaderChar {
 		return length==1;
 	}
 
+	final byte NULL_STOP = (byte)0x80;
+
 	public int readASCIICopy(int token) {
 		int idx = token & INSTANCE_MASK;
 		
@@ -41,9 +43,9 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	final byte NULL_STOP = (byte)0x80;
 	
 	private void readASCIIToHeap(int idx) {
+		
 		// 0x80 is a null string.
 		// 0x00, 0x80 is zero length string
 		byte val = reader.readTextASCIIByte();
@@ -57,17 +59,33 @@ public class FieldReaderChar {
 			if (val==NULL_STOP) {
 				charDictionary.setNull(idx);				
 			} else {
-				charDictionary.setZeroLength(idx);
-				//will be converted to real text if a char is found
-				int offset = charDictionary.offset(idx);
-				while (val>=0) {
-					charDictionary.appendTail(offset, (char)val);
-					val = reader.readTextASCIIByte();
-				}
-				//val is last byte
-				charDictionary.appendTail(offset, (char)(0x7F & val));
+				charDictionary.setZeroLength(idx);				
+				fastHeapAppend(idx, val);
 			}
 		}
+	}
+
+	private void fastHeapAppend(int idx, byte val) {
+		int offset = charDictionary.offset(idx);
+		int nextLimit = charDictionary.nextLimit(offset);
+		int targIndex = charDictionary.stopIndex(offset);
+		
+		char[] targ = charDictionary.rawAccess();
+		
+		while (val>=0) { 
+				if (targIndex >= nextLimit) {
+					charDictionary.makeSpaceForAppend(offset, 1);
+					nextLimit = charDictionary.nextLimit(offset);
+				}
+				targ[targIndex++] = (char)val;
+				val = reader.readTextASCIIByte();
+		}
+		if (targIndex >= nextLimit) {
+			charDictionary.makeSpaceForAppend(offset, 1);
+			nextLimit = charDictionary.nextLimit(offset);
+		}	
+		targ[targIndex++] = (char)(0x7F & val);
+		charDictionary.stopIndex(offset,targIndex);
 	}
 	
 	public int readUTF8Copy(int token) {
@@ -91,14 +109,7 @@ public class FieldReaderChar {
 		if (reader.popPMapBit()==0) {
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
-			charDictionary.setZeroLength(idx);
-			byte b = reader.readTextASCIIByte();
-			int offset = charDictionary.offset(idx);
-			while (b>=0) {
-				charDictionary.appendTail(offset, (char)b);
-				b = reader.readTextASCIIByte();
-			}
-			charDictionary.appendTail(offset, (char)(b&0x07));
+			readASCIIToHeap(idx);
 			return idx;
 		}
 	}
@@ -109,16 +120,14 @@ public class FieldReaderChar {
 		if (reader.popPMapBit()==0) {
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
-			charDictionary.setZeroLength(idx);
-			byte b = reader.readTextASCIIByte();
-			int offset = charDictionary.offset(idx);
-			while (b>=0) {
-				charDictionary.appendTail(offset, (char)b);
-				b = reader.readTextASCIIByte();
-			}
-			charDictionary.appendTail(offset, (char)(b&0x07));
+			readASCIIToHeap(idx);
 			return idx;
 		}
+	}
+	
+	public int readASCIIDefaultOptional(int token) {
+		//for ASCII we don't need special behavior for optional
+		return readASCIIDefault(token);
 	}
 
 	public int readASCIIDelta(int token) {
@@ -134,11 +143,13 @@ public class FieldReaderChar {
 		
 		byte value = reader.readTextASCIIByte();
 		int offset = charDictionary.offset(idx);
+		int nextLimit = charDictionary.nextLimit(offset);
 		while (value>=0) {
-			charDictionary.appendTail(offset, (char)value);
+			//TODO: this should be append head for head?
+			nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(offset, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -146,16 +157,26 @@ public class FieldReaderChar {
 	public int readASCIITail(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		charDictionary.trimTail(idx, reader.readIntegerSigned());
-				
-		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		while (value>=0) {
-			charDictionary.appendTail(offset, (char)value);
-			value = reader.readTextASCIIByte();
+		int trim = reader.readIntegerUnsigned();
+		if (trim>0) {
+			charDictionary.trimTail(idx, trim);
 		}
-		charDictionary.appendTail(offset, (char)(value&0x7F) );
-				
+		byte val = reader.readTextASCIIByte();
+		if (val==0) {
+			//nothing to append
+			//must move cursor off the second byte
+			val = reader.readTextASCIIByte();
+			//at least do a validation because we already have what we need
+			assert((val&0xFF)==0x80);
+		} else {
+			if (val==NULL_STOP) {
+				//nothing to append
+				//charDictionary.setNull(idx);				
+			} else {				
+				fastHeapAppend(idx, val);
+			}
+		}
+		
 		return idx;
 	}
 
@@ -168,21 +189,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readASCIIDefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
-		} else {
-			
-			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.rawAccess(), 
-					            charDictionary.allocate(idx, length),
-					            length);
-						
-			return idx;
-		}
-	}
+
 
 	public int readASCIIDeltaOptional(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -197,11 +204,12 @@ public class FieldReaderChar {
 		
 		byte value = reader.readTextASCIIByte();
 		int offset = charDictionary.offset(idx);
+		int nextLimit = charDictionary.nextLimit(offset);
 		while (value>=0) {
-			charDictionary.appendTail(offset, (char)value);
+			nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
 			value = reader.readTextASCIIByte();
 		}
-		charDictionary.appendTail(offset, (char)(value&0x7F) );
+		charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
 				
 		return idx;
 	}
@@ -212,13 +220,10 @@ public class FieldReaderChar {
 		charDictionary.trimTail(idx, reader.readIntegerSigned());
 				
 		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		while (value>=0) {
-			charDictionary.appendTail(offset, (char)value);
-			value = reader.readTextASCIIByte();
-		}
-		charDictionary.appendTail(offset, (char)(value&0x7F) );
-				
+		
+		fastHeapAppend(idx, value);
+		
+						
 		return idx;
 	}
 

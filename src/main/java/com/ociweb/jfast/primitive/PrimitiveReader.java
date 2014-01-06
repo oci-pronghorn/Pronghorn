@@ -514,27 +514,23 @@ public final class PrimitiveReader {
 	}
 	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
-		if (limit-position>charCount<<3) { //bigger than we will possibly needd.
+		byte b;
+		if (limit-position>=charCount<<3) { //if bigger than the text could be then use this shortcut
 			//fast
 			while (--charCount>=0) {
-				byte b = buffer[position++];
-				if (b>=0) {
+				if ((b = buffer[position++])>=0) {
 					//code point 7
 					target[offset++] = (char)b;
 				} else {
-					//TODO: add fast impl
-					decodeUTF8(target, offset++, b);
+					decodeUTF8Fast(target, offset++, b);
 				}
 			}
-		} else {
-		
-		
+		} else {		
 			while (--charCount>=0) {
 				if (position>=limit) {
 					fetch(1); //CAUTION: may change value of position
 				}
-				byte b = buffer[position++];
-				if (b>=0) {
+				if ((b = buffer[position++])>=0) {
 					//code point 7
 					target[offset++] = (char)b;
 				} else {
@@ -795,7 +791,78 @@ public final class PrimitiveReader {
 		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}
 
-
+	private void decodeUTF8Fast(char[] target, int targetIdx, byte b) {
+		
+		byte[] source = buffer;
+		
+	    int result;
+		if ( ((byte)(0xFF&(b<<2))) >=0) {
+			if ((b&0x40)==0) {
+				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				++position;
+				return; 
+			}
+			//code point 11	
+			result  = (b&0x1F);	
+		} else {
+			if (((byte)(0xFF&(b<<3)))>=0) {
+				//code point 16
+				result = (b&0x0F);
+			}  else {
+				if (((byte)(0xFF&(b<<4)))>=0) {
+					//code point 21
+					result = (b&0x07);
+				} else {
+					if (((byte)(0xFF&(b<<5)))>=0) {
+						//code point 26
+						result = (b&0x03);
+					} else {
+						if (((byte)(0xFF&(b<<6)))>=0) {
+							//code point 31
+							result = (b&0x01);
+						} else {
+							//System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
+							//the high bit should never be set
+							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							position+=5; 
+							return; 
+						}
+						
+						if ((source[position]&0xC0)!=0x80) {
+							target[targetIdx] = 0xFFFD; //Bad data replacement char
+							position+=5; 
+							return; 
+						}
+						result = (result<<6)|(source[position++]&0x3F);
+					}						
+					if ((source[position]&0xC0)!=0x80) {
+						target[targetIdx] = 0xFFFD; //Bad data replacement char
+						position+=4; 
+						return; 
+					}
+					result = (result<<6)|(source[position++]&0x3F);
+				}
+				if ((source[position]&0xC0)!=0x80) {
+					target[targetIdx] = 0xFFFD; //Bad data replacement char
+					position+=3; 
+					return; 
+				}
+				result = (result<<6)|(source[position++]&0x3F);
+			}
+			if ((source[position]&0xC0)!=0x80) {
+				target[targetIdx] = 0xFFFD; //Bad data replacement char
+				position+=2;
+				return; 
+			}
+			result = (result<<6)|(source[position++]&0x3F);
+		}
+		if ((source[position]&0xC0)!=0x80) {
+			target[targetIdx] = 0xFFFD; //Bad data replacement char
+			position+=1;
+			return; 
+		}
+		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
+	}
 
 	
 }

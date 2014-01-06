@@ -193,25 +193,7 @@ public class FieldWriterChar {
 		}
 	}
 
-	public void writeASCIIDefaultOptional(int token, CharSequence value) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (null==value) {
-			if (heap.isNull(idx)) {
-				writer.writePMapBit((byte)0);
-			} else {
-				writer.writePMapBit((byte)1);
-				writer.writeNull();
-			}
-		} else {
-			if (heap.equals(idx, value)) {
-				writer.writePMapBit((byte)0);
-			} else {
-				writer.writePMapBit((byte)1);
-				writer.writeTextASCII(value);
-			}
-		}
-	}
+	
 
 	public void writeASCIIDeltaOptional(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
@@ -250,10 +232,17 @@ public class FieldWriterChar {
 	}
 
 	private void writeASCIITail(int idx, int headCount, CharSequence value) {
+//		System.err.println("orig:"+heap.get(idx, new StringBuilder()));
+//		System.err.println(" new:"+value);
+//		System.err.println("matching head:"+headCount);
+//		
+		
 		int trimTail = heap.length(idx)-headCount;
 		writer.writeIntegerUnsigned(trimTail);
 		writer.writeTextASCIIAfter(headCount,value);
 		heap.appendTail(idx, trimTail, headCount, value);
+		
+//		System.err.println("zzzz:"+heap.get(idx, new StringBuilder()));
 	}
 
 	public void writeASCIICopy(int token, CharSequence value) {
@@ -289,7 +278,40 @@ public class FieldWriterChar {
 			writer.writeTextASCII(value);
 		}
 	}
+	
+	public void writeASCIIDefaultOptional(int token, CharSequence value) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (null==value) {
+			if (heap.isNull(idx)) {
+				writer.writePMapBit((byte)0);
+			} else {
+				writer.writePMapBit((byte)1);
+				writer.writeNull();
+			}
+		} else {
+			if (heap.equals(idx, value)) {
+				writer.writePMapBit((byte)0);
+			} else {
+				writer.writePMapBit((byte)1);
+				writer.writeTextASCII(value);
+			}
+		}
+	}
 
+
+	public void writeUTF8DefaultOptional(int token, char[] value, int offset, int length) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length+1);
+			writer.writeTextUTF(value,offset,length);
+		}
+	}
+	
 	public void writeASCIIDelta(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
 		
@@ -308,6 +330,7 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIITail(int token, CharSequence value) {
+	//	System.err.println("XXXX:"+value);
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value);
 		writeASCIITail(idx, headCount, value);
@@ -326,17 +349,6 @@ public class FieldWriterChar {
 		}
 	}
 
-	public void writeUTF8DefaultOptional(int token, char[] value, int offset, int length) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(length+1);
-			writer.writeTextUTF(value,offset,length);
-		}
-	}
 
 	public void writeUTF8DeltaOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
