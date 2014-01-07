@@ -454,13 +454,13 @@ public final class PrimitiveReader {
 		}
 	}
 
-	public int readTextASCII(char[] target, int offset) {
+	public int readTextASCII(char[] target, int offset, int maxLength) {
 		if (limit - position < 2) {
 			fetch(2);
 		}
 		
 		byte v = buffer[position];
-		
+				
 		if (0 == v) {
 			v = buffer[position+1];
 			if (0x80 != (v&0xFF)) {
@@ -470,16 +470,21 @@ public final class PrimitiveReader {
 			position+=2;
 			return 0; //zero length string
 		} else {	
+			int countDown = maxLength;
 			//must use count because the base of position will be in motion.
 			//however the position can not be incremented or fetch may drop data.
             int idx = offset;
-			while (buffer[position]>=0) {
+			while (buffer[position]>=0 && --countDown>=0) {
 				target[idx++]=(char)(buffer[position++]);
 				if (position>=limit) {
 					fetch(1); //CAUTION: may change value of position
 				}
 			}
-			target[idx++]=(char)(0x7F & buffer[position++]);
+			if (--countDown>=0) {
+				target[idx++]=(char)(0x7F & buffer[position++]);
+			} else {
+				throw new FASTException("Out of bounds, maxLength:"+maxLength);
+			}
 			return idx-offset;//length of string
 		}
 	}

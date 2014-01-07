@@ -88,20 +88,7 @@ public class FieldReaderChar {
 		charDictionary.stopIndex(offset,targIndex);
 	}
 	
-	public int readUTF8Copy(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()!=0) {
-			
-			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.rawAccess(), 
-					            charDictionary.allocate(idx, length),
-					            length);
-			
-		}
-		
-		return idx;
-	}
+	
 
 	public int readASCIIConstant(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -260,6 +247,23 @@ public class FieldReaderChar {
 			return idx;
 		}
 	}
+	
+
+	public int readUTF8DefaultOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned()-1;
+			reader.readTextUTF8(charDictionary.rawAccess(), 
+					            charDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
+	}
 
 	public int readUTF8Delta(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -284,41 +288,43 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned(); 
 
 		//append to tail	
-		reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(trim, idx, utfLength), utfLength);
+		int targetOffset = charDictionary.makeSpaceForAppend(trim, idx, utfLength);
 		
+	//	int dif = charDictionary.length(idx);
+		
+	//	System.err.println("read: trim:"+trim+" utfLen:"+utfLength+" target:"+targetOffset+" made space "+dif);
+		
+		reader.readTextUTF8(charDictionary.rawAccess(), targetOffset, utfLength);
+//		System.err.println("recv "+charDictionary.get(idx, new StringBuilder()));
+		//TODO: this was written but why not found by get above??
+//		System.err.println("recv "+new String(charDictionary.rawAccess(), targetOffset, utfLength));
+		
+		
+		return idx;
+	}
+	
+	public int readUTF8Copy(int token) {
+		int idx = token & INSTANCE_MASK;
+		if (reader.popPMapBit()!=0) {
+			int length = reader.readIntegerUnsigned();
+			reader.readTextUTF8(charDictionary.rawAccess(), 
+					            charDictionary.allocate(idx, length),
+					            length);
+		}		
 		return idx;
 	}
 
 	public int readUTF8CopyOptional(int token) {
 		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()!=0) {
-			
-			int length = reader.readIntegerUnsigned();
+		if (reader.popPMapBit()!=0) {			
+			int length = reader.readIntegerUnsigned()-1;
 			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
-			
-		}
-		
+		}		
 		return idx;
 	}
 
-	public int readUTF8DefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
-		} else {
-			
-			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.rawAccess(), 
-					            charDictionary.allocate(idx, length),
-					            length);
-						
-			return idx;
-		}
-	}
 
 	public int readUTF8DeltaOptional(int token) {
 		int idx = token & INSTANCE_MASK;

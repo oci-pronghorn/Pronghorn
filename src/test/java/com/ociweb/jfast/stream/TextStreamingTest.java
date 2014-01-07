@@ -20,7 +20,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class TextStreamingTest extends BaseStreamingTest {
 
-	final int fields         = 30000;
+	final int fields      		      = 30000;
 	final CharSequence[] testData    = buildTestData(fields);
 	
 	FASTOutputByteArray output;
@@ -38,7 +38,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 	public void asciiTest() {
 		int[] types = new int[] {
                    TypeMask.TextASCII,
-                   TypeMask.TextASCIIOptional,
+      //             TypeMask.TextASCIIOptional,
 				 };
 		int[] operators = new int[] {
                   OperatorMask.None, 
@@ -46,7 +46,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 				  OperatorMask.Copy,
 				  OperatorMask.Default,
 				// OperatorMask.Delta,
-                // OperatorMask.Tail,
+                //  OperatorMask.Tail,
                 };
 
 		textTester(types,operators,"ASCII");
@@ -61,10 +61,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int[] operators = new int[] {
                 OperatorMask.None, 
 				OperatorMask.Constant,
-			//	  OperatorMask.Copy,
-				//	OperatorMask.Default,
-				// OperatorMask.Delta,
-               // OperatorMask.Tail,
+			    OperatorMask.Copy,
+				OperatorMask.Default,
+	//			OperatorMask.Delta,
+                OperatorMask.Tail,
                 };
 
 		textTester(types,operators,"UTF8");
@@ -134,7 +134,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 				if (false && ((f&0xF)==0) && (0!=(token&0x1000000))) {
 					fw.write(token);
 				} else {
-					fw.write(token, testData[f]); 
+					char[] array = seqToArray(testData[f]);
+					fw.write(token, array, 0 , array.length); 
 				}
 							
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
@@ -180,17 +181,13 @@ public class TextStreamingTest extends BaseStreamingTest {
 //					}
 				} else { 
 					try {
-						int textIdx = fr.readChars(tokenLookup[f]);
-						
+						int textIdx = fr.readChars(tokenLookup[f]);						
 						
 						CharSequence expected = testData[f];
 						if (!textHeap.equals(textIdx, expected)) {
-							StringBuilder found = new StringBuilder();
-							textHeap.get(textIdx,found);
-						//	System.err.println(expected.length()+"{"+expected+"}");
-						//	System.err.println(found.length()+"{"+found.toString()+"}");
 							
-							assertEquals(expected,found.toString());
+							assertEquals(expected,
+									     textHeap.get(textIdx,new StringBuilder()).toString());
 						}
 					
 						
@@ -211,6 +208,14 @@ public class TextStreamingTest extends BaseStreamingTest {
 		return duration;
 	}
 
+	private char[] seqToArray(CharSequence seq) {
+		char[] result = new char[seq.length()];
+		int i = seq.length();
+		while (--i>=0) {
+			result[i] = seq.charAt(i);
+		}
+		return result;
+	}
 
 	private CharSequence[] buildTestData(int count) {
 		

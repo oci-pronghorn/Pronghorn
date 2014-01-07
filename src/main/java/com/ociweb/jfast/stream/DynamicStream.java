@@ -6,6 +6,10 @@ public class DynamicStream {
 	private final FASTStaticReader staticReader;
 	private final FASTDynamicReader dynamicReader;
 	
+	
+	//TODO: this class functions as an iterator?
+	//read message then call for the fields.?
+	
 	public DynamicStream(FASTReaderCallback callback, FASTStaticReader staticReader) {
 		this.callback = callback;
 		this.staticReader = staticReader;
