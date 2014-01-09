@@ -73,6 +73,7 @@ public class FieldReaderChar {
 		char[] targ = charDictionary.rawAccess();
 		
 		while (val>=0) { 
+	///		System.err.println("read val:"+((char)val));
 				if (targIndex >= nextLimit) {
 					charDictionary.makeSpaceForAppend(offset, 1);
 					nextLimit = charDictionary.nextLimit(offset);
@@ -84,8 +85,10 @@ public class FieldReaderChar {
 			charDictionary.makeSpaceForAppend(offset, 1);
 			nextLimit = charDictionary.nextLimit(offset);
 		}	
+	///	System.err.println("read val:"+((char)val));
 		targ[targIndex++] = (char)(0x7F & val);
 		charDictionary.stopIndex(offset,targIndex);
+	//	System.err.println("new value:"+charDictionary.get(idx,new StringBuffer()));
 	}
 	
 	
@@ -148,6 +151,9 @@ public class FieldReaderChar {
 		if (trim>0) {
 			charDictionary.trimTail(idx, trim);
 		}
+		
+		//System.err.println("read: trim "+trim);
+		
 		byte val = reader.readTextASCIIByte();
 		if (val==0) {
 			//nothing to append
@@ -159,11 +165,41 @@ public class FieldReaderChar {
 			if (val==NULL_STOP) {
 				//nothing to append
 				//charDictionary.setNull(idx);				
-			} else {				
+			} else {		
+				if (charDictionary.isNull(idx)) {
+					charDictionary.setZeroLength(idx);
+				}
 				fastHeapAppend(idx, val);
 			}
 		}
 		
+		return idx;
+	}
+	
+
+	public int readASCIITailOptional(int token) {
+		int idx = token & INSTANCE_MASK;
+		
+		charDictionary.trimTail(idx, reader.readIntegerSigned());
+		byte val = reader.readTextASCIIByte();
+		if (val==0) {
+			//nothing to append
+			//must move cursor off the second byte
+			val = reader.readTextASCIIByte();
+			//at least do a validation because we already have what we need
+			assert((val&0xFF)==0x80);
+		} else {
+			if (val==NULL_STOP) {
+				//nothing to append
+				//charDictionary.setNull(idx);				
+			} else {		
+				if (charDictionary.isNull(idx)) {
+					charDictionary.setZeroLength(idx);
+				}
+				fastHeapAppend(idx, val);
+			}
+		}
+						
 		return idx;
 	}
 
@@ -200,20 +236,6 @@ public class FieldReaderChar {
 				
 		return idx;
 	}
-
-	public int readASCIITailOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		charDictionary.trimTail(idx, reader.readIntegerSigned());
-				
-		byte value = reader.readTextASCIIByte();
-		
-		fastHeapAppend(idx, value);
-		
-						
-		return idx;
-	}
-
 
 	public int readUTF8Constant(int token) {
 		int idx = token & INSTANCE_MASK;

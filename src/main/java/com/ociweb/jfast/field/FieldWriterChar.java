@@ -224,6 +224,16 @@ public class FieldWriterChar {
 		}
 	}
 
+	private void writeASCIITail(int idx, int headCount, CharSequence value) {
+
+		int trimTail = heap.length(idx)-headCount;
+		writer.writeIntegerUnsigned(trimTail);
+		
+		writer.writeTextASCIIAfter(headCount,value);
+		heap.appendTail(idx, trimTail, headCount, value);
+		
+	}
+	
 	public void writeASCIITailOptional(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
 		
@@ -236,19 +246,7 @@ public class FieldWriterChar {
 		}
 	}
 
-	private void writeASCIITail(int idx, int headCount, CharSequence value) {
-//		System.err.println("orig:"+heap.get(idx, new StringBuilder()));
-//		System.err.println(" new:"+value);
-//		System.err.println("matching head:"+headCount);
-//		
-		
-		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
-		writer.writeTextASCIIAfter(headCount,value);
-		heap.appendTail(idx, trimTail, headCount, value);
-		
-//		System.err.println("zzzz:"+heap.get(idx, new StringBuilder()));
-	}
+
 
 	public void writeASCIICopy(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
@@ -335,12 +333,10 @@ public class FieldWriterChar {
 	}
 
 	public void writeASCIITail(int token, CharSequence value) {
-	//	System.err.println("XXXX:"+value);
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value);
 		writeASCIITail(idx, headCount, value);
 	}
-
 
 	public void writeUTF8DeltaOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
@@ -429,17 +425,7 @@ public class FieldWriterChar {
 		}
 	}
 	
-	public void writeASCIIDefaultOptional(int token, char[] value, int offset, int length) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(length+1);
-			writer.writeTextUTF(value,offset,length);
-		}
-	}
+
 
 	public void writeUTF8Delta(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
@@ -507,13 +493,14 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		writeASCIITail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length);
 	}
-	
+		
 	private void writeASCIITail(int idx, int headCount, char[] value, int offset, int length) {
 		int trimTail = heap.length(idx)-headCount; //head count is total that match from head.
 		writer.writeIntegerSigned(trimTail); //cut off these from tail
 		
 		int valueSend = length-headCount;
 		int valueStart = offset+headCount;
+			
 		writer.writeTextASCII(value, valueStart, valueSend);
 		heap.appendTail(idx, trimTail, value, valueStart, valueSend);
 	}
@@ -552,6 +539,17 @@ public class FieldWriterChar {
 		}
 	}
 
+	public void writeASCIIDefaultOptional(int token, char[] value, int offset, int length) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeTextASCII(value, offset, length);
+		}
+	}
+	
 	public void writeASCIIDelta(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		

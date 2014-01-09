@@ -9,6 +9,7 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -38,15 +39,15 @@ public class TextStreamingTest extends BaseStreamingTest {
 	public void asciiTest() {
 		int[] types = new int[] {
                    TypeMask.TextASCII,
-      //             TypeMask.TextASCIIOptional,
+                   TypeMask.TextASCIIOptional,
 				 };
 		int[] operators = new int[] {
                   OperatorMask.None, 
 				  OperatorMask.Constant,
 				  OperatorMask.Copy,
 				  OperatorMask.Default,
-				// OperatorMask.Delta,
-                //  OperatorMask.Tail,
+				///  OperatorMask.Delta,
+                  OperatorMask.Tail,
                 };
 
 		textTester(types,operators,"ASCII");
@@ -63,12 +64,15 @@ public class TextStreamingTest extends BaseStreamingTest {
 				OperatorMask.Constant,
 			    OperatorMask.Copy,
 				OperatorMask.Default,
-	//			OperatorMask.Delta,
+			//	OperatorMask.Delta,
                 OperatorMask.Tail,
                 };
 
 		textTester(types,operators,"UTF8");
 	}
+	
+	//TODO: note; what about undo operations going back feed?
+	//TODO: note: use protol for archive format when monitoring.
 	
 	private void textTester(int[] types, int[] operators, String label) {
 		
@@ -186,7 +190,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 						CharSequence expected = testData[f];
 						if (!textHeap.equals(textIdx, expected)) {
 							
-							assertEquals(expected,
+							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+									     expected,
 									     textHeap.get(textIdx,new StringBuilder()).toString());
 						}
 					
