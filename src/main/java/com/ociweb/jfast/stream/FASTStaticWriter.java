@@ -918,10 +918,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		writer.flush();
 	}
 
-	public boolean isGroupOpen() {//TODO: is this feature really needed?
-		return writer.isPMapOpen();
-	}
-
 	
 	public void reset(DictionaryFactory df) {
 		//reset all values to unset

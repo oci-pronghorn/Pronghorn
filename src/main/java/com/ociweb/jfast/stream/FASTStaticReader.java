@@ -497,10 +497,6 @@ public class FASTStaticReader implements FASTReader {
 		}
 	}
 
-	public boolean isGroupOpen() {
-		return reader.isPMapOpen();
-	}
-
 	@Override
 	public int readDecimalExponent(int id, int valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;

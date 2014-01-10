@@ -20,25 +20,26 @@ public final class PrimitiveReader {
 
 	//TODO: must add skip bytes methods
 	
+	private static final byte PMAP_IDX_STOP = -1;
 	private final FASTInput input;
 	private long totalReader;
 	final byte[] buffer;
 	private final byte[] pmapStack;	
-	private int pmapStackDepth = 0;
+	private int pmapStackDepth = -1;
 	
 	private int position;
 	private int limit;
 	
 	//both bytes but class def likes int much better for alignment
-	private int pmapIdx = -1; //-1 -> 7
-	private int bitBlock = 0;
+	private byte pmapIdx = -1; //-1 -> 7
+	private byte bitBlock = 0;
 	
 	
 	public void reset() {
 		totalReader = 0;
 		position = 0;
 		limit = 0;
-		pmapStackDepth = 0;
+		pmapStackDepth = -1;
 		pmapIdx = -1;
 		
 	}
@@ -161,66 +162,74 @@ public final class PrimitiveReader {
 			fetch(pmapMaxSize); //largest fetch
 		}
 		//there are no zero length pmaps these are determined by the parent pmap
-		int start = position;
-		 
-		//scan for index of the stop bit.
-		do {
-		} while (buffer[position++]>=0);
-		
-		assert(position-start<=pmapMaxSize) : "Unable to find end of PMAP";
-		
 		//push the old index for resume
-		if (pmapIdx>0) {
-			pmapStack[pmapStackDepth++] = (byte)pmapIdx;
-		}
-						
+		pmapStack[++pmapStackDepth] = (byte)pmapIdx;
+	
+		int start = position;
+		bitBlock = buffer[start];
+			
+
+//		int k = 1+pmapStackDepth + pmapMaxSize;
+//		do {			
+//		} while ((pmapStack[k--] = buffer[position++])>=0);
+////		int c = position - start;
+//		pmapStack[k] = (byte) pmapStackDepth;
+//		
+//		pmapStackDepth+=(pmapStackDepth+1);
+////		k++;
+////		if (k!=pmapStackDepth) {
+////			System.arraycopy(pmapStack, k, pmapStack, pmapStackDepth, c);
+////		}
+////		pmapStackDepth+=c;
+
+		
+		
+		//scan for index of the stop bit.
+		int j = position;
+		do {
+		} while (buffer[j++]>=0);
+		position = j;
+		assert(position-start<=pmapMaxSize) : "Unable to find end of PMAP";
 		//walk back wards across these and push them on the stack
 		//the first bits to read will the the last thing put on the array
-		int j = position;
+		int k = pmapStackDepth;
 		while (--j>=start) {
-			pmapStack[pmapStackDepth++] = buffer[j];
+			pmapStack[++k] = buffer[j];
 		}
-		bitBlock = pmapStack[pmapStackDepth-1];
-		
+		pmapStackDepth = k;
+
 		//set next bit to read
-		pmapIdx = 7;
+		pmapIdx = 6;
 		
 	}
 
 	//called at every field to determine operation
 	public final byte popPMapBit() {
-		if (pmapIdx<0) {
-			//must return all the trailing zeros for the bit map after hit end of map. see (a1)
+		byte tmp = pmapIdx;
+		if (tmp>=0) {
+			final byte value = (byte)((byte)1&(bitBlock>>>tmp));
+				//if we have not reached the end of the map dec to the next byte
+			if ((tmp==0) && (bitBlock>=0)) {
+				bitBlock = pmapStack[--pmapStackDepth];
+				pmapIdx = 6;
+			} else {
+				pmapIdx --;
+			}
+			return value;
+		} else {
 			return 0;
 		}
-		//byte block = pmapStack[pmapStackDepth-1];
-		//get next bit and decrement the bit index pmapIdx
-		byte value = (byte)(1&(bitBlock>>>(--pmapIdx)));
-		if (pmapIdx==0) {
-			resetToNextSeven();
-		}
-		return value;
 	}
 
-	private void resetToNextSeven() {
-		//if we have not reached the end of the map dec to the next byte
-		if (bitBlock >= 0) {
-			pmapStackDepth--;
-			bitBlock = pmapStack[pmapStackDepth-1];
-			pmapIdx = 7;
-		} else {
-			//(a1) hit end of map, set this to < 0 so we return zeros until this pmap is popped off.
-			pmapIdx = -1;
-		}
-	}	
-	
 	//called at the end of each group
 	public final void popPMap() {
 	    //the first pmap need not restore any values!
-		if (pmapStackDepth>2) {
-			pmapStackDepth--;
+		if (pmapStackDepth>1) { //TODO: off by one array.
+			
+	//		pmapStackDepth =  pmapStack[pmapStackDepth-1];
+						
 			pmapIdx = pmapStack[--pmapStackDepth];
-			bitBlock = pmapStack[pmapStackDepth-1];
+			bitBlock = pmapStack[--pmapStackDepth];
 		}
 	}
 	
@@ -408,10 +417,6 @@ public final class PrimitiveReader {
 			v = buffer[position++];
 		}
 		return accumulator|(v&0x7F);
-	}
-
-	public boolean isPMapOpen() {
-		return pmapStackDepth>0;
 	}
 
 	public void readTextASCII(Appendable target) {

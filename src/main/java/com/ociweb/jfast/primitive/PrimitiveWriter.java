@@ -853,10 +853,6 @@ public final class PrimitiveWriter {
 			pMapByteAccum |= (bit<<pMapIdxWorking);
 		}
 	}
-
-	public boolean isPMapOpen() {
-		return safetyStackDepth>0;
-	}
 	
 	public final void writeTextASCII(CharSequence value) {
 		

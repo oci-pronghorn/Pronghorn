@@ -101,7 +101,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
 			}			
 		}
-		if (fw.isGroupOpen()) {
+		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 			fw.closeGroup(groupToken);
 		}
 		fw.flush();
@@ -149,7 +149,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			
 		}
-		if (fr.isGroupOpen()) {
+		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 			fr.closeGroup(groupToken);
 		}
 			
