@@ -212,14 +212,8 @@ public class FieldWriterChar {
 			int tailCount = heap.countTailMatch(idx, value);
 			if (headCount>tailCount) {
 				writeASCIITail(idx, headCount, value);
-							
 			} else {
-				//replace head, tail matches to tailCount
-				int trimHead = heap.length(idx)-tailCount;
-				writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
-				
-				writer.writeTextASCIIBefore(value,trimHead);
-				heap.appendHead(idx, trimHead, value);			
+				writeASCIIHead(value, idx, tailCount);			
 			}
 		}
 	}
@@ -232,6 +226,16 @@ public class FieldWriterChar {
 		writer.writeTextASCIIAfter(headCount,value);
 		heap.appendTail(idx, trimTail, headCount, value);
 		
+	}
+	
+
+	private void writeASCIIHead(CharSequence value, int idx, int tailCount) {
+		
+		int trimHead = heap.length(idx)-tailCount;
+		writer.writeIntegerUnsigned(-trimHead );
+		
+		writer.writeTextASCIIBefore(value,trimHead);
+		heap.appendHead(idx, trimHead, value);
 	}
 	
 	public void writeASCIITailOptional(int token, CharSequence value) {
@@ -324,18 +328,14 @@ public class FieldWriterChar {
 		if (headCount>tailCount) {
 			writeASCIITail(idx, headCount, value);
 		} else {
-			//replace head, tail matches to tailCount
-			int trimHead = heap.length(idx)-tailCount;
-			writer.writeIntegerUnsigned(-trimHead -1); //negative -1 for head append
-			writer.writeTextASCIIBefore(value,trimHead);
-			heap.appendHead(idx, trimHead, value);						
+			writeASCIIHead(value, idx, tailCount);						
 		}
 	}
 
+
 	public void writeASCIITail(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
-		int headCount = heap.countHeadMatch(idx, value);
-		writeASCIITail(idx, headCount, value);
+		writeASCIITail(idx, heap.countHeadMatch(idx, value), value);
 	}
 
 	public void writeUTF8DeltaOptional(int token, char[] value, int offset, int length) {
@@ -613,8 +613,13 @@ public class FieldWriterChar {
 		writer.writeTextUTF(value,offset,length);
 	}
 
-	public void writeUTF8Optional(CharSequence value) {
+	public void writeUTF8Optional(CharSequence value) {//If null??
 		writer.writeIntegerUnsigned(value.length()+1);
+		writer.writeTextUTF(value);
+	}
+	
+	public void writeUTF8(CharSequence value) {
+		writer.writeIntegerUnsigned(value.length());
 		writer.writeTextUTF(value);
 	}
 

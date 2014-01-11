@@ -86,9 +86,8 @@ public abstract class BaseStreamingTest {
 
 
 	protected void printResults(int sampleSize, long maxOverhead, long totalOverhead, long minOverhead, long maxDuration, long totalDuration,
-			long minDuration, long byteCount, String label, long totalWritten) {
+			long minDuration, long byteCount, String label) {
 		
-				assertTrue(label+" did not write any bytes "+byteCount+" vs "+totalWritten,byteCount>0);
 		
 				float avgOverhead = totalOverhead/(float)sampleSize;
 				//System.out.println("Overhead Min:"+minOverhead+" Max:"+maxOverhead+" Avg:"+avgOverhead);
@@ -100,8 +99,8 @@ public abstract class BaseStreamingTest {
 				float perByteMax = (maxDuration-maxOverhead)/(float)byteCount;
 				float pctAvgVsMin = 100f*((perByteAvg/perByteMin)-1);
 				String msg = "  PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns ";
-				String writtenBytes = "  finished after:"+totalWritten+" bytes";
-				System.out.println(label+msg+writtenBytes);
+
+				System.out.println(label+msg);
 
 				if (!Double.isNaN(pctAvgVsMin)) {
 					assertTrue("Avg is too large vs min:"+pctAvgVsMin+" "+msg,pctAvgVsMin<PCT_LIMIT);
@@ -175,7 +174,7 @@ public abstract class BaseStreamingTest {
 				totalDuration = 0;
 				minDuration = Long.MAX_VALUE;
 				
-				buildInputReader(maxGroupCount, writtenData);
+				buildInputReader(maxGroupCount, writtenData, (int)byteCount);
 				
 				try {
 					int w = warmup+sampleSize;
@@ -202,18 +201,20 @@ public abstract class BaseStreamingTest {
 							
 						}	
 					}
-					
-					
 				} finally {
 					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
 							maxDuration, totalDuration, minDuration,
-							byteCount, label, totalRead());
+							byteCount, label);
+					if (byteCount<totalRead()) {
+						System.err.println("warning: reader pulled in more bytes than needed: "+byteCount+" vs "+totalRead());
+					}
+					
 				}
 			}
 
 	protected abstract long totalRead();
 	protected abstract void resetInputReader();
-	protected abstract void buildInputReader(int maxGroupCount, byte[] writtenData);
+	protected abstract void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes);
 	
 	protected  abstract long totalWritten();
 	protected abstract void resetOutputWriter();
@@ -279,7 +280,7 @@ public abstract class BaseStreamingTest {
 				} finally {
 					printResults(sampleSize, maxOverhead, totalOverhead, minOverhead, 
 							maxDuration, totalDuration, minDuration,
-							byteCount, writeLabel, totalWritten());
+							byteCount, writeLabel);
 				}
 				return byteCount;
 			}

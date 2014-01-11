@@ -2,6 +2,8 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+
 import org.junit.AfterClass;
 import org.junit.Test;
 
@@ -23,6 +25,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	final int fields      		      = 30000;
 	final CharSequence[] testData    = buildTestData(fields);
+	final char[][] testDataChars = buildTestDataChars(testData);
 	
 	FASTOutputByteArray output;
 	PrimitiveWriter pw;
@@ -35,6 +38,15 @@ public class TextStreamingTest extends BaseStreamingTest {
 		System.gc();
 	}
 	
+	private char[][] buildTestDataChars(CharSequence[] source) {
+		int i = source.length;
+		char[][] result = new char[i][];
+		while (--i>=0) {
+			result[i]= seqToArray(testData[i]);
+		}
+		return result;
+	}
+
 	@Test
 	public void asciiTest() {
 		int[] types = new int[] {
@@ -42,12 +54,12 @@ public class TextStreamingTest extends BaseStreamingTest {
                    TypeMask.TextASCIIOptional,
 				 };
 		int[] operators = new int[] {
-                  OperatorMask.None, 
-				  OperatorMask.Constant,
-				  OperatorMask.Copy,
-				  OperatorMask.Default,
-				///  OperatorMask.Delta,
-                  OperatorMask.Tail,
+                  OperatorMask.None,   //W5 R16 w/o equals
+				  OperatorMask.Constant, //W6 R16 w/o equals
+				  OperatorMask.Copy,     //W84 R31 w/o equals ****fix test data was not letting any copy happen so it was send every time.
+				  OperatorMask.Default,  //W6 R16 
+//				  OperatorMask.Delta,
+                 OperatorMask.Tail,     //W46 R15 w/o equals
                 };
 
 		textTester(types,operators,"ASCII");
@@ -138,7 +150,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 				if (false && ((f&0xF)==0) && (0!=(token&0x1000000))) {
 					fw.write(token);
 				} else {
-					char[] array = seqToArray(testData[f]);
+					char[] array = testDataChars[f];
 					fw.write(token, array, 0 , array.length); 
 				}
 							
@@ -158,6 +170,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
 									DictionaryFactory dcr) {
 		
+		pr.reset();
 		FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
 		TextHeap textHeap = fr.textHeap();
 		
@@ -187,11 +200,11 @@ public class TextStreamingTest extends BaseStreamingTest {
 					try {
 						int textIdx = fr.readChars(tokenLookup[f]);						
 						
-						CharSequence expected = testData[f];
-						if (!textHeap.equals(textIdx, expected)) {
+						char[] tdc = testDataChars[f];
+						if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
 							
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
-									     expected,
+									testData[f],
 									     textHeap.get(textIdx,new StringBuilder()).toString());
 						}
 					
@@ -261,8 +274,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 		pr.reset();
 	}
 
-	protected void buildInputReader(int maxGroupCount, byte[] writtenData) {
-		input = new FASTInputByteArray(writtenData);
+	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
+		input = new FASTInputByteArray(writtenData, writtenBytes);
 		//TODO: bug here requires larger buffer.
 		pr = new PrimitiveReader(writtenData.length*10, input, maxGroupCount*10);
 	}

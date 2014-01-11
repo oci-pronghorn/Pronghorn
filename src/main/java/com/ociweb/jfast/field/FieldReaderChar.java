@@ -71,24 +71,32 @@ public class FieldReaderChar {
 		int targIndex = charDictionary.stopIndex(offset);
 		
 		char[] targ = charDictionary.rawAccess();
-		
-		while (val>=0) { 
-	///		System.err.println("read val:"+((char)val));
-				if (targIndex >= nextLimit) {
-					charDictionary.makeSpaceForAppend(offset, 1);
-					nextLimit = charDictionary.nextLimit(offset);
-				}
-				targ[targIndex++] = (char)val;
-				val = reader.readTextASCIIByte();
-		}
-		if (targIndex >= nextLimit) {
-			charDictionary.makeSpaceForAppend(offset, 1);
+				
+		if (targIndex>nextLimit) {
+			System.err.println("make space:"+offset);
+			charDictionary.makeSpaceForAppend(offset, 2); //also space for last char
 			nextLimit = charDictionary.nextLimit(offset);
-		}	
-	///	System.err.println("read val:"+((char)val));
-		targ[targIndex++] = (char)(0x7F & val);
+		}
+		
+		if(val>=0) {
+			targ[targIndex++] = (char)val;			
+		
+			int len;
+			do {
+				len = reader.readTextASCII2(targ, targIndex, nextLimit);
+				if (len<0) {
+					targIndex-=len;
+					System.err.println("NOW DELETE THIS,  tested make space:"+offset);
+					charDictionary.makeSpaceForAppend(offset, 2); //also space for last char
+					nextLimit = charDictionary.nextLimit(offset);
+				} else {
+					targIndex+=len;
+				}
+			} while (len<0);
+		} else {
+			targ[targIndex++] = (char)(0x7F & val);
+		}
 		charDictionary.stopIndex(offset,targIndex);
-	//	System.err.println("new value:"+charDictionary.get(idx,new StringBuffer()));
 	}
 	
 	
@@ -134,13 +142,22 @@ public class FieldReaderChar {
 		byte value = reader.readTextASCIIByte();
 		int offset = charDictionary.offset(idx);
 		int nextLimit = charDictionary.nextLimit(offset);
-		while (value>=0) {
-			//TODO: this should be append head for head?
-			nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
-			value = reader.readTextASCIIByte();
+		
+		if (trim>=0) {
+			while (value>=0) {
+				nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
+		} else {
+			while (value>=0) {
+				charDictionary.appendHead(offset, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendHead(offset, (char)(value&0x7F) );
 		}
-		charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
-				
+		
+		
 		return idx;
 	}
 
@@ -215,26 +232,7 @@ public class FieldReaderChar {
 
 
 	public int readASCIIDeltaOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		int trim = reader.readIntegerSigned();
-		
-		if (trim>=0) {
-			charDictionary.trimTail(idx, trim);
-		} else {
-			charDictionary.trimHead(idx, -trim);
-		}
-		
-		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		int nextLimit = charDictionary.nextLimit(offset);
-		while (value>=0) {
-			nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
-			value = reader.readTextASCIIByte();
-		}
-		charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
-				
-		return idx;
+		return readASCIIDelta(token);//TODO: need null logic here.
 	}
 
 	public int readUTF8Constant(int token) {

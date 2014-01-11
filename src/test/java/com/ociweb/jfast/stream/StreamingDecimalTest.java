@@ -177,8 +177,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		pr.reset();
 	}
 
-	protected void buildInputReader(int maxGroupCount, byte[] writtenData) {
-		input = new FASTInputByteArray(writtenData);
+	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
+		input = new FASTInputByteArray(writtenData, writtenBytes);
 		pr = new PrimitiveReader(4096, input, maxGroupCount*10);
 	}
 	

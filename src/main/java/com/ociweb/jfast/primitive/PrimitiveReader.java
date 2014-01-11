@@ -20,7 +20,6 @@ public final class PrimitiveReader {
 
 	//TODO: must add skip bytes methods
 	
-	private static final byte PMAP_IDX_STOP = -1;
 	private final FASTInput input;
 	private long totalReader;
 	final byte[] buffer;
@@ -113,10 +112,6 @@ public final class PrimitiveReader {
 		return result;
 	}
 	
-	public final byte[] getBuffer() {
-		return buffer;
-	}
-	
 	public final void readByteData(byte[] target, int offset, int length) {
 		//ensure all the bytes are in the buffer before calling visitor
 		if (position>limit - length) {
@@ -136,46 +131,40 @@ public final class PrimitiveReader {
 	////
 	
 	//called at the start of each group unless group knows it has no pmap
-	public final void readPMap(int pmapMaxSize) {
+	public final void readPMap(final int pmapMaxSize) {
+		//push the old index for resume
+		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
+		
 		//force internal buffer to grow if its not big enough for this pmap
 		if (limit - position < pmapMaxSize) {
 			fetch(pmapMaxSize); //largest fetch
 		}
 
-		//push the old index for resume
-		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
+		int k = invPmapStackDepth -= (pmapMaxSize+2);         
 				
-        int k = invPmapStackDepth - (pmapMaxSize+2); 
-        int newDepth = k;
-        bitBlock = buffer[position];
-                        
-        byte temp;
+		bitBlock = buffer[position];
         do {
-			assert(k<invPmapStackDepth);
-			invPmapStack[k++] = (byte) (temp = buffer[position++]);
-		} while (temp>=0);
-                
-        assert(invPmapStackDepth-k<=127);
-        
-        invPmapStack[k] = (byte)(1+invPmapStackDepth-k);//delta to deltaIdx 
-		invPmapStackDepth = newDepth;//-= neededSpace;        
-        assert(invPmapStack[invPmapStackDepth]==bitBlock);
-		//set next bit to read
-		pmapIdx = 6;
+		} while ((invPmapStack[k++] = buffer[position++])>=0);
+        invPmapStack[k] = (byte)(3+pmapMaxSize+(invPmapStackDepth-k));
+		
+        //set next bit to read
+        pmapIdx = 6;
 	}
 
 	//called at every field to determine operation
 	public final byte popPMapBit() {
-		if (pmapIdx>=0) {
-			final byte value = (byte)((byte)1&(bitBlock>>>pmapIdx));
-				//if we have not reached the end of the map dec to the next byte
-			if ((pmapIdx==0) && (bitBlock>=0)) {
+		
+		byte tmp;
+		if ((tmp=pmapIdx)>=0) {
+			//if we have not reached the end of the map dec to the next byte
+			byte bi = bitBlock;
+			if ((tmp==0) && (bi>=0)) {
 				bitBlock = invPmapStack[++invPmapStackDepth];
 				pmapIdx = 6;
 			} else {
-				pmapIdx --;
+				pmapIdx--;
 			}
-			return value;
+			return (byte)(1&(bi>>>tmp));
 		} else {
 			return 0;
 		}
@@ -183,8 +172,8 @@ public final class PrimitiveReader {
 
 	//called at the end of each group
 	public final void popPMap() {
-		assert(bitBlock<0);
-		assert(invPmapStack[invPmapStackDepth+1]>=0);
+		//assert(bitBlock<0);
+		//assert(invPmapStack[invPmapStackDepth+1]>=0);
 		
 		bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth+1])];
 		pmapIdx = invPmapStack[invPmapStackDepth-1];
@@ -416,7 +405,14 @@ public final class PrimitiveReader {
 		}
 	}
 
-	public int readTextASCII(char[] target, int offset, int maxLength) {
+	public int readTextASCII(char[] target, int targetOffset, int targetLimit) {
+		
+		
+		
+		//TODO:add fast copy by fetch of limit
+		//then return error when limit is reached? Do not call fetch on limit we do not know that we need them.
+		
+		
 		if (limit - position < 2) {
 			fetch(2);
 		}
@@ -432,10 +428,10 @@ public final class PrimitiveReader {
 			position+=2;
 			return 0; //zero length string
 		} else {	
-			int countDown = maxLength;
+			int countDown = targetLimit-targetOffset;
 			//must use count because the base of position will be in motion.
 			//however the position can not be incremented or fetch may drop data.
-            int idx = offset;
+            int idx = targetOffset;
 			while (buffer[position]>=0 && --countDown>=0) {
 				target[idx++]=(char)(buffer[position++]);
 				if (position>=limit) {
@@ -444,10 +440,54 @@ public final class PrimitiveReader {
 			}
 			if (--countDown>=0) {
 				target[idx++]=(char)(0x7F & buffer[position++]);
+				return idx-targetOffset;//length of string
 			} else {
-				throw new FASTException("Out of bounds, maxLength:"+maxLength);
+				return targetOffset-idx;//neg length of string if hit max
 			}
-			return idx-offset;//length of string
+		}
+	}
+	
+	public int readTextASCII2(char[] target, int targetOffset, int targetLimit) {
+		
+		int countDown = targetLimit-targetOffset;
+		if (limit - position >= countDown) {
+			//System.err.println("fast");
+			//must use count because the base of position will be in motion.
+			//however the position can not be incremented or fetch may drop data.
+	        int idx = targetOffset;
+			while (buffer[position]>=0 && --countDown>=0) {
+				target[idx++]=(char)(buffer[position++]);
+			}
+			if (--countDown>=0) {
+				target[idx++]=(char)(0x7F & buffer[position++]);
+				return idx-targetOffset;//length of string
+			} else {
+				return targetOffset-idx;//neg length of string if hit max
+			}
+		} else {
+			return readAsciiText2Slow(target, targetOffset, countDown);
+		}
+	}
+
+	private int readAsciiText2Slow(char[] target, int targetOffset, int countDown) {
+		if (limit - position < 2) {
+			fetch(2);
+		}
+		
+		//must use count because the base of position will be in motion.
+		//however the position can not be incremented or fetch may drop data.
+		int idx = targetOffset;
+		while (buffer[position]>=0 && --countDown>=0) {
+			target[idx++]=(char)(buffer[position++]);
+			if (position>=limit) {
+				fetch(1); //CAUTION: may change value of position
+			}
+		}
+		if (--countDown>=0) {
+			target[idx++]=(char)(0x7F & buffer[position++]);
+			return idx-targetOffset;//length of string
+		} else {
+			return targetOffset-idx;//neg length of string if hit max
 		}
 	}
 
@@ -830,6 +870,5 @@ public final class PrimitiveReader {
 		}
 		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}
-
 	
 }

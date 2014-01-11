@@ -222,8 +222,8 @@ public class FieldReaderInteger {
 	public int readIntegerSignedDefaultOptional(int token, int valueOfOptional) {
 		if (reader.popPMapBit()==0) {
 			
-			int idx = token & INSTANCE_MASK;
-			if (lastValue[idx] == 0) {
+			int idx;
+			if (lastValue[(idx = token & INSTANCE_MASK)] == 0) {
 				//default value is null so return optional.
 				return valueOfOptional;
 			} else {
@@ -232,11 +232,11 @@ public class FieldReaderInteger {
 			}
 			
 		} else {
-			int value = reader.readIntegerSigned();
-			if (value==0) {
+			int value;
+			if ((value = reader.readIntegerSigned())==0) {
 				return valueOfOptional;
 			} else {
-				return --value;
+				return value>0 ? value-1 : value;
 			}
 		}
 	}
@@ -258,12 +258,11 @@ public class FieldReaderInteger {
 		if (reader.popPMapBit()==0) {
 			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
 		} else {
-			int value = reader.readIntegerSigned();
-			if (value==0) {
-				lastValue[instance] = 0;
+			int value;
+			if ((value = lastValue[instance] = reader.readIntegerSigned())==0) {
 				return valueOfOptional;
 			} else {
-				return value>0 ? (lastValue[instance] = value)-1 : (lastValue[instance] = value);
+				return value>0 ? value-1 : value;
 			}
 		}
 		

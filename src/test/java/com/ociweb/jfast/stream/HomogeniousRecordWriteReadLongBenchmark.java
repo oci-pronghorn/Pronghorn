@@ -28,13 +28,13 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	//This is NOT the same as the other tests which measure the duration to produce 1 byte on the stream.
 	//--The ns/byte tests are an estimate of how much bandwidth can be saturated given the CPU available.
 	
-	static final int internalBufferSize = 4096;
+	static final int internalBufferSize = 2048;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
 	static final int singleCharLength = 128;
 	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
 	
-	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
+	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
 	
 	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);

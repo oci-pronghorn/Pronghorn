@@ -34,10 +34,15 @@ public class ReaderWriterPrimitiveTest {
 		                                                         Integer.MAX_VALUE-1 //must be 1 less so there is room for the nulled form of uInt
 		                                                         }; 
 	
-	public final static CharSequence[] stringData =   new CharSequence[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",
+	public final static CharSequence[] stringData =   new CharSequence[]  {"","","a","a","ab","ab","abc","abc","abcd","abcd",
+																	"abcde","abcdef","abcdefg",
+																  buildString("g",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK-1),
 																  buildString("g",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK-1),
 																  buildString("h",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK),
+																  buildString("h",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK),
 																  buildString("i",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK+1),
+																  buildString("i",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK+1),
+																  buildString("j",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK+2),
 																  buildString("j",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK+2),
 																  buildString("k",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2)};
 	

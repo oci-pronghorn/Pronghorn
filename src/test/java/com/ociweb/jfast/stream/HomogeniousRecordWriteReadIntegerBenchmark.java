@@ -2,11 +2,14 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.*;
 
+import java.util.List;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
+import com.google.caliper.Param;
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -83,6 +86,27 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		
 	}
 	
+//	@Param(value = "0")
+//	int ttoken = 0;
+//	
+//	public Iterable<Integer> ttokenValues() {
+//		
+//		List<Integer> vals = new ArrayList<Integer>();
+//		for(int x: tokenLookup) {
+//			vals.add(x);
+//		}
+//		return vals;
+//	}
+//	
+//	
+//	public int timeStaticIntegerUnsignedALLWR(int reps) {
+//		return staticWriteReadIntegerGroup(reps, ttoken, zeroGroupToken);
+//	}
+//	
+//	public int timeStaticIntegerUnsignedALLW(int reps) {
+//		return staticWriteIntegerGroup(reps, ttoken, zeroGroupToken);
+//	}
+	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
 		int typeIdx = types.length-1;
@@ -130,8 +154,6 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return false;
 	}
 
-	//TODO: split these tests into different classes per type for easier comparison.
-
 	//
 	///
 	////
@@ -154,7 +176,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	////
 	//  
 		
-	public int timeStaticIntegerUnsignedNone(int reps) {
+	public int timeStaticIntegerUnsignedNoneWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
@@ -162,7 +184,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 							0), zeroGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedNoneOptional(int reps) {
+	public int timeStaticIntegerUnsignedNoneOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
@@ -171,7 +193,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	}
 
 	
-	public int timeStaticIntegerUnsignedCopy(int reps) {
+	public int timeStaticIntegerUnsignedCopyWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
@@ -179,7 +201,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedCopyOptional(int reps) {
+	public int timeStaticIntegerUnsignedCopyOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
@@ -187,7 +209,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedConstant(int reps) {
+	public int timeStaticIntegerUnsignedConstantWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerUnsigned, //constant operator can not be optional
@@ -195,7 +217,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedDefault(int reps) {
+	public int timeStaticIntegerUnsignedDefaultWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
@@ -203,7 +225,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedDefaultOptional(int reps) {
+	public int timeStaticIntegerUnsignedDefaultOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
@@ -211,7 +233,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedDelta(int reps) {
+	public int timeStaticIntegerUnsignedDeltaWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerUnsigned, 
@@ -219,7 +241,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						0), zeroGroupToken);
 	}
 
-	public int timeStaticIntegerUnsignedDeltaOptional(int reps) {
+	public int timeStaticIntegerUnsignedDeltaOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
@@ -228,7 +250,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	}
 	
 	
-	public int timeStaticIntegerUnsignedIncrement(int reps) {
+	public int timeStaticIntegerUnsignedIncrementWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
@@ -236,7 +258,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerUnsignedIncrementOptional(int reps) {
+	public int timeStaticIntegerUnsignedIncrementOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
@@ -246,7 +268,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 	//Integer does not support Tail operator
 
-	public int timeStaticIntegerSignedNone(int reps) {
+	public int timeStaticIntegerSignedNoneWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
@@ -254,7 +276,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 							0), zeroGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedNoneOptional(int reps) {
+	public int timeStaticIntegerSignedNoneOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
@@ -263,7 +285,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	}
 
 	
-	public int timeStaticIntegerSignedCopy(int reps) {
+	public int timeStaticIntegerSignedCopyWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
@@ -271,7 +293,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedCopyOptional(int reps) {
+	public int timeStaticIntegerSignedCopyOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
@@ -279,7 +301,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedConstant(int reps) {
+	public int timeStaticIntegerSignedConstantWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerSigned, //constant operator can not be optional
@@ -287,7 +309,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedDefault(int reps) {
+	public int timeStaticIntegerSignedDefaultWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
@@ -295,7 +317,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedDefaultOptional(int reps) {
+	public int timeStaticIntegerSignedDefaultOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
@@ -303,7 +325,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedDelta(int reps) {
+	public int timeStaticIntegerSignedDeltaWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerSigned, 
@@ -311,7 +333,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						0), zeroGroupToken);
 	}
 
-	public int timeStaticIntegerSignedDeltaOptional(int reps) {
+	public int timeStaticIntegerSignedDeltaOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
@@ -320,7 +342,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	}
 	
 	
-	public int timeStaticIntegerSignedIncrement(int reps) {
+	public int timeStaticIntegerSignedIncrementWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
@@ -328,8 +350,191 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 						     0), simpleGroupToken);
 	}
 	
-	public int timeStaticIntegerSignedIncrementOptional(int reps) {
+	public int timeStaticIntegerSignedIncrementOptionalWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Increment, 
+						     0), simpleGroupToken);
+	}
+	
+	
+	public int timeStaticIntegerUnsignedNoneW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsigned,
+							OperatorMask.None, 
+							0), zeroGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedNoneOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsignedOptional,
+							OperatorMask.None, 
+							0), zeroGroupToken);
+	}
+
+	
+	public int timeStaticIntegerUnsignedCopyW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsigned,
+						    OperatorMask.Copy, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedCopyOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsignedOptional,
+						    OperatorMask.Copy, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedConstantW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(//special because there is no optional constant
+							TypeMask.IntegerUnsigned, //constant operator can not be optional
+						    OperatorMask.Constant, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedDefaultW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsigned, 
+						    OperatorMask.Default, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedDefaultOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsignedOptional, 
+						    OperatorMask.Default, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedDeltaW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+						TypeMask.IntegerUnsigned, 
+						OperatorMask.Delta, 
+						0), zeroGroupToken);
+	}
+
+	public int timeStaticIntegerUnsignedDeltaOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsignedOptional, 
+						    OperatorMask.Delta, 
+						     0), zeroGroupToken);
+	}
+	
+	
+	public int timeStaticIntegerUnsignedIncrementW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsigned, 
+						    OperatorMask.Increment, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerUnsignedIncrementOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerUnsignedOptional, 
+						    OperatorMask.Increment, 
+						     0), simpleGroupToken);
+	}
+	
+	//Integer does not support Tail operator
+
+	public int timeStaticIntegerSignedNoneW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSigned,
+							OperatorMask.None, 
+							0), zeroGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedNoneOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSignedOptional,
+							OperatorMask.None, 
+							0), zeroGroupToken);
+	}
+
+	
+	public int timeStaticIntegerSignedCopyW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSigned,
+						    OperatorMask.Copy, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedCopyOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSignedOptional,
+						    OperatorMask.Copy, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedConstantW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(//special because there is no optional constant
+							TypeMask.IntegerSigned, //constant operator can not be optional
+						    OperatorMask.Constant, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedDefaultW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSigned, 
+						    OperatorMask.Default, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedDefaultOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Default, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedDeltaW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+						TypeMask.IntegerSigned, 
+						OperatorMask.Delta, 
+						0), zeroGroupToken);
+	}
+
+	public int timeStaticIntegerSignedDeltaOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSignedOptional, 
+						    OperatorMask.Delta, 
+						     0), zeroGroupToken);
+	}
+	
+	
+	public int timeStaticIntegerSignedIncrementW(int reps) {
+		return staticWriteIntegerGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.IntegerSigned, 
+						    OperatorMask.Increment, 
+						     0), simpleGroupToken);
+	}
+	
+	public int timeStaticIntegerSignedIncrementOptionalW(int reps) {
+		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
 						    OperatorMask.Increment, 
@@ -417,6 +622,27 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return result;
 	}
 	
-
+	protected int staticWriteIntegerGroup(int reps, int token, int groupToken) {
+		int result = 0;
+		for (int i = 0; i < reps; i++) {
+			output.reset(); //reset output to start of byte buffer
+			pw.reset(); //clear any values found in writer
+			staticWriter.reset(dcr); //reset message to clear out old values;
+			
+			//////////////////////////////////////////////////////////////////
+			//This is an example of how to use the staticWriter
+			//Note that this is fast but does not allow for dynamic templates
+			//////////////////////////////////////////////////////////////////
+			staticWriter.openGroup(groupToken);
+			int j = intTestData.length;
+			while (--j>=0) {
+				staticWriter.write(token, intTestData[j]);
+			}
+			staticWriter.closeGroup(groupToken);
+			staticWriter.flush();
+			
+		}
+		return result;
+	}
 	
 }

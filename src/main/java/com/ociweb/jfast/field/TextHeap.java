@@ -191,10 +191,10 @@ public class TextHeap {
 	}
 	
 	void set(int idx, CharSequence source, int startFrom, int copyLength) {
-		assert(startFrom<=source.length());
-		assert(copyLength-startFrom<=source.length());
-		assert(startFrom>=0);
-		assert(copyLength>=0);
+//		assert(startFrom<=source.length());
+//		assert(copyLength-startFrom<=source.length());
+//		assert(startFrom>=0);
+//		assert(copyLength>=0);
 		
 		int offset = idx<<2;
 		
@@ -638,6 +638,39 @@ public class TextHeap {
 		return true;
 	}
 	
+
+	public boolean equals(int idx, char[] target, int targetIdx, int length) {
+		int pos;
+		int lim;
+		char[] buf;
+		if (idx<0) {
+			int offset = idx<<1;
+			
+			pos = initTat[offset];
+			lim = initTat[offset+1];
+			buf = initBuffer;
+			
+		} else {
+			int offset = idx<<2;
+			
+			pos = tat[offset];
+			lim = tat[offset+1];
+			buf = data;
+		}
+		
+		int i = length;
+		if (lim-pos!=i) {
+			return false;
+		}
+				
+		while (--i>=0) {
+			if (target[targetIdx+i]!=buf[pos+i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
 	public Appendable get(int idx, Appendable target) {
 		if (idx<0) {
 			int offset = idx << 1; //this shift left also removes the top bit! sweet.
@@ -674,10 +707,12 @@ public class TextHeap {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
-		int lim = tat[offset+1];
+		int limit = tat[offset+1]-pos;
 		
 		int i = 0;
-		int limit = Math.min(value.length(),lim-pos);
+		if (value.length()<limit) {
+			limit = value.length();
+		}
 		while (i<limit && data[pos+i]==value.charAt(i)) {
 			i++;
 		}
@@ -703,9 +738,10 @@ public class TextHeap {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
-		int lim = tat[offset+1];
-		
-		int limit = Math.min(sourceLength,lim-pos);
+		int limit = tat[offset+1]-pos;
+		if (sourceLength<limit) {
+			limit = sourceLength;
+		}
 		int i = 0;
 		while (i<limit && data[pos+i]==source[sourceIdx+i]) {
 			i++;
@@ -727,24 +763,7 @@ public class TextHeap {
 		return i-1;
 	}
 	
-	public boolean equals(int idx, char[] source, int sourceIdx, int sourceLength) {
-		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int lim = tat[offset+1];
-		
-		int i = sourceLength;
-		if (lim-pos!=i) {
-			return false;
-		}
-		int j = pos+i;
-		while (--i>=0) {
-			if (source[sourceIdx+i]!=data[--j]) {
-				return false;
-			}
-		}
-		return true;
-	}
+
 
 	public int textCount() {
 		return tatLength>>2;

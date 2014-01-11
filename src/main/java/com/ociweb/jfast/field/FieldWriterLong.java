@@ -227,12 +227,10 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedDefaultOptional(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-
 		if (value>=0) {
 			value++;//room for null
 		}
-		if (value == lastValue[idx]) {//matches
+		if (value == lastValue[token & INSTANCE_MASK]) {//matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

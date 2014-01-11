@@ -95,8 +95,8 @@ public class FieldReaderLong {
 	public long readLongUnsignedDefaultOptional(int token, long valueOfOptional) {
 		if (reader.popPMapBit()==0) {
 			
-			int idx = token & INSTANCE_MASK;
-			if (lastValue[idx] == 0) {
+			int idx;
+			if (lastValue[idx = token & INSTANCE_MASK] == 0) {
 				//default value is null so return optional.
 				return valueOfOptional;
 			} else {
@@ -105,8 +105,8 @@ public class FieldReaderLong {
 			}
 			
 		} else {
-			long value = reader.readLongUnsigned();
-			if (value==0) {
+			long value;
+			if ((value = reader.readLongUnsigned())==0) {
 				return valueOfOptional;
 			} else {
 				return value-1;
@@ -217,9 +217,8 @@ public class FieldReaderLong {
 
 	public long readLongSignedDefaultOptional(int token, long valueOfOptional) {
 		if (reader.popPMapBit()==0) {
-			
-			int idx = token & INSTANCE_MASK;
-			if (lastValue[idx] == 0) {
+			int idx;
+			if (lastValue[idx = token & INSTANCE_MASK] == 0) {
 				//default value is null so return optional.
 				return valueOfOptional;
 			} else {
@@ -228,11 +227,11 @@ public class FieldReaderLong {
 			}
 			
 		} else {
-			long value = reader.readLongSigned();
-			if (value==0) {
+			long value;
+			if ((value = reader.readLongSigned())==0) {
 				return valueOfOptional;
 			} else {
-				return --value;
+				return value>0? value-1 : value;
 			}
 		}
 	}
