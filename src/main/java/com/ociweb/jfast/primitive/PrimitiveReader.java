@@ -24,14 +24,17 @@ public final class PrimitiveReader {
 	private final FASTInput input;
 	private long totalReader;
 	final byte[] buffer;
-	private final byte[] pmapStack;	
-	private int pmapStackDepth = -1;
+	
+	private final byte[] invPmapStack;
+	private int invPmapStackDepth;
+	
+	
 	
 	private int position;
 	private int limit;
 	
 	//both bytes but class def likes int much better for alignment
-	private byte pmapIdx = -1; //-1 -> 7
+	private byte pmapIdx = -1; 
 	private byte bitBlock = 0;
 	
 	
@@ -39,8 +42,8 @@ public final class PrimitiveReader {
 		totalReader = 0;
 		position = 0;
 		limit = 0;
-		pmapStackDepth = -1;
 		pmapIdx = -1;
+		invPmapStackDepth = invPmapStack.length-2;
 		
 	}
 	
@@ -55,7 +58,9 @@ public final class PrimitiveReader {
 		this.position = 0;
 		this.limit = 0;
 		
-		this.pmapStack = new byte[maxPMapCount];//all pmap bytes in total for maximum depth.
+		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
+		this.invPmapStackDepth = invPmapStack.length-2;
+		
 		input.init(new DataTransfer(this));
 	}
 	
@@ -77,11 +82,6 @@ public final class PrimitiveReader {
 			noRoomOnFetch(need);
 		}
 	
-// TODO: this exposed a problem that still needs to be fixed.		
-//		if (limit-position<need) {
-//			throw new UnsupportedOperationException("bad read "+position+","+limit+","+need);
-//		}
-		
 	}
 
 	private void noRoomOnFetch(int need) {
@@ -125,35 +125,15 @@ public final class PrimitiveReader {
 		System.arraycopy(buffer, position, target, offset, length);
 		position+=length;
 	}
-	
-	//By writing pmap into byteconsumer we have a vitual lookup for the next byte
-	//if it can be kept here then it can be inlined instead however groups
-	//will often nest which will require a stack of pmaps.
-	
-	//*** this is the best idea! go with it. Flaw found with each of the others.
-	
-	//its not "REALLY" a stack its just a pre-empt of new bits to be read before
-	//the rest of the list is finished so if all new are kept in an array as we
-	//work our way down we can just add more on at that point then when we get
-	//back to the old location it will naturally flow!
-	
-	//the zeros and dynamic length may pose a problem.
-	//also stopping at non by boundaries for next group will pose a problem.
-	//leave stop bits in bytes?
-	
-	/////
-	//leave stop bit so we know when to stop and return zeros
-	//group will call popPmap() at end of fields
-	//must write pmap bytes onto list backwards.
-	//* we know MAX of bits when reading but it may be shorter.
-	//* read ahead like strings, buffer is holding max bytes.
-	//each pmap needs a bit position byte on another stack. one per pmap only
-	//OR each pmap byte is decoded in a method that pushes 7 valeus on or 8 if stop!!
-	
-	//TODO: duplicate this for the writer logic accumulating bits to be written on a single list
-	//TODO: write unit tests around these functions.
-	
-
+		
+    /////////////////
+	//pmapStructure
+	//          1 2 3 4 5 D ? I 2 3 4 X X
+	//          0 0 0 0 1 D ? I 0 0 1 X X
+	//
+	// D delta to last position
+	// I pmapIdx of last stack frame	
+	////
 	
 	//called at the start of each group unless group knows it has no pmap
 	public final void readPMap(int pmapMaxSize) {
@@ -161,56 +141,36 @@ public final class PrimitiveReader {
 		if (limit - position < pmapMaxSize) {
 			fetch(pmapMaxSize); //largest fetch
 		}
-		//there are no zero length pmaps these are determined by the parent pmap
+
 		//push the old index for resume
-		pmapStack[++pmapStackDepth] = (byte)pmapIdx;
-	
-		int start = position;
-		bitBlock = buffer[start];
-			
-
-//		int k = 1+pmapStackDepth + pmapMaxSize;
-//		do {			
-//		} while ((pmapStack[k--] = buffer[position++])>=0);
-////		int c = position - start;
-//		pmapStack[k] = (byte) pmapStackDepth;
-//		
-//		pmapStackDepth+=(pmapStackDepth+1);
-////		k++;
-////		if (k!=pmapStackDepth) {
-////			System.arraycopy(pmapStack, k, pmapStack, pmapStackDepth, c);
-////		}
-////		pmapStackDepth+=c;
-
-		
-		
-		//scan for index of the stop bit.
-		int j = position;
-		do {
-		} while (buffer[j++]>=0);
-		position = j;
-		assert(position-start<=pmapMaxSize) : "Unable to find end of PMAP";
-		//walk back wards across these and push them on the stack
-		//the first bits to read will the the last thing put on the array
-		int k = pmapStackDepth;
-		while (--j>=start) {
-			pmapStack[++k] = buffer[j];
-		}
-		pmapStackDepth = k;
-
+		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
+				
+        int k = invPmapStackDepth - (pmapMaxSize+2); 
+        int newDepth = k;
+        bitBlock = buffer[position];
+                        
+        byte temp;
+        do {
+			assert(k<invPmapStackDepth);
+			invPmapStack[k++] = (byte) (temp = buffer[position++]);
+		} while (temp>=0);
+                
+        assert(invPmapStackDepth-k<=127);
+        
+        invPmapStack[k] = (byte)(1+invPmapStackDepth-k);//delta to deltaIdx 
+		invPmapStackDepth = newDepth;//-= neededSpace;        
+        assert(invPmapStack[invPmapStackDepth]==bitBlock);
 		//set next bit to read
 		pmapIdx = 6;
-		
 	}
 
 	//called at every field to determine operation
 	public final byte popPMapBit() {
-		byte tmp = pmapIdx;
-		if (tmp>=0) {
-			final byte value = (byte)((byte)1&(bitBlock>>>tmp));
+		if (pmapIdx>=0) {
+			final byte value = (byte)((byte)1&(bitBlock>>>pmapIdx));
 				//if we have not reached the end of the map dec to the next byte
-			if ((tmp==0) && (bitBlock>=0)) {
-				bitBlock = pmapStack[--pmapStackDepth];
+			if ((pmapIdx==0) && (bitBlock>=0)) {
+				bitBlock = invPmapStack[++invPmapStackDepth];
 				pmapIdx = 6;
 			} else {
 				pmapIdx --;
@@ -223,14 +183,11 @@ public final class PrimitiveReader {
 
 	//called at the end of each group
 	public final void popPMap() {
-	    //the first pmap need not restore any values!
-		if (pmapStackDepth>1) { //TODO: off by one array.
-			
-	//		pmapStackDepth =  pmapStack[pmapStackDepth-1];
-						
-			pmapIdx = pmapStack[--pmapStackDepth];
-			bitBlock = pmapStack[--pmapStackDepth];
-		}
+		assert(bitBlock<0);
+		assert(invPmapStack[invPmapStackDepth+1]>=0);
+		
+		bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth+1])];
+		pmapIdx = invPmapStack[invPmapStackDepth-1];
 	}
 	
 	/////////////////////////////////////
