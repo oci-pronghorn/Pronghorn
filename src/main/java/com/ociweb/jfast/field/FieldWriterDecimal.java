@@ -12,12 +12,6 @@ public class FieldWriterDecimal {
 		writerDecimalMantissa = new FieldWriterLong(writer, mantissaValues);
 	}
 
-	public void writeDecimalConstant(int token, int exponent, long mantissa) {
-
-		writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
-		writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
-				
-	}
 
 	public void writeDecimalNone(int token, int exponent, long mantissa) {
 		
@@ -41,7 +35,7 @@ public class FieldWriterDecimal {
 				}	
 			} else {
 				//constant
-				//ERR
+				writerDecimalExponent.writeIntegerSignedConstantOptional(exponent, token);
 			}
 			
 		} else {
@@ -76,7 +70,7 @@ public class FieldWriterDecimal {
 				}	
 			} else {
 				//constant
-				//ERROR
+				writerDecimalMantissa.writeLongSignedConstantOptional(mantissa, token);
 			}
 			
 		} else {

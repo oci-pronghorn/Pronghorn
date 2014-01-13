@@ -31,8 +31,7 @@ public class FieldReaderDecimal {
 						}	
 					} else {
 						//constant
-						//ERR
-						return 0;
+						return exponent.readIntegerSignedConstantOptional(token, valueOfOptional);
 					}
 					
 				} else {
@@ -107,8 +106,7 @@ public class FieldReaderDecimal {
 						}	
 					} else {
 						//constant
-						//ERROR
-						return 0;
+						return mantissa.readLongSignedConstantOptional(token, valueOfOptional);
 					}
 					
 				} else {

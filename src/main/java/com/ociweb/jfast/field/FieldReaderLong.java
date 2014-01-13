@@ -39,10 +39,21 @@ public class FieldReaderLong {
 	}
 
 	public long readLongUnsignedConstant(int token) {
-		return (reader.popPMapBit()==0 ? 
-					lastValue[token & INSTANCE_MASK]:
-					reader.readLongUnsigned()	
-				);
+		//always return this required value.
+		return lastValue[token & INSTANCE_MASK];
+	}
+	
+	public long readLongUnsignedConstantOptional(int token, long valueOfOptional) {
+		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	}
+
+	public long readLongSignedConstant(int token) {
+		//always return this required value.
+		return lastValue[token & INSTANCE_MASK];
+	}
+	
+	public long readLongSignedConstantOptional(int token, long valueOfOptional) {
+		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
 	}
 
 	public long readLongUnsignedCopy(int token) {
@@ -159,13 +170,6 @@ public class FieldReaderLong {
 		} else {
 			return value-1;
 		}
-	}
-
-	public long readLongSignedConstant(int token) {
-		return (reader.popPMapBit()==0 ? 
-					lastValue[token & INSTANCE_MASK]:
-					reader.readLongSigned()	
-				);
 	}
 
 	public long readLongSignedCopy(int token) {

@@ -198,7 +198,7 @@ public class TextHeapTest {
 	}
 	
 	@Test
-	public void modifyHeadTest() {
+	public void modifyHeadTestString() {
 		
 		TextHeap th = new TextHeap(8,8, 10);
 		String prefix = "hello";
@@ -214,6 +214,59 @@ public class TextHeapTest {
 		//
 		char[] tail = replace.toCharArray();
 		th.appendHead(2, prefix.length(), tail, 0, tail.length);
+		//
+		builder.setLength(0);
+		th.get(2, builder);
+		assertEquals(replace+root,builder.toString());
+		assertTrue(th.equals(2, replace+root));
+		assertFalse(th.equals(2, replace));
+		assertEquals(replace.length(), th.countHeadMatch(2, replace));
+		assertEquals(root.length(), th.countTailMatch(2, root));
+	}
+	
+	@Test
+	public void modifyHeadTestChar() {
+		
+		TextHeap th = new TextHeap(8,8, 10);
+		String prefix = "hello";
+		String replace = "goodbye";
+		String root = "world";
+		
+		char[] data = (prefix+root).toCharArray();
+		th.set(2, data, 0, data.length);
+		//
+		StringBuilder builder = new StringBuilder();
+		th.get(2, builder);
+		assertEquals(prefix+root,builder.toString());
+		//
+		th.appendHead(2, prefix.length(), replace);
+		//
+		builder.setLength(0);
+		th.get(2, builder);
+		assertEquals(replace+root,builder.toString());
+		assertTrue(th.equals(2, replace+root));
+		assertFalse(th.equals(2, replace));
+		assertEquals(replace.length(), th.countHeadMatch(2, replace));
+		assertEquals(root.length(), th.countTailMatch(2, root));
+	}
+	
+	@Test
+	public void modifyHeadTestSingleChar() {
+		
+		TextHeap th = new TextHeap(8,8, 10);
+		String prefix = "hello";
+		String replace = "g";
+		String root = "world";
+		
+		char[] data = (prefix+root).toCharArray();
+		th.set(2, data, 0, data.length);
+		//
+		StringBuilder builder = new StringBuilder();
+		th.get(2, builder);
+		assertEquals(prefix+root,builder.toString());
+		//
+		th.trimHead(2, prefix.length());
+		th.appendHead(2, replace.charAt(0));
 		//
 		builder.setLength(0);
 		th.get(2, builder);
@@ -358,7 +411,7 @@ public class TextHeapTest {
 	}
 	
 	@Test
-	public void headAndMoveLeftTest() {
+	public void headAndMoveLeftTestChar() {
 		//Need to test move right and move left.
 		TextHeap th = buildTestHeap();
 		//
@@ -366,6 +419,33 @@ public class TextHeapTest {
 		char[] headData = headString.toCharArray();
 		
 		th.appendHead(3, 1, headData, 0, headData.length);
+				
+		StringBuilder builder = new StringBuilder();
+		builder.setLength(0);
+		th.get(3, builder);
+		assertEquals(headString+"nop",builder.toString());
+		
+		builder.setLength(0);
+		th.get(2, builder);
+		assertEquals(buildTestData[2],builder.toString());
+		
+		builder.setLength(0);
+		th.get(1, builder);
+		assertEquals(buildTestData[1],builder.toString());
+		
+		builder.setLength(0);
+		th.get(0, builder);
+		assertEquals(buildTestData[0],builder.toString());
+	}
+	
+	@Test
+	public void headAndMoveLeftTestString() {
+		//Need to test move right and move left.
+		TextHeap th = buildTestHeap();
+		//
+		String headString = "abcdef";
+		
+		th.appendHead(3, 1, headString);
 				
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);

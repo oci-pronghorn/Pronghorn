@@ -19,6 +19,9 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 public class StreamingDecimalTest extends BaseStreamingTest {
 
 	final long[] testData     = buildTestDataUnsignedLong(fields);
+	final int   testExpConst = 0;
+	final long   testMantConst = 0;
+	
 	//Must double because we may need 1 bit for exponent and another for mantissa
 	final int groupToken = buildGroupToken(maxMPapBytes*2,0);//TODO: repeat still unsupported
 
@@ -53,7 +56,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-     //           OperatorMask.Constant, //test runner knows not to use with optional
+    //            OperatorMask.Constant,  //Fix when we revisit decimal with split operations.
                 OperatorMask.Default
                 };
 				
@@ -85,12 +88,19 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
-					fw.write(token);
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						fw.write(token, testExpConst, testMantConst); 
+					}
 				} else {
-					fw.write(token, 1, testData[f]); 
-				}
-							
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						fw.write(token, 1, testData[f]); 
+					}
+				}			
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
 			}			
 		}
@@ -129,19 +139,50 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-					int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-		     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
-					if (none!=man) {
-						assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
+				
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+						if (exp<0) {
+							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+						}
+			     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
+						if (none!=man) {
+							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
+						}
+					} else { 
+						int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+						long man = fr.readDecimalMantissa(tokenLookup[f], none);
+						if (testMantConst!=man) {
+							assertEquals(testMantConst, man);
+						}
+						if (testExpConst!=exp) {
+							assertEquals(testExpConst, exp);
+						}
 					}
-				} else { 
-					int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-					long man = fr.readDecimalMantissa(tokenLookup[f], none);
-					if (testData[f]!=man) {
-						assertEquals(testData[f], man);
+					
+				} else {
+				
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+						if (exp<0) {
+							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+						}
+			     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
+						if (none!=man) {
+							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
+						}
+					} else { 
+						int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+						long man = fr.readDecimalMantissa(tokenLookup[f], none);
+						if (testData[f]!=man) {
+							assertEquals(testData[f], man);
+						}
 					}
 				}
+				
+				
+				
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			
 		}

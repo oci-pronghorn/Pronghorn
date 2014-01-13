@@ -20,7 +20,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	
 	final int groupToken 	  = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 	final int[] testData     = buildTestDataUnsigned(fields);
-	boolean sendNulls = false;
+	final int   testConst    = 0; //must be zero because Dictionary was not init with anything else
+	boolean sendNulls        = true;
 		
 	FASTOutputByteArray output;
 	PrimitiveWriter pw;
@@ -45,7 +46,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Constant, 
                 OperatorMask.Default
                 };
 				
@@ -64,7 +65,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Constant, 
                 OperatorMask.Default
                 };
 		tester(types, operators, "SignedInteger");
@@ -73,7 +74,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
-		
+				
 		FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
 		
 		long start = System.nanoTime();
@@ -91,11 +92,21 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 
-				
-				if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
-					fw.write(token);
+							
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					
+					//special test with constant value.
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);//nothing
+					} else {
+						fw.write(token, testConst); 
+					}
 				} else {
-					fw.write(token, testData[f]); 
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						fw.write(token, testData[f]); 
+					}
 				}
 							
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
@@ -132,18 +143,38 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 	
 				
-				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-					if (Integer.MIN_VALUE!=value) {
-						assertEquals(Integer.MIN_VALUE, value);
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
+						if (Integer.MIN_VALUE!=value) {
+							assertEquals(Integer.MIN_VALUE, value);
+						}
+					} else { 
+						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
+						if (testConst!=value) {
+							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
+							assertEquals(testConst, value);
+						}
 					}
-				} else { 
-					int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
-					if (testData[f]!=value) {
-						System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
-						assertEquals(testData[f], value);
+				
+				} else {	
+				
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
+						if (Integer.MIN_VALUE!=value) {
+							assertEquals(Integer.MIN_VALUE, value);
+						}
+					} else { 
+						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
+						if (testData[f]!=value) {
+							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
+							assertEquals(testData[f], value);
+						}
 					}
 				}
+				
+				
+				
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			
 		}

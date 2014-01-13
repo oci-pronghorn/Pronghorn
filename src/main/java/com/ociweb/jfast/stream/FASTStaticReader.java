@@ -27,6 +27,11 @@ public class FASTStaticReader implements FASTReader {
 	private final FieldReaderChar readerChar;
 	private final FieldReaderBytes readerBytes;
 	
+	//constant fields are always the same or missing but never anything else.
+	//         manditory constant does not use pmap and has constant injected at destnation never xmit
+	//         optional constant does use the pmap 1 (use initial const) 0 (not present)
+	//
+	//default fields can be the default or overridden this one time with a new value.
 
 	
 		
@@ -42,6 +47,10 @@ public class FASTStaticReader implements FASTReader {
 		
 		
 		
+	}
+	
+	public void copyDicionaryTo(FASTStaticWriter target) {
+		//TODO: implement.
 	}
 	
 
@@ -151,8 +160,7 @@ public class FASTStaticReader implements FASTReader {
 				}	
 			} else {
 				//constant
-				//writerInteger.writeIntegerUnsignedConstant(value, token);
-				return 0;
+				return readerLong.readLongSignedConstantOptional(token,valueOfOptional);
 			}
 			
 		} else {
@@ -224,7 +232,7 @@ public class FASTStaticReader implements FASTReader {
 				}	
 			} else {
 				//constant
-				return readerLong.readLongSignedConstant(token);
+				return readerLong.readLongUnsignedConstantOptional(token,valueOfOptional);
 			}
 			
 		} else {
@@ -319,8 +327,7 @@ public class FASTStaticReader implements FASTReader {
 				}	
 			} else {
 				//constant
-				//writerInteger.writeIntegerUnsignedConstant(value, token);
-				return 0;
+				return readerInteger.readIntegerSignedConstantOptional(token,valueOfOptional);
 			}
 			
 		} else {
@@ -391,8 +398,7 @@ public class FASTStaticReader implements FASTReader {
 				}	
 			} else {
 				//constant
-				//writerInteger.writeIntegerUnsignedConstant(value, token);
-				return 0;
+				return readerInteger.readIntegerUnsignedConstantOptional(token, valueOfOptional);
 			}
 			
 		} else {
@@ -574,7 +580,7 @@ public class FASTStaticReader implements FASTReader {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return -1;//TODO: unimplemented.
+					return readerChar.readUTF8ConstantOptional(token);
 				} else {
 					//delta
 					return readerChar.readUTF8DeltaOptional(token);
@@ -682,8 +688,7 @@ public class FASTStaticReader implements FASTReader {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return -1;//TODO: undone
-					
+					return readerChar.readASCIIConstantOptional(token);
 				} else {
 					//delta
 					return readerChar.readASCIIDeltaOptional(token);

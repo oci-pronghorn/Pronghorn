@@ -64,12 +64,11 @@ public class TokenBuilder {
 	}
 	
 	public static boolean isInValidCombo(int type, int operator) {
-		boolean isOptional = 1==(type&0x01);
-		
-		if (OperatorMask.Constant==operator & isOptional) {
-			//constant operator can never be of type optional
-			return true;
-		}
+//		boolean isOptional = 1==(type&0x01);	
+//		if (OperatorMask.Constant==operator & isOptional) {
+//			//constant operator can never be of type optional
+//			return true;
+//		}
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
@@ -79,6 +78,16 @@ public class TokenBuilder {
 		}		
 		
 		return false;
+	}
+	
+	public static boolean isOpperator(int token, int operator) {
+		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
+		
+		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
+			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL)==operator||((token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL)==operator;
+		} else {
+			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==operator;
+		}
 	}
 	
 	public static String tokenToString(int token) {

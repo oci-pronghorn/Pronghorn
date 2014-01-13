@@ -100,16 +100,22 @@ public class FieldReaderChar {
 	}
 	
 	
-
 	public int readASCIIConstant(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
-		} else {
-			readASCIIToHeap(idx);
-			return idx;
-		}
+		//always return this required value.
+		return token & INSTANCE_MASK;
+	}
+	
+	public int readASCIIConstantOptional(int token) {
+		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
+	}
+
+	public int readUTF8Constant(int token) {
+		//always return this required value.
+		return token & INSTANCE_MASK;
+	}
+	
+	public int readUTF8ConstantOptional(int token) {
+		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 	
 	public int readASCIIDefault(int token) {
@@ -235,22 +241,6 @@ public class FieldReaderChar {
 		return readASCIIDelta(token);//TODO: need null logic here.
 	}
 
-	public int readUTF8Constant(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
-		} else {
-			
-			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(charDictionary.rawAccess(), 
-					            charDictionary.allocate(idx, length),
-					            length);
-						
-			return idx;
-		}
-				
-	}
 
 	public int readUTF8Default(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -292,10 +282,10 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
 			//append to tail	
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(trim, idx, utfLength), utfLength);
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(trim, idx, utfLength), utfLength);
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, trim, utfLength), utfLength);
 		}
 		
 		return idx;
@@ -308,7 +298,7 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned(); 
 
 		//append to tail	
-		int targetOffset = charDictionary.makeSpaceForAppend(trim, idx, utfLength);
+		int targetOffset = charDictionary.makeSpaceForAppend(idx, trim, utfLength);
 		
 	//	int dif = charDictionary.length(idx);
 		
@@ -330,7 +320,7 @@ public class FieldReaderChar {
 			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
-		}		
+		}
 		return idx;
 	}
 
@@ -341,7 +331,7 @@ public class FieldReaderChar {
 			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
-		}		
+		}//	else System.err.println("awesome B");		
 		return idx;
 	}
 
@@ -353,10 +343,10 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
 		if (trim>=0) {
 			//append to tail	
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(trim, idx, utfLength), utfLength);
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(trim, idx, utfLength), utfLength);
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, trim, utfLength), utfLength);
 		}
 		
 		return idx;
@@ -369,7 +359,7 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
 
 		//append to tail	
-		reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(trim, idx, utfLength), utfLength);
+		reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		
 		return idx;
 	}

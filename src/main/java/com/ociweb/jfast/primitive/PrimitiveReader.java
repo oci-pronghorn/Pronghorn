@@ -153,20 +153,19 @@ public final class PrimitiveReader {
 
 	//called at every field to determine operation
 	public final byte popPMapBit() {
-		
-		byte tmp;
-		if ((tmp=pmapIdx)>=0) {
-			//if we have not reached the end of the map dec to the next byte
-			byte bi = bitBlock;
-			if ((tmp==0) && (bi>=0)) {
-				bitBlock = invPmapStack[++invPmapStackDepth];
-				pmapIdx = 6;
-			} else {
-				pmapIdx--;
-			}
-			return (byte)(1&(bi>>>tmp));
+		if (pmapIdx>0 || (pmapIdx==0 && bitBlock<0)) {
+			//Frequent, 6 out of every 7 plus the last bit block
+			return (byte)(1&(bitBlock>>>pmapIdx--));
 		} else {
-			return 0;
+			if (pmapIdx>=0) {
+				//SOMETIMES one of 7 we need to move up to the next byte
+				pmapIdx = 6;
+				byte result = (byte)(1&bitBlock);
+				bitBlock = invPmapStack[++invPmapStackDepth];
+				return result;
+			} else {
+				return 0;
+			}
 		}
 	}
 
@@ -502,6 +501,7 @@ public final class PrimitiveReader {
 		
 	//TODO: if this does not perform well after in-line remove the interface and return to concrete
 	public void readTextUTF8(int charCount, Appendable target) {
+		//System.err.println("A");
 		while (--charCount>=0) {
 			if (position>=limit) {
 				fetch(1); //CAUTION: may change value of position
@@ -521,6 +521,7 @@ public final class PrimitiveReader {
 	}
 	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
+		//System.err.println("B");
 		byte b;
 		if (limit-position>=charCount<<3) { //if bigger than the text could be then use this shortcut
 			//fast

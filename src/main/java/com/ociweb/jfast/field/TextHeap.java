@@ -388,7 +388,7 @@ public class TextHeap {
 
 	public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
 		//if not room make room checking after first because thats where we want to copy the tail.
-		int targetPos = makeSpaceForAppend(trimTail, idx, value.length()-startFrom);	
+		int targetPos = makeSpaceForAppend(idx, trimTail, value.length()-startFrom);	
 		int srcLimit = value.length();
 		while (startFrom<srcLimit) {
 			data[targetPos++] = value.charAt(startFrom++);
@@ -401,7 +401,7 @@ public class TextHeap {
 	//if there is no room after moving everything throws
 	void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking after first because thats where we want to copy the tail.
-		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(trimTail, idx, sourceLen), sourceLen);
+		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
 	}
 	
 	int offset(int idx) {
@@ -452,7 +452,9 @@ public class TextHeap {
 		
 	}
 	
-	int makeSpaceForAppend(int trimTail, int idx, int sourceLen) {
+	//TODO: add revision to tell if the value has changed since last read, would be helpful for copy.
+	
+	int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
 		int textLen = (sourceLen-trimTail);
 		
 		int offset = idx<<2;
@@ -507,23 +509,20 @@ public class TextHeap {
 	}
 	
 	void appendHead(int idx, int trimHead, CharSequence value) {
-		int sourceLen = value.length()-trimHead;
-		int newStart = makeSpaceForPrepend(idx, trimHead, sourceLen);
+		int i = value.length();
+		int newStart = makeSpaceForPrepend(idx, trimHead, i);
 				
-		int i = sourceLen;
-		int j = newStart;
+		int j = newStart+i;
 		while (--i>=0) {
-			data[j] = value.charAt(i);
+			data[--j] = value.charAt(i);
 		}
 						
 	}
 	
 	void appendHead(int idx, char value) {
-		//if not room make room checking after first because thats where we want to copy the tail.
-		int offset = idx<<2;
-		makeSpaceForPrepend(offset, 1);
+		
 		//everything is now ready to trim and copy.
-		data[tat[offset+1]++] = value;
+		data[makeSpaceForPrepend(idx, 0, 1)] = value;
 	}
 
 	int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
@@ -611,25 +610,34 @@ public class TextHeap {
 		int pos;
 		int lim;
 		char[] buf;
+		int len;
+		
 		if (idx<0) {
 			int offset = idx<<1;
 			
 			pos = initTat[offset];
 			lim = initTat[offset+1];
 			buf = initBuffer;
-			
+			len = lim-pos;
 		} else {
 			int offset = idx<<2;
 			
 			pos = tat[offset];
 			lim = tat[offset+1];
 			buf = data;
+			len = lim-pos;
 		}
-		
+		if (len<0) {
+			if (null==value) {
+				return true;
+			}
+			len = 0;
+		}
 		int i = value.length();
-		if (lim-pos!=i) {
+		if (len!=i) {
 			return false;
 		}
+		//System.err.println(len+"  "+i);
 		while (--i>=0) {
 			if (value.charAt(i)!=buf[pos+i]) {
 				return false;
@@ -640,6 +648,7 @@ public class TextHeap {
 	
 
 	public boolean equals(int idx, char[] target, int targetIdx, int length) {
+		
 		int pos;
 		int lim;
 		char[] buf;
@@ -657,9 +666,14 @@ public class TextHeap {
 			lim = tat[offset+1];
 			buf = data;
 		}
+
+		int len = lim-pos;
+		if (len<0 && length==0) {
+			return true;
+		}
 		
 		int i = length;
-		if (lim-pos!=i) {
+		if (len != i) {
 			return false;
 		}
 				

@@ -6,6 +6,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -18,6 +19,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	final int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
 	final long[] testData     = buildTestDataUnsignedLong(fields);
+	final long   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	
 	FASTOutputByteArray output;
 	PrimitiveWriter pw;
@@ -44,7 +46,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Constant, 
                 OperatorMask.Default
                 };
 				
@@ -63,7 +65,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-                OperatorMask.Constant, //test runner knows not to use with optional
+                OperatorMask.Constant, 
                 OperatorMask.Default
                 };
 		tester(types, operators, "SignedLong");
@@ -92,12 +94,21 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
-					fw.write(token);
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					
+					//special test with constant value.
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);//nothing
+					} else {
+						fw.write(token, testConst); 
+					}
 				} else {
-					fw.write(token, testData[f]); 
-				}
-							
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						fw.write(token, testData[f]); 
+					}
+				}	
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
 			}			
 		}
@@ -135,16 +146,34 @@ public class StreamingLongTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-		     		long value = fr.readLong(tokenLookup[f], none);
-					if (none!=value) {
-						assertEquals(none, value);
-					}
-				} else { 
-					long value = fr.readLong(tokenLookup[f], none);
-					if (testData[f]!=value) {
-						assertEquals(testData[f], value);
-					}
+				
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+						if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+				     		long value = fr.readLong(tokenLookup[f], none);
+							if (none!=value) {
+								assertEquals(none, value);
+							}
+						} else { 
+							long value = fr.readLong(tokenLookup[f], none);
+							if (testConst!=value) {
+								assertEquals(testConst, value);
+							}
+						}
+					
+				} else {
+				
+						if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+				     		long value = fr.readLong(tokenLookup[f], none);
+							if (none!=value) {
+								assertEquals(none, value);
+							}
+						} else { 
+							long value = fr.readLong(tokenLookup[f], none);
+							if (testData[f]!=value) {
+								assertEquals(testData[f], value);
+							}
+						}
+					
 				}
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			

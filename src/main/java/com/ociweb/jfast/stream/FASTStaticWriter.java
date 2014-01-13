@@ -143,7 +143,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}	
 			} else {
 				//constant
-				//err
+				writerLong.writeLongSignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -215,7 +215,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}	
 			} else {
 				//constant
-				//ERR
+				writerLong.writeLongUnsignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -380,7 +380,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}	
 			} else {
 				//constant
-				//writerInteger.writeIntegerSignedConstantOptional(value, token);
+				writerInteger.writeIntegerSignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -415,7 +415,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				}	
 			} else {
 				//constant
-				//writerInteger.writeIntegerUnsignedConstantOptional(value, token);
+				writerInteger.writeIntegerUnsignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -562,7 +562,6 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-
 					writerChar.writeUTF8Optional(value);
 				} else {
 					//tail
@@ -572,7 +571,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					
+					writerChar.writeUTF8ConstantOptional(token);	
 				} else {
 					//delta
 					writerChar.writeUTF8DeltaOptional(token,value);					
@@ -608,7 +607,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					writerChar.writeUTF8Constant(token,value);					
+					writerChar.writeUTF8Constant(token);					
 				} else {
 					//delta
 					writerChar.writeUTF8Delta(token,value);					
@@ -644,7 +643,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					
+					writerChar.writeASCIIConstantOptional(token);
 				} else {
 					//delta
 					writerChar.writeASCIIDeltaOptional(token,value);
@@ -683,7 +682,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					writerChar.writeASCIIConstant(token,value);
+					writerChar.writeASCIIConstant(token);
 				} else {
 					//delta
 					writerChar.writeASCIIDelta(token,value);
@@ -747,7 +746,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					
+					writerChar.writeUTF8ConstantOptional(token);
 				} else {
 					//delta
 					writerChar.writeUTF8DeltaOptional(token, value, offset, length);
@@ -783,7 +782,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					writerChar.writeUTF8Constant(token, value, offset, length);
+					writerChar.writeUTF8Constant(token);
 				} else {
 					//delta
 					writerChar.writeUTF8Delta(token, value, offset, length);
@@ -818,7 +817,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					
+					writerChar.writeASCIIConstantOptional(token);
 				} else {
 					//delta
 					writerChar.writeASCIIDeltaOptional(token, value, offset, length);
@@ -854,7 +853,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					writerChar.writeASCIIConstant(token, value, offset, length);
+					writerChar.writeASCIIConstant(token);
 				} else {
 					//delta
 					writerChar.writeASCIIDelta(token, value, offset, length);

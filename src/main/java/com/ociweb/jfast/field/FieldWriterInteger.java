@@ -70,16 +70,28 @@ public final class FieldWriterInteger {
 
 	
 	public void writeIntegerUnsignedConstant(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		//value must equal constant
-		if (value==lastValue[idx] ) {
-			writer.writePMapBit((byte)0);//use constant value
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-		}	
-		
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//nothing need be sent because constant does not use pmap and the template
+		//on the other receiver side will inject this value from the template
+	}
+	
+	public void writeIntegerUnsignedConstantOptional(int value, int token) {
+		writer.writePMapBit((byte)1);
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//the writeNull will take care of the rest.
+	}
+	
+	
+	public void writeIntegerSignedConstant(int value, int token) {
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//nothing need be sent because constant does not use pmap and the template
+		//on the other receiver side will inject this value from the template
+	}
+	
+	public void writeIntegerSignedConstantOptional(int value, int token) {
+		writer.writePMapBit((byte)1);
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//the writeNull will take care of the rest.
 	}
 	
 	public void writeIntegerUnsignedDefault(int value, int token) {
@@ -138,15 +150,15 @@ public final class FieldWriterInteger {
 
 	public void writeIntegerUnsignedDelta(int value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		writer.writeIntegerSigned(value - lastValue[idx]);
+		int idx;
+		writer.writeIntegerSigned(value - lastValue[idx = token & INSTANCE_MASK]);
 		lastValue[idx] = value;		
 	}
 	
 	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		int delta = value - lastValue[idx];
+		int idx;
+		int delta = value - lastValue[idx = token & INSTANCE_MASK];
 		writer.writeLongSigned(delta>=0?1+delta:delta);
 		lastValue[idx] = value;	
 	}
@@ -190,20 +202,6 @@ public final class FieldWriterInteger {
 	}
 	
 
-	
-	public void writeIntegerSignedConstant(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		//value must equal constant
-		if (value==lastValue[idx] ) {
-			writer.writePMapBit((byte)0);//use constant value
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}	
-		
-	}
-	
 	public void writeIntegerSignedDefault(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 
@@ -287,13 +285,9 @@ public final class FieldWriterInteger {
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-				if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-					//const
-					writer.writeNull();                 //no pmap,  no change to last value  
-				} else {
-					//const optional
-					writer.writePMapBit((byte)0);       //pmap only
-				}			
+				assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE))) :"Sending a null constant is not supported";
+				//const optional
+				writer.writePMapBit((byte)0);       //pmap only
 			} else {	
 				//default
 				writePMapNull(token);  //yes pmap,  no change to last value

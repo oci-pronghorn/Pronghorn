@@ -45,12 +45,23 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerUnsignedConstant(int token) {
-		return (reader.popPMapBit()==0 ? 
-					lastValue[token & INSTANCE_MASK]:
-					reader.readIntegerUnsigned()	
-				);
+		//always return this required value.
+		return lastValue[token & INSTANCE_MASK];
+	}
+	
+	public int readIntegerUnsignedConstantOptional(int token, int valueOfOptional) {
+		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
 	}
 
+	public int readIntegerSignedConstant(int token) {
+		//always return this required value.
+		return lastValue[token & INSTANCE_MASK];
+	}
+	
+	public int readIntegerSignedConstantOptional(int token, int valueOfOptional) {
+		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	}
+	
 	public int readIntegerUnsignedCopy(int token) {
 		return (reader.popPMapBit()==0 ? 
 				 lastValue[token & INSTANCE_MASK] : 
@@ -166,12 +177,6 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerSignedConstant(int token) {
-		return (reader.popPMapBit()==0 ? 
-					lastValue[token & INSTANCE_MASK]:
-					reader.readIntegerSigned()	
-				);
-	}
 
 	public int readIntegerSignedCopy(int token) {
 		return (reader.popPMapBit()==0 ? 

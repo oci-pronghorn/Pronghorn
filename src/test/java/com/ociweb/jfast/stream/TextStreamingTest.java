@@ -25,6 +25,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 
 	final int fields      		      = 30000;
 	final CharSequence[] testData    = buildTestData(fields);
+	final String testConstSeq = "";
+	final char[] testConst  = testConstSeq.toCharArray();
+	boolean sendNulls        = true;
+	
 	final char[][] testDataChars = buildTestDataChars(testData);
 	
 	FASTOutputByteArray output;
@@ -56,10 +60,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int[] operators = new int[] {
                   OperatorMask.None,   //W5 R16 w/o equals
 				  OperatorMask.Constant, //W6 R16 w/o equals
-				  OperatorMask.Copy,     //W84 R31 w/o equals ****fix test data was not letting any copy happen so it was send every time.
+				  OperatorMask.Copy,     //W84 R31 w/o equals 
 				  OperatorMask.Default,  //W6 R16 
-//				  OperatorMask.Delta,
-                 OperatorMask.Tail,     //W46 R15 w/o equals
+		//		  OperatorMask.Delta,
+                  OperatorMask.Tail,     //W46 R15 w/o equals
                 };
 
 		textTester(types,operators,"ASCII");
@@ -72,12 +76,12 @@ public class TextStreamingTest extends BaseStreamingTest {
 				  TypeMask.TextUTF8Optional,
 				 };
 		int[] operators = new int[] {
-                OperatorMask.None, 
-				OperatorMask.Constant,
-			    OperatorMask.Copy,
-				OperatorMask.Default,
-			//	OperatorMask.Delta,
-                OperatorMask.Tail,
+                OperatorMask.None, //W9 R17  1.08
+				OperatorMask.Constant, //W9 R17 1.09  Need better test.
+			    OperatorMask.Copy,  //W83 R84 .163
+				OperatorMask.Default, //W10 R18
+	//			OperatorMask.Delta,
+                OperatorMask.Tail,  //W57 R51  .31
                 };
 
 		textTester(types,operators,"UTF8");
@@ -100,9 +104,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*avgFieldSize));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
-		
-			
-		
+				
 		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
 		byte[] writeBuffer = new byte[streamByteSize];
 		
@@ -120,6 +122,15 @@ public class TextStreamingTest extends BaseStreamingTest {
 		
 		performanceReadTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
+		
+		int i = 0;
+		for(CharSequence d: testData) {
+			i+=d.length();
+		}
+		
+		long dataCount = (operationIters * (long)fields * (long)i)/testData.length; 
+		
+		System.out.println("FullData:"+dataCount+" XmitData:"+byteCount+" compression:"+(byteCount/(float)dataCount));
 		
 	}
 
@@ -147,11 +158,28 @@ public class TextStreamingTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (false && ((f&0xF)==0) && (0!=(token&0x1000000))) {
-					fw.write(token);
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						if ((i&1)==0) {
+							fw.write(token,testConstSeq);
+						} else {
+							char[] array = testConst;
+							fw.write(token, array, 0 , array.length); 
+						}
+					}
 				} else {
-					char[] array = testDataChars[f];
-					fw.write(token, array, 0 , array.length); 
+					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+						fw.write(token);
+					} else {
+						if ((i&1)==0) {
+							fw.write(token,testData[f]);
+						} else {
+							char[] array = testDataChars[f];
+							fw.write(token, array, 0 , array.length); 
+						}
+					}
 				}
 							
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
@@ -190,31 +218,59 @@ public class TextStreamingTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				if (false && (f&0xF)==0 && (0!=(token&0x1000000))) {
-					//TODO: why is this int must be CHAR?
-//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-//					if (Integer.MIN_VALUE!=value) {
-//						assertEquals(Integer.MIN_VALUE, value);
-//					}
-				} else { 
-					try {
-						int textIdx = fr.readChars(tokenLookup[f]);						
-						
-						char[] tdc = testDataChars[f];
-						if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
+				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						//TODO: why is this int must be CHAR?
+	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
+	//					if (Integer.MIN_VALUE!=value) {
+	//						assertEquals(Integer.MIN_VALUE, value);
+	//					}
+					} else { 
+						try {
+							int textIdx = fr.readChars(tokenLookup[f]);						
 							
-							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
-									testData[f],
-									     textHeap.get(textIdx,new StringBuilder()).toString());
+							char[] tdc = testConst;
+
+							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
+																
+								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+										     testConst,
+										     textHeap.get(textIdx,new StringBuilder()).toString());
+							}						
+							
+						} catch (Exception e) {
+							System.err.println("expected text; "+testData[f]);
+							e.printStackTrace();
+							throw new FASTException(e);
 						}
-					
+					}
+				} else {
+					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						//TODO: why is this int must be CHAR?
+	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
+	//					if (Integer.MIN_VALUE!=value) {
+	//						assertEquals(Integer.MIN_VALUE, value);
+	//					}
+					} else { 
+						try {
+							int textIdx = fr.readChars(tokenLookup[f]);						
+							
+							char[] tdc = testDataChars[f];
+							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
+								
+								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+										testData[f],
+										     textHeap.get(textIdx,new StringBuilder()).toString());
+							}
 						
-					} catch (Exception e) {
-						System.err.println("expected text; "+testData[f]);
-						throw new FASTException(e);
+							
+						} catch (Exception e) {
+							System.err.println("expected text; "+testData[f]);
+							e.printStackTrace();
+							throw new FASTException(e);
+						}
 					}
 				}
-
 			
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			

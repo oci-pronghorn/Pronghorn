@@ -85,18 +85,29 @@ public final class FieldWriterLong {
 	}
 	
 
-	
 	public void writeLongUnsignedConstant(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		//value must equal constant
-		if (value==lastValue[idx] ) {
-			writer.writePMapBit((byte)0);//use constant value
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(value);
-		}	
-		
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//nothing need be sent because constant does not use pmap and the template
+		//on the other receiver side will inject this value from the template
+	}
+	
+	public void writeLongUnsignedConstantOptional(long value, int token) {
+		writer.writePMapBit((byte)1);
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//the writeNull will take care of the rest.
+	}
+	
+	
+	public void writeLongSignedConstant(long value, int token) {
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//nothing need be sent because constant does not use pmap and the template
+		//on the other receiver side will inject this value from the template
+	}
+	
+	public void writeLongSignedConstantOptional(long value, int token) {
+		writer.writePMapBit((byte)1);
+		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		//the writeNull will take care of the rest.
 	}
 	
 	public void writeLongUnsignedDefault(long value, int token) {
@@ -198,21 +209,6 @@ public final class FieldWriterLong {
 			writer.writePMapBit((byte)1);
 			writer.writeLongSigned(lastValue[idx] = value);
 		}
-	}
-	
-
-	
-	public void writeLongSignedConstant(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		//value must equal constant
-		if (value==lastValue[idx] ) {
-			writer.writePMapBit((byte)0);//use constant value
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(value);
-		}	
-		
 	}
 	
 	public void writeLongSignedDefault(long value, int token) {
