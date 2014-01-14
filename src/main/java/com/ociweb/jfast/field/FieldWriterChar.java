@@ -9,10 +9,10 @@ public class FieldWriterChar {
 	private final int INSTANCE_MASK;
 	
 	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
-		assert(charDictionary.textCount()<TokenBuilder.MAX_INSTANCE);
-		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.textCount()));
+		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
+		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (charDictionary.textCount()-1);
+		this.INSTANCE_MASK = (charDictionary.itemCount()-1);
 		this.heap = charDictionary;
 		this.writer = writer;
 	}

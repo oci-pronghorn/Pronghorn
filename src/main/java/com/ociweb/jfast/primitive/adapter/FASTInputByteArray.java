@@ -41,7 +41,5 @@ public class FASTInputByteArray implements FASTInput {
 
 	@Override
 	public void init(DataTransfer dataTransfer) {
-		// TODO Auto-generated method stub
-		
 	}
 }

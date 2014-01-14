@@ -47,6 +47,7 @@ public class DictionaryFactory {
 	private int byteInitCount;
 	private int[] byteInitIndex;
 	private byte[][] byteInitValue;
+	private int byteInitTotalLength;
 		
 	private final int singleTextSize;
 	private final int singleGapSize = 64; //default to avoid false cache sharing. 
@@ -197,6 +198,7 @@ public class DictionaryFactory {
 		
 		byteInitIndex[byteInitCount] = idx;
 		byteInitValue[byteInitCount] = value;
+		byteInitTotalLength+=value.length;
 		if (++byteInitCount>=byteInitValue.length) {
 			int newLength = byteInitValue.length+INIT_GROW_STEP;
 			int[] temp1 = new int[newLength];
@@ -259,27 +261,17 @@ public class DictionaryFactory {
 	}
 	
 	public TextHeap charDictionary() {
-		
-		
 		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount),
 				                     charInitTotalLength, charInitIndex, charInitValue);
-		
-		
-		
-
-		
-		heap.reset();
-		
+		heap.reset();	
 		return heap;
 	}
 	
-	public byte[][] byteDictionary() {
-		byte[][] array = new byte[nextPowerOfTwo(bytesCount)][];
-		int i = byteInitCount;
-		while (--i>=0) {
-			array[byteInitIndex[i]] = byteInitValue[i];
-		}
-		return array;
+	public ByteHeap byteDictionary() {
+		ByteHeap heap = new ByteHeap(singleTextSize, singleGapSize, nextPowerOfTwo(bytesCount),
+                                     byteInitTotalLength, byteInitIndex, byteInitValue);
+		heap.reset();
+		return heap;
 	}
 	
 

@@ -142,7 +142,6 @@ public class ReaderWriterPrimitiveTest {
 			pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteChannel(pipe.sink()), (int) count, minimizeLatency);
 			pr = new PrimitiveReader(new FASTInputByteChannel(pipe.source()));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return;
 		}

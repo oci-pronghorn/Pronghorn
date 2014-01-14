@@ -667,10 +667,6 @@ public final class PrimitiveWriter {
 	    
 	    
 	}
-
-	//TODO: Kryo is 2x faster than this.
-	// 1. in the test it is writing directly to ByteBuffer with no internal buffer.
-	// 2. it copies one int at a time into byte buffer.
 	
 	private void writeIntegerSignedPos(int value) {
 		
@@ -706,7 +702,6 @@ public final class PrimitiveWriter {
 			buffer[limit++] = (byte) (((value >> 7) & 0x7F));
 		}
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
-				
 	}
 	
 	public final void writeIntegerUnsigned(int value) {
@@ -834,12 +829,6 @@ public final class PrimitiveWriter {
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
-		//	assert(safetyStackDepth-1>=0) : "Must call pushPMap(maxBytes) before attempting to write bits to it";
-			
-//			if (bit==0) {
-//				System.err.println("zero");
-//			}
-			
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
 			int temp = (buffer[idx] = (byte) (bit==0? pMapByteAccum :  (pMapByteAccum | bit)));

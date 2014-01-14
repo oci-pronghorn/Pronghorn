@@ -498,8 +498,6 @@ public final class PrimitiveReader {
 		return buffer[position++];
 	}
 	
-		
-	//TODO: if this does not perform well after in-line remove the interface and return to concrete
 	public void readTextUTF8(int charCount, Appendable target) {
 		//System.err.println("A");
 		while (--charCount>=0) {

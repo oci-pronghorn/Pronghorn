@@ -11,10 +11,10 @@ public class FieldReaderChar {
 	
 	public FieldReaderChar(PrimitiveReader reader, TextHeap charDictionary) {
 		
-		assert(charDictionary.textCount()<TokenBuilder.MAX_INSTANCE);
-		assert(isPowerOfTwo(charDictionary.textCount()));
+		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
+		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (charDictionary.textCount()-1);
+		this.INSTANCE_MASK = (charDictionary.itemCount()-1);
 		
 		this.reader = reader;
 		this.charDictionary = charDictionary;
@@ -140,37 +140,17 @@ public class FieldReaderChar {
 		int trim = reader.readIntegerSigned();
 		
 		if (trim>=0) {
-			charDictionary.trimTail(idx, trim);
+			return readASCIITail(idx, trim);
 		} else {
-			charDictionary.trimHead(idx, -trim);
+			return readASCIIHead(idx, trim);
 		}
-		
-		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		int nextLimit = charDictionary.nextLimit(offset);
-		
-		if (trim>=0) {
-			while (value>=0) {
-				nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
-				value = reader.readTextASCIIByte();
-			}
-			charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
-		} else {
-			while (value>=0) {
-				charDictionary.appendHead(offset, (char)value);
-				value = reader.readTextASCIIByte();
-			}
-			charDictionary.appendHead(offset, (char)(value&0x7F) );
-		}
-		
-		
-		return idx;
 	}
 
 	public int readASCIITail(int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		int trim = reader.readIntegerUnsigned();
+		return readASCIITail(token & INSTANCE_MASK, reader.readIntegerUnsigned());
+	}
+
+	private int readASCIITail(int idx, int trim) {
 		if (trim>0) {
 			charDictionary.trimTail(idx, trim);
 		}
@@ -195,6 +175,33 @@ public class FieldReaderChar {
 				fastHeapAppend(idx, val);
 			}
 		}
+		
+		return idx;
+	}
+	
+	private int readASCIIHead(int idx, int trim) {
+		if (trim<0) {
+			charDictionary.trimHead(idx, -trim);
+		}
+
+		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
+		int nextLimit = charDictionary.nextLimit(offset);
+		
+		if (trim>=0) {
+			while (value>=0) {
+				nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
+		} else {
+			while (value>=0) {
+				charDictionary.appendHead(offset, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendHead(offset, (char)(value&0x7F) );
+		}
+		
 		
 		return idx;
 	}
@@ -281,7 +288,7 @@ public class FieldReaderChar {
 		int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
-			//append to tail	
+			//append to tail
 			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head

@@ -75,9 +75,7 @@ public class FieldReaderLong {
 	
 	public long readLongUnsignedDelta(int token) {
 		//Delta opp never uses PMAP
-		int index = token & INSTANCE_MASK;
-		return (lastValue[index] = (lastValue[index]+reader.readLongSigned()));
-		
+		return lastValue[token & INSTANCE_MASK] += reader.readLongSigned();
 	}
 	
 	public long readLongUnsignedDeltaOptional(int token, long valueOfOptional) {
@@ -192,8 +190,7 @@ public class FieldReaderLong {
 	
 	public long readLongSignedDelta(int token) {
 		//Delta opp never uses PMAP
-		int index = token & INSTANCE_MASK;
-		return (lastValue[index] = (lastValue[index]+reader.readLongSigned()));
+		return lastValue[token & INSTANCE_MASK]+=reader.readLongSigned();
 		
 	}
 	

@@ -43,7 +43,7 @@ public class FASTStaticReader implements FASTReader {
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
 		this.readerDecimal = new FieldReaderDecimal(reader, dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
 		this.readerChar = new FieldReaderChar(reader,dcr.charDictionary());
-		this.readerBytes = null;
+		this.readerBytes = new FieldReaderBytes(reader,dcr.byteDictionary());
 		
 		
 		
