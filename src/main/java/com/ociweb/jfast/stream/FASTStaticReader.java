@@ -547,17 +547,21 @@ public class FASTStaticReader implements FASTReader {
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii
+				//System.err.println("read ascii");
 				return readTextASCII(token);
 			} else {
 				//utf8
+				//System.err.println("read utf8");
 				return readTextUTF8(token);
 			}
 		} else {
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii optional
+				//System.err.println("read ascii opp");
 				return readTextASCIIOptional(token);
 			} else {
 				//utf8 optional
+				//System.err.println("read utf8 opp");
 				return readTextUTF8Optional(token);
 			}
 		}
@@ -571,18 +575,22 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
+					//System.err.println("none");
 					return readerChar.readUTF8Optional(token);
 				} else {
 					//tail
+					//System.err.println("tail");
 					return readerChar.readUTF8TailOptional(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
+					//System.err.println("const");
 					return readerChar.readUTF8ConstantOptional(token);
 				} else {
 					//delta
+					//System.err.println("delta");
 					return readerChar.readUTF8DeltaOptional(token);
 				}
 			}
@@ -590,9 +598,11 @@ public class FASTStaticReader implements FASTReader {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
+				//System.err.println("copy");
 				return readerChar.readUTF8CopyOptional(token);
 			} else {
 				//default
+				//System.err.println("default");
 				return readerChar.readUTF8DefaultOptional(token);
 			}
 		}
@@ -643,18 +653,22 @@ public class FASTStaticReader implements FASTReader {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
+				//	System.err.println("none");
 					return readerChar.readUTF8(token);
 				} else {
 					//tail
+				//	System.err.println("tail");
 					return readerChar.readUTF8Tail(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
+				//	System.err.println("const");
 					return readerChar.readUTF8Constant(token);
 				} else {
 					//delta
+				//	System.err.println("delta read");
 					return readerChar.readUTF8Delta(token);
 				}
 			}
@@ -662,9 +676,11 @@ public class FASTStaticReader implements FASTReader {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
+				//System.err.println("copy");
 				return readerChar.readUTF8Copy(token);
 			} else {
 				//default
+				//System.err.println("default");
 				return readerChar.readUTF8Default(token);
 			}
 		}

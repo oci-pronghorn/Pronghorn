@@ -81,8 +81,7 @@ public class FieldReaderInteger {
 	
 	public int readIntegerUnsignedDelta(int token) {
 		//Delta opp never uses PMAP
-		int index = token & INSTANCE_MASK;
-		return (lastValue[index] = (lastValue[index]+reader.readIntegerSigned()));
+		return (lastValue[token & INSTANCE_MASK] += reader.readIntegerSigned());
 		
 	}
 	
@@ -148,8 +147,8 @@ public class FieldReaderInteger {
 		if (reader.popPMapBit()==0) {
 			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
 		} else {
-			int value = reader.readIntegerUnsigned();
-			if (value==0) {
+			int value;
+			if ((value = reader.readIntegerUnsigned())==0) {
 				lastValue[instance] = 0;
 				return valueOfOptional;
 			} else {
@@ -198,9 +197,7 @@ public class FieldReaderInteger {
 	
 	public int readIntegerSignedDelta(int token) {
 		//Delta opp never uses PMAP
-		int index = token & INSTANCE_MASK;
-		return (lastValue[index] = (lastValue[index]+reader.readIntegerSigned()));
-		
+		return (lastValue[token & INSTANCE_MASK] += reader.readIntegerSigned());
 	}
 	
 	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {
@@ -270,10 +267,5 @@ public class FieldReaderInteger {
 				return value>0 ? value-1 : value;
 			}
 		}
-		
 	}
-	
-	
-	
-	
 }

@@ -120,10 +120,10 @@ public final class FieldWriterInteger {
 
 	
 	public void writeIntegerUnsignedIncrement(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		int idx;
+		int incVal;
 		
-		if (value == incVal) {
+		if (value == (incVal = lastValue[idx = token & INSTANCE_MASK]+1)) {
 			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
 		} else {
@@ -248,7 +248,8 @@ public final class FieldWriterInteger {
 		if (value>=0) {
 			value++;
 		}
-		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
+		if (0!=lastValue[idx] && 
+			value == ++lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

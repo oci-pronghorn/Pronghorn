@@ -829,15 +829,15 @@ public final class PrimitiveWriter {
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
+			
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
-			int temp = (buffer[idx] = (byte) (bit==0? pMapByteAccum :  (pMapByteAccum | bit)));
-			if (0 != temp) {	
+			if (0 != (buffer[idx] = (byte) (bit==0? pMapByteAccum :  (pMapByteAccum | bit)))) {	
 				long stackFrame = safetyStackPosPos[safetyStackDepth-1];
 				//set the last known non zero bit so we can avoid scanning for it. 
 				int lastPopulatedIdx = (int)(POS_POS_MASK&stackFrame);// one has been added for exclusive use of range
 				//writing the pmap bit is the ideal place to detect overflow of the bits based on expectations.
-				//assert (lastPopulatedIdx<flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
+				assert (lastPopulatedIdx<flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
 				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}	
 			

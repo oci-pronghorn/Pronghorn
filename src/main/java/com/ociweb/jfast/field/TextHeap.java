@@ -763,7 +763,7 @@ public class TextHeap {
 		return i;
 	}
 	
-	public int countTailMatch(int idx, char[] source, int sourceLength, int sourceLast) {
+	public int countTailMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
 		int offset = idx<<2;
 		
 		int pos = tat[offset];
@@ -771,7 +771,7 @@ public class TextHeap {
 		
 		int limit = Math.min(sourceLength,lim-pos);
 		int i = 1;
-		while (i<=limit && data[lim-i]==source[sourceLast-i]) {
+		while (i<=limit && data[lim-i]==source[sourceIdx-i]) {
 			i++;
 		}
 		return i-1;

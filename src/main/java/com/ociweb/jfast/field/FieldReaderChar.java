@@ -131,7 +131,11 @@ public class FieldReaderChar {
 	
 	public int readASCIIDefaultOptional(int token) {
 		//for ASCII we don't need special behavior for optional
-		return readASCIIDefault(token);
+		return readASCIIDefault(token); 
+	}
+
+	public int readASCIIDeltaOptional(int token) {
+		return readASCIIDelta(token);//TODO: need null logic here.
 	}
 
 	public int readASCIIDelta(int token) {
@@ -179,34 +183,6 @@ public class FieldReaderChar {
 		return idx;
 	}
 	
-	private int readASCIIHead(int idx, int trim) {
-		if (trim<0) {
-			charDictionary.trimHead(idx, -trim);
-		}
-
-		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		int nextLimit = charDictionary.nextLimit(offset);
-		
-		if (trim>=0) {
-			while (value>=0) {
-				nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
-				value = reader.readTextASCIIByte();
-			}
-			charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
-		} else {
-			while (value>=0) {
-				charDictionary.appendHead(offset, (char)value);
-				value = reader.readTextASCIIByte();
-			}
-			charDictionary.appendHead(offset, (char)(value&0x7F) );
-		}
-		
-		
-		return idx;
-	}
-	
-
 	public int readASCIITailOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
@@ -232,6 +208,35 @@ public class FieldReaderChar {
 						
 		return idx;
 	}
+	
+	private int readASCIIHead(int idx, int trim) {
+		if (trim<0) {
+			charDictionary.trimHead(idx, -trim);
+		}
+
+		byte value = reader.readTextASCIIByte();
+		int offset = charDictionary.offset(idx);
+		int nextLimit = charDictionary.nextLimit(offset);
+		
+		if (trim>=0) {
+			while (value>=0) {
+				nextLimit = charDictionary.appendTail(offset, nextLimit, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendTail(offset, nextLimit, (char)(value&0x7F) );
+		} else {
+			while (value>=0) {
+				charDictionary.appendHead(offset, (char)value);
+				value = reader.readTextASCIIByte();
+			}
+			charDictionary.appendHead(offset, (char)(value&0x7F) );
+		}
+		
+	//	System.out.println("new ASCII string:"+charDictionary.get(idx, new StringBuilder()));
+		
+		return idx;
+	}
+
 
 	public int readASCIICopyOptional(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -244,9 +249,6 @@ public class FieldReaderChar {
 
 
 
-	public int readASCIIDeltaOptional(int token) {
-		return readASCIIDelta(token);//TODO: need null logic here.
-	}
 
 
 	public int readUTF8Default(int token) {
@@ -292,7 +294,8 @@ public class FieldReaderChar {
 			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, trim, utfLength), utfLength);
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+		//	System.out.println("new UTF8 string:"+charDictionary.get(idx, new StringBuilder()));
 		}
 		
 		return idx;
@@ -349,11 +352,15 @@ public class FieldReaderChar {
 		int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
 		if (trim>=0) {
-			//append to tail	
+			//append to tail
+			//System.err.println("oldString :"+charDictionary.get(idx, new StringBuilder())+" TAIL");
 			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+			//System.err.println("new UTF8 Opp   trim tail "+trim+" added to head "+utfLength+" string:"+charDictionary.get(idx, new StringBuilder()));
 		} else {
 			//append to head
-			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, trim, utfLength), utfLength);
+			//System.err.println("oldString :"+charDictionary.get(idx, new StringBuilder())+" HEAD");
+			reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+			//System.err.println("new UTF8 Opp   trim head "+trim+" added to head "+utfLength+" string:"+charDictionary.get(idx, new StringBuilder()));
 		}
 		
 		return idx;
