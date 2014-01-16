@@ -320,6 +320,9 @@ public class TextHeap {
 			int leftBound = 0;
 			int rightBound = 0;
 			int textLength = tat[offset+1] - tat[offset]; 
+			if (textLength<0) {
+				textLength = 0;
+			}
 			int totalNeed = textLength;
 			
 			if (preserveWorkspace) {
@@ -344,6 +347,9 @@ public class TextHeap {
 			}
 					
 			int newStart = dataIdx-(rightBound+textLength);
+			if (newStart<0) {
+				newStart = 0;//will leave more on totalDesired.
+			}
 			StringBuilder builder = new StringBuilder();
 			inspectHeap(builder);
 			//System.err.println("before:"+builder.toString());
@@ -528,7 +534,9 @@ public class TextHeap {
 
 	int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
 		int textLength = sourceLen-trimHead;
-		
+		if (textLength<0) {
+			textLength = 0;
+		}
 		//if not room make room checking before first because thats where we want to copy the head.
 		int offset = idx<<2;
 				
@@ -543,6 +551,9 @@ public class TextHeap {
 			
 		//everything is now ready to trim and copy.
 		int newStart = tat[offset]-textLength;
+		if (newStart<0) {
+			newStart = 0;
+		}
 		tat[offset]=newStart;
 		return newStart;
 	}
@@ -554,7 +565,20 @@ public class TextHeap {
 			tat[offset+1]=tat[offset];
 		}
 		
+		
+		
 		int start = tat[offset]-textLength;
+		
+		if (start<0) {
+			//must move this right first.
+			makeRoomBeforeFirst(offset, textLength);
+			start = tat[offset]-textLength;			
+		}
+		if (start<0) {
+			start = 0;
+		}
+		
+		
 		int limit = offset-3<0 ? 0 : tat[offset-3];
 				
 		if (start<limit) {

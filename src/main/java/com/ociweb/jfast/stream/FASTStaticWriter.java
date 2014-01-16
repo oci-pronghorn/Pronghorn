@@ -471,21 +471,69 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	private void acceptByteArrayOptional(int token, byte[] value, int offset, int length) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-			throw new UnsupportedOperationException();
-			
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerBytes.writeBytesOptional(value, offset, length);
+				} else {
+					//tail
+					writerBytes.writeBytesTailOptional(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+					writerBytes.writeBytesConstantOptional(token);					
+				} else {
+					//delta
+					writerBytes.writeBytesDeltaOptional(token, value, offset, length);					
+				}
+			}
 		} else {
-			throw new UnsupportedOperationException();
-			
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				writerBytes.writeBytesCopyOptional(token, value, offset, length);			
+			} else {
+				//default
+				writerBytes.writeBytesDefaultOptional(token, value, offset, length);				
+			}
 		}
 	}
 
 	private void acceptByteArray(int token, byte[] value, int offset, int length) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-			throw new UnsupportedOperationException();
-			
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerBytes.writeBytes(value, offset, length);
+				} else {
+					//tail
+					writerBytes.writeBytesTail(token, value, offset, length);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+					writerBytes.writeBytesConstant(token);					
+				} else {
+					//delta
+					writerBytes.writeBytesDelta(token, value, offset, length);					
+				}
+			}
 		} else {
-			throw new UnsupportedOperationException();
-			
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				writerBytes.writeBytesCopy(token, value, offset, length);			
+			} else {
+				//default
+				writerBytes.writeBytesDefault(token, value, offset, length);				
+			}
 		}
 	}
 
@@ -494,36 +542,85 @@ public final class FASTStaticWriter implements FASTWriter {
 	
 	@Override
 	public void write(int id, ByteBuffer buffer) {
+		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.ByteArray: 
-				acceptByteBuffer(token, buffer);
-				break;
-			case TypeMask.ByteArrayOptional:
-				acceptByteBufferOptional(token, buffer);
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+		
+		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			acceptByteBuffer(token, buffer);
+		} else {
+			acceptByteBufferOptional(token, buffer);
 		}
 	}
 
 
-	private void acceptByteBufferOptional(int token, ByteBuffer buffer) {
+	private void acceptByteBufferOptional(int token, ByteBuffer value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-			throw new UnsupportedOperationException();
-			
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerBytes.writeBytesOptional(value);
+				} else {
+					//tail
+					writerBytes.writeBytesTailOptional(token,value);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+					writerBytes.writeBytesConstantOptional(token);					
+				} else {
+					//delta
+					writerBytes.writeBytesDeltaOptional(token,value);					
+				}
+			}
 		} else {
-			throw new UnsupportedOperationException();
-			
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				writerBytes.writeBytesCopyOptional(token,value);			
+			} else {
+				//default
+				writerBytes.writeBytesDefaultOptional(token,value);				
+			}
 		}
 	}
 
-	private void acceptByteBuffer(int token, ByteBuffer buffer) {
+	private void acceptByteBuffer(int token, ByteBuffer value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-			throw new UnsupportedOperationException();
-			
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+					writerBytes.writeBytes(value);
+				} else {
+					//tail
+					writerBytes.writeBytesTail(token,value);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+					writerBytes.writeBytesConstant(token);					
+				} else {
+					//delta
+					writerBytes.writeBytesDelta(token,value);					
+				}
+			}
 		} else {
-			throw new UnsupportedOperationException();
-			
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				writerBytes.writeBytesCopy(token,value);			
+			} else {
+				//default
+				writerBytes.writeBytesDefault(token,value);				
+			}
 		}
 	}
 
@@ -597,8 +694,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(value.length());
-					writer.writeTextUTF(value);
+					writerChar.writeUTF8(value);
 				} else {
 					//tail
 					writerChar.writeUTF8Tail(token,value);

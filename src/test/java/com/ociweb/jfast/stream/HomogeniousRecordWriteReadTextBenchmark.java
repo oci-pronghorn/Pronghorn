@@ -16,7 +16,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 
-public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
+public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 
 	//Caliper tests///////////////
 	//Write and read 1 record, this will time the duration of sending a fixed value end to end.
@@ -28,10 +28,10 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	//This is NOT the same as the other tests which measure the duration to produce 1 byte on the stream.
 	//--The ns/byte tests are an estimate of how much bandwidth can be saturated given the CPU available.
 	
-	static final int internalBufferSize = 2048;
+	static final int internalBufferSize = 4096;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
-	static final int singleCharLength = 128;
+	static final int singleCharLength = 256; 
 	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
@@ -42,18 +42,16 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
 	static final PrimitiveReader pr = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
-	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
+	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
+	
+	
 	
 	//list all types
 	static final int[] types = new int[] {
-			  TypeMask.IntegerUnsigned,
-			  TypeMask.IntegerUnsignedOptional,
-			  TypeMask.IntegerSigned,
-			  TypeMask.IntegerSignedOptional,
-			  TypeMask.LongUnsigned,
-			  TypeMask.LongUnsignedOptional,
-			  TypeMask.LongSigned,
-			  TypeMask.LongSignedOptional,
+			  TypeMask.TextASCII,
+			  TypeMask.TextASCIIOptional,
+			  TypeMask.TextUTF8,
+			  TypeMask.TextUTF8Optional,
 		  };
 	
 	//list all operators
@@ -140,12 +138,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	public int timeStaticOverhead(int reps) {
 		return staticWriteReadOverheadGroup(reps);
 	}
-	
-	@Test
-	public void testThis() {
-		assertTrue(0!=timeStaticLongUnsignedNone(20));
-	}
-	
+
 	//
 	////
 	/////
@@ -153,188 +146,215 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	//
 	
 	
-	public long timeStaticLongUnsignedNone(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextASCIINone(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongUnsigned,
+							TypeMask.TextASCII,
 							OperatorMask.None, 
 							0), zeroGroupToken);
 	}
 	
-	public long timeStaticLongUnsignedNoneOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextASCIINoneOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongUnsignedOptional,
-							OperatorMask.None, 
-							0), zeroGroupToken);
-	}
-
-	
-	public long timeStaticLongUnsignedCopy(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsigned,
-						    OperatorMask.Copy, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedCopyOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsignedOptional,
-						    OperatorMask.Copy, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedConstant(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(//special because there is no optional constant
-							TypeMask.LongUnsigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedDefault(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsigned, 
-						    OperatorMask.Default, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedDefaultOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Default, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedDelta(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-						TypeMask.LongUnsigned, 
-						OperatorMask.Delta, 
-						0), zeroGroupToken);
-	}
-
-	public long timeStaticLongUnsignedDeltaOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Delta, 
-						     0), zeroGroupToken);
-	}
-	
-	
-	public long timeStaticLongUnsignedIncrement(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsigned, 
-						    OperatorMask.Increment, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongUnsignedIncrementOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Increment, 
-						     0), simpleGroupToken);
-	}
-	
-	//Long does not support Tail operator
-
-	public long timeStaticLongSignedNone(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(
-							TypeMask.LongSigned,
+							TypeMask.TextASCIIOptional,
 							OperatorMask.None, 
 							0), zeroGroupToken);
 	}
 	
-	public long timeStaticLongSignedNoneOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextUTF8None(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSignedOptional,
+							TypeMask.TextUTF8,
 							OperatorMask.None, 
 							0), zeroGroupToken);
 	}
-
 	
-	public long timeStaticLongSignedCopy(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextUTF8NoneOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSigned,
-						    OperatorMask.Copy, 
-						     0), simpleGroupToken);
+							TypeMask.TextUTF8Optional,
+							OperatorMask.None, 
+							0), zeroGroupToken);
 	}
 	
-	public long timeStaticLongSignedCopyOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	////
+	
+	public long timeStaticTextASCIIConstant(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSignedOptional,
-						    OperatorMask.Copy, 
-						     0), simpleGroupToken);
+							TypeMask.TextASCII,
+							OperatorMask.Constant, 
+							0), simpleGroupToken);
 	}
 	
-	public long timeStaticLongSignedConstant(int reps) {
-		return staticWriteReadLongGroup(reps, 
-				TokenBuilder.buildToken(//special because there is no optional constant
-							TypeMask.LongSigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
-						     0), simpleGroupToken);
-	}
-	
-	public long timeStaticLongSignedDefault(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextASCIIConstantOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSigned, 
-						    OperatorMask.Default, 
-						     0), simpleGroupToken);
+							TypeMask.TextASCIIOptional,
+							OperatorMask.Constant, 
+							0), simpleGroupToken);
 	}
 	
-	public long timeStaticLongSignedDefaultOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextUTF8Constant(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSignedOptional, 
-						    OperatorMask.Default, 
-						     0), simpleGroupToken);
+							TypeMask.TextUTF8,
+							OperatorMask.Constant, 
+							0), simpleGroupToken);
 	}
 	
-	public long timeStaticLongSignedDelta(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextUTF8ConstantOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-						TypeMask.LongSigned, 
-						OperatorMask.Delta, 
-						0), zeroGroupToken);
+							TypeMask.TextUTF8Optional,
+							OperatorMask.Constant, 
+							0), simpleGroupToken);
 	}
-
-	public long timeStaticLongSignedDeltaOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	
+	////
+	
+	public long timeStaticTextASCIICopy(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSignedOptional, 
-						    OperatorMask.Delta, 
-						     0), zeroGroupToken);
+							TypeMask.TextASCII,
+							OperatorMask.Copy, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextASCIICopyOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextASCIIOptional,
+							OperatorMask.Copy, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8Copy(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8,
+							OperatorMask.Copy, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8CopyOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8Optional,
+							OperatorMask.Copy, 
+							0), simpleGroupToken);
+	}
+	
+	/////
+		
+	public long timeStaticTextASCIIDefault(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextASCII,
+							OperatorMask.Default, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextASCIIDefaultOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextASCIIOptional,
+							OperatorMask.Default, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8Default(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8,
+							OperatorMask.Default, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8DefaultOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8Optional,
+							OperatorMask.Default, 
+							0), simpleGroupToken);
+	}
+	
+	////
+	
+	@Test
+	public void testThis() {
+		assertTrue(0==timeStaticTextUTF8DeltaOptional(20));
 	}
 	
 	
-	public long timeStaticLongSignedIncrement(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextASCIIDelta(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSigned, 
-						    OperatorMask.Increment, 
-						     0), simpleGroupToken);
+							TypeMask.TextASCII,
+							OperatorMask.Delta, 
+							0), zeroGroupToken);
 	}
 	
-	public long timeStaticLongSignedIncrementOptional(int reps) {
-		return staticWriteReadLongGroup(reps, 
+	public long timeStaticTextASCIIDeltaOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
-							TypeMask.LongSignedOptional, 
-						    OperatorMask.Increment, 
-						     0), simpleGroupToken);
+							TypeMask.TextASCIIOptional,
+							OperatorMask.Delta, 
+							0), zeroGroupToken);
 	}
-
+	
+	public long timeStaticTextUTF8Delta(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8,
+							OperatorMask.Delta, 
+							0), zeroGroupToken);
+	}
+	
+	public long timeStaticTextUTF8DeltaOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8Optional,
+							OperatorMask.Delta, 
+							0), zeroGroupToken);
+	}
+	
+	////
+	
+	
+	public long timeStaticTextASCIITail(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextASCII,
+							OperatorMask.Tail, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextASCIITailOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextASCIIOptional,
+							OperatorMask.Tail, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8Tail(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8,
+							OperatorMask.Tail, 
+							0), simpleGroupToken);
+	}
+	
+	public long timeStaticTextUTF8TailOptional(int reps) {
+		return staticWriteReadTextGroup(reps, 
+				TokenBuilder.buildToken(
+							TypeMask.TextUTF8Optional,
+							OperatorMask.Tail, 
+							0), simpleGroupToken);
+	}
+	
 	
 	//
 	////
@@ -355,9 +375,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			staticWriter.openGroup(groupToken);
-			int j = longTestData.length;
+			int j = textTestData.length;
 			while (--j>=0) {
-				result |= longTestData[j];//do nothing
+				result |= textTestData[j].length();//do nothing
 			}
 			staticWriter.closeGroup(groupToken);
 			staticWriter.flush();
@@ -368,7 +388,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			staticReader.reset(dcr); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken);
-			j = longTestData.length;
+			j = textTestData.length;
 			while (--j>=0) {
 				result |= j;//doing more nothing.
 			}
@@ -379,7 +399,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 	
 	
-	protected long staticWriteReadLongGroup(int reps, int token, int groupToken) {
+	protected long staticWriteReadTextGroup(int reps, int token, int groupToken) {
 		long result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
@@ -391,9 +411,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			staticWriter.openGroup(groupToken);
-			int j = longTestData.length;
+			int j = textTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, longTestData[j]);
+				staticWriter.write(token, textTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken);
 			staticWriter.flush();
@@ -404,9 +424,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			staticReader.reset(dcr); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken);
-			j = longTestData.length;
+			j = textTestData.length;
 			while (--j>=0) {
-				result |= staticReader.readLong(token, 0);
+				result |= staticReader.readText(token);
 			}
 			staticReader.closeGroup(groupToken);
 		}
