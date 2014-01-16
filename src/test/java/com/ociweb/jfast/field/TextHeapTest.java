@@ -239,7 +239,7 @@ public class TextHeapTest {
 		th.get(2, builder);
 		assertEquals(prefix+root,builder.toString());
 		//
-		th.appendHead(2, prefix.length(), replace);
+		th.appendHead(2, prefix.length(), replace, replace.length());
 		//
 		builder.setLength(0);
 		th.get(2, builder);
@@ -445,7 +445,7 @@ public class TextHeapTest {
 		//
 		String headString = "abcdef";
 		
-		th.appendHead(3, 1, headString);
+		th.appendHead(3, 1, headString, headString.length());
 				
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);

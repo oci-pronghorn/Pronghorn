@@ -489,6 +489,9 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
+	//TODO: add writeDup(int id) for repeating the last value sent,
+	//this can avoid string check for copy operation if its already known that we are sending the same value.
+	
 	@Override
 	public void write(int id, ByteBuffer buffer) {
 		int token = id>=0 ? tokenLookup[id] : id;

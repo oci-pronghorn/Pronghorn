@@ -62,7 +62,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 				  OperatorMask.Constant, //W6 R16 w/o equals
 				  OperatorMask.Copy,     //W84 R31 w/o equals 
 				  OperatorMask.Default,  //W6 R16 
-				  OperatorMask.Delta,
+				  OperatorMask.Delta,    //W85 R39 .37
                   OperatorMask.Tail,     //W46 R15 w/o equals
                 };
 
@@ -77,10 +77,10 @@ public class TextStreamingTest extends BaseStreamingTest {
 				 };
 		int[] operators = new int[] {
                 OperatorMask.None, //W9 R17  1.08
-				OperatorMask.Constant, //W9 R17 1.09  Need better test.
+				OperatorMask.Constant, //W9 R17 1.09 
 			    OperatorMask.Copy,  //W83 R84 .163
 				OperatorMask.Default, //W10 R18
-				OperatorMask.Delta,
+				OperatorMask.Delta,    //W110 R51  .31
                 OperatorMask.Tail,  //W57 R51  .31
                 };
 
@@ -227,7 +227,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 	//					}
 					} else { 
 						try {
-							int textIdx = fr.readChars(tokenLookup[f]);						
+							int textIdx = fr.readText(tokenLookup[f]);						
 							
 							char[] tdc = testConst;
 
@@ -253,7 +253,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 	//					}
 					} else { 
 						try {
-							int textIdx = fr.readChars(tokenLookup[f]);						
+							int textIdx = fr.readText(tokenLookup[f]);						
 							
 							char[] tdc = testDataChars[f];
 							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {

@@ -24,7 +24,7 @@ public interface FASTReader {
 	int readBytes(int id, byte[] target, int offset); //returns count of bytes written
 
 	//TextHeap is modified and the index into that location is returned.
-	int readChars(int id);
+	int readText(int id);
 	
 	void openGroup(int id);
 	void closeGroup(int id);

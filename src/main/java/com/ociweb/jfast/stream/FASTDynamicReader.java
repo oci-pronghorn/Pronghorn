@@ -49,7 +49,7 @@ public class FASTDynamicReader  implements FASTReader {
 	}
 	
 	@Override
-	public int readChars(int id) {
+	public int readText(int id) {
 		// TODO Auto-generated method stub
 		return -1;
 	}

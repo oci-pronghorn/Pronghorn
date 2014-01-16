@@ -539,7 +539,7 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	@Override
-	public int readChars(int id) {
+	public int readText(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
