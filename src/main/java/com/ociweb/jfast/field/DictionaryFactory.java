@@ -1,5 +1,8 @@
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+
 
 
 /**
@@ -12,6 +15,41 @@ package com.ociweb.jfast.field;
  *
  */
 public class DictionaryFactory {
+	
+	
+	/**
+	 * Class hold everything needed to define the template
+	 * 
+	 * There is a many-to-many relationship between templates and applicationType.
+	 * applicationTypes are fully abstract types
+	 * 
+	 * SharedDictionary:
+	 * 		None/Template: default we just use the structures produced here.
+	 *      Type: application type, other structures sharing this field&appType must share value.
+	 *      Global: ignore template/type and just use field id gobally
+	 *      <custom>: use custom named structure.
+	 *      
+	 * design choices:
+	 * 
+	 * 	  1. copy remote after local update
+	 *    2. copy local after remote update.
+	 *    3. update remote and local with same command
+	 *    
+	 *    a. FASTStaticWriter keeps multiple lists
+	 *    b. use multiple FASTStaticWriters
+	 *    c. Field*Writer keeps multiple lists
+	 * 
+	 * needs:   
+	 *    token must hold extra data for dictionary!!      
+	 *    2 bits
+	 *       00 none/template
+	 *       01 type
+	 *       10 global
+	 *       11 use inernal looup of custom by field id. 
+	 * 
+	 */
+	
+	char[][] appTypes = null;//appType identifiers used in XML
 	
 	private static final int MAX_FIELDS = 1<<20; //1M
 	private static final int DEFAULT_TEXT_LENGTH = 64;
@@ -50,21 +88,20 @@ public class DictionaryFactory {
 	private byte[][] byteInitValue;
 	private int byteInitTotalLength;
 		
-	private final int singleTextSize;
-	private final int[] tokenLookup;
+	private int singleTextSize;
+	private int[] tokenLookup;
 
 	//need to hold groups and field ids;
 	//values <0 are possible stop nodes boardering the group.
 	//all other values are ids
 	private int[] structure;
-	private int[] structureIdx;///
+	private int structureCount;
 	
 	
 	public DictionaryFactory(int[] tokenLookup) {
 		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,DEFAULT_TEXT_LENGTH,MAX_FIELDS,MAX_FIELDS, tokenLookup);
 	}
-	
-	
+		
 	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
 		 this.integerCount=integerCount;
 		 this.longCount=longCount;
@@ -73,32 +110,127 @@ public class DictionaryFactory {
 		 this.bytesCount=bytesCount;
 		 this.tokenLookup = tokenLookup;
 		
-		 integerInitCount=0;
-		 integerInitIndex = new int[INIT_GROW_STEP];
-		 integerInitValue = new int[INIT_GROW_STEP];
+		 this.structureCount = 0;
+		 this.structure = new int[INIT_GROW_STEP];
+		 
+		 this.integerInitCount=0;
+		 this.integerInitIndex = new int[INIT_GROW_STEP];
+		 this.integerInitValue = new int[INIT_GROW_STEP];
 		
-		 longInitCount=0;
-		 longInitIndex = new int[INIT_GROW_STEP];
-		 longInitValue = new long[INIT_GROW_STEP];
+		 this.longInitCount=0;
+		 this.longInitIndex = new int[INIT_GROW_STEP];
+		 this.longInitValue = new long[INIT_GROW_STEP];
 			
-		 charInitCount=0;
-		 charInitIndex = new int[INIT_GROW_STEP];
-		 charInitValue = new char[INIT_GROW_STEP][];
-		 singleTextSize = singleCharLength;
+		 this.charInitCount=0;
+		 this.charInitIndex = new int[INIT_GROW_STEP];
+		 this.charInitValue = new char[INIT_GROW_STEP][];
+		 this.singleTextSize = singleCharLength;
 		
-		 decimalExponentInitCount=0;
-		 decimalExponentInitIndex = new int[INIT_GROW_STEP];
-		 decimalExponentInitValue = new int[INIT_GROW_STEP];
+		 this.decimalExponentInitCount=0;
+		 this.decimalExponentInitIndex = new int[INIT_GROW_STEP];
+		 this.decimalExponentInitValue = new int[INIT_GROW_STEP];
 		
-		 decimalMantissaInitCount=0;
-		 decimalMantissaInitIndex = new int[INIT_GROW_STEP];
-		 decimalMantissaInitValue = new long[INIT_GROW_STEP];
+		 this.decimalMantissaInitCount=0;
+		 this.decimalMantissaInitIndex = new int[INIT_GROW_STEP];
+		 this.decimalMantissaInitValue = new long[INIT_GROW_STEP];
 		
-		 byteInitCount=0;
-		 byteInitIndex = new int[INIT_GROW_STEP];
-		 byteInitValue = new byte[INIT_GROW_STEP][];
+		 this.byteInitCount=0;
+		 this.byteInitIndex = new int[INIT_GROW_STEP];
+		 this.byteInitValue = new byte[INIT_GROW_STEP][];
 	}
 	
+//	public DictionaryFactory(PrimitiveReader pr) {
+//		
+//		
+//		
+//	}
+	
+	public void save(PrimitiveWriter pw) {
+		
+		pw.writeIntegerUnsigned(integerCount);
+		pw.writeIntegerUnsigned(longCount);
+		pw.writeIntegerUnsigned(charCount);
+		pw.writeIntegerUnsigned(decimalCount);
+		pw.writeIntegerUnsigned(bytesCount);
+		
+		pw.writeIntegerUnsigned(integerInitCount);
+		int c = integerInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(integerInitIndex[c]);
+			pw.writeIntegerSigned(integerInitValue[c]);
+		}
+		
+		pw.writeIntegerUnsigned(longInitCount);
+		c = longInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(longInitIndex[c]);
+			pw.writeLongSigned(longInitValue[c]);
+		}
+		
+		pw.writeIntegerUnsigned(charInitCount);
+		c = charInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(charInitIndex[c]);
+			char[] value = charInitValue[c];
+			pw.writeIntegerUnsigned(value.length);
+			pw.writeTextUTF(value, 0, value.length);
+		}
+		pw.writeIntegerUnsigned(charInitTotalLength);
+		
+		pw.writeIntegerUnsigned(decimalExponentInitCount);
+		c = decimalExponentInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(decimalExponentInitIndex[c]);
+			pw.writeIntegerSigned(decimalExponentInitValue[c]);
+		}		
+		
+		pw.writeIntegerUnsigned(decimalMantissaInitCount);
+		c = decimalMantissaInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(decimalMantissaInitIndex[c]);
+			pw.writeLongSigned(decimalMantissaInitValue[c]);
+		}
+				
+		pw.writeIntegerUnsigned(byteInitCount);
+		c = byteInitCount;
+		while (--c>=0) {
+			pw.writeIntegerUnsigned(byteInitIndex[c]);
+			byte[] value = byteInitValue[c];
+			pw.writeIntegerUnsigned(value.length);
+			pw.writeByteArrayData(value);
+		}
+		pw.writeIntegerUnsigned(byteInitTotalLength);
+
+		pw.writeIntegerUnsigned(singleTextSize);
+		
+		pw.writeIntegerUnsigned(tokenLookup.length);
+		c = tokenLookup.length;
+		while (--c>=0) {
+			pw.writeIntegerSigned(tokenLookup[c]);
+		}
+		
+		pw.writeIntegerUnsigned(structureCount);
+		c = structure.length;
+		while (--c>=0) {
+			pw.writeIntegerSigned(structure[c]);
+		}
+		
+		
+		/*
+		Fastest searialize deserialize however its more verbose and there is no 
+		object dectection and construction.
+		
+		These files can be deleted and modified but those changes are only refelected on startup.
+		New templates can be added but an explicit call must be made to load them.
+		The new templates will be loaded dynamicaly on first use but this is not recommended.
+		
+
+
+		 */
+		
+		
+		
+	}
 	
 	public void setTypeCounts(int integerCount, int longCount, int charCount, int decimalCount, int bytesCount) {
 		 this.integerCount=integerCount;
@@ -106,6 +238,16 @@ public class DictionaryFactory {
 		 this.charCount=charCount;
 		 this.decimalCount=decimalCount;
 		 this.bytesCount=bytesCount;
+	}
+	
+	public void addFieldId(int id) {
+		structure[structureCount] = id;
+		if (++structureCount>=structure.length) {
+			int newLength = structureCount+INIT_GROW_STEP;
+			int[] temp = new int[newLength];
+			System.arraycopy(structure, 0, temp, 0, structure.length);
+			structure = temp;
+		}
 	}
 	
 	public void addInit(int idx, int value) {

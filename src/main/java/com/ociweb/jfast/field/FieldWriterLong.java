@@ -344,4 +344,12 @@ public final class FieldWriterLong {
 			writer.writeNull();
 		}
 	}
+
+	public void writeLongUnsignedOptional(long value, int token) {
+		writer.writeLongUnsigned(value+1);
+	}
+
+	public void writeLongSignedOptional(long value, int token) {
+		writer.writeLongSignedOptional(value);
+	}
 }

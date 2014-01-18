@@ -11,9 +11,11 @@ public class TokenBuilder {
 	 * 20 instance
 	 * 
 	 *read the type first then each can have its own operation parse logic.
-	 * 
+	 *this is only used by decimal in order to get two operations 
+	 *
+	 * groups - eg top group is a message.
 	 * pmap bits mask
-	 * ****************
+	 * **************** TOOD: how do I know this is a group an not above call?
 	 *   1 token flag
 	 *   9 (4bits exp, 5bits mantissa) pmap max bytes
 	 *  22 sequence length 4M max 
@@ -64,12 +66,6 @@ public class TokenBuilder {
 	}
 	
 	public static boolean isInValidCombo(int type, int operator) {
-//		boolean isOptional = 1==(type&0x01);	
-//		if (OperatorMask.Constant==operator & isOptional) {
-//			//constant operator can never be of type optional
-//			return true;
-//		}
-		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
 			if (OperatorMask.Tail==operator) {
