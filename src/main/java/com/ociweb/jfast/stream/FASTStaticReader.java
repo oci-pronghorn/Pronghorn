@@ -35,9 +35,9 @@ public class FASTStaticReader implements FASTReader {
 
 	
 		
-	public FASTStaticReader(PrimitiveReader reader, DictionaryFactory dcr, int[] tokenLookup) {
+	public FASTStaticReader(PrimitiveReader reader, DictionaryFactory dcr) {
 		this.reader = reader;
-		this.tokenLookup = tokenLookup;
+		this.tokenLookup = dcr.getTokenLookup();
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
@@ -215,7 +215,6 @@ public class FASTStaticReader implements FASTReader {
 				return readerLong.readLongSignedDefault(token);
 			}		
 		}
-		
 	}
 
 	private long readLongUnsignedOptional(int token, long valueOfOptional) {
@@ -457,31 +456,100 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	@Override
-	public void readBytes(int id, ByteBuffer target) {
+	public int readBytes(int id) {
+		
 		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.ByteArray:
-				throw new UnsupportedOperationException();
-			case TypeMask.ByteArrayOptional:
-				throw new UnsupportedOperationException();
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+			return readByteArray(token);
+		} else {
+			return readByteArrayOptional(token);
 		}
 	}
 
-	@Override
-	public int readBytes(int id, byte[] target, int offset) {
-		int token = id>=0 ? tokenLookup[id] : id;
-		switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.ByteArray:
-				throw new UnsupportedOperationException();
-			case TypeMask.ByteArrayOptional:
-				throw new UnsupportedOperationException();
-			default://all other types should use their own method.
-				throw new UnsupportedOperationException();
+	private int readByteArray(int token) {
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+				//	System.err.println("none");
+					return readerBytes.readBytes(token);
+				} else {
+					//tail
+				//	System.err.println("tail");
+					return readerBytes.readBytesTail(token);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+				//	System.err.println("const");
+					return readerBytes.readBytesConstant(token);
+				} else {
+					//delta
+				//	System.err.println("delta read");
+					return readerBytes.readBytesDelta(token);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				//System.err.println("copy");
+				return readerBytes.readBytesCopy(token);
+			} else {
+				//default
+				//System.err.println("default");
+				return readerBytes.readBytesDefault(token);
+			}
+		}
+	}
+	
+	private int readByteArrayOptional(int token) {
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+			//none constant delta tail 
+			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//none tail
+				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+					//none
+				//	System.err.println("none");
+					return readerBytes.readBytesOptional(token);
+				} else {
+					//tail
+				//	System.err.println("tail");
+					return readerBytes.readBytesTailOptional(token);
+				}
+			} else {
+				// constant delta
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+					//constant
+				//	System.err.println("const");
+					return readerBytes.readBytesConstantOptional(token);
+				} else {
+					//delta
+				//	System.err.println("delta read");
+					return readerBytes.readBytesDeltaOptional(token);
+				}
+			}
+		} else {
+			//copy default
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
+				//copy
+				//System.err.println("copy");
+				return readerBytes.readBytesCopyOptional(token);
+			} else {
+				//default
+				//System.err.println("default");
+				return readerBytes.readBytesDefaultOptional(token);
+			}
 		}
 	}
 
+	
 	@Override
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -642,7 +710,6 @@ public class FASTStaticReader implements FASTReader {
 				return readerChar.readASCIIDefault(token);
 			}
 		}
-		
 	}
 
 	private int readTextUTF8(int token) {

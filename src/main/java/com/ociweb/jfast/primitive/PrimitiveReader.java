@@ -176,6 +176,11 @@ public final class PrimitiveReader {
 		
 		bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth+1])];
 		pmapIdx = invPmapStack[invPmapStackDepth-1];
+		
+		//
+		//TODO: need to add hash at this point for close of group.
+		//Or if we use the external length id this can be done by FASTInput.
+		
 	}
 	
 	/////////////////////////////////////

@@ -1,10 +1,11 @@
 package com.ociweb.jfast.stream;
 
-import java.nio.ByteBuffer;
 
-public class FASTDynamicReader  implements FASTReader {
+public class FASTDynamicReader implements FASTReader {
 
 	final FASTStaticReader staticReader;
+	
+	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
 	FASTDynamicReader(FASTStaticReader staticReader) {
@@ -24,13 +25,7 @@ public class FASTDynamicReader  implements FASTReader {
 	}
 
 	@Override
-	public void readBytes(int id, ByteBuffer target) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public int readBytes(int id, byte[] target, int offset) {
+	public int readBytes(int id) {
 		// TODO Auto-generated method stub
 		return 0;
 	}

@@ -158,7 +158,7 @@ public abstract class BaseStreamingTest {
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 
-	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields);
+	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields, tokenLookup);
 	    
 				long maxOverhead;
 				long totalOverhead;
@@ -230,7 +230,7 @@ public abstract class BaseStreamingTest {
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
-		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields);
+		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields, tokenLookup);
    
 		    
 		    long byteCount=0;

@@ -32,18 +32,6 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
 	static final int singleCharLength = 128;
-	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
-	
-	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
-	
-	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
-	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
-		
-	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
-	static final PrimitiveReader pr = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
-
-	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
-	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	
 	//list all types
 	static final int[] types = new int[] {
@@ -69,9 +57,22 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
+	
+	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields,tokenLookup);
+	
+	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
+	
+	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
+	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
-	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr, tokenLookup);
-	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr, tokenLookup);
+	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+	static final PrimitiveReader pr = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
+
+	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
+	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
+			
+	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr);
+	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr);
 	
 	static final int largeGroupToken = buildGroupToken(4,0);
 	static final int simpleGroupToken = buildGroupToken(2,0);

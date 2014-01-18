@@ -70,7 +70,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTStaticWriter fw = new FASTStaticWriter(pw, dcr, tokenLookup);
+		FASTStaticWriter fw = new FASTStaticWriter(pw, dcr);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -119,7 +119,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
 		
-		FASTStaticReader fr = new FASTStaticReader(pr, dcr, tokenLookup);
+		FASTStaticReader fr = new FASTStaticReader(pr, dcr);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

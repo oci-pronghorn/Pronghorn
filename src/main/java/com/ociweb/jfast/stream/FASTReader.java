@@ -1,6 +1,5 @@
 package com.ociweb.jfast.stream;
 
-import java.nio.ByteBuffer;
 
 //as long as leaf implementation is used these get in-lined.
 public interface FASTReader {
@@ -18,12 +17,7 @@ public interface FASTReader {
 	long readLong(int id, long valueOfOptional);
 	int readDecimalExponent(int id, int valueOfOptional);	
 	long readDecimalMantissa(int id, long valueOfOptional);
-	
-	//if bytes are optionally missing the target will not be modified.
-	void readBytes(int id, ByteBuffer target);	
-	int readBytes(int id, byte[] target, int offset); //returns count of bytes written
-
-	//TextHeap is modified and the index into that location is returned.
+	int readBytes(int id);	
 	int readText(int id);
 	
 	void openGroup(int id);

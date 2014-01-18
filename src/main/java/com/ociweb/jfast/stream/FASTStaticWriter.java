@@ -39,12 +39,12 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	
 	
-	public FASTStaticWriter(PrimitiveWriter writer, DictionaryFactory dcr, int[] tokenLookup) {
+	public FASTStaticWriter(PrimitiveWriter writer, DictionaryFactory dcr) {
 		//TODO: must set the initial values for default/constants from the template here.
 		//TODO: perhaps the arrays should be allocated external so template parser can manage it?
 		
 		this.writer = writer;
-		this.tokenLookup = tokenLookup;
+		this.tokenLookup = dcr.getTokenLookup();
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());

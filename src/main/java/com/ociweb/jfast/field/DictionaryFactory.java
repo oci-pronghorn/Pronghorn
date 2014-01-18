@@ -16,6 +16,7 @@ public class DictionaryFactory {
 	private static final int MAX_FIELDS = 1<<20; //1M
 	private static final int DEFAULT_TEXT_LENGTH = 64;
 	private static final int INIT_GROW_STEP = 16;
+	private final int singleGapSize = 64; //default to avoid false cache sharing. 
 		
 	private int integerCount;
 	private int longCount;
@@ -50,19 +51,27 @@ public class DictionaryFactory {
 	private int byteInitTotalLength;
 		
 	private final int singleTextSize;
-	private final int singleGapSize = 64; //default to avoid false cache sharing. 
-	
+	private final int[] tokenLookup;
 
-	public DictionaryFactory() {
-		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,DEFAULT_TEXT_LENGTH,MAX_FIELDS,MAX_FIELDS);
+	//need to hold groups and field ids;
+	//values <0 are possible stop nodes boardering the group.
+	//all other values are ids
+	private int[] structure;
+	private int[] structureIdx;///
+	
+	
+	public DictionaryFactory(int[] tokenLookup) {
+		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,DEFAULT_TEXT_LENGTH,MAX_FIELDS,MAX_FIELDS, tokenLookup);
 	}
 	
-	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount) {
+	
+	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
 		 this.integerCount=integerCount;
 		 this.longCount=longCount;
 		 this.charCount=charCount;
 		 this.decimalCount=decimalCount;
 		 this.bytesCount=bytesCount;
+		 this.tokenLookup = tokenLookup;
 		
 		 integerInitCount=0;
 		 integerInitIndex = new int[INIT_GROW_STEP];
@@ -322,6 +331,10 @@ public class DictionaryFactory {
 			int j = byteInitIndex[i];
 			values[j] = byteInitValue[i];
 		}
+	}
+
+	public int[] getTokenLookup() {
+		return tokenLookup;
 	}
 	
 	
