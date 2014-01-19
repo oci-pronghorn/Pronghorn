@@ -82,16 +82,16 @@ public class FASTStaticReader implements FASTReader {
 				readIntegerSignedOptional(token,0);
 				break;
 			case TypeMask.LongUnsigned:
-				readLongUnsigned(token, readerLong);
+				readLongUnsigned(token);
 				break;
 			case TypeMask.LongUnsignedOptional:
-				readLongUnsignedOptional(token,0, readerLong);
+				readLongUnsignedOptional(token,0);
 				break;
 			case TypeMask.LongSigned:
-				readLongSigned(token, readerLong);
+				readLongSigned(token);
 				break;
 			case TypeMask.LongSignedOptional:
-				readLongSignedOptional(token,0, readerLong);
+				readLongSignedOptional(token,0);
 				break;
 			case TypeMask.TextASCII:
 				readTextASCII(token); //TODO: these nulls are not corect but we do not need the result.
@@ -129,36 +129,62 @@ public class FASTStaticReader implements FASTReader {
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
-				return readLongUnsigned(token, readerLong);
+				return readLongUnsigned(token);
 			} else {
-				return readLongSigned(token, readerLong);
+				return readLongSigned(token);
 			}
 		} else {
 			//optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				return readLongUnsignedOptional(token, valueOfOptional, readerLong);
+				return readLongUnsignedOptional(token, valueOfOptional);
 			} else {
-				return readLongSignedOptional(token, valueOfOptional, readerLong);
+				return readLongSignedOptional(token, valueOfOptional);
 			}	
 		}
 		
 	}
+
+	private FieldReaderLong longDictionary(int token) {
+		
+		if (0==(token&(3<<18))) {
+			return readerLong;
+		} else {
+			//these also take an extra lookup we are optimized for the global above			
+			if (0==(token&(2<<18))) {
+				//AppType
+				//FASTDynamic MUST know the template and therefore the type.
+				//The template id is the first byte inside the group if pmap indicates.
+				//that value must be read by unsignedInteger but can be done by open/close group!!
+				throw new UnsupportedOperationException();
+			} else {
+				if (0==(token&(1<<18))) {
+					//Template
+					throw new UnsupportedOperationException();
+				} else {
+					//Custom
+					throw new UnsupportedOperationException();
+				}
+			}
+			
+			
+		}
+	}
 	
-	private long readLongSignedOptional(int token, long valueOfOptional, FieldReaderLong fieldReaderLong) {
+	private long readLongSignedOptional(int token, long valueOfOptional) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return fieldReaderLong.readLongSignedOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongSignedOptional(token,valueOfOptional);
 				} else {
 					//delta
-					return fieldReaderLong.readLongSignedDeltaOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongSignedDeltaOptional(token,valueOfOptional);
 				}	
 			} else {
 				//constant
-				return fieldReaderLong.readLongSignedConstantOptional(token,valueOfOptional);
+				return  longDictionary(token).readLongSignedConstantOptional(token,valueOfOptional);
 			}
 			
 		} else {
@@ -167,34 +193,34 @@ public class FASTStaticReader implements FASTReader {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return fieldReaderLong.readLongSignedCopyOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongSignedCopyOptional(token,valueOfOptional);
 				} else {
 					//increment
-					return fieldReaderLong.readLongSignedIncrementOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongSignedIncrementOptional(token,valueOfOptional);
 				}	
 			} else {
 				// default
-				return fieldReaderLong.readLongSignedDefaultOptional(token,valueOfOptional);
+				return  longDictionary(token).readLongSignedDefaultOptional(token,valueOfOptional);
 			}		
 		}
 		
 	}
 
-	private long readLongSigned(int token, FieldReaderLong fieldReaderLong) {
+	private long readLongSigned(int token) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return fieldReaderLong.readLongSigned(token);
+					return  longDictionary(token).readLongSigned(token);
 				} else {
 					//delta
-					return fieldReaderLong.readLongSignedDelta(token);
+					return  longDictionary(token).readLongSignedDelta(token);
 				}	
 			} else {
 				//constant
-				return fieldReaderLong.readLongSignedConstant(token);
+				return  longDictionary(token).readLongSignedConstant(token);
 			}
 			
 		} else {
@@ -203,33 +229,33 @@ public class FASTStaticReader implements FASTReader {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return fieldReaderLong.readLongSignedCopy(token);
+					return  longDictionary(token).readLongSignedCopy(token);
 				} else {
 					//increment
-					return fieldReaderLong.readLongSignedIncrement(token);	
+					return  longDictionary(token).readLongSignedIncrement(token);	
 				}	
 			} else {
 				// default
-				return fieldReaderLong.readLongSignedDefault(token);
+				return  longDictionary(token).readLongSignedDefault(token);
 			}		
 		}
 	}
 
-	private long readLongUnsignedOptional(int token, long valueOfOptional, FieldReaderLong fieldReaderLong) {
+	private long readLongUnsignedOptional(int token, long valueOfOptional) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return fieldReaderLong.readLongUnsignedOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongUnsignedOptional(token,valueOfOptional);
 				} else {
 					//delta
-					return fieldReaderLong.readLongUnsignedDeltaOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongUnsignedDeltaOptional(token,valueOfOptional);
 				}	
 			} else {
 				//constant
-				return fieldReaderLong.readLongUnsignedConstantOptional(token,valueOfOptional);
+				return  longDictionary(token).readLongUnsignedConstantOptional(token,valueOfOptional);
 			}
 			
 		} else {
@@ -238,35 +264,34 @@ public class FASTStaticReader implements FASTReader {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return fieldReaderLong.readLongUnsignedCopyOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongUnsignedCopyOptional(token,valueOfOptional);
 				} else {
 					//increment
-					return fieldReaderLong.readLongUnsignedIncrementOptional(token,valueOfOptional);
+					return  longDictionary(token).readLongUnsignedIncrementOptional(token,valueOfOptional);
 				}	
 			} else {
 				// default
-				return fieldReaderLong.readLongUnsignedDefaultOptional(token,valueOfOptional);
+				return  longDictionary(token).readLongUnsignedDefaultOptional(token,valueOfOptional);
 			}		
 		}
 
 	}
 
-	private long readLongUnsigned(int token, FieldReaderLong fieldReaderLong) {
-		
+	private long readLongUnsigned(int token) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return fieldReaderLong.readLongUnsigned(token);
+					return  longDictionary(token).readLongUnsigned(token);
 				} else {
 					//delta
-					return fieldReaderLong.readLongUnsignedDelta(token);
+					return  longDictionary(token).readLongUnsignedDelta(token);
 				}	
 			} else {
 				//constant
-				return fieldReaderLong.readLongUnsignedConstant(token);
+				return  longDictionary(token).readLongUnsignedConstant(token);
 			}
 			
 		} else {
@@ -275,14 +300,14 @@ public class FASTStaticReader implements FASTReader {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return fieldReaderLong.readLongUnsignedCopy(token);
+					return  longDictionary(token).readLongUnsignedCopy(token);
 				} else {
 					//increment
-					return fieldReaderLong.readLongUnsignedIncrement(token);		
+					return  longDictionary(token).readLongUnsignedIncrement(token);		
 				}	
 			} else {
 				// default
-				return fieldReaderLong.readLongUnsignedDefault(token);
+				return  longDictionary(token).readLongUnsignedDefault(token);
 			}		
 		}
 		
@@ -552,21 +577,26 @@ public class FASTStaticReader implements FASTReader {
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		int pmapMaxSize = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
 		if (pmapMaxSize>0) {
 			reader.readPMap(pmapMaxSize);
 		}
 		
+		//TODO: may need to push template on the stack.
+		//TODO: add to writer at same time so the bits match.
 	}
 
 	@Override
 	public void closeGroup(int id) {
 		//must have same token that was used when opening the group.
 		int token = id>=0 ? tokenLookup[id] : id;
-		int pmapMaxSize = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
 		if (pmapMaxSize>0) {
 			reader.popPMap();
 		}
+		
+		//TODO: may need to pop template off the stack?
+		
 	}
 
 	@Override

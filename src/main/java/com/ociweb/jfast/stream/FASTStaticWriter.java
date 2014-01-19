@@ -980,19 +980,19 @@ public final class FASTStaticWriter implements FASTWriter {
 		//int repeat = 
 		//if sequence is not set by writer must use sequence provided
 	    //0 equals 1	
-		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		int maxBytes = TokenBuilder.extractMaxBytes(token);
 		if (maxBytes>0) {
 			writer.openPMap(maxBytes);
 		}
 	}
-	
+
 	@Override
 	public void openGroup(int id, int repeat) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
 		//repeat count provided
 		
-		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		int maxBytes = TokenBuilder.extractMaxBytes(token);
 		if (maxBytes>0) {
 			writer.openPMap(maxBytes);
 		}
@@ -1004,7 +1004,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	public void closeGroup(int id) {
 		//must have same token used for opening the group.
 		int token = id>=0 ? tokenLookup[id] : id;
-		int maxBytes = TokenBuilder.MASK_PMAP_MAX&(token>>TokenBuilder.SHIFT_PMAP_MASK);
+		int maxBytes = TokenBuilder.extractMaxBytes(token);
 		if (maxBytes>0) {
 			writer.closePMap();
 		}

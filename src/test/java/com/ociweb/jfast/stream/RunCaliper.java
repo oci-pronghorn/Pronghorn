@@ -8,8 +8,8 @@ public class RunCaliper {
 
 	//run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
 	//	run(HomogeniousRecordWriteReadIntegerBenchmark.class); 
-    //run(HomogeniousRecordWriteReadLongBenchmark.class); 
-    run(HomogeniousRecordWriteReadTextBenchmark.class);
+    run(HomogeniousRecordWriteReadLongBenchmark.class); 
+    //run(HomogeniousRecordWriteReadTextBenchmark.class);
     
 	}
 

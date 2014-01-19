@@ -30,7 +30,9 @@ public final class TypeMask {
 	public final static int ByteArray	        		= 0x0E;//01110
 	public final static int ByteArrayOptional			= 0x0F;//01111
 	
-	
+	public final static int GroupStartSimple         = 0x10;//10000
+	public final static int GroupStartTemplated      = 0x11;//10001
+	public final static int GroupStop                = 0x12;//10010
 	
 	//lots of room for the next revision, eg booleans and enums
 
