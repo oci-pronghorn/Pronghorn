@@ -3,6 +3,7 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.DictionaryFactory;
+import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.FieldWriterBytes;
 import com.ociweb.jfast.field.FieldWriterChar;
 import com.ociweb.jfast.field.FieldWriterDecimal;
@@ -57,6 +58,32 @@ public final class FASTStaticWriter implements FASTWriter {
 		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary());
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary());
 		
+	}
+	
+	private FieldWriterLong longDictionary(int token) {
+		
+		if (0==(token&(3<<18))) {
+			return writerLong;
+		} else {
+			//these also take an extra lookup we are optimized for the global above			
+			if (0==(token&(2<<18))) {
+				//AppType
+				//FASTDynamic MUST know the template and therefore the type.
+				//The template id is the first byte inside the group if pmap indicates.
+				//that value must be read by unsignedInteger but can be done by open/close group!!
+				throw new UnsupportedOperationException();
+			} else {
+				if (0==(token&(1<<18))) {
+					//Template
+					throw new UnsupportedOperationException();
+				} else {
+					//Custom
+					throw new UnsupportedOperationException();
+				}
+			}
+			
+			
+		}
 	}
 	
 	/**
@@ -116,35 +143,35 @@ public final class FASTStaticWriter implements FASTWriter {
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
-				acceptLongUnsigned(token, value, writerLong);
+				acceptLongUnsigned(token, value);
 			} else {
-				acceptLongSigned(token, value, writerLong);
+				acceptLongSigned(token, value);
 			}
 		} else {
 			//optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				acceptLongUnsignedOptional(token, value, writerLong);
+				acceptLongUnsignedOptional(token, value);
 			} else {
-				acceptLongSignedOptional(token, value, writerLong);
+				acceptLongSignedOptional(token, value);
 			}	
 		}
 	}
 
-	private void acceptLongSignedOptional(int token, long value, FieldWriterLong fieldWriterLong) {
+	private void acceptLongSignedOptional(int token, long value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					fieldWriterLong.writeLongSignedOptional(value,token);
+					longDictionary(token).writeLongSignedOptional(value,token);
 				} else {
 					//delta
-					fieldWriterLong.writeLongSignedDeltaOptional(value, token);
+					longDictionary(token).writeLongSignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				fieldWriterLong.writeLongSignedConstantOptional(value, token);
+				longDictionary(token).writeLongSignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -153,19 +180,19 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					fieldWriterLong.writeLongSignedCopyOptional(value, token);
+					longDictionary(token).writeLongSignedCopyOptional(value, token);
 				} else {
 					//increment
-					fieldWriterLong.writeLongSignedIncrementOptional(value, token);
+					longDictionary(token).writeLongSignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				fieldWriterLong.writeLongSignedDefaultOptional(value, token);
+				longDictionary(token).writeLongSignedDefaultOptional(value, token);
 			}		
 		}
 	}
 
-	private void acceptLongSigned(int token, long value, FieldWriterLong fieldWriterLong) {
+	private void acceptLongSigned(int token, long value) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -173,14 +200,14 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					fieldWriterLong.writeLongSigned(value, token);
+					longDictionary(token).writeLongSigned(value, token);
 				} else {
 					//delta
-					fieldWriterLong.writeLongSignedDelta(value, token);
+					longDictionary(token).writeLongSignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				fieldWriterLong.writeLongSignedConstant(value, token);
+				longDictionary(token).writeLongSignedConstant(value, token);
 			}
 			
 		} else {
@@ -189,34 +216,34 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					fieldWriterLong.writeLongSignedCopy(value, token);
+					longDictionary(token).writeLongSignedCopy(value, token);
 				} else {
 					//increment
-					fieldWriterLong.writeLongSignedIncrement(value, token);
+					longDictionary(token).writeLongSignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				fieldWriterLong.writeLongSignedDefault(value, token);
+				longDictionary(token).writeLongSignedDefault(value, token);
 			}		
 		}
 		
 	}
 
-	private void acceptLongUnsignedOptional(int token, long value, FieldWriterLong fieldWriterLong) {
+	private void acceptLongUnsignedOptional(int token, long value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					fieldWriterLong.writeLongUnsignedOptional(value, token);
+					longDictionary(token).writeLongUnsignedOptional(value, token);
 				} else {
 					//delta
-					fieldWriterLong.writeLongUnsignedDeltaOptional(value, token);
+					longDictionary(token).writeLongUnsignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				fieldWriterLong.writeLongUnsignedConstantOptional(value, token);
+				longDictionary(token).writeLongUnsignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -225,35 +252,35 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					fieldWriterLong.writeLongUnsignedCopyOptional(value, token);
+					longDictionary(token).writeLongUnsignedCopyOptional(value, token);
 				} else {
 					//increment
-					fieldWriterLong.writeLongUnsignedIncrementOptional(value, token);
+					longDictionary(token).writeLongUnsignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				fieldWriterLong.writeLongUnsignedDefaultOptional(value, token);
+				longDictionary(token).writeLongUnsignedDefaultOptional(value, token);
 			}		
 		}
 	}
 
 	//TODO: pass in writerLong instance to this private method.
 	
-	private void acceptLongUnsigned(int token, long value, FieldWriterLong fieldWriterLong) {
+	private void acceptLongUnsigned(int token, long value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					fieldWriterLong.writeLongUnsigned(value, token);
+					longDictionary(token).writeLongUnsigned(value, token);
 				} else {
 					//delta
-					fieldWriterLong.writeLongUnsignedDelta(value, token);
+					longDictionary(token).writeLongUnsignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				fieldWriterLong.writeLongUnsignedConstant(value, token);
+				longDictionary(token).writeLongUnsignedConstant(value, token);
 			}
 			
 		} else {
@@ -262,14 +289,14 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					fieldWriterLong.writeLongUnsignedCopy(value, token);
+					longDictionary(token).writeLongUnsignedCopy(value, token);
 				} else {
 					//increment
-					fieldWriterLong.writeLongUnsignedIncrement(value, token);
+					longDictionary(token).writeLongUnsignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				fieldWriterLong.writeLongUnsignedDefault(value, token);
+				longDictionary(token).writeLongUnsignedDefault(value, token);
 			}		
 		}
 	}
@@ -285,9 +312,9 @@ public final class FASTStaticWriter implements FASTWriter {
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
-				acceptIntegerUnsigned(token, value);
+				acceptIntegerUnsigned(token, value, writerInteger);
 			} else {
-				acceptIntegerSigned(token, value);
+				acceptIntegerSigned(token, value, writerInteger);
 			}
 		} else {
 			//optional
@@ -299,21 +326,22 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 	
-	private void acceptIntegerSigned(int token, int value) {
+	private void acceptIntegerSigned(int token, int value, FieldWriterInteger fieldWriterInteger) {
+
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerSigned(value);
+					fieldWriterInteger.writeIntegerSigned(value, token);
 				} else {
 					//delta
-					writerInteger.writeIntegerSignedDelta(value, token);
+					fieldWriterInteger.writeIntegerSignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerSignedConstant(value, token);
+				fieldWriterInteger.writeIntegerSignedConstant(value, token);
 			}
 			
 		} else {
@@ -322,33 +350,33 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerSignedCopy(value, token);
+					fieldWriterInteger.writeIntegerSignedCopy(value, token);
 				} else {
 					//increment
-					writerInteger.writeIntegerSignedIncrement(value, token);
+					fieldWriterInteger.writeIntegerSignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerSignedDefault(value, token);
+				fieldWriterInteger.writeIntegerSignedDefault(value, token);
 			}		
 		}
 	}
 	
-	private void acceptIntegerUnsigned(int token, int value) {
+	private void acceptIntegerUnsigned(int token, int value, FieldWriterInteger fieldWriterInteger) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(value);
+					fieldWriterInteger.writeIntegerUnsigned(value, token);
 				} else {
 					//delta
-					writerInteger.writeIntegerUnsignedDelta(value, token);
+					fieldWriterInteger.writeIntegerUnsignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerUnsignedConstant(value, token);
+				fieldWriterInteger.writeIntegerUnsignedConstant(value, token);
 			}
 			
 		} else {
@@ -357,14 +385,14 @@ public final class FASTStaticWriter implements FASTWriter {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerUnsignedCopy(value, token);
+					fieldWriterInteger.writeIntegerUnsignedCopy(value, token);
 				} else {
 					//increment
-					writerInteger.writeIntegerUnsignedIncrement(value, token);
+					fieldWriterInteger.writeIntegerUnsignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerUnsignedDefault(value, token);
+				fieldWriterInteger.writeIntegerUnsignedDefault(value, token);
 			}		
 		}
 	}
@@ -376,7 +404,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerSignedOptional(value);
+					writerInteger.writeIntegerSignedOptional(value, token);
 				} else {
 					//delta
 					writerInteger.writeIntegerSignedDeltaOptional(value, token);
@@ -411,7 +439,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeIntegerUnsigned(value+1);
+					writerInteger.writerIntegerUnsignedOptional(value, token);
 				} else {
 					//delta
 					writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
@@ -736,7 +764,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeTextASCII(value);
+					writerChar.writeASCIITextOptional(token, value);
 				} else {
 					//tail
 					writerChar.writeASCIITailOptional(token,value);
@@ -910,7 +938,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeTextASCII(value,offset,length);
+					writerChar.writeASCIITextOptional(token, value, offset, length);
 				} else {
 					//tail
 					writerChar.writeASCIITailOptional(token, value, offset, length);
@@ -946,7 +974,7 @@ public final class FASTStaticWriter implements FASTWriter {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writer.writeTextASCII(value,offset,length);
+					writerChar.writeASCIIText(token, value, offset, length);
 				} else {
 					//tail
 					writerChar.writeASCIITail(token, value, offset, length);

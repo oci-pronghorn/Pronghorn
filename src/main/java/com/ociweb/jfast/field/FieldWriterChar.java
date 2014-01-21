@@ -641,6 +641,18 @@ public class FieldWriterChar {
 	public void writeASCII(CharSequence value) {
 		writer.writeTextASCII(value);
 	}
+
+	public void writeASCIITextOptional(int token, char[] value, int offset, int length) {
+		writer.writeTextASCII(value,offset,length);
+	}
+
+	public void writeASCIITextOptional(int token, CharSequence value) {
+		writer.writeTextASCII(value);
+	}
+
+	public void writeASCIIText(int token, char[] value, int offset, int length) {
+		writer.writeTextASCII(value,offset,length);
+	}
 	
 //	private void writeClearNull(int token) {
 //		writer.writeNull();

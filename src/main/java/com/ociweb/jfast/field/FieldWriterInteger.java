@@ -324,5 +324,13 @@ public final class FieldWriterInteger {
 			writer.writeNull();
 		}
 	}
+
+	public void writeIntegerSignedOptional(int value, int token) {
+		writer.writeIntegerSignedOptional(value);
+	}
+
+	public void writerIntegerUnsignedOptional(int value, int token) {
+		writer.writeIntegerUnsigned(value+1);
+	}
 	
 }
