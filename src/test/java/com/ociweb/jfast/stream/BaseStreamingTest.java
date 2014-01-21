@@ -2,14 +2,17 @@ package com.ociweb.jfast.stream;
 
 import static org.junit.Assert.assertTrue;
 
+import java.nio.MappedByteBuffer;
+
 import com.ociweb.jfast.field.DictionaryFactory;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {
 
 	
 	private final float PCT_LIMIT = 80; //if avg is 80 pct above min then fail
-	private final float MAX_X_LIMIT = 20f;//if max is 20x larger than avg then fail
+	private final float MAX_X_LIMIT = 40f;//if max is 20x larger than avg then fail
 	
 	protected final int fields         = 1000;
 	protected final int fieldsPerGroup = 10;
@@ -109,14 +112,6 @@ public abstract class BaseStreamingTest {
 								
 			}
 
-	public int buildGroupToken(int maxPMapBytes, int repeat) {
-		
-		return 	0x80000000 |
-				maxPMapBytes<<20 |
-	            (repeat&0xFFFFF);
-		
-	}
-
 	protected int groupManagementRead(int fieldsPerGroup, FASTStaticReader fr, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
@@ -133,16 +128,16 @@ public abstract class BaseStreamingTest {
 		return g;
 	}
 
-	protected int groupManagementWrite(int fieldsPerGroup, FASTStaticWriter fw, int i, int g, int groupToken, int f) {
+	protected int groupManagementWrite(int fieldsPerGroup, FASTStaticWriter fw, int i, int g, int groupOpenToken, int groupCloseToken, int f) {
 		if (--g<0) {
 			//close group
-			fw.closeGroup(groupToken);
+			fw.closeGroup(groupOpenToken);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
 	
 				//open new group
-				fw.openGroup(groupToken);
+				fw.openGroup(groupOpenToken, 0);
 				
 			}				
 		}

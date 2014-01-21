@@ -78,15 +78,10 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr);
 	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr);
 	
-	static final int largeGroupToken = buildGroupToken(4,0);
-	static final int simpleGroupToken = buildGroupToken(2,0);
-	static final int zeroGroupToken = buildGroupToken(0,0);
+	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
+	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
+	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
 	
-	public static int buildGroupToken(int maxPMapBytes, int repeat) {
-		
-		return 	0x80000000 | maxPMapBytes<<20 | (repeat&0xFFFFF);
-		
-	}
 	
 //	@Param(value = "0")
 //	int ttoken = 0;
@@ -560,7 +555,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, 0);
 			int j = intTestData.length;
 			while (--j>=0) {
 				//->439 ->423 -> 408 ->395
@@ -598,7 +593,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, 0);
 			int j = intTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, intTestData[j]);
@@ -635,7 +630,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, 0);
 			int j = intTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, intTestData[j]);

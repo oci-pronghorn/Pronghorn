@@ -147,9 +147,9 @@ public class TextStreamingTest extends BaseStreamingTest {
 		}
 		int g = fieldsPerGroup;
 		
-		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes, 0);//TODO: repeat still unsupported
 		
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken, 0);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -182,7 +182,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 					}
 				}
 							
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
@@ -208,7 +208,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
 		}
 		int g = fieldsPerGroup;
-		int groupToken = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes, 0);//TODO: repeat still unsupported
 		
 		fr.openGroup(groupToken);
 		

@@ -14,6 +14,11 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 //May drop interface if this causes a performance problem from virtual table
 public class FASTStaticReader implements FASTReader {
 
+
+	
+	private int templateStackHead = 0;
+	private int[] templateStack = new int[100];// //TODO: need max depth?
+	
 	private final PrimitiveReader reader;
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
@@ -573,6 +578,7 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	
+	
 	@Override
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -582,8 +588,12 @@ public class FASTStaticReader implements FASTReader {
 			reader.readPMap(pmapMaxSize);
 		}
 		
-		//TODO: may need to push template on the stack.
-		//TODO: add to writer at same time so the bits match.
+		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+			//always push something on to the stack
+			int newTop = (reader.popPMapBit()!=0) ? reader.readIntegerUnsigned() : templateStack[templateStackHead];
+			templateStack[templateStackHead++] = newTop;
+
+		}
 	}
 
 	@Override
@@ -595,7 +605,10 @@ public class FASTStaticReader implements FASTReader {
 			reader.popPMap();
 		}
 		
-		//TODO: may need to pop template off the stack?
+		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+			//must always pop because open will always push
+			templateStackHead--;
+		}
 		
 	}
 

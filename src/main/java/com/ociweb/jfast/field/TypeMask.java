@@ -30,11 +30,13 @@ public final class TypeMask {
 	public final static int ByteArray	        		= 0x0E;//01110
 	public final static int ByteArrayOptional			= 0x0F;//01111
 	
-	public final static int GroupStartSimple         = 0x10;//10000
-	public final static int GroupStartTemplated      = 0x11;//10001
-	public final static int GroupStop                = 0x12;//10010
+	public final static int GroupSimple              = 0x10;//10000
+	public final static int GroupTemplated           = 0x11;//10001
 	
 	//lots of room for the next revision, eg booleans and enums
+	
+	//special flag used internally by FASTDynamic* to know when to return control back to the caller.
+	public final static int Stop                     = 0x1F;//11111
 
 	private static String prefix(int len, char c, String value) {
 		StringBuilder builder = new StringBuilder();

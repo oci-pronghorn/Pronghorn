@@ -75,9 +75,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final FASTStaticWriter staticWriter = new FASTStaticWriter(pw, dcr);
 	static final FASTStaticReader staticReader = new FASTStaticReader(pr, dcr);
 	
-	static final int largeGroupToken = TokenBuilder.buildGroupToken(4,0);
-	static final int simpleGroupToken = TokenBuilder.buildGroupToken(2,0);
-	static final int zeroGroupToken = TokenBuilder.buildGroupToken(0,0);
+	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
+	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
+	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -351,7 +351,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, 0);
 			int j = longTestData.length;
 			while (--j>=0) {
 				result |= longTestData[j];//do nothing
@@ -387,7 +387,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, 0);
 			int j = longTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, longTestData[j]);

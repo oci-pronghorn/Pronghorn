@@ -56,17 +56,35 @@ public class TokenBuilder {
 	public static final int MASK_OPER_DECIMAL  = 0x07; //3 bits
 	public static final int SHIFT_OPER_DECIMAL = 3; 
 	
-	
-	//group pmap
-	private static final int MASK_PMAP_MAX = 0x7FF;
-	private static final int SHIFT_PMAP_MASK = 20;
-		
+			
 
-	public static int buildGroupToken(int maxPMapBytes, int repeat) {
+	public static int buildGroupToken(int typeMask, int maxPMapBytes, int seqFieldId) {
 		//must add dynamic/none for template id.
-		return 	0x80000000 | maxPMapBytes<<20 | (repeat&0xFFFFF);
 		
+		//integer log compression
+		int s = 0;
+		while (maxPMapBytes>63 && s<15) {
+			s++;
+			maxPMapBytes>>=1;
+		}//4bits of exponent  6bits of value. can go up  to 2mil which would require 21 bits vs our 10 here.	
+		if (s>0) {
+			//must round up value to ensure we do not trim the pmap.
+			maxPMapBytes++;
+		}
+		return 	0x80000000 | (typeMask<<26) | (0xF&s)<<22 | (0x3F&maxPMapBytes)<<16 | (seqFieldId&0xFFFF);
 	}
+
+    public static int extractType(int token) {
+		return 0x1F&(token>>26);
+	}
+	public static int extractMaxBytes(int token) {
+		//integer log decompression
+		return  (0x3F&(token>>16))<< (0xF&(token>>22));	
+	}
+	public static int extractSeqLenId(int token) {
+		return token&0xFFFF;
+	}
+	
 	
 	public static int buildToken(int tokenType, int tokenOpp, int count) {
 		
@@ -138,9 +156,6 @@ public class TokenBuilder {
 		
 	}
 
-	public static int extractMaxBytes(int token) {
-		return MASK_PMAP_MAX&(token>>SHIFT_PMAP_MASK);
-	}
 
 
 

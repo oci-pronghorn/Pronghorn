@@ -16,6 +16,10 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTStaticWriter implements FASTWriter {
 	
+
+	private int templateStackHead = 0;
+	private int[] templateStack = new int[100];// //TODO: need max depth?
+	
 	//TODO: add assert at beginning of every method that calls a FASTAccept
 	//       object which is only created from the template when assert is on
 	//       this will validate each FieldId/Token is the expected one in that order.
@@ -971,7 +975,7 @@ public final class FASTStaticWriter implements FASTWriter {
 	}
 
 	@Override
-	public void openGroup(int id) {	
+	public void openGroup(int id, int template) {	
 		int token = id>=0 ? tokenLookup[id] : id;
 		
 		//TODO: do we need a two more open group methods for dynamic template ids?
@@ -984,10 +988,25 @@ public final class FASTStaticWriter implements FASTWriter {
 		if (maxBytes>0) {
 			writer.openPMap(maxBytes);
 		}
+		
+		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+			//always push something on to the stack
+									
+			int top = templateStack[templateStackHead]; 
+			if (top==template) {
+				writer.writePMapBit((byte)0);
+			} else {
+				writer.writePMapBit((byte)1);
+				writer.writeIntegerUnsigned(template);
+				top = template;
+			}
+			
+			templateStack[templateStackHead++] = top;
+		}
 	}
 
 	@Override
-	public void openGroup(int id, int repeat) {
+	public void openGroup(int id, int repeat, int template) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
 		//repeat count provided
@@ -998,15 +1017,37 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 		//TODO: is this the point when we write the repeat?
 		
+		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+			//always push something on to the stack
+						
+			int top = templateStack[templateStackHead]; 
+			if (top==template) {
+				writer.writePMapBit((byte)0);
+			} else {
+				writer.writePMapBit((byte)1);
+				writer.writeIntegerUnsigned(template);
+				top = template;
+			}
+			
+			templateStack[templateStackHead++] = top;
+
+		}
 	}
 
 	@Override
 	public void closeGroup(int id) {
+		
 		//must have same token used for opening the group.
 		int token = id>=0 ? tokenLookup[id] : id;
+
 		int maxBytes = TokenBuilder.extractMaxBytes(token);
 		if (maxBytes>0) {
 			writer.closePMap();
+		}
+		
+		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+			//must always pop because open will always push
+			templateStackHead--;
 		}
 	}
 

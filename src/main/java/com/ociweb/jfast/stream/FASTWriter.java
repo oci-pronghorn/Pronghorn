@@ -24,8 +24,8 @@ public interface FASTWriter {
 	
 	void write(int id);//null, takes exponent id for decimal
 	
-	void openGroup(int id);
-	void openGroup(int id, int repeat);
+	void openGroup(int id, int template);
+	void openGroup(int id, int repeat, int template);
 	void closeGroup(int id);
 	void flush();
 	

@@ -18,7 +18,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingIntegerTest extends BaseStreamingTest {
 	
-	final int groupToken 	  = buildGroupToken(maxMPapBytes,0);//TODO: repeat still unsupported
+	final int groupToken 	  = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes, 0);//TODO: repeat still unsupported
 	final int[] testData     = buildTestDataUnsigned(fields);
 	final int   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	boolean sendNulls        = true;
@@ -84,7 +84,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken, 0);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -109,7 +109,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					}
 				}
 							
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {

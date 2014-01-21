@@ -23,7 +23,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	final long   testMantConst = 0;
 	
 	//Must double because we may need 1 bit for exponent and another for mantissa
-	final int groupToken = buildGroupToken(maxMPapBytes*2,0);//TODO: repeat still unsupported
+	final int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes*2, 0);//TODO: repeat still unsupported
 
 	boolean sendNulls = true;
 	
@@ -79,7 +79,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken, 0);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -101,7 +101,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 						fw.write(token, 1, testData[f]); 
 					}
 				}			
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
