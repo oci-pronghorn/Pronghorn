@@ -22,146 +22,135 @@ public class FieldReaderBytes {
 
 	public int readBytes(int token) {
 		int idx = token & INSTANCE_MASK;
-		//readASCIIToHeap(idx);
+		int length = reader.readIntegerUnsigned();
+		reader.readByteData(byteDictionary.rawAccess(), 
+							byteDictionary.allocate(idx, length),
+				            length);
 		return idx;
 	}
 
-	private void readBytesToHeap(int idx) {
-		
-		// 0x80 is a null string.
-		// 0x00, 0x80 is zero length string
-		byte val = reader.readTextASCIIByte();
-		if (val==0) {
-			byteDictionary.setZeroLength(idx);
-			//must move cursor off the second byte
-			val = reader.readTextASCIIByte();
-			//at least do a validation because we already have what we need
-			assert((val&0xFF)==0x80);
-		} else {
-			if (val==NULL_STOP) {
-				byteDictionary.setNull(idx);				
-			} else {
-				byteDictionary.setZeroLength(idx);				
-				fastHeapAppend(idx, val);
-			}
-		}
-	}
-	
-	private void fastHeapAppend(int idx, byte val) {
-		int offset = byteDictionary.offset(idx);
-		int nextLimit = byteDictionary.nextLimit(offset);
-		int targIndex = byteDictionary.stopIndex(offset);
-		
-		byte[] targ = byteDictionary.rawAccess();
-				
-		if (targIndex>nextLimit) {
-			System.err.println("make space:"+offset);
-			byteDictionary.makeSpaceForAppend(offset, 2); //also space for last char
-			nextLimit = byteDictionary.nextLimit(offset);
-		}
-		
-//		if(val>=0) {
-//			targ[targIndex++] = (byte)val;			
-//		
-//			int len;
-//			do {
-//				len = reader.readTextASCII2(targ, targIndex, nextLimit);
-//				if (len<0) {
-//					targIndex-=len;
-//					System.err.println("NOW DELETE THIS,  tested make space:"+offset);
-//					byteDictionary.makeSpaceForAppend(offset, 2); //also space for last char
-//					nextLimit = byteDictionary.nextLimit(offset);
-//				} else {
-//					targIndex+=len;
-//				}
-//			} while (len<0);
-//		} else {
-//			targ[targIndex++] = (char)(0x7F & val);
-//		}
-		byteDictionary.stopIndex(offset,targIndex);
-	}
-	
+
 	public int readBytesTail(int token) {
-		return readBytesTail(token & INSTANCE_MASK, reader.readIntegerUnsigned());
-	}
-	
-	private int readBytesTail(int idx, int trim) {
-		if (trim>0) {
-			byteDictionary.trimTail(idx, trim);
-		}
+		int idx = token & INSTANCE_MASK;
 		
-		//System.err.println("read: trim "+trim);
-		
-		byte val = reader.readTextASCIIByte();
-		if (val==0) {
-			//nothing to append
-			//must move cursor off the second byte
-			val = reader.readTextASCIIByte();
-			//at least do a validation because we already have what we need
-			assert((val&0xFF)==0x80);
-		} else {
-//			if (val==NULL_STOP) {
-//				//nothing to append
-//				//charDictionary.setNull(idx);				
-//			} else {		
-//				if (byteDictionary.isNull(idx)) {
-//					byteDictionary.setZeroLength(idx);
-//				}
-//				fastHeapAppend(idx, val);
-//			}
-		}
-		
+		int trim = reader.readIntegerSigned();
+		int length = reader.readIntegerUnsigned(); 
+
+		//append to tail	
+		int targetOffset = byteDictionary.makeSpaceForAppend(idx, trim, length);
+		reader.readByteData(byteDictionary.rawAccess(), targetOffset, length);
 		return idx;
 	}
-
+	
 	public int readBytesConstant(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		//always return this required value
+		return token & INSTANCE_MASK;
 	}
 
 	public int readBytesDelta(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		
+		int trim = reader.readIntegerSigned();
+		int utfLength = reader.readIntegerUnsigned();
+		if (trim>=0) {
+			//append to tail
+			reader.readByteData(byteDictionary.rawAccess(), byteDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+		} else {
+			//append to head
+			reader.readByteData(byteDictionary.rawAccess(), byteDictionary.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+		}
+		
+		return idx;
 	}
 
 	public int readBytesCopy(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		if (reader.popPMapBit()!=0) {
+			int length = reader.readIntegerUnsigned();
+			reader.readByteData(byteDictionary.rawAccess(), 
+								byteDictionary.allocate(idx, length),
+					            length);
+		}
+		return idx;
 	}
 
 	public int readBytesDefault(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned();
+			reader.readByteData(byteDictionary.rawAccess(), 
+								byteDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
 	}
 
 	public int readBytesOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		return readBytes(token);
 	}
 
 	public int readBytesTailOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		
+		int trim = reader.readIntegerSigned();
+		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+
+		//append to tail	
+		reader.readByteData(byteDictionary.rawAccess(), byteDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+		
+		return idx;
 	}
 
 	public int readBytesConstantOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 
 	public int readBytesDeltaOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		
+		int trim = reader.readIntegerSigned();
+		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+		if (trim>=0) {
+			//append to tail
+			reader.readByteData(byteDictionary.rawAccess(), byteDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+		} else {
+			//append to head
+			reader.readByteData(byteDictionary.rawAccess(), byteDictionary.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+		}
+		
+		return idx;
 	}
 
 	public int readBytesCopyOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		if (reader.popPMapBit()!=0) {			
+			int length = reader.readIntegerUnsigned()-1;
+			reader.readByteData(byteDictionary.rawAccess(), 
+								byteDictionary.allocate(idx, length),
+					            length);
+		}	
+		return idx;
 	}
 
 	public int readBytesDefaultOptional(int token) {
-		// TODO Auto-generated method stub
-		return 0;
+		int idx = token & INSTANCE_MASK;
+		
+		if (reader.popPMapBit()==0) {
+			return idx|INIT_VALUE_MASK;//use constant
+		} else {
+			
+			int length = reader.readIntegerUnsigned()-1;
+			reader.readByteData(byteDictionary.rawAccess(), 
+								byteDictionary.allocate(idx, length),
+					            length);
+						
+			return idx;
+		}
 	}
 
 

@@ -10,10 +10,14 @@ public class FASTDynamicReader implements FASTReader {
 	//only look up the most recent value read and return it to the caller.
 	FASTDynamicReader(FASTReaderDispatch staticReader) {
 		this.staticReader=staticReader;
+		//staticReader.
 	}
 
 	@Override
 	public int readInt(int id, int valueOfOptional) {
+		
+		
+		
 		// TODO Auto-generated method stub
 		return 0;
 	}
