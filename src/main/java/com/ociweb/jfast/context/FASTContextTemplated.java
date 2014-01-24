@@ -2,7 +2,7 @@ package com.ociweb.jfast.context;
 
 import java.io.File;
 
-import com.ociweb.jfast.stream.FASTStaticReader;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class FASTContextTemplated implements FASTContext {
 
@@ -11,13 +11,13 @@ public class FASTContextTemplated implements FASTContext {
 	}
 
 	@Override
-	public FASTStaticReader staticReader() {
+	public FASTReaderDispatch staticReader() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public FASTStaticReader staticWriter() {
+	public FASTReaderDispatch staticWriter() {
 		// TODO Auto-generated method stub
 		return null;
 	}

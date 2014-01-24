@@ -5,6 +5,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FieldReaderBytes {
 
 	private static final int INIT_VALUE_MASK = 0x80000000;
+	final byte NULL_STOP = (byte)0x80;
 	private final PrimitiveReader reader;
 	private final ByteHeap byteDictionary;
 	private final int INSTANCE_MASK;
@@ -25,26 +26,60 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-//	private void readBytesToHeap(int idx) {
+	private void readBytesToHeap(int idx) {
+		
+		// 0x80 is a null string.
+		// 0x00, 0x80 is zero length string
+		byte val = reader.readTextASCIIByte();
+		if (val==0) {
+			byteDictionary.setZeroLength(idx);
+			//must move cursor off the second byte
+			val = reader.readTextASCIIByte();
+			//at least do a validation because we already have what we need
+			assert((val&0xFF)==0x80);
+		} else {
+			if (val==NULL_STOP) {
+				byteDictionary.setNull(idx);				
+			} else {
+				byteDictionary.setZeroLength(idx);				
+				fastHeapAppend(idx, val);
+			}
+		}
+	}
+	
+	private void fastHeapAppend(int idx, byte val) {
+		int offset = byteDictionary.offset(idx);
+		int nextLimit = byteDictionary.nextLimit(offset);
+		int targIndex = byteDictionary.stopIndex(offset);
+		
+		byte[] targ = byteDictionary.rawAccess();
+				
+		if (targIndex>nextLimit) {
+			System.err.println("make space:"+offset);
+			byteDictionary.makeSpaceForAppend(offset, 2); //also space for last char
+			nextLimit = byteDictionary.nextLimit(offset);
+		}
+		
+//		if(val>=0) {
+//			targ[targIndex++] = (byte)val;			
 //		
-//		// 0x80 is a null string.
-//		// 0x00, 0x80 is zero length string
-//		byte val = reader.readTextASCIIByte();
-//		if (val==0) {
-//			byteDictionary.setZeroLength(idx);
-//			//must move cursor off the second byte
-//			val = reader.readTextASCIIByte();
-//			//at least do a validation because we already have what we need
-//			assert((val&0xFF)==0x80);
+//			int len;
+//			do {
+//				len = reader.readTextASCII2(targ, targIndex, nextLimit);
+//				if (len<0) {
+//					targIndex-=len;
+//					System.err.println("NOW DELETE THIS,  tested make space:"+offset);
+//					byteDictionary.makeSpaceForAppend(offset, 2); //also space for last char
+//					nextLimit = byteDictionary.nextLimit(offset);
+//				} else {
+//					targIndex+=len;
+//				}
+//			} while (len<0);
 //		} else {
-//			if (val==NULL_STOP) {
-//				byteDictionary.setNull(idx);				
-//			} else {
-//				byteDictionary.setZeroLength(idx);				
-//				fastHeapAppend(idx, val);
-//			}
+//			targ[targIndex++] = (char)(0x7F & val);
 //		}
-//	}
+		byteDictionary.stopIndex(offset,targIndex);
+	}
 	
 	public int readBytesTail(int token) {
 		return readBytesTail(token & INSTANCE_MASK, reader.readIntegerUnsigned());

@@ -15,7 +15,7 @@ import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTStaticWriter implements FASTWriter {
+public final class FASTWriterDispatch {
 	
 
 	private int templateStackHead = 0;
@@ -53,7 +53,7 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	
 	
-	public FASTStaticWriter(PrimitiveWriter writer, DictionaryFactory dcr) {
+	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr) {
 		//TODO: must set the initial values for default/constants from the template here.
 		//TODO: perhaps the arrays should be allocated external so template parser can manage it?
 		
@@ -204,7 +204,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	 * Write null value, must only be used if the field id is one
 	 * of optional type.
 	 */
-	@Override
 	public void write(int id) {
 		//TODO: write null value into this optional type.
 		
@@ -248,7 +247,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	 * To write the "null" or absence of a value use 
 	 *    void write(int id) 
 	 */
-	@Override
 	public void write(int id, long value) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -420,7 +418,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	 * To write the "null" or absence of an integer use 
 	 *    void write(int id) 
 	 */
-	@Override
 	public void write(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
@@ -586,7 +583,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	 * To write the "null" or absence of a value use 
 	 *    void write(int id) 
 	 */
-	@Override
 	public void write(int id, int exponent, long mantissa) {
 				
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -602,7 +598,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
-	@Override
 	public void write(int id, byte[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -688,7 +683,6 @@ public final class FASTStaticWriter implements FASTWriter {
 	//TODO: add writeDup(int id) for repeating the last value sent,
 	//this can avoid string check for copy operation if its already known that we are sending the same value.
 	
-	@Override
 	public void write(int id, ByteBuffer buffer) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -772,7 +766,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
-	@Override
 	public void write(int id, CharSequence value) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -945,7 +938,6 @@ public final class FASTStaticWriter implements FASTWriter {
 
 	}
 
-	@Override
 	public void write(int id, char[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
@@ -1116,7 +1108,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		
 	}
 
-	@Override
 	public void openGroup(int id, int template) {	
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -1147,7 +1138,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
-	@Override
 	public void openGroup(int id, int repeat, int template) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -1176,7 +1166,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
-	@Override
 	public void closeGroup(int id) {
 		
 		//must have same token used for opening the group.
@@ -1193,7 +1182,6 @@ public final class FASTStaticWriter implements FASTWriter {
 		}
 	}
 
-	@Override
 	public void flush() {
 		writer.flush();
 	}

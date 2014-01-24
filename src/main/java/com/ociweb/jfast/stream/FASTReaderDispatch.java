@@ -17,10 +17,8 @@ import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 //May drop interface if this causes a performance problem from virtual table
-public class FASTStaticReader implements FASTReader {
+public class FASTReaderDispatch{
 
-
-	
 	private int templateStackHead = 0;
 	private int[] templateStack = new int[100];// //TODO: need max depth?
 	
@@ -51,7 +49,7 @@ public class FASTStaticReader implements FASTReader {
 
 	
 		
-	public FASTStaticReader(PrimitiveReader reader, DictionaryFactory dcr) {
+	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr) {
 		this.reader = reader;
 		this.tokenLookup = dcr.getTokenLookup();
 		
@@ -69,7 +67,7 @@ public class FASTStaticReader implements FASTReader {
 		
 	}
 	
-	public void copyDicionaryTo(FASTStaticWriter target) {
+	public void copyDicionaryTo(FASTWriterDispatch target) {
 		//TODO: implement.
 	}
 	
@@ -141,8 +139,6 @@ public class FASTStaticReader implements FASTReader {
 			}
 	}
 	
-	
-	@Override
 	public long readLong(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -434,7 +430,6 @@ public class FASTStaticReader implements FASTReader {
 		
 	}
 
-	@Override
 	public int readInt(int id, int valueOfOptional) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -599,7 +594,6 @@ public class FASTStaticReader implements FASTReader {
 		}
 	}
 
-	@Override
 	public int readBytes(int id) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -694,8 +688,6 @@ public class FASTStaticReader implements FASTReader {
 	}
 
 	
-	
-	@Override
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -712,7 +704,6 @@ public class FASTStaticReader implements FASTReader {
 		}
 	}
 
-	@Override
 	public void closeGroup(int id) {
 		//must have same token that was used when opening the group.
 		int token = id>=0 ? tokenLookup[id] : id;
@@ -728,7 +719,6 @@ public class FASTStaticReader implements FASTReader {
 		
 	}
 
-	@Override
 	public int readDecimalExponent(int id, int valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -746,7 +736,6 @@ public class FASTStaticReader implements FASTReader {
 	}
 	
 
-	@Override
 	public long readDecimalMantissa(int id, long valueOfOptional) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -763,7 +752,6 @@ public class FASTStaticReader implements FASTReader {
 		}
 	}
 
-	@Override
 	public int readText(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));

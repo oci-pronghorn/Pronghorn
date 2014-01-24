@@ -3,8 +3,6 @@ package com.ociweb.jfast.tree;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ociweb.jfast.Operator;
-
 public class GroupBuilder {
 
 	private final int id;

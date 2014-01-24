@@ -3,14 +3,14 @@ package com.ociweb.jfast.stream;
 public class DynamicStream {
 
 	private final FASTReaderCallback callback;
-	private final FASTStaticReader staticReader;
+	private final FASTReaderDispatch staticReader;
 	private final FASTDynamicReader dynamicReader;
 	
 	
 	//TODO: this class functions as an iterator?
 	//read message then call for the fields.?
 	
-	public DynamicStream(FASTReaderCallback callback, FASTStaticReader staticReader) {
+	public DynamicStream(FASTReaderCallback callback, FASTReaderDispatch staticReader) {
 		this.callback = callback;
 		this.staticReader = staticReader;
 		this.dynamicReader = new FASTDynamicReader(staticReader);

@@ -13,9 +13,9 @@ package com.ociweb.jfast.stream;
  */
 public interface FASTStreamable { 
 
-	void write(FASTStaticWriter writer);
+	void write(FASTWriterDispatch writer);
 	
-	void read(FASTStaticReader reader);
+	void read(FASTReaderDispatch reader);
 	
 
 }

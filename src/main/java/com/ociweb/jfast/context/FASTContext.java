@@ -1,6 +1,6 @@
 package com.ociweb.jfast.context;
 
-import com.ociweb.jfast.stream.FASTStaticReader;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 /**
  * Primary class for interactions with this library.  The FASTContext holds all the 
@@ -12,8 +12,8 @@ import com.ociweb.jfast.stream.FASTStaticReader;
 public interface FASTContext {
 
 	
-	FASTStaticReader staticReader();
-	FASTStaticReader staticWriter();
+	FASTReaderDispatch staticReader();
+	FASTReaderDispatch staticWriter();
 	
 	//FASTDynamicReader dynamicReader();
 	

@@ -3,12 +3,12 @@ package com.ociweb.jfast.stream;
 
 public class FASTDynamicReader implements FASTReader {
 
-	final FASTStaticReader staticReader;
+	final FASTReaderDispatch staticReader;
 	
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
-	FASTDynamicReader(FASTStaticReader staticReader) {
+	FASTDynamicReader(FASTReaderDispatch staticReader) {
 		this.staticReader=staticReader;
 	}
 

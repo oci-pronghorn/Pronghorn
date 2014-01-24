@@ -1,8 +1,8 @@
 package com.ociweb.jfast.context;
 
 import com.ociweb.jfast.field.DictionaryFactory;
-import com.ociweb.jfast.stream.FASTStaticReader;
-import com.ociweb.jfast.stream.FASTStaticWriter;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTWriterDispatch;
 
 /**
  * 
@@ -16,8 +16,8 @@ import com.ociweb.jfast.stream.FASTStaticWriter;
  */
 public class FASTContextDefault implements FASTContext {
 
-	private final FASTStaticReader staticReader;
-	private final FASTStaticWriter staticWriter;
+	private final FASTReaderDispatch staticReader;
+	private final FASTWriterDispatch staticWriter;
 	
 	public FASTContextDefault(DictionaryFactory dcr) {
 		staticReader = null;//new FASTStaticReader();
@@ -25,12 +25,12 @@ public class FASTContextDefault implements FASTContext {
 	}
 	
 	@Override
-	public FASTStaticReader staticReader() {
+	public FASTReaderDispatch staticReader() {
 		return staticReader;
 	}
 
 	@Override
-	public FASTStaticReader staticWriter() {
+	public FASTReaderDispatch staticWriter() {
 		return null;//staticWriter;
 	}
 
