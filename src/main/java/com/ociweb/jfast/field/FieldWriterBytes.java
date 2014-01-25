@@ -25,8 +25,8 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytes(ByteBuffer value) {
-		// TODO Auto-generated method stub
-		
+		//writer.writeIntegerUnsigned(length);
+		//writer.writeTextUTF(value,offset,length);
 	}
 
 	public void writeBytesTail(int token, ByteBuffer value) {
@@ -35,8 +35,8 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytesConstant(int token) {
-		// TODO Auto-generated method stub
-		
+		//nothing need be sent because constant does not use pmap and the template
+		//on the other receiver side will inject this value from the template
 	}
 
 	public void writeBytesDelta(int token, ByteBuffer value) {
@@ -50,8 +50,7 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytesDefault(int token, ByteBuffer value) {
-		// TODO Auto-generated method stub
-		
+
 	}
 
 	public void writeBytesOptional(ByteBuffer value) {
@@ -65,8 +64,8 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytesConstantOptional(int token) {
-		// TODO Auto-generated method stub
-		
+		writer.writePMapBit((byte)1);
+		//the writeNull will take care of the rest.
 	}
 
 	public void writeBytesDeltaOptional(int token, ByteBuffer value) {
@@ -85,8 +84,8 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytesOptional(byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
-		
+		writer.writeIntegerUnsigned(length+1);
+		writer.writeByteArrayData(value,offset,length);
 	}
 
 	public void writeBytesTailOptional(int token, byte[] value, int offset, int length) {
@@ -110,28 +109,63 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytes(byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
-		
+		writer.writeIntegerUnsigned(length);
+		writer.writeByteArrayData(value,offset,length);
 	}
 
 	public void writeBytesTail(int token, byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
+	//	writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
+
 		
+//		int trimTail = heap.length(idx)-headCount;
+//		writer.writeIntegerUnsigned(trimTail);
+//		
+//		int valueSend = length-headCount;
+//		int startAfter = offset+headCount;
+//		int sendLen = valueSend+optional;
+//		
+//		writeUTF8Tail(idx, trimTail, valueSend, value, startAfter, sendLen);
 	}
 
 	public void writeBytesDelta(int token, byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value, offset, length);
+		int tailCount = heap.countTailMatch(idx, value, offset+length, length);
+		if (headCount>tailCount) {
+	//		writeBytesTail(idx, headCount, value, offset+headCount, length, 0);
+		} else {
+	//		writeBytesHead(idx, tailCount, value, offset, length, 0);
+		}
 	}
 
+	
 	public void writeBytesCopy(int token, byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		}
+		else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length);
+			writer.writeByteArrayData(value,offset,length);
+			heap.set(idx, value, offset, length);
+		}
 	}
 
 	public void writeBytesDefault(int token, byte[] value, int offset, int length) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		if (heap.equals(idx, value, offset, length)) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(length);
+			writer.writeByteArrayData(value,offset,length);
+		}
 	}
 
 

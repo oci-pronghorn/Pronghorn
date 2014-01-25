@@ -252,12 +252,12 @@ public final class PrimitiveWriter {
 
 
 	//this requires the null adjusted length to be written first.
-	public final void writeByteArrayData(byte[] data) {
-		final int len = data.length;
+	public final void writeByteArrayData(byte[] data, int offset, int length) {
+		final int len = length;
 		if (limit>buffer.length-len) {
 			output.flush();
 		}
-		System.arraycopy(data, 0, buffer, limit, len);
+		System.arraycopy(data, offset, buffer, limit, len);
 		limit += len;
 		
 	}

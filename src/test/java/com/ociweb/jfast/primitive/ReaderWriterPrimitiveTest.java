@@ -828,7 +828,8 @@ public class ReaderWriterPrimitiveTest {
 		
 		int i = 0;
 		while (i<byteData.length) {
-			pw.writeByteArrayData(byteData[i++]);
+			byte[] data = byteData[i++];
+			pw.writeByteArrayData(data, 0, data.length);
 		}
 		
 		pw.flush();
@@ -866,7 +867,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<byteData.length) {
-					pw.writeByteArrayData(byteData[i++]);
+					byte[] data = byteData[i++];
+					pw.writeByteArrayData(data,0,data.length);
 				}
 			}
 			pw.flush();

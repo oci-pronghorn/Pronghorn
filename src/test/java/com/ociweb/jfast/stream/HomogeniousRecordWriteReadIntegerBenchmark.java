@@ -166,6 +166,33 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	}
 	
 		
+	@Test
+	public void testThis() {
+		int rep = 20;
+		timeStaticIntegerUnsignedNoneW(rep);
+		
+		//total byte for one pass times the reps
+		long totalWritten = rep*this.pw.totalWritten();
+		
+		float bytesPerValue = totalWritten/(float)(rep*intTestData.length);
+		
+		System.out.println("IntegerUnsignedNone  avg bytes per value "+bytesPerValue);
+		
+	}
+	
+	@Test
+	public void testThis2() {
+		int rep = 20;
+		timeStaticIntegerSignedCopyOptionalW(rep);
+		
+		//total byte for one pass times the reps
+		long totalWritten = rep*this.pw.totalWritten();
+		
+		float bytesPerValue = totalWritten/(float)(rep*intTestData.length);
+		
+		System.err.println("IntegerSignedCopyOptional  avg bytes per value "+bytesPerValue);
+		
+	}
 	
 	//
 	////

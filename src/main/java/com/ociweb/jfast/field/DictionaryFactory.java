@@ -196,7 +196,7 @@ public class DictionaryFactory {
 			pw.writeIntegerUnsigned(byteInitIndex[c]);
 			byte[] value = byteInitValue[c];
 			pw.writeIntegerUnsigned(value.length);
-			pw.writeByteArrayData(value);
+			pw.writeByteArrayData(value,0,value.length);
 		}
 		pw.writeIntegerUnsigned(byteInitTotalLength);
 
