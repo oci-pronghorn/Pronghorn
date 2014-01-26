@@ -1,5 +1,7 @@
 package com.ociweb.jfast.field;
 
+import java.nio.ByteBuffer;
+
 
 /**
  * Manage all the text (byte sequences) for all the fields.
@@ -183,6 +185,20 @@ public class ByteHeap {
 		tat[offset+1] = target+copyLength;
 		
 		System.arraycopy(source, startFrom, data, target, copyLength);
+	}
+	
+	void set(int idx, ByteBuffer source) {
+		int offset = idx<<2;
+		
+		int copyLength = source.remaining();
+		totalContent+=(copyLength-(tat[offset+1]-tat[offset]));
+		int target = makeRoom(offset, copyLength);
+		tat[offset] = target;
+		tat[offset+1] = target+copyLength;
+		
+		source.mark();
+		source.get(data, target, copyLength);
+		source.reset();
 	}
 	
 	
@@ -595,6 +611,49 @@ public class ByteHeap {
 		return true;
 	}
 
+	
+	public boolean equals(int idx, ByteBuffer target) {
+	
+		int targetIdx = target.position();
+		int length = target.limit()-target.position();
+		
+		int pos;
+		int lim;
+		byte[] buf;
+		if (idx<0) {
+			int offset = idx<<1;
+			
+			pos = initTat[offset];
+			lim = initTat[offset+1];
+			buf = initBuffer;
+			
+		} else {
+			int offset = idx<<2;
+			
+			pos = tat[offset];
+			lim = tat[offset+1];
+			buf = data;
+		}
+
+		int len = lim-pos;
+		if (len<0 && length==0) {
+			return true;
+		}
+		
+		int i = length;
+		if (len != i) {
+			return false;
+		}
+				
+		while (--i>=0) {
+			if (target.get(targetIdx+i)!=buf[pos+i]) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	
 	public int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
 		int offset = idx<<2;
 		

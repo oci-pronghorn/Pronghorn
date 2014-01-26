@@ -46,6 +46,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	
 	@Test
 	public void decimalTest() {
+		System.gc();
+		
 		int[] types = new int[] {
                   TypeMask.Decimal,
 		    	  TypeMask.DecimalOptional,

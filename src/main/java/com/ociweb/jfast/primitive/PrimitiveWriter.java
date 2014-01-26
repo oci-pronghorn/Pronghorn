@@ -1,5 +1,7 @@
 package com.ociweb.jfast.primitive;
 
+import java.nio.ByteBuffer;
+
 import com.ociweb.jfast.error.FASTException;
 
 
@@ -258,8 +260,20 @@ public final class PrimitiveWriter {
 			output.flush();
 		}
 		System.arraycopy(data, offset, buffer, limit, len);
-		limit += len;
+		limit += len;	
+	}
+	
+	//data position is modified
+	public final void writeByteArrayData(ByteBuffer data ) {
+		int length = data.remaining();
 		
+		final int len = length;
+		if (limit>buffer.length-len) {
+			output.flush();
+		}
+		
+		data.get(buffer, limit, len);
+		limit += len;	
 	}
 		
 	public final void writeNull() {
