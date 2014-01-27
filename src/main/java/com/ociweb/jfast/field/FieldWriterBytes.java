@@ -47,36 +47,69 @@ public class FieldWriterBytes {
 	}
 
 	public void writeBytesTail(int token, ByteBuffer value) {
-		// TODO Auto-generated method stub
-		
+		int idx = token & INSTANCE_MASK;
+		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
+	}
+
+	public void writeBytesTailOptional(int token, ByteBuffer value) {
+		int idx = token & INSTANCE_MASK;
+		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 1);
 	}
 
 	public void writeBytesDelta(int token, ByteBuffer value) {
-		// TODO Auto-generated method stub
+		int idx = token & INSTANCE_MASK;
 		
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			writeBytesTail(idx, headCount, value, 0); //does not modify position
+		} else {
+			writeBytesHead(idx, tailCount, value, 0); //does not modify position
+		}
+		value.position(value.limit());//skip over the data just like we wrote it.
 	}
-
-
-
-	public void writeBytesTailOptional(int token, ByteBuffer value) {
-		// TODO Auto-generated method stub
-		
-	}
-
 
 	public void writeBytesDeltaOptional(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		
-//		//count matching front or back chars
-//		int headCount = heap.countHeadMatch(idx, value, offset, length);
-//		int tailCount = heap.countTailMatch(idx, value, offset+length, length);
-//		if (headCount>tailCount) {
-//			writeUTF8Tail(idx, headCount, value, offset, length, 1);
-//		} else {
-//			writeUTF8Head(idx, tailCount, value, offset, length, 1);
-//		}
+		//count matching front or back chars
+		int headCount = heap.countHeadMatch(idx, value);
+		int tailCount = heap.countTailMatch(idx, value);
+		if (headCount>tailCount) {
+			writeBytesTail(idx, headCount, value, 1); //does not modify position
+		} else {
+			writeBytesHead(idx, tailCount, value, 1); //does not modify position
+		}
+		value.position(value.limit());//skip over the data just like we wrote it.
 	}
 
+	private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
+		
+		//replace head, tail matches to tailCount
+		int trimHead = heap.length(idx)-tailCount;
+		writer.writeIntegerSigned(-trimHead); 
+		
+		int len = value.remaining() - tailCount;
+		int offset = value.position();
+		writer.writeIntegerUnsigned(len+opt);
+		writer.writeByteArrayData(value, offset, len);
+		heap.appendHead(idx, trimHead, value, offset, len);
+	}
+	
+	
+	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
+		
+		int trimTail = heap.length(idx)-headCount;
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = value.remaining()-headCount;
+		int startAfter = value.position()+headCount;
+		writer.writeIntegerUnsigned(valueSend+optional);
+		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+		writer.writeByteArrayData(value, startAfter, valueSend);
+	}
+	
 
 	public void writeBytesCopy(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;

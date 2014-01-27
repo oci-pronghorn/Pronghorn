@@ -1,16 +1,16 @@
 package com.ociweb.jfast.stream;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 
 import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -21,15 +21,17 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 
 
-public class TextStreamingTest extends BaseStreamingTest {
+public class StreamingBytesTest extends BaseStreamingTest {
 
 	final int fields      		      = 30000;
-	final CharSequence[] testData    = buildTestData(fields);
-	final String testConstSeq = "";
-	final char[] testConst  = testConstSeq.toCharArray();
+	final ByteBuffer[] testData    = buildTestData(fields);
+	
+	final byte[] testConst  = new byte[0];
+	final ByteBuffer testContByteBuffer = ByteBuffer.wrap(testConst);
+	
 	boolean sendNulls        = true;
 	
-	final char[][] testDataChars = buildTestDataChars(testData);
+	final byte[][] testDataBytes = buildTestDataBytes(testData);
 	
 	FASTOutputByteArray output;
 	PrimitiveWriter pw;
@@ -42,55 +44,34 @@ public class TextStreamingTest extends BaseStreamingTest {
 		System.gc();
 	}
 	
-	private char[][] buildTestDataChars(CharSequence[] source) {
+	private byte[][] buildTestDataBytes(ByteBuffer[] source) {
 		int i = source.length;
-		char[][] result = new char[i][];
+		byte[][] result = new byte[i][];
 		while (--i>=0) {
-			result[i]= seqToArray(testData[i]);
+			result[i]=  testData[i].array(); 
 		}
 		return result;
 	}
 
 	@Test
-	public void asciiTest() {
+	public void bytesTest() {
 		int[] types = new int[] {
-                   TypeMask.TextASCII,
-                   TypeMask.TextASCIIOptional,
+                   TypeMask.ByteArray,
+                   TypeMask.ByteArrayOptional,
 				 };
 		int[] operators = new int[] {
-                  OperatorMask.None,   //W5 R16 w/o equals
-				  OperatorMask.Constant, //W6 R16 w/o equals
-				  OperatorMask.Copy,     //W84 R31 w/o equals 
-				  OperatorMask.Default,  //W6 R16 
-				  OperatorMask.Delta,    //W85 R39 .37
-                  OperatorMask.Tail,     //W46 R15 w/o equals
+             //     OperatorMask.None,   
+				  OperatorMask.Constant, 
+		//		  OperatorMask.Copy,    
+		//		  OperatorMask.Default,  
+			//	  OperatorMask.Delta,    
+           //       OperatorMask.Tail,     
                 };
 
-		textTester(types,operators,"ASCII");
+		byteTester(types,operators,"Bytes");
 	}
 	
-	@Test
-	public void utf8Test() {
-		int[] types = new int[] {
-				  TypeMask.TextUTF8,
-				  TypeMask.TextUTF8Optional,
-				 };
-		int[] operators = new int[] {
-                OperatorMask.None, //W9 R17  1.08
-				OperatorMask.Constant, //W9 R17 1.09 
-			    OperatorMask.Copy,  //W83 R84 .163
-				OperatorMask.Default, //W10 R18
-				OperatorMask.Delta,    //W110 R51  .31
-                OperatorMask.Tail,  //W57 R51  .31
-                };
-
-		textTester(types,operators,"UTF8");
-	}
-	
-	//TODO: note; what about undo operations going back feed?
-	//TODO: note: use protol for archive format when monitoring.
-	
-	private void textTester(int[] types, int[] operators, String label) {
+	private void byteTester(int[] types, int[] operators, String label) {
 		
 		int singleCharLength = 1024;
 		int fieldsPerGroup = 10;
@@ -99,8 +80,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 		int warmup         = 50;
 		int sampleSize     = 100;
 		int avgFieldSize   = ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2+1;
-		String readLabel = "Read "+label+"Text NoOpp in groups of "+fieldsPerGroup;
-		String writeLabel = "Write "+label+"Text NoOpp in groups of "+fieldsPerGroup;
+		String readLabel = "Read "+label+" NoOpp in groups of "+fieldsPerGroup;
+		String writeLabel = "Write "+label+" NoOpp in groups of "+fieldsPerGroup;
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*avgFieldSize));
 		int maxGroupCount = operationIters*fields/fieldsPerGroup;
@@ -124,8 +105,8 @@ public class TextStreamingTest extends BaseStreamingTest {
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 		int i = 0;
-		for(CharSequence d: testData) {
-			i+=d.length();
+		for(ByteBuffer d: testData) {
+			i+=d.remaining();
 		}
 		
 		long dataCount = (operationIters * (long)fields * (long)i)/testData.length; 
@@ -163,9 +144,9 @@ public class TextStreamingTest extends BaseStreamingTest {
 						fw.write(token);
 					} else {
 						if ((i&1)==0) {
-							fw.write(token,testConstSeq);
+							fw.write(token,testContByteBuffer);
 						} else {
-							char[] array = testConst;
+							byte[] array = testConst;
 							fw.write(token, array, 0 , array.length); 
 						}
 					}
@@ -176,7 +157,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 						if ((i&1)==0) {
 							fw.write(token,testData[f]);
 						} else {
-							char[] array = testDataChars[f];
+							byte[] array = testDataBytes[f];
 							fw.write(token, array, 0 , array.length); 
 						}
 					}
@@ -200,7 +181,7 @@ public class TextStreamingTest extends BaseStreamingTest {
 		
 		pr.reset();
 		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr);
-		TextHeap textHeap = fr.textHeap();
+		ByteHeap byteHeap = fr.byteHeap();
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -227,16 +208,13 @@ public class TextStreamingTest extends BaseStreamingTest {
 	//					}
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
+							int textIdx = fr.readBytes(tokenLookup[f]);						
 							
-							char[] tdc = testConst;
+							byte[] tdc = testConst;
 
-							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
-																
-								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
-										     testConst,
-										     textHeap.get(textIdx,new StringBuilder()).toString());
-							}						
+							assertTrue("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+									byteHeap.equals(textIdx, tdc, 0, tdc.length));
+				
 							
 						} catch (Exception e) {
 							System.err.println("expected text; "+testData[f]);
@@ -253,16 +231,14 @@ public class TextStreamingTest extends BaseStreamingTest {
 	//					}
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
+							int textIdx = fr.readBytes(tokenLookup[f]);						
 							
-							char[] tdc = testDataChars[f];
-							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
-								
-								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
-										testData[f],
-										     textHeap.get(textIdx,new StringBuilder()).toString());
-							}
-						
+							byte[] tdc = testDataBytes[f];
+							
+							assertTrue("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+									  byteHeap.equals(textIdx, tdc, 0, tdc.length)
+									);
+													
 							
 						} catch (Exception e) {
 							System.err.println("expected text; "+testData[f]);
@@ -282,23 +258,15 @@ public class TextStreamingTest extends BaseStreamingTest {
 		return duration;
 	}
 
-	private char[] seqToArray(CharSequence seq) {
-		char[] result = new char[seq.length()];
-		int i = seq.length();
-		while (--i>=0) {
-			result[i] = seq.charAt(i);
-		}
-		return result;
-	}
 
-	private CharSequence[] buildTestData(int count) {
+	private ByteBuffer[] buildTestData(int count) {
 		
-		CharSequence[] seedData = ReaderWriterPrimitiveTest.stringData;
+		byte[][] seedData = ReaderWriterPrimitiveTest.byteData;
 		int s = seedData.length;
 		int i = count;
-		CharSequence[] target = new CharSequence[count];
+		ByteBuffer[] target = new ByteBuffer[count];
 		while (--i>=0) {
-			target[i] = seedData[--s];
+			target[i] = ByteBuffer.wrap(seedData[--s]);
 			if (0==s) {
 				s=seedData.length;
 			}

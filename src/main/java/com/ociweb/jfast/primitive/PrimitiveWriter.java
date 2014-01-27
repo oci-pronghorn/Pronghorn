@@ -265,15 +265,28 @@ public final class PrimitiveWriter {
 	
 	//data position is modified
 	public final void writeByteArrayData(ByteBuffer data ) {
-		int length = data.remaining();
-		
-		final int len = length;
+		final int len = data.remaining();
 		if (limit>buffer.length-len) {
 			output.flush();
 		}
 		
 		data.get(buffer, limit, len);
 		limit += len;	
+	}
+	
+    //position is NOT modified
+	public final void writeByteArrayData(ByteBuffer data, int pos, int lenToSend) {
+
+		if (limit>buffer.length-lenToSend) {
+			output.flush();
+		}
+		
+		int stop = pos+lenToSend;
+		while (pos<stop) {
+			buffer[limit++] = data.get(pos++);
+		}		
+		
+		limit += lenToSend;	
 	}
 		
 	public final void writeNull() {

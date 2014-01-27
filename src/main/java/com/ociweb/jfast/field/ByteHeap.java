@@ -385,6 +385,16 @@ public class ByteHeap {
 		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
 	}
 	
+	void appendTail(int idx, int trimTail, ByteBuffer source, int sourceIdx, int sourceLen) {
+		//if not room make room checking after first because thats where we want to copy the tail.
+		int targetIdx = makeSpaceForAppend(idx, trimTail, sourceLen);
+		
+		int i = sourceLen;
+		while (--i>=0) {
+			data[targetIdx+i] = source.get(sourceIdx+i);
+		}
+	}
+	
 	int offset(int idx) {
 		return idx<<2;
 	}
@@ -484,6 +494,16 @@ public class ByteHeap {
 	//if there is no room after moving everything throws
 	void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen) {
 		System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);			
+	}
+	
+	void appendHead(int idx, int trimHead, ByteBuffer source, int sourceIdx, int sourceLen) {
+		int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
+		
+		int i = sourceLen;
+		while (--i>=0) {
+			data[targetIdx+i] = source.get(sourceIdx+i);
+		}
+		
 	}
 	
 	void appendHead(int idx, byte value) {
@@ -669,6 +689,24 @@ public class ByteHeap {
 		return i;
 	}
 	
+	public int countHeadMatch(int idx, ByteBuffer source) {
+		int offset = idx<<2;
+		
+		int sourceLength = source.remaining();
+		int sourceIdx = source.position();
+		
+		int pos = tat[offset];
+		int limit = tat[offset+1]-pos;
+		if (sourceLength<limit) {
+			limit = sourceLength;
+		}
+		int i = 0;
+		while (i<limit && data[pos+i]==source.get(sourceIdx+i)) {
+			i++;
+		}
+		return i;
+	}
+	
 	public int countTailMatch(int idx, byte[] source, int sourceLength, int sourceLast) {
 		int offset = idx<<2;
 		
@@ -678,6 +716,23 @@ public class ByteHeap {
 		int limit = Math.min(sourceLength,lim-pos);
 		int i = 1;
 		while (i<=limit && data[lim-i]==source[sourceLast-i]) {
+			i++;
+		}
+		return i-1;
+	}
+	
+	public int countTailMatch(int idx, ByteBuffer source) {
+		int offset = idx<<2;
+		
+		int sourceLength = source.remaining();
+		int sourceLast = source.limit();
+		
+		int pos = tat[offset];
+		int lim = tat[offset+1];
+		
+		int limit = Math.min(sourceLength,lim-pos);
+		int i = 1;
+		while (i<=limit && data[lim-i]==source.get(sourceLast-i)) {
 			i++;
 		}
 		return i-1;

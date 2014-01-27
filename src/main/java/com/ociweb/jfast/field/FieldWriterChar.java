@@ -340,8 +340,7 @@ public class FieldWriterChar {
 
 	public void writeUTF8TailOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
-		int headCount = heap.countHeadMatch(idx, value, offset, length);
-		writeUTF8Tail(idx, headCount, value, offset, length, 1);
+		writeUTF8Tail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 1);
 	}
 	
 	public void writeUTF8Delta(int token, char[] value, int offset, int length) {
@@ -368,13 +367,7 @@ public class FieldWriterChar {
 		
 		int valueSend = length-headCount;
 		int startAfter = offset+headCount;
-		int sendLen = valueSend+optional;
-		
-		writeUTF8Tail(idx, trimTail, valueSend, value, startAfter, sendLen);
-	}
-
-	private void writeUTF8Tail(int idx, int trimTail, int valueSend, char[] value, int startAfter, int sendLen) {
-		writer.writeIntegerUnsigned(sendLen);
+		writer.writeIntegerUnsigned(valueSend+optional);
 		writer.writeTextUTF(value, startAfter, valueSend);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 	}

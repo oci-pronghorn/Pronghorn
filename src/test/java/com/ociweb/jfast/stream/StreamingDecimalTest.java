@@ -143,48 +143,11 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-						int exp = fr.readDecimalExponent(tokenLookup[f], -1);
-						if (exp<0) {
-							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
-						}
-			     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
-						if (none!=man) {
-							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
-						}
-					} else { 
-						int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-						long man = fr.readDecimalMantissa(tokenLookup[f], none);
-						if (testMantConst!=man) {
-							assertEquals(testMantConst, man);
-						}
-						if (testExpConst!=exp) {
-							assertEquals(testExpConst, exp);
-						}
-					}
+					readDecimalConstant(tokenLookup, fr, none, f, token);
 					
 				} else {
-				
-					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
-						int exp = fr.readDecimalExponent(tokenLookup[f], -1);
-						if (exp<0) {
-							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
-						}
-			     		long man = fr.readDecimalMantissa(tokenLookup[f], none);
-						if (none!=man) {
-							assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
-						}
-					} else { 
-						int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-						long man = fr.readDecimalMantissa(tokenLookup[f], none);
-						if (testData[f]!=man) {
-							assertEquals(testData[f], man);
-						}
-					}
+					readDecimalOthers(tokenLookup, fr, none, f, token);
 				}
-				
-				
-				
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
 			}			
 		}
@@ -195,6 +158,47 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			
 		long duration = System.nanoTime() - start;
 		return duration;
+	}
+
+	private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
+		if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+			if (exp<0) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+			}
+			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			if (none!=man) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
+			}
+		} else { 
+			int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			if (testData[f]!=man) {
+				assertEquals(testData[f], man);
+			}
+		}
+	}
+
+	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
+		if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+			if (exp<0) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+			}
+			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			if (none!=man) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
+			}
+		} else { 
+			int exp = fr.readDecimalExponent(tokenLookup[f], 0);
+			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			if (testMantConst!=man) {
+				assertEquals(testMantConst, man);
+			}
+			if (testExpConst!=exp) {
+				assertEquals(testExpConst, exp);
+			}
+		}
 	}
 
 	public long totalWritten() {

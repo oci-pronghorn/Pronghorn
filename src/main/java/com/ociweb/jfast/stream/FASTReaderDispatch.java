@@ -1,5 +1,6 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.FieldReaderChar;
@@ -66,11 +67,6 @@ public class FASTReaderDispatch{
 		this.templateWriterBytes   = new FieldWriterBytes[maxTemplates];
 		
 	}
-	
-	public void copyDicionaryTo(FASTWriterDispatch target) {
-		//TODO: implement.
-	}
-	
 
 	public void reset(DictionaryFactory df) {
 		//clear all previous values to unset
@@ -82,6 +78,11 @@ public class FASTReaderDispatch{
 	public TextHeap textHeap() {
 		return readerChar.textHeap();
 	}
+	
+	public ByteHeap byteHeap() {
+		return readerBytes.byteHeap();
+	}
+	
 	
 	//package protected, unless we find a need to expose it?
 	void readToken(int token) {
@@ -600,6 +601,8 @@ public class FASTReaderDispatch{
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
+	//	System.out.println("reading "+TokenBuilder.tokenToString(token));
+		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			return readByteArray(token);
 		} else {
@@ -614,22 +617,22 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-				//	System.err.println("none");
+	//				System.err.println("none");
 					return bytesDictionary(token).readBytes(token);
 				} else {
 					//tail
-				//	System.err.println("tail");
+	//				System.err.println("tail");
 					return bytesDictionary(token).readBytesTail(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-				//	System.err.println("const");
+		//			System.err.println("const");
 					return bytesDictionary(token).readBytesConstant(token);
 				} else {
 					//delta
-				//	System.err.println("delta read");
+		//			System.err.println("delta read");
 					return bytesDictionary(token).readBytesDelta(token);
 				}
 			}
@@ -637,11 +640,11 @@ public class FASTReaderDispatch{
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				//System.err.println("copy");
+		//		System.err.println("copy");
 				return bytesDictionary(token).readBytesCopy(token);
 			} else {
 				//default
-				//System.err.println("default");
+	//			System.err.println("default");
 				return bytesDictionary(token).readBytesDefault(token);
 			}
 		}
@@ -654,22 +657,22 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-				//	System.err.println("none");
+	//				System.err.println("none o");
 					return bytesDictionary(token).readBytesOptional(token);
 				} else {
 					//tail
-				//	System.err.println("tail");
+	//				System.err.println("tail o");
 					return bytesDictionary(token).readBytesTailOptional(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-				//	System.err.println("const");
+	//				System.err.println("const o");
 					return bytesDictionary(token).readBytesConstantOptional(token);
 				} else {
 					//delta
-				//	System.err.println("delta read");
+	//				System.err.println("delta read o");
 					return bytesDictionary(token).readBytesDeltaOptional(token);
 				}
 			}
@@ -677,11 +680,11 @@ public class FASTReaderDispatch{
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				//System.err.println("copy");
+	//			System.err.println("copy o");
 				return bytesDictionary(token).readBytesCopyOptional(token);
 			} else {
 				//default
-				//System.err.println("default");
+	//			System.err.println("default 0");
 				return bytesDictionary(token).readBytesDefaultOptional(token);
 			}
 		}
