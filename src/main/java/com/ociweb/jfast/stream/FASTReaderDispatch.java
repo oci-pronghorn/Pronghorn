@@ -42,6 +42,9 @@ public class FASTReaderDispatch{
 	private final FieldWriterChar[] templateWriterChar;
 	private final FieldWriterBytes[] templateWriterBytes;
 	
+	private int integerUnsignedOptionalValue=0;
+	private int integerSignedOptionalValue=0;
+	
 	//constant fields are always the same or missing but never anything else.
 	//         manditory constant does not use pmap and has constant injected at destnation never xmit
 	//         optional constant does use the pmap 1 (use initial const) 0 (not present)
@@ -85,59 +88,168 @@ public class FASTReaderDispatch{
 	
 	
 	//package protected, unless we find a need to expose it?
-	void readToken(int token) {
-		//used by groups which hold list of tokens
-		//at end of each group call back may be done and FASTDynamicReader used.
-
-	    switch ((token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE) {
-			case TypeMask.IntegerUnsigned:
-				readIntegerUnsigned(token);
-				break;
-			case TypeMask.IntegerUnsignedOptional:
-				readIntegerUnsignedOptional(token,0);
-				break;
-			case TypeMask.IntegerSigned:
-				readIntegerSigned(token);
-				break;
-			case TypeMask.IntegerSignedOptional:
-				readIntegerSignedOptional(token,0);
-				break;
-			case TypeMask.LongUnsigned:
-				readLongUnsigned(token);
-				break;
-			case TypeMask.LongUnsignedOptional:
-				readLongUnsignedOptional(token,0);
-				break;
-			case TypeMask.LongSigned:
-				readLongSigned(token);
-				break;
-			case TypeMask.LongSignedOptional:
-				readLongSignedOptional(token,0);
-				break;
-			case TypeMask.TextASCII:
-				readTextASCII(token); //TODO: these nulls are not corect but we do not need the result.
-			    break;
-		    case TypeMask.TextASCIIOptional:
-				readTextASCIIOptional(token);
-			    break;
-			case TypeMask.TextUTF8:
-				readTextUTF8(token);
-				break;
-			case TypeMask.TextUTF8Optional:
-				readTextUTF8Optional(token);
-				break;
-			case TypeMask.Decimal:
-				//readerDecimal();
-				break;
-			case TypeMask.DecimalOptional:
-				break;
-			case TypeMask.ByteArray:
-				break;
-			case TypeMask.ByteArrayOptional:
-				break;
-			default:
-				throw new UnsupportedOperationException();
+	void dispatchReadByToken(int token) {
+	
+		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
+			//0????
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//00???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//000??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0000?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00000 IntegerUnsigned
+							readIntegerUnsigned(token);
+						} else {
+							//00001 IntegerUnsignedOptional
+							readIntegerUnsignedOptional(token,integerUnsignedOptionalValue); //TODO: each reader must save every value
+						}
+					} else {
+						//0001?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00010 IntegerSigned
+							readIntegerSigned(token);
+						} else {
+							
+							//00011 IntegerSignedOptional
+							readIntegerSignedOptional(token, integerSignedOptionalValue);
+						}
+					}
+				} else {
+					//001??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0010?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00100 LongUnsigned
+						} else {
+							//00101 LongUnsignedOptional
+						}
+					} else {
+						//0011?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00110 LongSigned
+						} else {
+							//00111 LongSignedOptional
+						}
+					}
+				}
+			} else {
+				//01???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//010??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0100?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01000 TextASCII
+						} else {
+							//01001 TextASCIIOptional
+						}
+					} else {
+						//0101?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01010 TextUTF8
+						} else {
+							//01011 TextUTF8Optional
+						}
+					}
+				} else {
+					//011??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0110?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01100 Decimal
+						} else {
+							//01101 DecimalOptional
+						}
+					} else {
+						//0111?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01110 ByteArray
+						} else {
+							//01111 ByteArrayOptional
+						}
+					}
+				}
 			}
+		} else {
+			//1????
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//10???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//100??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//1000?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//10000 GroupSimple
+						} else {
+							//10001 GroupTemplated
+						}
+					} else {
+						//1001?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//10010
+						} else {
+							//10011
+						}
+					}
+				} else {
+					//101??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//1010?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//10100
+						} else {
+							//10101
+						}
+					} else {
+						//1011?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//10110
+						} else {
+							//10111
+						}
+					}
+				}
+			} else {
+				//11???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//110??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//1100?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//11000
+						} else {
+							//11001
+						}
+					} else {
+						//1101?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//11010
+						} else {
+							//11011
+						}
+					}
+				} else {
+					//111??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//1110?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//11100
+						} else {
+							//11101
+						}
+					} else {
+						//1111?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//11110
+						} else {
+							//11111
+						}
+					}
+				}
+			}
+		}
 	}
 	
 	public long readLong(int id, long valueOfOptional) {
