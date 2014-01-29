@@ -26,6 +26,9 @@ public class FASTReaderDispatch{
 	private final PrimitiveReader reader;
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
+	private final int[] intLookup; //key is field id
+	private final long[] longLookup; //key is field id
+	
 	//This is the GLOBAL dictionary
 	//When unspecified in the template GLOBAL is the default so these are used.
 	private final FieldReaderInteger readerInteger;
@@ -44,6 +47,10 @@ public class FASTReaderDispatch{
 	
 	private int integerUnsignedOptionalValue=0;
 	private int integerSignedOptionalValue=0;
+	private int longUnsignedOptionalValue=0;
+	private int longSignedOptionalValue=0;
+	private int decimalExponentOptionalValue=0;
+	private long decimalMantissaOptionalValue=0;
 	
 	//constant fields are always the same or missing but never anything else.
 	//         manditory constant does not use pmap and has constant injected at destnation never xmit
@@ -56,6 +63,9 @@ public class FASTReaderDispatch{
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr) {
 		this.reader = reader;
 		this.tokenLookup = dcr.getTokenLookup();
+		
+		this.intLookup = new int[this.tokenLookup.length];
+		this.longLookup = new long[this.tokenLookup.length];
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
@@ -86,168 +96,228 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
+	int lastInt(int id) {
+		return intLookup[id];
+	}
+	
+	long lastLong(int id) {
+		return longLookup[id];
+	}
 	
 	//package protected, unless we find a need to expose it?
-	void dispatchReadByToken(int token) {
+	void dispatchReadByToken(int id, int token) {
 	
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
-			//0????
-			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-				//00???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//000??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0000?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00000 IntegerUnsigned
-							readIntegerUnsigned(token);
-						} else {
-							//00001 IntegerUnsignedOptional
-							readIntegerUnsignedOptional(token,integerUnsignedOptionalValue); //TODO: each reader must save every value
-						}
+			dispatchReadByToken0(id, token);
+		} else {
+			dispatchReadByToken1(id, token);
+		}
+	}
+
+	private void dispatchReadByToken1(int id, int token) {
+		//1????
+		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+			//10???
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				//100??
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					//1000?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//10000 GroupSimple
 					} else {
-						//0001?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00010 IntegerSigned
-							readIntegerSigned(token);
-						} else {
-							
-							//00011 IntegerSignedOptional
-							readIntegerSignedOptional(token, integerSignedOptionalValue);
-						}
+						//10001 GroupTemplated
 					}
 				} else {
-					//001??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0010?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00100 LongUnsigned
-						} else {
-							//00101 LongUnsignedOptional
-						}
+					//1001?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//10010
 					} else {
-						//0011?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00110 LongSigned
-						} else {
-							//00111 LongSignedOptional
-						}
+						//10011
 					}
 				}
 			} else {
-				//01???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//010??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0100?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//01000 TextASCII
-						} else {
-							//01001 TextASCIIOptional
-						}
+				//101??
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					//1010?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//10100
 					} else {
-						//0101?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//01010 TextUTF8
-						} else {
-							//01011 TextUTF8Optional
-						}
+						//10101
 					}
 				} else {
-					//011??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0110?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//01100 Decimal
-						} else {
-							//01101 DecimalOptional
-						}
+					//1011?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//10110
 					} else {
-						//0111?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//01110 ByteArray
-						} else {
-							//01111 ByteArrayOptional
-						}
+						//10111
 					}
 				}
 			}
 		} else {
-			//1????
-			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-				//10???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//100??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//1000?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//10000 GroupSimple
-						} else {
-							//10001 GroupTemplated
-						}
+			//11???
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				//110??
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					//1100?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//11000
 					} else {
-						//1001?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//10010
-						} else {
-							//10011
-						}
+						//11001
 					}
 				} else {
-					//101??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//1010?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//10100
-						} else {
-							//10101
-						}
+					//1101?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//11010
 					} else {
-						//1011?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//10110
-						} else {
-							//10111
-						}
+						//11011
 					}
 				}
 			} else {
-				//11???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//110??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//1100?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//11000
-						} else {
-							//11001
-						}
+				//111??
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					//1110?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//11100
 					} else {
-						//1101?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//11010
-						} else {
-							//11011
-						}
+						//11101
 					}
 				} else {
-					//111??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//1110?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//11100
-						} else {
-							//11101
-						}
+					//1111?
+					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+						//11110
 					} else {
-						//1111?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//11110
-						} else {
-							//11111
-						}
+						//11111
 					}
 				}
+			}
+		}
+	}
+
+	private void dispatchReadByToken0(int id, int token) {
+		//0????
+		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+			dispatchReadByToken00(id, token);
+		} else {
+			dispatchReadByToken01(id, token);
+		}
+	}
+
+	private void dispatchReadByToken01(int id, int token) {
+		//01???
+		if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+			dispatchReadByToken010(id, token);
+		} else {
+			dispatchReadByToken011(id, token);
+		}
+	}
+
+	private void dispatchReadByToken011(int id, int token) {
+		//011??
+		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+			//0110? Decimal and DecimalOptional
+			
+			int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
+
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				intLookup[id] =	decimalDictionary(token).readDecimalExponent(token, decimalExponentOptionalValue);
+			} else {
+				intLookup[id] =	decimalDictionary(token).readDecimalExponentOptional(token, oppExp, decimalExponentOptionalValue);
+			}
+			
+			int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
+			
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) { ///TODO: this looks backwards is it right?
+				longLookup[id] =  decimalDictionary(token).readDecimalMantissa(token, oppMant, decimalMantissaOptionalValue);
+			} else {
+				longLookup[id] =  decimalDictionary(token).readDecimalMantissaOptional(token, decimalMantissaOptionalValue);
+			}
+			
+		} else {
+			//0111?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//01110 ByteArray
+				intLookup[id] =	readByteArray(token);
+			} else {
+				//01111 ByteArrayOptional
+				intLookup[id] =	readByteArrayOptional(token);
+			}
+		}
+	}
+
+	private void dispatchReadByToken010(int id, int token) {
+		//010??
+		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+			//0100?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//01000 TextASCII
+				intLookup[id] =	readTextASCII(token);
+			} else {
+				//01001 TextASCIIOptional
+				intLookup[id] =	readTextASCIIOptional(token);
+			}
+		} else {
+			//0101?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//01010 TextUTF8
+				intLookup[id] =	readTextUTF8(token);
+			} else {
+				//01011 TextUTF8Optional
+				intLookup[id] =	readTextUTF8Optional(token);
+			}
+		}
+	}
+
+	private void dispatchReadByToken00(int id, int token) {
+		//00???
+		if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+			dispatchReadByToken000(id, token);
+		} else {
+			dispatchReadByToken001(id, token);
+		}
+	}
+
+	private void dispatchReadByToken001(int id, int token) {
+		//001??
+		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+			//0010?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//00100 LongUnsigned
+				longLookup[id] = readLongUnsigned(token);
+			} else {
+				//00101 LongUnsignedOptional
+				longLookup[id] = readLongUnsignedOptional(token, longUnsignedOptionalValue);
+			}
+		} else {
+			//0011?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//00110 LongSigned
+				longLookup[id] = readLongSigned(token);
+			} else {
+				//00111 LongSignedOptional
+				longLookup[id] = readLongSignedOptional(token, longSignedOptionalValue);
+			}
+		}
+	}
+
+	private void dispatchReadByToken000(int id, int token) {
+		//000??
+		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+			//0000?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//00000 IntegerUnsigned
+				intLookup[id] =	readIntegerUnsigned(token);
+			} else {
+				//00001 IntegerUnsignedOptional
+				intLookup[id] =	readIntegerUnsignedOptional(token,integerUnsignedOptionalValue); 
+			}
+		} else {
+			//0001?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+				//00010 IntegerSigned
+				intLookup[id] =	readIntegerSigned(token);
+			} else {
+				//00011 IntegerSignedOptional
+				intLookup[id] =	readIntegerSignedOptional(token, integerSignedOptionalValue);
 			}
 		}
 	}
