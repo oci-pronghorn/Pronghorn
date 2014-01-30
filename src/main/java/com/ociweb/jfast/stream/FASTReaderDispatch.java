@@ -45,6 +45,7 @@ public class FASTReaderDispatch{
 	private final FieldWriterChar[] templateWriterChar;
 	private final FieldWriterBytes[] templateWriterBytes;
 	
+	//need these per field?
 	private int integerUnsignedOptionalValue=0;
 	private int integerSignedOptionalValue=0;
 	private int longUnsignedOptionalValue=0;
@@ -799,22 +800,18 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-	//				System.err.println("none");
 					return bytesDictionary(token).readBytes(token);
 				} else {
 					//tail
-	//				System.err.println("tail");
 					return bytesDictionary(token).readBytesTail(token);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-		//			System.err.println("const");
 					return bytesDictionary(token).readBytesConstant(token);
 				} else {
 					//delta
-		//			System.err.println("delta read");
 					return bytesDictionary(token).readBytesDelta(token);
 				}
 			}
@@ -822,11 +819,9 @@ public class FASTReaderDispatch{
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-		//		System.err.println("copy");
 				return bytesDictionary(token).readBytesCopy(token);
 			} else {
 				//default
-	//			System.err.println("default");
 				return bytesDictionary(token).readBytesDefault(token);
 			}
 		}

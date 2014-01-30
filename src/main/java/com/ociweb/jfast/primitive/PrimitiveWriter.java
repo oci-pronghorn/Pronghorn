@@ -255,12 +255,11 @@ public final class PrimitiveWriter {
 
 	//this requires the null adjusted length to be written first.
 	public final void writeByteArrayData(byte[] data, int offset, int length) {
-		final int len = length;
-		if (limit>buffer.length-len) {
+		if (limit>buffer.length-length) {
 			output.flush();
 		}
-		System.arraycopy(data, offset, buffer, limit, len);
-		limit += len;	
+		System.arraycopy(data, offset, buffer, limit, length);
+		limit += length;	
 	}
 	
 	//data position is modified

@@ -91,7 +91,12 @@ public class FieldReaderBytes {
 	}
 
 	public int readBytesOptional(int token) {
-		return readBytes(token);
+		int idx = token & INSTANCE_MASK;
+		int length = reader.readIntegerUnsigned()-1;
+		reader.readByteData(byteHeap.rawAccess(), 
+							byteHeap.allocate(idx, length),
+				            length);
+		return idx;
 	}
 
 	public int readBytesTailOptional(int token) {

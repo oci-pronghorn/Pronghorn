@@ -17,19 +17,19 @@ public class FASTDynamicReader {
 		
 		//readerDispatch.dispatchReadByToken(id, token);
 		
-		return -1;
+		return -1;//return field id of the group just read
 	}
 	
 	public int hasField() {
 		
-		return -1;
+		return -1;//return field id of field just read.
 	}
 
-	public int readInt(int id, int valueOfOptional) {
+	public int readInt(int id) {
 		return readerDispatch.lastInt(id);
 	}
 
-	public long readLong(int id, long valueOfOptional) {
+	public long readLong(int id) {
 		return readerDispatch.lastLong(id);
 	}
 
