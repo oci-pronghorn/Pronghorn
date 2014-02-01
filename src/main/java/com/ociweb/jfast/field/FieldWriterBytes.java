@@ -49,11 +49,13 @@ public class FieldWriterBytes {
 	public void writeBytesTail(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
+		value.position(value.limit());//skip over the data just like we wrote it.
 	}
 
 	public void writeBytesTailOptional(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 1);
+		value.position(value.limit());//skip over the data just like we wrote it.
 	}
 
 	public void writeBytesDelta(int token, ByteBuffer value) {
@@ -105,10 +107,24 @@ public class FieldWriterBytes {
 		
 		int valueSend = value.remaining()-headCount;
 		int startAfter = value.position()+headCount;
+				
 		writer.writeIntegerUnsigned(valueSend+optional);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
+		
 	}
+	/*
+	 * 	int trimTail = heap.length(idx)-headCount;
+		writer.writeIntegerUnsigned(trimTail);
+		
+		int valueSend = length-headCount;
+		int startAfter = offset+headCount;
+		int sendLen = valueSend+optional;
+		
+		writer.writeIntegerUnsigned(sendLen);
+		writer.writeByteArrayData(value, startAfter, valueSend);
+		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+	 */
 	
 
 	public void writeBytesCopy(int token, ByteBuffer value) {
@@ -206,15 +222,11 @@ public class FieldWriterBytes {
 		int startAfter = offset+headCount;
 		int sendLen = valueSend+optional;
 		
-		writeBytesTail(idx, trimTail, valueSend, value, startAfter, sendLen);
-	}
-
-	private void writeBytesTail(int idx, int trimTail, int valueSend, byte[] value, int startAfter, int sendLen) {
 		writer.writeIntegerUnsigned(sendLen);
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 	}
-	
+
 	public void writeBytesDeltaOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		

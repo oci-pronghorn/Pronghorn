@@ -389,9 +389,9 @@ public class ByteHeap {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		int targetIdx = makeSpaceForAppend(idx, trimTail, sourceLen);
 		
-		int i = sourceLen;
-		while (--i>=0) {
-			data[targetIdx+i] = source.get(sourceIdx+i);
+		int stop = sourceIdx+sourceLen;
+		while (sourceIdx<stop) {
+			data[targetIdx++] = source.get(sourceIdx++);
 		}
 	}
 	
