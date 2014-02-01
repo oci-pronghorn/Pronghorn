@@ -15,9 +15,31 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
  */
 public class DictionaryFactory {
 	
+	/*
+	 * Dictionary:
+	 * Max count of all fields for dictionary shared across templates. With default values.
+	 * 
+	 * Catalog:
+	 * tokens lookup and IDs span across templates and dictionary and belong to the catalog.
+	 * 
+	 * Template:
+	 * templates hold ordered list of fields/tokens.
+	 * 
+	 * 
+	 * catalog
+	 * 		template
+	 * 	    dictionary (shared between templates?)
+	 * 
+	 * 
+	 * 
+	 * 
+	 */
+	
+	
+	
 	
 	/**
-	 * Class hold everything needed to define the template
+	 * Class hold everything needed to define the dictionary
 	 * 
 	 * There is a many-to-many relationship between templates and applicationType.
 	 * applicationTypes are fully abstract types
@@ -28,15 +50,9 @@ public class DictionaryFactory {
 	 *      Global: ignore template/type and just use field id gobally
 	 *      <custom>: use custom named structure.
 	 *      
-	 * design choices:
 	 * 
-	 * 	  1. copy remote after local update
-	 *    2. copy local after remote update.
-	 *    3. update remote and local with same command
-	 *    
-	 *    a. FASTStaticWriter keeps multiple lists
-	 *    b. use multiple FASTStaticWriters
-	 *    c. Field*Writer keeps multiple lists
+	 * 
+	 * 
 	 * 
 	 * needs:   
 	 *    token must hold extra data for dictionary!!      
