@@ -4,8 +4,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.MappedByteBuffer;
 
-import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {

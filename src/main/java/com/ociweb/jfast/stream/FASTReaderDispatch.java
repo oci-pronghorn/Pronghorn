@@ -1,7 +1,6 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.FieldReaderDecimal;
@@ -15,6 +14,7 @@ import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 //May drop interface if this causes a performance problem from virtual table

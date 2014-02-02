@@ -4,7 +4,6 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-import com.ociweb.jfast.field.DictionaryFactory;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -58,6 +57,8 @@ public class TemplateHandler extends DefaultHandler {
 	
 	PrimitiveWriter writer;
 	
+	
+	
     public TemplateHandler(FASTOutput output) {
     	writer = new PrimitiveWriter(output);
 	}
@@ -77,12 +78,18 @@ public class TemplateHandler extends DefaultHandler {
     
     //groups and sequence need a stack, all others can not be nested.
     
+    int sequenceLength;
     
     int intCount;
     int longCount;
     int textCount;
     int byteCount;
-    int decimalCount;    
+    int decimalCount; 
+
+    final int MAX_FIELDS = 1<<20;//TODO: unify with token builder.
+    int[] tokenLookup = new int[MAX_FIELDS];
+    int[] templateLookup = new int[MAX_FIELDS];
+    int biggestId = 0;
     
     public void startElement(String uri, String localName,
                   String qName, Attributes attributes) throws SAXException {
@@ -93,32 +100,28 @@ public class TemplateHandler extends DefaultHandler {
     				TypeMask.IntegerUnsignedOptional:
     				TypeMask.IntegerUnsigned;
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");
+    		commonIdAttributes(attributes);
     	} else if (qName.equalsIgnoreCase("int32")) {
     		
     		type = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.IntegerSignedOptional:
     				TypeMask.IntegerSigned;
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");    	
+    		commonIdAttributes(attributes);  	
     	} else if (qName.equalsIgnoreCase("uint64")) {
     		
     		type = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.LongUnsignedOptional:
     				TypeMask.LongUnsigned;
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");
+    		commonIdAttributes(attributes);
     	} else if (qName.equalsIgnoreCase("int64")) {
     		
     		type = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.LongSignedOptional:
     				TypeMask.LongSigned;
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");
+    		commonIdAttributes(attributes);
     	} else if (qName.equalsIgnoreCase("string")) {
     		
     		if ("unicode".equals(attributes.getValue("charset"))) {
@@ -135,20 +138,26 @@ public class TemplateHandler extends DefaultHandler {
     			
     		}
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");
+    		commonIdAttributes(attributes);
     	} else if (qName.equalsIgnoreCase("decimal")) {
     		
     		type = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.DecimalOptional:
     				TypeMask.Decimal;
     		
-    		id = Integer.valueOf(attributes.getValue("id"));
-    		name = attributes.getValue("name");
+    		commonIdAttributes(attributes);
+    		
+    		//clear exponent and mantissa fields
+    		//
+    		
     	} else if (qName.equalsIgnoreCase("exponent")) {
+    		//set exponent attributes
+    		//
     		
     	} else if (qName.equalsIgnoreCase("mantissa")) {
-    	
+    		//set mantissa attributes
+    		//
+    		
     	} else if (qName.equalsIgnoreCase("bytevector")) {
     		type = TypeMask.ByteArray;
     		id = Integer.valueOf(attributes.getValue("id"));
@@ -169,9 +178,12 @@ public class TemplateHandler extends DefaultHandler {
 
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		
+    		sequenceLength = -1;
     		name = attributes.getValue("name");
     		
     	} else if (qName.equalsIgnoreCase("length")) { 
+    		
+    		sequenceLength = Integer.valueOf(attributes.getValue("length"));
     		
     	} else if (qName.equalsIgnoreCase("template")) {
     		
@@ -180,7 +192,7 @@ public class TemplateHandler extends DefaultHandler {
     	    templateXMLns = attributes.getValue("xmlns");
     	    
     	    //CREATE NEW TEMPLATE OBJECT FOR ADDING STUFF.
-    	    
+    	    commonIdAttributes(attributes);
     	    
     	} else if (qName.equalsIgnoreCase("templates")) {
     		
@@ -191,51 +203,85 @@ public class TemplateHandler extends DefaultHandler {
     	}
     }
 
+	private void commonIdAttributes(Attributes attributes) throws SAXException {
+		id = Integer.valueOf(attributes.getValue("id"));
+		if (id<0) {
+			throw new SAXException("Field Id must be positive: "+id);
+		} else {
+			biggestId = Math.max(biggestId,id);
+		}
+		name = attributes.getValue("name");
+	}
+
     public void endElement(String uri, String localName, String qName)
                   throws SAXException {
     	
-    	if (qName.equalsIgnoreCase("uint32")) {
-    		int token = TokenBuilder.buildToken(type, operator, intCount++);
+    	if (qName.equalsIgnoreCase("uint32") || qName.equalsIgnoreCase("int32")) {
     		
-    	} else if (qName.equalsIgnoreCase("int32")) {
-    		int token = TokenBuilder.buildToken(type, operator, intCount++);
+    		if (0==tokenLookup[id]) {
+    			//if undefined create new token
+    			tokenLookup[id] = TokenBuilder.buildToken(type, operator, intCount++);
+    		} else {
+    			validate();   			
+    		}
     		
-    	} else if (qName.equalsIgnoreCase("uint64")) {
-    		int token = TokenBuilder.buildToken(type, operator, longCount++);
-    		
-    	} else if (qName.equalsIgnoreCase("int64")) {
-    		int token = TokenBuilder.buildToken(type, operator, longCount++);
+    	} else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
+       		
+    		if (0==tokenLookup[id]) {
+    			//if undefined create new token
+    			tokenLookup[id] = TokenBuilder.buildToken(type, operator, longCount++);
+    		} else {
+    			validate();   			
+    		}
     	
     	} else if (qName.equalsIgnoreCase("string")) {
-    		int token = TokenBuilder.buildToken(type, operator, textCount++);
+    		
+    		if (0==tokenLookup[id]) {
+    			//if undefined create new token
+    			tokenLookup[id] = TokenBuilder.buildToken(type, operator, textCount++);
+    		} else {
+    			validate();   			
+    		}
     		
     	} else if (qName.equalsIgnoreCase("decimal")) {
-    		int token = TokenBuilder.buildToken(type, operator, decimalCount++);
+    		
+    		//TODO: check for expontent and mantissa data for double fields/
+    		
+    		if (0==tokenLookup[id]) {
+    			//if undefined create new token
+    			tokenLookup[id] = TokenBuilder.buildToken(type, operator, decimalCount++);
+    		} else {
+    			validate();   			
+    		}
     		
     	} else if (qName.equalsIgnoreCase("exponent")) {
+    		
+    		//close exponent accum
 
     	} else if (qName.equalsIgnoreCase("mantissa")) {
     	
+    		//close mantissa accum
+    		
     	} else if (qName.equalsIgnoreCase("bytevector")) {
-    		int token = TokenBuilder.buildToken(type, operator, byteCount++);
     		
-    	} else if (qName.equalsIgnoreCase("copy")) {
-    		
-    	} else if (qName.equalsIgnoreCase("constant")) {
-    	
-    	} else if (qName.equalsIgnoreCase("default")) {
-    	
-    	} else if (qName.equalsIgnoreCase("delta")) {
-    	
-    	} else if (qName.equalsIgnoreCase("increment")) {
-    	
-    	} else if (qName.equalsIgnoreCase("tail")) {
-    	
+    		if (0==tokenLookup[id]) {
+    			//if undefined create new token
+    			tokenLookup[id] = TokenBuilder.buildToken(type, operator, byteCount++);
+    		} else {
+    			validate();   			
+    		}
+    		    	
     	} else if (qName.equalsIgnoreCase("group")) {
 
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		
     	} else if (qName.equalsIgnoreCase("template")) {
+    		
+    		if (0!=templateLookup[id]) {
+    			throw new SAXException("Duplicate template id: "+id);
+    		}
+    		templateLookup[id] = 1;
+    		
     		//CLOSE TEMPLATE OBJECT AND SAVE IT?
     		
     	} else if (qName.equalsIgnoreCase("templates")) {
@@ -245,6 +291,21 @@ public class TemplateHandler extends DefaultHandler {
     	}
 
     }
+
+	private void validate() throws SAXException {
+		//if defined use old token but validate it
+		int expectedType = TokenBuilder.extractType(tokenLookup[id]);
+		if (expectedType != type) {
+			throw new SAXException("id: "+id+" can not be defined for both types "+expectedType+" and "+type);
+		}
+	}
+	
+	public void postProcessing() {
+		//write catalog data.
+		
+		//close stream.
+		
+	}
 
 
 }

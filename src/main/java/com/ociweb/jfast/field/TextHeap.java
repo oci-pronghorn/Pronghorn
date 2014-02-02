@@ -46,7 +46,7 @@ public class TextHeap {
 	}
 	
 	
-	TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
+	public TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int charInitTotalLength, int[] charInitIndex, char[][] charInitValue) {
 		
 		textItemCount = fixedTextItemCount;

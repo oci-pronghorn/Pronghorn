@@ -1,5 +1,6 @@
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderLong {

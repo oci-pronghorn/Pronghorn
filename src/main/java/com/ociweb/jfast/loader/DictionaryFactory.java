@@ -1,5 +1,7 @@
-package com.ociweb.jfast.field;
+package com.ociweb.jfast.loader;
 
+import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
@@ -21,6 +23,7 @@ public class DictionaryFactory {
 	 * 
 	 * Catalog:
 	 * tokens lookup and IDs span across templates and dictionary and belong to the catalog.
+	 * hold app opional return values for each field.
 	 * 
 	 * Template:
 	 * templates hold ordered list of fields/tokens.

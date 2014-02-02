@@ -5,7 +5,7 @@ import java.io.File;
 import com.ociweb.jfast.context.FASTContext;
 import com.ociweb.jfast.context.FASTContextDefault;
 import com.ociweb.jfast.context.FASTContextTemplated;
-import com.ociweb.jfast.field.DictionaryFactory;
+import com.ociweb.jfast.loader.DictionaryFactory;
 
 /**
  * Creates new contexts.  It is recommended that the contexts get reused

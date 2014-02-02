@@ -45,7 +45,7 @@ public class ByteHeap {
 	}
 	
 	
-	ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
+	public ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int byteInitTotalLength, int[] byteInitIndex, byte[][] byteInitValue) {
 		
 		textItemCount = fixedTextItemCount;
