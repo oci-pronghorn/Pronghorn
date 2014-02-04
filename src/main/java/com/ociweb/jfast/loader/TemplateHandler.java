@@ -55,8 +55,7 @@ public class TemplateHandler extends DefaultHandler {
 	
 	DictionaryFactory factory; //create and save as needed.
 	
-	PrimitiveWriter writer;
-	
+	final PrimitiveWriter writer;
 	
 	
     public TemplateHandler(FASTOutput output) {
@@ -70,10 +69,16 @@ public class TemplateHandler extends DefaultHandler {
     String name;
     int type;
     int operator;
+    long absent;
+
+    final int MAX_FIELDS = 1<<20;//TODO: unify with token builder.
     
     String templateReset;
     String templateDictionary;
     String templateXMLns;
+    int[] templateScript = new int[MAX_FIELDS];
+    int templateScriptIdx = 0;
+    
     String templatesXMLns;
     
     //groups and sequence need a stack, all others can not be nested.
@@ -86,10 +91,21 @@ public class TemplateHandler extends DefaultHandler {
     int byteCount;
     int decimalCount; 
 
-    final int MAX_FIELDS = 1<<20;//TODO: unify with token builder.
-    int[] tokenLookup = new int[MAX_FIELDS];
+    
+    //Catalog data needed for factory
     int[] templateLookup = new int[MAX_FIELDS];
+    int[] tokenLookup = new int[MAX_FIELDS];
+    long[] absentValue = new long[MAX_FIELDS];
     int biggestId = 0;
+    int uniqueIds = 0;
+    
+    
+    int[][] scripts = new int[MAX_FIELDS][];
+    int biggestTemplateId;
+    int uniqueTemplateIds;
+    
+    
+    
     
     public void startElement(String uri, String localName,
                   String qName, Attributes attributes) throws SAXException {
@@ -99,8 +115,13 @@ public class TemplateHandler extends DefaultHandler {
     		type = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.IntegerUnsignedOptional:
     				TypeMask.IntegerUnsigned;
-    		
+    		//default value for absent of this type
+    		absent = Catalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+    		//may update to specific absent value
     		commonIdAttributes(attributes);
+    		
+
+    		
     	} else if (qName.equalsIgnoreCase("int32")) {
     		
     		type = "optional".equals(attributes.getValue("presence")) ?
@@ -176,10 +197,14 @@ public class TemplateHandler extends DefaultHandler {
     		operator = OperatorMask.Tail;
     	} else if (qName.equalsIgnoreCase("group")) {
 
+    		templateScript[templateScriptIdx++] = id; //open group in script
+    		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		
     		sequenceLength = -1;
     		name = attributes.getValue("name");
+    		
+    		templateScript[templateScriptIdx++] = id; //open sequence in script
     		
     	} else if (qName.equalsIgnoreCase("length")) { 
     		
@@ -190,6 +215,7 @@ public class TemplateHandler extends DefaultHandler {
     	    templateReset = attributes.getValue("reset");
     	    templateDictionary = attributes.getValue("dictionary");
     	    templateXMLns = attributes.getValue("xmlns");
+    	    templateScriptIdx = 0;
     	    
     	    //CREATE NEW TEMPLATE OBJECT FOR ADDING STUFF.
     	    commonIdAttributes(attributes);
@@ -210,7 +236,12 @@ public class TemplateHandler extends DefaultHandler {
 		} else {
 			biggestId = Math.max(biggestId,id);
 		}
-		name = attributes.getValue("name");
+		name = attributes.getValue("name"); 
+		
+		String absentString = attributes.getValue("nt_absent_const");
+		if (null!=absentString && absentString.trim().length()>0) {
+			absent = Long.parseLong(absentString.trim());
+		}
 	}
 
     public void endElement(String uri, String localName, String qName)
@@ -221,27 +252,36 @@ public class TemplateHandler extends DefaultHandler {
     		if (0==tokenLookup[id]) {
     			//if undefined create new token
     			tokenLookup[id] = TokenBuilder.buildToken(type, operator, intCount++);
+    			uniqueIds++;
     		} else {
     			validate();   			
     		}
+    		
+    		templateScript[templateScriptIdx++] = id;
     		
     	} else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
        		
     		if (0==tokenLookup[id]) {
     			//if undefined create new token
     			tokenLookup[id] = TokenBuilder.buildToken(type, operator, longCount++);
+    			uniqueIds++;
     		} else {
     			validate();   			
     		}
+    		
+    		templateScript[templateScriptIdx++] = id;
     	
     	} else if (qName.equalsIgnoreCase("string")) {
     		
     		if (0==tokenLookup[id]) {
     			//if undefined create new token
     			tokenLookup[id] = TokenBuilder.buildToken(type, operator, textCount++);
+    			uniqueIds++;
     		} else {
     			validate();   			
     		}
+    		
+    		templateScript[templateScriptIdx++] = id;
     		
     	} else if (qName.equalsIgnoreCase("decimal")) {
     		
@@ -250,9 +290,12 @@ public class TemplateHandler extends DefaultHandler {
     		if (0==tokenLookup[id]) {
     			//if undefined create new token
     			tokenLookup[id] = TokenBuilder.buildToken(type, operator, decimalCount++);
+    			uniqueIds++;
     		} else {
     			validate();   			
     		}
+    		
+    		templateScript[templateScriptIdx++] = id;
     		
     	} else if (qName.equalsIgnoreCase("exponent")) {
     		
@@ -267,13 +310,20 @@ public class TemplateHandler extends DefaultHandler {
     		if (0==tokenLookup[id]) {
     			//if undefined create new token
     			tokenLookup[id] = TokenBuilder.buildToken(type, operator, byteCount++);
+    			uniqueIds++;
     		} else {
     			validate();   			
     		}
+    		
+    		templateScript[templateScriptIdx++] = id;
     		    	
     	} else if (qName.equalsIgnoreCase("group")) {
 
+    		templateScript[templateScriptIdx++] = id; //close group in script
+    		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
+    		
+    		templateScript[templateScriptIdx++] = id; //close sequence in script
     		
     	} else if (qName.equalsIgnoreCase("template")) {
     		
@@ -282,7 +332,14 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		templateLookup[id] = 1;
     		
-    		//CLOSE TEMPLATE OBJECT AND SAVE IT?
+    		//give this script to the catalog
+    		int[] script = new int[templateScriptIdx];
+    		System.arraycopy(templateScript, 0, script, 0, templateScriptIdx);
+    		scripts[id] = script;
+    		biggestTemplateId = Math.max(biggestTemplateId, id);
+    		uniqueTemplateIds++;
+    		
+    		
     		
     	} else if (qName.equalsIgnoreCase("templates")) {
     		//CLEAR TEMPLATES DATA?
@@ -291,6 +348,7 @@ public class TemplateHandler extends DefaultHandler {
     	}
 
     }
+
 
 	private void validate() throws SAXException {
 		//if defined use old token but validate it
@@ -302,6 +360,9 @@ public class TemplateHandler extends DefaultHandler {
 	
 	public void postProcessing() {
 		//write catalog data.
+		//TODO: write catalog id.
+		Catalog.save(writer, uniqueIds, biggestId, tokenLookup, absentValue, uniqueTemplateIds, biggestTemplateId, scripts);
+		
 		
 		//close stream.
 		

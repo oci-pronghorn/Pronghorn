@@ -380,7 +380,7 @@ public class DictionaryFactory {
 		
 	}	
 	
-	public int nextPowerOfTwo(int value) {
+	public static int nextPowerOfTwo(int value) {
 		int temp = value;
 		int result = 0;
 		while (0!=temp) {

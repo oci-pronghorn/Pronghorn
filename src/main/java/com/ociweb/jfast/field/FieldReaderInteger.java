@@ -41,7 +41,7 @@ public class FieldReaderInteger {
 		if (0==value) {
 			return valueOfOptional;
 		} else {
-			return --value;
+			return value-1;
 		}
 	}
 
