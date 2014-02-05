@@ -100,13 +100,13 @@ public class StreamingLongTest extends BaseStreamingTest {
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					
 					//special test with constant value.
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
 						fw.write(token, testConst); 
 					}
 				} else {
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
 						fw.write(token, testData[f]); 
@@ -151,10 +151,10 @@ public class StreamingLongTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-						if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
 				     		long value = fr.readLong(tokenLookup[f], none);
 							if (none!=value) {
-								assertEquals(none, value);
+								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
 							long value = fr.readLong(tokenLookup[f], none);
@@ -165,10 +165,10 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 				} else {
 				
-						if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
 				     		long value = fr.readLong(tokenLookup[f], none);
 							if (none!=value) {
-								assertEquals(none, value);
+								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
 							long value = fr.readLong(tokenLookup[f], none);

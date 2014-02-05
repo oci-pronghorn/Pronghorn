@@ -88,6 +88,9 @@ public class TokenBuilder {
 		return token&0xFFFF;
 	}
 	
+	public static boolean isOptional(int token) {
+		return (0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));
+	}
 	
 	public static int buildToken(int tokenType, int tokenOpp, int count) {
 		

@@ -14,7 +14,7 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 public abstract class BaseStreamingTest {
 
 	
-	private final float PCT_LIMIT = 80; //if avg is 80 pct above min then fail
+	private final float PCT_LIMIT = 120; //if avg is 120 pct above min then fail
 	private final float MAX_X_LIMIT = 40f;//if max is 20x larger than avg then fail
 	
 	protected final int fields         = 1000;

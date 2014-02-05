@@ -586,16 +586,41 @@ public class FieldWriterChar {
 		}
 	}
 
+	private void writeClearNull(int token) {
+		writer.writeNull();
+		heap.setNull(token & INSTANCE_MASK);
+	}
+	
+	private void writePMapNull(int token) {
+		if (heap.isNull(token & INSTANCE_MASK)) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+		}
+	}
+	
+	private void writePMapAndClearNull(int token) {
+		int idx = token & INSTANCE_MASK;
 
+		if (heap.isNull(idx)) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+			heap.setNull(idx);
+		}
+	}
+	
 	public void writeNull(int token) {
 		
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 				//None and Delta (both do not use pmap)
-		//		writeClearNull(token);              //no pmap, yes change to last value
+				writeClearNull(token);              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
-		//		writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -608,7 +633,7 @@ public class FieldWriterChar {
 				}			
 			} else {	
 				//default
-		//		writePMapNull(token);  //yes pmap,  no change to last value
+				writePMapNull(token);  //yes pmap,  no change to last value
 			}	
 		}
 		
@@ -649,34 +674,5 @@ public class FieldWriterChar {
 	public void writeASCIIText(int token, char[] value, int offset, int length) {
 		writer.writeTextASCII(value,offset,length);
 	}
-	
-//	private void writeClearNull(int token) {
-//		writer.writeNull();
-//		lastValue[token & INSTANCE_MASK] = 0;
-//	}
-//	
-//	
-//	private void writePMapAndClearNull(int token) {
-//		int idx = token & INSTANCE_MASK;
-//
-//		if (lastValue[idx]==0) { //stored value was null;
-//			writer.writePMapBit((byte)0);
-//		} else {
-//			writer.writePMapBit((byte)1);
-//			writer.writeNull();
-//			lastValue[idx] =0;
-//		}
-//	}
-//	
-//	
-//	private void writePMapNull(int token) {
-//		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
-//			writer.writePMapBit((byte)0);
-//		} else {
-//			writer.writePMapBit((byte)1);
-//			writer.writeNull();
-//		}
-//	}
-	
 
 }

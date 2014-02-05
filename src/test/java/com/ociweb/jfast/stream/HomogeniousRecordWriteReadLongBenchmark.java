@@ -112,12 +112,6 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	}
 
 	public static boolean isInValidCombo(int type, int operator) {
-		boolean isOptional = 1==(type&0x01);
-		
-		if (OperatorMask.Constant==operator & isOptional) {
-			//constant operator can never be of type optional
-			return true;
-		}
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail

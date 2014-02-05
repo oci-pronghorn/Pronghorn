@@ -94,13 +94,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
 						fw.write(token, testExpConst, testMantConst); 
 					}
 				} else {
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
 						fw.write(token, 1, testData[f]); 
@@ -146,7 +146,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					readDecimalConstant(tokenLookup, fr, none, f, token);
+					readDecimalConstant(tokenLookup, fr, none, f, token, i);
 					
 				} else {
 					readDecimalOthers(tokenLookup, fr, none, f, token);
@@ -164,7 +164,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	}
 
 	private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
-		if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+		if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
 			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
 			if (exp<0) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
@@ -182,8 +182,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		}
 	}
 
-	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
-		if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token, int i) {
+		if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
 			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
 			if (exp<0) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);

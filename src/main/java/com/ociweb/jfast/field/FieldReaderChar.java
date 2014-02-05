@@ -344,7 +344,7 @@ public class FieldReaderChar {
 			reader.readTextUTF8(charDictionary.rawAccess(), 
 					            charDictionary.allocate(idx, length),
 					            length);
-		}//	else System.err.println("awesome B");		
+		}
 		return idx;
 	}
 

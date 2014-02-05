@@ -74,6 +74,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		tester(types, operators, "SignedInteger");
 	}
 
+	int MASK = 0xF;
+	
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
@@ -99,13 +101,14 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					
 					//special test with constant value.
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
 						fw.write(token, testConst); 
 					}
 				} else {
-					if (sendNulls && ((f&0xF)==0) && (0!=(token&0x1000000))) {
+					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
+						//System.err.println("write null");
 						fw.write(token);
 					} else {
 						fw.write(token, testData[f]); 
@@ -147,7 +150,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
 			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 						if (Integer.MIN_VALUE!=value) {
 							assertEquals(Integer.MIN_VALUE, value);
@@ -162,7 +165,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 				} else {	
 				
-					if (sendNulls && (f&0xF)==0 && (0!=(token&0x1000000))) {
+					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
 			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 						if (Integer.MIN_VALUE!=value) {
 							assertEquals(Integer.MIN_VALUE, value);
