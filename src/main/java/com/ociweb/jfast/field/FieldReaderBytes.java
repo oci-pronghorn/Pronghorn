@@ -123,6 +123,7 @@ public class FieldReaderBytes {
 		
 		int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+
 		if (trim>=0) {
 			//append to tail
 			reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);

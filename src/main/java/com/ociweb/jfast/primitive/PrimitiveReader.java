@@ -116,6 +116,9 @@ public final class PrimitiveReader {
 	}
 	
 	public final void readByteData(byte[] target, int offset, int length) {
+		if (length<0) {
+			throw new ArrayIndexOutOfBoundsException("length must be positive but found "+length);
+		}
 		//ensure all the bytes are in the buffer before calling visitor
 		if (position>limit - length) {
 			fetch(length);

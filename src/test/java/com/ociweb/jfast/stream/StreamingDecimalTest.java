@@ -61,7 +61,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 OperatorMask.Delta, //no need for pmap
                 OperatorMask.Copy,
                 OperatorMask.Increment,
-    //            OperatorMask.Constant,  //Fix when we revisit decimal with split operations.
+                OperatorMask.Constant, 
                 OperatorMask.Default
                 };
 				

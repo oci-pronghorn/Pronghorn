@@ -67,8 +67,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				  OperatorMask.Constant, 
 				  OperatorMask.Copy,    
 				  OperatorMask.Default,  
-		//		  OperatorMask.Delta,    
-        //        OperatorMask.Tail,     
+	//			  OperatorMask.Delta,    
+    //              OperatorMask.Tail,     
                 };
 
 		byteTester(types,operators,"Bytes");
@@ -143,7 +143,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					if (sendNulls && ((f&0xF)==0)) {
+					if (sendNulls && ((i&0xF)==0)  && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
 //						if ((i&1)==0) {
@@ -159,7 +159,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 //						}
 					}
 				} else {
-					if (sendNulls && ((f&0xF)==0)) {
+					if (sendNulls && ((f&0xF)==0)  && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
 						if ((i&1)==0) {
@@ -211,7 +211,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 	
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
-					if (sendNulls && (f&0xF)==0) {
+					if (sendNulls && (i&0xF)==0  && TokenBuilder.isOptional(token)) {
 						//TODO: why is this int must be CHAR?
 	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 	//					if (Integer.MIN_VALUE!=value) {
@@ -232,7 +232,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 						}
 					}
 				} else {
-					if (sendNulls && (f&0xF)==0) {
+					if (sendNulls && (f&0xF)==0  && TokenBuilder.isOptional(token)) {
 						//TODO: why is this int must be CHAR?
 	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 	//					if (Integer.MIN_VALUE!=value) {

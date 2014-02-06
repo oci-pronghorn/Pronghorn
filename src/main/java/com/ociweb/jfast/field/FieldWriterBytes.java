@@ -106,7 +106,7 @@ public class FieldWriterBytes {
 	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
 		
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
+		writer.writeIntegerSigned(trimTail);
 		
 		int valueSend = value.remaining()-headCount;
 		int startAfter = value.position()+headCount;
