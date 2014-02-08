@@ -224,11 +224,11 @@ public abstract class BaseStreamingTest {
 			DictionaryFactory dcr);
 
 	
-	protected long performanceWriteTest(int fields, int singleCharLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
+	protected long performanceWriteTest(int fields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
-		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields, tokenLookup);
+		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleLength, fields, fields, tokenLookup);
    
 		    
 		    long byteCount=0;

@@ -109,7 +109,7 @@ public class DictionaryFactory {
 	private byte[][] byteInitValue;
 	private int byteInitTotalLength;
 		
-	private int singleTextSize;
+	private int singleTextSize; //TODO: need an independent value for byteValues?
 	private int[] tokenLookup;
 
 	//need to hold groups and field ids;

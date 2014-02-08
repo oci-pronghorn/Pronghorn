@@ -316,6 +316,9 @@ public class ByteHeap {
 			int leftBound = 0;
 			int rightBound = 0;
 			int textLength = tat[offset+1] - tat[offset]; 
+			if (textLength<0) {
+				textLength = 0;
+			}
 			int totalNeed = textLength;
 			
 			if (preserveWorkspace) {
@@ -517,7 +520,9 @@ public class ByteHeap {
 
 	int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
 		int textLength = sourceLen-trimHead;
-		
+		if (textLength<0) {
+			textLength = 0;
+		}
 		//if not room make room checking before first because thats where we want to copy the head.
 		int offset = idx<<2;
 				

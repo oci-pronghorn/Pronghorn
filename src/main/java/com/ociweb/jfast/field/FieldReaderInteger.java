@@ -66,6 +66,10 @@ public class FieldReaderInteger {
 		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
 	}
 	
+	//TODO: refactor required to support complex dictionary configuration where different ID is used.
+	//We need to read from one IDX and write to another, this is a required feature.
+	
+	
 	public int readIntegerUnsignedCopy(int token) {
 		return (reader.popPMapBit()==0 ? 
 				 lastValue[token & INSTANCE_MASK] : 

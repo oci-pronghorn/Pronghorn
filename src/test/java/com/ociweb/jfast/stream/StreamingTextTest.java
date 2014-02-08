@@ -26,11 +26,11 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingTextTest extends BaseStreamingTest {
 
-	final int fields      		      = 30000;
+	final int fields      		      = 3000;
 	final CharSequence[] testData    = buildTestData(fields);
 	final String testConstSeq = "";
 	final char[] testConst  = testConstSeq.toCharArray();
-	boolean sendNulls        = false;
+	boolean sendNulls        = true;
 
 	int NULL_SEND_MASK = 0xF;
 	
@@ -67,8 +67,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 				  OperatorMask.Constant, //W6 R16 w/o equals
 				  OperatorMask.Copy,     //W84 R31 w/o equals 
 				  OperatorMask.Default,  //W6 R16 
-				//  OperatorMask.Delta,    //W85 R39 .37
-                //  OperatorMask.Tail,     //W46 R15 w/o equals
+				  OperatorMask.Delta,    //W85 R39 .37
+                  OperatorMask.Tail,     //W46 R15 w/o equals
                 };
 
 		textTester(types,operators,"ASCII");
@@ -85,15 +85,15 @@ public class StreamingTextTest extends BaseStreamingTest {
 				OperatorMask.Constant, //W9 R17 1.09 
 			    OperatorMask.Copy,  //W83 R84 .163
 				OperatorMask.Default, //W10 R18
-			//	OperatorMask.Delta,    //W110 R51  .31
-            //    OperatorMask.Tail,  //W57 R51  .31
+				OperatorMask.Delta,    //W110 R51  .31
+                OperatorMask.Tail,  //W57 R51  .31
                 };
 
 		textTester(types,operators,"UTF8");
 	}
 	
 	//TODO: note; what about undo operations going back feed?
-	//TODO: note: use protol for archive format when monitoring.
+	//TODO: note: use protocol for archive format when monitoring/logging back end for slf4j/PureFAT.
 	
 	private void textTester(int[] types, int[] operators, String label) {
 		
@@ -166,7 +166,6 @@ public class StreamingTextTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
-					//	System.err.println("sending null const");
 						fw.write(token);
 					} else {
 						if ((i&1)==0) {
@@ -228,12 +227,13 @@ public class StreamingTextTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && (i&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
-					//	System.err.println("reading const null");
+
 						int textIdx = fr.readText(tokenLookup[f]);		
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 									     true, textHeap.isNull(textIdx));
-						}						
+						}	
+						
 					} else { 
 						try {
 							int textIdx = fr.readText(tokenLookup[f]);						
@@ -248,7 +248,6 @@ public class StreamingTextTest extends BaseStreamingTest {
 							}						
 							
 						} catch (Exception e) {
-						//	System.err.println("expected text; "+testData[f]);
 							e.printStackTrace();
 							throw new FASTException(e);
 						}

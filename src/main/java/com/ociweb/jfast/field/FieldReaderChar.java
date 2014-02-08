@@ -192,7 +192,6 @@ public class FieldReaderChar {
 		//TODO: this is not reading null right!!
 		
 		int tail = reader.readIntegerUnsigned();
-		System.err.println("tail "+tail);
 		if (0==tail) {
 			charDictionary.setNull(idx);
 			return idx;
@@ -363,7 +362,15 @@ public class FieldReaderChar {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
-		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+		if (0==trim) {
+			charDictionary.setNull(idx);
+			return idx;
+		}
+		if (trim>0) {
+			trim--;//subtract for optional
+		}
+		
+		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
 			//append to tail
 			//System.err.println("oldString :"+charDictionary.get(idx, new StringBuilder())+" TAIL");
@@ -382,8 +389,14 @@ public class FieldReaderChar {
 	public int readUTF8TailOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		int trim = reader.readIntegerSigned();
-		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+		int trim = reader.readIntegerUnsigned();
+		if (trim==0) {
+			charDictionary.setNull(idx);
+			return idx;
+		} 
+		trim--;
+		
+		int utfLength = reader.readIntegerUnsigned(); //subtract for optional
 
 		//append to tail	
 		reader.readTextUTF8(charDictionary.rawAccess(), charDictionary.makeSpaceForAppend(idx, trim, utfLength), utfLength);

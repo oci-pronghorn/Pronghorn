@@ -22,15 +22,41 @@ public class FieldWriterBytes {
 		this.writer = writer;
 	}
 
+	private void writeClearNull(int token) {
+		writer.writeNull();
+		heap.setNull(token & INSTANCE_MASK);
+	}
+	
+	private void writePMapNull(int token) {
+		if (heap.isNull(token & INSTANCE_MASK)) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+		}
+	}
+	
+	private void writePMapAndClearNull(int token) {
+		int idx = token & INSTANCE_MASK;
+
+		if (heap.isNull(idx)) { //stored value was null;
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeNull();
+			heap.setNull(idx);
+		}
+	}
+	
 	public void writeNull(int token) {
 		
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-				//None and Delta (both do not use pmap)
-		//		writeClearNull(token);              //no pmap, yes change to last value
+				//None and Delta and Tail
+				writeClearNull(token);              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
-		//		writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -43,7 +69,7 @@ public class FieldWriterBytes {
 				}			
 			} else {	
 				//default
-		//		writePMapNull(token);  //yes pmap,  no change to last value
+				writePMapNull(token);  //yes pmap,  no change to last value
 			}	
 		}
 		
@@ -93,11 +119,11 @@ public class FieldWriterBytes {
 		
 		//replace head, tail matches to tailCount
 		int trimHead = heap.length(idx)-tailCount;
-		writer.writeIntegerSigned(-trimHead); 
+		writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
 		
 		int len = value.remaining() - tailCount;
 		int offset = value.position();
-		writer.writeIntegerUnsigned(len+opt);
+		writer.writeIntegerUnsigned(len);
 		writer.writeByteArrayData(value, offset, len);
 		heap.appendHead(idx, trimHead, value, offset, len);
 	}
@@ -106,12 +132,12 @@ public class FieldWriterBytes {
 	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
 		
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerSigned(trimTail);
+		writer.writeIntegerSigned(trimTail>=0? trimTail+optional : trimTail);
 		
 		int valueSend = value.remaining()-headCount;
 		int startAfter = value.position()+headCount;
 				
-		writer.writeIntegerUnsigned(valueSend+optional);
+		writer.writeIntegerUnsigned(valueSend);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		
@@ -195,7 +221,11 @@ public class FieldWriterBytes {
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value.remaining()+1);
+			int len = value.remaining();
+			if (len<0) {
+				len = 0;
+			}
+			writer.writeIntegerUnsigned(len+1);
 			writer.writeByteArrayData(value);
 		}
 	}
@@ -219,11 +249,11 @@ public class FieldWriterBytes {
 	
 	private void writeBytesTail(int idx, int headCount, byte[] value, int offset, int length, final int optional) {
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
+		writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail);
 		
 		int valueSend = length-headCount;
 		int startAfter = offset+headCount;
-		int sendLen = valueSend+optional;
+		int sendLen = valueSend;
 		
 		writer.writeIntegerUnsigned(sendLen);
 		writer.writeByteArrayData(value, startAfter, valueSend);
@@ -247,10 +277,10 @@ public class FieldWriterBytes {
 		
 		//replace head, tail matches to tailCount
 		int trimHead = heap.length(idx)-tailCount;
-		writer.writeIntegerSigned(-trimHead); 
+		writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
 		
 		int len = length - tailCount;
-		writer.writeIntegerUnsigned(len+opt);
+		writer.writeIntegerUnsigned(len);
 		writer.writeByteArrayData(value, offset, len);
 		
 		heap.appendHead(idx, trimHead, value, offset, len);

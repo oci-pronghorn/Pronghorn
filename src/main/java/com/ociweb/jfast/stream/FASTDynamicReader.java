@@ -16,6 +16,22 @@ public class FASTDynamicReader {
 		
 	}
 	
+	/**
+	 * Read up to the end of the next sequence or message (eg. a repeating group)
+	 * 
+	 * Rules for making client compatible changes to templates.
+	 * - Field can be demoted to more general common value before the group.
+	 * - Field can be promotd to more specific value inside sequence
+	 * - Field order inside group can change but can not cross sequence boundary.
+	 * - Group boundaries can be added or removed.
+	 * 
+	 * Note nested sequence will stop once for each of the sequences therefore at the
+	 * bottom hasMore may not have any new data but is only done as a notification that
+	 * the loop has completed.
+	 * 
+	 * @return
+	 */
+	
 	public int hasMore() {
 		
 		//readerDispatch.dispatchReadByToken(id, token);

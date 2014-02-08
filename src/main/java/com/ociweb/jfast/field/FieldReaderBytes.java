@@ -36,7 +36,7 @@ public class FieldReaderBytes {
 	public int readBytesTail(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		int trim = reader.readIntegerSigned();
+		int trim = reader.readIntegerUnsigned();
 		int length = reader.readIntegerUnsigned(); 
 
 		//append to tail	
@@ -105,8 +105,14 @@ public class FieldReaderBytes {
 	public int readBytesTailOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		int trim = reader.readIntegerSigned();
-		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+		int trim = reader.readIntegerUnsigned();
+		if (trim==0) {
+			byteHeap.setNull(idx);
+			return idx;
+		} 
+		trim--;
+		
+		int utfLength = reader.readIntegerUnsigned();
 
 		//append to tail	
 		reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
@@ -122,7 +128,15 @@ public class FieldReaderBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
-		int utfLength = reader.readIntegerUnsigned()-1; //subtract for optional
+		if (0==trim) {
+			byteHeap.setNull(idx);
+			return idx;
+		}
+		if (trim>0) {
+			trim--;//subtract for optional
+		}
+		
+		int utfLength = reader.readIntegerUnsigned();
 
 		if (trim>=0) {
 			//append to tail
@@ -153,7 +167,12 @@ public class FieldReaderBytes {
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
 			
-			int length = reader.readIntegerUnsigned()-1;
+			int length = reader.readIntegerUnsigned();
+			if (length<=0) {
+				System.err.println("read len:"+length+" for default");
+			}
+			
+			length--;
 			reader.readByteData(byteHeap.rawAccess(), 
 								byteHeap.allocate(idx, length),
 					            length);

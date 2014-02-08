@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
@@ -26,13 +27,13 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingBytesTest extends BaseStreamingTest {
 
-	final int fields      		      = 30000;
+	final int fields      		      = 3000;
 	final ByteBuffer[] testData    = buildTestData(fields);
 	
 	final byte[] testConst  = new byte[0];
 	final ByteBuffer testContByteBuffer = ByteBuffer.wrap(testConst);
 	
-	boolean sendNulls        = false;
+	boolean sendNulls        = true;
 	
 	final byte[][] testDataBytes = buildTestDataBytes(testData);
 	
@@ -67,8 +68,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				  OperatorMask.Constant, 
 				  OperatorMask.Copy,    
 				  OperatorMask.Default,  
-	//			  OperatorMask.Delta,    
-    //              OperatorMask.Tail,     
+			//	  OperatorMask.Delta,    
+            //      OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
                 };
 
 		byteTester(types,operators,"Bytes");
@@ -76,7 +77,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 	
 	private void byteTester(int[] types, int[] operators, String label) {
 		
-		int singleCharLength = 1024;
+		int singleBytesLength = 2048;
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
@@ -97,14 +98,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 		int i = 0;
@@ -146,17 +147,15 @@ public class StreamingBytesTest extends BaseStreamingTest {
 					if (sendNulls && ((i&0xF)==0)  && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
-//						if ((i&1)==0) {
-//						//	System.err.println("x");
-//							testContByteBuffer.mark();
-//							fw.write(token,testContByteBuffer); //write byte buffer
-//							testContByteBuffer.reset();
-//							
-//						} else {
-						//	System.err.println("y");
+						if ((i&1)==0) {
+							testContByteBuffer.mark();
+							fw.write(token,testContByteBuffer); //write byte buffer
+							testContByteBuffer.reset();
+							
+						} else {
 							byte[] array = testConst;
 							fw.write(token, array, 0 , array.length); 
-//						}
+						}
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0)  && TokenBuilder.isOptional(token)) {
@@ -212,11 +211,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 	
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && (i&0xF)==0  && TokenBuilder.isOptional(token)) {
-						//TODO: why is this int must be CHAR?
-	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-	//					if (Integer.MIN_VALUE!=value) {
-	//						assertEquals(Integer.MIN_VALUE, value);
-	//					}
+						
+						int idx = fr.readBytes(tokenLookup[f]);		
+						if (!byteHeap.isNull(idx)) {
+							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+									     true, byteHeap.isNull(idx));
+						}	
+						
 					} else { 
 						try {
 							int textIdx = fr.readBytes(tokenLookup[f]);						
@@ -233,11 +234,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
 					}
 				} else {
 					if (sendNulls && (f&0xF)==0  && TokenBuilder.isOptional(token)) {
-						//TODO: why is this int must be CHAR?
-	//		     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-	//					if (Integer.MIN_VALUE!=value) {
-	//						assertEquals(Integer.MIN_VALUE, value);
-	//					}
+						
+						int idx = fr.readBytes(tokenLookup[f]);		
+						if (!byteHeap.isNull(idx)) {
+							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f])+ 
+									    "Expected null found len "+byteHeap.length(idx),
+									     true, byteHeap.isNull(idx));
+						}	
+						
 					} else { 
 						try {
 							int textIdx = fr.readBytes(tokenLookup[f]);						

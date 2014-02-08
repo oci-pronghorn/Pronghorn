@@ -63,8 +63,8 @@ public class FieldWriterChar {
 		int tailCount = heap.countTailMatch(idx, value);
 		if (headCount>tailCount) {
 			int trimTail = heap.length(idx)-headCount;
-			writer.writeIntegerSigned(trimTail);
-			int length = (value.length()-headCount)+1;//plus 1 for optional		
+			writer.writeIntegerSigned(trimTail>=0? trimTail+1 : trimTail); //plus 1 for optional
+			int length = (value.length()-headCount);		
 			writeUTF8Tail(idx, trimTail, headCount, value, length);
 		} else {
 			writeUTF8Head(value, idx, tailCount, 1);
@@ -92,11 +92,11 @@ public class FieldWriterChar {
 		
 		//replace head, tail matches to tailCount
 		int trimHead = heap.length(idx)-tailCount;
-		writer.writeIntegerSigned(-trimHead); 
+		writer.writeIntegerSigned(0==trimHead? optional : -trimHead); 
 
 		int valueSend = value.length()-tailCount;
 		
-		writer.writeIntegerUnsigned(valueSend + optional); 		
+		writer.writeIntegerUnsigned(valueSend); 		
 		writer.writeTextUTFBefore(value, valueSend);
 		heap.appendHead(idx, trimHead, value, valueSend);
 	}
@@ -105,8 +105,8 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value);
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
-		int length = (value.length()-headCount)+1;//plus 1 for optional		
+		writer.writeIntegerUnsigned(trimTail+1);//plus 1 for optional
+		int length = (value.length()-headCount);		
 		writeUTF8Tail(idx, trimTail, headCount, value, length);
 	}
 	
@@ -246,7 +246,12 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value);
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail); 
+		
+		if (trimTail<0) {
+			System.err.println("2 write tail? "+trimTail);
+		}
+		
+		writer.writeIntegerUnsigned(trimTail+1); 
 		writeASCIITail(idx, headCount, value, trimTail);
 
 	}
@@ -366,11 +371,11 @@ public class FieldWriterChar {
 	
 	private void writeUTF8Tail(int idx, int headCount, char[] value, int offset, int length, final int optional) {
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
+		writer.writeIntegerUnsigned(trimTail+optional);
 		
 		int valueSend = length-headCount;
 		int startAfter = offset+headCount;
-		writer.writeIntegerUnsigned(valueSend+optional);
+		writer.writeIntegerUnsigned(valueSend);
 		writer.writeTextUTF(value, startAfter, valueSend);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 	}
@@ -432,10 +437,10 @@ public class FieldWriterChar {
 		
 		//replace head, tail matches to tailCount
 		int trimHead = heap.length(idx)-tailCount;
-		writer.writeIntegerSigned(-trimHead); 
+		writer.writeIntegerSigned(trimHead==0? opt : -trimHead); 
 		
 		int len = length - tailCount;
-		writer.writeIntegerUnsigned(len+opt);
+		writer.writeIntegerUnsigned(len);
 		writer.writeTextUTF(value, offset, len);
 		
 		heap.appendHead(idx, trimHead, value, offset, len);
@@ -616,10 +621,10 @@ public class FieldWriterChar {
 	}
 	
 	public void writeNull(int token) {
-		System.err.println("write null");
+		
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-				//None and Delta and Tail (both do not use pmap)
+				//None and Delta and Tail
 				writeClearNull(token);              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
