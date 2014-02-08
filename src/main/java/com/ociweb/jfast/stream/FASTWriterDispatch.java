@@ -875,18 +875,22 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.None)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIITextOptional(token, value);
 				} else {
 					//tail
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Tail)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIITailOptional(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Constant)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIIConstantOptional(token);
 				} else {
 					//delta
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Delta)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIIDeltaOptional(token,value);
 					
 				}
@@ -895,10 +899,12 @@ public final class FASTWriterDispatch {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
+				assert(	TokenBuilder.isOpperator(token, OperatorMask.Copy)) : "Found "+TokenBuilder.tokenToString(token);
 				charDictionary(token).writeASCIICopyOptional(token,value);
 				
 			} else {
 				//default
+				assert(	TokenBuilder.isOpperator(token, OperatorMask.Default)) : "Found "+TokenBuilder.tokenToString(token);
 				charDictionary(token).writeASCIIDefaultOptional(token,value);
 				
 			}

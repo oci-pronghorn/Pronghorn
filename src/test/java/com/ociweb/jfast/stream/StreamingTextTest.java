@@ -67,8 +67,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 				  OperatorMask.Constant, //W6 R16 w/o equals
 				  OperatorMask.Copy,     //W84 R31 w/o equals 
 				  OperatorMask.Default,  //W6 R16 
-				  OperatorMask.Delta,    //W85 R39 .37
-                  OperatorMask.Tail,     //W46 R15 w/o equals
+				//  OperatorMask.Delta,    //W85 R39 .37
+                //  OperatorMask.Tail,     //W46 R15 w/o equals
                 };
 
 		textTester(types,operators,"ASCII");
@@ -85,8 +85,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 				OperatorMask.Constant, //W9 R17 1.09 
 			    OperatorMask.Copy,  //W83 R84 .163
 				OperatorMask.Default, //W10 R18
-				OperatorMask.Delta,    //W110 R51  .31
-                OperatorMask.Tail,  //W57 R51  .31
+			//	OperatorMask.Delta,    //W110 R51  .31
+            //    OperatorMask.Tail,  //W57 R51  .31
                 };
 
 		textTester(types,operators,"UTF8");
@@ -255,10 +255,11 @@ public class StreamingTextTest extends BaseStreamingTest {
 					}
 				} else {
 					if (sendNulls && (f&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
-					//	System.err.println("reading normal null");
+
 						int textIdx = fr.readText(tokenLookup[f]);		
 						if (!textHeap.isNull(textIdx)) {
-							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f])+ 
+									    "Expected null found len "+textHeap.length(textIdx),
 									     true, textHeap.isNull(textIdx));
 						}	
 					} else { 

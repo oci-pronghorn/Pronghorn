@@ -173,8 +173,8 @@ public class FieldReaderChar {
 			assert((val&0xFF)==0x80);
 		} else {
 			if (val==NULL_STOP) {
-				//nothing to append
-				//charDictionary.setNull(idx);				
+				//nothing to append and sent value is null
+				charDictionary.setNull(idx);				
 			} else {		
 				if (charDictionary.isNull(idx)) {
 					charDictionary.setZeroLength(idx);
@@ -189,7 +189,17 @@ public class FieldReaderChar {
 	public int readASCIITailOptional(int token) {
 		int idx = token & INSTANCE_MASK;
 		
-		charDictionary.trimTail(idx, reader.readIntegerSigned());
+		//TODO: this is not reading null right!!
+		
+		int tail = reader.readIntegerUnsigned();
+		System.err.println("tail "+tail);
+		if (0==tail) {
+			charDictionary.setNull(idx);
+			return idx;
+		}
+		tail--;
+				
+		charDictionary.trimTail(idx, tail);
 		byte val = reader.readTextASCIIByte();
 		if (val==0) {
 			//nothing to append

@@ -488,7 +488,10 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value, offset, length);
 		int trimTail = heap.length(idx)-headCount; //head count is total that match from head.
-		writer.writeIntegerUnsigned(trimTail); //cut off these from tail
+		if (trimTail<0) {
+			System.err.println("write tail? "+trimTail);
+		}
+		writer.writeIntegerUnsigned(trimTail+1); //cut off these from tail
 		
 		int valueSend = length-headCount;
 		int valueStart = offset+headCount;
@@ -613,10 +616,10 @@ public class FieldWriterChar {
 	}
 	
 	public void writeNull(int token) {
-		
+		System.err.println("write null");
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-				//None and Delta (both do not use pmap)
+				//None and Delta and Tail (both do not use pmap)
 				writeClearNull(token);              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
