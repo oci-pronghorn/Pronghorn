@@ -17,7 +17,7 @@ public class FieldReaderChar {
 		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (charDictionary.itemCount()-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
 		
 		this.reader = reader;
 		this.charDictionary = charDictionary;
@@ -76,7 +76,6 @@ public class FieldReaderChar {
 		char[] targ = charDictionary.rawAccess();
 				
 		if (targIndex>nextLimit) {
-			System.err.println("make space:"+offset);
 			charDictionary.makeSpaceForAppend(offset, 2); //also space for last char
 			nextLimit = charDictionary.nextLimit(offset);
 		}

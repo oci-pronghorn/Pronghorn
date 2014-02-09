@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterChar {
@@ -15,11 +16,20 @@ public class FieldWriterChar {
 		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (charDictionary.itemCount()-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
 		this.heap = charDictionary;
 		this.writer = writer;
 	}
 
+	public void reset(DictionaryFactory df) {
+		//TODO: not sure how yet, df.reset(lastValue);
+	}	
+	public void copy(int sourceToken, int targetToken) {
+		//replace string at target with string found in source.
+//TODO: this looks like a bad idea.
+		//heap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
+	}
+	
 	public void writeUTF8CopyOptional(int token, CharSequence value) {
 		
 		int idx = token & INSTANCE_MASK;

@@ -17,7 +17,7 @@ public class FieldReaderBytes {
 		assert(byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(byteDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (byteDictionary.itemCount()-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, byteDictionary.itemCount()-1);
 		
 		this.reader = reader;
 		this.byteHeap = byteDictionary;
@@ -168,11 +168,6 @@ public class FieldReaderBytes {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			if (length<=0) {
-				System.err.println("read len:"+length+" for default");
-			}
-			
-			length--;
 			reader.readByteData(byteHeap.rawAccess(), 
 								byteHeap.allocate(idx, length),
 					            length);

@@ -10,7 +10,7 @@ public class FieldReaderLong {
 	
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;
-	private final long[]  lastValue;
+	final long[]  lastValue;
 
 
 	public FieldReaderLong(PrimitiveReader reader, long[] values) {
@@ -18,7 +18,7 @@ public class FieldReaderLong {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(values.length));
 		
-		this.INSTANCE_MASK = (values.length-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		
 		this.reader = reader;
 		this.lastValue = values;
@@ -26,6 +26,9 @@ public class FieldReaderLong {
 	
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
+	}
+	public void copy(int sourceToken, int targetToken) {
+		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
 	}
 
 	public long readLongUnsigned(int token) {
@@ -205,7 +208,9 @@ public class FieldReaderLong {
 			lastValue[token & INSTANCE_MASK] = 0;
 			return valueOfOptional;
 		} else {
-			return lastValue[token & INSTANCE_MASK] += (value>0 ? value-1 : value);
+			return lastValue[token & INSTANCE_MASK] += 
+					(value + ((value>>>63)-1) );
+					//(value>0 ? value-1 : value);
 		}
 
 	}
@@ -263,6 +268,9 @@ public class FieldReaderLong {
 				lastValue[instance] = 0;
 				return valueOfOptional;
 			} else {
+				lastValue[instance] = value;
+				//return (value + ((value>>>63)-1) );
+				
 				return value>0 ? (lastValue[instance] = value)-1 : (lastValue[instance] = value);
 			}
 		}

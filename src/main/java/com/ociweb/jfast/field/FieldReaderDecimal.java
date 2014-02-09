@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderDecimal {
@@ -18,6 +19,16 @@ public class FieldReaderDecimal {
 		this.mantissa = new FieldReaderLong(reader, decimalMantissaDictionary);
 	}
 
+	public void reset(DictionaryFactory df) {
+		df.reset(exponent.lastValue,mantissa.lastValue);
+	}	
+	public void copyExponent(int sourceToken, int targetToken) {
+		exponent.copy(sourceToken, targetToken);
+	}
+	public void copyMantissa(int sourceToken, int targetToken) {
+		mantissa.copy(sourceToken, targetToken);
+	}
+	
 	public int readDecimalExponentOptional(int token, int oppExp, int valueOfOptional) {
 		
 		//oppExp

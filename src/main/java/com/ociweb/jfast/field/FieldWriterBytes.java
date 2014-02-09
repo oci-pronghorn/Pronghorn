@@ -17,7 +17,8 @@ public class FieldWriterBytes {
 		assert(byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(byteDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = (byteDictionary.itemCount()-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (byteDictionary.itemCount()-1));
+		
 		this.heap = byteDictionary;
 		this.writer = writer;
 	}
@@ -132,7 +133,7 @@ public class FieldWriterBytes {
 	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
 		
 		int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerSigned(trimTail>=0? trimTail+optional : trimTail);
+		writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
 		
 		int valueSend = value.remaining()-headCount;
 		int startAfter = value.position()+headCount;
@@ -225,7 +226,7 @@ public class FieldWriterBytes {
 			if (len<0) {
 				len = 0;
 			}
-			writer.writeIntegerUnsigned(len+1);
+			writer.writeIntegerUnsigned(len);
 			writer.writeByteArrayData(value);
 		}
 	}
@@ -306,7 +307,7 @@ public class FieldWriterBytes {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(length+1);
+			writer.writeIntegerUnsigned(length);
 			writer.writeByteArrayData(value,offset,length);
 		}
 	}

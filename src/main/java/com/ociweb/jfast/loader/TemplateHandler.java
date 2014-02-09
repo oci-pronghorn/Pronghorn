@@ -79,6 +79,24 @@ public class TemplateHandler extends DefaultHandler {
     String templateReset;
     String templateDictionary;
     String templateXMLns;
+    
+    //must contain field id, group open, group close, sequence open close, load repl.
+    //high bit flags token and low 18 are field id so the others are free??
+    //may need to use long to avoid token lookup?
+    
+    //these templates scripts are compressed and are expanded to longs upon load.
+    
+    // 000 field
+    // 010 group open
+    // 011 group close
+    // 110 seq open
+    // 111 seq close
+    // 001 load repl
+    
+    //3  bits - group open/close seq open/close, field, repl, (6 operators)
+    //18 bits - field id
+    //21 bits total  
+    
     int[] templateScript = new int[MAX_FIELDS];
     int templateScriptIdx = 0;
     
@@ -240,6 +258,11 @@ public class TemplateHandler extends DefaultHandler {
 			biggestId = Math.max(biggestId,id);
 		}
 		name = attributes.getValue("name"); 
+		
+		//rare: used when we want special dictionary.
+		String dictionary = attributes.getValue("dictionary");
+		//more rare: used when we want to read last value from another field.
+		String key = attributes.getValue("key");
 		
 		String absentString = attributes.getValue("nt_absent_const");
 		if (null!=absentString && absentString.trim().length()>0) {

@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterDecimal {
@@ -23,6 +24,16 @@ public class FieldWriterDecimal {
 		
 	}
 
+	public void reset(DictionaryFactory df) {
+		df.reset(writerDecimalExponent.lastValue,writerDecimalMantissa.lastValue);
+	}	
+	public void copyExponent(int sourceToken, int targetToken) {
+		writerDecimalExponent.copy(sourceToken, targetToken);
+	}
+	public void copyMantissa(int sourceToken, int targetToken) {
+		writerDecimalMantissa.copy(sourceToken, targetToken);
+	}
+	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {

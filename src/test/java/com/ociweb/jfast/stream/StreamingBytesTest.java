@@ -27,7 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingBytesTest extends BaseStreamingTest {
 
-	final int fields      		      = 3000;
+	final int fields      		      = 2000;
 	final ByteBuffer[] testData    = buildTestData(fields);
 	
 	final byte[] testConst  = new byte[0];
@@ -68,8 +68,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				  OperatorMask.Constant, 
 				  OperatorMask.Copy,    
 				  OperatorMask.Default,  
-			//	  OperatorMask.Delta,    
-            //      OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
+		//		  OperatorMask.Delta,    
+        //          OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
                 };
 
 		byteTester(types,operators,"Bytes");
@@ -81,8 +81,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
-		int warmup         = 50;
-		int sampleSize     = 100;
+		int warmup         = 20;
+		int sampleSize     = 40;
 		int avgFieldSize   = ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2+1;
 		String readLabel = "Read "+label+" NoOpp in groups of "+fieldsPerGroup;
 		String writeLabel = "Write "+label+" NoOpp in groups of "+fieldsPerGroup;

@@ -55,40 +55,40 @@ public final class TypeMask {
 	//This method for debugging and therefore can produce garbage.
 	public static String toString(int typeMask) {
 		switch (typeMask) {
-		case IntegerUnsigned:
-			return "IntegerUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case IntegerUnsignedOptional:
-			return "IntegerUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case IntegerSigned:
-			return "IntegerSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case IntegerSignedOptional:
-			return "IntegerSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case LongUnsigned:
-			return "LongUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case LongUnsignedOptional:
-			return "LongUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case LongSigned:
-			return "LongSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case LongSignedOptional:
-			return "LongSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case TextASCII:
-			return "TextASCII:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case TextASCIIOptional:
-			return "TextASCIIOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case TextUTF8:
-			return "TextUTF8:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case TextUTF8Optional:
-			return "TextUTF8Optional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case Decimal:
-			return "Decimal:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case DecimalOptional:
-			return "DecimalOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case ByteArray:
-			return "ByteArray:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		case ByteArrayOptional:
-			return "ByteArrayOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		default:
-			return "unknown type:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case IntegerUnsigned:
+				return "IntegerUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case IntegerUnsignedOptional:
+				return "IntegerUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case IntegerSigned:
+				return "IntegerSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case IntegerSignedOptional:
+				return "IntegerSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case LongUnsigned:
+				return "LongUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case LongUnsignedOptional:
+				return "LongUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case LongSigned:
+				return "LongSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case LongSignedOptional:
+				return "LongSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case TextASCII:
+				return "TextASCII:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case TextASCIIOptional:
+				return "TextASCIIOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case TextUTF8:
+				return "TextUTF8:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case TextUTF8Optional:
+				return "TextUTF8Optional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case Decimal:
+				return "Decimal:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case DecimalOptional:
+				return "DecimalOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case ByteArray:
+				return "ByteArray:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case ByteArrayOptional:
+				return "ByteArrayOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			default:
+				return "unknown type:"+prefix(6,'0',Integer.toBinaryString(typeMask));
 		}
 		
 	}

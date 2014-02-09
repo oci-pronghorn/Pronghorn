@@ -10,7 +10,7 @@ public final class FieldWriterLong {
 	
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
-	private final long[]  lastValue;
+	final long[]  lastValue;
 	private final int INSTANCE_MASK;
 	private final PrimitiveWriter writer;
 
@@ -18,7 +18,7 @@ public final class FieldWriterLong {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(values.length));
 		
-		this.INSTANCE_MASK = (values.length-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.writer = writer;
 		this.lastValue = values;
 	}
@@ -26,6 +26,9 @@ public final class FieldWriterLong {
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
 	}	
+	public void copy(int sourceToken, int targetToken) {
+		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
+	}
 	
 	public void flush() {
 		writer.flush();
@@ -290,6 +293,7 @@ public final class FieldWriterLong {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
 		long delta = value - lastValue[idx];
+		//writer.writeLongSigned((delta + (1-(delta>>>63)) ));
 		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 		lastValue[idx] = value;	
 	}

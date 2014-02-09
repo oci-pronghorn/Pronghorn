@@ -10,14 +10,14 @@ public class FieldReaderInteger {
 
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;	
-	private final int[]  lastValue;
+	final int[]  lastValue;
 
 	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
 
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(isPowerOfTwo(values.length));
 		
-		this.INSTANCE_MASK = (values.length-1);
+		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.reader = reader;
 		this.lastValue = values;
 	}
@@ -32,6 +32,9 @@ public class FieldReaderInteger {
 
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
+	}
+	public void copy(int sourceToken, int targetToken) {
+		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
 	}
 
 	public int readIntegerUnsigned(int token) {
@@ -215,7 +218,9 @@ public class FieldReaderInteger {
 			lastValue[token & INSTANCE_MASK]=0;
 			return valueOfOptional;
 		} else {
-			return lastValue[token & INSTANCE_MASK] += (value>0?value-1:value);
+			return lastValue[token & INSTANCE_MASK] += 
+					(value + ((value>>>63)-1) );
+					//(value>0?value-1:value);
 		}
 	}
 
@@ -272,6 +277,8 @@ public class FieldReaderInteger {
 			if ((value = lastValue[instance] = reader.readIntegerSigned())==0) {
 				return valueOfOptional;
 			} else {
+				//lastValue[instance] = value;
+				//return (value + ((value>>>31)-1) );
 				return value>0 ? value-1 : value;
 			}
 		}

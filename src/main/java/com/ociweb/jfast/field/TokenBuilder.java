@@ -24,6 +24,10 @@ public class TokenBuilder {
 	 *   9 (4bits exp, 5bits mantissa) pmap max bytes
 	 *  22 sequence length 4M max 
 	 * 
+	 * ******* TODO: template script needs copy tokens as well (just add new opp?)
+	 * 1 token flat
+	 * 5 type
+	 * 18 source (following token is the destination)
 	 */
 	
     //group
@@ -49,7 +53,7 @@ public class TokenBuilder {
 	//4 bits of base 2 exponent 2^0 to 2^15 (shift count)
 	//5 bits of mantissa 0-32
 	
-	public static final int MAX_INSTANCE = 0xFFFFF;
+	public static final int MAX_INSTANCE = 0x3FFFF; //2^18 max fields 262144
 	//See fast writer for details and mask sizes
 	public static final int MASK_TYPE = 0x1F; //5 bits
 	public static final int SHIFT_TYPE = 26;  

@@ -27,7 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 public class ReaderWriterPrimitiveTest {
 
 	private final int speedTestSize = 30000;
-	private final int testCycles = 7;
+	private final int testCycles = 5;
 
 	//These common test values are used from the smallest test to the largest so results can be compared
 	public final static long[] unsignedLongData = new long[] {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,2097152,268435456,
@@ -69,10 +69,7 @@ public class ReaderWriterPrimitiveTest {
 	@Test
 	public void testBufferSpeed() {
 		System.gc();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-		}
+		Thread.yield();
 		
 		int fieldSize = 10;
 		int capacity = speedTestSize*fieldSize;
@@ -192,10 +189,8 @@ public class ReaderWriterPrimitiveTest {
 		}
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
 		System.gc();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-		}
+		Thread.yield();
+		
 		/////////////////
 		/////////////////
 		/////////////////
@@ -241,10 +236,7 @@ public class ReaderWriterPrimitiveTest {
 		}
 		System.out.println("    Direct      ByteBuffer: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-		}
+		Thread.yield();
 		/////////////////
 		/////////////////
 		/////////////////		
@@ -298,10 +290,7 @@ public class ReaderWriterPrimitiveTest {
 		}
 		System.out.println("                ByteArray: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-		}
+		Thread.yield();
 	}
 
 
@@ -392,10 +381,7 @@ public class ReaderWriterPrimitiveTest {
 		}
 		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte  totalWritten:"+pw.totalWritten());
 		System.gc();
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
-		}
+		Thread.yield();
 		
 	}
 	
@@ -403,7 +389,7 @@ public class ReaderWriterPrimitiveTest {
 	public void testIntegers() {
 		int fieldSize = 5;
 		
-		int intSpeedTestSize = 3000000;
+		int intSpeedTestSize = 300000;
 		
 		int passes = intSpeedTestSize / unsignedLongData.length;
 		double count = passes*unsignedLongData.length;

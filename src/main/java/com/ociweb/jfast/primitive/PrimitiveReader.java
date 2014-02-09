@@ -70,6 +70,10 @@ public final class PrimitiveReader {
 		return totalReader;
 	}
 	
+	public final void fetch() {
+		fetch(1);
+	}
+	
 	private final void fetch(int need) {
 		if (position >= limit) {
 			position = limit = 0;
@@ -90,13 +94,8 @@ public final class PrimitiveReader {
 		//not enough room at end of buffer for the need
 		int populated = limit - position;
 		int reqiredSize = need + populated;
-		if (buffer.length<reqiredSize) {
-			//max value must be computed before startup.
-			throw new UnsupportedOperationException("internal buffer is not large enough, requres "+reqiredSize+" bytes");
-		} else {
-			
-			System.arraycopy(buffer, position, buffer, 0, populated);
-		}
+		assert(buffer.length>=reqiredSize) : "internal buffer is not large enough, requres "+reqiredSize+" bytes";
+		System.arraycopy(buffer, position, buffer, 0, populated);
 		//fill and return
 		int filled = input.fill(buffer, populated, buffer.length - populated);
 		totalReader+=filled;
@@ -105,20 +104,9 @@ public final class PrimitiveReader {
 	}
 
 	
-	public final int readBytesPosition(int length) {
-		//ensure all the bytes are in the buffer before calling visitor
-		if (position>limit - length) {
-			fetch(length);
-		}
-		int result = position;
-		position+=length;
-		return result;
-	}
-	
 	public final void readByteData(byte[] target, int offset, int length) {
-		if (length<0) {//TODO: refactor to assert
-			throw new ArrayIndexOutOfBoundsException("length must be positive but found "+length);
-		}
+		assert(length>0) : "length must be positive but found "+length;
+		
 		//ensure all the bytes are in the buffer before calling visitor
 		if (position>limit - length) {
 			fetch(length);
@@ -193,16 +181,6 @@ public final class PrimitiveReader {
 	/////////////////////////////////////
 	/////////////////////////////////////
 	
-	
-	public final long readLongSignedOptional() {
-		//TODO:rewrite
-		long temp = readLongSigned();
-		if (temp>0) {
-			return temp-1;
-		}
-		return temp;
-	}
-	
 	public final long readLongSigned () {
 		if (limit-position<=10) {
 			if (position>=limit) {
@@ -236,10 +214,7 @@ public final class PrimitiveReader {
 	    return accumulator|(v&0x7F);
 	}
 	
-	public final long readLongUnsignedOptional() {
-		return readLongUnsigned()-1;
-	}
-	
+
 	public final long readLongUnsigned () {
 		if (position>limit-10) {
 			if (position>=limit) {
@@ -287,11 +262,6 @@ public final class PrimitiveReader {
 	    return accumulator|(v&0x7F);
 	}
 	
-	public final int readIntegerSignedOptional() {
-		int temp = readIntegerSigned();
-		return (temp>0 ? temp-1 : temp);
-	}
-	
 	public final int readIntegerSigned () {
 		if (limit-position<=5) {
 			return readIntegerSignedSlow();
@@ -324,9 +294,6 @@ public final class PrimitiveReader {
 		return accumulator|(v&0x7F);
 	}
 	
-	public final int readIntegerUnsignedOptional() {
-		return readIntegerUnsigned()-1;
-	}
 	
 	public final int readIntegerUnsigned() {
 		if (position>limit-5) {//near the end so must do it the slow way?
@@ -509,7 +476,7 @@ public final class PrimitiveReader {
 		return buffer[position++];
 	}
 	
-	public void readTextUTF8(int charCount, Appendable target) {
+	public Appendable readTextUTF8(int charCount, Appendable target) {
 		//System.err.println("A");
 		while (--charCount>=0) {
 			if (position>=limit) {
@@ -527,19 +494,20 @@ public final class PrimitiveReader {
 				decodeUTF8(target, b);
 			}
 		}
+		return target;
 	}
 	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
 		//System.err.println("B");
 		byte b;
-		if (limit-position>=charCount<<3) { //if bigger than the text could be then use this shortcut
+		if (limit-position >= charCount<<3) { //if bigger than the text could be then use this shortcut
 			//fast
 			while (--charCount>=0) {
 				if ((b = buffer[position++])>=0) {
 					//code point 7
 					target[offset++] = (char)b;
 				} else {
-					decodeUTF8Fast(target, offset++, b);
+					decodeUTF8Fast(target, offset++, b);//untested?? why
 				}
 			}
 		} else {		

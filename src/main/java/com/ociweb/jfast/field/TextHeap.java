@@ -115,13 +115,13 @@ public class TextHeap {
 	}
 	
 	
-	//Caution: this method will create a new String instance
-	public CharSequence getSub(int idx, int start, int end) {
-		int offset = idx<<2;
-		return new String(data,
-				Math.max(0,tat[offset]+start),
-				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
-	}
+//	//Caution: this method will create a new String instance
+//	public CharSequence getSub(int idx, int start, int end) {
+//		int offset = idx<<2;
+//		return new String(data,
+//				Math.max(0,tat[offset]+start),
+//				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
+//	}
 	
 	void setZeroLength(int idx) {
 		int offset = idx<<2;
@@ -609,9 +609,9 @@ public class TextHeap {
 	//////////
 	
 
-	public char getChar(int idx, int index) {
-		return data[tat[idx<<2]+index];
-	}
+//	public char getChar(int idx, int index) {
+//		return data[tat[idx<<2]+index];
+//	}
 	
 	public int get(int idx, char[] target, int targetIdx) {
 		if (idx<0) {

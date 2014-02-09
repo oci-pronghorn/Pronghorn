@@ -101,8 +101,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 		int fieldsPerGroup = 10;
 		int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 		int operationIters = 7;
-		int warmup         = 50;
-		int sampleSize     = 100;
+		int warmup         = 20;
+		int sampleSize     = 40;
 		int avgFieldSize   = ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2+1;
 		String readLabel = "Read "+label+"Text NoOpp in groups of "+fieldsPerGroup;
 		String writeLabel = "Write "+label+"Text NoOpp in groups of "+fieldsPerGroup;
