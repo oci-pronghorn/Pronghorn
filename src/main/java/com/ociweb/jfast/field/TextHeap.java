@@ -822,4 +822,27 @@ public class TextHeap {
 		}
 		return result < 0 ? 0 : result;
 	}
+
+
+	public void copy(int sourceIdx, int targetIdx) {
+		int len;
+		int startFrom;
+		char[] buffer;
+		if (sourceIdx<0) {
+			int offset = sourceIdx << 1; //this shift left also removes the top bit! sweet.
+			startFrom = initTat[offset];
+			len = initTat[offset+1] - startFrom;
+			buffer = initBuffer;
+		} else {
+			int offset = sourceIdx<<2;
+			startFrom = tat[offset];
+			len = tat[offset+1] - startFrom;
+			buffer = data;
+		}
+		if (len<0) {
+			setNull(targetIdx);
+			return;
+		}		
+		set(targetIdx, buffer, startFrom, length(sourceIdx));
+	}
 }

@@ -105,7 +105,7 @@ public final class PrimitiveReader {
 
 	
 	public final void readByteData(byte[] target, int offset, int length) {
-		assert(length>0) : "length must be positive but found "+length;
+		assert(length>=0) : "length must be positive but found "+length;
 		
 		//ensure all the bytes are in the buffer before calling visitor
 		if (position>limit - length) {

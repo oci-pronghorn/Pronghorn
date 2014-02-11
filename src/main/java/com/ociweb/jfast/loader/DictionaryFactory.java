@@ -480,25 +480,19 @@ public class DictionaryFactory {
 		}
 	}
 	
-	public void reset(char[][] values) {
-		int i = charInitCount;
-		while (--i>=0) {
-			int j = charInitIndex[i];
-			values[j] = charInitValue[i];
-		}
+	public void reset(TextHeap heap) {
+		heap.reset();
 	}
 	
-	public void reset(byte[][] values) {
-		int i = byteInitCount;
-		while (--i>=0) {
-			int j = byteInitIndex[i];
-			values[j] = byteInitValue[i];
-		}
+	public void reset(ByteHeap heap) {
+		heap.reset();
 	}
-
+	
 	public int[] getTokenLookup() {
 		return tokenLookup;
 	}
+
+
 	
 	
 }

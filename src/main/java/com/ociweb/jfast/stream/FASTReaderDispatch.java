@@ -784,7 +784,7 @@ public class FASTReaderDispatch{
 	public int readBytes(int id) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
 	//	System.out.println("reading "+TokenBuilder.tokenToString(token));

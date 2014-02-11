@@ -246,7 +246,7 @@ public final class PrimitiveWriter {
     }
     
     protected int computeFlushToIndex() {
-		if (safetyStackDepth>0) {
+		if (safetyStackDepth>0) {//TODO: this never happens according to coverage test?
 			//only need to check first entry on stack the rest are larger values
 			int safetyLimit = (((int)safetyStackPosPos[0])&POS_POS_MASK) -1;//still modifying this position but previous is ready to go.
 			return (safetyLimit < limit ? safetyLimit :limit);
@@ -734,7 +734,7 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeIntegerUnsigned(int value) {
-		
+		assert(value>=0);
 		if (value < 0x00000080) {
 			if (buffer.length - limit < 1) {
 				output.flush();

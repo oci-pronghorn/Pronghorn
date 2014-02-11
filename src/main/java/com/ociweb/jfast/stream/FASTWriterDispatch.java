@@ -604,7 +604,7 @@ public final class FASTWriterDispatch {
 	public void write(int id, byte[] value, int offset, int length) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
@@ -690,8 +690,9 @@ public final class FASTWriterDispatch {
 	public void write(int id, ByteBuffer buffer) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		
-		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
+				
+		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.

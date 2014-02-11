@@ -121,7 +121,15 @@ public class UTF8EncodeDecodeTest {
 	public void testUTF8DecoderAppendableLargeBuffer() {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 				
-		PrimitiveReader pr = new PrimitiveReader(new FASTInputByteArray(data));
+		//required to have extra data to make it call the faster side of the implementation.
+		int copies = 10;
+		byte[] paddedData = new byte[copies*data.length];
+		while (--copies>=0) {
+			System.arraycopy(data, 0, paddedData, copies*data.length, data.length);
+		}
+		
+		PrimitiveReader pr = new PrimitiveReader(new FASTInputByteArray(paddedData));
+		pr.fetch();
 		String target = pr.readTextUTF8(unicodeTestString.length(), new StringBuilder()).toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	

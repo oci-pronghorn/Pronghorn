@@ -213,7 +213,7 @@ public class ByteHeap {
 			totalDesired = makeRoomAfterFirst(offsetNeedingRoom, totalDesired);
 		}
 		if (totalDesired>0) {
-			throw new RuntimeException("TextHeap must be initialized with more ram for required text");
+			throw new RuntimeException("Must be initialized with more memory for required text. TotalWorkspace:"+totalWorkspace+" TotalContent:"+totalContent+" DataLength:"+dataLength+" Count:"+textItemCount+" need "+totalDesired);
 		}
 	}
 
@@ -260,6 +260,9 @@ public class ByteHeap {
 			int leftBound = 0;
 			int rightBound = 0;
 			int textLength = tat[offset+1] - tat[offset]; 
+			if (textLength<0) {
+				textLength = 0;
+			}
 			int totalNeed = textLength;
 			
 			if (preserveWorkspace) {
@@ -760,5 +763,27 @@ public class ByteHeap {
 			result = tat[offset+1] - tat[offset];
 		}
 		return result < 0 ? 0 : result;
+	}
+
+	public void copy(int sourceIdx, int targetIdx) {
+		int len;
+		int startFrom;
+		byte[] buffer;
+		if (sourceIdx<0) {
+			int offset = sourceIdx << 1; //this shift left also removes the top bit! sweet.
+			startFrom = initTat[offset];
+			len = initTat[offset+1] - startFrom;
+			buffer = initBuffer;
+		} else {
+			int offset = sourceIdx<<2;
+			startFrom = tat[offset];
+			len = tat[offset+1] - startFrom;
+			buffer = data;
+		}
+		if (len<0) {
+			setNull(targetIdx);
+			return;
+		}		
+		set(targetIdx, buffer, startFrom, length(sourceIdx));
 	}
 }

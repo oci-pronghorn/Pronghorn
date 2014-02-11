@@ -5,6 +5,7 @@ package com.ociweb.jfast.field;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterBytes {
@@ -21,6 +22,14 @@ public class FieldWriterBytes {
 		
 		this.heap = byteDictionary;
 		this.writer = writer;
+	}
+	
+	public void reset(DictionaryFactory df) {
+		df.reset(heap);
+	}	
+	public void copy(int sourceToken, int targetToken) {
+		//replace string at target with string found in source.
+		heap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
 	}
 
 	private void writeClearNull(int token) {
@@ -76,10 +85,18 @@ public class FieldWriterBytes {
 		
 	}
 
+	static int count = 0;
+	
 	public void writeBytesTail(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
+				
 		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
 		value.position(value.limit());//skip over the data just like we wrote it.
+		
+		if (++count<10) {
+			//System.err.println("1 TailBytesWritten:"+(writer.totalWritten()-start));
+		}
+		
 	}
 
 	public void writeBytesTailOptional(int token, ByteBuffer value) {
@@ -133,12 +150,16 @@ public class FieldWriterBytes {
 	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
 		
 		int trimTail = heap.length(idx)-headCount;
+		if (trimTail<0) {
+			throw new ArrayIndexOutOfBoundsException();
+		}
 		writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
 		
 		int valueSend = value.remaining()-headCount;
 		int startAfter = value.position()+headCount;
 				
 		writer.writeIntegerUnsigned(valueSend);
+		//System.err.println("tail send:"+valueSend+" for headCount "+headCount);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		
@@ -254,9 +275,8 @@ public class FieldWriterBytes {
 		
 		int valueSend = length-headCount;
 		int startAfter = offset+headCount;
-		int sendLen = valueSend;
 		
-		writer.writeIntegerUnsigned(sendLen);
+		writer.writeIntegerUnsigned(valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
 	}
@@ -319,7 +339,13 @@ public class FieldWriterBytes {
 
 	public void writeBytesTail(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
+		
 		writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
+	
+		if (++count<10) {
+			//writer.flush();
+			//System.err.println("2 TailBytesWritten:"+(writer.totalWritten()-start));
+		}
 	}
 
 	public void writeBytesDelta(int token, byte[] value, int offset, int length) {

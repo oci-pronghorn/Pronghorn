@@ -187,9 +187,7 @@ public class FieldReaderChar {
 	
 	public int readASCIITailOptional(int token) {
 		int idx = token & INSTANCE_MASK;
-		
-		//TODO: this is not reading null right!!
-		
+				
 		int tail = reader.readIntegerUnsigned();
 		if (0==tail) {
 			charDictionary.setNull(idx);

@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderBytes {
@@ -35,13 +36,18 @@ public class FieldReaderBytes {
 
 	public int readBytesTail(int token) {
 		int idx = token & INSTANCE_MASK;
-		
+				
 		int trim = reader.readIntegerUnsigned();
 		int length = reader.readIntegerUnsigned(); 
 
+		
 		//append to tail	
 		int targetOffset = byteHeap.makeSpaceForAppend(idx, trim, length);
+		System.err.println("TailRead: trim "+trim+" length "+length+" offset "+targetOffset);
+
 		reader.readByteData(byteHeap.rawAccess(), targetOffset, length);
+		
+		
 		return idx;
 	}
 	
@@ -85,6 +91,7 @@ public class FieldReaderBytes {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
+			assert(length>=0) : "Unsigned int are never negative";
 			reader.readByteData(byteHeap.rawAccess(), 
 								byteHeap.allocate(idx, length),
 					            length);
@@ -168,6 +175,9 @@ public class FieldReaderBytes {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
+			if (length>65535) {
+				throw new FASTException("do you really want ByteArray of size "+length);
+			}
 			reader.readByteData(byteHeap.rawAccess(), 
 								byteHeap.allocate(idx, length),
 					            length);

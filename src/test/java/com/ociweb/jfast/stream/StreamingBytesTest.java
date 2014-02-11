@@ -62,15 +62,15 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		int[] types = new int[] {
                    TypeMask.ByteArray,
                    TypeMask.ByteArrayOptional,
-				 };
+		};
 		int[] operators = new int[] {
                   OperatorMask.None,   
 				  OperatorMask.Constant, 
 				  OperatorMask.Copy,    
 				  OperatorMask.Default,  
 		//		  OperatorMask.Delta,    
-        //          OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
-                };
+        //        OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
+        };
 
 		byteTester(types,operators,"Bytes");
 	}
@@ -193,6 +193,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr);
 		ByteHeap byteHeap = fr.byteHeap();
 		
+		int token = 0;
+		int prevToken = 0;
+		
 		long start = System.nanoTime();
 		int i = operationIters;
 		if (i<3) {
@@ -208,22 +211,23 @@ public class StreamingBytesTest extends BaseStreamingTest {
 			
 			while (--f>=0) {
 				
-				int token = tokenLookup[f]; 	
+				prevToken = token;
+				token = tokenLookup[f]; 	
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && (i&0xF)==0  && TokenBuilder.isOptional(token)) {
 						
-						int idx = fr.readBytes(tokenLookup[f]);		
+						int idx = fr.readBytes(token);		
 						if (!byteHeap.isNull(idx)) {
-							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+							assertEquals("Error:"+TokenBuilder.tokenToString(token),
 									     true, byteHeap.isNull(idx));
 						}	
 						
 					} else { 
 						try {
-							int textIdx = fr.readBytes(tokenLookup[f]);						
+							int textIdx = fr.readBytes(token);						
 							
 							byte[] tdc = testConst;
-							assertTrue("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+							assertTrue("Error:"+TokenBuilder.tokenToString(token),
 									byteHeap.equals(textIdx, tdc, 0, tdc.length));
 							
 						} catch (Exception e) {
@@ -235,24 +239,25 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				} else {
 					if (sendNulls && (f&0xF)==0  && TokenBuilder.isOptional(token)) {
 						
-						int idx = fr.readBytes(tokenLookup[f]);		
+						int idx = fr.readBytes(token);		
 						if (!byteHeap.isNull(idx)) {
-							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f])+ 
+							assertEquals("Error:"+TokenBuilder.tokenToString(token)+ 
 									    "Expected null found len "+byteHeap.length(idx),
 									     true, byteHeap.isNull(idx));
 						}	
 						
 					} else { 
 						try {
-							int textIdx = fr.readBytes(tokenLookup[f]);						
+							int textIdx = fr.readBytes(token);						
 														
 							if ((1&i) == 0) {
-								assertTrue("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+								assertTrue("Error: Token:"+TokenBuilder.tokenToString(token)+
+										    " PrevToken:"+TokenBuilder.tokenToString(prevToken),
 										  byteHeap.equals(textIdx, testData[f])
 										);  
 							} else {
 								byte[] tdc = testDataBytes[f];
-								assertTrue("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
+								assertTrue("Error:"+TokenBuilder.tokenToString(token),
 										  byteHeap.equals(textIdx, tdc, 0, tdc.length)
 										);
 								
@@ -261,6 +266,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 							
 						} catch (Exception e) {
 							System.err.println("expected text; "+testData[f]);
+							System.err.println("PrevToken:"+TokenBuilder.tokenToString(prevToken));
+							System.err.println("token:"+TokenBuilder.tokenToString(token));
 							e.printStackTrace();
 							throw new FASTException(e);
 						}

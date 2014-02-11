@@ -18,7 +18,6 @@ public class OperatorMask {
 	public static final int Increment = 0x05;  //0101
 	//RESSERVED 2 spots for future int/decimal operator
 	//Because decimals only have 3 bits for operator of each part.
-	//TODO: may add load/repl flag here for using this as source to pull ? or put second column in template/dictionaryFact?
 	public static final int Tail      = 0x08;  //1000 // NEVER NUMERIC
 	
 	private static String prefix(int len, char c, String value) {

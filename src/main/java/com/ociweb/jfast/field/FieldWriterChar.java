@@ -22,12 +22,11 @@ public class FieldWriterChar {
 	}
 
 	public void reset(DictionaryFactory df) {
-		//TODO: not sure how yet, df.reset(lastValue);
+		df.reset(heap);
 	}	
 	public void copy(int sourceToken, int targetToken) {
 		//replace string at target with string found in source.
-//TODO: this looks like a bad idea.
-		//heap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
+		heap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
 	}
 	
 	public void writeUTF8CopyOptional(int token, CharSequence value) {
