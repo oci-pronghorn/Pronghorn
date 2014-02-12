@@ -179,7 +179,10 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 				}
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
-			}			
+			}	
+			
+			System.err.println("TST:"+Long.toBinaryString(pr.getFingerprint()));
+			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 			fr.closeGroup(groupToken);

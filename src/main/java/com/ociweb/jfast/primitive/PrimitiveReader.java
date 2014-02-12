@@ -26,6 +26,7 @@ public final class PrimitiveReader {
 	private final FASTInput input;
 	private long totalReader;
 	final byte[] buffer;
+	final long[] hashBuffer;
 	
 	private final byte[] invPmapStack;
 	private int invPmapStackDepth;
@@ -57,6 +58,8 @@ public final class PrimitiveReader {
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
+		this.hashBuffer = new long[initBufferSize];
+		
 		this.position = 0;
 		this.limit = 0;
 		
@@ -75,6 +78,7 @@ public final class PrimitiveReader {
 	}
 	
 	private final void fetch(int need) {
+		
 		if (position >= limit) {
 			position = limit = 0;
 		}
@@ -82,6 +86,10 @@ public final class PrimitiveReader {
 		if (need <= remainingSpace) {	
 			//fill remaining space if possible to reduce fetch later
 			int filled = input.fill(buffer, limit, remainingSpace);
+			//
+			buildFingerprint(filled, 0==limit ? 0 : hashBuffer[limit-1]);			
+			
+			//
 			totalReader += filled;
 			limit += filled;
 		} else {
@@ -98,11 +106,44 @@ public final class PrimitiveReader {
 		System.arraycopy(buffer, position, buffer, 0, populated);
 		//fill and return
 		int filled = input.fill(buffer, populated, buffer.length - populated);
-		totalReader+=filled;
+		
 		position = 0;
+		buildFingerprint(filled, hashBuffer[limit-1]);	
+		
+		totalReader+=filled;
 		limit = populated+filled;
 	}
 
+	long lastHash = 0;
+	
+	private void buildFingerprint(int c, long prev) {
+		//TODO: how to turn this on and off?
+		if (false) {
+			//TODO: replace this with garbage free Rabin fingerprints 
+			// called on RecordEnd or SequenceBottom
+			
+			int x = position;
+			while (--c>=0) {
+				
+				prev ^= buffer[x];
+				prev ^= prev >> 23; // https://code.google.com/p/fast-hash/
+				prev *= 0x2127599bf4325c37l;
+				prev ^= prev >> 47;
+				
+				hashBuffer[x++] = prev;			
+			}
+			lastHash = prev;
+		}
+	}
+
+	/**
+	 * Call this at the 
+	 * @return
+	 */
+	
+	public long getFingerprint() {
+		return hashBuffer[position];
+	}
 	
 	public final void readByteData(byte[] target, int offset, int length) {
 		assert(length>=0) : "length must be positive but found "+length;
