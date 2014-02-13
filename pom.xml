@@ -6,6 +6,13 @@
   <name>jFAST</name>
   <description>FIX adapted for STreaming</description>
   <dependencies>
+        <dependency>
+                <!-- Note that the javadoc plugin inside the rabin pom may need to be removed due to dependency changes -->
+				<groupId>org.rabinfingerprint</groupId>
+				<artifactId>rabinfingerprint</artifactId>
+				<version>1.0.0-SNAPSHOT</version>
+				<!-- url>https://github.com/themadcreator/rabinfingerprint</url -->
+        </dependency>
       	<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>

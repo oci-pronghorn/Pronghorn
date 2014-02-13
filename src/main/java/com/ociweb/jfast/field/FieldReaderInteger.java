@@ -22,7 +22,7 @@ public class FieldReaderInteger {
 		this.lastValue = values;
 	}
 	
-	static boolean isPowerOfTwo(int length) {
+	public static boolean isPowerOfTwo(int length) {
 		
 		while (0==(length&1)) {
 			length = length>>1;

@@ -6,6 +6,7 @@ package com.ociweb.jfast.primitive;
 import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.rabin.WindowedFingerprint;
 
 /**
  * PrimitiveReader
@@ -31,7 +32,9 @@ public final class PrimitiveReader {
 	private final byte[] invPmapStack;
 	private int invPmapStackDepth;
 	
-	
+	//Hack test to get a feeling for the cost of adding this feature.
+	//TODO: this call creates garbage and must not be here in the future.
+	WindowedFingerprint windowedFingerprint = com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
 	
 	private int position;
 	private int limit;
@@ -49,7 +52,8 @@ public final class PrimitiveReader {
 		invPmapStackDepth = invPmapStack.length-2;
 		
 	}
-	
+
+
 	public PrimitiveReader(FASTInput input) {
 		this(4096,input,1024);
 	}
@@ -117,20 +121,26 @@ public final class PrimitiveReader {
 	long lastHash = 0;
 	
 	private void buildFingerprint(int c, long prev) {
+		
+		
 		//TODO: how to turn this on and off?
-		if (false) {
+		if (true) {
 			//TODO: replace this with garbage free Rabin fingerprints 
 			// called on RecordEnd or SequenceBottom
 			
 			int x = position;
 			while (--c>=0) {
 				
-				prev ^= buffer[x];
-				prev ^= prev >> 23; // https://code.google.com/p/fast-hash/
-				prev *= 0x2127599bf4325c37l;
-				prev ^= prev >> 47;
+				windowedFingerprint.eat(buffer[x]);
 				
-				hashBuffer[x++] = prev;			
+				hashBuffer[x++] = windowedFingerprint.fingerprint();
+						
+//				prev ^= buffer[x];
+//				prev ^= prev >> 23; // https://code.google.com/p/fast-hash/
+//				prev *= 0x2127599bf4325c37l;
+//				prev ^= prev >> 47;
+//				
+//				hashBuffer[x++] = prev;			
 			}
 			lastHash = prev;
 		}
