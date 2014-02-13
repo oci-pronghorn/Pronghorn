@@ -16,7 +16,7 @@ public class WindowedFingerprint {
 	private long[] pushTable; //512 length
 	
 	///TODO: may need two sets of these to get the required error bars.
-	long fingerprint;
+	public long fingerprint;
 	
 	WindowedFingerprint(int windowSize, int degree, long[] pushTable, long[] popTable) {
 		assert(FieldReaderInteger.isPowerOfTwo(windowSize));
@@ -34,24 +34,20 @@ public class WindowedFingerprint {
 	
 	
 	public void eat(byte b) {
-		fingerprint = ((fingerprint << 8) | (b & 0xFF)) ^ pushTable[(int) ((fingerprint >> shift) & 0x1FF)];
+		fingerprint = ((fingerprint << 8) | (b & 0xFF)) ^ pushTable[(((short)(fingerprint >> shift)) & 0x1FF)];
+
+//		//pull out tail first before we step on it
+//		if (windowBytes>0) {
+//			windowBytes--;
+//		} else {
+//			tail = tail&byteWindowMask;
+//			fingerprint ^= popTable[(byteWindow[tail++] & 0xFF)];
+//		}
 		
-		byteWindow[head++] = b;
-		head = head&byteWindowMask;
-		
-		if (windowBytes>0) {
-			windowBytes--;
-		} else {
-			fingerprint ^= popTable[(byteWindow[tail++] & 0xFF)];
-			tail = tail&byteWindowMask;
-		}
-		
+//		head = head&byteWindowMask;
+//		byteWindow[head++] = b;
+				
 	}
 		
-	
-	public long fingerprint() {
-		return fingerprint;
-	}
-	
-	
+		
 }

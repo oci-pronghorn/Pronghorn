@@ -91,7 +91,7 @@ public final class PrimitiveReader {
 			//fill remaining space if possible to reduce fetch later
 			int filled = input.fill(buffer, limit, remainingSpace);
 			//
-			buildFingerprint(filled, 0==limit ? 0 : hashBuffer[limit-1]);			
+			buildFingerprint(filled);			
 			
 			//
 			totalReader += filled;
@@ -112,38 +112,30 @@ public final class PrimitiveReader {
 		int filled = input.fill(buffer, populated, buffer.length - populated);
 		
 		position = 0;
-		buildFingerprint(filled, hashBuffer[limit-1]);	
+		buildFingerprint(filled);	
 		
 		totalReader+=filled;
 		limit = populated+filled;
 	}
-
-	long lastHash = 0;
 	
-	private void buildFingerprint(int c, long prev) {
+	private void buildFingerprint(int c) {
 		
 		
 		//TODO: how to turn this on and off?
-		if (true) {
+		//if (true) {
 			//TODO: replace this with garbage free Rabin fingerprints 
 			// called on RecordEnd or SequenceBottom
 			
 			int x = position;
 			while (--c>=0) {
 				
-				windowedFingerprint.eat(buffer[x]);
-				
-				hashBuffer[x++] = windowedFingerprint.fingerprint();
-						
-//				prev ^= buffer[x];
-//				prev ^= prev >> 23; // https://code.google.com/p/fast-hash/
-//				prev *= 0x2127599bf4325c37l;
-//				prev ^= prev >> 47;
-//				
-//				hashBuffer[x++] = prev;			
+				//write finger print based on all previous bytes not including this one.
+				hashBuffer[x] = windowedFingerprint.fingerprint;
+				//now eat this byte
+			//	windowedFingerprint.eat(buffer[x]);
+				windowedFingerprint.eat(buffer[x++]);		
 			}
-			lastHash = prev;
-		}
+		//}
 	}
 
 	/**
