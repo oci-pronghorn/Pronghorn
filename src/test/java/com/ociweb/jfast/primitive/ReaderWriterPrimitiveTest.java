@@ -9,22 +9,26 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Pipe;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.junit.Test;
 
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
-import com.ociweb.jfast.primitive.adapter.FASTInputByteChannel;
+import com.ociweb.jfast.primitive.adapter.FASTInputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteChannel;
+import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class ReaderWriterPrimitiveTest {
@@ -79,7 +83,7 @@ public class ReaderWriterPrimitiveTest {
 		Thread.yield();
 		
 		int fieldSize = 10;
-		int capacity = speedTestSize*fieldSize;
+		final int capacity = speedTestSize*fieldSize;
 		final int passes = speedTestSize / unsignedLongData.length;
 		final double count = passes*unsignedLongData.length;
 		final boolean minimizeLatency = false;
@@ -136,40 +140,36 @@ public class ReaderWriterPrimitiveTest {
 		/////////////////
 		/////////////////
 		/////////////////		
-		
-		//TODO: not sure how to simulate SocketChannel for testing here, need more thought.
-		
-		//channel!
-	/*			
-		try {
-	//		Pipe pipe = Pipe.open();
-		
+
+		try {			            
+			//run this as new thread to block until we connect further down.
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					ServerSocketChannel serverSocketChannel;
+					try {
+						serverSocketChannel = ServerSocketChannel.open();
+						serverSocketChannel.socket().bind(new InetSocketAddress(8083));
+						serverSocketChannel.configureBlocking(true);
+						SocketChannel socketChannel = serverSocketChannel.accept();
+						pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputSocketChannel(socketChannel), (int) count, minimizeLatency);
+					} catch (IOException e) {
+						pwIOSpeed = null;
+						e.printStackTrace();
+					}
+					
+				}}).start();
+			
 			SocketChannel socketChannel = SocketChannel.open();
+			socketChannel.configureBlocking(false);			
+			socketChannel.connect(new InetSocketAddress("127.0.0.1", 8083));
+			//must loop because we are in NON-blocking mode.
+			while (!socketChannel.finishConnect()) {
+				Thread.yield();
+			}
 			
-		//	socketChannel.
-			
-		//	SocketAddress remote = new SocketAddress();
-			socketChannel.connect(remote);
-			
-			//socketChannel.
-			
-			//socketChannel.socket();
-			
-			//TODO: should flush rather than run out of space. set buffer size very small here after fix.
-			//BUT we must flush between Groups/pmaps because attempting in the middle does not move position!!
-			
-			pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteChannel(pipe.sink()), (int) count, minimizeLatency);
-			
-			
-			
-			//SelectorProvider
-			
-			//pipe.source();
-			
-			//socketChannel.
-					//new SocketChannel();
-			
-			pr = new PrimitiveReader(new FASTInputByteChannel(socketChannel));
+			pr = new PrimitiveReader(new FASTInputSocketChannel(socketChannel));
 			
 			
 		} catch (IOException e) {
@@ -221,7 +221,7 @@ public class ReaderWriterPrimitiveTest {
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
 		System.gc();
 		Thread.yield();
-*/		
+	
 		
 		
 		/////////////////

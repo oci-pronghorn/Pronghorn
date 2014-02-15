@@ -17,7 +17,7 @@ public class FASTInputByteBuffer implements FASTInput {
 		this.byteBuffer = byteBuffer;
 	}
 	
-	public int fill(byte[] target, int offset, int length) {
+	public int fill(int offset, int length) {
 		if (length > byteBuffer.remaining()) {
 			length = byteBuffer.remaining();
 			
@@ -37,8 +37,8 @@ public class FASTInputByteBuffer implements FASTInput {
 	}
 
 	@Override
-	public void init(DataTransfer dataTransfer) {
-		targetBuffer = dataTransfer.wrap();
+	public void init(byte[] targetBuffer) {
+		this.targetBuffer = ByteBuffer.wrap(targetBuffer);
 	}
 
 	public void reset() {

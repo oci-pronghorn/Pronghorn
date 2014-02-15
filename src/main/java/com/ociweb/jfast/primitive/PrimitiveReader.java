@@ -71,14 +71,8 @@ public final class PrimitiveReader {
 		
 		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
 		this.invPmapStackDepth = invPmapStack.length-2;
-		
-		//TODO: add init for each input with its own data transfer instance?
-		//1. read data available from each input
-		//2. if no new data ready (compact or yeild)
-		//2. confirm match up to that point and detect error
-		//3. if fetch need is unmet loop again
-		
-		input.init(new DataTransfer(this));
+				
+		input.init(this.buffer);
 	}
 	
 	public long totalRead() {
@@ -89,32 +83,43 @@ public final class PrimitiveReader {
 		fetch(1);
 	}
 	
-	private final void fetch(int need) {
-		
+	//Will not return until the need is met because the parser has
+	//determined that we can not continue until this data is provided.
+	//this call may however read in more than the need because its ready
+	//and convenient to reduce future calls.
+	private void fetch(int need) {
+		need = fetchAvail(need);
+		while (need>0) {
+			Thread.yield();
+			//TODO: add check for compact here we have some time do the work.
+			need = fetchAvail(need);
+		}
+				
+	}
+	
+	private int fetchAvail(int need) {
 		if (position >= limit) {
 			position = limit = 0;
 		}
 		int remainingSpace = buffer.length-limit;
 		if (need <= remainingSpace) {	
 			//fill remaining space if possible to reduce fetch later
-			int filled = input.fill(buffer, limit, remainingSpace);
+						
+			int filled = input.fill(limit, remainingSpace);
+
 			//
-			if (filled<need) {
-				//need to load more but how?
-			}
-			
+			totalReader += filled;
+			limit += filled;		
 			//
 			buildFingerprint(filled);	
 			//
-			totalReader += filled;
-			limit += filled;
+			return need-filled;
 		} else {
-			noRoomOnFetch(need);
+			return noRoomOnFetch(need);
 		}
-	
 	}
 
-	private void noRoomOnFetch(int need) {
+	private int noRoomOnFetch(int need) {
 		//not enough room at end of buffer for the need
 		int populated = limit - position;
 		int reqiredSize = need + populated;
@@ -123,16 +128,17 @@ public final class PrimitiveReader {
 		
 		System.arraycopy(buffer, position, buffer, 0, populated);
 		//fill and return
-		int filled = input.fill(buffer, populated, buffer.length - populated);
-		if (filled<need) {
-			//need to load more but how?
-		}
+		
+		int filled = input.fill(populated, buffer.length - populated);
+		
 		
 		position = 0;
-		buildFingerprint(filled);	
-		
 		totalReader+=filled;
 		limit = populated+filled;
+		
+		buildFingerprint(filled);	
+		return need-filled;
+		
 	}
 	
 	private void buildFingerprint(int c) {
@@ -149,7 +155,7 @@ public final class PrimitiveReader {
 		//802.11n  100mbps - 300mbps
 		
 		//without finger prints the stream can easily saturate 500mbps
-		//finger prints will add no more than 20% overhead and therefore is
+		//finger prints will add no more than 10% overhead and therefore is
 		//a good fit for all these slow networks where it would not be
 		//appropriate to send 3 separate streams.
 		
@@ -158,7 +164,7 @@ public final class PrimitiveReader {
 			//TODO: replace this with garbage free Rabin fingerprints 
 			// called on RecordEnd or SequenceBottom
 			
-			int x = position;
+			int x = limit-c;
 			while (--c>=0) {
 				
 				//write finger print based on all previous bytes not including this one.
@@ -204,15 +210,26 @@ public final class PrimitiveReader {
 		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
 		
 		//force internal buffer to grow if its not big enough for this pmap
-		if (limit - position < pmapMaxSize) {
-			fetch(pmapMaxSize); //largest fetch
-		}
+//		if (limit - position < pmapMaxSize) {
+//			fetch(pmapMaxSize); //largest fetch
+//		}
 
 		int k = invPmapStackDepth -= (pmapMaxSize+2);         
-				
+    	if (position>=limit) {
+			fetch(1);
+		}		
 		bitBlock = buffer[position];
-        do {
-		} while ((invPmapStack[k++] = buffer[position++])>=0);
+		if (limit-position>pmapMaxSize) {
+	        do {
+			} while ((invPmapStack[k++] = buffer[position++])>=0);	
+		} else {
+			//must use slow path becausee we are near the end of the buffer.
+	        do {				
+	        	if (position>=limit) {
+					fetch(1);
+				}				
+			} while ((invPmapStack[k++] = buffer[position++])>=0);
+		}
         invPmapStack[k] = (byte)(3+pmapMaxSize+(invPmapStackDepth-k));
 		
         //set next bit to read

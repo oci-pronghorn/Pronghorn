@@ -13,6 +13,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 public class FASTInputStream implements FASTInput {
 
 	private InputStream inst;
+	private byte[] targetBuffer;
 	
 	public FASTInputStream(InputStream inst) {
 		this.inst = inst;
@@ -22,14 +23,15 @@ public class FASTInputStream implements FASTInput {
 		this.inst = inst;
 	}
 	
-	public int fill(byte[] buffer, int offset, int len) {
+	public int fill(int offset, int len) {
 		try {
 			
-			int available = inst.available();
+			len = Math.min(len,inst.available());
+			
 			
 			//Only fill with the bytes avail.
 			
-			int result = inst.read(buffer, offset, len);
+			int result = inst.read(targetBuffer, offset, len);
 			if (result<0) {
 				return 0;
 			}
@@ -40,7 +42,8 @@ public class FASTInputStream implements FASTInput {
 	}
 
 	@Override
-	public void init(DataTransfer dataTransfer) {
+	public void init(byte[] targetBuffer) {
+		this.targetBuffer = targetBuffer;
 	}
 	
 }

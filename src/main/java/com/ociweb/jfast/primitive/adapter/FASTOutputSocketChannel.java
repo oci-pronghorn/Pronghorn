@@ -6,20 +6,23 @@ package com.ociweb.jfast.primitive.adapter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.GatheringByteChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.WritableByteChannel;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
 
-public class FASTOutputByteChannel implements FASTOutput {
+public class FASTOutputSocketChannel implements FASTOutput {
 
-	private final GatheringByteChannel channel;
+	private final SocketChannel channel;
 	private ByteBuffer writerBuffer;
 	private DataTransfer dataTransfer;
 	
 	
-	public FASTOutputByteChannel(GatheringByteChannel channel) {
+	public FASTOutputSocketChannel(SocketChannel channel) {
 		this.channel = channel;
+		
 	}
 
 	@Override

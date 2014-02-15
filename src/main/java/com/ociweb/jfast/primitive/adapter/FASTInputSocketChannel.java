@@ -10,28 +10,28 @@ import java.nio.channels.SocketChannel;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
-public class FASTInputByteChannel implements FASTInput {
+public class FASTInputSocketChannel implements FASTInput {
 
 	private final SocketChannel socketChannel;
-	private ByteBuffer byteBuffer;
+	private ByteBuffer targetBuffer;
 	
-	public FASTInputByteChannel(SocketChannel channel) {
+	public FASTInputSocketChannel(SocketChannel channel) {
 		this.socketChannel = channel;
 		assert(!channel.isBlocking()) : "Only non blocking SocketChannel is supported.";
 	}
 	
 	@Override
-	public int fill(byte[] buffer, int offset, int count) {
+	public int fill(int offset, int count) {
 		
 		try {
 			
-			byteBuffer.clear();
-			byteBuffer.position(offset);
-			byteBuffer.limit(offset+count);
+			targetBuffer.clear();
+			targetBuffer.position(offset);
+			targetBuffer.limit(offset+count);
 			
 			//Only non-blocking socket channel is supported so this read call will
 			//return only the bytes that are immediately available.
-			int fetched = socketChannel.read(byteBuffer);
+			int fetched = socketChannel.read(targetBuffer);
 			if (fetched<0) {
 				return 0;
 			} else {
@@ -45,8 +45,8 @@ public class FASTInputByteChannel implements FASTInput {
 	}
 
 	@Override
-	public void init(DataTransfer dataTransfer) {
-		byteBuffer = dataTransfer.wrap();
+	public void init(byte[] targetBuffer) {
+		this.targetBuffer = ByteBuffer.wrap(targetBuffer);
 	}
 
 }

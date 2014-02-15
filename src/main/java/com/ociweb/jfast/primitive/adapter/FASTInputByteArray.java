@@ -12,6 +12,7 @@ public class FASTInputByteArray implements FASTInput {
 	private byte[] buffer;
 	private int limit;
 	private int position;
+	private byte[] targetBuffer;
 	
 	public FASTInputByteArray(byte[] buffer) {
 		this.buffer = buffer;
@@ -33,16 +34,17 @@ public class FASTInputByteArray implements FASTInput {
 		position = 0;
 	}
 	
-	public int fill(byte[] target, int offset, int length) {
+	public int fill(int offset, int length) {
 		if (length > limit-position) {
 			length = limit-position;
 		}
-		System.arraycopy(buffer, position, target, offset, length);
+		System.arraycopy(buffer, position, targetBuffer, offset, length);
 		position+=length;
 		return length;
 	}
 
 	@Override
-	public void init(DataTransfer dataTransfer) {
+	public void init(byte[] targetBuffer) {
+		this.targetBuffer = targetBuffer;
 	}
 }
