@@ -5,29 +5,33 @@ package com.ociweb.jfast.primitive.adapter;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SocketChannel;
 
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
 public class FASTInputByteChannel implements FASTInput {
 
-	private final ReadableByteChannel channel;
+	private final SocketChannel socketChannel;
 	private ByteBuffer byteBuffer;
 	
-	public FASTInputByteChannel(ReadableByteChannel sourceChannel) {
-		this.channel = sourceChannel;
+	public FASTInputByteChannel(SocketChannel channel) {
+		this.socketChannel = channel;
+		assert(!channel.isBlocking()) : "Only non blocking SocketChannel is supported.";
 	}
 	
 	@Override
 	public int fill(byte[] buffer, int offset, int count) {
 		
 		try {
+			
 			byteBuffer.clear();
 			byteBuffer.position(offset);
 			byteBuffer.limit(offset+count);
 			
-			int fetched = channel.read(byteBuffer);
+			//Only non-blocking socket channel is supported so this read call will
+			//return only the bytes that are immediately available.
+			int fetched = socketChannel.read(byteBuffer);
 			if (fetched<0) {
 				return 0;
 			} else {

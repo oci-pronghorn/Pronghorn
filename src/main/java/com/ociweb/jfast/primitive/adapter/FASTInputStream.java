@@ -24,6 +24,11 @@ public class FASTInputStream implements FASTInput {
 	
 	public int fill(byte[] buffer, int offset, int len) {
 		try {
+			
+			int available = inst.available();
+			
+			//Only fill with the bytes avail.
+			
 			int result = inst.read(buffer, offset, len);
 			if (result<0) {
 				return 0;

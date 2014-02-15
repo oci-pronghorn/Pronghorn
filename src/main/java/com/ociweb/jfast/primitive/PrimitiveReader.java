@@ -32,6 +32,8 @@ public final class PrimitiveReader {
 	private final byte[] invPmapStack;
 	private int invPmapStackDepth;
 	
+	private final boolean useFingerprint = false;
+	
 	//Hack test to get a feeling for the cost of adding this feature.
 	//TODO: this call creates garbage and must not be here in the future.
 	WindowedFingerprint windowedFingerprint = com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
@@ -70,6 +72,12 @@ public final class PrimitiveReader {
 		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
 		this.invPmapStackDepth = invPmapStack.length-2;
 		
+		//TODO: add init for each input with its own data transfer instance?
+		//1. read data available from each input
+		//2. if no new data ready (compact or yeild)
+		//2. confirm match up to that point and detect error
+		//3. if fetch need is unmet loop again
+		
 		input.init(new DataTransfer(this));
 	}
 	
@@ -91,8 +99,12 @@ public final class PrimitiveReader {
 			//fill remaining space if possible to reduce fetch later
 			int filled = input.fill(buffer, limit, remainingSpace);
 			//
-			buildFingerprint(filled);			
+			if (filled<need) {
+				//need to load more but how?
+			}
 			
+			//
+			buildFingerprint(filled);	
 			//
 			totalReader += filled;
 			limit += filled;
@@ -106,10 +118,15 @@ public final class PrimitiveReader {
 		//not enough room at end of buffer for the need
 		int populated = limit - position;
 		int reqiredSize = need + populated;
+		
 		assert(buffer.length>=reqiredSize) : "internal buffer is not large enough, requres "+reqiredSize+" bytes";
+		
 		System.arraycopy(buffer, position, buffer, 0, populated);
 		//fill and return
 		int filled = input.fill(buffer, populated, buffer.length - populated);
+		if (filled<need) {
+			//need to load more but how?
+		}
 		
 		position = 0;
 		buildFingerprint(filled);	
@@ -119,10 +136,25 @@ public final class PrimitiveReader {
 	}
 	
 	private void buildFingerprint(int c) {
+		//This feature will NOT be used when de-multiplexing redundant
+		//feeds for hot fail over however it will be needed for 
+		//trusted delivery of data to mobile devices that only have 1 
+		//incoming feed.
+		
+		//this works well for the last mile problem into homes or to mobile devices.
+		//Home Routers 1mbps-30mbps are common on DSL.
+		//3G       600kbps -  3.1 mbps
+		//4g         3mbps - 10mbps
+		//4glte      5mbps - 12mbps
+		//802.11n  100mbps - 300mbps
+		
+		//without finger prints the stream can easily saturate 500mbps
+		//finger prints will add no more than 20% overhead and therefore is
+		//a good fit for all these slow networks where it would not be
+		//appropriate to send 3 separate streams.
 		
 		
-		//TODO: how to turn this on and off?
-		//if (true) {
+		if (useFingerprint) {
 			//TODO: replace this with garbage free Rabin fingerprints 
 			// called on RecordEnd or SequenceBottom
 			
@@ -132,10 +164,9 @@ public final class PrimitiveReader {
 				//write finger print based on all previous bytes not including this one.
 				hashBuffer[x] = windowedFingerprint.fingerprint;
 				//now eat this byte
-			//	windowedFingerprint.eat(buffer[x]);
 				windowedFingerprint.eat(buffer[x++]);		
 			}
-		//}
+		}
 	}
 
 	/**

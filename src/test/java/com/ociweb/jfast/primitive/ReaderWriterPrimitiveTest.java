@@ -9,8 +9,11 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.Pipe;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
 
 import org.junit.Test;
@@ -134,17 +137,41 @@ public class ReaderWriterPrimitiveTest {
 		/////////////////
 		/////////////////		
 		
+		//TODO: not sure how to simulate SocketChannel for testing here, need more thought.
+		
 		//channel!
-		
-		
+	/*			
 		try {
-			Pipe pipe = Pipe.open();
+	//		Pipe pipe = Pipe.open();
+		
+			SocketChannel socketChannel = SocketChannel.open();
+			
+		//	socketChannel.
+			
+		//	SocketAddress remote = new SocketAddress();
+			socketChannel.connect(remote);
+			
+			//socketChannel.
+			
+			//socketChannel.socket();
 			
 			//TODO: should flush rather than run out of space. set buffer size very small here after fix.
 			//BUT we must flush between Groups/pmaps because attempting in the middle does not move position!!
 			
 			pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputByteChannel(pipe.sink()), (int) count, minimizeLatency);
-			pr = new PrimitiveReader(new FASTInputByteChannel(pipe.source()));
+			
+			
+			
+			//SelectorProvider
+			
+			//pipe.source();
+			
+			//socketChannel.
+					//new SocketChannel();
+			
+			pr = new PrimitiveReader(new FASTInputByteChannel(socketChannel));
+			
+			
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
@@ -194,6 +221,8 @@ public class ReaderWriterPrimitiveTest {
 		System.out.println("                ByteChannel: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns per byte");
 		System.gc();
 		Thread.yield();
+*/		
+		
 		
 		/////////////////
 		/////////////////
