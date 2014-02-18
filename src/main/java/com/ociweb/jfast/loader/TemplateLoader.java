@@ -6,6 +6,7 @@ package com.ociweb.jfast.loader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -59,18 +60,18 @@ public class TemplateLoader {
 						
 				
         try {
-    		buildCatalog(catalog, source);
+    		buildCatalog(new FileOutputStream(catalog), source);
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(BUILDING_EXCEPTION);
 		} 
 	}
 
-	public static void buildCatalog(File catalog, File source) throws ParserConfigurationException, SAXException,
+	public static void buildCatalog(OutputStream catalog, File source) throws ParserConfigurationException, SAXException,
 			IOException {
 		SAXParserFactory spfac = SAXParserFactory.newInstance();
 		SAXParser sp = spfac.newSAXParser();
-		FASTOutput output = new FASTOutputStream(new FileOutputStream(catalog));
+		FASTOutput output = new FASTOutputStream(catalog);
 		TemplateHandler handler = new TemplateHandler(output);
 		
 		if (source.isFile()) {
@@ -82,6 +83,8 @@ public class TemplateLoader {
 				}
 			}
 		}
+		
+		handler.postProcessing();
 	}
 	
 	private static void printHelp(String message) {

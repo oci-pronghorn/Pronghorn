@@ -11,6 +11,7 @@ public class FieldWriterChar {
 	private final TextHeap heap;
 	private final PrimitiveWriter writer;
 	private final int INSTANCE_MASK;
+	private static final int INIT_VALUE_MASK = 0x80000000;
 	
 	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
 		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
@@ -47,14 +48,14 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		
 		if (null==value) {
-			if (heap.isNull(idx)) {
+			if (heap.isNull(idx|INIT_VALUE_MASK)) {
 				writer.writePMapBit((byte)0);
 			} else {
 				writer.writePMapBit((byte)1);
 				writer.writeNull();
 			}
 		} else {
-			if (heap.equals(idx, value)) {
+			if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 				writer.writePMapBit((byte)0);
 			} else {
 				writer.writePMapBit((byte)1);
@@ -174,7 +175,7 @@ public class FieldWriterChar {
 	public void writeUTF8Default(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -300,7 +301,7 @@ public class FieldWriterChar {
 	public void writeASCIIDefault(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -312,14 +313,14 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		
 		if (null==value) {
-			if (heap.isNull(idx)) {
+			if (heap.isNull(idx|INIT_VALUE_MASK)) {
 				writer.writePMapBit((byte)0);
 			} else {
 				writer.writePMapBit((byte)1);
 				writer.writeNull();
 			}
 		} else {
-			if (heap.equals(idx, value)) {
+			if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 				writer.writePMapBit((byte)0);
 			} else {
 				writer.writePMapBit((byte)1);
@@ -332,7 +333,7 @@ public class FieldWriterChar {
 	public void writeUTF8DefaultOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -432,7 +433,7 @@ public class FieldWriterChar {
 	public void writeUTF8Default(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -584,7 +585,7 @@ public class FieldWriterChar {
 	public void writeASCIIDefault(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -595,7 +596,7 @@ public class FieldWriterChar {
 	public void writeASCIIDefaultOptional(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

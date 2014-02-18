@@ -13,6 +13,7 @@ public class FieldWriterBytes {
 	private final ByteHeap heap;
 	private final PrimitiveWriter writer;
 	private final int INSTANCE_MASK;
+	private static final int INIT_VALUE_MASK = 0x80000000;
 	
 	public FieldWriterBytes(PrimitiveWriter writer, ByteHeap byteDictionary) {
 		assert(byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
@@ -84,18 +85,12 @@ public class FieldWriterBytes {
 		}
 		
 	}
-
-	static int count = 0;
 	
 	public void writeBytesTail(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 				
 		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
 		value.position(value.limit());//skip over the data just like we wrote it.
-		
-		if (++count<10) {
-			//System.err.println("1 TailBytesWritten:"+(writer.totalWritten()-start));
-		}
 		
 	}
 
@@ -195,7 +190,7 @@ public class FieldWriterBytes {
 	public void writeBytesDefault(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 			writer.writePMapBit((byte)0);
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
@@ -238,7 +233,7 @@ public class FieldWriterBytes {
 	public void writeBytesDefaultOptional(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
 			writer.writePMapBit((byte)0); 
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
@@ -247,7 +242,7 @@ public class FieldWriterBytes {
 			if (len<0) {
 				len = 0;
 			}
-			writer.writeIntegerUnsigned(len);
+			writer.writeIntegerUnsigned(len+1);
 			writer.writeByteArrayData(value);
 		}
 	}
@@ -323,11 +318,11 @@ public class FieldWriterBytes {
 	public void writeBytesDefaultOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(length);
+			writer.writeIntegerUnsigned(length+1);
 			writer.writeByteArrayData(value,offset,length);
 		}
 	}
@@ -341,11 +336,7 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
-	
-		if (++count<10) {
-			//writer.flush();
-			//System.err.println("2 TailBytesWritten:"+(writer.totalWritten()-start));
-		}
+
 	}
 
 	public void writeBytesDelta(int token, byte[] value, int offset, int length) {
@@ -378,7 +369,7 @@ public class FieldWriterBytes {
 	public void writeBytesDefault(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

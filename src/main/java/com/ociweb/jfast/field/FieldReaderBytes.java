@@ -174,7 +174,7 @@ public class FieldReaderBytes {
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
 			
-			int length = reader.readIntegerUnsigned();
+			int length = reader.readIntegerUnsigned()-1;
 			if (length>65535) {
 				throw new FASTException("do you really want ByteArray of size "+length);
 			}

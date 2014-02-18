@@ -43,7 +43,7 @@ public class ByteHeap {
 	//max postfix append
 	
 	
-	ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
+	public ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
 		this(singleTextSize,singleGapSize,fixedTextItemCount,0,new int[0],new byte[0][]);
 	}
 	

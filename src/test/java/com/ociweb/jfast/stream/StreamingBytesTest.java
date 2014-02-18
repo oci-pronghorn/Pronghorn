@@ -13,10 +13,14 @@ import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.FieldReaderBytes;
+import com.ociweb.jfast.field.FieldWriterBytes;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.primitive.FASTInput;
+import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
@@ -57,6 +61,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		return result;
 	}
 
+	//TODO: 2 problems - ensure pmaps are opened at the right time.
+	//                  - ensure that default is used for write.
+	
 	@Test
 	public void bytesTest() {
 		int[] types = new int[] {
@@ -74,6 +81,58 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
 		byteTester(types,operators,"Bytes");
 	}
+	
+//	@Test
+//	public void TailTest() {
+//		
+//		byte[] buffer = new byte[2048];
+//		FASTOutput output = new FASTOutputByteArray(buffer);
+//		PrimitiveWriter writer = new PrimitiveWriter(output);
+//		
+//		int singleTextSize=128;
+//		int singleGapSize=128; 
+//		int fixedTextItemCount=100;
+//		
+//		ByteHeap dictionaryWriter = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+//		FieldWriterBytes byteWriter = new FieldWriterBytes(writer, dictionaryWriter);
+//		
+//		int token = TokenBuilder.buildToken(TypeMask.ByteArray, 
+//				                            OperatorMask.Tail, 
+//				                            0);
+//		byte[] value = new byte[]{1,2,3};
+//		int offset = 0;
+//		int length = value.length;
+//		byteWriter.writeBytesTail(token, value, offset, length);
+//		byteWriter.writeBytesTail(token, value, offset, length);
+//
+//		writer.openPMap(1);
+//		byteWriter.writeBytesDefault(token, value, offset, length);
+//		writer.closePMap();
+//		writer.flush();
+//		
+//		FASTInput input = new FASTInputByteArray(buffer);
+//		PrimitiveReader reader = new PrimitiveReader(input);
+//		
+//		ByteHeap dictionaryReader = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+//		FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
+//		
+//		
+//		//read value back
+//		int id;
+//		id = byteReader.readBytesTail(token);
+//		assertTrue(dictionaryReader.equals(id, value, offset, length));
+//
+//		id = byteReader.readBytesTail(token);
+//		assertTrue(dictionaryReader.equals(id, value, offset, length));
+//
+//		reader.readPMap(1);
+//		id = byteReader.readBytesDefault(token);
+//		int len = dictionaryReader.length(id);
+//		System.err.println("len:"+len);
+//		assertTrue(dictionaryReader.equals(id, value, offset, length));
+//		
+//		
+//	}
 	
 	private void byteTester(int[] types, int[] operators, String label) {
 		

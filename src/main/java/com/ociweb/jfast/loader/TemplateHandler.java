@@ -59,8 +59,7 @@ public class TemplateHandler extends DefaultHandler {
 	DictionaryFactory factory; //create and save as needed.
 	
 	final PrimitiveWriter writer;
-	
-	
+		
     public TemplateHandler(FASTOutput output) {
     	writer = new PrimitiveWriter(output);
 	}
@@ -229,7 +228,8 @@ public class TemplateHandler extends DefaultHandler {
     		
     	} else if (qName.equalsIgnoreCase("length")) { 
     		
-    		sequenceLength = Integer.valueOf(attributes.getValue("length"));
+    		//TODO: sequenceLength = Integer.valueOf(attributes.getValue("length"));
+    		commonIdAttributes(attributes);
     		
     	} else if (qName.equalsIgnoreCase("template")) {
     		
@@ -391,6 +391,7 @@ public class TemplateHandler extends DefaultHandler {
 		
 		
 		//close stream.
+		writer.flush();
 		
 	}
 
