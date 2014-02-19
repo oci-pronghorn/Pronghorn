@@ -21,6 +21,7 @@ public abstract class BaseStreamingTest {
 	protected final int fieldsPerGroup = 10;
 	protected final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	
+	protected final int ID_TOKEN_TOGGLE = 0x1;
 	
 	protected void tester(int[] types, int[] operators, String label) {	
 		

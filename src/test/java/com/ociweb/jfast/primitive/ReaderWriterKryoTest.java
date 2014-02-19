@@ -432,6 +432,8 @@ public class ReaderWriterKryoTest {
 		
 		int intSpeedTestSize = 3000000;
 		
+		int tempInt = 0;
+		
 		String name = "KryoByteArray ";
 		
 		int passes = intSpeedTestSize / unsignedLongData.length;
@@ -590,7 +592,6 @@ public class ReaderWriterKryoTest {
 		
 		//////////////////////////////////
 		//////////////////////////////////
-        int tempInt = 0; //TODO: stop HotSpot from eliminating code, must add to all tests
         
 		writeDuration = Float.MAX_VALUE;
 		readDuration = Float.MAX_VALUE;

@@ -95,15 +95,15 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
-						fw.write(token, testExpConst, testMantConst); 
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testExpConst, testMantConst); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
-						fw.write(token, 1, testData[f]); 
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, 1, testData[f]); 
 					}
 				}			
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				

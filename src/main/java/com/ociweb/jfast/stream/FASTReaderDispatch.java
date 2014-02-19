@@ -876,7 +876,7 @@ public class FASTReaderDispatch{
 		
 		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
 		if (pmapMaxSize>0) {
-			reader.readPMap(pmapMaxSize);
+			reader.openPMap(pmapMaxSize);
 		}
 		
 		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
@@ -892,7 +892,7 @@ public class FASTReaderDispatch{
 		int token = id>=0 ? tokenLookup[id] : id;
 		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
 		if (pmapMaxSize>0) {
-			reader.popPMap();
+			reader.closePMap();
 		}
 		
 		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {

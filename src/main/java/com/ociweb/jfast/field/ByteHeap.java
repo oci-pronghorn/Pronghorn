@@ -113,14 +113,6 @@ public class ByteHeap {
 	}
 	
 	
-	//Caution: this method will create a new String instance
-	public CharSequence getSub(int idx, int start, int end) {
-		int offset = idx<<2;
-		return new String(data,
-				Math.max(0,tat[offset]+start),
-				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
-	}
-	
 	void setZeroLength(int idx) {
 		int offset = idx<<2;
 		tat[offset+1] = tat[offset];

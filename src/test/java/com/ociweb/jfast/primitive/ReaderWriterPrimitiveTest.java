@@ -328,10 +328,10 @@ public class ReaderWriterPrimitiveTest {
 
 
 	private final void speedReadTest(PrimitiveReader pr) {
-		pr.readPMap(10);
+		pr.openPMap(10);
 		pr.readLongUnsigned();
 		pr.readLongSigned();
-		pr.popPMap();
+		pr.closePMap();
 	}
 
 
@@ -436,13 +436,25 @@ public class ReaderWriterPrimitiveTest {
 		while (i<unsignedLongData.length) {
 			pw.writeLongUnsigned(unsignedLongData[i]);
 			pw.writeLongSigned(unsignedLongData[i]);
-			pw.writeLongSigned(-unsignedLongData[i++]);
+			pw.writeLongSigned(-unsignedLongData[i]);
+			
+			pw.writeLongSignedOptional(unsignedLongData[i]);
+			if (0!=unsignedLongData[i]) {
+				pw.writeLongSignedOptional(-unsignedLongData[i]);
+			}
+			i++;
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
 			pw.writeIntegerSigned(unsignedIntData[i]);
 			pw.writeIntegerSigned(-unsignedIntData[i]);			
-			pw.writeIntegerUnsigned(unsignedIntData[i++]);
+			pw.writeIntegerUnsigned(unsignedIntData[i]);
+			
+			pw.writeIntegerSignedOptional(unsignedIntData[i]);
+			if (0!=unsignedIntData[i]) {
+				pw.writeIntegerSignedOptional(-unsignedIntData[i]);
+			}
+			i++;
 		}
 		
 		pw.flush();
@@ -455,13 +467,25 @@ public class ReaderWriterPrimitiveTest {
 		while (i<unsignedLongData.length) {
 			assertEquals(unsignedLongData[i], pr.readLongUnsigned());
 			assertEquals(unsignedLongData[i], pr.readLongSigned());
-			assertEquals(-unsignedLongData[i++], pr.readLongSigned());
+			assertEquals(-unsignedLongData[i], pr.readLongSigned());
+			
+			assertEquals(unsignedLongData[i], pr.readLongSigned()-1);
+			if (0!=unsignedLongData[i]) {
+				assertEquals(-unsignedLongData[i], pr.readLongSigned());
+			}
+			i++;
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
 			assertEquals(unsignedIntData[i], pr.readIntegerSigned());
 			assertEquals(-unsignedIntData[i], pr.readIntegerSigned());
-			assertEquals(unsignedIntData[i++], pr.readIntegerUnsigned());
+			assertEquals(unsignedIntData[i], pr.readIntegerUnsigned());
+			
+			assertEquals(unsignedIntData[i], pr.readIntegerSigned()-1);
+			if (0!=unsignedIntData[i]) {
+				assertEquals(-unsignedIntData[i], pr.readIntegerSigned());
+			}
+			i++;
 		}
 		
 

@@ -101,15 +101,15 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);//nothing
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);//nothing
 					} else {
-						fw.write(token, testConst); 
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
-						fw.write(token, testData[f]); 
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testData[f]); 
 					}
 				}	
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
@@ -152,12 +152,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f], none);
+				     		long value = fr.readLong((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, none);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f], none);
+							long value = fr.readLong((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, none);
 							if (testConst!=value) {
 								assertEquals(testConst, value);
 							}
@@ -166,12 +166,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f], none);
+				     		long value = fr.readLong((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, none);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f], none);
+							long value = fr.readLong((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, none);
 							if (testData[f]!=value) {
 								assertEquals(testData[f], value);
 							}

@@ -203,14 +203,14 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			fr.reset(dcr); //reset message to clear the previous values
 			
 			if (maxBytes>0) {
-					pr.readPMap(maxBytes); //TODO: rename method?
+					pr.openPMap(maxBytes);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedCopyOptional(token, 0);
 			}
 			if (maxBytes>0) {
-				pr.popPMap();
+				pr.closePMap();
 			}
 		}
 		return result;
@@ -253,14 +253,14 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			fr.reset(dcr); //reset message to clear the previous values
 			
 			if (maxBytes>0) {
-					pr.readPMap(maxBytes); //TODO: rename method?
+					pr.openPMap(maxBytes);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedConstant(token);
 			}
 			if (maxBytes>0) {
-				pr.popPMap();
+				pr.closePMap();
 			}
 		}
 		return result;
@@ -303,14 +303,14 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			fr.reset(dcr); //reset message to clear the previous values
 			
 			if (maxBytes>0) {
-					pr.readPMap(maxBytes); //TODO: rename method?
+					pr.openPMap(maxBytes);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedDeltaOptional(token,0);
 			}
 			if (maxBytes>0) {
-				pr.popPMap();
+				pr.closePMap();
 			}
 		}
 		return result;

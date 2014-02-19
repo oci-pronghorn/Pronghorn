@@ -288,7 +288,6 @@ public final class PrimitiveWriter {
 			buffer[limit++] = data.get(pos++);
 		}		
 		
-		limit += lenToSend;	
 	}
 		
 	public final void writeNull() {

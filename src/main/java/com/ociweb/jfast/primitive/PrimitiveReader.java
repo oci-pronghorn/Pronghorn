@@ -185,8 +185,6 @@ public final class PrimitiveReader {
 	}
 	
 	public final void readByteData(byte[] target, int offset, int length) {
-		assert(length>=0) : "length must be positive but found "+length;
-		
 		//ensure all the bytes are in the buffer before calling visitor
 		if (position>limit - length) {
 			fetch(length);
@@ -205,7 +203,7 @@ public final class PrimitiveReader {
 	////
 	
 	//called at the start of each group unless group knows it has no pmap
-	public final void readPMap(final int pmapMaxSize) {
+	public final void openPMap(final int pmapMaxSize) {
 		//push the old index for resume
 		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
 		
@@ -255,7 +253,7 @@ public final class PrimitiveReader {
 	}
 
 	//called at the end of each group
-	public final void popPMap() {
+	public final void closePMap() {
 		//assert(bitBlock<0);
 		//assert(invPmapStack[invPmapStackDepth+1]>=0);
 		
@@ -568,7 +566,7 @@ public final class PrimitiveReader {
 	}
 	
 	public Appendable readTextUTF8(int charCount, Appendable target) {
-		//System.err.println("A");
+
 		while (--charCount>=0) {
 			if (position>=limit) {
 				fetch(1); //CAUTION: may change value of position

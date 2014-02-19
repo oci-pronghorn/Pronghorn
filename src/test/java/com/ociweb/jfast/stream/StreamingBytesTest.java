@@ -60,9 +60,6 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		}
 		return result;
 	}
-
-	//TODO: 2 problems - ensure pmaps are opened at the right time.
-	//                  - ensure that default is used for write.
 	
 	@Test
 	public void bytesTest() {
@@ -75,64 +72,74 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				  OperatorMask.Constant, 
 				  OperatorMask.Copy,    
 				  OperatorMask.Default,  
-		//		  OperatorMask.Delta,    
-        //        OperatorMask.Tail,  //corrupting stream for following fields, must fix.    
+				  OperatorMask.Delta,    
+                  OperatorMask.Tail,     
         };
 
 		byteTester(types,operators,"Bytes");
 	}
 	
-//	@Test
-//	public void TailTest() {
-//		
-//		byte[] buffer = new byte[2048];
-//		FASTOutput output = new FASTOutputByteArray(buffer);
-//		PrimitiveWriter writer = new PrimitiveWriter(output);
-//		
-//		int singleTextSize=128;
-//		int singleGapSize=128; 
-//		int fixedTextItemCount=100;
-//		
-//		ByteHeap dictionaryWriter = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
-//		FieldWriterBytes byteWriter = new FieldWriterBytes(writer, dictionaryWriter);
-//		
-//		int token = TokenBuilder.buildToken(TypeMask.ByteArray, 
-//				                            OperatorMask.Tail, 
-//				                            0);
-//		byte[] value = new byte[]{1,2,3};
-//		int offset = 0;
-//		int length = value.length;
-//		byteWriter.writeBytesTail(token, value, offset, length);
-//		byteWriter.writeBytesTail(token, value, offset, length);
-//
-//		writer.openPMap(1);
-//		byteWriter.writeBytesDefault(token, value, offset, length);
-//		writer.closePMap();
-//		writer.flush();
-//		
-//		FASTInput input = new FASTInputByteArray(buffer);
-//		PrimitiveReader reader = new PrimitiveReader(input);
-//		
-//		ByteHeap dictionaryReader = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
-//		FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
-//		
-//		
-//		//read value back
-//		int id;
-//		id = byteReader.readBytesTail(token);
-//		assertTrue(dictionaryReader.equals(id, value, offset, length));
-//
-//		id = byteReader.readBytesTail(token);
-//		assertTrue(dictionaryReader.equals(id, value, offset, length));
-//
-//		reader.readPMap(1);
-//		id = byteReader.readBytesDefault(token);
-//		int len = dictionaryReader.length(id);
-//		System.err.println("len:"+len);
-//		assertTrue(dictionaryReader.equals(id, value, offset, length));
-//		
-//		
-//	}
+	@Test
+	public void TailTest() {
+		
+		byte[] buffer = new byte[2048];
+		FASTOutput output = new FASTOutputByteArray(buffer);
+		PrimitiveWriter writer = new PrimitiveWriter(output);
+		
+		int singleTextSize=128;
+		int singleGapSize=128; 
+		int fixedTextItemCount=128; //must be power of two
+		
+		ByteHeap dictionaryWriter = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+		FieldWriterBytes byteWriter = new FieldWriterBytes(writer, dictionaryWriter);
+		
+		int token = TokenBuilder.buildToken(TypeMask.ByteArray, 
+				                            OperatorMask.Tail, 
+				                            0);
+		byte[] value = new byte[]{1,2,3};
+		int offset = 0;
+		int length = value.length;
+		byteWriter.writeBytesTail(token, value, offset, length);
+		byteWriter.writeBytesDelta(token, value, offset, length);
+		byteWriter.writeBytesConstant(token);
+
+		writer.openPMap(1);
+			byteWriter.writeBytesCopy(token, value, offset, length);
+			byteWriter.writeBytesDefault(token, value, offset, length);
+			writer.closePMap();
+		writer.flush();
+		
+		FASTInput input = new FASTInputByteArray(buffer);
+		PrimitiveReader reader = new PrimitiveReader(input);
+		
+		ByteHeap dictionaryReader = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+		FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
+		
+		
+		//read value back
+		int id;
+		id = byteReader.readBytesTail(token);
+		assertTrue(dictionaryReader.equals(id, value, offset, length));
+
+		id = byteReader.readBytesDelta(token);
+		assertTrue(dictionaryReader.equals(id, value, offset, length));
+
+		id = byteReader.readBytesConstant(token);
+		assertTrue(dictionaryReader.equals(id, value, offset, length));
+		
+		reader.openPMap(1);
+		
+			id = byteReader.readBytesCopy(token);
+			assertTrue(dictionaryReader.equals(id, value, offset, length));
+			
+			id = byteReader.readBytesDefault(token);
+			assertTrue(dictionaryReader.equals(id, value, offset, length));
+			
+		reader.closePMap();
+		
+		
+		
+	}
 	
 	private void byteTester(int[] types, int[] operators, String label) {
 		
@@ -204,30 +211,30 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && ((i&0xF)==0)  && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
 						if ((i&1)==0) {
 							testContByteBuffer.mark();
-							fw.write(token,testContByteBuffer); //write byte buffer
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testContByteBuffer); //write byte buffer
 							testContByteBuffer.reset();
 							
 						} else {
 							byte[] array = testConst;
-							fw.write(token, array, 0 , array.length); 
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
 						}
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0)  && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
 						if ((i&1)==0) {
 							//first failing test
 							testData[f].mark();
-							fw.write(token,testData[f]); //write byte buffer
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testData[f]); //write byte buffer
 							testData[f].reset();
 						} else {
 							byte[] array = testDataBytes[f];
-							fw.write(token, array, 0 , array.length); 
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
 						}
 					}
 				}
@@ -275,7 +282,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && (i&0xF)==0  && TokenBuilder.isOptional(token)) {
 						
-						int idx = fr.readBytes(token);		
+						int idx = fr.readBytes((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
 						if (!byteHeap.isNull(idx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(token),
 									     true, byteHeap.isNull(idx));
@@ -283,7 +290,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 						
 					} else { 
 						try {
-							int textIdx = fr.readBytes(token);						
+							int textIdx = fr.readBytes((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
 							
 							byte[] tdc = testConst;
 							assertTrue("Error:"+TokenBuilder.tokenToString(token),
@@ -298,7 +305,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 				} else {
 					if (sendNulls && (f&0xF)==0  && TokenBuilder.isOptional(token)) {
 						
-						int idx = fr.readBytes(token);		
+						int idx = fr.readBytes((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
 						if (!byteHeap.isNull(idx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(token)+ 
 									    "Expected null found len "+byteHeap.length(idx),
@@ -307,7 +314,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 						
 					} else { 
 						try {
-							int textIdx = fr.readBytes(token);						
+							int textIdx = fr.readBytes((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
 														
 							if ((1&i) == 0) {
 								assertTrue("Error: Token:"+TokenBuilder.tokenToString(token)+

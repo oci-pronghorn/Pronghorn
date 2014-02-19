@@ -87,11 +87,21 @@ public class FieldWriterBytes {
 	}
 	
 	public void writeBytesTail(int token, ByteBuffer value) {
+		
 		int idx = token & INSTANCE_MASK;
 				
 		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
 		value.position(value.limit());//skip over the data just like we wrote it.
 		
+	}
+		
+
+	public void writeBytesTail(int token, byte[] value, int offset, int length) {
+		
+		int idx = token & INSTANCE_MASK;
+		
+		writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
+
 	}
 
 	public void writeBytesTailOptional(int token, ByteBuffer value) {
@@ -144,6 +154,8 @@ public class FieldWriterBytes {
 	
 	private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
 		
+	
+		
 		int trimTail = heap.length(idx)-headCount;
 		if (trimTail<0) {
 			throw new ArrayIndexOutOfBoundsException();
@@ -159,18 +171,6 @@ public class FieldWriterBytes {
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		
 	}
-	/*
-	 * 	int trimTail = heap.length(idx)-headCount;
-		writer.writeIntegerUnsigned(trimTail);
-		
-		int valueSend = length-headCount;
-		int startAfter = offset+headCount;
-		int sendLen = valueSend+optional;
-		
-		writer.writeIntegerUnsigned(sendLen);
-		writer.writeByteArrayData(value, startAfter, valueSend);
-		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
-	 */
 	
 
 	public void writeBytesCopy(int token, ByteBuffer value) {
@@ -330,13 +330,6 @@ public class FieldWriterBytes {
 	public void writeBytes(byte[] value, int offset, int length) {
 		writer.writeIntegerUnsigned(length);
 		writer.writeByteArrayData(value,offset,length);
-	}
-
-	public void writeBytesTail(int token, byte[] value, int offset, int length) {
-		int idx = token & INSTANCE_MASK;
-		
-		writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
-
 	}
 
 	public void writeBytesDelta(int token, byte[] value, int offset, int length) {

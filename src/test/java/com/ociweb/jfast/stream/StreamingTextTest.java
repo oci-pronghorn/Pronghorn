@@ -166,25 +166,24 @@ public class StreamingTextTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
 						if ((i&1)==0) {
-							fw.write(token,testConstSeq);
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testConstSeq);
 						} else {
 							char[] array = testConst;
-							fw.write(token, array, 0 , array.length); 
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
 						}
 					}
 				} else {
 					if (sendNulls && ((f&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
-					//	System.err.println("sending normal null");
-						fw.write(token);
+						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
 						if ((i&1)==0) {
-							fw.write(token,testData[f]);
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testData[f]);
 						} else {
 							char[] array = testDataChars[f];
-							fw.write(token, array, 0 , array.length); 
+							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
 						}
 					}
 				}
@@ -228,7 +227,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
 					if (sendNulls && (i&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
-						int textIdx = fr.readText(tokenLookup[f]);		
+						int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 									     true, textHeap.isNull(textIdx));
@@ -236,7 +235,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 						
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
+							int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
 							
 							char[] tdc = testConst;
 
@@ -255,7 +254,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 				} else {
 					if (sendNulls && (f&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
-						int textIdx = fr.readText(tokenLookup[f]);		
+						int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f])+ 
 									    "Expected null found len "+textHeap.length(textIdx),
@@ -263,7 +262,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 						}	
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
+							int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
 							
 							char[] tdc = testDataChars[f];
 							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {

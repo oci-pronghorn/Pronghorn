@@ -266,7 +266,7 @@ public class PrimitivePMAPTest {
 		
 		int maxPMapSize = testData.length; //in bytes
 		//open this pmap
-		pr.readPMap(maxPMapSize);
+		pr.openPMap(maxPMapSize);
 		
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
@@ -288,7 +288,7 @@ public class PrimitivePMAPTest {
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(0,pr.popPMapBit());
 		//close
-		pr.popPMap();
+		pr.closePMap();
 		
 	}
 	
@@ -306,14 +306,14 @@ public class PrimitivePMAPTest {
 		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
-		pr.readPMap(2);
+		pr.openPMap(2);
 		
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		//stop at this point to load another pmap and read it all before continuing
-			pr.readPMap(2);
+			pr.openPMap(2);
 			//first byte of second pmap
 			assertEquals(0,pr.popPMapBit());
 			assertEquals(0,pr.popPMapBit());
@@ -335,7 +335,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,pr.popPMapBit());
 			assertEquals(0,pr.popPMapBit());
 			//resume with first pmap
-			pr.popPMap();
+			pr.closePMap();
 		///
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
@@ -349,7 +349,7 @@ public class PrimitivePMAPTest {
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		//close
-		pr.popPMap();
+		pr.closePMap();
 		
 	}
 	
@@ -372,14 +372,14 @@ public class PrimitivePMAPTest {
 		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
-		pr.readPMap(2);
+		pr.openPMap(2);
 		
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		//stop at this point to load another pmap and read it all before continuing
-			pr.readPMap(2);
+			pr.openPMap(2);
 			//first byte of second pmap
 			assertEquals(0,pr.popPMapBit());
 			assertEquals(0,pr.popPMapBit());
@@ -389,7 +389,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,pr.popPMapBit());
 			assertEquals(0,pr.popPMapBit());
 			// stop here and load the third pmap
-			pr.readPMap(2);
+			pr.openPMap(2);
 				assertEquals(0,pr.popPMapBit());
 				assertEquals(1,pr.popPMapBit());
 				assertEquals(1,pr.popPMapBit());
@@ -406,7 +406,7 @@ public class PrimitivePMAPTest {
 				assertEquals(0,pr.popPMapBit());
 				assertEquals(0,pr.popPMapBit());
 				
-			pr.popPMap();
+			pr.closePMap();
 			//second byte of second pmap
 			assertEquals(1,pr.popPMapBit());
 			assertEquals(1,pr.popPMapBit());
@@ -420,7 +420,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,pr.popPMapBit());
 			assertEquals(0,pr.popPMapBit());
 			//resume with first pmap
-			pr.popPMap();
+			pr.closePMap();
 		///
 		assertEquals(0,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
@@ -434,7 +434,7 @@ public class PrimitivePMAPTest {
 		assertEquals(1,pr.popPMapBit());
 		assertEquals(1,pr.popPMapBit());
 		//close
-		pr.popPMap();
+		pr.closePMap();
 		
 	}
 	
@@ -594,7 +594,7 @@ public class PrimitivePMAPTest {
     		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
 		    while (--i>=0) {
 			    	byte[] pmapData = testPmaps[i];
-			    	pr.readPMap(maxWrittenBytes);
+			    	pr.openPMap(maxWrittenBytes);
 			    	
 			    	int j = pmapData.length;
 			    	if (j==0) {
@@ -628,7 +628,7 @@ public class PrimitivePMAPTest {
 				    		assertEquals(0,pr.popPMapBit());
 				    	}				    	
 			    	}
-			    	pr.popPMap();
+			    	pr.closePMap();
 		    }
 		    
     	} finally {
@@ -656,7 +656,7 @@ public class PrimitivePMAPTest {
 
 		long start = System.nanoTime();
 	    while (--i>=0) {
-		    	pr.readPMap(maxWrittenBytes);
+		    	pr.openPMap(maxWrittenBytes);
 		    	
 		    	int j = testPmaps[i].length;
 		    	while (--j>=0) {
@@ -672,7 +672,7 @@ public class PrimitivePMAPTest {
 		    		result |=pr.popPMapBit();
 		    	}	
 		    	
-		    	pr.popPMap();
+		    	pr.closePMap();
 	    }
 	    printReadResults(readOverhead, buffer, System.nanoTime()-start);
 		return result;

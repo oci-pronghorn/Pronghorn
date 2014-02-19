@@ -35,19 +35,18 @@ public class FieldReaderBytes {
 
 
 	public int readBytesTail(int token) {
+		
+		//return readBytesCopy(token);
+		
 		int idx = token & INSTANCE_MASK;
 				
 		int trim = reader.readIntegerUnsigned();
 		int length = reader.readIntegerUnsigned(); 
-
 		
 		//append to tail	
 		int targetOffset = byteHeap.makeSpaceForAppend(idx, trim, length);
-		System.err.println("TailRead: trim "+trim+" length "+length+" offset "+targetOffset);
-
 		reader.readByteData(byteHeap.rawAccess(), targetOffset, length);
-		
-		
+				
 		return idx;
 	}
 	
@@ -87,10 +86,14 @@ public class FieldReaderBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
+			//System.err.println("z");
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
-			
+			//System.err.println("a");
 			int length = reader.readIntegerUnsigned();
+			if (length>65535 || length<0) {
+				throw new FASTException("do you really want ByteArray of size "+length);
+			}
 			assert(length>=0) : "Unsigned int are never negative";
 			reader.readByteData(byteHeap.rawAccess(), 
 								byteHeap.allocate(idx, length),
@@ -175,7 +178,7 @@ public class FieldReaderBytes {
 		} else {
 			
 			int length = reader.readIntegerUnsigned()-1;
-			if (length>65535) {
+			if (length>65535 || length<0) {
 				throw new FASTException("do you really want ByteArray of size "+length);
 			}
 			reader.readByteData(byteHeap.rawAccess(), 

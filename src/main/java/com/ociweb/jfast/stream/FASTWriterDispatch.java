@@ -213,7 +213,7 @@ public final class FASTWriterDispatch {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
 		//only optional field types can use this method.
-		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));
+		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE))); //TODO: in testing assert(failOnBadArg()) 
 		
 		//select on type, each dictionary will need to remember the null was written
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {

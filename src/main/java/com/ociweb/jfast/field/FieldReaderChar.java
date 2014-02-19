@@ -318,17 +318,7 @@ public class FieldReaderChar {
 
 		//append to tail	
 		int targetOffset = charDictionary.makeSpaceForAppend(idx, trim, utfLength);
-		
-	//	int dif = charDictionary.length(idx);
-		
-	//	System.err.println("read: trim:"+trim+" utfLen:"+utfLength+" target:"+targetOffset+" made space "+dif);
-		
 		reader.readTextUTF8(charDictionary.rawAccess(), targetOffset, utfLength);
-//		System.err.println("recv "+charDictionary.get(idx, new StringBuilder()));
-		//TODO: this was written but why not found by get above??
-//		System.err.println("recv "+new String(charDictionary.rawAccess(), targetOffset, utfLength));
-		
-		
 		return idx;
 	}
 	

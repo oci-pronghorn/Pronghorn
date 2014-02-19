@@ -110,6 +110,7 @@ public class UTF8EncodeDecodeTest {
 		char[] target = new char[unicodeTestString.length()];
 		
 		PrimitiveReader pr = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
+		pr.fetch();
 		pr.readTextUTF8(target, 0, unicodeTestString.length());
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
@@ -141,6 +142,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		
 		PrimitiveReader pr = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
+		pr.fetch();
 		String target = pr.readTextUTF8(unicodeTestString.length(), new StringBuilder()).toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	

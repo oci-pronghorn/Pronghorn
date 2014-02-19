@@ -61,8 +61,8 @@ public final class FieldWriterLong {
 	 */
 	
 	public void writeLongUnsigned(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
+		//int idx = token & INSTANCE_MASK;
+		//lastValue[idx] = value;//TODO: not sure if this feature will be needed.
 		writer.writeLongUnsigned(value);
 	}
 	
@@ -186,8 +186,8 @@ public final class FieldWriterLong {
 	////////////////
 	
 	public void writeLongSigned(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;//TODO: not sure if this feature will be needed.
+		//int idx = token & INSTANCE_MASK;
+		//lastValue[idx] = value;//TODO: not sure if this feature will be needed.
 		writer.writeLongSigned(value);
 	}
 	

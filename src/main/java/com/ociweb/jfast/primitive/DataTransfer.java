@@ -15,10 +15,6 @@ public final class DataTransfer {
 		this.writer = writer;
 		this.wrappedByteBuffer = ByteBuffer.wrap(writer.buffer);
 	}
-	
-	public DataTransfer(PrimitiveReader reader) {
-		this.wrappedByteBuffer = ByteBuffer.wrap(reader.buffer);
-	}
 
 	public ByteBuffer wrap() {
 		return wrappedByteBuffer;
