@@ -86,11 +86,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		FASTOutput output = new FASTOutputByteArray(buffer);
 		PrimitiveWriter writer = new PrimitiveWriter(output);
 		
-		int singleTextSize=128;
-		int singleGapSize=128; 
-		int fixedTextItemCount=128; //must be power of two
+		int singleSize=14;
+		int singleGapSize=8;
+		int fixedTextItemCount=16; //must be power of two
 		
-		ByteHeap dictionaryWriter = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+		ByteHeap dictionaryWriter = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
 		FieldWriterBytes byteWriter = new FieldWriterBytes(writer, dictionaryWriter);
 		
 		int token = TokenBuilder.buildToken(TypeMask.ByteArray, 
@@ -106,13 +106,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		writer.openPMap(1);
 			byteWriter.writeBytesCopy(token, value, offset, length);
 			byteWriter.writeBytesDefault(token, value, offset, length);
-			writer.closePMap();
+		writer.closePMap();
 		writer.flush();
 		
 		FASTInput input = new FASTInputByteArray(buffer);
 		PrimitiveReader reader = new PrimitiveReader(input);
 		
-		ByteHeap dictionaryReader = new ByteHeap(singleTextSize, singleGapSize, fixedTextItemCount);
+		ByteHeap dictionaryReader = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
 		FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
 		
 		
@@ -189,7 +189,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -256,7 +256,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100);
 		ByteHeap byteHeap = fr.byteHeap();
 		
 		int token = 0;
@@ -377,7 +377,6 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		//TODO: this hack is not right
 		pw = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
 	}
 	
@@ -392,8 +391,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
 	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
 		input = new FASTInputByteArray(writtenData, writtenBytes);
-		//TODO: bug here requires larger buffer.
-		pr = new PrimitiveReader(writtenData.length*10, input, maxGroupCount*10);
+		pr = new PrimitiveReader(writtenData.length, input, maxGroupCount);
 	}
 	
 }

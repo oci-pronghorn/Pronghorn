@@ -57,7 +57,6 @@ public class TemplateLoader {
 			printHelp("Unable to find source: "+source);
 			System.exit(FILE_NOT_FOUND);
 		}
-						
 				
         try {
     		buildCatalog(new FileOutputStream(catalog), source);

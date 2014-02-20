@@ -24,7 +24,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FASTReaderDispatch{
 
 	private int templateStackHead = 0;
-	private int[] templateStack = new int[100];// //TODO: need max depth?
+	private final int[] templateStack;
 	
 	private final PrimitiveReader reader;
 	private final int[] tokenLookup; //array of tokens as field id locations
@@ -64,7 +64,7 @@ public class FASTReaderDispatch{
 
 	
 		
-	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr) {
+	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int maxTemplates) {
 		this.reader = reader;
 		this.tokenLookup = dcr.getTokenLookup();
 		
@@ -83,6 +83,7 @@ public class FASTReaderDispatch{
 		this.templateWriterChar    = new FieldWriterChar[maxTemplates];
 		this.templateWriterBytes   = new FieldWriterBytes[maxTemplates];
 		
+		this.templateStack = new int[maxTemplates];
 	}
 
 	public void reset(DictionaryFactory df) {
@@ -230,7 +231,7 @@ public class FASTReaderDispatch{
 			
 			int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
 			
-			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) { ///TODO: this looks backwards is it right?
+			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				longLookup[id] =  decimalDictionary(token).readDecimalMantissa(token, oppMant, decimalMantissaOptionalValue);
 			} else {
 				longLookup[id] =  decimalDictionary(token).readDecimalMantissaOptional(token, decimalMantissaOptionalValue);

@@ -144,7 +144,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -205,7 +205,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();
@@ -326,7 +326,6 @@ public class StreamingTextTest extends BaseStreamingTest {
 
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		//TODO: this hack is not right
 		pw = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
 	}
 	
@@ -341,8 +340,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 
 	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
 		input = new FASTInputByteArray(writtenData, writtenBytes);
-		//TODO: bug here requires larger buffer.
-		pr = new PrimitiveReader(writtenData.length*10, input, maxGroupCount*10);
+		pr = new PrimitiveReader(writtenData.length, input, maxGroupCount);
 	}
 	
 }

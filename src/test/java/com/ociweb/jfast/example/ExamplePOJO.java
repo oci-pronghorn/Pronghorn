@@ -10,7 +10,7 @@ public class ExamplePOJO {
 	final byte[]  		 bytesValue;
 	final String 	     charSequenceValue;
 	
-	final long  	     mantissaValue; //TODO: may want to make new money type?
+	final long  	     mantissaValue; 
 	final int   		 exponentValue;
 	
 	

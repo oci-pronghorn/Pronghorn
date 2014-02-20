@@ -22,17 +22,11 @@ public final class FASTWriterDispatch {
 	
 
 	private int templateStackHead = 0;
-	private int[] templateStack = new int[100];// //TODO: need max depth?
+	private final int[] templateStack;
 	
-	//TODO: add assert at beginning of every method that calls a FASTAccept
-	//       object which is only created from the template when assert is on
-	//       this will validate each FieldId/Token is the expected one in that order.
 	
 	private final PrimitiveWriter writer;
-	
-	
-	//TODO: each of these instances represent a specific dictionary.
-	
+		
 	
 	private final FieldWriterInteger writerInteger;
 	private final FieldWriterLong writerLong;
@@ -48,17 +42,14 @@ public final class FASTWriterDispatch {
 	private final FieldWriterChar[] templateWriterChar;
 	private final FieldWriterBytes[] templateWriterBytes;
 	
-		
-	//TODO: constant logic is not built for the optional/pmap case
-	
+			
 	private final int[] tokenLookup; //array of tokens as field id locations
 	
 
 	
 	
-	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr) {
+	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates) {
 		//TODO: must set the initial values for default/constants from the template here.
-		//TODO: perhaps the arrays should be allocated external so template parser can manage it?
 		
 		this.writer = writer;
 		this.tokenLookup = dcr.getTokenLookup();
@@ -76,6 +67,7 @@ public final class FASTWriterDispatch {
 		this.templateWriterChar    = new FieldWriterChar[maxTemplates];
 		this.templateWriterBytes   = new FieldWriterBytes[maxTemplates];
 		
+		this.templateStack = new int[maxTemplates];
 	}
 	
 	private FieldWriterLong longDictionary(int token) {
@@ -208,7 +200,6 @@ public final class FASTWriterDispatch {
 	 * of optional type.
 	 */
 	public void write(int id) {
-		//TODO: write null value into this optional type.
 		
 		int token = id>=0 ? tokenLookup[id] : id;
 		
@@ -378,8 +369,6 @@ public final class FASTWriterDispatch {
 			}		
 		}
 	}
-
-	//TODO: pass in writerLong instance to this private method.
 	
 	private void acceptLongUnsigned(int token, long value) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {

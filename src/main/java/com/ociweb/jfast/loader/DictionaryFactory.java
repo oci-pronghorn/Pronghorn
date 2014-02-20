@@ -118,10 +118,6 @@ public class DictionaryFactory {
 	private int[] structure;
 	private int structureCount;
 	
-	
-	public DictionaryFactory(int[] tokenLookup) {
-		this(MAX_FIELDS,MAX_FIELDS,MAX_FIELDS,DEFAULT_TEXT_LENGTH,MAX_FIELDS,MAX_FIELDS, tokenLookup);
-	}
 		
 	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
 		 this.integerCount=integerCount;

@@ -78,8 +78,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
 	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
 	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
@@ -588,9 +588,6 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, 0);
 			int j = intTestData.length;
 			while (--j>=0) {
-				//->439 ->423 -> 408 ->395
-				//294 direct write/read and 446 via static call so 152 just for switches!
-				//pw.writeIntegerUnsigned(intTestData[j]);//TODO:hak test to isolate switches? was 34 vs 446
 				result |= intTestData[j];//do nothing
 			}
 			staticWriter.closeGroup(groupToken);

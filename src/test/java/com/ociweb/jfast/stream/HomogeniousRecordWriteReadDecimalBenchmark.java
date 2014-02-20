@@ -74,8 +74,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 			
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
 	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
 	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);

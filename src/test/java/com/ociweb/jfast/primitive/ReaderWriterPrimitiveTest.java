@@ -40,8 +40,9 @@ public class ReaderWriterPrimitiveTest {
 	public final static long[] unsignedLongData = new long[] {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,
 																  1048704, 2097152, 67117056, 268435456, 4295491584l,
 																  274911461376l, 17594333528064l, 1126037345796096l,
-																  72066390130950144l, //4612248968380809216l,
-		                                                          Integer.MAX_VALUE, Long.MAX_VALUE/2 //TODO: bug in largest large signed value, (Long.MAX_VALUE/4)*3
+																  72066390130950144l, 
+		                                                          Integer.MAX_VALUE, Long.MAX_VALUE/2 , 
+		                                                          (Long.MAX_VALUE/2)+1  //Max supported positive value
 		                                                          };
 	public final static int[] unsignedIntData =   new int[]  {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,
 																 1048704,2097152,268435456, 67117056, 268435456,
@@ -771,7 +772,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					pr.readTextASCII(target, 0, target.length); //TODO: unfair test because we never run like this because it could cause stack overflow.
+					pr.readTextASCII(target, 0, target.length);
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());

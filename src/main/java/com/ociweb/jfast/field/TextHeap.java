@@ -461,8 +461,7 @@ public class TextHeap {
 		
 	}
 	
-	//TODO: add revision to tell if the value has changed since last read, would be helpful for copy.
-	//TODO: keep master list of ids that have changed? and rolling revisions?
+	//TODO: add revision to tell if the value has changed since last read, would be helpful for copy or keep master list of ids that have changed? and rolling revisions?
 	
 	int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
 		int textLen = (sourceLen-trimTail);

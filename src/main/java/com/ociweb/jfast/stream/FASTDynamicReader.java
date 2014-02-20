@@ -68,15 +68,13 @@ public class FASTDynamicReader {
 		return readerDispatch.lastInt(id);
 	}
 
-	public void openGroup(int maxPMapBytes) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	public void closeGroup(int id) {
-		// TODO Auto-generated method stub
-		
-	}
+//	public void openGroup(int maxPMapBytes) {
+//		readerDispatch.openGroup(maxPMapBytes);		
+//	}
+//
+//	public void closeGroup(int id) {
+//		readerDispatch.closeGroup(id);
+//	}
 
 
 }

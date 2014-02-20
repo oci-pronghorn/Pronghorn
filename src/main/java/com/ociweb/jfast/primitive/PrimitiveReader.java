@@ -21,8 +21,6 @@ import com.ociweb.rabin.WindowedFingerprint;
  */
 
 public final class PrimitiveReader {
-
-	//TODO: must add skip bytes methods
 	
 	private final FASTInput input;
 	private long totalReader;
@@ -60,7 +58,6 @@ public final class PrimitiveReader {
 		this(4096,input,1024);
 	}
 	
-	//TODO: extract buffer wrapper so unsafe can be injected here.
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
@@ -88,10 +85,25 @@ public final class PrimitiveReader {
 	//this call may however read in more than the need because its ready
 	//and convenient to reduce future calls.
 	private void fetch(int need) {
+		int count = 0;
 		need = fetchAvail(need);
 		while (need>0) {
-			Thread.yield();
-			//TODO: add check for compact here we have some time do the work.
+			if (0==count++) {
+				
+				//compact and prep for data spike
+				
+			} else {
+				if (count<10) { 
+					Thread.yield();
+				} else {				
+					try {
+						Thread.sleep(0, 100);
+					} catch (InterruptedException e) {
+					}						
+				}
+			}
+			
+			
 			need = fetchAvail(need);
 		}
 				

@@ -19,12 +19,12 @@ public class TokenBuilder {
 	 *
 	 * groups - eg top group is a message.
 	 * pmap bits mask
-	 * **************** TOOD: how do I know this is a group an not above call?
+	 * **************
 	 *   1 token flag
 	 *   9 (4bits exp, 5bits mantissa) pmap max bytes
 	 *  22 sequence length 4M max 
 	 * 
-	 * ******* TODO: template script needs copy tokens as well (just add new opp?)
+	 * ******* example copy token
 	 * 1 token flat
 	 * 5 type
 	 * 18 source (following token is the destination)
