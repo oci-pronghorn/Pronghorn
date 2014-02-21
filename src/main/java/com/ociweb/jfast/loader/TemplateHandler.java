@@ -96,7 +96,7 @@ public class TemplateHandler extends DefaultHandler {
     //18 bits - field id
     //21 bits total  
     
-    int[] templateScript = new int[MAX_FIELDS];
+    int[] templateScript = new int[MAX_FIELDS];//Does not need to be this big.
     int templateScriptIdx = 0;
     
     String templatesXMLns;
@@ -120,7 +120,7 @@ public class TemplateHandler extends DefaultHandler {
     int uniqueIds = 0;
     
     
-    int[][] scripts = new int[MAX_FIELDS][];
+    int[][] catalogScripts = new int[MAX_FIELDS][];
     int biggestTemplateId;
     int uniqueTemplateIds;
     
@@ -361,7 +361,7 @@ public class TemplateHandler extends DefaultHandler {
     		//give this script to the catalog
     		int[] script = new int[templateScriptIdx];
     		System.arraycopy(templateScript, 0, script, 0, templateScriptIdx);
-    		scripts[id] = script;
+    		catalogScripts[id] = script;
     		biggestTemplateId = Math.max(biggestTemplateId, id);
     		uniqueTemplateIds++;
     		
@@ -385,9 +385,12 @@ public class TemplateHandler extends DefaultHandler {
 	}
 	
 	public void postProcessing() {
+		
+
+		
 		//write catalog data.
 		//TODO: write catalog id.
-		Catalog.save(writer, uniqueIds, biggestId, tokenLookup, absentValue, uniqueTemplateIds, biggestTemplateId, scripts);
+		Catalog.save(writer, uniqueIds, biggestId, tokenLookup, absentValue, uniqueTemplateIds, biggestTemplateId, catalogScripts);
 		
 		
 		//close stream.

@@ -72,125 +72,135 @@ public final class FASTWriterDispatch {
 	
 	private FieldWriterLong longDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return writerLong;
+		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
+				writerLong :  longDictionarySpecial(token);
+		
+	}
+
+	private FieldWriterLong longDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
 	
 	private FieldWriterInteger integerDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return writerInteger;
+		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
+				writerInteger : intDictionarySpecial(token);
+		
+	}
+	
+	private FieldWriterInteger intDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
 	
 	private FieldWriterDecimal decimalDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return writerDecimal;
+		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
+				writerDecimal : decimalDictionarySpecial(token);
+
+	}
+	
+	private FieldWriterDecimal decimalDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
 	
 	private FieldWriterChar charDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return writerChar;
+		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
+				writerChar : charDictionarySpecial(token);
+		
+	}
+	
+	private FieldWriterChar charDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
 	
 	private FieldWriterBytes byteDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return writerBytes;
+		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
+			writerBytes : bytesDictionarySpecial(token);
+		
+	}
+	
+	private FieldWriterBytes bytesDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
@@ -412,30 +422,33 @@ public final class FASTWriterDispatch {
 	 */
 	public void write(int id, int value) {
 		int token = id>=0 ? tokenLookup[id] : id;
-		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
+		int t = token>>TokenBuilder.SHIFT_TYPE; //TODO: hack tests I may remove
+		int t2 = token >> TokenBuilder.SHIFT_OPER; //TODO: hack tests I may remove
+		
+		if (0==(t&1)) {//compiler does all the work.
 			//not optional
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
-				acceptIntegerUnsigned(token, value);
+			if (0==(t&2)) { 
+				acceptIntegerUnsigned(t2, token, value);
 			} else {
-				acceptIntegerSigned(token, value);
+				acceptIntegerSigned(t2, token, value);
 			}
 		} else {
 			//optional
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				acceptIntegerUnsignedOptional(token, value);
+			if (0==(t&2)) {
+				acceptIntegerUnsignedOptional(t2, token, value);
 			} else {
-				acceptIntegerSignedOptional(token, value);
+				acceptIntegerSignedOptional(t2, token, value);
 			}	
 		}
 	}
 	
-	private void acceptIntegerSigned(int token, int value) {
-
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+	private void acceptIntegerSigned(int t, int token, int value) {
+			
+		if (0==(t&1)) {
 			//none, constant, delta
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//none, delta
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//none
 					integerDictionary(token).writeIntegerSigned(value, token);
 				} else {
@@ -449,9 +462,9 @@ public final class FASTWriterDispatch {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//copy, increment
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//copy
 					integerDictionary(token).writeIntegerSignedCopy(value, token);
 				} else {
@@ -465,12 +478,13 @@ public final class FASTWriterDispatch {
 		}
 	}
 	
-	private void acceptIntegerUnsigned(int token, int value) {
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+	private void acceptIntegerUnsigned(int t, int token, int value) {
+						
+		if (0==(t&1)) {
 			//none, constant, delta
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//none, delta
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//none
 					integerDictionary(token).writeIntegerUnsigned(value, token);
 				} else {
@@ -484,9 +498,9 @@ public final class FASTWriterDispatch {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//copy, increment
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//copy
 					integerDictionary(token).writeIntegerUnsignedCopy(value, token);
 				} else {
@@ -500,12 +514,13 @@ public final class FASTWriterDispatch {
 		}
 	}
 
-	private void acceptIntegerSignedOptional(int token, int value) {
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+	private void acceptIntegerSignedOptional(int t, int token, int value) {
+		
+		if (0==(t&1)) {
 			//none, constant, delta
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//none, delta
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//none
 					integerDictionary(token).writeIntegerSignedOptional(value, token);
 				} else {
@@ -519,9 +534,9 @@ public final class FASTWriterDispatch {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//copy, increment
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//copy
 					integerDictionary(token).writeIntegerSignedCopyOptional(value, token);
 				} else {
@@ -535,12 +550,13 @@ public final class FASTWriterDispatch {
 		}
 	}
 	
-	private void acceptIntegerUnsignedOptional(int token, int value) {
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+	private void acceptIntegerUnsignedOptional(int t, int token, int value) {
+				
+		if (0==(t&1)) {
 			//none, constant, delta
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//none, delta
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//none
 					integerDictionary(token).writerIntegerUnsignedOptional(value, token);
 				} else {
@@ -554,9 +570,9 @@ public final class FASTWriterDispatch {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(t&2)) {
 				//copy, increment
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(t&4)) {
 					//copy
 					integerDictionary(token).writeIntegerUnsignedCopyOptional(value, token);
 				} else {

@@ -56,10 +56,12 @@ public class TokenBuilder {
 	public static final int MAX_INSTANCE = 0x3FFFF; //2^18 max fields 262144
 	//See fast writer for details and mask sizes
 	public static final int MASK_TYPE = 0x1F; //5 bits
-	public static final int SHIFT_TYPE = 26;  
+	
+	public static final int SHIFT_TYPE         = 26;  
+	public static final int SHIFT_OPER         = 20;
+	public static final int SHIFT_DICT         = 18;
 	
 	public static final int MASK_OPER          = 0x3F; //6 bits
-	public static final int SHIFT_OPER         = 20;
 	public static final int MASK_OPER_DECIMAL  = 0x07; //3 bits
 	public static final int SHIFT_OPER_DECIMAL = 3; 
 	
