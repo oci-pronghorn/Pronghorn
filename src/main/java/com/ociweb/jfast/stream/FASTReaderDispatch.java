@@ -621,18 +621,17 @@ public class FASTReaderDispatch{
 	public int readInt(int id, int valueOfOptional) {
 		
 		int token = id>=0 ? tokenLookup[id] : id;
-		byte t = (byte)(token>>TokenBuilder.SHIFT_TYPE);
 		
-		if (0==(t&1)) {//compiler does all the work.
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
-			if (0==(t&2)) { 
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) { 
 				return readIntegerUnsigned(token);
 			} else {
 				return readIntegerSigned(token);
 			}
 		} else {
 			//optional
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				return readIntegerUnsignedOptional(token, valueOfOptional);
 			} else {
 				return readIntegerSignedOptional(token, valueOfOptional);
@@ -641,12 +640,12 @@ public class FASTReaderDispatch{
 	}
 
 	private int readIntegerSignedOptional(int token, int valueOfOptional) {
-		int t = token >> TokenBuilder.SHIFT_OPER;
-		if (0==(t&1)) {
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					return integerDictionary(token).readIntegerSignedOptional(token,valueOfOptional);
 				} else {
@@ -660,9 +659,9 @@ public class FASTReaderDispatch{
 			
 		} else {
 			//copy, default, increment
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//copy, increment
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
 					return integerDictionary(token).readIntegerSignedCopyOptional(token,valueOfOptional);
 				} else {
@@ -678,12 +677,12 @@ public class FASTReaderDispatch{
 	}
 
 	private int readIntegerSigned(int token) {
-		int t = token>>TokenBuilder.SHIFT_OPER;
-		if (0==(t&1)) {
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					return integerDictionary(token).readIntegerSigned(token);
 				} else {
@@ -697,9 +696,9 @@ public class FASTReaderDispatch{
 			
 		} else {
 			//copy, default, increment
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//copy, increment
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
 					return integerDictionary(token).readIntegerSignedCopy(token);
 				} else {
@@ -714,12 +713,12 @@ public class FASTReaderDispatch{
 	}
 
 	private int readIntegerUnsignedOptional(int token, int valueOfOptional) {
-		int t = token>>TokenBuilder.SHIFT_OPER;
-		if (0==(t&1)) {
+		
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					return integerDictionary(token).readIntegerUnsignedOptional(token,valueOfOptional);
 				} else {
@@ -733,9 +732,9 @@ public class FASTReaderDispatch{
 			
 		} else {
 			//copy, default, increment
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//copy, increment
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
 					return integerDictionary(token).readIntegerUnsignedCopyOptional(token,valueOfOptional);
 				} else {
@@ -751,12 +750,11 @@ public class FASTReaderDispatch{
 	}
 
 	private int readIntegerUnsigned(int token) {
-		int t = token>>TokenBuilder.SHIFT_OPER;
-		if (0==(t&1)) {
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//none, delta
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					return integerDictionary(token).readIntegerUnsigned(token);
 				} else {
@@ -770,9 +768,9 @@ public class FASTReaderDispatch{
 			
 		} else {
 			//copy, default, increment
-			if (0==(t&2)) {
+			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 				//copy, increment
-				if (0==(t&4)) {
+				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
 					return integerDictionary(token).readIntegerUnsignedCopy(token);
 				} else {

@@ -36,7 +36,7 @@ public class TemplateLoaderTest {
 		}
 		
 		assertTrue("Catalog must be built.",catalogBuffer.size()>0);
-//		System.err.println("cat bytes length "+catalogBuffer.size());
+		System.err.println("cat bytes length "+catalogBuffer.size());
 		
         //reconstruct Catalog object from stream		
 		FASTInput input = new FASTInputByteArray(catalogBuffer.toByteArray());

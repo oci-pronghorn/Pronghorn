@@ -17,42 +17,32 @@ public class Catalog {
 	final int[] ids;
 	final int[] tokens;
 	final long[] absent;
+	final int[][] scriptsCatalog;
+	
 	
 	public Catalog(PrimitiveReader reader) {
 		
-		int base2Exponent = reader.readIntegerUnsigned();
-		int size = 1<<base2Exponent;
+		int templatePow = reader.readIntegerUnsigned();
+		assert(templatePow<32) : "Corrupt catalog file";
+		scriptsCatalog = new int[1<<templatePow][];
 		
-		ids = new int[size];
-		tokens = new int[size];
-		absent = new long[size];
-		
-		//read scripts
-		
-		int tokensPow = reader.readIntegerUnsigned();
-		assert(tokensPow<32) : "Corrupt catalog file";
-		
-		int maxTokens = 1<<tokensPow;
-		int[][] scriptsCatalog = new int[maxTokens][];
-		
-		int templatesInCatalog = reader.readIntegerUnsigned();
-		
-		int tic = templatesInCatalog;
-		while (--tic>=0) {
-			int templateId = reader.readIntegerUnsigned();
-			int templateScriptLength = reader.readIntegerUnsigned();
-			int s = templateScriptLength;
-			int[] script = new int[s];
-			while (--s>=0) {
-				script[s] = reader.readIntegerSigned();
-			}
-			//save the script into the catalog
-			scriptsCatalog[templateId] = script;
-		}
+		loadScripts(reader);
 		
 		
-		//
+		int tokenPow = reader.readIntegerUnsigned();
+		assert(tokenPow<32) : "Corrupt catalog file";
+		int maxTokens = 1<<tokenPow;
+		ids = new int[maxTokens];
+		tokens = new int[maxTokens];
+		absent = new long[maxTokens];
 		
+		loadTokens(reader);
+		
+		
+	}
+
+	private void loadTokens(PrimitiveReader reader) {
+						
 		int i = reader.readIntegerUnsigned();
 		while (--i>=0) {
 			int id=reader.readIntegerUnsigned();
@@ -70,6 +60,25 @@ public class Catalog {
 			}
 		}
 	}
+
+	private int[][] loadScripts(PrimitiveReader reader) {
+		
+		int templatesInCatalog = reader.readIntegerUnsigned();
+		
+		int tic = templatesInCatalog;
+		while (--tic>=0) {
+			int templateId = reader.readIntegerUnsigned();
+			int templateScriptLength = reader.readIntegerUnsigned();
+			int s = templateScriptLength;
+			int[] script = new int[s];
+			while (--s>=0) {
+				script[s] = reader.readIntegerSigned();
+			}
+			//save the script into the catalog
+			scriptsCatalog[templateId] = script;
+		}
+		return scriptsCatalog;
+	}
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
@@ -77,36 +86,13 @@ public class Catalog {
 			                  int uniqueTemplateIds, int biggestTemplateId, 
 			                  int[][] scripts) {
 		
-		//what size array will we need for template lookup. this must be a power of two
-		//therefore we will only store the exponent given a base of two.
-		//this is not so much for making the file smaller but rather to do the computation
-		//now instead of at runtime when latency is an issue.
-		int pow = 0;
-		int tmp = biggestTemplateId;
-		while (tmp!=0) {
-			pow++;
-			tmp = tmp>>1;
-		}
-		assert(pow<32);
-		writer.writeIntegerUnsigned(pow);//will be < 32
-		
-		//total number of templates are are defining here in the catalog
-		writer.writeIntegerUnsigned(uniqueTemplateIds);		
-		//now write each template
-		int templateId = scripts.length;
-		while (--templateId>=0) {
-			int[] script = scripts[templateId];
-			if (null!=script) {
-				writer.writeIntegerUnsigned(templateId);
-				int i = script.length;
-				writer.writeIntegerUnsigned(i);//length of script written first
-				while (--i>=0) {
-					writer.writeIntegerSigned(script[i]);
-				}
-			}
-		}
-		
-		
+		saveScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
+		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
+				
+	}
+
+	private static void saveTokens(PrimitiveWriter writer, int uniqueIds, int biggestId, int[] tokenLookup,
+			long[] absentValue) {
 		int temp = biggestId;
 		int base2Exponent = 0;
 		while (0!=temp) {
@@ -135,6 +121,38 @@ public class Catalog {
 				}
 				
 			}			
+		}
+	}
+
+	private static void saveScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
+			int[][] scripts) {
+		//what size array will we need for template lookup. this must be a power of two
+		//therefore we will only store the exponent given a base of two.
+		//this is not so much for making the file smaller but rather to do the computation
+		//now instead of at runtime when latency is an issue.
+		int pow = 0;
+		int tmp = biggestTemplateId;
+		while (tmp!=0) {
+			pow++;
+			tmp = tmp>>1;
+		}
+		assert(pow<32);
+		writer.writeIntegerUnsigned(pow);//will be < 32
+				
+		//total number of templates are are defining here in the catalog
+		writer.writeIntegerUnsigned(uniqueTemplateIds);		
+		//now write each template
+		int templateId = scripts.length;
+		while (--templateId>=0) {
+			int[] script = scripts[templateId];
+			if (null!=script) {
+				writer.writeIntegerUnsigned(templateId);
+				int i = script.length;
+				writer.writeIntegerUnsigned(i);//length of script written first
+				while (--i>=0) {
+					writer.writeIntegerSigned(script[i]);
+				}
+			}
 		}
 	}
 	
