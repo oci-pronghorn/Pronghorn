@@ -53,13 +53,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 	//list all operators
 	static final int[] operators = new int[] {
-	          OperatorMask.None, 
-			  OperatorMask.Constant,
-			  OperatorMask.Copy,
-			  OperatorMask.Delta,
-			  OperatorMask.Default,
-	          OperatorMask.Increment,
-	          OperatorMask.Tail
+	          OperatorMask.Field_None, 
+			  OperatorMask.Field_Constant,
+			  OperatorMask.Field_Copy,
+			  OperatorMask.Field_Delta,
+			  OperatorMask.Field_Default,
+	          OperatorMask.Field_Increment,
+	          OperatorMask.Field_Tail
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
@@ -81,9 +81,9 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
-	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
-	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	
 //	@Param(value = "0")
@@ -139,14 +139,14 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	public static boolean isInValidCombo(int type, int operator) {
 		boolean isOptional = 1==(type&0x01);
 		
-		if (OperatorMask.Constant==operator & isOptional) {
+		if (OperatorMask.Field_Constant==operator & isOptional) {
 			//constant operator can never be of type optional
 			return true;
 		}
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
-			if (OperatorMask.Tail==operator) {
+			if (OperatorMask.Field_Tail==operator) {
 				return true;
 			}
 		}		
@@ -164,7 +164,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadOverheadGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerUnsigned,
-						OperatorMask.None, 
+						OperatorMask.Field_None, 
 						0), zeroGroupToken);
 	}
 	
@@ -207,7 +207,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -215,7 +215,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -224,7 +224,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -232,7 +232,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -240,7 +240,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerUnsigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -248,7 +248,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -256,7 +256,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -264,7 +264,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerUnsigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -272,7 +272,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -281,7 +281,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -289,7 +289,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -299,7 +299,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -307,7 +307,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -316,7 +316,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -324,7 +324,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -332,7 +332,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerSigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -340,7 +340,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -348,7 +348,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -356,7 +356,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerSigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -364,7 +364,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -373,7 +373,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -381,7 +381,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -390,7 +390,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -398,7 +398,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -407,7 +407,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -415,7 +415,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -423,7 +423,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerUnsigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -431,7 +431,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -439,7 +439,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -447,7 +447,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerUnsigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -455,7 +455,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -464,7 +464,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -472,7 +472,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerUnsignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -482,7 +482,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -490,7 +490,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -499,7 +499,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -507,7 +507,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -515,7 +515,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.IntegerSigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -523,7 +523,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -531,7 +531,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -539,7 +539,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.IntegerSigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -547,7 +547,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -556,7 +556,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -564,7 +564,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteIntegerGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -585,7 +585,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = intTestData.length;
 			while (--j>=0) {
 				result |= intTestData[j];//do nothing
@@ -620,7 +620,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = intTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, intTestData[j]);
@@ -657,12 +657,12 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = intTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, intTestData[j]);
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 			
 		}

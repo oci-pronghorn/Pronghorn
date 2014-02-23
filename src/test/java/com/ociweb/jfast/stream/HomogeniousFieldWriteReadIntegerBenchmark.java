@@ -50,13 +50,13 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	
 	//list all operators
 	static final int[] operators = new int[] {
-	          OperatorMask.None, 
-			  OperatorMask.Constant,
-			  OperatorMask.Copy,
-			  OperatorMask.Delta,
-			  OperatorMask.Default,
-	          OperatorMask.Increment,
-	          OperatorMask.Tail
+	          OperatorMask.Field_None, 
+			  OperatorMask.Field_Constant,
+			  OperatorMask.Field_Copy,
+			  OperatorMask.Field_Delta,
+			  OperatorMask.Field_Default,
+	          OperatorMask.Field_Increment,
+	          OperatorMask.Field_Tail
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
@@ -77,9 +77,9 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary());
 		
 	
-	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
-	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
-	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
@@ -114,14 +114,14 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	public static boolean isInValidCombo(int type, int operator) {
 		boolean isOptional = 1==(type&0x01);
 		
-		if (OperatorMask.Constant==operator & isOptional) {
+		if (OperatorMask.Field_Constant==operator & isOptional) {
 			//constant operator can never be of type optional
 			return true;
 		}
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
-			if (OperatorMask.Tail==operator) {
+			if (OperatorMask.Field_Tail==operator) {
 				return true;
 			}
 		}		
@@ -145,7 +145,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadSignedCopyOptionalRecord(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -153,7 +153,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadSignedConstantRecord(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 
@@ -161,7 +161,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		return staticWriteReadSignedDeltaOptionalRecord(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -178,7 +178,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractMaxBytes(groupToken);
+			int maxBytes = TokenBuilder.extractCount(groupToken);
 			if (maxBytes>0) {
 				pw.openPMap(maxBytes);
 			}
@@ -228,7 +228,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractMaxBytes(groupToken);
+			int maxBytes = TokenBuilder.extractCount(groupToken);
 			if (maxBytes>0) {
 				pw.openPMap(maxBytes);
 			}
@@ -278,7 +278,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractMaxBytes(groupToken);
+			int maxBytes = TokenBuilder.extractCount(groupToken);
 			if (maxBytes>0) {
 				pw.openPMap(maxBytes);
 			}

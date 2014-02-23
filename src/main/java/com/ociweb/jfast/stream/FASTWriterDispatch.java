@@ -879,22 +879,22 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					assert(	TokenBuilder.isOpperator(token, OperatorMask.None)) : "Found "+TokenBuilder.tokenToString(token);
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIITextOptional(token, value);
 				} else {
 					//tail
-					assert(	TokenBuilder.isOpperator(token, OperatorMask.Tail)) : "Found "+TokenBuilder.tokenToString(token);
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIITailOptional(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					assert(	TokenBuilder.isOpperator(token, OperatorMask.Constant)) : "Found "+TokenBuilder.tokenToString(token);
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIIConstantOptional(token);
 				} else {
 					//delta
-					assert(	TokenBuilder.isOpperator(token, OperatorMask.Delta)) : "Found "+TokenBuilder.tokenToString(token);
+					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "+TokenBuilder.tokenToString(token);
 					charDictionary(token).writeASCIIDeltaOptional(token,value);
 					
 				}
@@ -903,12 +903,12 @@ public final class FASTWriterDispatch {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				assert(	TokenBuilder.isOpperator(token, OperatorMask.Copy)) : "Found "+TokenBuilder.tokenToString(token);
+				assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "+TokenBuilder.tokenToString(token);
 				charDictionary(token).writeASCIICopyOptional(token,value);
 				
 			} else {
 				//default
-				assert(	TokenBuilder.isOpperator(token, OperatorMask.Default)) : "Found "+TokenBuilder.tokenToString(token);
+				assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "+TokenBuilder.tokenToString(token);
 				charDictionary(token).writeASCIIDefaultOptional(token,value);
 				
 			}
@@ -1122,78 +1122,92 @@ public final class FASTWriterDispatch {
 		
 	}
 
-	public void openGroup(int id, int template) {	
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void openGroup(int token) {	
+		assert(token<0);
+		if (token>0) {//TODO: remove
+			throw new UnsupportedOperationException();
+		}
 		
-		//TODO: do we need a two more open group methods for dynamic template ids?
+		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
+		if (0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+			throw new UnsupportedOperationException();
+		}
+		
+		assert(0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
+		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) {
+			throw new UnsupportedOperationException();
+		}
 		
 		
-		//int repeat = 
-		//if sequence is not set by writer must use sequence provided
-	    //0 equals 1	
-		int maxBytes = TokenBuilder.extractMaxBytes(token);
+		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {
 			writer.openPMap(maxBytes);
 		}
 		
-		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-			//always push something on to the stack
-									
-			int top = templateStack[templateStackHead]; 
-			if (top==template) {
-				writer.writePMapBit((byte)0);
-			} else {
-				writer.writePMapBit((byte)1);
-				writer.writeIntegerUnsigned(template);
-				top = template;
-			}
-			
-			templateStack[templateStackHead++] = top;
-		}
 	}
-
-	public void openGroup(int id, int repeat, int template) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	
+	public void openGroup(int token, int templateId) {	
+		assert(token<0);
+		if (token>0) {//TODO: remove
+			throw new UnsupportedOperationException();
+		}
 		
-		//repeat count provided
+		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
+		if (0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+			throw new UnsupportedOperationException();
+		}
 		
-		int maxBytes = TokenBuilder.extractMaxBytes(token);
+		assert(0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
+		if (0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) {
+			throw new UnsupportedOperationException();
+		}
+		
+		
+		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {
 			writer.openPMap(maxBytes);
 		}
-		//TODO: is this the point when we write the repeat?
-		
-		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-			//always push something on to the stack
-						
-			int top = templateStack[templateStackHead]; 
-			if (top==template) {
-				writer.writePMapBit((byte)0);
-			} else {
-				writer.writePMapBit((byte)1);
-				writer.writeIntegerUnsigned(template);
-				top = template;
-			}
-			
-			templateStack[templateStackHead++] = top;
-
+		//done here for safety to ensure it is always done at group open.
+		pushTemplate(templateId);
+	}
+	
+	//must happen just before Group so the Group in question must always have 
+	//an outer group. TODO: caller should assert that this group can change template?
+	private void pushTemplate(int templateId) {
+		int top = templateStack[templateStackHead]; 
+		if (top==templateId) {
+			writer.writePMapBit((byte)0);
+		} else {
+			writer.writePMapBit((byte)1);
+			writer.writeIntegerUnsigned(templateId);
+			top = templateId;
 		}
+		
+		templateStack[templateStackHead++] = top;
 	}
 
-	public void closeGroup(int id) {
-		
-		//must have same token used for opening the group.
-		int token = id>=0 ? tokenLookup[id] : id;
 
-		int maxBytes = TokenBuilder.extractMaxBytes(token);
+	public void closeGroup(int token) {
+		assert(token<0);
+		if (token>0) {//TODO: remove
+			throw new UnsupportedOperationException();
+		}
+
+		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
+		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+			throw new UnsupportedOperationException();
+		}
+		
+		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {
 			writer.closePMap();
 		}
 		
-		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-			//must always pop because open will always push
+		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) {
+    		//must always pop because open will always push
 			templateStackHead--;
 		}
+		
 	}
 
 	public void flush() {

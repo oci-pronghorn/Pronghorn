@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.MappedByteBuffer;
 
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
@@ -135,13 +136,13 @@ public abstract class BaseStreamingTest {
 	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterDispatch fw, int i, int g, int groupOpenToken, int groupCloseToken, int f) {
 		if (--g<0) {
 			//close group
-			fw.closeGroup(groupOpenToken);
+			fw.closeGroup(groupOpenToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
 	
 				//open new group
-				fw.openGroup(groupOpenToken, 0);
+				fw.openGroup(groupOpenToken);
 				
 			}				
 		}

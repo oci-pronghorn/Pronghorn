@@ -63,12 +63,12 @@ public class StreamingTextTest extends BaseStreamingTest {
                    TypeMask.TextASCIIOptional,
 				 };
 		int[] operators = new int[] {
-                  OperatorMask.None,   //W5 R16 w/o equals
-				  OperatorMask.Constant, //W6 R16 w/o equals
-				  OperatorMask.Copy,     //W84 R31 w/o equals 
-				  OperatorMask.Default,  //W6 R16 
-				  OperatorMask.Delta,    //W85 R39 .37
-                  OperatorMask.Tail,     //W46 R15 w/o equals
+                  OperatorMask.Field_None,   //W5 R16 w/o equals
+				  OperatorMask.Field_Constant, //W6 R16 w/o equals
+				  OperatorMask.Field_Copy,     //W84 R31 w/o equals 
+				  OperatorMask.Field_Default,  //W6 R16 
+				  OperatorMask.Field_Delta,    //W85 R39 .37
+                  OperatorMask.Field_Tail,     //W46 R15 w/o equals
                 };
 
 		textTester(types,operators,"ASCII");
@@ -81,12 +81,12 @@ public class StreamingTextTest extends BaseStreamingTest {
 				  TypeMask.TextUTF8Optional,
 				 };
 		int[] operators = new int[] {
-                OperatorMask.None, //W9 R17  1.08
-				OperatorMask.Constant, //W9 R17 1.09 
-			    OperatorMask.Copy,  //W83 R84 .163
-				OperatorMask.Default, //W10 R18
-				OperatorMask.Delta,    //W110 R51  .31
-                OperatorMask.Tail,  //W57 R51  .31
+                OperatorMask.Field_None, //W9 R17  1.08
+				OperatorMask.Field_Constant, //W9 R17 1.09 
+			    OperatorMask.Field_Copy,  //W83 R84 .163
+				OperatorMask.Field_Default, //W10 R18
+				OperatorMask.Field_Delta,    //W110 R51  .31
+                OperatorMask.Field_Tail,  //W57 R51  .31
                 };
 
 		textTester(types,operators,"UTF8");
@@ -153,9 +153,9 @@ public class StreamingTextTest extends BaseStreamingTest {
 		}
 		int g = fieldsPerGroup;
 		
-		int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes, 0);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes);//TODO: repeat still unsupported
 		
-		fw.openGroup(groupToken, 0);
+		fw.openGroup(groupToken);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -164,7 +164,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
 						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
@@ -192,7 +192,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fw.closeGroup(groupToken);
+			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		fw.flush();
 		fw.flush();
@@ -214,7 +214,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
 		}
 		int g = fieldsPerGroup;
-		int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes, 0);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes);//TODO: repeat still unsupported
 		
 		fr.openGroup(groupToken);
 		
@@ -224,7 +224,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && (i&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
 						int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		

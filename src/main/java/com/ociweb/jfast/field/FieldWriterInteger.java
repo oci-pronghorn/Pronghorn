@@ -113,10 +113,8 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		value++;//room for zero
-		if (value == lastValue[idx]) {//not null and matches
+		//room for zero so we add one first
+		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

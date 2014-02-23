@@ -877,31 +877,32 @@ public class FASTReaderDispatch{
 	public void openGroup(int id) {
 		int token = id>=0 ? tokenLookup[id] : id;
 		
-		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
+		int pmapMaxSize = TokenBuilder.extractCount(token);
 		if (pmapMaxSize>0) {
 			reader.openPMap(pmapMaxSize);
 		}
 		
-		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-			//always push something on to the stack
-			int newTop = (reader.popPMapBit()!=0) ? reader.readIntegerUnsigned() : templateStack[templateStackHead];
-			templateStack[templateStackHead++] = newTop;
-
-		}
+//		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) { //TODO:pull from operator!
+//			//always push something on to the stack
+//			int newTop = (reader.popPMapBit()!=0) ? reader.readIntegerUnsigned() : templateStack[templateStackHead];
+//			templateStack[templateStackHead++] = newTop;
+//
+//		}
 	}
 
 	public void closeGroup(int id) {
 		//must have same token that was used when opening the group.
 		int token = id>=0 ? tokenLookup[id] : id;
-		int pmapMaxSize = TokenBuilder.extractMaxBytes(token);
+		int pmapMaxSize = TokenBuilder.extractCount(token);
 		if (pmapMaxSize>0) {
 			reader.closePMap();
 		}
 		
-		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-			//must always pop because open will always push
-			templateStackHead--;
-		}
+		//TODO:pull from operator!
+//		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
+//			//must always pop because open will always push
+//			templateStackHead--;
+//		}
 		
 	}
 

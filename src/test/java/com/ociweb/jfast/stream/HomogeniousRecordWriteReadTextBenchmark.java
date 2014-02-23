@@ -47,13 +47,13 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	
 	//list all operators
 	static final int[] operators = new int[] {
-	          OperatorMask.None, 
-			  OperatorMask.Constant,
-			  OperatorMask.Copy,
-			  OperatorMask.Delta,
-			  OperatorMask.Default,
-	          OperatorMask.Increment,
-	          OperatorMask.Tail
+	          OperatorMask.Field_None, 
+			  OperatorMask.Field_Constant,
+			  OperatorMask.Field_Copy,
+			  OperatorMask.Field_Delta,
+			  OperatorMask.Field_Default,
+	          OperatorMask.Field_Increment,
+	          OperatorMask.Field_Tail
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
@@ -75,9 +75,9 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
-	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
-	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 		
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -111,14 +111,14 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	public static boolean isInValidCombo(int type, int operator) {
 		boolean isOptional = 1==(type&0x01);
 		
-		if (OperatorMask.Constant==operator & isOptional) {
+		if (OperatorMask.Field_Constant==operator & isOptional) {
 			//constant operator can never be of type optional
 			return true;
 		}
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
-			if (OperatorMask.Tail==operator) {
+			if (OperatorMask.Field_Tail==operator) {
 				return true;
 			}
 		}		
@@ -149,7 +149,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -157,7 +157,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -165,7 +165,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -173,7 +173,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -183,7 +183,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.Constant, 
+							OperatorMask.Field_Constant, 
 							0), simpleGroupToken);
 	}
 	
@@ -191,7 +191,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.Constant, 
+							OperatorMask.Field_Constant, 
 							0), simpleGroupToken);
 	}
 	
@@ -199,7 +199,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.Constant, 
+							OperatorMask.Field_Constant, 
 							0), simpleGroupToken);
 	}
 	
@@ -207,7 +207,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.Constant, 
+							OperatorMask.Field_Constant, 
 							0), simpleGroupToken);
 	}
 	
@@ -217,7 +217,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.Copy, 
+							OperatorMask.Field_Copy, 
 							0), simpleGroupToken);
 	}
 	
@@ -225,7 +225,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.Copy, 
+							OperatorMask.Field_Copy, 
 							0), simpleGroupToken);
 	}
 	
@@ -233,7 +233,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.Copy, 
+							OperatorMask.Field_Copy, 
 							0), simpleGroupToken);
 	}
 	
@@ -241,7 +241,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.Copy, 
+							OperatorMask.Field_Copy, 
 							0), simpleGroupToken);
 	}
 	
@@ -251,7 +251,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.Default, 
+							OperatorMask.Field_Default, 
 							0), simpleGroupToken);
 	}
 	
@@ -259,7 +259,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.Default, 
+							OperatorMask.Field_Default, 
 							0), simpleGroupToken);
 	}
 	
@@ -267,7 +267,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.Default, 
+							OperatorMask.Field_Default, 
 							0), simpleGroupToken);
 	}
 	
@@ -275,7 +275,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.Default, 
+							OperatorMask.Field_Default, 
 							0), simpleGroupToken);
 	}
 	
@@ -291,7 +291,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.Delta, 
+							OperatorMask.Field_Delta, 
 							0), zeroGroupToken);
 	}
 	
@@ -299,7 +299,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.Delta, 
+							OperatorMask.Field_Delta, 
 							0), zeroGroupToken);
 	}
 	
@@ -307,7 +307,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.Delta, 
+							OperatorMask.Field_Delta, 
 							0), zeroGroupToken);
 	}
 	
@@ -315,7 +315,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.Delta, 
+							OperatorMask.Field_Delta, 
 							0), zeroGroupToken);
 	}
 	
@@ -326,7 +326,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
-							OperatorMask.Tail, 
+							OperatorMask.Field_Tail, 
 							0), simpleGroupToken);
 	}
 	
@@ -334,7 +334,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
-							OperatorMask.Tail, 
+							OperatorMask.Field_Tail, 
 							0), simpleGroupToken);
 	}
 	
@@ -342,7 +342,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
-							OperatorMask.Tail, 
+							OperatorMask.Field_Tail, 
 							0), simpleGroupToken);
 	}
 	
@@ -350,7 +350,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return staticWriteReadTextGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
-							OperatorMask.Tail, 
+							OperatorMask.Field_Tail, 
 							0), simpleGroupToken);
 	}
 	
@@ -373,7 +373,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = textTestData.length;
 			while (--j>=0) {
 				result |= textTestData[j].length();//do nothing
@@ -409,12 +409,12 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = textTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, textTestData[j]);
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.

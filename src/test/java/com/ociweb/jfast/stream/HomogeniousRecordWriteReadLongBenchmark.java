@@ -50,13 +50,13 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 	//list all operators
 	static final int[] operators = new int[] {
-	          OperatorMask.None, 
-			  OperatorMask.Constant,
-			  OperatorMask.Copy,
-			  OperatorMask.Delta,
-			  OperatorMask.Default,
-	          OperatorMask.Increment,
-	          OperatorMask.Tail
+	          OperatorMask.Field_None, 
+			  OperatorMask.Field_Constant,
+			  OperatorMask.Field_Copy,
+			  OperatorMask.Field_Delta,
+			  OperatorMask.Field_Default,
+	          OperatorMask.Field_Increment,
+	          OperatorMask.Field_Tail
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
@@ -78,9 +78,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,4, 0);
-	static final int simpleGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,2, 0);
-	static final int zeroGroupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple,0, 0);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -115,7 +115,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		
 		if (type>=0 && type<=TypeMask.LongSignedOptional) {
 			//integer/long types do not support tail
-			if (OperatorMask.Tail==operator) {
+			if (OperatorMask.Field_Tail==operator) {
 				return true;
 			}
 		}		
@@ -151,7 +151,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -159,7 +159,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -168,7 +168,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -176,7 +176,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -184,7 +184,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.LongUnsigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -192,7 +192,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -200,7 +200,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -208,7 +208,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.LongUnsigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -216,7 +216,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -225,7 +225,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -233,7 +233,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -243,7 +243,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 	
@@ -251,7 +251,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional,
-							OperatorMask.None, 
+							OperatorMask.Field_None, 
 							0), zeroGroupToken);
 	}
 
@@ -260,7 +260,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -268,7 +268,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional,
-						    OperatorMask.Copy, 
+						    OperatorMask.Field_Copy, 
 						     0), simpleGroupToken);
 	}
 	
@@ -276,7 +276,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.LongSigned, //constant operator can not be optional
-						    OperatorMask.Constant, 
+						    OperatorMask.Field_Constant, 
 						     0), simpleGroupToken);
 	}
 	
@@ -284,7 +284,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -292,7 +292,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
-						    OperatorMask.Default, 
+						    OperatorMask.Field_Default, 
 						     0), simpleGroupToken);
 	}
 	
@@ -300,7 +300,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 						TypeMask.LongSigned, 
-						OperatorMask.Delta, 
+						OperatorMask.Field_Delta, 
 						0), zeroGroupToken);
 	}
 
@@ -308,7 +308,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
-						    OperatorMask.Delta, 
+						    OperatorMask.Field_Delta, 
 						     0), zeroGroupToken);
 	}
 	
@@ -317,7 +317,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 	
@@ -325,7 +325,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return staticWriteReadLongGroup(reps, 
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
-						    OperatorMask.Increment, 
+						    OperatorMask.Field_Increment, 
 						     0), simpleGroupToken);
 	}
 
@@ -348,7 +348,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = longTestData.length;
 			while (--j>=0) {
 				result |= longTestData[j];//do nothing
@@ -384,12 +384,12 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, 0);
+			staticWriter.openGroup(groupToken);
 			int j = longTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, longTestData[j]);
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.

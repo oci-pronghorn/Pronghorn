@@ -26,7 +26,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	final long   testMantConst = 0;
 	
 	//Must double because we may need 1 bit for exponent and another for mantissa
-	final int groupToken = TokenBuilder.buildGroupToken(TypeMask.GroupSimple, maxMPapBytes*2, 0);//TODO: repeat still unsupported
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes*2);//TODO: repeat still unsupported
 
 	boolean sendNulls = true;
 	
@@ -57,12 +57,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				  };
 		
 		int[] operators = new int[] {
-                OperatorMask.None,  //no need for pmap
-                OperatorMask.Delta, //no need for pmap
-                OperatorMask.Copy,
-                OperatorMask.Increment,
-                OperatorMask.Constant, 
-                OperatorMask.Default
+                OperatorMask.Field_None,  //no need for pmap
+                OperatorMask.Field_Delta, //no need for pmap
+                OperatorMask.Field_Copy,
+                OperatorMask.Field_Increment,
+                OperatorMask.Field_Constant, 
+                OperatorMask.Field_Default
                 };
 				
 		tester(types, operators, "Decimal");
@@ -84,7 +84,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken, 0);
+		fw.openGroup(groupToken);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -93,7 +93,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 				
-				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
 					} else {
@@ -110,7 +110,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fw.closeGroup(groupToken);
+			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		fw.flush();
 		fw.flush();
@@ -145,7 +145,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 	
 				
-				if (TokenBuilder.isOpperator(token, OperatorMask.Constant)) {
+				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					readDecimalConstant(tokenLookup, fr, none, f, token, i);
 					
 				} else {

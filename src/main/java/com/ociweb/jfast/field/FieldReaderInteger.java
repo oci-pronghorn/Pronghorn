@@ -44,11 +44,7 @@ public class FieldReaderInteger {
 
 	public int readIntegerUnsignedOptional(int token, int valueOfOptional) {
 		int value = reader.readIntegerUnsigned();
-		if (0==value) {
-			return valueOfOptional;
-		} else {
-			return value-1;
-		}
+		return value==0 ? valueOfOptional : value-1;
 	}
 
 	public int readIntegerUnsignedConstant(int token) {
@@ -122,21 +118,15 @@ public class FieldReaderInteger {
 		if (reader.popPMapBit()==0) {
 			
 			int idx = token & INSTANCE_MASK;
-			if (lastValue[idx] == 0) {
-				//default value is null so return optional.
-				return valueOfOptional;
-			} else {
-				//default value 
-				return lastValue[idx];
-			}
-			
+			return lastValue[idx] == 0 ?
+					//default value is null so return optional.
+					valueOfOptional : 
+					//default value 
+					lastValue[idx];
+	
 		} else {
 			int value = reader.readIntegerUnsigned();
-			if (value==0) {
-				return valueOfOptional;
-			} else {
-				return value-1;
-			}
+			return value==0 ? valueOfOptional : value-1;
 		}
 	}
 
@@ -180,11 +170,7 @@ public class FieldReaderInteger {
 	public int readIntegerSignedOptional(int token, int valueOfOptional) {
 		int value = reader.readIntegerSigned();
 		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
-		if (0==value) {
-			return valueOfOptional;
-		} else {
-			return value-1;
-		}
+		return value==0 ? valueOfOptional : value-1;
 	}
 
 

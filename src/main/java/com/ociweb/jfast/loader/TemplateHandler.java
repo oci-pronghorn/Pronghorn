@@ -64,8 +64,6 @@ public class TemplateHandler extends DefaultHandler {
     	writer = new PrimitiveWriter(output);
 	}
 
-//	public void characters(char[] buffer, int start, int length) {
-//    }
    
     int id;
     String name;
@@ -204,19 +202,19 @@ public class TemplateHandler extends DefaultHandler {
     		id = Integer.valueOf(attributes.getValue("id"));
     		name = attributes.getValue("name");
     	} else if (qName.equalsIgnoreCase("copy")) {
-    		operator = OperatorMask.Copy;
+    		operator = OperatorMask.Field_Copy;
     	} else if (qName.equalsIgnoreCase("constant")) {
-    		operator = OperatorMask.Constant;
+    		operator = OperatorMask.Field_Constant;
     	} else if (qName.equalsIgnoreCase("default")) {
-    	    operator = OperatorMask.Default;
+    	    operator = OperatorMask.Field_Default;
     	} else if (qName.equalsIgnoreCase("delta")) {
-    		operator = OperatorMask.Delta;
+    		operator = OperatorMask.Field_Delta;
     	} else if (qName.equalsIgnoreCase("increment")) {
-    	    operator = OperatorMask.Increment;
+    	    operator = OperatorMask.Field_Increment;
     	} else if (qName.equalsIgnoreCase("tail")) {
-    		operator = OperatorMask.Tail;
+    		operator = OperatorMask.Field_Tail;
     	} else if (qName.equalsIgnoreCase("group")) {
-
+    		//TODO: create open group token for script
     		templateScript[templateScriptIdx++] = id; //open group in script
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
@@ -224,10 +222,14 @@ public class TemplateHandler extends DefaultHandler {
     		sequenceLength = -1;
     		name = attributes.getValue("name");
     		
+    		//TODO: create open group token for script
+    		
     		templateScript[templateScriptIdx++] = id; //open sequence in script
+    		//TODO: record optional length or -1
     		
     	} else if (qName.equalsIgnoreCase("length")) { 
     		
+    		type = TypeMask.GroupLength;
     		//TODO: sequenceLength = Integer.valueOf(attributes.getValue("length"));
     		commonIdAttributes(attributes);
     		
@@ -344,14 +346,16 @@ public class TemplateHandler extends DefaultHandler {
     		templateScript[templateScriptIdx++] = id;
     		    	
     	} else if (qName.equalsIgnoreCase("group")) {
-
+    		//TODO: create close group token for script
     		templateScript[templateScriptIdx++] = id; //close group in script
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
-    		
+    		//TODO: create close group token for script
     		templateScript[templateScriptIdx++] = id; //close sequence in script
     		
     	} else if (qName.equalsIgnoreCase("template")) {
+    		
+    		//TODO: is this a group with its own open? Only if it need pmap and it might!!!
     		
     		if (0!=templateLookup[id]) {
     			throw new SAXException("Duplicate template id: "+id);

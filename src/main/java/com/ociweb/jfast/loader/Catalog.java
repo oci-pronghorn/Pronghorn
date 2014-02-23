@@ -14,6 +14,7 @@ public class Catalog {
 	public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	
+
 	final int[] ids;
 	final int[] tokens;
 	final long[] absent;
@@ -26,7 +27,7 @@ public class Catalog {
 		assert(templatePow<32) : "Corrupt catalog file";
 		scriptsCatalog = new int[1<<templatePow][];
 		
-		loadScripts(reader);
+		loadTemplateScripts(reader);
 		
 		
 		int tokenPow = reader.readIntegerUnsigned();
@@ -41,6 +42,25 @@ public class Catalog {
 		
 	}
 
+	private int[][] loadTemplateScripts(PrimitiveReader reader) {
+		
+		int templatesInCatalog = reader.readIntegerUnsigned();
+		
+		int tic = templatesInCatalog;
+		while (--tic>=0) {
+			int templateId = reader.readIntegerUnsigned();
+			int templateScriptLength = reader.readIntegerUnsigned();
+			int s = templateScriptLength;
+			int[] script = new int[s];
+			while (--s>=0) {
+				script[s] = reader.readIntegerSigned();
+			}
+			//save the script into the catalog
+			scriptsCatalog[templateId] = script;
+		}
+		return scriptsCatalog;
+	}
+	
 	private void loadTokens(PrimitiveReader reader) {
 						
 		int i = reader.readIntegerUnsigned();
@@ -61,24 +81,7 @@ public class Catalog {
 		}
 	}
 
-	private int[][] loadScripts(PrimitiveReader reader) {
-		
-		int templatesInCatalog = reader.readIntegerUnsigned();
-		
-		int tic = templatesInCatalog;
-		while (--tic>=0) {
-			int templateId = reader.readIntegerUnsigned();
-			int templateScriptLength = reader.readIntegerUnsigned();
-			int s = templateScriptLength;
-			int[] script = new int[s];
-			while (--s>=0) {
-				script[s] = reader.readIntegerSigned();
-			}
-			//save the script into the catalog
-			scriptsCatalog[templateId] = script;
-		}
-		return scriptsCatalog;
-	}
+
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
@@ -86,7 +89,7 @@ public class Catalog {
 			                  int uniqueTemplateIds, int biggestTemplateId, 
 			                  int[][] scripts) {
 		
-		saveScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
+		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
 				
 	}
@@ -124,7 +127,25 @@ public class Catalog {
 		}
 	}
 
-	private static void saveScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
+	
+	/**
+	 * 
+	 * Save template scripts to the catalog file.
+	 * The Script is made up of the field id(s) or Tokens.
+	 * Each field value needs to know the id so it is stored by id.
+	 * All other types (group tasks,dictionary tasks) just need to
+	 * be executed so they are stored as tokens only.  These special
+	 * tasks frequently multiple tokens to a single id which requires
+	 * that the token is used in all cases.  An example is the 
+	 * Open and Close tokens for a given group.
+	 *  
+	 * 
+	 * @param writer
+	 * @param uniqueTemplateIds
+	 * @param biggestTemplateId
+	 * @param scripts
+	 */
+	private static void saveTemplateScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
 			int[][] scripts) {
 		//what size array will we need for template lookup. this must be a power of two
 		//therefore we will only store the exponent given a base of two.
