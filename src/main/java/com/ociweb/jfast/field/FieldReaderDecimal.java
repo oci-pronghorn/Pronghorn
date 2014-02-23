@@ -29,7 +29,7 @@ public class FieldReaderDecimal {
 		mantissa.copy(sourceToken, targetToken);
 	}
 	
-	public int readDecimalExponentOptional(int token, int oppExp, int valueOfOptional) {
+	public int readDecimalExponentOptional(int token, int valueOfOptional) {
 		
 		//oppExp
 				if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
@@ -67,7 +67,7 @@ public class FieldReaderDecimal {
 				
 	}
 
-	public int readDecimalExponent(int token, int valueOfOptional) {
+	public int readDecimalExponent(int token) {
 		
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
@@ -142,7 +142,7 @@ public class FieldReaderDecimal {
 		
 	}
 
-	public long readDecimalMantissa(int token, int oppMant, long valueOfOptional) {
+	public long readDecimalMantissa(int token) {
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {

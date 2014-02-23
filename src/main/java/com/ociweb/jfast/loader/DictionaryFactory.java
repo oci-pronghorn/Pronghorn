@@ -119,7 +119,8 @@ public class DictionaryFactory {
 	private int structureCount;
 	
 		
-	public DictionaryFactory(int integerCount, int longCount, int charCount, int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
+	public DictionaryFactory(int integerCount, int longCount, int charCount, 
+			                  int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
 		 this.integerCount=integerCount;
 		 this.longCount=longCount;
 		 this.charCount=charCount;
@@ -429,6 +430,9 @@ public class DictionaryFactory {
 	}
 	
 	public TextHeap charDictionary() {
+		if (charCount==0) {
+			return null;
+		}
 		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount),
 				                     charInitTotalLength, charInitIndex, charInitValue);
 		heap.reset();	
@@ -436,6 +440,9 @@ public class DictionaryFactory {
 	}
 	
 	public ByteHeap byteDictionary() {
+		if (bytesCount==0) {
+			return null;
+		}
 		ByteHeap heap = new ByteHeap(singleTextSize, singleGapSize, nextPowerOfTwo(bytesCount),
                                      byteInitTotalLength, byteInitIndex, byteInitValue);
 		heap.reset();

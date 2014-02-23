@@ -1124,20 +1124,8 @@ public final class FASTWriterDispatch {
 
 	public void openGroup(int token) {	
 		assert(token<0);
-		if (token>0) {//TODO: remove
-			throw new UnsupportedOperationException();
-		}
-		
 		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
-		if (0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			throw new UnsupportedOperationException();
-		}
-		
 		assert(0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
-		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) {
-			throw new UnsupportedOperationException();
-		}
-		
 		
 		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {
@@ -1148,20 +1136,9 @@ public final class FASTWriterDispatch {
 	
 	public void openGroup(int token, int templateId) {	
 		assert(token<0);
-		if (token>0) {//TODO: remove
-			throw new UnsupportedOperationException();
-		}
-		
 		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
-		if (0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			throw new UnsupportedOperationException();
-		}
-		
 		assert(0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
-		if (0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) {
-			throw new UnsupportedOperationException();
-		}
-		
+	
 		
 		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {
@@ -1189,14 +1166,7 @@ public final class FASTWriterDispatch {
 
 	public void closeGroup(int token) {
 		assert(token<0);
-		if (token>0) {//TODO: remove
-			throw new UnsupportedOperationException();
-		}
-
 		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
-		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			throw new UnsupportedOperationException();
-		}
 		
 		int maxBytes = TokenBuilder.extractCount(token);
 		if (maxBytes>0) {

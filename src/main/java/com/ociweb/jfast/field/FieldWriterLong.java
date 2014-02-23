@@ -36,16 +36,14 @@ public final class FieldWriterLong {
 	
 
 	public void writeLongNull(int token) {
-		int idx = token & INSTANCE_MASK;
+		lastValue[token & INSTANCE_MASK] = 0;
 		writer.writeNull();
-		lastValue[idx] = 0;
 	}
 	
 	public void writeLongNullPMap(int token, byte bit) {
-		int idx = token & INSTANCE_MASK;
+		lastValue[token & INSTANCE_MASK] = 0;
 		writer.writePMapBit(bit);
 		writer.writeNull();
-		lastValue[idx] = 0;
 	}
 	
 	/*
@@ -72,9 +70,9 @@ public final class FieldWriterLong {
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeLongUnsigned(value);
-			lastValue[idx] = value;
 		}
 	}
 	
@@ -86,8 +84,9 @@ public final class FieldWriterLong {
 		if (value == lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(lastValue[idx] = value);
+			writer.writeLongUnsigned(value);
 		}
 	}
 	
@@ -99,8 +98,8 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongUnsignedConstantOptional(long value, int token) {
-		writer.writePMapBit((byte)1);
 		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		writer.writePMapBit((byte)1);
 		//the writeNull will take care of the rest.
 	}
 	
@@ -112,15 +111,13 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedConstantOptional(long value, int token) {
-		writer.writePMapBit((byte)1);
 		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		writer.writePMapBit((byte)1);
 		//the writeNull will take care of the rest.
 	}
 	
 	public void writeLongUnsignedDefault(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
+		if (value == lastValue[token & INSTANCE_MASK]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -129,10 +126,8 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongUnsignedDefaultOptional(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		value++;//room for zero
-		if (value == lastValue[idx]) {//not null and matches
+		//room for zero
+		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -141,15 +136,16 @@ public final class FieldWriterLong {
 	}
 		
 	public void writeLongUnsignedIncrement(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		long incVal = lastValue[idx]+1;
+		int idx;
+		long incVal = lastValue[idx = token & INSTANCE_MASK]+1;
 		
 		if (value == incVal) {
-			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
+			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(lastValue[idx] = value);
+			writer.writeLongUnsigned(value);
 		}
 	}
 	
@@ -161,24 +157,26 @@ public final class FieldWriterLong {
 		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			long tmp = lastValue[idx] = 1+value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(lastValue[idx] = 1+value);
+			writer.writeLongUnsigned(tmp);
 		}
 	}
 
 	public void writeLongUnsignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		writer.writeLongSigned(value - lastValue[idx]);
+		long tmp = value - lastValue[idx];
 		lastValue[idx] = value;		
+		writer.writeLongSigned(tmp);
 	}
 	
 	public void writeLongUnsignedDeltaOptional(long value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
 		long delta = value - lastValue[idx];
-		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 		lastValue[idx] = value;	
+		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 	}
 
 	////////////////
@@ -197,9 +195,9 @@ public final class FieldWriterLong {
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeLongSigned(value);
-			lastValue[idx] = value;
 		}
 	}
 	
@@ -213,15 +211,14 @@ public final class FieldWriterLong {
 		if (value == lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(lastValue[idx] = value);
+			writer.writeLongSigned(value);
 		}
 	}
 	
 	public void writeLongSignedDefault(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
+		if (value == lastValue[token & INSTANCE_MASK]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -242,9 +239,7 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedDefaultOptional(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
+		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -253,15 +248,14 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedIncrement(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		long incVal = lastValue[idx]+1;
+		int idx;
 		
-		if (value == incVal) {
+		lastValue[idx = token & INSTANCE_MASK] = value;
+		if (value == (lastValue[idx]+1)) {
 			writer.writePMapBit((byte)0);
-			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(lastValue[idx] = value);
+			writer.writeLongSigned(value);
 		}
 	}
 	
@@ -276,26 +270,28 @@ public final class FieldWriterLong {
 		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(lastValue[idx] = value);
+			writer.writeLongSigned(value);
 		}
 			
 	}
 	
 	public void writeLongSignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		writer.writeLongSigned(value - lastValue[idx]);
+		int idx;
+		long tmp = value - lastValue[idx = token & INSTANCE_MASK];
 		lastValue[idx] = value;		
+		writer.writeLongSigned(tmp);
 	}
 	
 	public void writeLongSignedDeltaOptional(long value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		long delta = value - lastValue[idx];
-		//writer.writeLongSigned((delta + (1-(delta>>>63)) ));
-		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
+		int idx;
+		long delta = value - lastValue[idx = token & INSTANCE_MASK];
 		lastValue[idx] = value;	
+		writer.writeLongSigned(((delta+(delta>>>63))+1));
+		//writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 	}
 
 	public void writeNull(int token) {
@@ -326,8 +322,8 @@ public final class FieldWriterLong {
 	}
 	
 	private void writeClearNull(int token) {
-		writer.writeNull();
 		lastValue[token & INSTANCE_MASK] = 0;
+		writer.writeNull();
 	}
 	
 	
@@ -337,9 +333,9 @@ public final class FieldWriterLong {
 		if (lastValue[idx]==0) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] =0;
 			writer.writePMapBit((byte)1);
 			writer.writeNull();
-			lastValue[idx] =0;
 		}
 	}
 	

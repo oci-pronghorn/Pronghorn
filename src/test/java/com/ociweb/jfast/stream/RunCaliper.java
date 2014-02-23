@@ -9,9 +9,9 @@ public class RunCaliper {
 
 	public static void main(String[] args) {
 
-	//run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
+	run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
 	//run(HomogeniousFieldWriteReadIntegerBenchmark.class);
-	run(HomogeniousRecordWriteReadIntegerBenchmark.class); 
+	//run(HomogeniousRecordWriteReadIntegerBenchmark.class); 
     //run(HomogeniousRecordWriteReadLongBenchmark.class); 
     //run(HomogeniousRecordWriteReadTextBenchmark.class);
     

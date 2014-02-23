@@ -88,7 +88,7 @@ public class FieldReaderInteger {
 	
 	public int readIntegerUnsignedDelta(int token) {
 		//Delta opp never uses PMAP
-		return (lastValue[token & INSTANCE_MASK] += reader.readIntegerSigned());
+		return (lastValue[token & INSTANCE_MASK] += reader.readLongSigned());
 		
 	}
 	
@@ -194,7 +194,7 @@ public class FieldReaderInteger {
 	
 	public int readIntegerSignedDelta(int token) {
 		//Delta opp never uses PMAP
-		return (lastValue[token & INSTANCE_MASK] += reader.readIntegerSigned());
+		return (lastValue[token & INSTANCE_MASK] += reader.readLongSigned());
 	}
 	
 	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {

@@ -14,6 +14,7 @@ import com.ociweb.jfast.field.FieldWriterChar;
 import com.ociweb.jfast.field.FieldWriterDecimal;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -119,6 +120,10 @@ public class FASTReaderDispatch{
 		}
 	}
 
+	//TODO: must tie these methods all together - urgent.
+	//TODO: reevalutte bit pmap write look for bulk write solution.
+	//TODO: finish TemplateHandler update of each token wtih pmap size (note decimal size 2x)
+	
 	private void dispatchReadByToken1(int id, int token) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
@@ -221,18 +226,14 @@ public class FASTReaderDispatch{
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0110? Decimal and DecimalOptional
 			
-			int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
-
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-				intLookup[id] =	decimalDictionary(token).readDecimalExponent(token, decimalExponentOptionalValue);
+				intLookup[id] =	decimalDictionary(token).readDecimalExponent(token);
 			} else {
-				intLookup[id] =	decimalDictionary(token).readDecimalExponentOptional(token, oppExp, decimalExponentOptionalValue);
+				intLookup[id] =	decimalDictionary(token).readDecimalExponentOptional(token, decimalExponentOptionalValue);
 			}
-			
-			int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-			
+		
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-				longLookup[id] =  decimalDictionary(token).readDecimalMantissa(token, oppMant, decimalMantissaOptionalValue);
+				longLookup[id] =  decimalDictionary(token).readDecimalMantissa(token);
 			} else {
 				longLookup[id] =  decimalDictionary(token).readDecimalMantissaOptional(token, decimalMantissaOptionalValue);
 			}
@@ -355,47 +356,52 @@ public class FASTReaderDispatch{
 		if (0==(token&(3<<18))) {
 			return readerLong;
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			return longDictionarySpecial(token);
+		}
+	}
+
+	private FieldReaderLong longDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<18))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
+		} else {
+			if (0==(token&(1<<18))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
 	
 	private FieldReaderInteger integerDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return readerInteger;
+		return (0==(token&(3<<18)) ? readerInteger : 
+			   intDictionarySpecial(token));
+	}
+
+	private FieldReaderInteger intDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<18))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			if (0==(token&(1<<18))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
@@ -405,22 +411,26 @@ public class FASTReaderDispatch{
 		if (0==(token&(3<<18))) {
 			return readerDecimal;
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			return decimalDictionarySpecial(token);
+		}
+	}
+
+	private FieldReaderDecimal decimalDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<18))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
+		} else {
+			if (0==(token&(1<<18))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
@@ -430,22 +440,26 @@ public class FASTReaderDispatch{
 		if (0==(token&(3<<18))) {
 			return readerChar;
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			return charDictionarySpecial(token);
+		}
+	}
+
+	private FieldReaderChar charDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<18))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
+		} else {
+			if (0==(token&(1<<18))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
@@ -455,22 +469,26 @@ public class FASTReaderDispatch{
 		if (0==(token&(3<<18))) {
 			return readerBytes;
 		} else {
-			//these also take an extra lookup we are optimized for the global above			
-			if (0==(token&(2<<18))) {
-				int templateId = templateStack[templateStackHead];
-				//AppType
-				//FASTDynamic MUST know the template and therefore the type.
-				//The template id is the first byte inside the group if pmap indicates.
-				//that value must be read by unsignedInteger but can be done by open/close group!!
+			return bytesDictionarySpecial(token);
+		}
+	}
+
+	private FieldReaderBytes bytesDictionarySpecial(int token) {
+		//these also take an extra lookup we are optimized for the global above			
+		if (0==(token&(2<<18))) {
+			int templateId = templateStack[templateStackHead];
+			//AppType
+			//FASTDynamic MUST know the template and therefore the type.
+			//The template id is the first byte inside the group if pmap indicates.
+			//that value must be read by unsignedInteger but can be done by open/close group!!
+			throw new UnsupportedOperationException();
+		} else {
+			if (0==(token&(1<<18))) {
+				//Template
 				throw new UnsupportedOperationException();
 			} else {
-				if (0==(token&(1<<18))) {
-					//Template
-					throw new UnsupportedOperationException();
-				} else {
-					//Custom
-					throw new UnsupportedOperationException();
-				}
+				//Custom
+				throw new UnsupportedOperationException();
 			}
 		}
 	}
@@ -874,8 +892,12 @@ public class FASTReaderDispatch{
 	}
 
 	
-	public void openGroup(int id) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void openGroup(int token) {
+
+		assert(token<0);
+		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
+		//assert(0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
+		
 		
 		int pmapMaxSize = TokenBuilder.extractCount(token);
 		if (pmapMaxSize>0) {
@@ -890,9 +912,11 @@ public class FASTReaderDispatch{
 //		}
 	}
 
-	public void closeGroup(int id) {
-		//must have same token that was used when opening the group.
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void closeGroup(int token) {
+		
+		assert(token<0);
+		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
+		
 		int pmapMaxSize = TokenBuilder.extractCount(token);
 		if (pmapMaxSize>0) {
 			reader.closePMap();
@@ -912,13 +936,11 @@ public class FASTReaderDispatch{
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-		
-		int oppExp = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
 
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return decimalDictionary(token).readDecimalExponent(token, valueOfOptional);
+			return decimalDictionary(token).readDecimalExponent(token);
 		} else {
-			return decimalDictionary(token).readDecimalExponentOptional(token, oppExp, valueOfOptional);
+			return decimalDictionary(token).readDecimalExponentOptional(token, valueOfOptional);
 		}
 	}
 	
@@ -930,10 +952,8 @@ public class FASTReaderDispatch{
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		
-		int oppMant = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
-		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return decimalDictionary(token).readDecimalMantissa(token, oppMant, valueOfOptional);
+			return decimalDictionary(token).readDecimalMantissa(token);
 		} else {
 			return decimalDictionary(token).readDecimalMantissaOptional(token, valueOfOptional);
 		}

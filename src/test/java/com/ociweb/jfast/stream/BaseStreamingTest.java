@@ -18,17 +18,17 @@ public abstract class BaseStreamingTest {
 	private final float PCT_LIMIT = 200; //if avg is 200 pct above min then fail
 	private final float MAX_X_LIMIT = 40f;//if max is 20x larger than avg then fail
 	
+	private final int sampleSize       = 1000;
 	protected final int fields         = 1000;
 	protected final int fieldsPerGroup = 10;
 	protected final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	
 	protected final int ID_TOKEN_TOGGLE = 0x1;
 	
-	protected void tester(int[] types, int[] operators, String label) {	
+	protected void tester(int[] types, int[] operators, String label, int charFields, int byteFields) {	
 		
 		int operationIters = 7;
 		int warmup         = 50;
-		int sampleSize     = 1000;
 		int singleCharLength = 128;
 		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
 		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
@@ -45,14 +45,14 @@ public abstract class BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, charFields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, charFields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 	}
@@ -66,6 +66,9 @@ public abstract class BaseStreamingTest {
 		
 		//open new group
 		boolean isGroupOpen = false;
+		boolean sendNulls = true;
+		int token = 0;
+		int id = 1;
 		while (--i>=0) {
 			int f = fields;
 					
@@ -73,21 +76,47 @@ public abstract class BaseStreamingTest {
 				
 				//write field data here
 				
+				//similar logic to what is found in test cases in order to 
+				//process each of the cases in the implementation.  This extra work
+				//should be counted as overhead for the test not against the real 
+				//performance of the implementation.
+				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
+					
+					//special test with constant value.
+					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
+						id |= (i&ID_TOKEN_TOGGLE)==0?token:f;//nothing
+					} else {
+						id |= (i&ID_TOKEN_TOGGLE)==0?token:f;//nothing
+					}
+				} else {
+					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
+						//System.err.println("write null");
+						id |= (i&ID_TOKEN_TOGGLE)==0?token:f;//nothing
+					} else {
+						id |= (i&ID_TOKEN_TOGGLE)==0?token:f;//nothing
+					}
+				}
+				
+				
+				
 				if (--g<0) {
 					
 					//close group
 					
 					g = fieldsPerGroup;
 					if (f>0 || i>0) {
-						
+						id = id | 1;
 						//open new group
 						
 					}				
 				}				
 			}			
 		}
-		if (isGroupOpen) {
-			//close group
+		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
+			id = id|0xFF;
+		}
+		if (id==0) {
+			return Long.MIN_VALUE;
 		}
 		return System.nanoTime() - start;
 	}
@@ -106,7 +135,7 @@ public abstract class BaseStreamingTest {
 				float perByteAvg = (avgDuration-avgOverhead)/(float)byteCount;
 				float perByteMax = (maxDuration-maxOverhead)/(float)byteCount;
 				float pctAvgVsMin = 100f*((perByteAvg/perByteMin)-1);
-				String msg = "  PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns ";
+				String msg = "  PerByte  Min:"+perByteMin+"ns Avg:"+perByteAvg+"ns  <"+pctAvgVsMin+" pct>   Max:"+perByteMax+"ns Total:"+totalDuration+" Overhead:"+totalOverhead;
 
 				System.out.println(label+msg);
 
@@ -120,7 +149,7 @@ public abstract class BaseStreamingTest {
 	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f) {
 		if (--g<0) {
 			//close group
-			fr.closeGroup(groupToken);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
@@ -154,11 +183,11 @@ public abstract class BaseStreamingTest {
 
 
 	
-	protected void performanceReadTest(int fields, int singleCharLength, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
+	protected void performanceReadTest(int fields, int charFields, int byteFields,  int singleCharLength, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 
-	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleCharLength, fields, fields, tokenLookup);
+	    		DictionaryFactory dcr = new DictionaryFactory(fields, fields, charFields, singleCharLength, fields, byteFields, tokenLookup);
 	    
 				long maxOverhead;
 				long totalOverhead;
@@ -226,11 +255,11 @@ public abstract class BaseStreamingTest {
 			DictionaryFactory dcr);
 
 	
-	protected long performanceWriteTest(int fields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
+	protected long performanceWriteTest(int fields, int charFields, int byteFields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
-		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, fields, singleLength, fields, fields, tokenLookup);
+		    DictionaryFactory dcr = new DictionaryFactory(fields, fields, charFields, singleLength, fields, byteFields, tokenLookup);
    
 		    
 		    long byteCount=0;

@@ -367,14 +367,15 @@ public final class PrimitiveReader {
 		if (limit-position<=5) {
 			return readIntegerSignedSlow();
 		}
-		
-		byte v = buffer[position++];
+		int p = position;
+		byte v = buffer[p++];
 		int accumulator = ((v&0x40)==0) ? 0 :0xFFFFFF80;
 
 	    while (v>=0) {  //(v & 0x80)==0) {
 	    	accumulator = (accumulator|v)<<7;
-	    	v = buffer[position++];
+	    	v = buffer[p++];
 	    }
+	    position = p;
 	    return accumulator|(v&0x7F);
 	}
 

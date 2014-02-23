@@ -77,8 +77,8 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary());
 		
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	

@@ -122,6 +122,10 @@ public class TemplateHandler extends DefaultHandler {
     int biggestTemplateId;
     int uniqueTemplateIds;
     
+    int[] groupTokenStack = new int[MAX_FIELDS];//Need not be this big.
+    int[] groupTokenPMapStack = new int[MAX_FIELDS];
+    int groupTokenStackHead = -1;
+    
     
     
     
@@ -201,31 +205,67 @@ public class TemplateHandler extends DefaultHandler {
     		type = TypeMask.ByteArray;
     		id = Integer.valueOf(attributes.getValue("id"));
     		name = attributes.getValue("name");
-    	} else if (qName.equalsIgnoreCase("copy")) {
+    		
+    	} else if (qName.equalsIgnoreCase("copy")) {  //TODO: may need to add TWO because Decimal is used!!
     		operator = OperatorMask.Field_Copy;
+    		groupTokenPMapStack[groupTokenStackHead]++;//Always uses 1 pmap bit.
+    		
     	} else if (qName.equalsIgnoreCase("constant")) {
     		operator = OperatorMask.Field_Constant;
+    		if ((type&1)!=0) {
+    			groupTokenPMapStack[groupTokenStackHead]++;//optional constant does but required does not.
+    		}
+    		
     	} else if (qName.equalsIgnoreCase("default")) {
     	    operator = OperatorMask.Field_Default;
+    	    groupTokenPMapStack[groupTokenStackHead]++;//Always uses 1 pmap bit.
+    	    
     	} else if (qName.equalsIgnoreCase("delta")) {
     		operator = OperatorMask.Field_Delta;
+    		//Never uses pmap
+    		
     	} else if (qName.equalsIgnoreCase("increment")) {
     	    operator = OperatorMask.Field_Increment;
+    	    groupTokenPMapStack[groupTokenStackHead]++;//Uses 1 pmap bit.
+    	    
     	} else if (qName.equalsIgnoreCase("tail")) {
     		operator = OperatorMask.Field_Tail;
+    		//Never uses pmap
+    		
     	} else if (qName.equalsIgnoreCase("group")) {
-    		//TODO: create open group token for script
-    		templateScript[templateScriptIdx++] = id; //open group in script
+    		name = attributes.getValue("name");
+    		
+    		//Token must hold the max bytes needed for the PMap but this is the start element
+    		//and that data is not ready yet. So in the Count field we will put the templateScriptIdx.
+    		//upon close of this element the token at that location in the templateScript must have
+    		//the Count updated to the right value.
+    		int token = TokenBuilder.buildToken(TypeMask.Group,
+							    				0, 
+							    				templateScriptIdx);
+    		
+    		//this token will tell how to get back to the index in the script to fix it.
+    		//this value will also be needed for the back jump value in the closing task.
+    		groupTokenStack[++groupTokenStackHead] = token;
+    		groupTokenPMapStack[groupTokenStackHead] = 0;
+    		templateScript[templateScriptIdx++] = token; 
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		
-    		sequenceLength = -1;
     		name = attributes.getValue("name");
     		
-    		//TODO: create open group token for script
+    		//Token must hold the max bytes needed for the PMap but this is the start element
+    		//and that data is not ready yet. So in the Count field we will put the templateScriptIdx.
+    		//upon close of this element the token at that location in the templateScript must have
+    		//the Count updated to the right value.
+    		int token = TokenBuilder.buildToken(TypeMask.Group,
+							    				OperatorMask.Group_Bit_Seq, 
+							    				templateScriptIdx);
     		
-    		templateScript[templateScriptIdx++] = id; //open sequence in script
-    		//TODO: record optional length or -1
+    		//this token will tell how to get back to the index in the script to fix it.
+    		//this value will also be needed for the back jump value in the closing task.
+    		groupTokenStack[++groupTokenStackHead] = token;
+    		groupTokenPMapStack[groupTokenStackHead] = 0;
+    		templateScript[templateScriptIdx++] = token; 
     		
     	} else if (qName.equalsIgnoreCase("length")) { 
     		
@@ -234,6 +274,22 @@ public class TemplateHandler extends DefaultHandler {
     		commonIdAttributes(attributes);
     		
     	} else if (qName.equalsIgnoreCase("template")) {
+    		
+    		name = attributes.getValue("name");
+//    		
+//    		//Token must hold the max bytes needed for the PMap but this is the start element
+//    		//and that data is not ready yet. So in the Count field we will put the templateScriptIdx.
+//    		//upon close of this element the token at that location in the templateScript must have
+//    		//the Count updated to the right value.
+//    		int token = TokenBuilder.buildToken(TypeMask.Group,
+//							    				0, 
+//							    				templateScriptIdx);
+//    		
+//    		//this token will tell how to get back to the index in the script to fix it.
+//    		//this value will also be needed for the back jump value in the closing task.
+//    		groupTokenStack[++groupTokenStackHead] = token;
+//    		templateScript[templateScriptIdx++] = token; 
+    		
     		
     	    templateReset = attributes.getValue("reset");
     	    templateDictionary = attributes.getValue("dictionary");
@@ -346,11 +402,17 @@ public class TemplateHandler extends DefaultHandler {
     		templateScript[templateScriptIdx++] = id;
     		    	
     	} else if (qName.equalsIgnoreCase("group")) {
+    		int count = 0; //TODO: What is this value for closing group? Jump back to top!!
+    		//TODO: also need bit to tell if there was pmap to know if it should be closed.
+    		int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Close, count);
     		//TODO: create close group token for script
     		templateScript[templateScriptIdx++] = id; //close group in script
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		//TODO: create close group token for script
+    		//TODO: for closing sequence we need jump back to top?
+    		//TODO: only need boolean to tell if there was a pmap to close.
+    		
     		templateScript[templateScriptIdx++] = id; //close sequence in script
     		
     	} else if (qName.equalsIgnoreCase("template")) {

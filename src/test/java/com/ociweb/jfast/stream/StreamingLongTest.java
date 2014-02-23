@@ -20,7 +20,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingLongTest extends BaseStreamingTest {
 
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes);//TODO: repeat still unsupported
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 	final long[] testData     = buildTestDataUnsignedLong(fields);
 	final long   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	
@@ -53,7 +53,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Field_Default
                 };
 				
-		tester(types, operators, "UnsignedLong");
+		tester(types, operators, "UnsignedLong",0 ,0);
 	}
 	
 	@Test
@@ -71,7 +71,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Field_Constant, 
                 OperatorMask.Field_Default
                 };
-		tester(types, operators, "SignedLong");
+		tester(types, operators, "SignedLong",0 ,0);
 	}
 	
 
@@ -185,7 +185,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fr.closeGroup(groupToken);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 			
 		long duration = System.nanoTime() - start;

@@ -14,10 +14,10 @@ public class FieldWriterChar {
 	private static final int INIT_VALUE_MASK = 0x80000000;
 	
 	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
-		assert(charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
-		assert(FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
+		assert(null==charDictionary || charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
+		assert(null==charDictionary || FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
+		this.INSTANCE_MASK = null==charDictionary? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
 		this.heap = charDictionary;
 		this.writer = writer;
 	}

@@ -20,25 +20,17 @@ public class OperatorMask {
 	//Because decimals only have 3 bits for operator of each part.
 	public static final int Field_Tail      = 0x08;  //1000 // NEVER NUMERIC
 	
-	
-	public static final int Group_Bit_Close          = 0x01;
-	public static final int Group_Bit_Templ          = 0x02;
-	public static final int Group_Bit_Seq            = 0x04;
-			
-	                                          //    bits            STC
-	public static final int Group_Open 				= 0x00;  //0000
-	public static final int Group_Close 				= 0x01;  //0001
-	public static final int Group_Open_Templ 			= 0x02;  //0010
-	public static final int Group_Close_Templ 		= 0x03;  //0011	
-	public static final int Group_Open_Seq 			= 0x04;  //0100 //read length before repeating, length may be constant
-	public static final int Group_Close_Seq 			= 0x05;  //0101 //check count and return to top if needed. (contains delta jump)
-	public static final int Group_Open_Templ_Seq 		= 0x06;  //0110
-	public static final int Group_Close_Templ_Seq 	= 0x07;  //0111	
-	
 	public static final int Dictionary_Reset         = 0x00;  //0000
-	public static final int Dictionary_Copy          = 0x01;  //0001 //prefix for next normal field, copy this into that.
+	public static final int Dictionary_Read_From     = 0x01;  //0001 //prefix for next normal field, read from this into that.
+    //NOTE: ReadFrom is implemented as copy today but will be redone in the future as a real read from.
 	
 	
+	//This is not the full mask like the others but instead bits that may be used in any combination.
+	public static final int Group_Bit_Close          = 0x01; //count value will be tokens back to top, otherwise pmap max bytes.
+	public static final int Group_Bit_Templ          = 0x02; //template must be found before this group
+	public static final int Group_Bit_Seq            = 0x04; //use length field and use jump back logic
+	public static final int Group_Bit_PMap           = 0x08; //group requires a pmap
+				
 	
 	private static String prefix(int len, char c, String value) {
 		StringBuilder builder = new StringBuilder();

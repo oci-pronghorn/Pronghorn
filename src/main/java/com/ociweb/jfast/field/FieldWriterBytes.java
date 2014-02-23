@@ -16,10 +16,10 @@ public class FieldWriterBytes {
 	private static final int INIT_VALUE_MASK = 0x80000000;
 	
 	public FieldWriterBytes(PrimitiveWriter writer, ByteHeap byteDictionary) {
-		assert(byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
-		assert(FieldReaderInteger.isPowerOfTwo(byteDictionary.itemCount()));
+		assert(null==byteDictionary || byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
+		assert(null==byteDictionary || FieldReaderInteger.isPowerOfTwo(byteDictionary.itemCount()));
 		
-		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (byteDictionary.itemCount()-1));
+		this.INSTANCE_MASK = null==byteDictionary? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteDictionary.itemCount()-1));
 		
 		this.heap = byteDictionary;
 		this.writer = writer;

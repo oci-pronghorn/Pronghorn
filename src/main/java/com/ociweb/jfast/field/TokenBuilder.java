@@ -22,7 +22,7 @@ public class TokenBuilder {
 	 * groups often use multiple tokens in a row from the script to satify the 
 	 * required arguments.
 	 * group type operators - Open/Close, Repeats(second int)
-	 * copy type operators  - Copy to (next field in use)  
+	 * read type operators  - Read from (into next field in use)  
 	 *
 	 *
 	 */

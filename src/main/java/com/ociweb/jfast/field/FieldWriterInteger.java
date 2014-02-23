@@ -55,22 +55,25 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerUnsignedCopy(int value, int token) {
-		if (value == lastValue[token & INSTANCE_MASK]) {
+		int idx = token & INSTANCE_MASK;
+		
+		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(value);
-			lastValue[token & INSTANCE_MASK] = value;
 		}
 	}
 	
 	public void writeIntegerUnsignedCopyOptional(int value, int token) {
+		int idx = token & INSTANCE_MASK;
 		//zero is reserved for null
-		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
+		if (++value == lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[token & INSTANCE_MASK] = value);
+			writer.writeIntegerUnsigned(lastValue[idx] = value);
 		}
 	}
 	
@@ -83,8 +86,8 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerUnsignedConstantOptional(int value, int token) {
-		writer.writePMapBit((byte)1);
 		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		writer.writePMapBit((byte)1);
 		//the writeNull will take care of the rest.
 	}
 	
@@ -96,15 +99,13 @@ public final class FieldWriterInteger {
 	}
 	
 	public void writeIntegerSignedConstantOptional(int value, int token) {
-		writer.writePMapBit((byte)1);
 		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+		writer.writePMapBit((byte)1);
 		//the writeNull will take care of the rest.
 	}
 	
 	public void writeIntegerUnsignedDefault(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
+		if (value == lastValue[token & INSTANCE_MASK]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -122,18 +123,18 @@ public final class FieldWriterInteger {
 		}
 	}
 
-
 	
 	public void writeIntegerUnsignedIncrement(int value, int token) {
 		int idx;
 		int incVal;
 		
 		if (value == (incVal = lastValue[idx = token & INSTANCE_MASK]+1)) {
-			writer.writePMapBit((byte)0);
 			lastValue[idx] = incVal;
+			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx] = value);
+			writer.writeIntegerUnsigned(value);
 		}
 	}
 	
@@ -145,8 +146,9 @@ public final class FieldWriterInteger {
 		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			int tmp = lastValue[idx] = 1+value;
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx] = 1+value);
+			writer.writeIntegerUnsigned(tmp);
 		}
 	}
 	
@@ -155,17 +157,20 @@ public final class FieldWriterInteger {
 
 	public void writeIntegerUnsignedDelta(int value, int token) {
 		//Delta opp never uses PMAP
-		int idx;
-		writer.writeIntegerSigned(value - lastValue[idx = token & INSTANCE_MASK]);
+		int idx;		
+		long dif = value - (long)lastValue[idx = (token & INSTANCE_MASK)];
 		lastValue[idx] = value;		
+		writer.writeLongSigned(dif);
 	}
 	
 	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
 		//Delta opp never uses PMAP
 		int idx;
-		int delta = value - lastValue[idx = token & INSTANCE_MASK];
-		writer.writeLongSigned(delta>=0?1+delta:delta);
+		long delta = value - (long)lastValue[idx = token & INSTANCE_MASK];
 		lastValue[idx] = value;	
+		//writer.writeLongSigned((delta+1)-(delta>>63));
+		writer.writeLongSigned(delta>=0?1+delta:delta);
+		
 	}
 	
 
@@ -185,9 +190,9 @@ public final class FieldWriterInteger {
 		if (value == lastValue[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerSigned(value);
-			lastValue[idx] = value;
 		}
 	}
 	
@@ -201,16 +206,15 @@ public final class FieldWriterInteger {
 		if (value == lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			int tmp = lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(lastValue[idx] = value);
+			writer.writeIntegerSigned(tmp);
 		}
 	}
 	
 
 	public void writeIntegerSignedDefault(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
+		if (value == lastValue[token & INSTANCE_MASK]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -233,32 +237,32 @@ public final class FieldWriterInteger {
 
 	
 	public void writeIntegerSignedIncrement(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		int incVal = lastValue[idx]+1;
+		int idx;
 		
-		if (value == incVal) {
+		lastValue[idx = token & INSTANCE_MASK] = value;
+		if (value == (lastValue[idx]+1)) {
 			writer.writePMapBit((byte)0);
-			lastValue[idx] = incVal;
 		} else {
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(lastValue[idx] = value);
+			writer.writeIntegerSigned(value);
 		}
 	}
 	
 
 	public void writeIntegerSignedIncrementOptional(int value, int token) {
 
-		int idx = token & INSTANCE_MASK;
+		int idx;
 
 		if (value>=0) {
 			value++;
 		}
-		if (0!=lastValue[idx] && 
+		if (0!=lastValue[idx = token & INSTANCE_MASK] && 
 			value == ++lastValue[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(lastValue[idx] = value);
+			writer.writeIntegerSigned(value);
 		}
 			
 	}
@@ -266,18 +270,19 @@ public final class FieldWriterInteger {
 
 	public void writeIntegerSignedDelta(int value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		writer.writeIntegerSigned(value - lastValue[idx]);
+		int idx;
+		long dif = value - (long)lastValue[idx = token & INSTANCE_MASK];
 		lastValue[idx] = value;		
+		writer.writeLongSigned(dif);
 	}
 	
 	public void writeIntegerSignedDeltaOptional(int value, int token) {
 		//Delta opp never uses PMAP
-		int idx = token & INSTANCE_MASK;
-		long dif = value - lastValue[idx];
-		//writer.writeLongSigned((dif + (1-(dif>>>63)) ));
-		writer.writeLongSigned(dif>=0 ? 1+dif : dif);
+		int idx;
+		long dif = value - (long)lastValue[idx = token & INSTANCE_MASK];
 		lastValue[idx] = value;	
+		//writer.writeLongSigned((dif + (dif>>>63) )+1);
+		writer.writeLongSigned(dif>=0 ? 1+dif : dif);
 	}
 
 	public void writeNull(int token) {
@@ -304,10 +309,12 @@ public final class FieldWriterInteger {
 	}
 	
 	private void writeClearNull(int token) {
-		writer.writeNull();
 		lastValue[token & INSTANCE_MASK] = 0;
+		writer.writeNull();
 	}
-	
+	//NOTE: while lastValue is still in the cache we must do the write back
+	//before calling the complex method on writer and loose the context.
+	//by doing this call last the stack frame can be abandoned rather than restored.
 	
 	private void writePMapAndClearNull(int token) {
 		int idx = token & INSTANCE_MASK;
@@ -315,9 +322,9 @@ public final class FieldWriterInteger {
 		if (lastValue[idx]==0) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
+			lastValue[idx] =0;
 			writer.writePMapBit((byte)1);
 			writer.writeNull();
-			lastValue[idx] =0;
 		}
 	}
 	

@@ -42,7 +42,7 @@ public final class TypeMask {
 	//lots of room for the next revision, eg booleans and enums
 	
 	//special flag used internally by FASTDynamic* to know when to return control back to the caller.
-	public final static int Stop                     = 0x1F;//11111
+	//public final static int Stop                     = 0x1F;//11111
 
 	private static String prefix(int len, char c, String value) {
 		StringBuilder builder = new StringBuilder();

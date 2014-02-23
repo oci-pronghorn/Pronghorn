@@ -31,7 +31,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	//This is NOT the same as the other tests which measure the duration to produce 1 byte on the stream.
 	//--The ns/byte tests are an estimate of how much bandwidth can be saturated given the CPU available.
 	
-	static final int internalBufferSize = 4096;
+	static final int internalBufferSize = 512;
 	static final int maxGroupCount = 10;
 	static final int fields = 10;
 	static final int singleCharLength = 128;
@@ -77,8 +77,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
@@ -271,7 +271,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= intTestData[j];//do nothing
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.
@@ -284,7 +284,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= j;//doing more nothing.
 			}
-			staticReader.closeGroup(groupToken);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		return result;
 	}
@@ -322,7 +322,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				staticReader.readDecimalExponent(token, 0);
 				result |= staticReader.readDecimalMantissa(token, 0);
 			}
-			staticReader.closeGroup(groupToken);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		return result;
 	}

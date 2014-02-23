@@ -81,8 +81,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	
@@ -202,7 +202,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	//////
 	////
 	//  
-		
+
 	public int timeStaticIntegerUnsignedNoneWR(int reps) {
 		return staticWriteReadIntegerGroup(reps, 
 				TokenBuilder.buildToken(
@@ -590,7 +590,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= intTestData[j];//do nothing
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.
@@ -603,7 +603,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= j;//pr.readIntegerUnsigned();////j;//doing more nothing.
 			}
-			staticReader.closeGroup(groupToken);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		return result;
 	}
@@ -625,7 +625,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				staticWriter.write(token, intTestData[j]);
 			}
-			staticWriter.closeGroup(groupToken);
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
@@ -641,7 +641,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= staticReader.readInt(token, 0);
 			}
-			staticReader.closeGroup(groupToken);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		return result;
 	}

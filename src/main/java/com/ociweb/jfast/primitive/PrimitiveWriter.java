@@ -302,52 +302,15 @@ public final class PrimitiveWriter {
 		if (value >= 0) {
 			writeLongSignedPos(value+1);
 		} else {
-
-			if ((value << 1) == 0) {
-				if (limit > buffer.length - 10) {
-					output.flush();
-				}
-				// encode the most negative possible number
-				buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
-				buffer[limit++] = (byte) (0x00); // 7F.. .... .... ....
-				buffer[limit++] = (byte) (0x00); // . FE .... .... ....
-				buffer[limit++] = (byte) (0x00); // ...1 FC.. .... ....
-				buffer[limit++] = (byte) (0x00); // .... .3F8 .... ....
-				buffer[limit++] = (byte) (0x00); // .... ...7 F... ....
-				buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
-				buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
-				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
-				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
-			} else {
-				writeLongSignedNeg(value);
-			}
+			writeLongSignedNeg(value);
 		}
 	}
 	
 	public final void writeLongSigned(long value) {
-
 		if (value >= 0) {
 			writeLongSignedPos(value);
 		} else {
-
-			if ((value << 1) == 0) {
-				if (limit > buffer.length - 10) {
-					output.flush();
-				}
-				// encode the most negative possible number
-				buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
-				buffer[limit++] = (byte) (0x00); // 7F.. .... .... ....
-				buffer[limit++] = (byte) (0x00); // . FE .... .... ....
-				buffer[limit++] = (byte) (0x00); // ...1 FC.. .... ....
-				buffer[limit++] = (byte) (0x00); // .... .3F8 .... ....
-				buffer[limit++] = (byte) (0x00); // .... ...7 F... ....
-				buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
-				buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
-				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
-				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
-			} else {
-				writeLongSignedNeg(value);
-			}
+			writeLongSignedNeg(value);
 		}
 	}
 
@@ -356,6 +319,11 @@ public final class PrimitiveWriter {
 		long absv = -value;
 		
 		if (absv <= 0x0000000000000040l) {
+			if (absv<0) { //Must be most neg long because it will remain negative.
+				writeLongSignedMostNegative();
+				return;
+			}
+			
 			if (buffer.length - limit < 1) {
 				output.flush();
 			}
@@ -396,6 +364,23 @@ public final class PrimitiveWriter {
 		}
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 
+	}
+
+	private void writeLongSignedMostNegative() {
+		if (limit > buffer.length - 10) {
+			output.flush();
+		}
+		// encode the most negative possible number
+		buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
+		buffer[limit++] = (byte) (0x00); // 7F.. .... .... ....
+		buffer[limit++] = (byte) (0x00); // . FE .... .... ....
+		buffer[limit++] = (byte) (0x00); // ...1 FC.. .... ....
+		buffer[limit++] = (byte) (0x00); // .... .3F8 .... ....
+		buffer[limit++] = (byte) (0x00); // .... ...7 F... ....
+		buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
+		buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
+		buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
+		buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
 	}
 
 	private final void writeLongSignedNegSlow(long absv, long value) {
@@ -619,19 +604,7 @@ public final class PrimitiveWriter {
 		if (value >= 0) { 
 			writeIntegerSignedPos(value+1);
 		} else {
-			if ((value << 1) == 0) {
-				if (limit > buffer.length - 5) {
-					output.flush();
-				}
-				// encode the most negative possible number
-				buffer[limit++] = (byte) (0x7F); // .... ...7 F... ....
-				buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
-				buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
-				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
-				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
-			} else {
-				writeIntegerSignedNeg(value);
-			}
+			writeIntegerSignedNeg(value);
 		}
 	}
 	
@@ -639,28 +612,20 @@ public final class PrimitiveWriter {
 		if (value >= 0) { 
 			writeIntegerSignedPos(value);
 		} else {
-			if ((value << 1) == 0) {
-				if (limit > buffer.length - 5) {
-					output.flush();
-				}
-				// encode the most negative possible number
-				buffer[limit++] = (byte) (0x7F); // .... ...7 F... ....
-				buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
-				buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
-				buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
-				buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
-			} else {
-				writeIntegerSignedNeg(value);
-			}
+			writeIntegerSignedNeg(value);
 		}
 	}
 
 	private void writeIntegerSignedNeg(int value) {
 	    // using absolute value avoids tricky word length issues
 	    int absv = -value;
-	    
-	    
+	    	    
 		if (absv <= 0x00000040) {
+			if (absv<0) {//Integer.MIN_VALUE is the same neg value after - operator
+				writeIntegerSignedMostNegative();
+				return;
+			}
+			
 			if (buffer.length - limit < 1) {
 				output.flush();
 			}
@@ -694,6 +659,19 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
 	    
 	    
+	}
+
+	private void writeIntegerSignedMostNegative() {
+		if (limit > buffer.length - 5) {
+			output.flush();
+		}
+		// encode the most negative possible number //TODO: this does not appear right.
+		buffer[limit++] = (byte) (0x7F); // .... ...7 F... ....
+		buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
+		buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
+		buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
+		buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
+		return;
 	}
 	
 	private void writeIntegerSignedPos(int value) {

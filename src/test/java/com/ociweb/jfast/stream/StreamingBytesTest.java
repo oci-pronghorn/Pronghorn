@@ -164,14 +164,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 		int i = 0;
@@ -198,7 +198,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		}
 		int g = fieldsPerGroup;
 		
-		int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 		
 		fw.openGroup(groupToken);
 		
@@ -268,7 +268,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
 		}
 		int g = fieldsPerGroup;
-		int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes);//TODO: repeat still unsupported
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 		
 		fr.openGroup(groupToken);
 		
@@ -344,7 +344,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0 ) {
-			fr.closeGroup(groupToken);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		long duration = System.nanoTime() - start;
 		return duration;

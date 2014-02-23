@@ -78,8 +78,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,2);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
@@ -113,14 +113,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 
 	public static boolean isInValidCombo(int type, int operator) {
 		
-		if (type>=0 && type<=TypeMask.LongSignedOptional) {
-			//integer/long types do not support tail
-			if (OperatorMask.Field_Tail==operator) {
-				return true;
-			}
-		}		
+		return OperatorMask.Field_Tail==operator && type<=TypeMask.LongSignedOptional;
 		
-		return false;
 	}
 
 	//TODO: split these tests into different classes per type for easier comparison.
@@ -402,7 +396,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= staticReader.readLong(token, 0);
 			}
-			staticReader.closeGroup(groupToken);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 		return result;
 	}

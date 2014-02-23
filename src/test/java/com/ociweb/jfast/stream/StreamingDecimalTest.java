@@ -26,7 +26,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	final long   testMantConst = 0;
 	
 	//Must double because we may need 1 bit for exponent and another for mantissa
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,0,maxMPapBytes*2);//TODO: repeat still unsupported
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes*2);
 
 	boolean sendNulls = true;
 	
@@ -65,7 +65,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 OperatorMask.Field_Default
                 };
 				
-		tester(types, operators, "Decimal");
+		tester(types, operators, "Decimal", 0 ,0);
 	}
 	
 	
@@ -156,7 +156,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		}
 		
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fr.closeGroup(groupToken);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}
 			
 		long duration = System.nanoTime() - start;
@@ -166,7 +166,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
 		if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
 			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
-			if (exp<0) {
+			if (exp!=-1) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
 			}
 			long man = fr.readDecimalMantissa(tokenLookup[f], none);
@@ -185,7 +185,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token, int i) {
 		if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
 			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
-			if (exp<0) {
+			if (exp!=-1) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
 			}
 			long man = fr.readDecimalMantissa(tokenLookup[f], none);
