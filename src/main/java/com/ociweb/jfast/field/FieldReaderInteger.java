@@ -117,12 +117,12 @@ public class FieldReaderInteger {
 	public int readIntegerUnsignedDefaultOptional(int token, int valueOfOptional) {
 		if (reader.popPMapBit()==0) {
 			
-			int idx = token & INSTANCE_MASK;
-			return lastValue[idx] == 0 ?
+			int last = lastValue[token & INSTANCE_MASK];
+			return last == 0 ?
 					//default value is null so return optional.
 					valueOfOptional : 
 					//default value 
-					lastValue[idx];
+					last;
 	
 		} else {
 			int value = reader.readIntegerUnsigned();
@@ -222,16 +222,8 @@ public class FieldReaderInteger {
 
 	public int readIntegerSignedDefaultOptional(int token, int valueOfOptional) {
 		if (reader.popPMapBit()==0) {
-			
-			int idx;
-			if (lastValue[(idx = token & INSTANCE_MASK)] == 0) {
-				//default value is null so return optional.
-				return valueOfOptional;
-			} else {
-				//default value 
-				return lastValue[idx];
-			}
-			
+			int last = lastValue[token & INSTANCE_MASK];
+			return 0==last?valueOfOptional:last;			
 		} else {
 			int value;
 			if ((value = reader.readIntegerSigned())==0) {
@@ -260,11 +252,11 @@ public class FieldReaderInteger {
 			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
 		} else {
 			int value;
-			if ((value = lastValue[instance] = reader.readIntegerSigned())==0) {
+			if ((lastValue[instance] = value = reader.readIntegerSigned())==0) {
 				return valueOfOptional;
 			} else {
 				//lastValue[instance] = value;
-				//return (value + ((value>>>31)-1) );
+				//return (value + (value>>>31)) -1;
 				return value>0 ? value-1 : value;
 			}
 		}

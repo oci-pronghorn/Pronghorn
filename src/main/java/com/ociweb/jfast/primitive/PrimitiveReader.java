@@ -284,35 +284,41 @@ public final class PrimitiveReader {
 	
 	public final long readLongSigned () {
 		if (limit-position<=10) {
-			if (position>=limit) {
-				fetch(1);
-			}
-			int v = buffer[position++];
-			long accumulator = ((v&0x40)==0) ? 0 :0xFFFFFFFFFFFFFF80l;
-
-		    while (v>=0) { //(v & 0x80)==0) {
-		    	if (position>=limit) {
-					fetch(1);
-				}
-		    	accumulator = (accumulator|v)<<7;
-		    	v = buffer[position++];
-		    }
-		    return accumulator|(v&0x7F);
+			return readLongSignedSlow();
 		}
 		
 		int p = position;
-		byte[] buff = this.buffer;
-		
-		
-		byte v = buff[p++];
+				
+		long v = buffer[p++];
+						
+		long accumulator = ((v&0x40)==0) ? 0l :0xFFFFFFFFFFFFFF80l;
+ 
+		while (v>=0) { 
+			accumulator = (accumulator|v)<<7;
+			v = buffer[p++];
+		}
+    
+	    position = p;
+	    return accumulator|(v&0x7Fl);
+	}
+
+
+	private long readLongSignedSlow() {
+		//slow path
+		if (position>=limit) {
+			fetch(1);
+		}
+		int v = buffer[position++];
 		long accumulator = ((v&0x40)==0) ? 0 :0xFFFFFFFFFFFFFF80l;
 
-	    while (v>=0) { //(v & 0x80)==0) {
-	    	accumulator = (accumulator|v)<<7;
-	    	v = buff[p++];
-	    }
-	    position = p;
-	    return accumulator|(v&0x7F);
+		while (v>=0) { //(v & 0x80)==0) {
+			if (position>=limit) {
+				fetch(1);
+			}
+			accumulator = (accumulator|v)<<7;
+			v = buffer[position++];
+		}
+		return accumulator|(v&0x7F);
 	}
 	
 

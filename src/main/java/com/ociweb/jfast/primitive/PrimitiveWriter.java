@@ -299,19 +299,22 @@ public final class PrimitiveWriter {
 	
 	public final void writeLongSignedOptional(long value) {
 
-		if (value >= 0) {
-			writeLongSignedPos(value+1);
-		} else {
-			writeLongSignedNeg(value);
-		}
+			if (value >= 0) {
+				writeLongSignedPos(value+1);
+			} else {
+				writeLongSignedNeg(value);
+			}
+
 	}
 	
 	public final void writeLongSigned(long value) {
-		if (value >= 0) {
-			writeLongSignedPos(value);
-		} else {
-			writeLongSignedNeg(value);
-		}
+		
+			if (value >= 0) {
+				writeLongSignedPos(value);
+			} else {
+				writeLongSignedNeg(value);
+			}
+
 	}
 
 	private final void writeLongSignedNeg(long value) {
@@ -509,7 +512,6 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeLongUnsigned(long value) {
-
 			if (value < 0x0000000000000080l) {
 				if (buffer.length - limit < 1) {
 					output.flush();

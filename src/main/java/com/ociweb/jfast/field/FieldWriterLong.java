@@ -262,15 +262,16 @@ public final class FieldWriterLong {
 
 	public void writeLongSignedIncrementOptional(long value, int token) {
 
-		int idx = token & INSTANCE_MASK;
+		int idx;
 
 		if (value>=0) {
 			value++;
 		}
-		if (0!=lastValue[idx] && value == ++lastValue[idx]) {//not null and matches
+		long last = lastValue[idx = token & INSTANCE_MASK];
+		lastValue[idx] = value;
+		if (0!=last && value == 1+last) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
-			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeLongSigned(value);
 		}

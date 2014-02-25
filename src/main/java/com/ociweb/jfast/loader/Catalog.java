@@ -14,7 +14,6 @@ public class Catalog {
 	public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	
-
 	final int[] ids;
 	final int[] tokens;
 	final long[] absent;
@@ -151,7 +150,7 @@ public class Catalog {
 		//therefore we will only store the exponent given a base of two.
 		//this is not so much for making the file smaller but rather to do the computation
 		//now instead of at runtime when latency is an issue.
-		int pow = 0;
+		int pow = 0;  
 		int tmp = biggestTemplateId;
 		while (tmp!=0) {
 			pow++;
@@ -175,6 +174,17 @@ public class Catalog {
 				}
 			}
 		}
+	}
+
+	public int templates() {
+		int templates = 0;
+		int x=scriptsCatalog.length;
+		while (--x>=0) {
+			if (null!=scriptsCatalog) {
+				templates++;
+			}
+		}
+		return templates;
 	}
 	
 	

@@ -33,6 +33,7 @@ public class TokenBuilder {
 	
 	public static final int MAX_FIELD_ID_BITS  = 18;
 	public static final int MAX_FIELD_ID_VALUE = (1<<MAX_FIELD_ID_BITS)-1;
+	public static final int MAX_FIELD_MASK     = 0xFFFFFFFF^MAX_FIELD_ID_VALUE;
 	
 	public static final int SHIFT_DICT         = MAX_FIELD_ID_BITS;
 	public static final int BITS_DICT          = 2;

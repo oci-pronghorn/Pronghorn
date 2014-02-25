@@ -23,8 +23,7 @@ public class TemplateLoaderTest {
 	@Test
 	public void loadTest() {
 		URL source = getClass().getResource("/performance/example.xml");
-		
-		
+			
 		
 		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
 		File fileSource = new File(source.getFile());
@@ -41,6 +40,11 @@ public class TemplateLoaderTest {
         //reconstruct Catalog object from stream		
 		FASTInput input = new FASTInputByteArray(catalogBuffer.toByteArray());
 //		Catalog catalog = new Catalog(new PrimitiveReader(input));
+		
+		// /performance/example.xml contains 3 templates.
+//		assertEquals(3, catalog.templates());
+		
+		
 //		
 //		//TODO: confirm that the catalog contains the right data.
 //		int[] tokens = catalog.tokens;
