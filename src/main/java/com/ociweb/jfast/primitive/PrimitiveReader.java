@@ -75,6 +75,9 @@ public final class PrimitiveReader {
 	public long totalRead() {
 		return totalReader;
 	}
+	public int remaining() {
+		return limit-position;
+	}
 	
 	public final void fetch() {
 		fetch(1);

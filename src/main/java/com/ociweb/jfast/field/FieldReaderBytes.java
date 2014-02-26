@@ -4,6 +4,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderBytes {
@@ -50,6 +51,12 @@ public class FieldReaderBytes {
 				
 		return idx;
 	}
+	
+	public void reset(DictionaryFactory dictionaryFactory) {
+		// TODO reset heap back to construction
+		
+	}
+
 	
 	public int readBytesConstant(int token) {
 		//always return this required value
@@ -193,6 +200,7 @@ public class FieldReaderBytes {
 	public ByteHeap byteHeap() {
 		return byteHeap;
 	}
+
 
 
 }

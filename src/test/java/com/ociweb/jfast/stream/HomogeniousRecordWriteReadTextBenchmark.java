@@ -384,7 +384,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			pr.reset();//for testing clear any data found in reader 
 			
-			staticReader.reset(dcr); //reset message to clear the previous values
+			staticReader.reset(); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken);
 			j = textTestData.length;
@@ -420,7 +420,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			pr.reset();//for testing clear any data found in reader 
 			
-			staticReader.reset(dcr); //reset message to clear the previous values
+			staticReader.reset(); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken);
 			j = textTestData.length;

@@ -80,6 +80,8 @@ public final class PrimitiveWriter {
 		this.safetyStackPosPos = new long[maxGroupCount];
 				
 		this.output = output;
+		
+		//TODO: writing to one end and reading the other may be causing problem
 		this.flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
 		
 		output.init(new DataTransfer(this));
@@ -239,7 +241,9 @@ public final class PrimitiveWriter {
 		return nextOffset;
 	}
 	
-	
+	public final int remaining() {
+		return limit-position;
+	}
     
     public final void flush () { //flush all 
     	output.flush();
@@ -248,6 +252,7 @@ public final class PrimitiveWriter {
     protected int computeFlushToIndex() {
 		if (safetyStackDepth>0) {//TODO: this never happens according to coverage test?
 			//only need to check first entry on stack the rest are larger values
+			//TODO: using safetyStackPosPos here may be corrupting the cache!!!
 			int safetyLimit = (((int)safetyStackPosPos[0])&POS_POS_MASK) -1;//still modifying this position but previous is ready to go.
 			return (safetyLimit < limit ? safetyLimit :limit);
 		} else {
@@ -756,6 +761,12 @@ public final class PrimitiveWriter {
 	//called only at the beginning of a group.
 	public final void openPMap(int maxBytes) {
 		
+//		if (tempHead>=0) {
+//			System.arraycopy(temp, 0, buffer, tempIdx, tempHead+1);
+//			tempIdx = -1;
+//			tempHead = -1;
+//		}
+		
 		assert(maxBytes>0) : "Do not call openPMap if it is not expected to be used.";
 		
 		if (limit > buffer.length - maxBytes) {
@@ -793,6 +804,13 @@ public final class PrimitiveWriter {
 	
 	//called only at the end of a group.
 	public final void closePMap() {
+		
+//		if (tempHead>=0) {
+//			System.arraycopy(temp, 0, buffer, tempIdx, tempHead+1);
+//			tempIdx = -1;
+//			tempHead = -1;
+//		}
+		
 		/////
 		//the PMap is ready for writing.
 		//bit writes will go to previous bitmap location
@@ -832,13 +850,23 @@ public final class PrimitiveWriter {
     	}
     	
 	}
-
+//
+//	int[] temp = new int[1024];
+//	int tempHead = -1;
+//	int tempIdx = -1;
+	
+	
 	//called by ever field that needs to set a bit either 1 or 0
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
+			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less!
+			//TODO: what if we cached the buffer writes and did arraycopy later.
 			
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
+			
+			
+			//byte b;
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
 			if (0 != (buffer[idx] = (byte) (bit==0? pMapByteAccum :  (pMapByteAccum | bit)))) {	
 				long stackFrame = safetyStackPosPos[safetyStackDepth-1];
@@ -847,7 +875,15 @@ public final class PrimitiveWriter {
 				//writing the pmap bit is the ideal place to detect overflow of the bits based on expectations.
 				assert (lastPopulatedIdx<flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
 				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
-			}	
+			}
+//			
+//			if (tempIdx<0) {
+//				tempIdx= idx;
+//			}
+//			temp[++tempHead] = b;
+			
+			
+		//	buffer[idx] = b;
 			
 			pMapIdxWorking = 7;
 			pMapByteAccum = 0;

@@ -3,45 +3,51 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
+import java.util.Arrays;
+
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public class Catalog {
+public class TemplateCatalog {
 
 	//because optional values are sent as +1 when >= 0 it is not possible to send the
 	//largest supported positive value, as a result this is the ideal default because it
 	//can not possibly collide with any real values
 	public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
+	private static final long NO_ID = 0xFFFFFFFF00000000l;
 	
-	final int[] ids;
 	final int[] tokens;
 	final long[] absent;
-	final int[][] scriptsCatalog;
+	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	
 	
-	public Catalog(PrimitiveReader reader) {
-		
-		int templatePow = reader.readIntegerUnsigned();
-		assert(templatePow<32) : "Corrupt catalog file";
-		scriptsCatalog = new int[1<<templatePow][];
-		
-		loadTemplateScripts(reader);
-		
-		
+	public TemplateCatalog(PrimitiveReader reader) {
+				
 		int tokenPow = reader.readIntegerUnsigned();
 		assert(tokenPow<32) : "Corrupt catalog file";
 		int maxTokens = 1<<tokenPow;
-		ids = new int[maxTokens];
+		
 		tokens = new int[maxTokens];
 		absent = new long[maxTokens];
 		
 		loadTokens(reader);
+
 		
+		int templatePow = reader.readIntegerUnsigned();
+		assert(templatePow<32) : "Corrupt catalog file";
+		scriptsCatalog = new long[1<<templatePow][];
 		
+		loadTemplateScripts(reader);
+		
+				
 	}
 
-	private int[][] loadTemplateScripts(PrimitiveReader reader) {
+	
+	
+	//Assumes that the tokens are already loaded and ready for use.
+	private void loadTemplateScripts(PrimitiveReader reader) {
 		
 		int templatesInCatalog = reader.readIntegerUnsigned();
 		
@@ -50,14 +56,26 @@ public class Catalog {
 			int templateId = reader.readIntegerUnsigned();
 			int templateScriptLength = reader.readIntegerUnsigned();
 			int s = templateScriptLength;
-			int[] script = new int[s];
+			long[] script = new long[s]; //top 32 are id, low 32 are token
 			while (--s>=0) {
-				script[s] = reader.readIntegerSigned();
+				int tmp = reader.readIntegerSigned();
+				if (tmp<0) {
+					script[s] = NO_ID|tmp;
+				} else {
+					int token = tokens[tmp];
+					if (token==0) {
+						throw new FASTException("Corrupt template catalog.");
+					}
+					script[s] = (((long)tmp)<<32)|token;
+				}
 			}
+			
+			//TODO: build a helper for printing scripts with human readable commands
+			System.err.println("load new template:"+templateId+" len "+script.length+"  "+Arrays.toString(script));
+			
 			//save the script into the catalog
 			scriptsCatalog[templateId] = script;
 		}
-		return scriptsCatalog;
 	}
 	
 	private void loadTokens(PrimitiveReader reader) {
@@ -65,13 +83,14 @@ public class Catalog {
 		int i = reader.readIntegerUnsigned();
 		while (--i>=0) {
 			int id=reader.readIntegerUnsigned();
+						
 			tokens[id]=reader.readIntegerSigned();
 			switch(reader.readIntegerUnsigned()) {
 				case 0:
-					absent[id]=Catalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
 					break;
 				case 1:
-					absent[id]=Catalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 					break;
 				case 3:
 					absent[id]=reader.readLongSigned();
@@ -88,8 +107,8 @@ public class Catalog {
 			                  int uniqueTemplateIds, int biggestTemplateId, 
 			                  int[][] scripts) {
 		
-		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
+		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
 	}
 
@@ -103,19 +122,20 @@ public class Catalog {
 		}
 		//this is how big we need to make the lookup arrays
 		writer.writeIntegerUnsigned(base2Exponent);
+		
 		//this is how many values we are about to write to the stream
 		writer.writeIntegerUnsigned(uniqueIds);
 		//this is each value, id, token and absent
 		int i = tokenLookup.length;
-		while (--i<=0) {
+		while (--i>=0) {
 			int token = tokenLookup[i];
 			if (0!=token) {
 				writer.writeIntegerUnsigned(i);
 				writer.writeIntegerSigned(token);
 				
-				if (Catalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==absentValue[i]) {
+				if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==absentValue[i]) {
 					writer.writeIntegerUnsigned(0);
-				} else 	if (Catalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==absentValue[i]) {
+				} else 	if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==absentValue[i]) {
 					writer.writeIntegerUnsigned(1);
 				} else {
 					writer.writeIntegerUnsigned(2);
@@ -175,16 +195,20 @@ public class Catalog {
 			}
 		}
 	}
+	
+	public long[] templateScript(int templateId) {
+		return scriptsCatalog[templateId];
+	}
 
-	public int templates() {
-		int templates = 0;
+	public int templatesCount() {
+		int tmp = 0;
 		int x=scriptsCatalog.length;
 		while (--x>=0) {
-			if (null!=scriptsCatalog) {
-				templates++;
+			if (null!=scriptsCatalog[x]) {
+				tmp++;
 			}
 		}
-		return templates;
+		return tmp;
 	}
 	
 	

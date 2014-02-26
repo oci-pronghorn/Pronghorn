@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderChar {
@@ -25,6 +26,11 @@ public class FieldReaderChar {
 	
 	public TextHeap textHeap() {
 		return charDictionary;
+	}
+	
+	public void reset(DictionaryFactory dictionaryFactory) {
+		// TODO reset heap back to construction
+		
 	}
 	
 	static boolean isPowerOfTwo(int length) {
@@ -418,6 +424,8 @@ public class FieldReaderChar {
 				            length);
 		return idx;
 	}
+
+
 
 	
 }

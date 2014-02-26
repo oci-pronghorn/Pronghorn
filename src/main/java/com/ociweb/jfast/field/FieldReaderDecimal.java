@@ -179,4 +179,6 @@ public class FieldReaderDecimal {
 		
 	}
 
+
+
 }

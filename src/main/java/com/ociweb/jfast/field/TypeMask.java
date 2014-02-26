@@ -34,7 +34,7 @@ public final class TypeMask {
 	public final static int ByteArrayOptional			= 0x0F;//01111
 		
 	public final static int Group                    = 0x10;//10000
-	public final static int GroupLength              = 0x11;//10001  //for sequence this is an uint32
+	public final static int GroupLength              = 0x14;//10100  //for sequence this is an uint32
 	
 	public final static int Dictionary               = 0x18;//11000
 	

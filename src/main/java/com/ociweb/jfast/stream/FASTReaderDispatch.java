@@ -33,6 +33,8 @@ public class FASTReaderDispatch{
 	private final int[] intLookup; //key is field id
 	private final long[] longLookup; //key is field id
 	
+	private int readFromIdx = -1;
+		
 	//This is the GLOBAL dictionary
 	//When unspecified in the template GLOBAL is the default so these are used.
 	private final FieldReaderInteger readerInteger;
@@ -42,20 +44,23 @@ public class FASTReaderDispatch{
 	private final FieldReaderBytes readerBytes;
 	
 	//template specific dictionaries
-	private final int maxTemplates = 10;
+	private final int maxTemplates = 10; //TODO: need real max templates on constructor
 	private final FieldWriterInteger[] templateWriterInteger;
 	private final FieldWriterLong[] templateWriterLong;
 	private final FieldWriterDecimal[] templateWriterDecimal;
 	private final FieldWriterChar[] templateWriterChar;
 	private final FieldWriterBytes[] templateWriterBytes;
 	
-	//need these per field?
+	
+	//TODO: need these per field? still working on this
 	private int integerUnsignedOptionalValue=0;
 	private int integerSignedOptionalValue=0;
 	private int longUnsignedOptionalValue=0;
 	private int longSignedOptionalValue=0;
 	private int decimalExponentOptionalValue=0;
 	private long decimalMantissaOptionalValue=0;
+	
+	private final DictionaryFactory dictionaryFactory;
 	
 	//constant fields are always the same or missing but never anything else.
 	//         manditory constant does not use pmap and has constant injected at destnation never xmit
@@ -68,6 +73,7 @@ public class FASTReaderDispatch{
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int maxTemplates) {
 		this.reader = reader;
 		this.tokenLookup = dcr.getTokenLookup();
+		this.dictionaryFactory = dcr;
 		
 		this.intLookup = new int[this.tokenLookup.length];
 		this.longLookup = new long[this.tokenLookup.length];
@@ -87,10 +93,14 @@ public class FASTReaderDispatch{
 		this.templateStack = new int[maxTemplates];
 	}
 
-	public void reset(DictionaryFactory df) {
-		//clear all previous values to unset
-		readerInteger.reset(df);
-		readerLong.reset(df);
+	public void reset() {
+		//clear all previous values to un-set
+		readerInteger.reset(dictionaryFactory);
+		readerLong.reset(dictionaryFactory);
+		readerDecimal.reset(dictionaryFactory);
+		readerChar.reset(dictionaryFactory);
+		readerBytes.reset(dictionaryFactory);
+		
 	}
 
 	
@@ -111,12 +121,14 @@ public class FASTReaderDispatch{
 	}
 	
 	//package protected, unless we find a need to expose it?
-	void dispatchReadByToken(int id, int token) {
+	boolean dispatchReadByToken(int id, int token) {
 	
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			dispatchReadByToken0(id, token);
+			return true;
 		} else {
-			dispatchReadByToken1(id, token);
+			//pause node for more work processing will return false 
+			return dispatchReadByToken1(id, token);
 		}
 	}
 
@@ -124,82 +136,127 @@ public class FASTReaderDispatch{
 	//TODO: reevalutte bit pmap write look for bulk write solution.
 	//TODO: finish TemplateHandler update of each token wtih pmap size (note decimal size 2x)
 	
-	private void dispatchReadByToken1(int id, int token) {
+	//intLookup[id] =
+	//public final static int Group                    = 0x10;//10000
+	//public final static int GroupLength              = 0x14;//10100  //for sequence this is an uint32
+	//public final static int Dictionary               = 0x18;//11000
+	
+	private boolean dispatchReadByToken1(int id, int token) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 			//10???
 			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 				//100??
-				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-					//1000?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//10000 GroupSimple
-					} else {
-						//10001 GroupTemplated
-					}
-				} else {
-					//1001?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//10010
-					} else {
-						//10011
-					}
-				}
+				//Group Type, no others defined so no need to keep checking
+				return readGroupCommand(token);
+				
+				
+//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+//					//1000?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//10000 GroupSimple
+//					} else {
+//						//10001 GroupTemplated
+//					}
+//				} else {
+//					//1001?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//10010
+//					} else {
+//						//10011
+//					}
+//				}
+				
 			} else {
 				//101??
-				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-					//1010?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//10100
-					} else {
-						//10101
-					}
-				} else {
-					//1011?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//10110
-					} else {
-						//10111
-					}
-				}
+				//Length Type, no others defined so no need to keep checking
+				intLookup[id] =	readIntegerUnsigned(token);
+				
+//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+//					//1010?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//10100
+//					} else {
+//						//10101
+//					}
+//				} else {
+//					//1011?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//10110
+//					} else {
+//						//10111
+//					}
+//				}
+				
 			}
 		} else {
 			//11???
-			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-				//110??
-				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-					//1100?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//11000
-					} else {
-						//11001
-					}
-				} else {
-					//1101?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//11010
-					} else {
-						//11011
-					}
-				}
-			} else {
-				//111??
-				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-					//1110?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//11100
-					} else {
-						//11101
-					}
-				} else {
-					//1111?
-					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-						//11110
-					} else {
-						//11111
-					}
-				}
-			}
+			//Dictionary Type, no others defined so no need to keep checking
+			readDictionaryCommand(token);
+			
+//			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+//				//110??
+//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+//					//1100?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//11000
+//					} else {
+//						//11001
+//					}
+//				} else {
+//					//1101?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//11010
+//					} else {
+//						//11011
+//					}
+//				}
+//			} else {
+//				//111??
+//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+//					//1110?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//11100
+//					} else {
+//						//11101
+//					}
+//				} else {
+//					//1111?
+//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+//						//11110
+//					} else {
+//						//11111
+//					}
+//				}
+//			}
+		}
+		return true;
+	}
+
+	private void readDictionaryCommand(int token) {
+
+		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+			//OperatorMask.Dictionary_Reset      0000
+			//clear all previous values to un-set		
+			integerDictionary(token).reset(dictionaryFactory);
+			longDictionary(token).reset(dictionaryFactory);
+			decimalDictionary(token).reset(dictionaryFactory);
+			charDictionary(token).reset(dictionaryFactory);
+			bytesDictionary(token).reset(dictionaryFactory); 
+		} else {
+			//OperatorMask.Dictionary_Read_From  0001
+			//next read will need to use this index to pull the right initial value.
+			//after it is used it must be cleared/reset to -1
+			readFromIdx = TokenBuilder.extractCount(token);
+		}
+	}
+
+	private boolean readGroupCommand(int token) {
+		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+			openGroup(token);
+			return true;
+		} else {
+			return closeGroup(token);
 		}
 	}
 
@@ -353,11 +410,14 @@ public class FASTReaderDispatch{
 
 	private FieldReaderLong longDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return readerLong;
-		} else {
-			return longDictionarySpecial(token);
+		FieldReaderLong result = (0==(token&(3<<18)))?readerLong:longDictionarySpecial(token);
+		//before returning dictionary prep previous value if needed.
+		if (readFromIdx>=0) {
+			result.copy(readFromIdx, TokenBuilder.extractCount(token));
+			readFromIdx=-1;
 		}
+		return result;
+		
 	}
 
 	private FieldReaderLong longDictionarySpecial(int token) {
@@ -382,8 +442,15 @@ public class FASTReaderDispatch{
 	
 	private FieldReaderInteger integerDictionary(int token) {
 		
-		return (0==(token&(3<<18)) ? readerInteger : 
-			   intDictionarySpecial(token));
+		FieldReaderInteger result = (0==(token&(3<<18)) ? readerInteger : 
+									intDictionarySpecial(token));
+		
+		//before returning dictionary prep previous value if needed.
+		if (readFromIdx>=0) {
+			result.copy(readFromIdx, TokenBuilder.extractCount(token));
+			readFromIdx=-1;
+		}
+		return result;
 	}
 
 	private FieldReaderInteger intDictionarySpecial(int token) {
@@ -408,11 +475,17 @@ public class FASTReaderDispatch{
 	
 	private FieldReaderDecimal decimalDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return readerDecimal;
-		} else {
-			return decimalDictionarySpecial(token);
+		FieldReaderDecimal result = (0==(token&(3<<18))) ? readerDecimal : decimalDictionarySpecial(token);
+
+		//before returning dictionary prep previous value if needed.
+		if (readFromIdx>=0) {
+			int writeToIdx = TokenBuilder.extractCount(token);
+			result.copyExponent(readFromIdx,writeToIdx);
+			result.copyMantissa(readFromIdx,writeToIdx);
+			readFromIdx=-1;
 		}
+		return result;
+		
 	}
 
 	private FieldReaderDecimal decimalDictionarySpecial(int token) {
@@ -437,11 +510,16 @@ public class FASTReaderDispatch{
 	
 	private FieldReaderChar charDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return readerChar;
-		} else {
-			return charDictionarySpecial(token);
+		FieldReaderChar result = (0==(token&(3<<18)))?readerChar:charDictionarySpecial(token);
+		
+		//before returning dictionary prep previous value if needed.
+		if (readFromIdx>=0) {
+			//TODO: not an efficient approach but it will do for the first release
+			result.textHeap().copy(readFromIdx, TokenBuilder.extractCount(token));
+			readFromIdx=-1;
 		}
+		return result;
+		
 	}
 
 	private FieldReaderChar charDictionarySpecial(int token) {
@@ -466,11 +544,15 @@ public class FASTReaderDispatch{
 	
 	private FieldReaderBytes bytesDictionary(int token) {
 		
-		if (0==(token&(3<<18))) {
-			return readerBytes;
-		} else {
-			return bytesDictionarySpecial(token);
+		FieldReaderBytes result = (0==(token&(3<<18)))?readerBytes:bytesDictionarySpecial(token);
+		//before returning dictionary prep previous value if needed.
+		if (readFromIdx>=0) {
+			//TODO: not an efficient approach but it will do for the first release
+			result.byteHeap().copy(readFromIdx, TokenBuilder.extractCount(token));
+			readFromIdx=-1;
 		}
+		return result;
+				
 	}
 
 	private FieldReaderBytes bytesDictionarySpecial(int token) {
@@ -912,7 +994,7 @@ public class FASTReaderDispatch{
 //		}
 	}
 
-	public void closeGroup(int token) {
+	public boolean closeGroup(int token) {
 		
 		assert(token<0);
 		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
@@ -927,6 +1009,11 @@ public class FASTReaderDispatch{
 //			//must always pop because open will always push
 //			templateStackHead--;
 //		}
+		
+		//is end of message or end of sequence must return notification.
+		//return true to continue and false to stop for processing working.
+		return (0==(token&( (OperatorMask.Group_Bit_Seq|
+				              OperatorMask.Group_Bit_Msg) <<TokenBuilder.SHIFT_OPER)));
 		
 	}
 
