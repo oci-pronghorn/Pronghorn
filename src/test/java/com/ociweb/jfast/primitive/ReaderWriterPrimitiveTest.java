@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.NetworkChannel;
 import java.nio.channels.Pipe;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -19,6 +20,7 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.ReentrantLock;
+import java.net.StandardSocketOptions;
 
 import org.junit.Test;
 
@@ -164,6 +166,8 @@ public class ReaderWriterPrimitiveTest {
 			
 			SocketChannel socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);			
+			//typical setup for low latency will turn on the nodelay option
+			socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
 			socketChannel.connect(new InetSocketAddress("127.0.0.1", 8083));
 			//must loop because we are in NON-blocking mode.
 			while (!socketChannel.finishConnect()) {

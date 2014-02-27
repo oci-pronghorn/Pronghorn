@@ -6,6 +6,7 @@ package com.ociweb.jfast.loader;
 import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -116,7 +117,7 @@ public class TemplateCatalog {
 				case 1:
 					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 					break;
-				case 3:
+				case 2:
 					absent[id]=reader.readLongSigned();
 					break;
 			}
@@ -153,7 +154,9 @@ public class TemplateCatalog {
 		int i = tokenLookup.length;
 		while (--i>=0) {
 			int token = tokenLookup[i];
-			if (0!=token) {
+			assert(TokenBuilder.tokenToString(token).indexOf("unknown")==-1): "Bad token "+TokenBuilder.tokenToString(token);
+			if (token<0) {
+	//			System.err.println("save:"+i+" "+TokenBuilder.tokenToString(token));
 				writer.writeIntegerUnsigned(i);
 				writer.writeIntegerSigned(token);
 				

@@ -65,6 +65,12 @@ public class TokenBuilder {
 	
 	public static int buildToken(int tokenType, int tokenOpp, int count) {
 		assert(count<=MAX_INSTANCE);
+		assert(TypeMask.toString(tokenType).indexOf("unknown")==-1) : "Unknown type of "+tokenType+" "+Integer.toHexString(tokenType);
+		assert(tokenType>=0);
+		assert(tokenType<=MASK_TYPE);
+		assert(tokenOpp>=0);
+		assert(tokenOpp<=MASK_OPER);
+		
 		if (tokenType==TypeMask.Decimal || tokenType==TypeMask.DecimalOptional) {
 			if (tokenOpp>TokenBuilder.MASK_OPER_DECIMAL) {
 				throw new UnsupportedOperationException("operator not supported by decimal.");
