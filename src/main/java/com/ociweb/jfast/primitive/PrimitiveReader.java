@@ -453,7 +453,7 @@ public final class PrimitiveReader {
 		return accumulator|(v&0x7F);
 	}
 
-	public void readTextASCII(Appendable target) {
+	public Appendable readTextASCII(Appendable target) {
 		if (limit - position < 2) {
 			fetch(2);
 		}
@@ -491,6 +491,7 @@ public final class PrimitiveReader {
 			position++;				
 			
 		}
+		return target;
 	}
 
 	public int readTextASCII(char[] target, int targetOffset, int targetLimit) {

@@ -120,7 +120,7 @@ public class TokenBuilder {
 			if (isInValidCombo(type,opp2)) {
 				throw new UnsupportedOperationException("bad token");
 			};
-			return ("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(type, opp1)+" "+OperatorMask.toString(type, opp2)+" "+count);
+			return (TypeMask.toString(type)+"/"+OperatorMask.toString(type, opp1)+"/"+OperatorMask.toString(type, opp2)+"/"+count);
 			
 		} else {
 			int opp  = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
@@ -128,7 +128,7 @@ public class TokenBuilder {
 				throw new UnsupportedOperationException("bad token");
 			};
 			
-			return ("token: "+TypeMask.toString(type)+" "+OperatorMask.toString(type, opp)+" "+count);
+			return (TypeMask.toString(type)+"/"+OperatorMask.toString(type, opp)+"/"+count);
 		}
 		
 	}

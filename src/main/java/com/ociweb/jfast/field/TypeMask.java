@@ -90,6 +90,14 @@ public final class TypeMask {
 				return "ByteArray:"+prefix(6,'0',Integer.toBinaryString(typeMask));
 			case ByteArrayOptional:
 				return "ByteArrayOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+				
+			case Group:
+				return "Group:"+prefix(6,'0',Integer.toBinaryString(typeMask));
+			case GroupLength:
+				return "GroupLength:"+prefix(6,'0',Integer.toBinaryString(typeMask));				
+			case Dictionary:
+				return "Dictionary:"+prefix(6,'0',Integer.toBinaryString(typeMask));	
+				
 			default:
 				return "unknown type:"+prefix(6,'0',Integer.toBinaryString(typeMask));
 		}

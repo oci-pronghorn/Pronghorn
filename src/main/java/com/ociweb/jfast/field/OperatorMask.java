@@ -52,9 +52,9 @@ public class OperatorMask {
 		
 		switch (type) {
 			case TypeMask.Group:
-				return "Unknown  TODO  Group";
+				return "G:"+prefix(6,'0',Integer.toBinaryString(opp));
 			case TypeMask.Dictionary:
-				return "Unknown  TODO  Dictionary";
+				return "D:"+prefix(6,'0',Integer.toBinaryString(opp));
 			default:
 				switch(opp) {
 					case Field_None:

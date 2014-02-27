@@ -57,8 +57,9 @@ public class TemplateCatalog {
 			int templateScriptLength = reader.readIntegerUnsigned();
 			int s = templateScriptLength;
 			long[] script = new long[s]; //top 32 are id, low 32 are token
-			while (--s>=0) {
+			while (--s>=0) { //TODO: need to add full field names to be looked up upon error etc.
 				int tmp = reader.readIntegerSigned();
+				//System.err.println(tmp);
 				if (tmp<0) {
 					script[s] = NO_ID|tmp;
 				} else {
@@ -66,15 +67,38 @@ public class TemplateCatalog {
 					if (token==0) {
 						throw new FASTException("Corrupt template catalog.");
 					}
-					script[s] = (((long)tmp)<<32)|token;
+					long x = tmp;
+					script[s] = (x<<32) | (0xFFFFFFFFl&token);					
 				}
 			}
 			
-			//TODO: build a helper for printing scripts with human readable commands
-			System.err.println("load new template:"+templateId+" len "+script.length+"  "+Arrays.toString(script));
-			
+
 			//save the script into the catalog
 			scriptsCatalog[templateId] = script;
+			
+			//one bit in pmap for tempalteid?
+			//seqNO channel  pmap  templateId message
+			// 4     1        n       x        y
+			
+			//first bit template
+			//pmap               template    34        52     131
+			//64                    2         1      58782   string
+			
+			//TODO: build a helper for printing scripts with human readable commands
+			//System.err.println("load new template:"+templateId+" len "+script.length+"  "+Arrays.toString(script));
+			
+	//		stream    message* | block*
+	//		block     BlockSize message+
+	//		message   segment
+	//		segment   PresenceMap TemplateIdentifier? (field | segment)*
+	//*		field     integer | string | delta | ScaledNumber | ByteVector
+	//*		integer   UnsignedInteger | SignedInteger
+	//*		string    ASCIIString | UnicodeString
+	//*		delta     IntegerDelta | ScaledNumberDelta | ASCIIStringDelta |ByteVectorDelta
+
+			
+						
+			
 		}
 	}
 	
