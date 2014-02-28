@@ -52,9 +52,41 @@ public class OperatorMask {
 		
 		switch (type) {
 			case TypeMask.Group:
-				return "G:"+prefix(6,'0',Integer.toBinaryString(opp));
+				StringBuilder builder = new StringBuilder();
+				if (0!=(Group_Bit_Close&opp)){
+					builder.append("Close:");
+				} else {
+				    builder.append("Open:");
+				}
+				
+				if (0!=(Group_Bit_Templ&opp)){
+					builder.append("DynTempl:");
+				} 
+				
+				if (0!=(Group_Bit_Seq&opp)){
+					builder.append("Seq:");
+				}
+				
+				if (0!=(Group_Bit_Msg&opp)){
+					builder.append("Msg:");
+				} 
+				
+				if (0!=(Group_Bit_PMap&opp)){
+					builder.append("PMap:");
+				} 
+			
+			    return builder+":"+prefix(6,'0',Integer.toBinaryString(opp));
+				
+				
 			case TypeMask.Dictionary:
-				return "D:"+prefix(6,'0',Integer.toBinaryString(opp));
+				switch(opp) {
+					case Dictionary_Reset:
+						return "Reset:"+prefix(6,'0',Integer.toBinaryString(opp));
+					case Dictionary_Read_From:
+						return "ReadFrom:"+prefix(6,'0',Integer.toBinaryString(opp));
+					default:
+						return "unknown operation:"+prefix(6,'0',Integer.toBinaryString(opp));				
+				}
 			default:
 				switch(opp) {
 					case Field_None:

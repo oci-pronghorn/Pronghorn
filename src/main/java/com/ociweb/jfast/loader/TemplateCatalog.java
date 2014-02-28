@@ -60,14 +60,10 @@ public class TemplateCatalog {
 			long[] script = new long[s]; //top 32 are id, low 32 are token
 			while (--s>=0) { //TODO: need to add full field names to be looked up upon error etc.
 				int tmp = reader.readIntegerSigned();
-				//System.err.println(tmp);
 				if (tmp<0) {
 					script[s] = NO_ID|tmp;
 				} else {
 					int token = tokens[tmp];
-					if (token==0) {
-						throw new FASTException("Corrupt template catalog.");
-					}
 					long x = tmp;
 					script[s] = (x<<32) | (0xFFFFFFFFl&token);					
 				}
@@ -96,8 +92,6 @@ public class TemplateCatalog {
 	//*		integer   UnsignedInteger | SignedInteger
 	//*		string    ASCIIString | UnicodeString
 	//*		delta     IntegerDelta | ScaledNumberDelta | ASCIIStringDelta |ByteVectorDelta
-
-			
 						
 			
 		}
@@ -110,6 +104,9 @@ public class TemplateCatalog {
 			int id=reader.readIntegerUnsigned();
 						
 			tokens[id]=reader.readIntegerSigned();
+			
+			//System.err.println("LOAD:"+id+"  token:"+TokenBuilder.tokenToString(tokens[id])+" _ "+Integer.toHexString(tokens[id]));
+			
 			switch(reader.readIntegerUnsigned()) {
 				case 0:
 					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
@@ -123,8 +120,6 @@ public class TemplateCatalog {
 			}
 		}
 	}
-
-
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
@@ -156,7 +151,8 @@ public class TemplateCatalog {
 			int token = tokenLookup[i];
 			assert(TokenBuilder.tokenToString(token).indexOf("unknown")==-1): "Bad token "+TokenBuilder.tokenToString(token);
 			if (token<0) {
-	//			System.err.println("save:"+i+" "+TokenBuilder.tokenToString(token));
+//			System.err.println("SAVE:"+i+"  token:"+TokenBuilder.tokenToString(token)+" _ "+Integer.toHexString(token));
+
 				writer.writeIntegerUnsigned(i);
 				writer.writeIntegerSigned(token);
 				
@@ -167,9 +163,8 @@ public class TemplateCatalog {
 				} else {
 					writer.writeIntegerUnsigned(2);
 					writer.writeLongSigned(absentValue[i]);								
-				}
-				
-			}			
+				} 				
+			} 		
 		}
 	}
 
