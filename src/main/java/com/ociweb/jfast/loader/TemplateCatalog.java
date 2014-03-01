@@ -9,6 +9,9 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class TemplateCatalog {
 
@@ -19,10 +22,13 @@ public class TemplateCatalog {
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	private static final long NO_ID = 0xFFFFFFFF00000000l;
 	
-	final int[] tokens;
+	final int[] tokenLookup;
 	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	
+	//Runtime specific message prefix, only used for some transmission technologies
+	int prefixId=-1;  
+	int prefixSize=0; //default is none
 	
 	public TemplateCatalog(PrimitiveReader reader) {
 				
@@ -30,7 +36,7 @@ public class TemplateCatalog {
 		assert(tokenPow<32) : "Corrupt catalog file";
 		int maxTokens = 1<<tokenPow;
 		
-		tokens = new int[maxTokens];
+		tokenLookup = new int[maxTokens];
 		absent = new long[maxTokens];
 		
 		loadTokens(reader);
@@ -45,7 +51,15 @@ public class TemplateCatalog {
 				
 	}
 
+	public int[] tokenLookup() {
+		return tokenLookup;
+	}
+
 	
+	public void setMessagePrefix(int prefixId, int prefixSize) {
+		this.prefixId = prefixId;
+		this.prefixSize = prefixSize;
+	}
 	
 	//Assumes that the tokens are already loaded and ready for use.
 	private void loadTemplateScripts(PrimitiveReader reader) {
@@ -61,9 +75,11 @@ public class TemplateCatalog {
 			while (--s>=0) { //TODO: need to add full field names to be looked up upon error etc.
 				int tmp = reader.readIntegerSigned();
 				if (tmp<0) {
+					//tmp is token
 					script[s] = NO_ID|tmp;
 				} else {
-					int token = tokens[tmp];
+					//tmp is id
+					int token = tokenLookup[tmp];
 					long x = tmp;
 					script[s] = (x<<32) | (0xFFFFFFFFl&token);					
 				}
@@ -103,7 +119,7 @@ public class TemplateCatalog {
 		while (--i>=0) {
 			int id=reader.readIntegerUnsigned();
 						
-			tokens[id]=reader.readIntegerSigned();
+			tokenLookup[id]=reader.readIntegerSigned();
 			
 			//System.err.println("LOAD:"+id+"  token:"+TokenBuilder.tokenToString(tokens[id])+" _ "+Integer.toHexString(tokens[id]));
 			
@@ -130,6 +146,19 @@ public class TemplateCatalog {
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
+//		int integerCount=0;
+//		int longCount=0; 
+//		int charCount=0; 
+//        int singleCharLength=0; 
+//        int decimalCount=0; 
+//        int bytesCount=0; 
+//		
+//		DictionaryFactory df = new DictionaryFactory(integerCount, longCount, charCount, 
+//													singleCharLength, decimalCount, bytesCount,
+//													tokenLookup);
+//		df.save(writer);
+		
+		
 	}
 
 	private static void saveTokens(PrimitiveWriter writer, int uniqueIds, int biggestId, int[] tokenLookup,
@@ -232,6 +261,8 @@ public class TemplateCatalog {
 		}
 		return tmp;
 	}
+
+
 	
 	
 

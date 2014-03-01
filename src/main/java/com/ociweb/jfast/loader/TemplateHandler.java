@@ -25,6 +25,7 @@ public class TemplateHandler extends DefaultHandler {
     int[] catalogTemplateScript = new int[TokenBuilder.MAX_FIELD_ID_VALUE];//Does not need to be this big.
     int catalogTemplateScriptIdx = 0;
     int[][] catalogScripts = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
+    int catalogLargestPMap = 0;
     
     //Name space for all the active templates if they do not define their own.
     String templatesXMLns; //TODO: name space processing is not implemented yet.
@@ -379,22 +380,22 @@ public class TemplateHandler extends DefaultHandler {
     			    qName.equalsIgnoreCase("template")
     			 ) {
     		
-    		int pmapBits = groupOpenTokenPMapStack[groupTokenStackHead];
-    		int pmapBytes = (pmapBits+6)/7; //if bits is zero this will be zero.
+    		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
+    		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
     		int opMask = OperatorMask.Group_Bit_Close;
     		int openToken = groupOpenTokenStack[groupTokenStackHead];
     		
     		//TODO: need to add command for read dynamic template id.
     		
     		//only update and save the closing token if a pmap was supported.
-    		if (pmapBytes>0) {
+    		if (pmapMaxBytes>0) {
     			opMask |= OperatorMask.Group_Bit_PMap;
     			openToken |= (OperatorMask.Group_Bit_PMap<<TokenBuilder.SHIFT_OPER);
 
     			int scriptOpenGroupIdx = TokenBuilder.extractCount(openToken);
     			//open token has max bytes required for pmap or zero if pmap flag is not set.
     			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
-    					(TokenBuilder.MAX_FIELD_ID_VALUE&pmapBytes);
+    					(TokenBuilder.MAX_FIELD_ID_VALUE&pmapMaxBytes);
     			
     			int jumpToTop = catalogTemplateScriptIdx-scriptOpenGroupIdx;
     			
@@ -408,6 +409,8 @@ public class TemplateHandler extends DefaultHandler {
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
 
     		if (qName.equalsIgnoreCase("template")) {
+    			
+    			catalogLargestPMap = Math.max(catalogLargestPMap,pmapMaxBytes);
         		        		
         		if (0!=templateLookup[templateId]) {
         			throw new SAXException("Duplicate template id: "+templateId);

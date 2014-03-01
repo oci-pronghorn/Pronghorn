@@ -157,12 +157,6 @@ public class DictionaryFactory {
 		 this.byteInitValue = new byte[INIT_GROW_STEP][];
 	}
 	
-//	public DictionaryFactory(PrimitiveReader pr) {
-//		
-//		
-//		
-//	}
-	
 	public void save(PrimitiveWriter pw) {
 		
 		pw.writeIntegerUnsigned(integerCount);

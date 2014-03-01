@@ -3,7 +3,9 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /*
  * Implementations of read can use this object
@@ -25,7 +27,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  * or pushing down fields as it probably changes the meaning of the data. 
  * 
  */
-public class FASTDynamicReader {
+public class FASTDynamicReader implements FASTDataProvider {
 
 	private final FASTReaderDispatch readerDispatch;
 	private final TemplateCatalog catalog;
@@ -36,12 +38,28 @@ public class FASTDynamicReader {
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
-	FASTDynamicReader(FASTReaderDispatch dispatch, TemplateCatalog catalog) {
-		this.readerDispatch = dispatch;
+	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog) {
 		this.catalog = catalog;
 		
 		this.activeScript = catalog.templateScript(0); //TODO: what is the first template?
 		this.activeScriptIdx = 0;
+		
+				
+		//TODO: need these values from catalog?
+		int integerCount=0;
+		int longCount=0; 
+		int charCount=0; 
+        int singleCharLength=0; 
+        int decimalCount=0; 
+        int bytesCount=0; 
+        
+		DictionaryFactory dcr = new DictionaryFactory(integerCount, longCount, charCount, 
+                								singleCharLength, decimalCount, bytesCount,
+                								catalog.tokenLookup());
+		
+		readerDispatch = new FASTReaderDispatch(reader, dcr, catalog.templatesCount());
+		
+		
 		
 	}
 	

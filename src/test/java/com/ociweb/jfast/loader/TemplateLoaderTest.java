@@ -22,6 +22,8 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class TemplateLoaderTest {
 
@@ -33,15 +35,28 @@ public class TemplateLoaderTest {
 		FASTInput input = new FASTInputByteArray(catalogByteArray);
 		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(input));
 		
-		// /performance/example.xml contains 3 templates.
-		assertEquals(3, catalog.templatesCount());
-		//assertEquals(352, catalogByteArray.length);
-		
-		long[] script = catalog.templateScript(2);
-		
-		System.err.println(convertScriptToString(script));
-		
-		
+		boolean ok = false;
+		long[] script = null;
+		try{
+			// /performance/example.xml contains 3 templates.
+			assertEquals(3, catalog.templatesCount());
+			assertEquals(352, catalogByteArray.length);
+			
+			script = catalog.templateScript(2);
+			assertEquals(16, script.length);
+			assertEquals(1128, (script[0]>>32));//First Id
+			
+			//CMD:Group:010000/Close:PMap::010001/9
+			assertEquals(0xC110_0009l,0xFFFFFFFFl&script[script.length-1]);//Last Token
+			ok = true;
+		} finally {
+			if (!ok) {
+				System.err.println("Script Details:");
+				if (null!=script) {
+					System.err.println(convertScriptToString(script));
+				}
+			}
+		}
 	}
 
 	private String convertScriptToString(long[] script) {
@@ -65,16 +80,25 @@ public class TemplateLoaderTest {
 	@Test
 	public void testTwo() {	
 		
-		FASTInput input = new FASTInputByteArray(buildRawCatalogData());
-		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(input));
+		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
 		
+		int prefixId = 3;
+		int prefixSize = 4;
+		catalog.setMessagePrefix(prefixId,prefixSize);	
 
 		
+		//connect to file		
 		URL sourceData = getClass().getResource("/performance/complex30000.dat");
 		File fileSource = new File(sourceData.getFile());
 			
 		try {
-			FASTInputStream fist = new FASTInputStream(new FileInputStream(fileSource)); 
+			FASTInputStream input = new FASTInputStream(new FileInputStream(fileSource)); 
+			PrimitiveReader primitiveReader = new PrimitiveReader(input);
+			FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
+			
+
+			
 			
 			//TODO: print expected template for 2
 			
