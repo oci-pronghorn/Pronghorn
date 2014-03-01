@@ -48,11 +48,11 @@ public final class FASTWriterDispatch {
 
 	
 	
-	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates) {
+	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int[] tokenLookup) {
 		//TODO: must set the initial values for default/constants from the template here.
 		
 		this.writer = writer;
-		this.tokenLookup = dcr.getTokenLookup();
+		this.tokenLookup = tokenLookup;
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
@@ -1149,7 +1149,7 @@ public final class FASTWriterDispatch {
 	}
 	
 	//must happen just before Group so the Group in question must always have 
-	//an outer group. TODO: caller should assert that this group can change template?
+	//an outer group. 
 	private void pushTemplate(int templateId) {
 		int top = templateStack[templateStackHead]; 
 		if (top==templateId) {

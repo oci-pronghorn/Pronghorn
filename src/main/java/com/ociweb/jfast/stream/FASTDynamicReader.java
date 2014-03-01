@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -43,24 +42,12 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
 		this.activeScript = catalog.templateScript(0); //TODO: what is the first template?
 		this.activeScriptIdx = 0;
-		
 				
-		//TODO: need these values from catalog?
-		int integerCount=0;
-		int longCount=0; 
-		int charCount=0; 
-        int singleCharLength=0; 
-        int decimalCount=0; 
-        int bytesCount=0; 
-        
-		DictionaryFactory dcr = new DictionaryFactory(integerCount, longCount, charCount, 
-                								singleCharLength, decimalCount, bytesCount,
-                								catalog.tokenLookup());
-		
-		readerDispatch = new FASTReaderDispatch(reader, dcr, catalog.templatesCount());
-		
-		
-		
+		this.readerDispatch = new FASTReaderDispatch(reader, 
+				                                catalog.dictionaryFactory(), 
+				                                catalog.templatesCount(), 
+				                                catalog.tokenLookup());
+			
 	}
 	
     
@@ -85,6 +72,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	public int hasMore() {
 		
+		
+		
 		int fieldId = -1; //undefined for groups and commands.
 		
 		//when do we get templateId.
@@ -93,7 +82,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
 	//	readerDispatch.dispatchReadByToken(fieldId, token);
 		
-		return -1;//return field id of the group just read
+		return 0;//return field id of the group just read
 	}
 	
 //	public int hasField() {

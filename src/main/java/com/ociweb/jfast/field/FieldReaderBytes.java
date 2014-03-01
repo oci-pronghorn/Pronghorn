@@ -52,9 +52,8 @@ public class FieldReaderBytes {
 		return idx;
 	}
 	
-	public void reset(DictionaryFactory dictionaryFactory) {
-		// TODO reset heap back to construction
-		
+	public void reset() {
+		byteHeap.reset();
 	}
 
 	

@@ -44,7 +44,7 @@ public class FASTReaderDispatch{
 	private final FieldReaderBytes readerBytes;
 	
 	//template specific dictionaries
-	private final int maxTemplates = 10; //TODO: need real max templates on constructor
+	private final int maxTemplates;
 	private final FieldWriterInteger[] templateWriterInteger;
 	private final FieldWriterLong[] templateWriterLong;
 	private final FieldWriterDecimal[] templateWriterDecimal;
@@ -70,9 +70,9 @@ public class FASTReaderDispatch{
 
 	
 		
-	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int maxTemplates) {
+	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int maxTemplates, int[] tokenLookup) {
 		this.reader = reader;
-		this.tokenLookup = dcr.getTokenLookup();
+		this.tokenLookup = tokenLookup;
 		this.dictionaryFactory = dcr;
 		
 		this.intLookup = new int[this.tokenLookup.length];
@@ -91,6 +91,7 @@ public class FASTReaderDispatch{
 		this.templateWriterBytes   = new FieldWriterBytes[maxTemplates];
 		
 		this.templateStack = new int[maxTemplates];
+		this.maxTemplates = maxTemplates;
 	}
 
 	public void reset() {
@@ -98,8 +99,8 @@ public class FASTReaderDispatch{
 		readerInteger.reset(dictionaryFactory);
 		readerLong.reset(dictionaryFactory);
 		readerDecimal.reset(dictionaryFactory);
-		readerChar.reset(dictionaryFactory);
-		readerBytes.reset(dictionaryFactory);
+		readerChar.reset();
+		readerBytes.reset();
 		
 	}
 
@@ -132,14 +133,8 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	//TODO: must tie these methods all together - urgent.
-	//TODO: reevalutte bit pmap write look for bulk write solution.
-	//TODO: finish TemplateHandler update of each token wtih pmap size (note decimal size 2x)
+	//TODO: re-evaluate bit pmap write look for bulk write solution.
 	
-	//intLookup[id] =
-	//public final static int Group                    = 0x10;//10000
-	//public final static int GroupLength              = 0x14;//10100  //for sequence this is an uint32
-	//public final static int Dictionary               = 0x18;//11000
 	
 	private boolean dispatchReadByToken1(int id, int token) {
 		//1????
@@ -241,8 +236,8 @@ public class FASTReaderDispatch{
 			integerDictionary(token).reset(dictionaryFactory);
 			longDictionary(token).reset(dictionaryFactory);
 			decimalDictionary(token).reset(dictionaryFactory);
-			charDictionary(token).reset(dictionaryFactory);
-			bytesDictionary(token).reset(dictionaryFactory); 
+			charDictionary(token).reset();
+			bytesDictionary(token).reset(); 
 		} else {
 			//OperatorMask.Dictionary_Read_From  0001
 			//next read will need to use this index to pull the right initial value.

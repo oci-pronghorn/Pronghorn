@@ -9,8 +9,6 @@ public class RunCaliper {
 
 	public static void main(String[] args) {
 
-	//TODO: batch the PMap write bits and send them all at close/open to avoid cache misses.	
-		
 	//run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
 	run(HomogeniousFieldWriteReadIntegerBenchmark.class);
 	//run(HomogeniousRecordWriteReadIntegerBenchmark.class); 

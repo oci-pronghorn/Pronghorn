@@ -79,7 +79,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -129,7 +129,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

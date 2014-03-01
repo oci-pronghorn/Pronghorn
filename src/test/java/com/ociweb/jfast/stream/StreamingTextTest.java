@@ -91,9 +91,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 
 		textTester(types,operators,"UTF8");
 	}
-	
-	//TODO: note; what about undo operations going back feed?
-	//TODO: note: use protocol for archive format when monitoring/logging back end for slf4j/PureFAT.
+
 	
 	private void textTester(int[] types, int[] operators, String label) {
 		
@@ -144,7 +142,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -205,7 +203,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();

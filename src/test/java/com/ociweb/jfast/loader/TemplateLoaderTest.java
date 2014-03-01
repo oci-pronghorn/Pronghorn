@@ -40,7 +40,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(352, catalogByteArray.length);
+			assertEquals(367, catalogByteArray.length);
 			
 			script = catalog.templateScript(2);
 			assertEquals(16, script.length);
@@ -97,7 +97,14 @@ public class TemplateLoaderTest {
 			PrimitiveReader primitiveReader = new PrimitiveReader(input);
 			FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
 			
-
+			int data = 0;
+			while (0!=(data = dynamicReader.hasMore())) {
+				
+				//switch on data?
+				
+				//int value = dynamicReader.readInt(33);
+				
+			}
 			
 			
 			//TODO: print expected template for 2

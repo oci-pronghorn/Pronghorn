@@ -3,15 +3,9 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
-import java.util.Arrays;
-
-import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.jfast.stream.FASTDynamicReader;
-import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class TemplateCatalog {
 
@@ -25,6 +19,7 @@ public class TemplateCatalog {
 	final int[] tokenLookup;
 	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
+	final DictionaryFactory dictionaryFactory;
 	
 	//Runtime specific message prefix, only used for some transmission technologies
 	int prefixId=-1;  
@@ -48,6 +43,7 @@ public class TemplateCatalog {
 		
 		loadTemplateScripts(reader);
 		
+		dictionaryFactory = new DictionaryFactory(reader);
 				
 	}
 
@@ -141,22 +137,12 @@ public class TemplateCatalog {
 			                  int uniqueIds, int biggestId, 
 			                  int[] tokenLookup, long[] absentValue,
 			                  int uniqueTemplateIds, int biggestTemplateId, 
-			                  int[][] scripts) {
+			                  int[][] scripts, DictionaryFactory df) {
 		
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
-//		int integerCount=0;
-//		int longCount=0; 
-//		int charCount=0; 
-//        int singleCharLength=0; 
-//        int decimalCount=0; 
-//        int bytesCount=0; 
-//		
-//		DictionaryFactory df = new DictionaryFactory(integerCount, longCount, charCount, 
-//													singleCharLength, decimalCount, bytesCount,
-//													tokenLookup);
-//		df.save(writer);
+		df.save(writer);
 		
 		
 	}
@@ -260,6 +246,10 @@ public class TemplateCatalog {
 			}
 		}
 		return tmp;
+	}
+	
+	public DictionaryFactory dictionaryFactory() {
+		return dictionaryFactory;
 	}
 
 

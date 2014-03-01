@@ -19,6 +19,8 @@ public class FieldReaderDecimal {
 		this.mantissa = new FieldReaderLong(reader, decimalMantissaDictionary);
 	}
 
+	//TODO: Optional absent null is not implemented yet for Decimal type.
+	
 	public void reset(DictionaryFactory df) {
 		df.reset(exponent.lastValue,mantissa.lastValue);
 	}	

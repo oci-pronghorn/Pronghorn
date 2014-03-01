@@ -5,6 +5,7 @@ package com.ociweb.jfast.loader;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
@@ -110,26 +111,17 @@ public class DictionaryFactory {
 	private int byteInitTotalLength;
 		
 	private int singleTextSize; //TODO: need an independent value for byteValues?
-	private int[] tokenLookup;
 
-	//need to hold groups and field ids;
-	//values <0 are possible stop nodes boardering the group.
-	//all other values are ids
-	private int[] structure;
-	private int structureCount;
 	
 		
 	public DictionaryFactory(int integerCount, int longCount, int charCount, 
-			                  int singleCharLength, int decimalCount, int bytesCount, int[] tokenLookup) {
+			                  int singleCharLength, int decimalCount, int bytesCount) {
 		 this.integerCount=integerCount;
 		 this.longCount=longCount;
 		 this.charCount=charCount;
 		 this.decimalCount=decimalCount;
 		 this.bytesCount=bytesCount;
-		 this.tokenLookup = tokenLookup;
 		
-		 this.structureCount = 0;
-		 this.structure = new int[INIT_GROW_STEP];
 		 
 		 this.integerInitCount=0;
 		 this.integerInitIndex = new int[INIT_GROW_STEP];
@@ -157,7 +149,83 @@ public class DictionaryFactory {
 		 this.byteInitValue = new byte[INIT_GROW_STEP][];
 	}
 	
+	public DictionaryFactory(PrimitiveReader reader) {
+		
+		this.integerCount=reader.readIntegerUnsigned();
+		this.longCount=reader.readIntegerUnsigned();
+		this.charCount=reader.readIntegerUnsigned();
+		this.decimalCount=reader.readIntegerUnsigned();
+		this.bytesCount=reader.readIntegerUnsigned();
+		
+		this.integerInitCount = reader.readIntegerUnsigned();
+		this.integerInitIndex = new int[integerInitCount];
+		this.integerInitValue = new int[integerInitCount];
+		int c = integerInitCount;
+		while (--c>=0) {
+			integerInitIndex[c] = reader.readIntegerUnsigned();
+			integerInitValue[c] = reader.readIntegerSigned();
+		}
+		
+		this.longInitCount = reader.readIntegerUnsigned();
+		this.longInitIndex = new int[longInitCount];
+		this.longInitValue = new long[longInitCount];
+		c = longInitCount;
+		while (--c>=0) {
+			longInitIndex[c] = reader.readIntegerUnsigned();
+			longInitValue[c] = reader.readLongSigned();
+		}
+		
+		this.charInitCount = reader.readIntegerUnsigned();
+		this.charInitIndex = new int[charInitCount];
+		this.charInitValue = new char[charInitCount][];
+		c = charInitCount;
+		while (--c>=0) {
+			charInitIndex[c] = reader.readIntegerUnsigned();
+			int len = reader.readIntegerUnsigned();
+			char[] value = new char[len];
+			reader.readTextUTF8(value, 0 , len);
+			charInitValue[c] = value;
+		}
+		
+		this.decimalExponentInitCount = reader.readIntegerUnsigned();
+		this.decimalExponentInitIndex = new int[decimalExponentInitCount];
+		this.decimalExponentInitValue = new int[decimalExponentInitCount];
+		c = decimalExponentInitCount;
+		while (--c>=0) {
+			decimalExponentInitIndex[c] = reader.readIntegerUnsigned();
+			decimalExponentInitValue[c] = reader.readIntegerSigned();
+		}
+		
+		this.decimalMantissaInitCount = reader.readIntegerUnsigned();
+		this.decimalMantissaInitIndex = new int[decimalMantissaInitCount];
+		this.decimalMantissaInitValue = new long[decimalMantissaInitCount];
+		c = decimalMantissaInitCount;
+		while (--c>=0) {
+			decimalMantissaInitIndex[c] = reader.readIntegerUnsigned();
+			decimalMantissaInitValue[c] = reader.readLongSigned();
+		}
+		
+		
+		this.byteInitCount = reader.readIntegerUnsigned();
+		this.byteInitIndex = new int[byteInitCount];
+		this.byteInitValue = new byte[byteInitCount][];
+		c = byteInitCount;
+		while (--c>=0) {
+			byteInitIndex[c] = reader.readIntegerUnsigned();
+			int len = reader.readIntegerUnsigned();
+			byte[] value = new byte[len];
+			reader.readByteData(value, 0 , len);
+			byteInitValue[c] = value;
+		}
+		byteInitTotalLength = reader.readIntegerUnsigned();
+		singleTextSize = reader.readIntegerUnsigned();
+
+		
+	}
+
 	public void save(PrimitiveWriter pw) {
+		
+		//TODO: remove System.err.println(integerCount+" "+longCount+" "+charCount+" "+decimalCount+" "+bytesCount);
 		
 		pw.writeIntegerUnsigned(integerCount);
 		pw.writeIntegerUnsigned(longCount);
@@ -214,18 +282,7 @@ public class DictionaryFactory {
 		pw.writeIntegerUnsigned(byteInitTotalLength);
 
 		pw.writeIntegerUnsigned(singleTextSize);
-		
-		pw.writeIntegerUnsigned(tokenLookup.length);
-		c = tokenLookup.length;
-		while (--c>=0) {
-			pw.writeIntegerSigned(tokenLookup[c]);
-		}
-		
-		pw.writeIntegerUnsigned(structureCount);
-		c = structure.length;
-		while (--c>=0) {
-			pw.writeIntegerSigned(structure[c]);
-		}
+				
 		
 		
 		/*
@@ -252,15 +309,6 @@ public class DictionaryFactory {
 		 this.bytesCount=bytesCount;
 	}
 	
-	public void addFieldId(int id) {
-		structure[structureCount] = id;
-		if (++structureCount>=structure.length) {
-			int newLength = structureCount+INIT_GROW_STEP;
-			int[] temp = new int[newLength];
-			System.arraycopy(structure, 0, temp, 0, structure.length);
-			structure = temp;
-		}
-	}
 	
 	public void addInit(int idx, int value) {
 		
@@ -483,10 +531,6 @@ public class DictionaryFactory {
 	
 	public void reset(ByteHeap heap) {
 		heap.reset();
-	}
-	
-	public int[] getTokenLookup() {
-		return tokenLookup;
 	}
 
 

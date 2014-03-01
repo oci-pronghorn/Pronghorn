@@ -28,9 +28,8 @@ public class FieldReaderChar {
 		return charDictionary;
 	}
 	
-	public void reset(DictionaryFactory dictionaryFactory) {
-		// TODO reset heap back to construction
-		
+	public void reset() {
+		charDictionary.reset();		
 	}
 	
 	static boolean isPowerOfTwo(int length) {

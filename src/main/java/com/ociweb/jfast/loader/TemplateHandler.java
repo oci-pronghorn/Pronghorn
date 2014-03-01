@@ -441,11 +441,19 @@ public class TemplateHandler extends DefaultHandler {
 	}
 	
 	public void postProcessing() {
+		int singleTextLength = 128; //TODO: must set somewhere. but not here its not part of template.
+				
+		DictionaryFactory df = new DictionaryFactory(tokenBuilderIntCount,
+				                                     tokenBuilderLongCount, 
+				                                     tokenBuilderTextCount, singleTextLength, 
+													 tokenBuilderDecimalCount, 
+													 tokenBuilderByteCount);
+		
 		
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldIdUnique, fieldIdBiggest, 
 				     tokenLookupFromFieldId, absentLookupFromFieldId,
-				     templateIdUnique, templateIdBiggest, catalogScripts);
+				     templateIdUnique, templateIdBiggest, catalogScripts, df);
 				
 		//close stream.
 		writer.flush();

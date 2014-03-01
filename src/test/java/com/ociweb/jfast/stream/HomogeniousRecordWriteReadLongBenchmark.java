@@ -61,7 +61,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
 	
-	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields,tokenLookup);
+	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
 	
@@ -75,8 +75,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
 	
 	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
 	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
@@ -116,8 +116,6 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		return OperatorMask.Field_Tail==operator && type<=TypeMask.LongSignedOptional;
 		
 	}
-
-	//TODO: split these tests into different classes per type for easier comparison.
 
 	//
 	///
