@@ -14,6 +14,7 @@ public class FASTInputStream implements FASTInput {
 
 	private InputStream inst;
 	private byte[] targetBuffer;
+	private boolean eof = false;
 	
 	public FASTInputStream(InputStream inst) {
 		this.inst = inst;
@@ -33,6 +34,7 @@ public class FASTInputStream implements FASTInput {
 			
 			int result = inst.read(targetBuffer, offset, len);
 			if (result<0) {
+				eof = true;
 				return 0;
 			}
 			return result;
@@ -44,6 +46,11 @@ public class FASTInputStream implements FASTInput {
 	@Override
 	public void init(byte[] targetBuffer) {
 		this.targetBuffer = targetBuffer;
+	}
+
+	@Override
+	public boolean isEOF() {
+		return eof;
 	}
 	
 }

@@ -218,6 +218,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	
 	protected int staticWriteReadSignedConstantRecord(int reps, int token, int groupToken) {
 		int result = 0;
+		int constantValue = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
@@ -235,7 +236,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				fw.writeIntegerSignedConstant(intTestData[j], token);
+				fw.writeIntegerSignedConstant(constantValue, token);
 			}
 			
 			if (maxBytes>0) {

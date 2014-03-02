@@ -121,6 +121,10 @@ public class FASTReaderDispatch{
 		return longLookup[id];
 	}
 	
+	public void dispatchReadPrefix(byte[] target) {
+		reader.readByteData(target, 0, target.length);
+	}
+	
 	//package protected, unless we find a need to expose it?
 	boolean dispatchReadByToken(int id, int token) {
 	
@@ -165,6 +169,9 @@ public class FASTReaderDispatch{
 			} else {
 				//101??
 				//Length Type, no others defined so no need to keep checking
+				//TODO: this only happens on first pass of script
+				//Every group should count passes, if seq must go back to the value?
+				
 				intLookup[id] =	readIntegerUnsigned(token);
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -249,8 +256,14 @@ public class FASTReaderDispatch{
 	private boolean readGroupCommand(int token) {
 		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
 			openGroup(token);
+			//TODO: if this is a sequence the count needs to be pushed on a stack?
+			
 			return true;
 		} else {
+			//TODO: if we are closing a sequence then we must have picked up the
+			//length and we will NOT read it again. so we need a flag for that.
+			//
+			
 			return closeGroup(token);
 		}
 	}
@@ -967,7 +980,18 @@ public class FASTReaderDispatch{
 			}
 		}
 	}
+	
+	public int openMessage(int pmapMaxSize) {
+		
+		reader.openPMap(pmapMaxSize);
+		//return template id or unknown
+		return (0!=reader.popPMapBit()) ? reader.readIntegerUnsigned() : -1;//template Id
 
+	}
+	
+	public void closeMessage() {
+		reader.closePMap();
+	}
 	
 	public void openGroup(int token) {
 
@@ -980,6 +1004,8 @@ public class FASTReaderDispatch{
 		if (pmapMaxSize>0) {
 			reader.openPMap(pmapMaxSize);
 		}
+		
+		
 		
 //		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) { //TODO:pull from operator!
 //			//always push something on to the stack
@@ -1223,6 +1249,12 @@ public class FASTReaderDispatch{
 		}
 
 	}
+
+	public boolean isEOF() {
+		return reader.isEOF();
+	}
+
+
 
 
 }

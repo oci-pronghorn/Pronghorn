@@ -56,8 +56,12 @@ public class TemplateHandler extends DefaultHandler {
     
     boolean fieldExponentOptional = false;
     int      fieldExponentAbsent;
+    int      fieldExponentOperator;
+    
     boolean fieldMantissaOptional = false;
     long     fieldMantissaAbsent;
+    int      fieldMantissaOperator;
+    
     int      fieldPMapInc = 1;//changes to 2 only when inside twin decimal
     
     //Counters for TokenBuilder so each field is given a unique spot in the dictionary.
@@ -127,7 +131,7 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
     	} else if (qName.equalsIgnoreCase("decimal")) {
-    		fieldOperator = OperatorMask.Field_None;
+    		fieldOperator = OperatorMask.Field_None; //none is zero and the same for twin and single types
     		fieldPMapInc=2; //any operators must count as two PMap fields.
     		fieldType = "optional".equals(attributes.getValue("presence")) ?
     				TypeMask.DecimalOptional:
@@ -137,11 +141,14 @@ public class TemplateHandler extends DefaultHandler {
     		
     		fieldExponentOptional = false;
     		fieldMantissaOptional = false;
+    		fieldExponentOperator = OperatorMask.Field_None;
+    		fieldMantissaOperator = OperatorMask.Field_None;
     		
     		
     	} else if (qName.equalsIgnoreCase("exponent")) {
     		fieldPMapInc=1;
     		fieldExponentOptional = "optional".equals(attributes.getValue("presence"));
+    		fieldOperator = OperatorMask.Field_None;
     		
 			String absentString = attributes.getValue("nt_absent_const");
 			if (null!=absentString && absentString.trim().length()>0) {
@@ -154,6 +161,7 @@ public class TemplateHandler extends DefaultHandler {
     	} else if (qName.equalsIgnoreCase("mantissa")) {
     		fieldPMapInc=1;
     		fieldMantissaOptional = "optional".equals(attributes.getValue("presence"));
+    		fieldOperator = OperatorMask.Field_None;
     		
 			String absentString = attributes.getValue("nt_absent_const");
 			if (null!=absentString && absentString.trim().length()>0) {
@@ -232,6 +240,7 @@ public class TemplateHandler extends DefaultHandler {
     		
 
     	} else if (qName.equalsIgnoreCase("template")) {
+    		catalogTemplateScriptIdx = 0;
     		
     		
     		//Token must hold the max bytes needed for the PMap but this is the start element
@@ -246,7 +255,9 @@ public class TemplateHandler extends DefaultHandler {
     		//this value will also be needed for the back jump value in the closing task.
     		groupOpenTokenStack[++groupTokenStackHead] = token;
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
+    		
+    		//messages do not need to be listed because they are the top level group.
+    //		catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
     		
     		//template specific values after this point
     		
@@ -260,7 +271,6 @@ public class TemplateHandler extends DefaultHandler {
     		templateName = attributes.getValue("name");
     	    templateDictionary = attributes.getValue("dictionary");
     	    templateXMLns = attributes.getValue("xmlns");
-    	    catalogTemplateScriptIdx = 0;
     	    
     	    if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
     	    	//add Dictionary command to reset in the script
@@ -349,10 +359,14 @@ public class TemplateHandler extends DefaultHandler {
     		
     		if (0==tokenLookupFromFieldId[fieldId]) {
     			
-    			//TODO: check for expontent and mantissa data for double fields/
+    			//TODO: decimal parts are not implemented to each have their own optional.
     			
-    			//Build special fieldOperator. Can clear them now if we like.
-    			
+    			if (0!=fieldExponentOperator || 0!= fieldMantissaOperator) {
+    				fieldOperator = (fieldExponentOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX)|fieldMantissaOperator;
+    			} else {
+    				fieldOperator |= (fieldOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX);
+    			}
+    			    			
     			//if undefined create new token
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderDecimalCount++);
     			fieldIdUnique++;
@@ -363,6 +377,12 @@ public class TemplateHandler extends DefaultHandler {
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
 
     		fieldPMapInc=1;//set back to 1 we are leaving decimal processing
+    	} else if (qName.equalsIgnoreCase("exponent")) {
+    		fieldExponentOperator = fieldOperator;
+    		
+    	} else if (qName.equalsIgnoreCase("mantissa")) {
+    		fieldMantissaOperator = fieldOperator;
+    		
     	} else if (qName.equalsIgnoreCase("bytevector")) {
     		
     		if (0==tokenLookupFromFieldId[fieldId]) {
@@ -381,6 +401,14 @@ public class TemplateHandler extends DefaultHandler {
     			 ) {
     		
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
+    		
+    		//TODO: How to detect for dynamic template in group?
+    		//If this group can have a dynamic template or is a message we need 1 more bit.
+    		if (qName.equalsIgnoreCase("template")) {
+    			pmapMaxBits++;
+    		}
+    		
+    		
     		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
     		int opMask = OperatorMask.Group_Bit_Close;
     		int openToken = groupOpenTokenStack[groupTokenStackHead];
@@ -397,11 +425,15 @@ public class TemplateHandler extends DefaultHandler {
     			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
     					(TokenBuilder.MAX_FIELD_ID_VALUE&pmapMaxBytes);
     			
-    			int jumpToTop = catalogTemplateScriptIdx-scriptOpenGroupIdx;
+    			//Do not closing token for message/template this is detected by the hitting the end of the script.
+    			if (!qName.equalsIgnoreCase("template")) {
     			
-    			//closing token has positive jump back to head, in case it is needed 
-    			int token = TokenBuilder.buildToken(TypeMask.Group, opMask, jumpToTop);
-    			catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
+	    			int jumpToTop = catalogTemplateScriptIdx-scriptOpenGroupIdx;
+	    			
+	    			//closing token has positive jump back to head, in case it is needed 
+	    			int token = TokenBuilder.buildToken(TypeMask.Group, opMask, jumpToTop);
+	    			catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
+    			}
     		}
     		
     		//
@@ -419,6 +451,7 @@ public class TemplateHandler extends DefaultHandler {
         		
         		//give this script to the catalog
         		int[] script = new int[catalogTemplateScriptIdx];
+        		//TODO: delete System.err.println("parsed "+templateId+" with script length "+catalogTemplateScriptIdx);
         		System.arraycopy(catalogTemplateScript, 0, script, 0, catalogTemplateScriptIdx);
         		catalogScripts[templateId] = script;
         		templateIdUnique++;     		
@@ -453,7 +486,7 @@ public class TemplateHandler extends DefaultHandler {
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldIdUnique, fieldIdBiggest, 
 				     tokenLookupFromFieldId, absentLookupFromFieldId,
-				     templateIdUnique, templateIdBiggest, catalogScripts, df);
+				     templateIdUnique, templateIdBiggest, catalogScripts, df, catalogLargestPMap);
 				
 		//close stream.
 		writer.flush();

@@ -27,10 +27,10 @@ public class ReaderWriterKryoTest {
 
 	//These common test values are used from the smallest test to the largest so results can be compared
 	public final static long[] unsignedLongData = new long[] {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,2097152,268435456,
-		                                                          Integer.MAX_VALUE, Long.MAX_VALUE/2 //TODO: bug in largest large signed value, (Long.MAX_VALUE/4)*3
+		                                                          Integer.MAX_VALUE, Long.MAX_VALUE/2, Long.MAX_VALUE-2, Long.MAX_VALUE-1 
 		                                                          };
 	public final static int[] unsignedIntData =   new int[]  {0,1,63,64,65,126,127,128,8000,16383,16384,16385,16386,2097152,268435456,
-		                                                         Integer.MAX_VALUE-1 //must be 1 less so there is room for the nulled form of uInt
+																 Integer.MAX_VALUE-2, Integer.MAX_VALUE-1 //must be 1 less so there is room for the nulled form of uInt
 		                                                         }; 
 	
 	public final static CharSequence[] stringData =   new CharSequence[]  {"","a","ab","abc","abcd","abcde","abcdef","abcdefg",

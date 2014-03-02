@@ -40,7 +40,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(367, catalogByteArray.length);
+			assertEquals(368, catalogByteArray.length);
 			
 			script = catalog.templateScript(2);
 			assertEquals(16, script.length);
@@ -83,9 +83,8 @@ public class TemplateLoaderTest {
 		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
 		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
 		
-		int prefixId = 3;
 		int prefixSize = 4;
-		catalog.setMessagePrefix(prefixId,prefixSize);	
+		catalog.setMessagePrefix(prefixSize);	
 
 		
 		//connect to file		
@@ -93,19 +92,44 @@ public class TemplateLoaderTest {
 		File fileSource = new File(sourceData.getFile());
 			
 		try {
-			FASTInputStream input = new FASTInputStream(new FileInputStream(fileSource)); 
-			PrimitiveReader primitiveReader = new PrimitiveReader(input);
+			//do not want to time file access so copy file to memory
+			byte[] fileData = new byte[sourceData.getFile().length()];
+			FileInputStream inputStream = new FileInputStream(fileSource);
+			int readBytes = inputStream.read(fileData);
+			inputStream.close();
+			assertEquals(fileData.length,readBytes);
+			
+			FASTInputByteArray fastInput = new FASTInputByteArray(fileData);
+			PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
 			FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
 			
-			int data = 0;
-			while (0!=(data = dynamicReader.hasMore())) {
+			long start=0;
+			int warmup = 100;
+			int count = 100; 
+			int iter = count+warmup;
+			while (--iter>=0) {
+
+				int data = 0; //same id needed for writer construction
+				while (0!=(data = dynamicReader.hasMore())) {
+					
+					//switch on data?
+					
+					//int value = dynamicReader.readInt(33);
+					//pass dynamic reader into  nextData = dynamicWriter.write(data,dynamicReader); //write can then be stateless
+					
+				}
 				
-				//switch on data?
+				fastInput.reset();
+				primitiveReader.reset();
+				dynamicReader.reset();
 				
-				//int value = dynamicReader.readInt(33);
+				if (0==start && iter==count) {
+					start = System.nanoTime();
+				}
 				
 			}
-			
+			long duration = System.nanoTime()-start;
+			System.err.println("Duration:"+(duration/(float)count)+"ns");
 			
 			//TODO: print expected template for 2
 			
@@ -134,6 +158,9 @@ public class TemplateLoaderTest {
 			//System.err.println(pr.readTextASCII(new StringBuilder()));
 			
 		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		

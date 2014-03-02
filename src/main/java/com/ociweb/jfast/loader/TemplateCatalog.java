@@ -20,9 +20,9 @@ public class TemplateCatalog {
 	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	final DictionaryFactory dictionaryFactory;
+	final int maxTokenPMapSize;
 	
 	//Runtime specific message prefix, only used for some transmission technologies
-	int prefixId=-1;  
 	int prefixSize=0; //default is none
 	
 	public TemplateCatalog(PrimitiveReader reader) {
@@ -44,6 +44,8 @@ public class TemplateCatalog {
 		loadTemplateScripts(reader);
 		
 		dictionaryFactory = new DictionaryFactory(reader);
+		
+		maxTokenPMapSize = reader.readIntegerUnsigned();
 				
 	}
 
@@ -52,8 +54,7 @@ public class TemplateCatalog {
 	}
 
 	
-	public void setMessagePrefix(int prefixId, int prefixSize) {
-		this.prefixId = prefixId;
+	public void setMessagePrefix(int prefixSize) {
 		this.prefixSize = prefixSize;
 	}
 	
@@ -137,17 +138,20 @@ public class TemplateCatalog {
 			                  int uniqueIds, int biggestId, 
 			                  int[] tokenLookup, long[] absentValue,
 			                  int uniqueTemplateIds, int biggestTemplateId, 
-			                  int[][] scripts, DictionaryFactory df) {
+			                  int[][] scripts, DictionaryFactory df, int maxTokenPMapSize) {
 		
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
 		df.save(writer);
 		
+		writer.writeIntegerUnsigned(maxTokenPMapSize);
+		
 		
 	}
 
-	private static void saveTokens(PrimitiveWriter writer, int uniqueIds, int biggestId, int[] tokenLookup,
+	private static void saveTokens(PrimitiveWriter writer, int uniqueIds, int biggestId,
+			int[] tokenLookup,
 			long[] absentValue) {
 		int temp = biggestId;
 		int base2Exponent = 0;
@@ -226,6 +230,7 @@ public class TemplateCatalog {
 				writer.writeIntegerUnsigned(templateId);
 				int i = script.length;
 				writer.writeIntegerUnsigned(i);//length of script written first
+				//TODO: delete System.err.println(templateId+" has script length of "+i);
 				while (--i>=0) {
 					writer.writeIntegerSigned(script[i]);
 				}
@@ -252,9 +257,13 @@ public class TemplateCatalog {
 		return dictionaryFactory;
 	}
 
+	public int getMessagePrefixSize() {
+		return prefixSize;
+	}
 
-	
-	
+	public int maxTemplatePMapSize() {
+		return maxTokenPMapSize;
+	}
 
 	
 	

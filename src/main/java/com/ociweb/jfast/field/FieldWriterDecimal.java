@@ -36,11 +36,11 @@ public class FieldWriterDecimal {
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
 		//oppExp
-		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 			//none, constant, delta
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 				//none, delta
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
 					writerDecimalExponent.writeIntegerSigned(1+exponent, token);
 				} else {
@@ -54,9 +54,9 @@ public class FieldWriterDecimal {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 				//copy, increment
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
 					writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
 				} else {
@@ -110,11 +110,11 @@ public class FieldWriterDecimal {
 	public void writeDecimal(int token, int exponent, long mantissa) {
 		
 		//oppExp
-		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 			//none, constant, delta
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 				//none, delta
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
 					writerDecimalExponent.writeIntegerSigned(exponent, token);
 				} else {
@@ -128,9 +128,9 @@ public class FieldWriterDecimal {
 			
 		} else {
 			//copy, default, increment
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 				//copy, increment
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)))) {
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
 					writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
 				} else {

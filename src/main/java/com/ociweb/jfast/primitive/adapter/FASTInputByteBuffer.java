@@ -44,4 +44,9 @@ public class FASTInputByteBuffer implements FASTInput {
 	public void reset() {
 		byteBuffer.flip();
 	}
+
+	@Override
+	public boolean isEOF() {
+		return byteBuffer.remaining()==0;
+	}
 }

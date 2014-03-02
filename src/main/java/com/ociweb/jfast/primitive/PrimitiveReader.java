@@ -960,5 +960,11 @@ public final class PrimitiveReader {
 		}
 		target[targetIdx] = (char)((result<<6)|(source[position++]&0x3F));
 	}
+
+
+	public boolean isEOF() {
+		fetch(0);
+		return (remaining()>0)? false: input.isEOF();
+	}
 	
 }

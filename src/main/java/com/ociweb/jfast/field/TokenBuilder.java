@@ -43,8 +43,8 @@ public class TokenBuilder {
 	public static final int BITS_TYPE          = 5;
 	
 	public static final int MASK_OPER          = 0x3F; //6 bits
-	public static final int MASK_OPER_DECIMAL  = 0x07; //3 bits
-	public static final int SHIFT_OPER_DECIMAL = 3; 
+	public static final int MASK_OPER_DECIMAL_EX  = 0x07; //3 bits
+	public static final int SHIFT_OPER_DECIMAL_EX = 3; 
 	
 	
 	//sequence is stored as a length field type which appears in the stream before the repeating children.
@@ -63,32 +63,20 @@ public class TokenBuilder {
 		return (0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));
 	}
 	
-	public static int buildToken(int tokenType, int tokenOpp, int count) {
+	//Decimals must pass in both operators in the tokenOpps field together
+	public static int buildToken(int tokenType, int tokenOpps, int count) {
 		assert(count<=MAX_INSTANCE);
 		assert(TypeMask.toString(tokenType).indexOf("unknown")==-1) : "Unknown type of "+tokenType+" "+Integer.toHexString(tokenType);
 		assert(tokenType>=0);
 		assert(tokenType<=MASK_TYPE);
-		assert(tokenOpp>=0);
-		assert(tokenOpp<=MASK_OPER);
+		assert(tokenOpps>=0);
+		assert(tokenOpps<=MASK_OPER) : "Opps "+Integer.toHexString(tokenOpps);
 		
-		if (tokenType==TypeMask.Decimal || tokenType==TypeMask.DecimalOptional) {
-			if (tokenOpp>TokenBuilder.MASK_OPER_DECIMAL) {
-				throw new UnsupportedOperationException("operator not supported by decimal.");
-			}
-			
-			//simple build for decimal, may want another method to do two types
-			return 0x80000000 |  
-				       (tokenType<<TokenBuilder.SHIFT_TYPE) |
-				       (tokenOpp<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL)) |
-				       (tokenOpp<<TokenBuilder.SHIFT_OPER) |
-				       count&MAX_INSTANCE;
-			
-		} else {
-			return 0x80000000 |  
-			       (tokenType<<TokenBuilder.SHIFT_TYPE) |
-			       (tokenOpp<<TokenBuilder.SHIFT_OPER) |
-			       count&MAX_INSTANCE;
-		}
+		return 0x80000000 |  
+		       (tokenType<<TokenBuilder.SHIFT_TYPE) |
+		       (tokenOpps<<TokenBuilder.SHIFT_OPER) |
+		       count&MAX_INSTANCE;
+
 	}
 	
 	public static boolean isInValidCombo(int type, int operator) {
@@ -106,7 +94,7 @@ public class TokenBuilder {
 		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
 		
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
-			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL)==operator||((token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL)==operator;
+			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL_EX)==operator||((token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX))&TokenBuilder.MASK_OPER_DECIMAL_EX)==operator;
 		} else {
 			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==operator;
 		}
@@ -118,8 +106,8 @@ public class TokenBuilder {
 		int count = token & TokenBuilder.MAX_INSTANCE;
 		
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
-			int opp1 = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL))&TokenBuilder.MASK_OPER_DECIMAL;
-			int opp2 = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL;
+			int opp1 = (token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX))&TokenBuilder.MASK_OPER_DECIMAL_EX;
+			int opp2 = (token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL_EX;
 			if (isInValidCombo(type,opp1)) {
 				throw new UnsupportedOperationException("bad token");
 			};

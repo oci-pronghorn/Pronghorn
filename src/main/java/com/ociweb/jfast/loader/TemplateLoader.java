@@ -69,6 +69,11 @@ public class TemplateLoader {
 	public static void buildCatalog(OutputStream catalog, File source) throws ParserConfigurationException, SAXException,
 			IOException {
 		SAXParserFactory spfac = SAXParserFactory.newInstance();
+		
+//		//need to load fast.schema file
+//		Schema schema = new Schema();
+//		spfac.setSchema(schema);
+		
 		SAXParser sp = spfac.newSAXParser();
 		FASTOutput output = new FASTOutputStream(catalog);
 		TemplateHandler handler = new TemplateHandler(output);

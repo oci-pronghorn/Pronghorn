@@ -93,7 +93,7 @@ public final class FieldWriterInteger {
 	
 	
 	public void writeIntegerSignedConstant(int value, int token) {
-//TODO: unit test error.		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+        assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value "+lastValue[ token & INSTANCE_MASK]+" from the template may be sent";
 		//nothing need be sent because constant does not use pmap and the template
 		//on the other receiver side will inject this value from the template
 	}

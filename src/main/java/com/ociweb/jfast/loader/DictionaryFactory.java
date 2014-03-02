@@ -73,16 +73,14 @@ public class DictionaryFactory {
 	
 	char[][] appTypes = null;//appType identifiers used in XML
 	
-	private static final int MAX_FIELDS = 1<<20; //1M
-	private static final int DEFAULT_TEXT_LENGTH = 64;
 	private static final int INIT_GROW_STEP = 16;
 	private final int singleGapSize = 64; //default to avoid false cache sharing. 
 		
-	private int integerCount;
-	private int longCount;
-	private int charCount;
-	private int decimalCount;
-	private int bytesCount;
+	private final int integerCount;
+	private final int longCount;
+	private final int charCount;
+	private final int decimalCount;
+	private final int bytesCount;
 	
 	private int integerInitCount;
 	private int[] integerInitIndex;
@@ -108,6 +106,7 @@ public class DictionaryFactory {
 	private int byteInitCount;
 	private int[] byteInitIndex;
 	private byte[][] byteInitValue;
+	
 	private int byteInitTotalLength;
 		
 	private int singleTextSize; //TODO: need an independent value for byteValues?
@@ -301,13 +300,6 @@ public class DictionaryFactory {
 		
 	}
 	
-	public void setTypeCounts(int integerCount, int longCount, int charCount, int decimalCount, int bytesCount) {
-		 this.integerCount=integerCount;
-		 this.longCount=longCount;
-		 this.charCount=charCount;
-		 this.decimalCount=decimalCount;
-		 this.bytesCount=bytesCount;
-	}
 	
 	
 	public void addInit(int idx, int value) {

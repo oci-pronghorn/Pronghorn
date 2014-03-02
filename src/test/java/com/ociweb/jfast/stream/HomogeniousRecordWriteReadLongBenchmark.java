@@ -7,6 +7,8 @@ import static org.junit.Assert.*;
 
 import java.nio.ByteBuffer;
 
+import javax.swing.text.MaskFormatter;
+
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
@@ -104,6 +106,15 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
+			
+			//When testing decimals the same operator is used for both exponent and mantissa.
+			if (tokenType == TypeMask.Decimal || 
+				tokenType == TypeMask.DecimalOptional) {
+				
+				tokenOpp |= tokenOpp<<TokenBuilder.SHIFT_OPER_DECIMAL_EX;
+				
+			}
+			
 			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
 					
 		}

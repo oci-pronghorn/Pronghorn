@@ -49,4 +49,9 @@ public class FASTInputSocketChannel implements FASTInput {
 		this.targetBuffer = ByteBuffer.wrap(targetBuffer);
 	}
 
+	@Override
+	public boolean isEOF() {
+		return !socketChannel.isConnected();
+	}
+
 }

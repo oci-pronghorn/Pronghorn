@@ -186,4 +186,9 @@ public class FASTInputMux implements FASTInput {
 				
 	}
 
+	@Override
+	public boolean isEOF() {
+		return sourceA.isEOF() && sourceB.isEOF() && sourceC.isEOF();
+	}
+
 }

@@ -417,18 +417,7 @@ public class FieldWriterChar {
 			heap.set(idx, value, offset, length);
 		}
 	}
-	
-	public void writeUTF8Constant(int token, char[] value, int offset, int length) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(length);
-			writer.writeTextUTF(value,offset,length);
-		}
-	}
+
 
 	public void writeUTF8Default(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
@@ -571,16 +560,6 @@ public class FieldWriterChar {
 		}
 	}
 
-	public void writeASCIIConstant(int token, char[] value, int offset, int length) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeTextASCII(value, offset, length);
-		}
-	}
 
 	public void writeASCIIDefault(int token, char[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;

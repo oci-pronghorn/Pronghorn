@@ -47,4 +47,9 @@ public class FASTInputByteArray implements FASTInput {
 	public void init(byte[] targetBuffer) {
 		this.targetBuffer = targetBuffer;
 	}
+
+	@Override
+	public boolean isEOF() {
+		return position>=limit;
+	}
 }

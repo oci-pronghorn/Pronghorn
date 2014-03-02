@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -31,17 +32,20 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final FASTReaderDispatch readerDispatch;
 	private final TemplateCatalog catalog;
 	
+	int activeScriptTemplateId;
 	long[] activeScript;
-	int activeScriptIdx;
+	int activeScriptCursor;
+	
+	byte[] prefixData;
 	
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
 	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog) {
 		this.catalog = catalog;
+		this.prefixData = new byte[catalog.getMessagePrefixSize()];
 		
-		this.activeScript = catalog.templateScript(0); //TODO: what is the first template?
-		this.activeScriptIdx = 0;
+		this.activeScriptTemplateId = -1; //no selected script
 				
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
@@ -50,7 +54,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 			
 	}
 	
-    
+    public void reset() {
+    	this.activeScriptTemplateId = -1; //no selected script
+    	this.activeScriptCursor = -1;
+    }
 	
 	
 	
@@ -72,24 +79,77 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	public int hasMore() {
 		
+		do {
+			if (activeScriptCursor>15) { //TODO:hack stop until seq is finished.
+				return 0;
+			}
+			//System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor);
+			if (activeScriptTemplateId<0) {
+				//start new script or detect that the end of the data has been reached
+				if (readerDispatch.isEOF()) {
+					return 0;
+				}
+				
+				///read prefix bytes if any (only used by some implementations)
+				if (prefixData.length>0) {
+					readerDispatch.dispatchReadPrefix(prefixData);
+				};
+				///////////////////
+				
+				//open message (special type of group)			
+				int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
+				if (templateId>=0) {
+					activeScriptTemplateId = templateId;
+				} else {
+					throw new FASTException("Unimplemented case when template is not found in message header");
+				}
+							
+				//set the script and cursor for this template			
+				activeScript = catalog.templateScript(activeScriptTemplateId);
+				activeScriptCursor = 0;
+				
+			} else {
+				//continue existing script
+				long val = activeScript[activeScriptCursor++];
+				int fieldId = (int)(val>>>32);
+				int token = (int)(val&0xFFFFFFFF);
+				
+				//TODO: dispatch two if token was a sequence? needed to fetch the length?
+				//TODO: but length could be anywhere in the data so what now??
+				
+				if (!readerDispatch.dispatchReadByToken(fieldId, token)) {
+					//hit end of sequence.
+					
+					//Must be started at group open so perhaps this logic belongs inside readerDispatch.
+					//TODO: check count and loop back to the top if needed.
+					
+					
+					
+					int level = 1; //TODO: change to ordinal position in template script.
+					return (activeScriptTemplateId<<10)|level; //TODO: hack test for now need to formalize shift
+					
+					
+				}
+				
+				
+				//reached the end of the script so close and prep for the next one
+				if (activeScriptCursor>=activeScript.length) {
+				
+					readerDispatch.closeMessage();
+					int result = activeScriptTemplateId<<10;
+					activeScriptTemplateId = -1;//find next template
+					
+					return result;//TODO: not sure what to return but must let caller process data so far
+				}			
+			}
+		} while (true);
 		
-		
-		int fieldId = -1; //undefined for groups and commands.
-		
-		//when do we get templateId.
-	//	catalog.templateScript(templateId);
-		//must take this array and turn into two arrays of values.
-		
-	//	readerDispatch.dispatchReadByToken(fieldId, token);
-		
-		return 0;//return field id of the group just read
 	}
 	
-//	public int hasField() {
-//		
-//		return -1;//return field id of field just read.
-//	}
-
+	public byte[] prefix() {
+		return prefixData;
+	}
+	
 	public int readInt(int id) {
 		return readerDispatch.lastInt(id);
 	}
