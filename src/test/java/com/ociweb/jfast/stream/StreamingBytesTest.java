@@ -200,7 +200,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		
 		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 		
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken, maxMPapBytes);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -239,7 +239,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 					}
 				}
 							
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
@@ -256,7 +256,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
 		ByteHeap byteHeap = fr.byteHeap();
 		
 		int token = 0;
@@ -270,7 +270,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		int g = fieldsPerGroup;
 		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 		
-		fr.openGroup(groupToken);
+		fr.openGroup(groupToken, maxMPapBytes);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -340,7 +340,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 					}
 				}
 			
-				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
+				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0 ) {

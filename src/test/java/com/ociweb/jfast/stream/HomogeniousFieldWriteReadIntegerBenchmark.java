@@ -146,7 +146,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken);
+						     0), simpleGroupToken,2);
 	}
 	
 	public int timeStaticIntegerSignedConstantWR(int reps) {
@@ -154,7 +154,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken);
+						     0), simpleGroupToken,2);
 	}
 
 	public int timeStaticIntegerSignedDeltaOptionalWR(int reps) {
@@ -162,11 +162,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken);
+						     0), simpleGroupToken, 2);
 	}
 	
 	
-	protected int staticWriteReadSignedCopyOptionalRecord(int reps, int token, int groupToken) {
+	protected int staticWriteReadSignedCopyOptionalRecord(int reps, int token, int groupToken, int pmapSize) {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
@@ -178,9 +178,8 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractCount(groupToken);
-			if (maxBytes>0) {
-				pw.openPMap(maxBytes);
+			if (pmapSize>0) {
+				pw.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
@@ -188,7 +187,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				fw.writeIntegerSignedCopyOptional(intTestData[j], token);
 			}
 			
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
@@ -202,21 +201,21 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			fr.reset(dcr); //reset message to clear the previous values
 			
-			if (maxBytes>0) {
-					pr.openPMap(maxBytes);
+			if (pmapSize>0) {
+					pr.openPMap(pmapSize);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedCopyOptional(token, 0);
 			}
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pr.closePMap();
 			}
 		}
 		return result;
 	}
 	
-	protected int staticWriteReadSignedConstantRecord(int reps, int token, int groupToken) {
+	protected int staticWriteReadSignedConstantRecord(int reps, int token, int groupToken, int pmapSize) {
 		int result = 0;
 		int constantValue = 0;
 		for (int i = 0; i < reps; i++) {
@@ -229,9 +228,8 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractCount(groupToken);
-			if (maxBytes>0) {
-				pw.openPMap(maxBytes);
+			if (pmapSize>0) {
+				pw.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
@@ -239,7 +237,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				fw.writeIntegerSignedConstant(constantValue, token);
 			}
 			
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
@@ -253,21 +251,21 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			fr.reset(dcr); //reset message to clear the previous values
 			
-			if (maxBytes>0) {
-					pr.openPMap(maxBytes);
+			if (pmapSize>0) {
+					pr.openPMap(pmapSize);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedConstant(token);
 			}
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pr.closePMap();
 			}
 		}
 		return result;
 	}
 	
-	protected int staticWriteReadSignedDeltaOptionalRecord(int reps, int token, int groupToken) {
+	protected int staticWriteReadSignedDeltaOptionalRecord(int reps, int token, int groupToken, int pmapSize) {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
@@ -279,9 +277,8 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
 			
-			int maxBytes = TokenBuilder.extractCount(groupToken);
-			if (maxBytes>0) {
-				pw.openPMap(maxBytes);
+			if (pmapSize>0) {
+				pw.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
@@ -289,7 +286,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				fw.writeIntegerSignedDeltaOptional(intTestData[j], token);
 			}
 			
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
@@ -303,14 +300,14 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			fr.reset(dcr); //reset message to clear the previous values
 			
-			if (maxBytes>0) {
-					pr.openPMap(maxBytes);
+			if (pmapSize>0) {
+					pr.openPMap(pmapSize);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= fr.readIntegerSignedDeltaOptional(token,0);
 			}
-			if (maxBytes>0) {
+			if (pmapSize>0) {
 				pr.closePMap();
 			}
 		}

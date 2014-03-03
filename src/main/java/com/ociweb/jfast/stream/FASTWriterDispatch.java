@@ -1119,30 +1119,26 @@ public final class FASTWriterDispatch {
 				writerChar.writeASCIIDefault(token, value, offset, length);
 			}
 		}
-		
 	}
 
-	public void openGroup(int token) {	
+	public void openGroup(int token, int pmapSize) {	
 		assert(token<0);
 		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
 		assert(0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
 		
-		int maxBytes = TokenBuilder.extractCount(token);
-		if (maxBytes>0) {
-			writer.openPMap(maxBytes);
+		if (0!=(token&(OperatorMask.Group_Bit_PMap<<TokenBuilder.SHIFT_OPER))) {
+			writer.openPMap(pmapSize);
 		}
 		
 	}
 	
-	public void openGroup(int token, int templateId) {	
+	public void openGroup(int token, int templateId, int pmapSize) {	
 		assert(token<0);
 		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
 		assert(0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
 	
-		
-		int maxBytes = TokenBuilder.extractCount(token);
-		if (maxBytes>0) {
-			writer.openPMap(maxBytes);
+		if (pmapSize>0) {
+			writer.openPMap(pmapSize);
 		}
 		//done here for safety to ensure it is always done at group open.
 		pushTemplate(templateId);
@@ -1168,8 +1164,7 @@ public final class FASTWriterDispatch {
 		assert(token<0);
 		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
 		
-		int maxBytes = TokenBuilder.extractCount(token);
-		if (maxBytes>0) {
+		if (0!=(token&(OperatorMask.Group_Bit_PMap<<TokenBuilder.SHIFT_OPER))) {
 			writer.closePMap();
 		}
 		

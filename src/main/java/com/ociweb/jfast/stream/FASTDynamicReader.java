@@ -4,6 +4,7 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -44,13 +45,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog) {
 		this.catalog = catalog;
 		this.prefixData = new byte[catalog.getMessagePrefixSize()];
-		
-		this.activeScriptTemplateId = -1; //no selected script
-				
+		this.activeScriptTemplateId = -1; //no selected script				
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
 				                                catalog.templatesCount(), 
-				                                catalog.tokenLookup());
+				                                catalog.tokenLookup(),3);
 			
 	}
 	
@@ -58,7 +57,6 @@ public class FASTDynamicReader implements FASTDataProvider {
     	this.activeScriptTemplateId = -1; //no selected script
     	this.activeScriptCursor = -1;
     }
-	
 	
 	
 	/**
@@ -80,11 +78,12 @@ public class FASTDynamicReader implements FASTDataProvider {
 	public int hasMore() {
 		
 		do {
-			if (activeScriptCursor>15) { //TODO:hack stop until seq is finished.
-				return 0;
+			if (activeScriptCursor>15) {
+				return 0;//TODO: hack to end test early.
 			}
-			//System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor);
+			
 			if (activeScriptTemplateId<0) {
+				System.err.println("new unknown template");
 				//start new script or detect that the end of the data has been reached
 				if (readerDispatch.isEOF()) {
 					return 0;
@@ -114,21 +113,28 @@ public class FASTDynamicReader implements FASTDataProvider {
 				int fieldId = (int)(val>>>32);
 				int token = (int)(val&0xFFFFFFFF);
 				
+
+				System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+" "+TokenBuilder.tokenToString(token));
+				
+				//group templates open close //no need to build token because it is in catalog
+				//group sequence open close  //steps in script inside group.
+				//group group open close     //steps in script inside group.
+				
+				
 				//TODO: dispatch two if token was a sequence? needed to fetch the length?
 				//TODO: but length could be anywhere in the data so what now??
 				
 				if (!readerDispatch.dispatchReadByToken(fieldId, token)) {
-					//hit end of sequence.
+					//hit end of sequence because false is returned (TODO: refactor to not include message)
 					
-					//Must be started at group open so perhaps this logic belongs inside readerDispatch.
-					//TODO: check count and loop back to the top if needed.
-					
-					
+					if (!readerDispatch.completeSequence(token)) {
+						//return back to top of this sequence.
+						activeScriptCursor -= TokenBuilder.extractCount(token)+1;
+					}
 					
 					int level = 1; //TODO: change to ordinal position in template script.
 					return (activeScriptTemplateId<<10)|level; //TODO: hack test for now need to formalize shift
-					
-					
+	
 				}
 				
 				

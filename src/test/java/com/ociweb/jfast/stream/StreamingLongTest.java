@@ -88,7 +88,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken, maxMPapBytes);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -112,7 +112,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testData[f]); 
 					}
 				}	
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
@@ -129,7 +129,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -141,7 +141,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
-		fr.openGroup(groupToken);
+		fr.openGroup(groupToken, maxMPapBytes);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -178,7 +178,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 						}
 					
 				}
-				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
+				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);				
 			}	
 			
 		//	System.err.println("TST:"+Long.toBinaryString(pr.getFingerprint()));

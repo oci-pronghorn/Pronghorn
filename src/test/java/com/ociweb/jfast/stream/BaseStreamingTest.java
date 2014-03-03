@@ -146,7 +146,7 @@ public abstract class BaseStreamingTest {
 								
 			}
 
-	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f) {
+	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group
 			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
@@ -155,14 +155,15 @@ public abstract class BaseStreamingTest {
 			if (f>0 || i>0) {
 	
 				//open new group
-				fr.openGroup(groupToken);
+				fr.openGroup(groupToken, pmapSize);
 				
 			}				
 		}
 		return g;
 	}
 
-	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterDispatch fw, int i, int g, int groupOpenToken, int groupCloseToken, int f) {
+	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterDispatch fw, int i, int g,
+			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group
 			fw.closeGroup(groupOpenToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
@@ -171,7 +172,7 @@ public abstract class BaseStreamingTest {
 			if (f>0 || i>0) {
 	
 				//open new group
-				fw.openGroup(groupOpenToken);
+				fw.openGroup(groupOpenToken, pmapSize);
 				
 			}				
 		}

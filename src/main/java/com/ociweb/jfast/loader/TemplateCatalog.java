@@ -20,7 +20,9 @@ public class TemplateCatalog {
 	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	final DictionaryFactory dictionaryFactory;
-	final int maxTokenPMapSize;
+	final int maxTemplatePMapSize;
+	final int maxNonTemplatePMapSize;
+	
 	
 	//Runtime specific message prefix, only used for some transmission technologies
 	int prefixSize=0; //default is none
@@ -43,10 +45,15 @@ public class TemplateCatalog {
 		
 		loadTemplateScripts(reader);
 		
+		//it is assumed that template PMaps are smaller or larger than the other PMaps so these are kept separate
+		maxTemplatePMapSize = reader.readIntegerUnsigned();
+		maxNonTemplatePMapSize = reader.readIntegerUnsigned();
+		
+	//	System.err.println("PMaps sizes templates:"+maxTemplatePMapSize+" nonTemplates:"+maxNonTemplatePMapSize+" both should be very small for best peformance.");
+
+		
 		dictionaryFactory = new DictionaryFactory(reader);
 		
-		maxTokenPMapSize = reader.readIntegerUnsigned();
-				
 	}
 
 	public int[] tokenLookup() {
@@ -138,14 +145,18 @@ public class TemplateCatalog {
 			                  int uniqueIds, int biggestId, 
 			                  int[] tokenLookup, long[] absentValue,
 			                  int uniqueTemplateIds, int biggestTemplateId, 
-			                  int[][] scripts, DictionaryFactory df, int maxTokenPMapSize) {
+			                  int[][] scripts, DictionaryFactory df, 
+			                  int maxTemplatePMap, int maxNonTemplatePMap) {
 		
 		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
+	//	System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
+		writer.writeIntegerUnsigned(maxTemplatePMap);
+		writer.writeIntegerUnsigned(maxNonTemplatePMap);
+
 		df.save(writer);
 		
-		writer.writeIntegerUnsigned(maxTokenPMapSize);
 		
 		
 	}
@@ -262,7 +273,7 @@ public class TemplateCatalog {
 	}
 
 	public int maxTemplatePMapSize() {
-		return maxTokenPMapSize;
+		return maxTemplatePMapSize;
 	}
 
 	

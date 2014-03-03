@@ -75,11 +75,10 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 			
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
-	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
+	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
+	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -148,7 +147,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal,
 							OperatorMask.Field_None, 
-							0), zeroGroupToken);
+							0), groupTokenNoMap, 0);
 	}
 	
 	
@@ -157,7 +156,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional,
 							OperatorMask.Field_None, 
-							0), zeroGroupToken);
+							0), groupTokenNoMap, 0);
 	}
 
 	
@@ -166,7 +165,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal,
 						    OperatorMask.Field_Copy, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	
@@ -175,7 +174,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional,
 						    OperatorMask.Field_Copy, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalConstant(int reps) {
@@ -183,7 +182,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.Decimal, //constant operator can not be optional
 						    OperatorMask.Field_Constant, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 
 	public long timeStaticDecimalDefault(int reps) {
@@ -191,7 +190,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal, 
 						    OperatorMask.Field_Default, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalDefaultOptional(int reps) {
@@ -199,7 +198,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Default, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalDelta(int reps) {
@@ -207,7 +206,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 						TypeMask.Decimal, 
 						OperatorMask.Field_Delta, 
-						0), zeroGroupToken);
+						0), groupTokenNoMap, 0);
 	}
 
 	public long timeStaticDecimalDeltaOptional(int reps) {
@@ -215,7 +214,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Delta, 
-						     0), zeroGroupToken);
+						     0), groupTokenNoMap, 0);
 	}
 	
 	
@@ -224,7 +223,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal, 
 						    OperatorMask.Field_Increment, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalIncrementOptional(int reps) {
@@ -232,7 +231,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Increment, 
-						     0), largeGroupToken);
+						     0), groupTokenMap, 4);
 	}
 	
 	
@@ -254,7 +253,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	
 	protected int staticWriteReadOverheadGroup(int reps) {
 		int result = 0;
-		int groupToken = zeroGroupToken;
+		int groupToken = groupTokenNoMap;
+		int pmapSize = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
@@ -264,7 +264,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, pmapSize);
 			int j = intTestData.length;
 			while (--j>=0) {
 				result |= intTestData[j];//do nothing
@@ -277,7 +277,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			
 			staticReader.reset(); //reset message to clear the previous values
 			
-			staticReader.openGroup(groupToken);
+			staticReader.openGroup(groupToken, pmapSize);
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= j;//doing more nothing.
@@ -290,7 +290,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 		
 	
 	
-	protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken) {
+	protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
@@ -301,7 +301,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken);
+			staticWriter.openGroup(groupToken, pmapSize);
 			int j = longTestData.length;
 			while (--j>=0) {
 				staticWriter.write(token, 1, longTestData[j]);
@@ -314,7 +314,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			
 			staticReader.reset(); //reset message to clear the previous values
 			
-			staticReader.openGroup(groupToken);
+			staticReader.openGroup(groupToken, pmapSize);
 			j = intTestData.length;
 			while (--j>=0) {
 				staticReader.readDecimalExponent(token, 0);

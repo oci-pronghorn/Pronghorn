@@ -12,7 +12,7 @@ public class TokenBuilder {
 	 *  5 type   (1 new 2x spec types, 3 existing types, 1 isOptional)
 	 *  6 operation  (for decimal its 3 and 3) all others use bottom 4
 	 *  2 dictionary
-	 * 18 instance - max fields 262144 (or pmax bytes, or destination)
+	 * 18 instance - max value 262144 (field id OR script steps inside this group)
 	 * 
 	 * read the type first then each can have its own operation parse logic.
 	 * this is used by decimal in order to get two operations 
@@ -126,9 +126,6 @@ public class TokenBuilder {
 		}
 		
 	}
-
-
-
 
 	
 }

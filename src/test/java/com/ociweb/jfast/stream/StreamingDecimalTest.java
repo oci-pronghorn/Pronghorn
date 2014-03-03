@@ -26,7 +26,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	final long   testMantConst = 0;
 	
 	//Must double because we may need 1 bit for exponent and another for mantissa
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes*2);
+	final int pmapSize = maxMPapBytes*2;
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,pmapSize);
 
 	boolean sendNulls = true;
 	
@@ -84,7 +85,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken);
+		fw.openGroup(groupToken,pmapSize);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -106,7 +107,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, 1, testData[f]); 
 					}
 				}			
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
@@ -124,7 +125,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
 		
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -136,7 +137,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
-		fr.openGroup(groupToken);
+		fr.openGroup(groupToken, pmapSize);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -151,7 +152,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				} else {
 					readDecimalOthers(tokenLookup, fr, none, f, token);
 				}
-				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f);				
+				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, pmapSize);				
 			}			
 		}
 		

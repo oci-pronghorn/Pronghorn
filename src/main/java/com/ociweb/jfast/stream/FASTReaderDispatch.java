@@ -60,6 +60,8 @@ public class FASTReaderDispatch{
 	private int decimalExponentOptionalValue=0;
 	private long decimalMantissaOptionalValue=0;
 	
+    private final int nonTemplatePMapSize;
+	
 	private final DictionaryFactory dictionaryFactory;
 	
 	//constant fields are always the same or missing but never anything else.
@@ -70,10 +72,12 @@ public class FASTReaderDispatch{
 
 	
 		
-	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int maxTemplates, int[] tokenLookup) {
+	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
+			                   int maxTemplates, int[] tokenLookup, int nonTemplatePMapSize) {
 		this.reader = reader;
 		this.tokenLookup = tokenLookup;
 		this.dictionaryFactory = dcr;
+		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		
 		this.intLookup = new int[this.tokenLookup.length];
 		this.longLookup = new long[this.tokenLookup.length];
@@ -140,6 +144,8 @@ public class FASTReaderDispatch{
 	//TODO: re-evaluate bit pmap write look for bulk write solution.
 	
 	
+
+	
 	private boolean dispatchReadByToken1(int id, int token) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
@@ -171,8 +177,14 @@ public class FASTReaderDispatch{
 				//Length Type, no others defined so no need to keep checking
 				//TODO: this only happens on first pass of script
 				//Every group should count passes, if seq must go back to the value?
-				
-				intLookup[id] =	readIntegerUnsigned(token);
+				int length = readIntegerUnsigned(token);
+				if (sequenceCountStack[sequenceCountStackHead]<0) {
+					sequenceCountStack[sequenceCountStackHead] = length;
+					System.err.println("set new length:"+length);
+				} else {
+					System.err.println("skip len:"+length);
+				}
+				intLookup[id] = length; 
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 //					//1010?
@@ -252,19 +264,20 @@ public class FASTReaderDispatch{
 			readFromIdx = TokenBuilder.extractCount(token);
 		}
 	}
-
+	
 	private boolean readGroupCommand(int token) {
 		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			openGroup(token);
-			//TODO: if this is a sequence the count needs to be pushed on a stack?
 			
+			//this is NOT a message/template so the non-template pmapSize is used.
+			
+			openGroup(token, nonTemplatePMapSize);
 			return true;
 		} else {
-			//TODO: if we are closing a sequence then we must have picked up the
-			//length and we will NOT read it again. so we need a flag for that.
-			//
-			
-			return closeGroup(token);
+			closeGroup(token);
+						
+			//is end of sequence
+			return (0==(token&( (OperatorMask.Group_Bit_Seq) <<TokenBuilder.SHIFT_OPER)));
+		
 		}
 	}
 
@@ -993,21 +1006,22 @@ public class FASTReaderDispatch{
 		reader.closePMap();
 	}
 	
-	public void openGroup(int token) {
+
+	
+	
+	public void openGroup(int token, int pmapSize) {
 
 		assert(token<0);
 		assert(0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
-		//assert(0==(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER)));
-		
-		
-		int pmapMaxSize = TokenBuilder.extractCount(token);
-		if (pmapMaxSize>0) {
-			reader.openPMap(pmapMaxSize);
+			
+		if (pmapSize>0) {
+			reader.openPMap(pmapSize);
 		}
+	
+		beginSequence(token);
+			
 		
-		
-		
-//		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) { //TODO:pull from operator!
+//		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) { //TODO:pull from operator!
 //			//always push something on to the stack
 //			int newTop = (reader.popPMapBit()!=0) ? reader.readIntegerUnsigned() : templateStack[templateStackHead];
 //			templateStack[templateStackHead++] = newTop;
@@ -1015,26 +1029,69 @@ public class FASTReaderDispatch{
 //		}
 	}
 
-	public boolean closeGroup(int token) {
+	//called after open group.?? or just near.
+	public boolean beginSequence(int token) {
+		//We repeat the open for each sequence but we do not want to push on
+		//to the seq stack. Upon jump back the token will mask out the seq bit.
+		if (
+//			 0==(token&((8|4)<<TokenBuilder.SHIFT_TYPE)) &&
+	//		 0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)) &&
+				
+			 0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))) {
+			System.err.println("starting new sequence ");
+			//this group is a sequence so push it on the stack.
+			sequenceCountStack[++sequenceCountStackHead]=-1;//clear until length is discovered
+			return true;//started new sequence
+		}
+		return false;//no sequence to start
+	}
+
+	
+	int maxNestedSeqDepth = 64;
+	int[] sequenceCountStack = new int[maxNestedSeqDepth];
+	int sequenceCountStackHead = -1;
+	
+	/**
+	 * Returns true if there is no sequence in play or if the active sequence can be closed.
+	 * Once a sequence is closed the reader should move to the next point in the sequence. 
+	 * 
+	 * @param token
+	 * @return
+	 */
+	public boolean completeSequence(int token) {
+		
+		if (sequenceCountStackHead<0) {
+			//no sequence to worry about
+			return true;
+		}
+		
+		//each sequence will need to repeat the pmap but we only need to push
+		//and pop the stack when the sequence is first encountered.
+		//if count is zero we can pop it off but not until then.
+		
+		if (--sequenceCountStack[sequenceCountStackHead]<1 
+			//not needed if only called on sequence.
+				//&&	0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))
+			) {
+			//this group is a sequence so pop it off the stack.
+			//TODO: this pop is too early so caller will not know 
+			System.err.println("finished seq");
+			sequenceCountStack[++sequenceCountStackHead]=-1;//clear until length is discovered
+			//this sequence (the active one) has now completed
+			return true;
+		}
+		System.err.println("Incomplete seq with count:"+sequenceCountStack[sequenceCountStackHead]);
+		return false;
+	}
+	
+	public void closeGroup(int token) {
 		
 		assert(token<0);
 		assert(0!=(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)));
 		
-		int pmapMaxSize = TokenBuilder.extractCount(token);
-		if (pmapMaxSize>0) {
+		if (0!=(token&(OperatorMask.Group_Bit_PMap<<TokenBuilder.SHIFT_OPER))) {
 			reader.closePMap();
 		}
-		
-		//TODO:pull from operator!
-//		if (TokenBuilder.extractType(token)==TypeMask.GroupTemplated) {
-//			//must always pop because open will always push
-//			templateStackHead--;
-//		}
-		
-		//is end of message or end of sequence must return notification.
-		//return true to continue and false to stop for processing working.
-		return (0==(token&( (OperatorMask.Group_Bit_Seq|
-				              OperatorMask.Group_Bit_Msg) <<TokenBuilder.SHIFT_OPER)));
 		
 	}
 
