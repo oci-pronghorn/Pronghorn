@@ -52,9 +52,9 @@ public class DictionaryFactory {
 	 * applicationTypes are fully abstract types
 	 * 
 	 * SharedDictionary:
-	 * 		None/Template: default we just use the structures produced here.
+	 * 		Template: default we just use the structures produced here.
 	 *      Type: application type, other structures sharing this field&appType must share value.
-	 *      Global: ignore template/type and just use field id gobally
+	 *      None/Global: ignore template/type and just use field id globally
 	 *      <custom>: use custom named structure.
 	 *      
 	 * 
@@ -64,9 +64,9 @@ public class DictionaryFactory {
 	 * needs:   
 	 *    token must hold extra data for dictionary!!      
 	 *    2 bits
-	 *       00 none/template
-	 *       01 type
-	 *       10 global
+	 *       00 none/global
+	 *       01 app type
+	 *       10 template
 	 *       11 use inernal looup of custom by field id. 
 	 * 
 	 */

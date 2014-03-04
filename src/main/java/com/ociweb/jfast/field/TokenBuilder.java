@@ -52,7 +52,7 @@ public class TokenBuilder {
 	//template ref must appear before length because it can modify length operator.
 
 	public static int extractType(int token) {
-		return SHIFT_TYPE&(token>>SHIFT_TYPE);
+		return (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
 	}
 	public static int extractCount(int token) {
 		return MAX_INSTANCE&token;
@@ -91,7 +91,7 @@ public class TokenBuilder {
 	}
 	
 	public static boolean isOpperator(int token, int operator) {
-		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
+		int type = extractType(token);
 		
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {
 			return ((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER_DECIMAL_EX)==operator||((token>>(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX))&TokenBuilder.MASK_OPER_DECIMAL_EX)==operator;
@@ -102,7 +102,7 @@ public class TokenBuilder {
 	
 	public static String tokenToString(int token) {
 		
-		int type = (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
+		int type = extractType(token);
 		int count = token & TokenBuilder.MAX_INSTANCE;
 		
 		if (type==TypeMask.Decimal || type==TypeMask.DecimalOptional) {

@@ -70,6 +70,9 @@ public class FASTReaderDispatch{
 	//
 	//default fields can be the default or overridden this one time with a new value.
 
+	int maxNestedSeqDepth = 64;
+	int[] sequenceCountStack = new int[maxNestedSeqDepth];
+	int sequenceCountStackHead = -1;
 	
 		
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
@@ -105,6 +108,7 @@ public class FASTReaderDispatch{
 		readerDecimal.reset(dictionaryFactory);
 		readerChar.reset();
 		readerBytes.reset();
+		sequenceCountStackHead = -1;
 		
 	}
 
@@ -175,15 +179,10 @@ public class FASTReaderDispatch{
 			} else {
 				//101??
 				//Length Type, no others defined so no need to keep checking
-				//TODO: this only happens on first pass of script
-				//Every group should count passes, if seq must go back to the value?
+				//Only happens once before a node sequence so push it on the count stack
 				int length = readIntegerUnsigned(token);
-				if (sequenceCountStack[sequenceCountStackHead]<0) {
-					sequenceCountStack[sequenceCountStackHead] = length;
-					System.err.println("set new length:"+length);
-				} else {
-					System.err.println("skip len:"+length);
-				}
+				sequenceCountStack[++sequenceCountStackHead] = length;
+				//S//ystem.err.println("set new length:"+length);
 				intLookup[id] = length; 
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -1018,7 +1017,7 @@ public class FASTReaderDispatch{
 			reader.openPMap(pmapSize);
 		}
 	
-		beginSequence(token);
+	//	beginSequence(token);
 			
 		
 //		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) { //TODO:pull from operator!
@@ -1029,27 +1028,23 @@ public class FASTReaderDispatch{
 //		}
 	}
 
-	//called after open group.?? or just near.
-	public boolean beginSequence(int token) {
-		//We repeat the open for each sequence but we do not want to push on
-		//to the seq stack. Upon jump back the token will mask out the seq bit.
-		if (
-//			 0==(token&((8|4)<<TokenBuilder.SHIFT_TYPE)) &&
-	//		 0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)) &&
-				
-			 0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))) {
-			System.err.println("starting new sequence ");
-			//this group is a sequence so push it on the stack.
-			sequenceCountStack[++sequenceCountStackHead]=-1;//clear until length is discovered
-			return true;//started new sequence
-		}
-		return false;//no sequence to start
-	}
+//	//called after open group.?? or just near.
+//	public boolean beginSequence(int token) {
+//		//We repeat the open for each sequence but we do not want to push on
+//		//to the seq stack. Upon jump back the token will mask out the seq bit.
+//		if (
+////			 0==(token&((8|4)<<TokenBuilder.SHIFT_TYPE)) &&
+//	//		 0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)) &&
+//				
+//			 0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))) {
+//			//System.err.println("starting new sequence ");
+//			return true;//started new sequence
+//		}
+//		return false;//no sequence to start
+//	}
 
 	
-	int maxNestedSeqDepth = 64;
-	int[] sequenceCountStack = new int[maxNestedSeqDepth];
-	int sequenceCountStackHead = -1;
+
 	
 	/**
 	 * Returns true if there is no sequence in play or if the active sequence can be closed.
@@ -1076,7 +1071,7 @@ public class FASTReaderDispatch{
 			//this group is a sequence so pop it off the stack.
 			//TODO: this pop is too early so caller will not know 
 			System.err.println("finished seq");
-			sequenceCountStack[++sequenceCountStackHead]=-1;//clear until length is discovered
+			--sequenceCountStackHead;
 			//this sequence (the active one) has now completed
 			return true;
 		}

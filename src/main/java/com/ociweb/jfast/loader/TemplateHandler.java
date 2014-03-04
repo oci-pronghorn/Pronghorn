@@ -51,6 +51,7 @@ public class TemplateHandler extends DefaultHandler {
     long[]  absentLookupFromFieldId = new long[TokenBuilder.MAX_FIELD_ID_VALUE];
     int     fieldType;
     int 	fieldOperator;
+    String  fieldOperatorValue;
     String  fieldName;
     String  fieldDictionary;
     String  fieldDictionaryKey;
@@ -184,12 +185,14 @@ public class TemplateHandler extends DefaultHandler {
     		
     	} else if (qName.equalsIgnoreCase("constant")) {
     		fieldOperator = OperatorMask.Field_Constant;
+    		fieldOperatorValue = attributes.getValue("value");
     		if ((fieldType&1)!=0) {
     			groupOpenTokenPMapStack[groupTokenStackHead]+=fieldPMapInc;//optional constant does but required does not.
     		}
     		
     	} else if (qName.equalsIgnoreCase("default")) {
     	    fieldOperator = OperatorMask.Field_Default;
+    	    fieldOperatorValue = attributes.getValue("value");
     	    groupOpenTokenPMapStack[groupTokenStackHead]+=fieldPMapInc;
     	    
     	} else if (qName.equalsIgnoreCase("delta")) {
@@ -231,17 +234,19 @@ public class TemplateHandler extends DefaultHandler {
     		//the Count updated to the right value.
     		int token = TokenBuilder.buildToken(TypeMask.Group,
 							    				OperatorMask.Group_Bit_Seq, 
-							    				catalogTemplateScriptIdx);
+							    				catalogTemplateScriptIdx+1);//we jump over the length field
     		
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
     		groupOpenTokenStack[++groupTokenStackHead] = token;
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
+    		
+    		//sequence token is not added to the script until the Length field is seen
+    		//catalogTemplateScript[catalogTemplateScriptIdx++] = groupOpenTokenStack[groupTokenStackHead]; 
     		
 
     	} else if (qName.equalsIgnoreCase("template")) {
-    		catalogTemplateScriptIdx = 0;
+    		catalogTemplateScriptIdx = 0; //for the children but not used by this "group"
     		
     		
     		//Token must hold the max bytes needed for the PMap but this is the start element
@@ -250,7 +255,7 @@ public class TemplateHandler extends DefaultHandler {
     		//the Count updated to the right value.
     		int token = TokenBuilder.buildToken(TypeMask.Group,
 							    				0, 
-							    				catalogTemplateScriptIdx);
+							    				0);
     		
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
@@ -268,10 +273,34 @@ public class TemplateHandler extends DefaultHandler {
     		} else {
     			templateIdBiggest = Math.max(templateIdBiggest,templateId);
     		}
+    		validateUniqueTemplateId();
     		
+    		templateXMLns = attributes.getValue("xmlns");
     		templateName = attributes.getValue("name");
     	    templateDictionary = attributes.getValue("dictionary");
-    	    templateXMLns = attributes.getValue("xmlns");
+    	    
+    	    //if number is in same dictionary as before it is the same field
+    	    //if not it is different and needs a new token.
+    	    //dictionary 2 bits are no longer needed?
+    	    //function to convert dictionary names to sequential integers, change int in each scope.
+    	    //
+    	    
+    	    
+
+    	    //TODO: full dictionary redesign:
+    	    //use different index for each dictionary so no need to swap array.
+    	    //copy will work the same, All dictionary work is done here in XML parse.
+    	    
+    	    
+    	    
+    	    //Dictionary needs to restrict the fieldIds to this scope.
+    	    //TODO: must add dictionary support for this complex example.
+    	    //must generate right 2 dight dictionary here for all fieldId usage.
+//    		 *    2 bits
+//    		 *       00 none/global
+//    		 *       01 app type (TODO: int assigned for app types)
+//    		 *       10 template (use template id as int?)
+//    		 *       11 use internal lookup of custom by field id. 
     	    
     	    if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
     	    	//add Dictionary command to reset in the script
@@ -315,26 +344,42 @@ public class TemplateHandler extends DefaultHandler {
 
     public void endElement(String uri, String localName, String qName)
                   throws SAXException {
+    	/*
+    	 * The script will require tokens to be saved in catalog because when dictionaries are used
+    	 * we will have multiple tokens per single Id and will not be able to rebuild the token list
+    	 * just from id.  But the id is where the value is placed in the output buffers.  So with each
+    	 * pass of has next the id may end up with another field.  Save script as sequence of LONGS.
+    	 * 
+    	 */
+    	
     	
     	if (qName.equalsIgnoreCase("uint32") ||
-    	    qName.equalsIgnoreCase("int32") ||
-    	    qName.equalsIgnoreCase("length")) {
+    	    qName.equalsIgnoreCase("int32")) {
     		
     		if (0==tokenLookupFromFieldId[fieldId]) {
     			//if undefined create new token
+    			assert (0==tokenLookupFromFieldId[fieldId]);
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderIntCount++);
-    			fieldIdUnique++;
+       			fieldIdUnique++;
     		} else {
     			validate();   			
     		}
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
+    		//TODO: duplicate this for the others as a method call once complete.
+    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+    				//TODO: must convert to int and save in the catalog as the default value for this field.
+    				
+    			}
+    		}
     		
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
     	} else if (qName.equalsIgnoreCase("uint64") ||
     			    qName.equalsIgnoreCase("int64")) {
        		
     		if (0==tokenLookupFromFieldId[fieldId]) {
     			//if undefined create new token
+    			assert (0==tokenLookupFromFieldId[fieldId]);
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderLongCount++);
     			fieldIdUnique++;
     		} else {
@@ -347,6 +392,7 @@ public class TemplateHandler extends DefaultHandler {
     		
     		if (0==tokenLookupFromFieldId[fieldId]) {
     			//if undefined create new token
+    			assert (0==tokenLookupFromFieldId[fieldId]);
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderTextCount++);
     			fieldIdUnique++;
     		} else {
@@ -369,6 +415,7 @@ public class TemplateHandler extends DefaultHandler {
     			}
     			    			
     			//if undefined create new token
+    			assert (0==tokenLookupFromFieldId[fieldId]);
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderDecimalCount++);
     			fieldIdUnique++;
     		} else {
@@ -388,6 +435,7 @@ public class TemplateHandler extends DefaultHandler {
     		
     		if (0==tokenLookupFromFieldId[fieldId]) {
     			//if undefined create new token
+    			assert (0==tokenLookupFromFieldId[fieldId]);
     			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderByteCount++);
     			fieldIdUnique++;
     		} else {
@@ -395,22 +443,56 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
-    		    	
-    	} else if (qName.equalsIgnoreCase("group") ||
-    			    qName.equalsIgnoreCase("sequence") ||
-    			    qName.equalsIgnoreCase("template")
-    			 ) {
+    	} else if (qName.equalsIgnoreCase("template")) {
+    		//templates always add 1 more for the templateId in the pmap
+    		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead]+1;
     		
-    		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
-    		    		
-    		//TODO: How to detect for dynamic template in group?
-    		//If this group can have a dynamic template or is a message we need 1 more bit.
-    		if (qName.equalsIgnoreCase("template")) {
-    			pmapMaxBits++;
+    		//convert pmap bits to FAST 7bit bytes
+    		int pmapMaxBytes = (pmapMaxBits+6)/7; 
+    		assert (pmapMaxBytes>0) : "Dynamic templates always have a pmap of at least 1 byte";
+
+    		//save biggest found template pmap for use by the catalog
+    		catalogLargestTemplatePMap = Math.max(catalogLargestTemplatePMap,pmapMaxBytes);   		
+    		
+    		//No need to adjust the open token because as a (template/message) it is not in the script.
+    		//we do need to decrement the stack counter because it was used for capture of the pmap size
+    		groupTokenStackHead--;
+    		assert(-1==groupTokenStackHead) : "poped off template so the stack should be empty again.";
+    		
+    		addCompleteScriptToCatalog();     		
+   		
+    		
+    	} else if (qName.equalsIgnoreCase("length")) {
+    		//Length must be the first field inside of the sequence.
+    		
+    		//TODO: sequence length up front
+    		
+    		if (0==tokenLookupFromFieldId[fieldId]) {
+    			//if undefined create new token
+    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderIntCount++);
+    			fieldIdUnique++;
+    		} else {
+    			validate();   			
     		}
     		
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
+
     		
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = groupOpenTokenStack[groupTokenStackHead]; 
+    		
+    		
+    		//NOTE: we want the sequence length to come first then the repeating group pmap therefore
+    	    //we are waiting until now to add the open group token.
+    		
+    		//TODO: urgen finish xx
+    		
+    	} else if (qName.equalsIgnoreCase("sequence")  ) {
+    		
+    		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
     		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
+    		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
+    		
+    		
     		int opMask = OperatorMask.Group_Bit_Close;
     		int openToken = groupOpenTokenStack[groupTokenStackHead];
     		if (pmapMaxBytes>0) {
@@ -427,43 +509,67 @@ public class TemplateHandler extends DefaultHandler {
 			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
 														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize);
 			
-			//Do not closing token for message/template this is detected by the hitting the end of the script.
-			if (!qName.equalsIgnoreCase("template")) {
-    			//closing token has positive jump back to head, in case it is needed 
-				catalogTemplateScript[catalogTemplateScriptIdx++] = 
-						            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-			}
-    		
-    		//
+
+			//closing token has positive jump back to head, in case it is needed 
+			catalogTemplateScript[catalogTemplateScriptIdx++] = 
+					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+
     		
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
 
-    		if (qName.equalsIgnoreCase("template")) {
-    			
-    			catalogLargestTemplatePMap = Math.max(catalogLargestTemplatePMap,pmapMaxBytes);
-     //   		System.err.println("in "+pmapMaxBytes+" result "+catalogLargestTemplatePMap);      		
-    			
-        		if (0!=templateLookup[templateId]) {
-        			throw new SAXException("Duplicate template id: "+templateId);
-        		}
-        		templateLookup[templateId] = 1;
-        		
-        		//give this script to the catalog
-        		int[] script = new int[catalogTemplateScriptIdx];
-        		//TODO: delete System.err.println("parsed "+templateId+" with script length "+catalogTemplateScriptIdx);
-        		System.arraycopy(catalogTemplateScript, 0, script, 0, catalogTemplateScriptIdx);
-        		catalogScripts[templateId] = script;
-        		templateIdUnique++;     		
-        		
-        	} else {
-        		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
-        	}
+    	} else if (qName.equalsIgnoreCase("group") ) {
+    		
+    		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
+    		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
+    		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
+    		
+    		
+    		int opMask = OperatorMask.Group_Bit_Close;
+    		int openToken = groupOpenTokenStack[groupTokenStackHead];
+    		if (pmapMaxBytes>0) {
+    			opMask |= OperatorMask.Group_Bit_PMap;
+    			openToken |= (OperatorMask.Group_Bit_PMap<<TokenBuilder.SHIFT_OPER);
+    		}
+    		
+    		//
+    		int openGroupIdx = TokenBuilder.extractCount(openToken);
+			int groupSize = catalogTemplateScriptIdx - openGroupIdx;
+    		    		    			
+			//change open token so it has the total number of script steps inside the group.
+			catalogTemplateScript[openGroupIdx] =
+			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
+														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize);
+			
+
+			//closing token has positive jump back to head, in case it is needed 
+			catalogTemplateScript[catalogTemplateScriptIdx++] = 
+					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+
+    		
+    		groupTokenStackHead--;//pop this group off the stack to work on the previous.
+
     		
     	} else if (qName.equalsIgnoreCase("templates")) {
     		templatesXMLns = null;
     	}
 
     }
+
+	private void validateUniqueTemplateId() throws SAXException {
+		if (0!=templateLookup[templateId]) {
+			throw new SAXException("Duplicate template id: "+templateId);
+		}
+		templateLookup[templateId] = 1;
+	}
+
+	private void addCompleteScriptToCatalog() {
+		//give this script to the catalog
+		int[] script = new int[catalogTemplateScriptIdx];
+		//TODO: delete System.err.println("parsed "+templateId+" with script length "+catalogTemplateScriptIdx);
+		System.arraycopy(catalogTemplateScript, 0, script, 0, catalogTemplateScriptIdx);
+		catalogScripts[templateId] = script;
+		templateIdUnique++;
+	}
 
 
 	private void validate() throws SAXException {

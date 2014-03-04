@@ -3,8 +3,11 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -56,8 +59,17 @@ public class FASTDynamicReader implements FASTDataProvider {
     public void reset() {
     	this.activeScriptTemplateId = -1; //no selected script
     	this.activeScriptCursor = -1;
+    	this.readerDispatch.reset();
     }
 	
+    public String toBinary(byte[] input) {
+    	StringBuilder builder = new StringBuilder();
+    	for(byte b:input) {
+    		builder.append(Integer.toBinaryString(0xFF&b)).append(",");
+    	}
+    	return builder.toString();
+    }
+    
 	
 	/**
 	 * Read up to the end of the next sequence or message (eg. a repeating group)
@@ -77,13 +89,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	public int hasMore() {
 		
+	//	System.err.println("has more call");
+		
 		do {
-			if (activeScriptCursor>15) {
-				return 0;//TODO: hack to end test early.
-			}
-			
 			if (activeScriptTemplateId<0) {
-				System.err.println("new unknown template");
 				//start new script or detect that the end of the data has been reached
 				if (readerDispatch.isEOF()) {
 					return 0;
@@ -92,6 +101,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 				///read prefix bytes if any (only used by some implementations)
 				if (prefixData.length>0) {
 					readerDispatch.dispatchReadPrefix(prefixData);
+					//System.err.println("read prefix:"+toBinary(prefixData));
 				};
 				///////////////////
 				
@@ -100,7 +110,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 				if (templateId>=0) {
 					activeScriptTemplateId = templateId;
 				} else {
-					throw new FASTException("Unimplemented case when template is not found in message header");
+					//TODO: hack to stop test at this point.***********************************
+					return 0;
+					
+//					throw new FASTException("Unimplemented case when template is not found in message header");
 				}
 							
 				//set the script and cursor for this template			
@@ -114,7 +127,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 				int token = (int)(val&0xFFFFFFFF);
 				
 
-				System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+" "+TokenBuilder.tokenToString(token));
+				System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
+						           " "+TokenBuilder.tokenToString(token));
 				
 				//group templates open close //no need to build token because it is in catalog
 				//group sequence open close  //steps in script inside group.
@@ -123,6 +137,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 				
 				//TODO: dispatch two if token was a sequence? needed to fetch the length?
 				//TODO: but length could be anywhere in the data so what now??
+				
 				
 				if (!readerDispatch.dispatchReadByToken(fieldId, token)) {
 					//hit end of sequence because false is returned (TODO: refactor to not include message)
@@ -135,6 +150,20 @@ public class FASTDynamicReader implements FASTDataProvider {
 					int level = 1; //TODO: change to ordinal position in template script.
 					return (activeScriptTemplateId<<10)|level; //TODO: hack test for now need to formalize shift
 	
+				}
+				
+				//System.err.println("type:"+TokenBuilder.extractType(token)+" "+TypeMask.toString(TokenBuilder.extractType(token)));
+				if ((TokenBuilder.extractType(token)|1)==TypeMask.TextASCIIOptional) {
+					System.err.println("text<"+readerDispatch.textHeap().get(readText(fieldId), new StringBuilder())+">");
+				}
+				if ((TokenBuilder.extractType(token)|1)==TypeMask.IntegerUnsignedOptional) {
+					System.err.println("int<"+readInt(fieldId)+">");
+				}
+				if ((TokenBuilder.extractType(token)|1)==TypeMask.LongUnsignedOptional) {
+					System.err.println("long<"+readLong(fieldId)+">");
+				}
+				if (TokenBuilder.extractType(token)==TypeMask.GroupLength) {
+					System.err.println("seqLen<"+readInt(fieldId)+">");
 				}
 				
 				

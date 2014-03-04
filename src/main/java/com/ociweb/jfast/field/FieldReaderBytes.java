@@ -53,7 +53,9 @@ public class FieldReaderBytes {
 	}
 	
 	public void reset() {
-		byteHeap.reset();
+		if (null!=byteHeap) {
+			byteHeap.reset();
+		}
 	}
 
 	

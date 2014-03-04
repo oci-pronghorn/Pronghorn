@@ -221,11 +221,6 @@ public final class PrimitiveReader {
 	public final void openPMap(final int pmapMaxSize) {
 		//push the old index for resume
 		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
-		
-		//force internal buffer to grow if its not big enough for this pmap
-//		if (limit - position < pmapMaxSize) {
-//			fetch(pmapMaxSize); //largest fetch
-//		}
 
 		int k = invPmapStackDepth -= (pmapMaxSize+2);         
     	if (position>=limit) {
@@ -234,13 +229,15 @@ public final class PrimitiveReader {
 		bitBlock = buffer[position];
 		if (limit-position>pmapMaxSize) {
 	        do {
+	//        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);	
 		} else {
-			//must use slow path becausee we are near the end of the buffer.
+			//must use slow path because we are near the end of the buffer.
 	        do {				
 	        	if (position>=limit) {
 					fetch(1);
 				}				
+	//        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);
 		}
         invPmapStack[k] = (byte)(3+pmapMaxSize+(invPmapStackDepth-k));
@@ -407,6 +404,7 @@ public final class PrimitiveReader {
 	
 	
 	public final int readIntegerUnsigned() {
+		
 		if (position>limit-5) {//near the end so must do it the slow way?
 			return readIntegerUnsignedSlow();
 		}

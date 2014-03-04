@@ -29,7 +29,9 @@ public class FieldReaderChar {
 	}
 	
 	public void reset() {
-		charDictionary.reset();		
+		if (null!=charDictionary) {
+			charDictionary.reset();		
+		}
 	}
 	
 	static boolean isPowerOfTwo(int length) {
