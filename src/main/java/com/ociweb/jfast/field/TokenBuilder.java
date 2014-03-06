@@ -52,12 +52,11 @@ public class TokenBuilder {
 	//template ref must appear before length because it can modify length operator.
 
 	public static int extractType(int token) {
-		return (token>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
+		return (token>>>TokenBuilder.SHIFT_TYPE)&TokenBuilder.MASK_TYPE;
 	}
-	public static int extractCount(int token) {
-		return MAX_INSTANCE&token;
+	public static int extractOper(int token) {
+		return (token>>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
 	}
-
 	
 	public static boolean isOptional(int token) {
 		return (0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));

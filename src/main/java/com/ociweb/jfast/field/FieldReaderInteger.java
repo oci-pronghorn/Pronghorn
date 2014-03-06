@@ -5,6 +5,7 @@ package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class FieldReaderInteger {
 
@@ -105,6 +106,7 @@ public class FieldReaderInteger {
 	}
 
 	public int readIntegerUnsignedDefault(int token) {
+		
 		if (reader.popPMapBit()==0) {
 			//default value 
 			return lastValue[token & INSTANCE_MASK];
@@ -260,5 +262,10 @@ public class FieldReaderInteger {
 				return value>0 ? value-1 : value;
 			}
 		}
+	}
+
+	public void setReadFrom(int readFromIdx) {
+		// TODO Auto-generated method stub
+		
 	}
 }

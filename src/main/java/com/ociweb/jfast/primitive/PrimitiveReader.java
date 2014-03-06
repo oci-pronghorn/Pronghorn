@@ -34,7 +34,7 @@ public final class PrimitiveReader {
 	
 	//Hack test to get a feeling for the cost of adding this feature.
 	//TODO: this call creates garbage and must not be here in the future.
-	WindowedFingerprint windowedFingerprint = com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
+	static WindowedFingerprint windowedFingerprint = com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
 	
 	private int position;
 	private int limit;

@@ -442,7 +442,7 @@ public class PrimitivePMAPTest {
 	@Test
 	public void testDogFood() {
 		
-    	int pmaps = 3000000;
+    	final int pmaps = 3000000;
     	//the longer the max PMap the faster write becomes, so the push/pop is the expensive part and each sliced flush.
     	int maxDataBytes = 2;//this is 16 PMap bits, a good sized record 
     	
@@ -451,7 +451,7 @@ public class PrimitivePMAPTest {
     	////////////////////////////////////
     	int maxWrittenBytes = (int)Math.ceil((maxDataBytes*8)/7d);
     	
-    	int localBufferSize = pmaps*maxWrittenBytes;
+    	final int localBufferSize = pmaps*maxWrittenBytes;
     	    	
     	byte[][] testPmaps = buildTestPMapData(pmaps, maxDataBytes);
     	
@@ -518,131 +518,149 @@ public class PrimitivePMAPTest {
     	//this is timed to check performance
     	//same array will be verified for correctness in the next step.
     	//////////////////////////////
-    	ByteBuffer buffer = ByteBuffer.allocateDirect(localBufferSize);
-    	FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
-		
-		PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
-		
-		int i = pmaps;
-	    try {
-	    	long start = System.nanoTime();
-	    	//pw.pushPMap(maxWrittenBytes*i);
-		    while (--i>=0) {
-			    	byte[] pmapData = testPmaps[i];
-			    	//none of these are nested, we don't want to test nesting here.
-			    	pw.openPMap(maxWrittenBytes); //many are shorter but we want to test the trailing functionality
-			    	int j = pmapData.length;
-			    	//j=0 1 byte written - no bits are sent so its all 7 zeros
-			    	//j=1 2 bytes written  (bytes * 8)/7 to compute bytes written
-			    	//j=2 3 bytes written
-			    	//j=3 4 bytes written
-			    				    	
-			    	while (--j>=0) {
-			    		
-			    		byte b = pmapData[j];
-			    					    		
-			    		//put in first byte
-			    		pw.writePMapBit((byte)(b&1));      
-			    		pw.writePMapBit((byte)((b>>1)&1));
-			    		pw.writePMapBit((byte)((b>>2)&1));
-			    		pw.writePMapBit((byte)((b>>3)&1));
-			    		pw.writePMapBit((byte)((b>>4)&1));
-			    		pw.writePMapBit((byte)((b>>5)&1));
-			    		pw.writePMapBit((byte)((b>>6)&1));
-			    		//put in next byte
-			    		pw.writePMapBit((byte)((b>>7)&1));
-			    		//6 zeros are assumed 
-			    		
-			    	}	
-			    	pw.closePMap(); //push/pop consumes 20% of the time.
-		    }
-		    //pw.popPMap();
-		    //single flush, this is the bandwidth optimized approach.
-
-		    //NOTE: flush now takes 22% of pmap test
-		    pw.flush(); //as of last test this only consumes 14% of the time
-		    long duration = (System.nanoTime()-start);
-		    
-		    if (duration > writeOverhead) {
-		    	System.out.println("total duration with overhead:"+duration+" overhead:"+writeOverhead+" pct "+(100*writeOverhead/(float)duration));
-		    	duration -= writeOverhead;
-		    } else {
-		    	System.out.println();
-		    	System.out.println("unable to compute overhead measurement. per byte:"+(writeOverhead/(double)buffer.position()));
+    	final ByteBuffer buffer = ByteBuffer.allocateDirect(localBufferSize);
+    	final FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
+    	final FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
 		    	
-		    	writeOverhead = 0;
-		    }
-		    assertTrue("total duration: "+duration+"ns but nothing written.",buffer.position()>0);
-		    
-		    float nsPerByte = duration/(float)buffer.position(); 
-		    System.out.println("pure PMap write "+nsPerByte+"ns per byte. TotalBytes:"+buffer.position());
-	    } finally {
-	    	int testedMaps = (pmaps-(i+1));
-	    	System.out.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+writeOverhead);
-	    }
-	    
-	    ////////////////////////////////////
-	    //read all the bytes from the written bytes array to ensure
-	    //that they all match with the original test data
-	    //this has extra unit test logic in it so it is NOT timed for performance
-	    ///////////////////////////////////
-	    
-		i = pmaps;
-    	try {
-    		buffer.flip();
-    		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
-    		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
-		    while (--i>=0) {
-			    	byte[] pmapData = testPmaps[i];
-			    	pr.openPMap(maxWrittenBytes);
-			    	
-			    	int j = pmapData.length;
-			    	if (j==0) {
-			    		
-			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());
-			    		assertEquals(0,pr.popPMapBit());			    		
-			    		assertEquals(0,pr.popPMapBit()); 
-			    		
-			    	} else {
-			    		int totalBits = maxWrittenBytes*7;
+		final PrimitiveWriter pw = new PrimitiveWriter(localBufferSize, output, pmaps, false);
+		final PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
+		
+		int q = 3; //set to a large number when using profiler.
+		while (--q>=0) {
+			
+			output.reset();
+			pw.reset();
+			
+			int i = pmaps;
+		    try {
+		    	long start = System.nanoTime();
+			    while (--i>=0) {
+				    	byte[] pmapData = testPmaps[i];
+				    	//none of these are nested, we don't want to test nesting here.
+				    	pw.openPMap(maxWrittenBytes); //many are shorter but we want to test the trailing functionality
+				    	int j = pmapData.length;
+				    	//j=0 1 byte written - no bits are sent so its all 7 zeros
+				    	//j=1 2 bytes written  (bytes * 8)/7 to compute bytes written
+				    	//j=2 3 bytes written
+				    	//j=3 4 bytes written
+				    				    	
 				    	while (--j>=0) {
-				    		byte b = pmapData[j];
-				    						    		
-				    		assertEquals((b&1),pr.popPMapBit());
-				    		assertEquals(((b>>1)&1),pr.popPMapBit());
-				    		assertEquals(((b>>2)&1),pr.popPMapBit());
-				    		assertEquals(((b>>3)&1),pr.popPMapBit());
-				    		assertEquals(((b>>4)&1),pr.popPMapBit());
-				    		assertEquals(((b>>5)&1),pr.popPMapBit());
-				    		assertEquals(((b>>6)&1),pr.popPMapBit());
-				    		assertEquals(((b>>7)&1),pr.popPMapBit());
 				    		
-				    		totalBits-=8;
+				    		byte b = pmapData[j];
+				    					    		
+				    		//put in first byte
+				    		pw.writePMapBit((byte)(b&1));      
+				    		pw.writePMapBit((byte)((b>>1)&1));
+				    		pw.writePMapBit((byte)((b>>2)&1));
+				    		pw.writePMapBit((byte)((b>>3)&1));
+				    		pw.writePMapBit((byte)((b>>4)&1));
+				    		pw.writePMapBit((byte)((b>>5)&1));
+				    		pw.writePMapBit((byte)((b>>6)&1));
+				    		//put in next byte
+				    		pw.writePMapBit((byte)((b>>7)&1));
+				    		//6 zeros are assumed 
+				    		
 				    	}	
-				    	//confirm the rest of the "unwriten bits are zeros"
-				    	while (--totalBits>=0) {
-				    		assertEquals(0,pr.popPMapBit());
-				    	}				    	
+				    	pw.closePMap(); //push/pop consumes 20% of the time.
+			    }
+			    //single flush, this is the bandwidth optimized approach.
+	
+			    //NOTE: flush now takes 22% of pmap test
+			    pw.flush(); //as of last test this only consumes 14% of the time
+			    long duration = (System.nanoTime()-start);
+			    
+			    if (duration > writeOverhead) {
+			    	if (0==q) {
+			    		System.out.println("total duration with overhead:"+duration+" overhead:"+writeOverhead+" pct "+(100*writeOverhead/(float)duration));
 			    	}
-			    	pr.closePMap();
+			    	duration -= writeOverhead;
+			    } else {
+			    	System.out.println();
+			    	System.out.println("unable to compute overhead measurement. per byte:"+(writeOverhead/(double)buffer.position()));
+			    	
+			    	writeOverhead = 0;
+			    }
+			    if (0==q) {
+			    	assertTrue("total duration: "+duration+"ns but nothing written.",buffer.position()>0);
+			    }
+			    float nsPerByte = duration/(float)buffer.position(); 
+			    if (0==q) {
+			    	System.out.println("pure PMap write "+nsPerByte+"ns per byte. TotalBytes:"+buffer.position());
+			    }
+		    } finally {
+		    	int testedMaps = (pmaps-(i+1));
+		    	if (0==q) {
+		    		System.out.println("finished testing write after "+testedMaps+" unique pmaps and testing overhead of "+writeOverhead);
+		    	}
 		    }
 		    
-    	} finally {
-    		int readTestMaps = (pmaps-(i+1));
-    		System.out.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+writeOverhead);
-    	}
-		buffer.flip();
-		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
-		PrimitiveReader pr = new PrimitiveReader(localBufferSize, input, pmaps);
+		    ////////////////////////////////////
+		    //read all the bytes from the written bytes array to ensure
+		    //that they all match with the original test data
+		    //this has extra unit test logic in it so it is NOT timed for performance
+		    ///////////////////////////////////
+		    
+			i = pmaps;
+	    	try {
+	    		input.reset();
+	    		pr.reset();
+	    		
+			    while (--i>=0) {
+				    	byte[] pmapData = testPmaps[i];
+				    	pr.openPMap(maxWrittenBytes);
+				    	
+				    	int j = pmapData.length;
+				    	if (j==0) {
+				    		
+				    		assertEquals(0,pr.popPMapBit());
+				    		assertEquals(0,pr.popPMapBit());
+				    		assertEquals(0,pr.popPMapBit());
+				    		assertEquals(0,pr.popPMapBit());
+				    		assertEquals(0,pr.popPMapBit());
+				    		assertEquals(0,pr.popPMapBit());			    		
+				    		assertEquals(0,pr.popPMapBit()); 
+				    		
+				    	} else {
+				    		int totalBits = maxWrittenBytes*7;
+					    	while (--j>=0) {
+					    		byte b = pmapData[j];
+					    						    		
+					    		assertEquals((b&1),pr.popPMapBit());
+					    		assertEquals(((b>>1)&1),pr.popPMapBit());
+					    		assertEquals(((b>>2)&1),pr.popPMapBit());
+					    		assertEquals(((b>>3)&1),pr.popPMapBit());
+					    		assertEquals(((b>>4)&1),pr.popPMapBit());
+					    		assertEquals(((b>>5)&1),pr.popPMapBit());
+					    		assertEquals(((b>>6)&1),pr.popPMapBit());
+					    		assertEquals(((b>>7)&1),pr.popPMapBit());
+					    		
+					    		totalBits-=8;
+					    	}	
+					    	//confirm the rest of the "unwriten bits are zeros"
+					    	while (--totalBits>=0) {
+					    		assertEquals(0,pr.popPMapBit());
+					    	}				    	
+				    	}
+				    	pr.closePMap();
+			    }
+			    
+	    	} finally {
+	    		int readTestMaps = (pmaps-(i+1));
+	    		if (0==q) {
+	    			System.out.println("finished testing read after "+readTestMaps+" unique pmaps and testing overhead of "+writeOverhead);
+	    		}
+	    	}
+			input.reset();
+			pr.reset();
+	    	
+	    	/////////////////////////////////////////
+	    	//test read pmap timing
+	    	////////////////////////////////////////
+	    	readPmapTest2(pmaps, maxWrittenBytes, testPmaps, readOverhead, buffer, pr, 0==q);
+	    	
+
+		}
     	
-    	/////////////////////////////////////////
-    	//test read pmap timing
-    	////////////////////////////////////////
-    	readPmapTest2(pmaps, maxWrittenBytes, testPmaps, readOverhead, buffer, pr);
 		//  */
     	//cleanup before next test
     	Runtime.getRuntime().gc();
@@ -650,7 +668,7 @@ public class PrimitivePMAPTest {
 	}
 
 	private int readPmapTest2(int pmaps, int maxWrittenBytes, byte[][] testPmaps, long readOverhead, ByteBuffer buffer,
-			PrimitiveReader pr) {
+			PrimitiveReader pr, boolean printResults) {
 		int i = pmaps;
 		int result = 0;
 
@@ -674,7 +692,9 @@ public class PrimitivePMAPTest {
 		    	
 		    	pr.closePMap();
 	    }
-	    printReadResults(readOverhead, buffer, System.nanoTime()-start);
+	    if (printResults) {
+	    	printReadResults(readOverhead, buffer, System.nanoTime()-start);
+	    }
 		return result;
 	}
 

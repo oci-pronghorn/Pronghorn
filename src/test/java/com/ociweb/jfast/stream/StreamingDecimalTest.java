@@ -70,13 +70,20 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	}
 	
 	
-	
+	FASTWriterDispatch fw = null;
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
+		//TODO: determine how to cache this to speed up the testing.
+		//if (null==fw) {
+			fw = new FASTWriterDispatch(pw, dcr, 100);
+		//} else {
+		//	fw.flush();
+		//	resetOutputWriter();
+		//	fw.reset(dcr);
+		//}
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -96,15 +103,15 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
+						fw.write(token);
 					} else {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testExpConst, testMantConst); 
+						fw.write(token, testExpConst, testMantConst); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
+						fw.write(token);
 					} else {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, 1, testData[f]); 
+						fw.write(token, 1, testData[f]); 
 					}
 				}			
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize);				
@@ -119,13 +126,19 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 	
-
+	FASTReaderDispatch fr;
+	
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
 		
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
+		//if (null==fr) {
+			fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields);
+		//} else {
+		//	//pr.reset();
+		//	fr.reset();
+		//}
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -166,17 +179,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
 	private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
 		if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+			int exp = fr.readDecimalExponent(tokenLookup[f],-1);
 			if (exp!=-1) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
 			}
-			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			long man = fr.readDecimalMantissa(tokenLookup[f],none);
 			if (none!=man) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
 			}
 		} else { 
-			int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			int exp = fr.readDecimalExponent(tokenLookup[f],0);
+			long man = fr.readDecimalMantissa(tokenLookup[f],none);
 			if (testData[f]!=man) {
 				assertEquals(testData[f], man);
 			}
@@ -185,17 +198,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
 	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token, int i) {
 		if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-			int exp = fr.readDecimalExponent(tokenLookup[f], -1);
+			int exp = fr.readDecimalExponent(tokenLookup[f],-1);
 			if (exp!=-1) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
 			}
-			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			long man = fr.readDecimalMantissa(tokenLookup[f],none);
 			if (none!=man) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
 			}
 		} else { 
-			int exp = fr.readDecimalExponent(tokenLookup[f], 0);
-			long man = fr.readDecimalMantissa(tokenLookup[f], none);
+			int exp = fr.readDecimalExponent(tokenLookup[f],0);
+			long man = fr.readDecimalMantissa(tokenLookup[f],none);
 			if (testMantConst!=man) {
 				assertEquals(testMantConst, man);
 			}

@@ -16,7 +16,6 @@ public class TemplateCatalog {
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	private static final long NO_ID = 0xFFFFFFFF00000000l;
 	
-	final int[] tokenLookup;
 	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	final DictionaryFactory dictionaryFactory;
@@ -33,7 +32,6 @@ public class TemplateCatalog {
 		assert(tokenPow<32) : "Corrupt catalog file";
 		int maxTokens = 1<<tokenPow;
 		
-		tokenLookup = new int[maxTokens];
 		absent = new long[maxTokens];
 		
 		loadTokens(reader);
@@ -54,10 +52,6 @@ public class TemplateCatalog {
 		
 		dictionaryFactory = new DictionaryFactory(reader);
 		
-	}
-
-	public int[] tokenLookup() {
-		return tokenLookup;
 	}
 
 	
@@ -83,7 +77,7 @@ public class TemplateCatalog {
 					script[s] = NO_ID|tmp;
 				} else {
 					//tmp is id
-					int token = tokenLookup[tmp];
+					int token = 0;//tokenLookup[tmp];
 					long x = tmp;
 					script[s] = (x<<32) | (0xFFFFFFFFl&token);					
 				}
@@ -123,10 +117,6 @@ public class TemplateCatalog {
 		while (--i>=0) {
 			int id=reader.readIntegerUnsigned();
 						
-			tokenLookup[id]=reader.readIntegerSigned();
-			
-			//System.err.println("LOAD:"+id+"  token:"+TokenBuilder.tokenToString(tokens[id])+" _ "+Integer.toHexString(tokens[id]));
-			
 			switch(reader.readIntegerUnsigned()) {
 				case 0:
 					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
@@ -274,6 +264,12 @@ public class TemplateCatalog {
 
 	public int maxTemplatePMapSize() {
 		return maxTemplatePMapSize;
+	}
+
+
+	public int maxFieldId() {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 	

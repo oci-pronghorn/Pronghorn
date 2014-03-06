@@ -426,6 +426,11 @@ public class FieldReaderChar {
 		return idx;
 	}
 
+	public void setReadFrom(int readFromIdx) {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 
 	

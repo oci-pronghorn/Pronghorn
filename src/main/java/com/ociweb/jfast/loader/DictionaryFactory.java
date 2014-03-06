@@ -520,11 +520,15 @@ public class DictionaryFactory {
 	}
 	
 	public void reset(TextHeap heap) {
-		heap.reset();
+		if (null!=heap) {
+			heap.reset();
+		}
 	}
 	
 	public void reset(ByteHeap heap) {
-		heap.reset();
+		if (null!=heap) {
+			heap.reset();
+		}
 	}
 
 

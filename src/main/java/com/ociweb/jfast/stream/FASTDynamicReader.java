@@ -52,7 +52,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
 				                                catalog.templatesCount(), 
-				                                catalog.tokenLookup(),3);
+				                                3, catalog.maxFieldId());
 			
 	}
 	
@@ -127,8 +127,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 				int token = (int)(val&0xFFFFFFFF);
 				
 
-				System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
-						           " "+TokenBuilder.tokenToString(token));
+		//		System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
+		//				           " "+TokenBuilder.tokenToString(token));
 				
 				//group templates open close //no need to build token because it is in catalog
 				//group sequence open close  //steps in script inside group.
@@ -144,7 +144,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 					
 					if (!readerDispatch.completeSequence(token)) {
 						//return back to top of this sequence.
-						activeScriptCursor -= TokenBuilder.extractCount(token)+1;
+						activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token)+1;
 					}
 					
 					int level = 1; //TODO: change to ordinal position in template script.
@@ -153,18 +153,18 @@ public class FASTDynamicReader implements FASTDataProvider {
 				}
 				
 				//System.err.println("type:"+TokenBuilder.extractType(token)+" "+TypeMask.toString(TokenBuilder.extractType(token)));
-				if ((TokenBuilder.extractType(token)|1)==TypeMask.TextASCIIOptional) {
-					System.err.println("text<"+readerDispatch.textHeap().get(readText(fieldId), new StringBuilder())+">");
-				}
-				if ((TokenBuilder.extractType(token)|1)==TypeMask.IntegerUnsignedOptional) {
-					System.err.println("int<"+readInt(fieldId)+">");
-				}
-				if ((TokenBuilder.extractType(token)|1)==TypeMask.LongUnsignedOptional) {
-					System.err.println("long<"+readLong(fieldId)+">");
-				}
-				if (TokenBuilder.extractType(token)==TypeMask.GroupLength) {
-					System.err.println("seqLen<"+readInt(fieldId)+">");
-				}
+//				if ((TokenBuilder.extractType(token)|1)==TypeMask.TextASCIIOptional) {
+//					System.err.println("text<"+readerDispatch.textHeap().get(readText(fieldId), new StringBuilder())+">");
+//				}
+//				if ((TokenBuilder.extractType(token)|1)==TypeMask.IntegerUnsignedOptional) {
+//					System.err.println("int<"+readInt(fieldId)+">");
+//				}
+//				if ((TokenBuilder.extractType(token)|1)==TypeMask.LongUnsignedOptional) {
+//					System.err.println("long<"+readLong(fieldId)+">");
+//				}
+//				if (TokenBuilder.extractType(token)==TypeMask.GroupLength) {
+//					System.err.println("seqLen<"+readInt(fieldId)+">");
+//				}
 				
 				
 				//reached the end of the script so close and prep for the next one

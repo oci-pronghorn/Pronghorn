@@ -202,6 +202,11 @@ public class FieldReaderBytes {
 		return byteHeap;
 	}
 
+	public void setReadFrom(int readFromIdx) {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 
 }

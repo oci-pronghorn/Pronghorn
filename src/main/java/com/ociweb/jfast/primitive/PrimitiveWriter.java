@@ -51,6 +51,7 @@ public final class PrimitiveWriter {
 		
 	private long totalWritten;
 	private final int[] flushSkips;//list of all skip nodes produced at the end of pmaps, may grow large with poor templates.
+	private final int flushSkipsSize;
 	private int flushSkipsIdxLimit; //where we add the new one, end of the list
 	private int flushSkipsIdxPos;//next limit to use. as skips are consumed this pointer moves forward.
 	
@@ -82,7 +83,8 @@ public final class PrimitiveWriter {
 		this.output = output;
 		
 		//TODO: writing to one end and reading the other may be causing problem
-		this.flushSkips = new int[maxGroupCount*2];//this may grow very large, to fields per group
+		this.flushSkipsSize = maxGroupCount*2;
+		this.flushSkips = new int[flushSkipsSize];//this may grow very large, to fields per group
 		
 		output.init(new DataTransfer(this));
 	}
@@ -127,19 +129,8 @@ public final class PrimitiveWriter {
 		return nextBlockSize;
 	}
 
+	//TODO: investigate moving first block to the rest first.
 	private void buildNextBlockWithSkips() {
-			
-		/*
-		 * 		tempSkipPos = mergeSkips(tempSkipPos);
-				int temp = flushSkipsIdxPos+1;
-				if (temp<flushSkipsIdxLimit) {
-								
-					//TODO: move first block ? 
-					//System.err.println("first block "+(tempSkipPos - position)+
-					// " first skip "+( flushSkips[flushSkipsIdxPos+1]-tempSkipPos ));									
-				}
-		 */
-		
 		int sourceOffset = position;
 		int targetOffset = position;
 	    int reqLength = BLOCK_SIZE;	
@@ -152,7 +143,8 @@ public final class PrimitiveWriter {
 		int sourceStop = flushSkips[localFlushSkipsIdxPos];
 		
 		//invariant for the loop
-		final int localLastValid = computeLocalLastValid(flushSkipsIdxLimit);
+		int temp = flushSkipsSize-2;
+		final int localLastValid = (flushSkipsIdxLimit<temp)? flushSkipsIdxLimit :temp;
 		final int endOfData = limit;
 		final int finalStop = targetOffset+reqLength;
 
@@ -171,11 +163,12 @@ public final class PrimitiveWriter {
 			if (targetOffset != sourceOffset) {	
 				System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
 			}
-			sourceOffset = flushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
-			sourceStop = flushSkips[++localFlushSkipsIdxPos]; //beginning of new skip.
 			//stop becomes start so we can build a contiguous block
 			targetOffset = targetStop;
-			targetStop = targetOffset+(flushRequest = sourceStop - sourceOffset);
+			//
+			sourceOffset = flushSkips[++localFlushSkipsIdxPos]; //new position in second part of flush skips
+			//sourceStop is beginning of new skip.
+			targetStop = targetOffset+(flushRequest = (sourceStop = flushSkips[++localFlushSkipsIdxPos])-sourceOffset);
 
 		} 
 		
@@ -212,11 +205,6 @@ public final class PrimitiveWriter {
 		}
 		nextBlockSize = BLOCK_SIZE;
 		pendingPosition = sourceOffset+reqLength;
-	}
-
-	private int computeLocalLastValid(int skipsIdxLimit) {
-		int temp = flushSkips.length-2;
-		return (skipsIdxLimit<temp)? skipsIdxLimit :temp;
 	}
 
 	public int nextOffset() {

@@ -35,25 +35,18 @@ public final class FASTWriterDispatch {
 	private final FieldWriterBytes writerBytes;
 	
 	//template specific dictionaries
-	private final int maxTemplates = 10;
-	private final FieldWriterInteger[] templateWriterInteger;
-	private final FieldWriterLong[] templateWriterLong;
-	private final FieldWriterDecimal[] templateWriterDecimal;
-	private final FieldWriterChar[] templateWriterChar;
-	private final FieldWriterBytes[] templateWriterBytes;
+	private final int maxTemplates;
 	
 			
-	private final int[] tokenLookup; //array of tokens as field id locations
-	
-
+	private int readFromIdx = -1;
 	
 	
-	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int[] tokenLookup) {
+	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates) {
 		//TODO: must set the initial values for default/constants from the template here.
 		
 		this.writer = writer;
-		this.tokenLookup = tokenLookup;
 		
+		//TODO: move these values into DictionaryFactory so it does the construction and can cache if needed.
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
@@ -61,158 +54,17 @@ public final class FASTWriterDispatch {
 		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary());
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary());
 		
-		this.templateWriterInteger = new FieldWriterInteger[maxTemplates];
-		this.templateWriterLong    = new FieldWriterLong[maxTemplates];
-		this.templateWriterDecimal = new FieldWriterDecimal[maxTemplates];
-		this.templateWriterChar    = new FieldWriterChar[maxTemplates];
-		this.templateWriterBytes   = new FieldWriterBytes[maxTemplates];
+		this.maxTemplates = maxTemplates;
 		
 		this.templateStack = new int[maxTemplates];
-	}
-	
-	private FieldWriterLong longDictionary(int token) {
-		
-		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
-				writerLong :  longDictionarySpecial(token);
-		
-	}
-
-	private FieldWriterLong longDictionarySpecial(int token) {
-		//these also take an extra lookup we are optimized for the global above			
-		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
-			int templateId = templateStack[templateStackHead];
-			//AppType
-			//FASTDynamic MUST know the template and therefore the type.
-			//The template id is the first byte inside the group if pmap indicates.
-			//that value must be read by unsignedInteger but can be done by open/close group!!
-			throw new UnsupportedOperationException();
-		} else {
-			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
-				//Template
-				throw new UnsupportedOperationException();
-			} else {
-				//Custom
-				throw new UnsupportedOperationException();
-			}
-		}
-	}
-	
-	private FieldWriterInteger integerDictionary(int token) {
-		
-		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
-				writerInteger : intDictionarySpecial(token);
-		
-	}
-	
-	private FieldWriterInteger intDictionarySpecial(int token) {
-		//these also take an extra lookup we are optimized for the global above			
-		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
-			int templateId = templateStack[templateStackHead];
-			//AppType
-			//FASTDynamic MUST know the template and therefore the type.
-			//The template id is the first byte inside the group if pmap indicates.
-			//that value must be read by unsignedInteger but can be done by open/close group!!
-			throw new UnsupportedOperationException();
-		} else {
-			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
-				//Template
-				throw new UnsupportedOperationException();
-			} else {
-				//Custom
-				throw new UnsupportedOperationException();
-			}
-		}
-	}
-	
-	private FieldWriterDecimal decimalDictionary(int token) {
-		
-		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
-				writerDecimal : decimalDictionarySpecial(token);
-
-	}
-	
-	private FieldWriterDecimal decimalDictionarySpecial(int token) {
-		//these also take an extra lookup we are optimized for the global above			
-		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
-			int templateId = templateStack[templateStackHead];
-			//AppType
-			//FASTDynamic MUST know the template and therefore the type.
-			//The template id is the first byte inside the group if pmap indicates.
-			//that value must be read by unsignedInteger but can be done by open/close group!!
-			throw new UnsupportedOperationException();
-		} else {
-			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
-				//Template
-				throw new UnsupportedOperationException();
-			} else {
-				//Custom
-				throw new UnsupportedOperationException();
-			}
-		}
-	}
-	
-	private FieldWriterChar charDictionary(int token) {
-		
-		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
-				writerChar : charDictionarySpecial(token);
-		
-	}
-	
-	private FieldWriterChar charDictionarySpecial(int token) {
-		//these also take an extra lookup we are optimized for the global above			
-		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
-			int templateId = templateStack[templateStackHead];
-			//AppType
-			//FASTDynamic MUST know the template and therefore the type.
-			//The template id is the first byte inside the group if pmap indicates.
-			//that value must be read by unsignedInteger but can be done by open/close group!!
-			throw new UnsupportedOperationException();
-		} else {
-			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
-				//Template
-				throw new UnsupportedOperationException();
-			} else {
-				//Custom
-				throw new UnsupportedOperationException();
-			}
-		}
-	}
-	
-	private FieldWriterBytes byteDictionary(int token) {
-		
-		return (0==(token&(3<<TokenBuilder.SHIFT_DICT))) ?
-			writerBytes : bytesDictionarySpecial(token);
-		
-	}
-	
-	private FieldWriterBytes bytesDictionarySpecial(int token) {
-		//these also take an extra lookup we are optimized for the global above			
-		if (0==(token&(2<<TokenBuilder.SHIFT_DICT))) {
-			int templateId = templateStack[templateStackHead];
-			//AppType
-			//FASTDynamic MUST know the template and therefore the type.
-			//The template id is the first byte inside the group if pmap indicates.
-			//that value must be read by unsignedInteger but can be done by open/close group!!
-			throw new UnsupportedOperationException();
-		} else {
-			if (0==(token&(1<<TokenBuilder.SHIFT_DICT))) {
-				//Template
-				throw new UnsupportedOperationException();
-			} else {
-				//Custom
-				throw new UnsupportedOperationException();
-			}
-		}
 	}
 	
 	/**
 	 * Write null value, must only be used if the field id is one
 	 * of optional type.
 	 */
-	public void write(int id) {
-		
-		int token = id>=0 ? tokenLookup[id] : id;
-		
+	public void write(int token) {
+				
 		//only optional field types can use this method.
 		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE))); //TODO: in testing assert(failOnBadArg()) 
 		
@@ -221,24 +73,24 @@ public final class FASTWriterDispatch {
 			// int long
 			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 				// int
-				integerDictionary(token).writeNull(token);
+				writerInteger.writeNull(token);
 			} else {
 				// long
-				longDictionary(token).writeNull(token);
+				writerLong.writeNull(token);
 			}	
 		} else {
 			// text decimal bytes
 			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 				// text
-				charDictionary(token).writeNull(token);
+				writerChar.writeNull(token);
 			} else {
 				// decimal bytes
 				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 					// decimal
-					decimalDictionary(token).writeNull(token);					
+					writerDecimal.writeNull(token);					
 				} else {
 					// byte
-					byteDictionary(token).writeNull(token);
+					writerBytes.writeNull(token);
 				}	
 			}	
 		}
@@ -251,8 +103,7 @@ public final class FASTWriterDispatch {
 	 * To write the "null" or absence of a value use 
 	 *    void write(int id) 
 	 */
-	public void write(int id, long value) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void write(int token, long value) {
 		
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		
@@ -280,14 +131,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					longDictionary(token).writeLongSignedOptional(value,token);
+					writerLong.writeLongSignedOptional(value, token);
 				} else {
 					//delta
-					longDictionary(token).writeLongSignedDeltaOptional(value, token);
+					writerLong.writeLongSignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				longDictionary(token).writeLongSignedConstantOptional(value, token);
+				writerLong.writeLongSignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -296,14 +147,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					longDictionary(token).writeLongSignedCopyOptional(value, token);
+					writerLong.writeLongSignedCopyOptional(value, token);
 				} else {
 					//increment
-					longDictionary(token).writeLongSignedIncrementOptional(value, token);
+					writerLong.writeLongSignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				longDictionary(token).writeLongSignedDefaultOptional(value, token);
+				writerLong.writeLongSignedDefaultOptional(value, token);
 			}		
 		}
 	}
@@ -316,14 +167,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					longDictionary(token).writeLongSigned(value, token);
+					writerLong.writeLongSigned(value, token);
 				} else {
 					//delta
-					longDictionary(token).writeLongSignedDelta(value, token);
+					writerLong.writeLongSignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				longDictionary(token).writeLongSignedConstant(value, token);
+				writerLong.writeLongSignedConstant(value, token);
 			}
 			
 		} else {
@@ -332,14 +183,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					longDictionary(token).writeLongSignedCopy(value, token);
+					writerLong.writeLongSignedCopy(value, token);
 				} else {
 					//increment
-					longDictionary(token).writeLongSignedIncrement(value, token);
+					writerLong.writeLongSignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				longDictionary(token).writeLongSignedDefault(value, token);
+				writerLong.writeLongSignedDefault(value, token);
 			}		
 		}
 		
@@ -352,14 +203,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					longDictionary(token).writeLongUnsignedOptional(value, token);
+					writerLong.writeLongUnsignedOptional(value, token);
 				} else {
 					//delta
-					longDictionary(token).writeLongUnsignedDeltaOptional(value, token);
+					writerLong.writeLongUnsignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				longDictionary(token).writeLongUnsignedConstantOptional(value, token);
+				writerLong.writeLongUnsignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -368,14 +219,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					longDictionary(token).writeLongUnsignedCopyOptional(value, token);
+					writerLong.writeLongUnsignedCopyOptional(value, token);
 				} else {
 					//increment
-					longDictionary(token).writeLongUnsignedIncrementOptional(value, token);
+					writerLong.writeLongUnsignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				longDictionary(token).writeLongUnsignedDefaultOptional(value, token);
+				writerLong.writeLongUnsignedDefaultOptional(value, token);
 			}		
 		}
 	}
@@ -387,14 +238,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					longDictionary(token).writeLongUnsigned(value, token);
+					writerLong.writeLongUnsigned(value, token);
 				} else {
 					//delta
-					longDictionary(token).writeLongUnsignedDelta(value, token);
+					writerLong.writeLongUnsignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				longDictionary(token).writeLongUnsignedConstant(value, token);
+				writerLong.writeLongUnsignedConstant(value, token);
 			}
 			
 		} else {
@@ -403,14 +254,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					longDictionary(token).writeLongUnsignedCopy(value, token);
+					writerLong.writeLongUnsignedCopy(value, token);
 				} else {
 					//increment
-					longDictionary(token).writeLongUnsignedIncrement(value, token);
+					writerLong.writeLongUnsignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				longDictionary(token).writeLongUnsignedDefault(value, token);
+				writerLong.writeLongUnsignedDefault(value, token);
 			}		
 		}
 	}
@@ -420,8 +271,7 @@ public final class FASTWriterDispatch {
 	 * To write the "null" or absence of an integer use 
 	 *    void write(int id) 
 	 */
-	public void write(int id, int value) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void write(int token, int value) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
@@ -448,14 +298,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					integerDictionary(token).writeIntegerSigned(value, token);
+					writerInteger.writeIntegerSigned(value, token);
 				} else {
 					//delta
-					integerDictionary(token).writeIntegerSignedDelta(value, token);
+					writerInteger.writeIntegerSignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				integerDictionary(token).writeIntegerSignedConstant(value, token);
+				writerInteger.writeIntegerSignedConstant(value, token);
 			}
 			
 		} else {
@@ -464,14 +314,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					integerDictionary(token).writeIntegerSignedCopy(value, token);
+					writerInteger.writeIntegerSignedCopy(value, token);
 				} else {
 					//increment
-					integerDictionary(token).writeIntegerSignedIncrement(value, token);
+					writerInteger.writeIntegerSignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				integerDictionary(token).writeIntegerSignedDefault(value, token);
+				writerInteger.writeIntegerSignedDefault(value, token);
 			}		
 		}
 	}
@@ -484,14 +334,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					integerDictionary(token).writeIntegerUnsigned(value, token);
+					writerInteger.writeIntegerUnsigned(value, token);
 				} else {
 					//delta
-					integerDictionary(token).writeIntegerUnsignedDelta(value, token);
+					writerInteger.writeIntegerUnsignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				integerDictionary(token).writeIntegerUnsignedConstant(value, token);
+				writerInteger.writeIntegerUnsignedConstant(value, token);
 			}
 			
 		} else {
@@ -500,14 +350,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					integerDictionary(token).writeIntegerUnsignedCopy(value, token);
+					writerInteger.writeIntegerUnsignedCopy(value, token);
 				} else {
 					//increment
-					integerDictionary(token).writeIntegerUnsignedIncrement(value, token);
+					writerInteger.writeIntegerUnsignedIncrement(value, token);
 				}	
 			} else {
 				// default
-				integerDictionary(token).writeIntegerUnsignedDefault(value, token);
+				writerInteger.writeIntegerUnsignedDefault(value, token);
 			}		
 		}
 	}
@@ -520,14 +370,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					integerDictionary(token).writeIntegerSignedOptional(value, token);
+					writerInteger.writeIntegerSignedOptional(value, token);
 				} else {
 					//delta
-					integerDictionary(token).writeIntegerSignedDeltaOptional(value, token);
+					writerInteger.writeIntegerSignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				integerDictionary(token).writeIntegerSignedConstantOptional(value, token);
+				writerInteger.writeIntegerSignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -536,14 +386,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					integerDictionary(token).writeIntegerSignedCopyOptional(value, token);
+					writerInteger.writeIntegerSignedCopyOptional(value, token);
 				} else {
 					//increment
-					integerDictionary(token).writeIntegerSignedIncrementOptional(value, token);
+					writerInteger.writeIntegerSignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				integerDictionary(token).writeIntegerSignedDefaultOptional(value, token);
+				writerInteger.writeIntegerSignedDefaultOptional(value, token);
 			}		
 		}
 	}
@@ -556,14 +406,14 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					integerDictionary(token).writerIntegerUnsignedOptional(value, token);
+					writerInteger.writerIntegerUnsignedOptional(value, token);
 				} else {
 					//delta
-					integerDictionary(token).writeIntegerUnsignedDeltaOptional(value, token);
+					writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				integerDictionary(token).writeIntegerUnsignedConstantOptional(value, token);
+				writerInteger.writeIntegerUnsignedConstantOptional(value, token);
 			}
 			
 		} else {
@@ -572,14 +422,14 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					integerDictionary(token).writeIntegerUnsignedCopyOptional(value, token);
+					writerInteger.writeIntegerUnsignedCopyOptional(value, token);
 				} else {
 					//increment
-					integerDictionary(token).writeIntegerUnsignedIncrementOptional(value, token);
+					writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
 				}	
 			} else {
 				// default
-				integerDictionary(token).writeIntegerUnsignedDefaultOptional(value, token);
+				writerInteger.writeIntegerUnsignedDefaultOptional(value, token);
 			}		
 		}
 	}
@@ -589,23 +439,20 @@ public final class FASTWriterDispatch {
 	 * To write the "null" or absence of a value use 
 	 *    void write(int id) 
 	 */
-	public void write(int id, int exponent, long mantissa) {
-				
-		int token = id>=0 ? tokenLookup[id] : id;
-		
+	public void write(int token, int exponent, long mantissa) {
+						
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			decimalDictionary(token).writeDecimal(token, exponent, mantissa);			
+			writerDecimal.writeDecimal(token, exponent, mantissa);			
 		} else {
-			decimalDictionary(token).writeDecimalOptional(token, exponent, mantissa);			
+			writerDecimal.writeDecimalOptional(token, exponent, mantissa);			
 		}
 	}
 
-	public void write(int id, byte[] value, int offset, int length) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void write(int token, byte[] value, int offset, int length) {
 		
 		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
@@ -625,29 +472,29 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					byteDictionary(token).writeBytesOptional(value, offset, length);
+					writerBytes.writeBytesOptional(value, offset, length);
 				} else {
 					//tail
-					byteDictionary(token).writeBytesTailOptional(token, value, offset, length);
+					writerBytes.writeBytesTailOptional(token, value, offset, length);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					byteDictionary(token).writeBytesConstantOptional(token);					
+					writerBytes.writeBytesConstantOptional(token);					
 				} else {
 					//delta
-					byteDictionary(token).writeBytesDeltaOptional(token, value, offset, length);					
+					writerBytes.writeBytesDeltaOptional(token, value, offset, length);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				byteDictionary(token).writeBytesCopyOptional(token, value, offset, length);			
+				writerBytes.writeBytesCopyOptional(token, value, offset, length);			
 			} else {
 				//default
-				byteDictionary(token).writeBytesDefaultOptional(token, value, offset, length);				
+				writerBytes.writeBytesDefaultOptional(token, value, offset, length);				
 			}
 		}
 	}
@@ -659,29 +506,29 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					byteDictionary(token).writeBytes(value, offset, length);
+					writerBytes.writeBytes(value, offset, length);
 				} else {
 					//tail
-					byteDictionary(token).writeBytesTail(token, value, offset, length);
+					writerBytes.writeBytesTail(token, value, offset, length);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					byteDictionary(token).writeBytesConstant(token);					
+					writerBytes.writeBytesConstant(token);					
 				} else {
 					//delta
-					byteDictionary(token).writeBytesDelta(token, value, offset, length);					
+					writerBytes.writeBytesDelta(token, value, offset, length);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				byteDictionary(token).writeBytesCopy(token, value, offset, length);			
+				writerBytes.writeBytesCopy(token, value, offset, length);			
 			} else {
 				//default
-				byteDictionary(token).writeBytesDefault(token, value, offset, length);				
+				writerBytes.writeBytesDefault(token, value, offset, length);				
 			}
 		}
 	}
@@ -690,10 +537,8 @@ public final class FASTWriterDispatch {
 	//this can avoid string check for copy operation if its already known that we are sending the same value.
 	
 	
-	public void write(int id, ByteBuffer buffer) {
-		
-		int token = id>=0 ? tokenLookup[id] : id;
-				
+	public void write(int token, ByteBuffer buffer) {
+						
 		assert(0!=(token&(2<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
@@ -713,29 +558,29 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					byteDictionary(token).writeBytesOptional(value);
+					writerBytes.writeBytesOptional(value);
 				} else {
 					//tail
-					byteDictionary(token).writeBytesTailOptional(token,value);
+					writerBytes.writeBytesTailOptional(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					byteDictionary(token).writeBytesConstantOptional(token);					
+					writerBytes.writeBytesConstantOptional(token);					
 				} else {
 					//delta
-					byteDictionary(token).writeBytesDeltaOptional(token,value);					
+					writerBytes.writeBytesDeltaOptional(token,value);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				byteDictionary(token).writeBytesCopyOptional(token,value);			
+				writerBytes.writeBytesCopyOptional(token,value);			
 			} else {
 				//default
-				byteDictionary(token).writeBytesDefaultOptional(token,value);				
+				writerBytes.writeBytesDefaultOptional(token,value);				
 			}
 		}
 	}
@@ -747,35 +592,34 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					byteDictionary(token).writeBytes(value);
+					writerBytes.writeBytes(value);
 				} else {
 					//tail
-					byteDictionary(token).writeBytesTail(token,value);
+					writerBytes.writeBytesTail(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					byteDictionary(token).writeBytesConstant(token);					
+					writerBytes.writeBytesConstant(token);					
 				} else {
 					//delta
-					byteDictionary(token).writeBytesDelta(token,value);					
+					writerBytes.writeBytesDelta(token,value);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				byteDictionary(token).writeBytesCopy(token,value);			
+				writerBytes.writeBytesCopy(token,value);			
 			} else {
 				//default
-				byteDictionary(token).writeBytesDefault(token,value);				
+				writerBytes.writeBytesDefault(token,value);				
 			}
 		}
 	}
 
-	public void write(int id, CharSequence value) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void write(int token, CharSequence value) {
 		
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
@@ -808,29 +652,29 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					charDictionary(token).writeUTF8Optional(value);
+					writerChar.writeUTF8Optional(value);
 				} else {
 					//tail
-					charDictionary(token).writeUTF8TailOptional(token,value);					
+					writerChar.writeUTF8TailOptional(token,value);					
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					charDictionary(token).writeUTF8ConstantOptional(token);	
+					writerChar.writeUTF8ConstantOptional(token);	
 				} else {
 					//delta
-					charDictionary(token).writeUTF8DeltaOptional(token,value);					
+					writerChar.writeUTF8DeltaOptional(token,value);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				charDictionary(token).writeUTF8CopyOptional(token,value);				
+				writerChar.writeUTF8CopyOptional(token,value);				
 			} else {
 				//default
-				charDictionary(token).writeUTF8DefaultOptional(token,value);				
+				writerChar.writeUTF8DefaultOptional(token,value);				
 			}
 		}
 	}
@@ -843,29 +687,29 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					charDictionary(token).writeUTF8(value);
+					writerChar.writeUTF8(value);
 				} else {
 					//tail
-					charDictionary(token).writeUTF8Tail(token,value);
+					writerChar.writeUTF8Tail(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					charDictionary(token).writeUTF8Constant(token);					
+					writerChar.writeUTF8Constant(token);					
 				} else {
 					//delta
-					charDictionary(token).writeUTF8Delta(token,value);					
+					writerChar.writeUTF8Delta(token,value);					
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				charDictionary(token).writeUTF8Copy(token,value);			
+				writerChar.writeUTF8Copy(token,value);			
 			} else {
 				//default
-				charDictionary(token).writeUTF8Default(token,value);				
+				writerChar.writeUTF8Default(token,value);				
 			}
 		}
 
@@ -880,22 +724,22 @@ public final class FASTWriterDispatch {
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "+TokenBuilder.tokenToString(token);
-					charDictionary(token).writeASCIITextOptional(token, value);
+					writerChar.writeASCIITextOptional(token, value);
 				} else {
 					//tail
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "+TokenBuilder.tokenToString(token);
-					charDictionary(token).writeASCIITailOptional(token,value);
+					writerChar.writeASCIITailOptional(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) : "Found "+TokenBuilder.tokenToString(token);
-					charDictionary(token).writeASCIIConstantOptional(token);
+					writerChar.writeASCIIConstantOptional(token);
 				} else {
 					//delta
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "+TokenBuilder.tokenToString(token);
-					charDictionary(token).writeASCIIDeltaOptional(token,value);
+					writerChar.writeASCIIDeltaOptional(token,value);
 					
 				}
 			}
@@ -904,12 +748,12 @@ public final class FASTWriterDispatch {
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "+TokenBuilder.tokenToString(token);
-				charDictionary(token).writeASCIICopyOptional(token,value);
+				writerChar.writeASCIICopyOptional(token,value);
 				
 			} else {
 				//default
 				assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "+TokenBuilder.tokenToString(token);
-				charDictionary(token).writeASCIIDefaultOptional(token,value);
+				writerChar.writeASCIIDefaultOptional(token,value);
 				
 			}
 		}
@@ -924,36 +768,36 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none					
-					charDictionary(token).writeASCII(value);
+					writerChar.writeASCII(value);
 				} else {
 					//tail
-					charDictionary(token).writeASCIITail(token,value);
+					writerChar.writeASCIITail(token,value);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					charDictionary(token).writeASCIIConstant(token);
+					writerChar.writeASCIIConstant(token);
 				} else {
 					//delta
-					charDictionary(token).writeASCIIDelta(token,value);
+					writerChar.writeASCIIDelta(token,value);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				charDictionary(token).writeASCIICopy(token,value);
+				writerChar.writeASCIICopy(token,value);
 			} else {
 				//default
-				charDictionary(token).writeASCIIDefault(token,value);
+				writerChar.writeASCIIDefault(token,value);
 			}
 		}
 
 	}
 
-	public void write(int id, char[] value, int offset, int length) {
-		int token = id>=0 ? tokenLookup[id] : id;
+	public void write(int token, char[] value, int offset, int length) {
+		
 		assert(0==(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE)));
 		
@@ -1184,6 +1028,10 @@ public final class FASTWriterDispatch {
 		//reset all values to unset
 		writerInteger.reset(df);
 		writerLong.reset(df);
+		writerDecimal.reset(df);
+		writerChar.reset(df);
+		writerBytes.reset(df);
+		templateStackHead = 0;
 	}
 
 

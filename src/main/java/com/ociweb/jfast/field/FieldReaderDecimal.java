@@ -181,6 +181,11 @@ public class FieldReaderDecimal {
 		
 	}
 
+	public void setReadFrom(int readFromIdx) {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 
 }

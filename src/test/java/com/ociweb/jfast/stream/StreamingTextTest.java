@@ -142,7 +142,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -164,24 +164,24 @@ public class StreamingTextTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
+						fw.write(token);
 					} else {
 						if ((i&1)==0) {
-							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testConstSeq);
+							fw.write(token, testConstSeq);
 						} else {
 							char[] array = testConst;
-							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
+							fw.write(token, array, 0, array.length); 
 						}
 					}
 				} else {
 					if (sendNulls && ((f&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
+						fw.write(token);
 					} else {
 						if ((i&1)==0) {
-							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f,testData[f]);
+							fw.write(token, testData[f]);
 						} else {
 							char[] array = testDataChars[f];
-							fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, array, 0 , array.length); 
+							fw.write(token, array, 0, array.length); 
 						}
 					}
 				}
@@ -203,7 +203,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();
@@ -225,7 +225,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && (i&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
-						int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
+						int textIdx = fr.readText(tokenLookup[f]);		
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 									     true, textHeap.isNull(textIdx));
@@ -233,7 +233,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 						
 					} else { 
 						try {
-							int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
+							int textIdx = fr.readText(tokenLookup[f]);						
 							
 							char[] tdc = testConst;
 
@@ -252,7 +252,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 				} else {
 					if (sendNulls && (f&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
-						int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);		
+						int textIdx = fr.readText(tokenLookup[f]);		
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f])+ 
 									    "Expected null found len "+textHeap.length(textIdx),
@@ -260,7 +260,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 						}	
 					} else { 
 						try {
-							int textIdx = fr.readText((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f);						
+							int textIdx = fr.readText(tokenLookup[f]);						
 							
 							char[] tdc = testDataChars[f];
 							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {

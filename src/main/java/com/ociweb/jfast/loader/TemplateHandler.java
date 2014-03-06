@@ -3,10 +3,15 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -15,11 +20,11 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class TemplateHandler extends DefaultHandler {
 
+	private static final String SPECIAL_PREFIX = "'>";
+
+
 	private final PrimitiveWriter writer;
-		
-    public TemplateHandler(FASTOutput output) {
-    	writer = new PrimitiveWriter(output);
-	}
+
 
     //Catalog represents all the templates supported 
     int[] catalogTemplateScript = new int[TokenBuilder.MAX_FIELD_ID_VALUE];//Does not need to be this big.
@@ -27,6 +32,22 @@ public class TemplateHandler extends DefaultHandler {
     int[][] catalogScripts = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
     int catalogLargestTemplatePMap = 0;
     int catalogLargestNonTemplatePMap = 0;
+    
+    //compact slower structure to determine dictionaries because data is very sparse and not large
+    //FieldId, Dictionary, Token
+    //must provide lookup and insert.
+    //FieldId  -> *Dictionary
+    //FieldId/Dictionary -> Token
+    // [fieldId][Dictionary] -> token, as each is used it may grow to fit the count of dictionaries
+    /// the second array will contain zeros to allow direct offset to the dictionary.
+    
+    int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
+    
+    //every dictionary must be converted into an integer so we will use the index in a simple list.
+    final List<String> dictionaryNames = new ArrayList<String>(100);
+    int activeDictionary = -1;
+    final String globalDictionaryName = "global"; 
+    
     
     //Name space for all the active templates if they do not define their own.
     String templatesXMLns; //TODO: name space processing is not implemented yet.
@@ -39,7 +60,6 @@ public class TemplateHandler extends DefaultHandler {
     int 	templateIdUnique = 0;
     byte[] templateLookup = new byte[TokenBuilder.MAX_FIELD_ID_VALUE]; //checking for unique templateId 
     String templateName;
-    String templateDictionary;
     String templateXMLns;
     
     
@@ -47,7 +67,7 @@ public class TemplateHandler extends DefaultHandler {
     int     fieldId;
     int 	fieldIdBiggest = 0;
     int 	fieldIdUnique = 0;
-    int[]   tokenLookupFromFieldId = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
+    
     long[]  absentLookupFromFieldId = new long[TokenBuilder.MAX_FIELD_ID_VALUE];
     int     fieldType;
     int 	fieldOperator;
@@ -67,11 +87,11 @@ public class TemplateHandler extends DefaultHandler {
     int      fieldPMapInc = 1;//changes to 2 only when inside twin decimal
     
     //Counters for TokenBuilder so each field is given a unique spot in the dictionary.
-    int tokenBuilderIntCount;
-    int tokenBuilderLongCount;
-    int tokenBuilderTextCount;
-    int tokenBuilderByteCount;
-    int tokenBuilderDecimalCount; 
+    AtomicInteger tokenBuilderIntCount = new AtomicInteger(0);
+    AtomicInteger tokenBuilderLongCount = new AtomicInteger(0);
+    AtomicInteger tokenBuilderTextCount = new AtomicInteger(0);
+    AtomicInteger tokenBuilderByteCount = new AtomicInteger(0);
+    AtomicInteger tokenBuilderDecimalCount = new AtomicInteger(0); 
    
     
     //groups can be nested and need a stack, this includes sequence and template.   
@@ -80,6 +100,14 @@ public class TemplateHandler extends DefaultHandler {
     int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];//Need not be this big.
     int   groupTokenStackHead = -1;
         
+	
+    public TemplateHandler(FASTOutput output) {
+    	writer = new PrimitiveWriter(output);
+    	
+    	dictionaryNames.add(globalDictionaryName);
+    	activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
+    	
+	}
     
     public void startElement(String uri, String localName,
                   String qName, Attributes attributes) throws SAXException {
@@ -262,8 +290,7 @@ public class TemplateHandler extends DefaultHandler {
     		groupOpenTokenStack[++groupTokenStackHead] = token;
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
-    		//messages do not need to be listed because they are the top level group.
-    //		catalogTemplateScript[catalogTemplateScriptIdx++] = token; 
+    		//messages do not need to be listed in catalogTemplateScript because they are the top level group.
     		
     		//template specific values after this point
     		
@@ -277,31 +304,10 @@ public class TemplateHandler extends DefaultHandler {
     		
     		templateXMLns = attributes.getValue("xmlns");
     		templateName = attributes.getValue("name");
-    	    templateDictionary = attributes.getValue("dictionary");
     	    
-    	    //if number is in same dictionary as before it is the same field
-    	    //if not it is different and needs a new token.
-    	    //dictionary 2 bits are no longer needed?
-    	    //function to convert dictionary names to sequential integers, change int in each scope.
-    	    //
-    	    
-    	    
-
-    	    //TODO: full dictionary redesign:
-    	    //use different index for each dictionary so no need to swap array.
-    	    //copy will work the same, All dictionary work is done here in XML parse.
-    	    
-    	    
-    	    
-    	    //Dictionary needs to restrict the fieldIds to this scope.
-    	    //TODO: must add dictionary support for this complex example.
-    	    //must generate right 2 dight dictionary here for all fieldId usage.
-//    		 *    2 bits
-//    		 *       00 none/global
-//    		 *       01 app type (TODO: int assigned for app types)
-//    		 *       10 template (use template id as int?)
-//    		 *       11 use internal lookup of custom by field id. 
-    	    
+    		//TODO: must also add dictionary logic to group etc. not just template
+    		setActiveDictionary(attributes);
+    		    	    
     	    if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
     	    	//add Dictionary command to reset in the script
     	    	int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary,
@@ -318,6 +324,23 @@ public class TemplateHandler extends DefaultHandler {
     		    		
     	}
     }
+
+	private void setActiveDictionary(Attributes attributes) {
+		String dictionaryName = attributes.getValue("dictionary");
+		if ("template".equalsIgnoreCase(dictionaryName)) {
+			dictionaryName = SPECIAL_PREFIX+templateId;
+		} else if ("apptype".equalsIgnoreCase(dictionaryName)) {
+			int appType = -1;//TODO: implement application type in XML parse    			
+			dictionaryName = SPECIAL_PREFIX+appType;
+		}
+		int idx = dictionaryNames.indexOf(dictionaryName);
+		if (idx<0) {
+			dictionaryNames.add(dictionaryName);
+			activeDictionary = dictionaryNames.indexOf(dictionaryName);
+		} else {
+			activeDictionary = idx;
+		}
+	}
 
 	private void commonIdAttributes(Attributes attributes, long defaultAbsent) throws SAXException {
 		fieldId = Integer.valueOf(attributes.getValue("id"));
@@ -355,17 +378,19 @@ public class TemplateHandler extends DefaultHandler {
     	
     	if (qName.equalsIgnoreCase("uint32") ||
     	    qName.equalsIgnoreCase("int32")) {
+    		    		
+    		int token = buildToken(tokenBuilderIntCount);
     		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			//if undefined create new token
-    			assert (0==tokenLookupFromFieldId[fieldId]);
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderIntCount++);
-       			fieldIdUnique++;
-    		} else {
-    			validate();   			
-    		}
+    		//Token maps to a FieldId and FieldId may map to multiple tokens.   
+
+    		//save these tokens for use later.
+    		//  fieldId | Token   
+    		// the fieldId may be repeated with different tokens.
+    		// 
     		
-    		//TODO: duplicate this for the others as a method call once complete.
+
+    		
+    		//TODO: duplicate this save of default/const value for the others as a method call once complete.
     		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
     				//TODO: must convert to int and save in the catalog as the default value for this field.
@@ -377,50 +402,28 @@ public class TemplateHandler extends DefaultHandler {
     	} else if (qName.equalsIgnoreCase("uint64") ||
     			    qName.equalsIgnoreCase("int64")) {
        		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			//if undefined create new token
-    			assert (0==tokenLookupFromFieldId[fieldId]);
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderLongCount++);
-    			fieldIdUnique++;
-    		} else {
-    			validate();   			
-    		}
+    		int token = buildToken(tokenBuilderLongCount);
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
     	
     	} else if (qName.equalsIgnoreCase("string")) {
     		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			//if undefined create new token
-    			assert (0==tokenLookupFromFieldId[fieldId]);
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderTextCount++);
-    			fieldIdUnique++;
-    		} else {
-    			validate();   			
-    		}
+    		int token = buildToken(tokenBuilderTextCount);
+    		
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
     		
     	} else if (qName.equalsIgnoreCase("decimal")) {
     		
-    		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			
-    			//TODO: decimal parts are not implemented to each have their own optional.
-    			
-    			if (0!=fieldExponentOperator || 0!= fieldMantissaOperator) {
-    				fieldOperator = (fieldExponentOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX)|fieldMantissaOperator;
-    			} else {
-    				fieldOperator |= (fieldOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX);
-    			}
-    			    			
-    			//if undefined create new token
-    			assert (0==tokenLookupFromFieldId[fieldId]);
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderDecimalCount++);
-    			fieldIdUnique++;
+    		//decimal specific logic to combine the operators
+    		if (0!=fieldExponentOperator || 0!= fieldMantissaOperator) {
+    			fieldOperator = (fieldExponentOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX)|fieldMantissaOperator;
     		} else {
-    			validate();   			
+    			fieldOperator |= (fieldOperator<<TokenBuilder.SHIFT_OPER_DECIMAL_EX);
     		}
+    		
+    		int token = buildToken(tokenBuilderDecimalCount);
+    		
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
 
@@ -433,14 +436,8 @@ public class TemplateHandler extends DefaultHandler {
     		
     	} else if (qName.equalsIgnoreCase("bytevector")) {
     		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			//if undefined create new token
-    			assert (0==tokenLookupFromFieldId[fieldId]);
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderByteCount++);
-    			fieldIdUnique++;
-    		} else {
-    			validate();   			
-    		}
+    		int token = buildToken(tokenBuilderByteCount);
+
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
     	} else if (qName.equalsIgnoreCase("template")) {
@@ -465,19 +462,10 @@ public class TemplateHandler extends DefaultHandler {
     	} else if (qName.equalsIgnoreCase("length")) {
     		//Length must be the first field inside of the sequence.
     		
-    		//TODO: sequence length up front
+    		int token = buildToken(tokenBuilderIntCount);
     		
-    		if (0==tokenLookupFromFieldId[fieldId]) {
-    			//if undefined create new token
-    			tokenLookupFromFieldId[fieldId] = TokenBuilder.buildToken(fieldType, fieldOperator, tokenBuilderIntCount++);
-    			fieldIdUnique++;
-    		} else {
-    			validate();   			
-    		}
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = fieldId;
-
-    		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = groupOpenTokenStack[groupTokenStackHead]; 
     		
     		
@@ -501,7 +489,7 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		
     		//
-    		int openGroupIdx = TokenBuilder.extractCount(openToken);
+    		int openGroupIdx = TokenBuilder.MAX_INSTANCE&openToken;
 			int groupSize = catalogTemplateScriptIdx - openGroupIdx;
     		    		    			
 			//change open token so it has the total number of script steps inside the group.
@@ -532,7 +520,7 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		
     		//
-    		int openGroupIdx = TokenBuilder.extractCount(openToken);
+    		int openGroupIdx = TokenBuilder.MAX_INSTANCE&openToken;
 			int groupSize = catalogTemplateScriptIdx - openGroupIdx;
     		    		    			
 			//change open token so it has the total number of script steps inside the group.
@@ -555,6 +543,32 @@ public class TemplateHandler extends DefaultHandler {
 
     }
 
+	private int buildToken(AtomicInteger count) throws SAXException {
+		int token;
+		int[] dTokens = dictionaryMap[fieldId];
+		if (null==dTokens || dTokens.length<=activeDictionary) {
+			int[] newDTokens = new int[activeDictionary];
+			if (null==dTokens) {
+				System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
+			}
+			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, count.getAndIncrement());
+			fieldIdUnique++;
+			dictionaryMap[fieldId]=dTokens=newDTokens;
+			
+		} else {
+			token = dTokens[activeDictionary];
+			if (0!=token) {
+				if (fieldType!=TokenBuilder.extractType(token) || fieldOperator!=TokenBuilder.extractType(token)) {
+					throw new SAXException("Field id can not be redefined within the same dictionary.");
+				}
+			} else {
+				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, count.getAndIncrement());
+				fieldIdUnique++;
+			}
+		}
+		return token;
+	}
+
 	private void validateUniqueTemplateId() throws SAXException {
 		if (0!=templateLookup[templateId]) {
 			throw new SAXException("Duplicate template id: "+templateId);
@@ -571,31 +585,24 @@ public class TemplateHandler extends DefaultHandler {
 		templateIdUnique++;
 	}
 
-
-	private void validate() throws SAXException {
-		//if defined use old token but validate it
-		int expectedType = TokenBuilder.extractType(tokenLookupFromFieldId[fieldId]);
-		if (expectedType != fieldType) {
-			throw new SAXException("id: "+fieldId+" can not be defined for both types "+expectedType+" and "+fieldType);
-		}
-	}
 	
 	public void postProcessing() {
 		int singleTextLength = 128; //TODO: must set somewhere. but not here its not part of template.
 				
-		DictionaryFactory df = new DictionaryFactory(tokenBuilderIntCount,
-				                                     tokenBuilderLongCount, 
-				                                     tokenBuilderTextCount, singleTextLength, 
-													 tokenBuilderDecimalCount, 
-													 tokenBuilderByteCount);
+		DictionaryFactory df = new DictionaryFactory(tokenBuilderIntCount.intValue(),
+				                                     tokenBuilderLongCount.intValue(), 
+				                                     tokenBuilderTextCount.intValue(), 
+				                                     singleTextLength, 
+													 tokenBuilderDecimalCount.intValue(), 
+													 tokenBuilderByteCount.intValue());
 		
 		
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldIdUnique, fieldIdBiggest, 
-				     tokenLookupFromFieldId, absentLookupFromFieldId,
-				     templateIdUnique, templateIdBiggest, catalogScripts, df, 
-				     catalogLargestTemplatePMap, 
-				     catalogLargestNonTemplatePMap);
+						     null, absentLookupFromFieldId,
+						     templateIdUnique, templateIdBiggest, catalogScripts, df, 
+						     catalogLargestTemplatePMap, 
+						     catalogLargestNonTemplatePMap);
 				
 		//close stream.
 		writer.flush();

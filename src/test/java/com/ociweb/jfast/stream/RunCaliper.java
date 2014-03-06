@@ -9,8 +9,8 @@ public class RunCaliper {
 
 	public static void main(String[] args) {
 
-	//run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
-	run(HomogeniousFieldWriteReadIntegerBenchmark.class);
+	run(HomogeniousRecordWriteReadDecimalBenchmark.class); 
+	//run(HomogeniousFieldWriteReadIntegerBenchmark.class);
 	//run(HomogeniousRecordWriteReadIntegerBenchmark.class); 
     //run(HomogeniousRecordWriteReadLongBenchmark.class); 
     //run(HomogeniousRecordWriteReadTextBenchmark.class);
@@ -20,8 +20,9 @@ public class RunCaliper {
 	private static void run(Class clazz) {
 		String[] args;
 		//  -XX:+UseNUMA
-		args = new String[]{"-r",clazz.getSimpleName(),
-				             "-Cinstrument.micro.options.warmup=1s"};
+		args = new String[]{"-r",clazz.getSimpleName(),"--print-config","--time-limit=90s"};
+		
+		//		             "-Cinstrument.micro.options.warmup=1s"};
 		
 		//-h
 		//-C 5ms

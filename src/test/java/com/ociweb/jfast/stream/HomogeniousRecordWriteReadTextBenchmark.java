@@ -70,8 +70,8 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
 	
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 100, 3, fields);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
@@ -408,7 +408,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = textTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, textTestData[j]);
+				staticWriter.write(token,textTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

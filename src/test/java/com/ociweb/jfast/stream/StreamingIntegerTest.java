@@ -81,7 +81,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, tokenLookup);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
 		
 		long start = System.nanoTime();
 		assert(operationIters>3) : "must allow operations to have 3 data points but only had "+operationIters;
@@ -101,16 +101,16 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);//nothing
+						fw.write(token);//nothing
 					} else {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testConst); 
+						fw.write(token, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
 						//System.err.println("write null");
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f);
+						fw.write(token);
 					} else {
-						fw.write((i&ID_TOKEN_TOGGLE)==0?token:f, testData[f]); 
+						fw.write(token, testData[f]); 
 					}
 				}
 							
@@ -129,7 +129,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, tokenLookup,3);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -150,12 +150,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, Integer.MIN_VALUE);
+			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 						if (Integer.MIN_VALUE!=value) {
 							assertEquals(Integer.MIN_VALUE, value);
 						}
 					} else { 
-						int value = fr.readInt((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, Integer.MAX_VALUE);
+						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -165,12 +165,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, Integer.MIN_VALUE);
+			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
 						if (Integer.MIN_VALUE!=value) {
 							assertEquals(Integer.MIN_VALUE, value);
 						}
 					} else { 
-						int value = fr.readInt((i&ID_TOKEN_TOGGLE)==0?tokenLookup[f]:f, Integer.MAX_VALUE);
+						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);
