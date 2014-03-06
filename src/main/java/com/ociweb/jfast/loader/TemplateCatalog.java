@@ -34,9 +34,6 @@ public class TemplateCatalog {
 		
 		absent = new long[maxTokens];
 		
-		loadTokens(reader);
-
-		
 		int templatePow = reader.readIntegerUnsigned();
 		assert(templatePow<32) : "Corrupt catalog file";
 		scriptsCatalog = new long[1<<templatePow][];
@@ -111,34 +108,17 @@ public class TemplateCatalog {
 		}
 	}
 	
-	private void loadTokens(PrimitiveReader reader) {
-						
-		int i = reader.readIntegerUnsigned();
-		while (--i>=0) {
-			int id=reader.readIntegerUnsigned();
-						
-			switch(reader.readIntegerUnsigned()) {
-				case 0:
-					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-					break;
-				case 1:
-					absent[id]=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
-					break;
-				case 2:
-					absent[id]=reader.readLongSigned();
-					break;
-			}
-		}
-	}
+
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
-			                  int[] tokenLookup, long[] absentValue,
-			                  int uniqueTemplateIds, int biggestTemplateId, 
-			                  int[][] scripts, DictionaryFactory df, 
-			                  int maxTemplatePMap, int maxNonTemplatePMap) {
+			                  long[] absentValue, int uniqueTemplateIds,
+			                  int biggestTemplateId, long[][] scripts, 
+			                  DictionaryFactory df, int maxTemplatePMap, 
+			                  int maxNonTemplatePMap) {
 		
-		saveTokens(writer, uniqueIds, biggestId, tokenLookup, absentValue);
+		//TODO: Remove absent value this will be set client side as needed and can be different.
+		
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
 	//	System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
@@ -151,42 +131,7 @@ public class TemplateCatalog {
 		
 	}
 
-	private static void saveTokens(PrimitiveWriter writer, int uniqueIds, int biggestId,
-			int[] tokenLookup,
-			long[] absentValue) {
-		int temp = biggestId;
-		int base2Exponent = 0;
-		while (0!=temp) {
-			temp = temp>>1;
-			base2Exponent++;
-		}
-		//this is how big we need to make the lookup arrays
-		writer.writeIntegerUnsigned(base2Exponent);
-		
-		//this is how many values we are about to write to the stream
-		writer.writeIntegerUnsigned(uniqueIds);
-		//this is each value, id, token and absent
-		int i = tokenLookup.length;
-		while (--i>=0) {
-			int token = tokenLookup[i];
-			assert(TokenBuilder.tokenToString(token).indexOf("unknown")==-1): "Bad token "+TokenBuilder.tokenToString(token);
-			if (token<0) {
-//			System.err.println("SAVE:"+i+"  token:"+TokenBuilder.tokenToString(token)+" _ "+Integer.toHexString(token));
 
-				writer.writeIntegerUnsigned(i);
-				writer.writeIntegerSigned(token);
-				
-				if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==absentValue[i]) {
-					writer.writeIntegerUnsigned(0);
-				} else 	if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==absentValue[i]) {
-					writer.writeIntegerUnsigned(1);
-				} else {
-					writer.writeIntegerUnsigned(2);
-					writer.writeLongSigned(absentValue[i]);								
-				} 				
-			} 		
-		}
-	}
 
 	
 	/**
@@ -207,7 +152,7 @@ public class TemplateCatalog {
 	 * @param scripts
 	 */
 	private static void saveTemplateScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
-			int[][] scripts) {
+			long[][] scripts) {
 		//what size array will we need for template lookup. this must be a power of two
 		//therefore we will only store the exponent given a base of two.
 		//this is not so much for making the file smaller but rather to do the computation
@@ -224,19 +169,19 @@ public class TemplateCatalog {
 		//total number of templates are are defining here in the catalog
 		writer.writeIntegerUnsigned(uniqueTemplateIds);		
 		//now write each template
-		int templateId = scripts.length;
-		while (--templateId>=0) {
-			int[] script = scripts[templateId];
-			if (null!=script) {
-				writer.writeIntegerUnsigned(templateId);
-				int i = script.length;
-				writer.writeIntegerUnsigned(i);//length of script written first
-				//TODO: delete System.err.println(templateId+" has script length of "+i);
-				while (--i>=0) {
-					writer.writeIntegerSigned(script[i]);
-				}
-			}
-		}
+//		int templateId = scripts.length;
+//		while (--templateId>=0) {
+//			int[] script = scripts[templateId];
+//			if (null!=script) {
+//				writer.writeIntegerUnsigned(templateId);
+//				int i = script.length;
+//				writer.writeIntegerUnsigned(i);//length of script written first
+//				//TODO: delete System.err.println(templateId+" has script length of "+i);
+//				while (--i>=0) {
+//					writer.writeIntegerSigned(script[i]);
+//				}
+//			}
+//		}
 	}
 	
 	public long[] templateScript(int templateId) {

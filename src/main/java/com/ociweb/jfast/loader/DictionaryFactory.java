@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -487,35 +489,41 @@ public class DictionaryFactory {
 	
 
 	public void reset(int[] values) {
-		int i;
+		int i = integerCount;
+		while (--i>=0) {
+			values[i] = 0;
+		}
 		i = integerInitCount;
 		while (--i>=0) {
-			int j = integerInitIndex[i];
-			values[j] = integerInitValue[i];
+			values[integerInitIndex[i]] = integerInitValue[i];
 		}
 	}
 
 	public void reset(long[] values) {
-		int i;
+		int i = longCount;
+		while (--i>=0) {
+			values[i] = 0;
+		}
 		i = longInitCount;
 		while (--i>=0) {
-			int j = longInitIndex[i];
-			values[j] = longInitValue[i];
+			values[longInitIndex[i]] = longInitValue[i];
 		}
 	}
 	
 	public void reset(int[] exponents, long[] mantissa) {
-
-		int i = decimalExponentInitCount;
+		int i = decimalCount;
 		while (--i>=0) {
-			int j = decimalExponentInitIndex[i];
-			exponents[j] = decimalExponentInitValue[i];
+			exponents[i] = 0;
+			mantissa[i] = 0;
+		}
+		i = decimalExponentInitCount;
+		while (--i>=0) {
+			exponents[decimalExponentInitIndex[i]] = decimalExponentInitValue[i];
 		}
 
 		i = decimalMantissaInitCount;
 		while (--i>=0) {
-			int j = decimalMantissaInitIndex[i];
-			mantissa[j] = decimalMantissaInitValue[i];
+			mantissa[decimalMantissaInitIndex[i]] = decimalMantissaInitValue[i];
 		}
 	}
 	

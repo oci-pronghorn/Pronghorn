@@ -32,7 +32,7 @@ public class ByteHeap {
 	
 	//remain true unless memory gets low and it has to give up any margin
 	private boolean preserveWorkspace = true;
-	private final int textItemCount;
+	private final int itemCount;
 	
 	//text allocation table
 	private final int[] tat;
@@ -51,7 +51,7 @@ public class ByteHeap {
 	public ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int byteInitTotalLength, int[] byteInitIndex, byte[][] byteInitValue) {
 		
-		textItemCount = fixedTextItemCount;
+		itemCount = fixedTextItemCount;
 		
 		gapCount = fixedTextItemCount+1;
 		dataLength = (singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount);
@@ -100,7 +100,7 @@ public class ByteHeap {
 
 	public void reset() {
 	
-		int i = textItemCount;
+		int i = itemCount;
 		while (--i>=0) {
 			int b = i<<1;
 						
@@ -205,7 +205,7 @@ public class ByteHeap {
 			totalDesired = makeRoomAfterFirst(offsetNeedingRoom, totalDesired);
 		}
 		if (totalDesired>0) {
-			throw new RuntimeException("Must be initialized with more memory for required text. TotalWorkspace:"+totalWorkspace+" TotalContent:"+totalContent+" DataLength:"+dataLength+" Count:"+textItemCount+" need "+totalDesired);
+			throw new RuntimeException("Must be initialized with more memory for required text. TotalWorkspace:"+totalWorkspace+" TotalContent:"+totalContent+" DataLength:"+dataLength+" Count:"+itemCount+" need "+totalDesired);
 		}
 	}
 

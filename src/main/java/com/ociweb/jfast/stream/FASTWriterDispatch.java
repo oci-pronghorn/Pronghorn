@@ -40,11 +40,14 @@ public final class FASTWriterDispatch {
 			
 	private int readFromIdx = -1;
 	
+	private final DictionaryFactory dictionaryFactory;
+	
 	
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates) {
 		//TODO: must set the initial values for default/constants from the template here.
 		
 		this.writer = writer;
+		this.dictionaryFactory = dcr;
 		
 		//TODO: move these values into DictionaryFactory so it does the construction and can cache if needed.
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
@@ -1024,13 +1027,14 @@ public final class FASTWriterDispatch {
 	}
 
 	
-	public void reset(DictionaryFactory df) {
+	public void reset() {
 		//reset all values to unset
-		writerInteger.reset(df);
-		writerLong.reset(df);
-		writerDecimal.reset(df);
-		writerChar.reset(df);
-		writerBytes.reset(df);
+		//TODO: must find faster way to do this for both writer and reader!
+		writerInteger.reset(dictionaryFactory);
+		writerLong.reset(dictionaryFactory);
+		writerDecimal.reset(dictionaryFactory);
+		writerChar.reset(dictionaryFactory);
+		writerBytes.reset(dictionaryFactory);
 		templateStackHead = 0;
 	}
 

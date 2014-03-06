@@ -19,6 +19,7 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 //May drop interface if this causes a performance problem from virtual table
@@ -42,13 +43,18 @@ public class FASTReaderDispatch{
 	private final FieldReaderChar readerChar;
 	private final FieldReaderBytes readerBytes;
 		
-	//TODO: need these per field? still working on this, Must be set from catalog and be final
+	
+	//TODO: remove this and replace with token lookup.
 	private int integerUnsignedOptionalValue=0;
 	private int integerSignedOptionalValue=0;
 	private int longUnsignedOptionalValue=0;
 	private int longSignedOptionalValue=0;
 	private int decimalExponentOptionalValue=0;
 	private long decimalMantissaOptionalValue=0;
+	
+	private int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
+	private long[] absentLongs = new long[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG};
+	
 	
 	private final int maxTemplates;
 	

@@ -578,7 +578,9 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
-			staticWriter.reset(dcr); //reset message to clear out old values;
+			
+			//Not a normal part of read/write record and will slow down test (would be needed per template)
+			//staticWriter.reset(); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter
@@ -613,7 +615,9 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
-			staticWriter.reset(dcr); //reset message to clear out old values;
+			
+			//Not a normal part of read/write record and will slow down test (would be needed per template)
+			//staticWriter.reset(); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter
@@ -633,7 +637,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			pr.reset();//for testing clear any data found in reader 
 			
-			staticReader.reset(); //reset message to clear the previous values
+			//Not a normal part of read/write record and will slow down test (would be needed per template)
+			//staticReader.reset(); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize);
 			j = intTestData.length;
@@ -650,7 +655,9 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			pw.reset(); //clear any values found in writer
-			staticWriter.reset(dcr); //reset message to clear out old values;
+			
+			//Not a normal part of read/write record and will slow down test (would be needed per template)
+			//staticWriter.reset(); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter

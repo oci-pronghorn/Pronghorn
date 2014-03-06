@@ -35,41 +35,14 @@ public class FieldWriterDecimal {
 	}
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
-		//oppExp
-		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-			//none, constant, delta
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-				//none, delta
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-					//none
-					writerDecimalExponent.writeIntegerSigned(1+exponent, token);
-				} else {
-					//delta
-					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);
-				}	
-			} else {
-				//constant
-				writerDecimalExponent.writeIntegerSignedConstantOptional(exponent, token);
-			}
-			
-		} else {
-			//copy, default, increment
-			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-				//copy, increment
-				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-					//copy
-					writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
-				} else {
-					//increment
-					writerDecimalExponent.writeIntegerSignedIncrementOptional(exponent, token);
-				}	
-			} else {
-				// default
-				writerDecimalExponent.writeIntegerSignedDefaultOptional(exponent, token);
-			}		
-		}
-				
 		
+		writeExponentOptional(token, exponent);
+		writeMantissaOptional(token, mantissa);
+		
+	}
+
+
+	private void writeMantissaOptional(int token, long mantissa) {
 		//oppMaint
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -103,12 +76,10 @@ public class FieldWriterDecimal {
 				writerDecimalMantissa.writeLongSignedDefaultOptional(mantissa, token);
 			}		
 		}
-		
 	}
 
-	//remove two opp arguments!
-	public void writeDecimal(int token, int exponent, long mantissa) {
-		
+
+	private void writeExponentOptional(int token, int exponent) {
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 			//none, constant, delta
@@ -116,14 +87,14 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					writerDecimalExponent.writeIntegerSigned(exponent, token);
+					writerDecimalExponent.writeIntegerSigned(1+exponent, token);
 				} else {
 					//delta
-					writerDecimalExponent.writeIntegerSignedDelta(exponent, token);
+					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);
 				}	
 			} else {
 				//constant
-				writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
+				writerDecimalExponent.writeIntegerSignedConstantOptional(exponent, token);
 			}
 			
 		} else {
@@ -132,18 +103,28 @@ public class FieldWriterDecimal {
 				//copy, increment
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
-					writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
+					writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
 				} else {
 					//increment
-					writerDecimalExponent.writeIntegerSignedIncrement(exponent, token);
+					writerDecimalExponent.writeIntegerSignedIncrementOptional(exponent, token);
 				}	
 			} else {
 				// default
-				writerDecimalExponent.writeIntegerSignedDefault(exponent, token);
+				writerDecimalExponent.writeIntegerSignedDefaultOptional(exponent, token);
 			}		
 		}
-				
+	}
+
+	//remove two opp arguments!
+	public void writeDecimal(int token, int exponent, long mantissa) {
 		
+		writeExponent(token, exponent);
+		writeMantissa(token, mantissa);
+			
+	}
+
+
+	private void writeMantissa(int token, long mantissa) {
 		//oppMaint
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -177,8 +158,43 @@ public class FieldWriterDecimal {
 				writerDecimalMantissa.writeLongSignedDefault(mantissa, token);
 			}		
 		}
-		
-	
+	}
+
+
+	private void writeExponent(int token, int exponent) {
+		//oppExp
+		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+			//none, constant, delta
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+				//none, delta
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+					//none
+					writerDecimalExponent.writeIntegerSigned(exponent, token);
+				} else {
+					//delta
+					writerDecimalExponent.writeIntegerSignedDelta(exponent, token);
+				}	
+			} else {
+				//constant
+				writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
+			}
+			
+		} else {
+			//copy, default, increment
+			if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+				//copy, increment
+				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+					//copy
+					writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
+				} else {
+					//increment
+					writerDecimalExponent.writeIntegerSignedIncrement(exponent, token);
+				}	
+			} else {
+				// default
+				writerDecimalExponent.writeIntegerSignedDefault(exponent, token);
+			}		
+		}
 	}
 
 	public void writeNull(int token) {

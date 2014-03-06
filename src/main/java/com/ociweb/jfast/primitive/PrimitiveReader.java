@@ -287,18 +287,14 @@ public final class PrimitiveReader {
 			return readLongSignedSlow();
 		}
 		
-		int p = position;
-				
-		long v = buffer[p++];
-						
+		long v = buffer[position++];						
 		long accumulator = ((v&0x40)==0) ? 0l :0xFFFFFFFFFFFFFF80l;
  
 		while (v>=0) { 
 			accumulator = (accumulator|v)<<7;
-			v = buffer[p++];
+			v = buffer[position++];
 		}
     
-	    position = p;
 	    return accumulator|(v&0x7Fl);
 	}
 

@@ -33,7 +33,7 @@ public class TextHeap {
 	
 	//remain true unless memory gets low and it has to give up any margin
 	private boolean preserveWorkspace = true;
-	private final int textItemCount;
+	private final int itemCount;
 	
 	//text allocation table
 	private final int[] tat;
@@ -52,7 +52,7 @@ public class TextHeap {
 	public TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, 
 			int charInitTotalLength, int[] charInitIndex, char[][] charInitValue) {
 		
-		textItemCount = fixedTextItemCount;
+		itemCount = fixedTextItemCount;
 		
 		gapCount = fixedTextItemCount+1;
 		dataLength = (singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount);
@@ -102,7 +102,7 @@ public class TextHeap {
 
 	public void reset() {
 	
-		int i = textItemCount;
+		int i = itemCount;
 		while (--i>=0) {
 			int b = i<<1;
 						
@@ -113,15 +113,6 @@ public class TextHeap {
 			}			
 		}
 	}
-	
-	
-//	//Caution: this method will create a new String instance
-//	public CharSequence getSub(int idx, int start, int end) {
-//		int offset = idx<<2;
-//		return new String(data,
-//				Math.max(0,tat[offset]+start),
-//				Math.max(0, Math.min(tat[offset+1], tat[offset]+end )));
-//	}
 	
 	void setZeroLength(int idx) {
 		int offset = idx<<2;
