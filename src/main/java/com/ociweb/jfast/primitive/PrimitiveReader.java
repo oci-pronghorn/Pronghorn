@@ -229,7 +229,7 @@ public final class PrimitiveReader {
 		bitBlock = buffer[position];
 		if (limit-position>pmapMaxSize) {
 	        do {
-	//        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
+//	        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);	
 		} else {
 			//must use slow path because we are near the end of the buffer.
@@ -237,7 +237,7 @@ public final class PrimitiveReader {
 	        	if (position>=limit) {
 					fetch(1);
 				}				
-	//        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
+//	        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);
 		}
         invPmapStack[k] = (byte)(3+pmapMaxSize+(invPmapStackDepth-k));

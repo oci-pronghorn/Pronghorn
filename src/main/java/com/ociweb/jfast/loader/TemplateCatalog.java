@@ -16,11 +16,11 @@ public class TemplateCatalog {
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	private static final long NO_ID = 0xFFFFFFFF00000000l;
 	
-	final long[] absent;
 	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	final DictionaryFactory dictionaryFactory;
 	final int maxTemplatePMapSize;
 	final int maxNonTemplatePMapSize;
+	final int maxFieldId;
 	
 	
 	//Runtime specific message prefix, only used for some transmission technologies
@@ -28,18 +28,13 @@ public class TemplateCatalog {
 	
 	public TemplateCatalog(PrimitiveReader reader) {
 				
-		int tokenPow = reader.readIntegerUnsigned();
-		assert(tokenPow<32) : "Corrupt catalog file";
-		int maxTokens = 1<<tokenPow;
-		
-		absent = new long[maxTokens];
-		
 		int templatePow = reader.readIntegerUnsigned();
 		assert(templatePow<32) : "Corrupt catalog file";
 		scriptsCatalog = new long[1<<templatePow][];
 		
 		loadTemplateScripts(reader);
 		
+		maxFieldId = reader.readIntegerUnsigned();
 		//it is assumed that template PMaps are smaller or larger than the other PMaps so these are kept separate
 		maxTemplatePMapSize = reader.readIntegerUnsigned();
 		maxNonTemplatePMapSize = reader.readIntegerUnsigned();
@@ -64,20 +59,16 @@ public class TemplateCatalog {
 		int tic = templatesInCatalog;
 		while (--tic>=0) {
 			int templateId = reader.readIntegerUnsigned();
-			int templateScriptLength = reader.readIntegerUnsigned();
-			int s = templateScriptLength;
+			int s = reader.readIntegerUnsigned();
 			long[] script = new long[s]; //top 32 are id, low 32 are token
 			while (--s>=0) { //TODO: need to add full field names to be looked up upon error etc.
-				int tmp = reader.readIntegerSigned();
-				if (tmp<0) {
-					//tmp is token
-					script[s] = NO_ID|tmp;
-				} else {
-					//tmp is id
-					int token = 0;//tokenLookup[tmp];
-					long x = tmp;
-					script[s] = (x<<32) | (0xFFFFFFFFl&token);					
-				}
+				script[s] = reader.readLongUnsigned();
+				
+				//int fieldId = (int)(script[s]>>>32);
+				//int token = (int)(script[s]&0xFFFFFFFF);
+				//System.err.println("Load:"+Long.toHexString(script[s])+" "+fieldId+" "+TokenBuilder.tokenToString(token));
+
+				
 			}
 			
 
@@ -112,15 +103,15 @@ public class TemplateCatalog {
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
-			                  long[] absentValue, int uniqueTemplateIds,
-			                  int biggestTemplateId, long[][] scripts, 
-			                  DictionaryFactory df, int maxTemplatePMap, 
-			                  int maxNonTemplatePMap) {
+			                  int uniqueTemplateIds, int biggestTemplateId,
+			                  long[][] scripts, DictionaryFactory df, 
+			                  int maxTemplatePMap, int maxNonTemplatePMap) {
 		
 		//TODO: Remove absent value this will be set client side as needed and can be different.
 		
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
 				
+		writer.writeIntegerUnsigned(biggestId);
 	//	System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
 		writer.writeIntegerUnsigned(maxTemplatePMap);
 		writer.writeIntegerUnsigned(maxNonTemplatePMap);
@@ -169,19 +160,26 @@ public class TemplateCatalog {
 		//total number of templates are are defining here in the catalog
 		writer.writeIntegerUnsigned(uniqueTemplateIds);		
 		//now write each template
-//		int templateId = scripts.length;
-//		while (--templateId>=0) {
-//			int[] script = scripts[templateId];
-//			if (null!=script) {
-//				writer.writeIntegerUnsigned(templateId);
-//				int i = script.length;
-//				writer.writeIntegerUnsigned(i);//length of script written first
-//				//TODO: delete System.err.println(templateId+" has script length of "+i);
-//				while (--i>=0) {
-//					writer.writeIntegerSigned(script[i]);
-//				}
-//			}
-//		}
+		int j = scripts.length;
+		int x = 0;
+		while (--j>=0) {
+			long[] script = scripts[j];
+			if (null!=script) {
+				x++;
+				writer.writeIntegerUnsigned(j);
+				int i = script.length;
+				writer.writeIntegerUnsigned(i);//length of script written first
+				
+				//System.err.println(j+" has script length of "+i);
+				
+				while (--i>=0) {
+					//int fieldId = (int)(script[i]>>>32);
+					//int token = (int)(script[i]&0xFFFFFFFF);
+					//.err.println("Write:"+Long.toHexString(script[i])+" "+fieldId+" "+TokenBuilder.tokenToString(token));
+					writer.writeLongUnsigned(script[i]);
+				}
+			}
+		}
 	}
 	
 	public long[] templateScript(int templateId) {
@@ -213,8 +211,7 @@ public class TemplateCatalog {
 
 
 	public int maxFieldId() {
-		// TODO Auto-generated method stub
-		return 0;
+		return maxFieldId;
 	}
 
 	

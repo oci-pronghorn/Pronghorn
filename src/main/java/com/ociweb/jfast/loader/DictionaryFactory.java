@@ -44,34 +44,8 @@ public class DictionaryFactory {
 	 * 
 	 */
 	
+	//TODO: must hold list of token id values for each dictionary.
 	
-	
-	
-	/**
-	 * Class hold everything needed to define the dictionary
-	 * 
-	 * There is a many-to-many relationship between templates and applicationType.
-	 * applicationTypes are fully abstract types
-	 * 
-	 * SharedDictionary:
-	 * 		Template: default we just use the structures produced here.
-	 *      Type: application type, other structures sharing this field&appType must share value.
-	 *      None/Global: ignore template/type and just use field id globally
-	 *      <custom>: use custom named structure.
-	 *      
-	 * 
-	 * 
-	 * 
-	 * 
-	 * needs:   
-	 *    token must hold extra data for dictionary!!      
-	 *    2 bits
-	 *       00 none/global
-	 *       01 app type
-	 *       10 template
-	 *       11 use inernal looup of custom by field id. 
-	 * 
-	 */
 	
 	char[][] appTypes = null;//appType identifiers used in XML
 	

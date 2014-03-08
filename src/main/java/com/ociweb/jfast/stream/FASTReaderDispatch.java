@@ -79,8 +79,11 @@ public class FASTReaderDispatch{
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		
-		this.intLookup = new int[maxFieldId];
-		this.longLookup = new long[maxFieldId];
+		assert(maxFieldId>1);
+		//TODO: not sure these are a good idea, a simple list would be better.
+//		System.err.println("max field id for array:"+maxFieldId);
+		this.intLookup = new int[maxFieldId+1];
+		this.longLookup = new long[maxFieldId+1];
 		
 		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
 		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
@@ -236,7 +239,10 @@ public class FASTReaderDispatch{
 
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//OperatorMask.Dictionary_Reset      0000
-			//clear all previous values to un-set		
+			//clear all previous values to un-set for this dictionary only.
+			
+			//TODO: look up list of token ids for this dictionary.
+			
 			readerInteger.reset(dictionaryFactory);
 			readerLong.reset(dictionaryFactory);
 			readerDecimal.reset(dictionaryFactory);

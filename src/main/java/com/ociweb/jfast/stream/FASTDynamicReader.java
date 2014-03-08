@@ -56,7 +56,9 @@ public class FASTDynamicReader implements FASTDataProvider {
 			
 	}
 	
+	int count = 0;
     public void reset() {
+    	count = 0;
     	this.activeScriptTemplateId = -1; //no selected script
     	this.activeScriptCursor = -1;
     	this.readerDispatch.reset();
@@ -89,7 +91,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	public int hasMore() {
 		
-	//	System.err.println("has more call");
+		//System.err.println("has more call");
 		
 		do {
 			if (activeScriptTemplateId<0) {
@@ -109,7 +111,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 				int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
 				if (templateId>=0) {
 					activeScriptTemplateId = templateId;
+					count++;
+				
 				} else {
+					//System.err.println("messagesRead:"+count);
 					//TODO: hack to stop test at this point.***********************************
 					return 0;
 					
@@ -126,9 +131,9 @@ public class FASTDynamicReader implements FASTDataProvider {
 				int fieldId = (int)(val>>>32);
 				int token = (int)(val&0xFFFFFFFF);
 				
-
-		//		System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
-		//				           " "+TokenBuilder.tokenToString(token));
+				//TODO: if fieldId is zero then it should be a group!!!!
+	//			System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
+	//					           " "+TokenBuilder.tokenToString(token));
 				
 				//group templates open close //no need to build token because it is in catalog
 				//group sequence open close  //steps in script inside group.
@@ -152,7 +157,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 				}
 				
-				//System.err.println("type:"+TokenBuilder.extractType(token)+" "+TypeMask.toString(TokenBuilder.extractType(token)));
+//				//System.err.println("type:"+TokenBuilder.extractType(token)+" "+TypeMask.toString(TokenBuilder.extractType(token)));
 //				if ((TokenBuilder.extractType(token)|1)==TypeMask.TextASCIIOptional) {
 //					System.err.println("text<"+readerDispatch.textHeap().get(readText(fieldId), new StringBuilder())+">");
 //				}
@@ -174,6 +179,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 					int result = activeScriptTemplateId<<10;
 					activeScriptTemplateId = -1;//find next template
 					
+					//TODO need to loop script back.
 					return result;//TODO: not sure what to return but must let caller process data so far
 				}			
 			}

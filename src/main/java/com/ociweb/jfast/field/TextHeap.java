@@ -97,12 +97,20 @@ public class TextHeap {
 				stopIdx = startIdx;
 			}	
 		}
+		
+		//TODO: confirm new constructed TextHeap matches reset.
+		
 	}
 	
 
 	public void reset() {
 	
+		///TODO: must optimize reset, takes 20% of initial test.
+		
 		int i = itemCount;
+
+		//TODO: 16 texts but only 9 need reset because reset is dictionary specific. Must keep member list.
+
 		while (--i>=0) {
 			int b = i<<1;
 						

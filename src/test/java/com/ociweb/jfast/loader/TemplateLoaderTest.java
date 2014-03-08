@@ -29,9 +29,6 @@ public class TemplateLoaderTest {
 
 	@Test
 	public void buildRawCatalog() {
-		if (true) {
-			return;
-		}
 		
 		byte[] catalogByteArray = buildRawCatalogData();
 		
@@ -44,7 +41,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(369, catalogByteArray.length);
+			assertEquals(302, catalogByteArray.length);
 			
 			script = catalog.templateScript(2);
 			assertEquals(16, script.length);
@@ -83,9 +80,6 @@ public class TemplateLoaderTest {
 	
 	@Test
 	public void testTwo() {	
-		if (true) {
-			return;
-		}
 		
 		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
 		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
@@ -111,7 +105,7 @@ public class TemplateLoaderTest {
 			FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
 			
 			double start=0;
-			int warmup = 1000;
+			int warmup = 10000;
 			int count = 100; 
 			int iter = count+warmup;
 			while (--iter>=0) {
@@ -119,9 +113,11 @@ public class TemplateLoaderTest {
 				int data = 0; //same id needed for writer construction
 				while (0!=(data = dynamicReader.hasMore())) {
 					
+				
+					
 					//switch on data?
 					
-			//		System.err.println("data:"+Integer.toHexString(data));
+					//System.err.println("data:"+Integer.toHexString(data)+"  "+data);
 					
 					//int value = dynamicReader.readInt(33);
 					//pass dynamic reader into  nextData = dynamicWriter.write(data,dynamicReader); //write can then be stateless

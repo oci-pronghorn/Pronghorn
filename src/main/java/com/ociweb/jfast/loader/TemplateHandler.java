@@ -71,7 +71,6 @@ public class TemplateHandler extends DefaultHandler {
     int 	fieldIdBiggest = 0;
     int 	fieldTokensUnique = 0;
     
-    long[]  absentLookupFromFieldId = new long[TokenBuilder.MAX_FIELD_ID_VALUE];
     int     fieldType;
     int 	fieldOperator;
     String  fieldOperatorValue;
@@ -316,7 +315,7 @@ public class TemplateHandler extends DefaultHandler {
     	    	int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary,
 	    										OperatorMask.Dictionary_Reset, 
 	    										0);
-    	    	catalogTemplateScript[catalogTemplateScriptIdx++] = resetToken; //Top 32 are zero id for reset.
+    	    	catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&resetToken); //Top 32 are zero id for reset.
     	    }
     	    
     	    
@@ -359,13 +358,6 @@ public class TemplateHandler extends DefaultHandler {
 		//more rare: used when we want to read last value from another field.
 		fieldDictionaryKey = attributes.getValue("key");
 		
-		String absentString = attributes.getValue("nt_absent_const");
-		if (null!=absentString && absentString.trim().length()>0) {
-			absentLookupFromFieldId[fieldId] = Long.parseLong(absentString.trim());
-		} else {
-    		//default value for absent of this type
-			absentLookupFromFieldId[fieldId] = defaultAbsent;
-		}
 	}
 
     public void endElement(String uri, String localName, String qName)
@@ -392,20 +384,20 @@ public class TemplateHandler extends DefaultHandler {
     			}
     		}
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     	} else if (qName.equalsIgnoreCase("uint64") ||
     			    qName.equalsIgnoreCase("int64")) {
        		
     		int token = buildToken(tokenBuilderLongCount);
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     	
     	} else if (qName.equalsIgnoreCase("string")) {
     		
     		int token = buildToken(tokenBuilderTextCount);
     		
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     		
     	} else if (qName.equalsIgnoreCase("decimal")) {
     		
@@ -419,7 +411,7 @@ public class TemplateHandler extends DefaultHandler {
     		int token = buildToken(tokenBuilderDecimalCount);
     		
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
 
     		fieldPMapInc=1;//set back to 1 we are leaving decimal processing
     	} else if (qName.equalsIgnoreCase("exponent")) {
@@ -433,7 +425,7 @@ public class TemplateHandler extends DefaultHandler {
     		int token = buildToken(tokenBuilderByteCount);
 
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     	} else if (qName.equalsIgnoreCase("template")) {
     		//templates always add 1 more for the templateId in the pmap
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead]+1;
@@ -459,8 +451,8 @@ public class TemplateHandler extends DefaultHandler {
     		int token = buildToken(tokenBuilderIntCount);
     		
     		
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|token;
-    		catalogTemplateScript[catalogTemplateScriptIdx++] = groupOpenTokenStack[groupTokenStackHead]; 
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
+    		catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&groupOpenTokenStack[groupTokenStackHead]); 
     		
     		
     		//NOTE: we want the sequence length to come first then the repeating group pmap therefore
@@ -487,14 +479,17 @@ public class TemplateHandler extends DefaultHandler {
 			int groupSize = catalogTemplateScriptIdx - openGroupIdx;
     		    		    			
 			//change open token so it has the total number of script steps inside the group.
-			catalogTemplateScript[openGroupIdx] =
-			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
-														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize);
+			catalogTemplateScript[openGroupIdx] = (0xFFFFFFFFl&
+			(groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
+														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize)));
 			
 
 			//closing token has positive jump back to head, in case it is needed 
-			catalogTemplateScript[catalogTemplateScriptIdx++] = 
-					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+			catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&
+					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize));
+//			int fieldId = (int)(xx>>>32);
+//			int token = (int)(xx&0xFFFFFFFF);
+//			System.err.println(fieldId+" sequence:"+TokenBuilder.tokenToString(token));
 
     		
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
@@ -518,14 +513,14 @@ public class TemplateHandler extends DefaultHandler {
 			int groupSize = catalogTemplateScriptIdx - openGroupIdx;
     		    		    			
 			//change open token so it has the total number of script steps inside the group.
-			catalogTemplateScript[openGroupIdx] =
-			groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
-														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize);
+			catalogTemplateScript[openGroupIdx] = (0xFFFFFFFFl&
+			(groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
+														(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize)));
 			
 
 			//closing token has positive jump back to head, in case it is needed 
-			catalogTemplateScript[catalogTemplateScriptIdx++] = 
-					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+			catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&
+					            TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize));
 
     		
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
@@ -541,8 +536,8 @@ public class TemplateHandler extends DefaultHandler {
 		int token;
 		int[] dTokens = dictionaryMap[fieldId];
 		if (null==dTokens || dTokens.length<=activeDictionary) {
-			int[] newDTokens = new int[activeDictionary];
-			if (null==dTokens) {
+			int[] newDTokens = new int[activeDictionary+1];
+			if (null!=dTokens) {
 				System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
 			}
 			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, count.getAndIncrement());
@@ -561,6 +556,13 @@ public class TemplateHandler extends DefaultHandler {
 			}
 		}
 		return token;
+	}
+	
+	private void buildDictionaryMemberLists() {
+		
+		//TODO: walk dictionary map for each field id.
+		//walk down dictionaries and it.
+		
 	}
 
 	private void validateUniqueTemplateId() throws SAXException {
@@ -593,12 +595,12 @@ public class TemplateHandler extends DefaultHandler {
 		
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, 
-						     absentLookupFromFieldId, templateIdUnique,
-						     templateIdBiggest, catalogScripts, df, catalogLargestTemplatePMap, 
-						     catalogLargestNonTemplatePMap);
+						     templateIdUnique, templateIdBiggest,
+						     catalogScripts, df, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap);
 				
 		//close stream.
 		writer.flush();
+		//System.err.println("wrote:"+writer.totalWritten());
 				
 	}
 
