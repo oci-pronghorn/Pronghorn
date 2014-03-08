@@ -24,9 +24,6 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 //May drop interface if this causes a performance problem from virtual table
 public class FASTReaderDispatch{
-
-	private int templateStackHead = 0;
-	private final int[] templateStack;
 	
 	private final PrimitiveReader reader;
 	
@@ -44,20 +41,6 @@ public class FASTReaderDispatch{
 	private final FieldReaderBytes readerBytes;
 		
 	
-	//TODO: remove this and replace with token lookup.
-	private int integerUnsignedOptionalValue=0;
-	private int integerSignedOptionalValue=0;
-	private int longUnsignedOptionalValue=0;
-	private int longSignedOptionalValue=0;
-	private int decimalExponentOptionalValue=0;
-	private long decimalMantissaOptionalValue=0;
-	
-	private int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
-	private long[] absentLongs = new long[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG};
-	
-	
-	private final int maxTemplates;
-	
     private final int nonTemplatePMapSize;
 	
 	private final DictionaryFactory dictionaryFactory;
@@ -71,6 +54,8 @@ public class FASTReaderDispatch{
 	int maxNestedSeqDepth = 64;
 	int[] sequenceCountStack = new int[maxNestedSeqDepth];
 	int sequenceCountStackHead = -1;
+	int checkSequence;
+	
 	
 		
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
@@ -90,9 +75,6 @@ public class FASTReaderDispatch{
 		this.readerDecimal = new FieldReaderDecimal(reader, dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
 		this.readerChar = new FieldReaderChar(reader,dcr.charDictionary());
 		this.readerBytes = new FieldReaderBytes(reader,dcr.byteDictionary());
-				
-		this.templateStack = new int[maxTemplates];
-		this.maxTemplates = maxTemplates;
 	}
 
 	public void reset() {
@@ -129,13 +111,28 @@ public class FASTReaderDispatch{
 	
 	//package protected, unless we find a need to expose it?
 	boolean dispatchReadByToken(int id, int token) {
-	
+	   
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
-			dispatchReadByToken0(id, token);
-			return true;
+			//0????
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//00???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					dispatchReadByToken000(id, token);
+				} else {
+					dispatchReadByToken001(id, token);
+				}
+			} else {
+				//01???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					dispatchReadByToken010(id, token);
+				} else {
+					dispatchReadByToken011(id, token);
+				}
+			}
+			return false;
 		} else {
 			//pause node for more work processing will return false 
-			return dispatchReadByToken1(id, token);
+			return dispatchReadByToken1(id, token);	
 		}
 	}
 	
@@ -146,8 +143,8 @@ public class FASTReaderDispatch{
 			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 				//100??
 				//Group Type, no others defined so no need to keep checking
-				return readGroupCommand(token);
-				
+				readGroupCommand(token);
+				return 	checkSequence!=0 && !completeSequence(token);
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 //					//1000?
@@ -232,7 +229,7 @@ public class FASTReaderDispatch{
 //				}
 //			}
 		}
-		return true;
+		return false;
 	}
 
 	private void readDictionaryCommand(int token) {
@@ -256,37 +253,31 @@ public class FASTReaderDispatch{
 		}
 	}
 	
-	private boolean readGroupCommand(int token) {
+	private void readGroupCommand(int token) {
 		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			
-			//this is NOT a message/template so the non-template pmapSize is used.
-			
+			//this is NOT a message/template so the non-template pmapSize is used.			
 			openGroup(token, nonTemplatePMapSize);
-			return true;
 		} else {
 			closeGroup(token);
-						
-			//is end of sequence
-			return (0==(token&( (OperatorMask.Group_Bit_Seq) <<TokenBuilder.SHIFT_OPER)));
-		
 		}
 	}
 
 	private void dispatchReadByToken0(int id, int token) {
 		//0????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-			dispatchReadByToken00(id, token);
+			//00???
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				dispatchReadByToken000(id, token);
+			} else {
+				dispatchReadByToken001(id, token);
+			}
 		} else {
-			dispatchReadByToken01(id, token);
-		}
-	}
-
-	private void dispatchReadByToken01(int id, int token) {
-		//01???
-		if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-			dispatchReadByToken010(id, token);
-		} else {
-			dispatchReadByToken011(id, token);
+			//01???
+			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+				dispatchReadByToken010(id, token);
+			} else {
+				dispatchReadByToken011(id, token);
+			}
 		}
 	}
 
@@ -298,13 +289,13 @@ public class FASTReaderDispatch{
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				intLookup[id] =	readerDecimal.readDecimalExponent(token);
 			} else {
-				intLookup[id] =	readerDecimal.readDecimalExponentOptional(token, decimalExponentOptionalValue);
+				intLookup[id] =	readerDecimal.readDecimalExponentOptional(token);
 			}
 		
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				longLookup[id] =  readerDecimal.readDecimalMantissa(token);
 			} else {
-				longLookup[id] =  readerDecimal.readDecimalMantissaOptional(token, decimalMantissaOptionalValue);
+				longLookup[id] =  readerDecimal.readDecimalMantissaOptional(token);
 			}
 			
 		} else {
@@ -342,15 +333,6 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private void dispatchReadByToken00(int id, int token) {
-		//00???
-		if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-			dispatchReadByToken000(id, token);
-		} else {
-			dispatchReadByToken001(id, token);
-		}
-	}
-
 	private void dispatchReadByToken001(int id, int token) {
 		//001??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -360,7 +342,7 @@ public class FASTReaderDispatch{
 				longLookup[id] = readLongUnsigned(token);
 			} else {
 				//00101 LongUnsignedOptional
-				longLookup[id] = readLongUnsignedOptional(token, longUnsignedOptionalValue);
+				longLookup[id] = readLongUnsignedOptional(token);
 			}
 		} else {
 			//0011?
@@ -369,7 +351,7 @@ public class FASTReaderDispatch{
 				longLookup[id] = readLongSigned(token);
 			} else {
 				//00111 LongSignedOptional
-				longLookup[id] = readLongSignedOptional(token, longSignedOptionalValue);
+				longLookup[id] = readLongSignedOptional(token);
 			}
 		}
 	}
@@ -383,7 +365,7 @@ public class FASTReaderDispatch{
 				intLookup[id] =	readIntegerUnsigned(token);
 			} else {
 				//00001 IntegerUnsignedOptional
-				intLookup[id] =	readIntegerUnsignedOptional(token,integerUnsignedOptionalValue); 
+				intLookup[id] =	readIntegerUnsignedOptional(token); 
 			}
 		} else {
 			//0001?
@@ -392,7 +374,7 @@ public class FASTReaderDispatch{
 				intLookup[id] =	readIntegerSigned(token);
 			} else {
 				//00011 IntegerSignedOptional
-				intLookup[id] =	readIntegerSignedOptional(token, integerSignedOptionalValue);
+				intLookup[id] =	readIntegerSignedOptional(token);
 			}
 		}
 	}
@@ -411,15 +393,15 @@ public class FASTReaderDispatch{
 		} else {
 			//optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				return readLongUnsignedOptional(token, valueOfOptional);
+				return readLongUnsignedOptional(token);
 			} else {
-				return readLongSignedOptional(token, valueOfOptional);
+				return readLongSignedOptional(token);
 			}	
 		}
 		
 	}
 
-	private long readLongSignedOptional(int token, long valueOfOptional) {
+	private long readLongSignedOptional(int token) {
 		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -428,14 +410,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongSignedOptional(token,valueOfOptional);
+					return  readerLong.readLongSignedOptional(token );
 				} else {
 					//delta
-					return  readerLong.readLongSignedDeltaOptional(token,valueOfOptional);
+					return  readerLong.readLongSignedDeltaOptional(token );
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongSignedConstantOptional(token,valueOfOptional);
+				return  readerLong.readLongSignedConstantOptional(token );
 			}
 			
 		} else {
@@ -444,14 +426,14 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongSignedCopyOptional(token,valueOfOptional);
+					return  readerLong.readLongSignedCopyOptional(token );
 				} else {
 					//increment
-					return  readerLong.readLongSignedIncrementOptional(token,valueOfOptional);
+					return  readerLong.readLongSignedIncrementOptional(token );
 				}	
 			} else {
 				// default
-				return  readerLong.readLongSignedDefaultOptional(token,valueOfOptional);
+				return  readerLong.readLongSignedDefaultOptional(token );
 			}		
 		}
 		
@@ -494,7 +476,7 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private long readLongUnsignedOptional(int token, long valueOfOptional) {
+	private long readLongUnsignedOptional(int token) {
 		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -503,14 +485,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongUnsignedOptional(token,valueOfOptional);
+					return  readerLong.readLongUnsignedOptional(token);
 				} else {
 					//delta
-					return  readerLong.readLongUnsignedDeltaOptional(token,valueOfOptional);
+					return  readerLong.readLongUnsignedDeltaOptional(token );
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongUnsignedConstantOptional(token,valueOfOptional);
+				return  readerLong.readLongUnsignedConstantOptional(token );
 			}
 			
 		} else {
@@ -519,14 +501,14 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongUnsignedCopyOptional(token,valueOfOptional);
+					return  readerLong.readLongUnsignedCopyOptional(token );
 				} else {
 					//increment
-					return  readerLong.readLongUnsignedIncrementOptional(token,valueOfOptional);
+					return  readerLong.readLongUnsignedIncrementOptional(token );
 				}	
 			} else {
 				// default
-				return  readerLong.readLongUnsignedDefaultOptional(token,valueOfOptional);
+				return  readerLong.readLongUnsignedDefaultOptional(token );
 			}		
 		}
 
@@ -570,7 +552,7 @@ public class FASTReaderDispatch{
 		
 	}
 
-	public int readInt(int token, int valueOfOptional) {
+	public int readInt(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
@@ -582,15 +564,14 @@ public class FASTReaderDispatch{
 		} else {
 			//optional
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				return readIntegerUnsignedOptional(token, valueOfOptional);
+				return readIntegerUnsignedOptional(token);
 			} else {
-				return readIntegerSignedOptional(token, valueOfOptional);
+				return readIntegerSignedOptional(token);
 			}	
 		}		
 	}
 
-	private int readIntegerSignedOptional(int token, int valueOfOptional) {
-		readerInteger.setReadFrom(readFromIdx);
+	private int readIntegerSignedOptional(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -598,14 +579,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerSignedOptional(token,valueOfOptional);
+					return readerInteger.readIntegerSignedOptional(token,readFromIdx);
 				} else {
 					//delta
-					return readerInteger.readIntegerSignedDeltaOptional(token,valueOfOptional);
+					return readerInteger.readIntegerSignedDeltaOptional(token,readFromIdx);
 				}	
 			} else {
 				//constant
-				return readerInteger.readIntegerSignedConstantOptional(token,valueOfOptional);
+				return readerInteger.readIntegerSignedConstantOptional(token,readFromIdx);
 			}
 			
 		} else {
@@ -614,21 +595,20 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return readerInteger.readIntegerSignedCopyOptional(token,valueOfOptional);
+					return readerInteger.readIntegerSignedCopyOptional(token,readFromIdx);
 				} else {
 					//increment
-					return readerInteger.readIntegerSignedIncrementOptional(token,valueOfOptional);
+					return readerInteger.readIntegerSignedIncrementOptional(token,readFromIdx);
 				}	
 			} else {
 				// default
-				return readerInteger.readIntegerSignedDefaultOptional(token,valueOfOptional);
+				return readerInteger.readIntegerSignedDefaultOptional(token,readFromIdx);
 			}		
 		}
 		
 	}
 
 	private int readIntegerSigned(int token) {
-		readerInteger.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -636,14 +616,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerSigned(token);
+					return readerInteger.readIntegerSigned(token,readFromIdx);
 				} else {
 					//delta
-					return readerInteger.readIntegerSignedDelta(token);
+					return readerInteger.readIntegerSignedDelta(token,readFromIdx);
 				}	
 			} else {
 				//constant
-				return readerInteger.readIntegerSignedConstant(token);
+				return readerInteger.readIntegerSignedConstant(token,readFromIdx);
 			}
 			
 		} else {
@@ -652,20 +632,19 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return readerInteger.readIntegerSignedCopy(token);
+					return readerInteger.readIntegerSignedCopy(token,readFromIdx);
 				} else {
 					//increment
-					return readerInteger.readIntegerSignedIncrement(token);	
+					return readerInteger.readIntegerSignedIncrement(token,readFromIdx);	
 				}	
 			} else {
 				// default
-				return readerInteger.readIntegerSignedDefault(token);
+				return readerInteger.readIntegerSignedDefault(token,readFromIdx);
 			}		
 		}
 	}
 
-	private int readIntegerUnsignedOptional(int token, int valueOfOptional) {
-		readerInteger.setReadFrom(readFromIdx);
+	private int readIntegerUnsignedOptional(int token) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -673,14 +652,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerUnsignedOptional(token,valueOfOptional);
+					return readerInteger.readIntegerUnsignedOptional(token,readFromIdx);
 				} else {
 					//delta
-					return readerInteger.readIntegerUnsignedDeltaOptional(token,valueOfOptional);
+					return readerInteger.readIntegerUnsignedDeltaOptional(token,readFromIdx);
 				}	
 			} else {
 				//constant
-				return readerInteger.readIntegerUnsignedConstantOptional(token, valueOfOptional);
+				return readerInteger.readIntegerUnsignedConstantOptional(token,readFromIdx);
 			}
 			
 		} else {
@@ -689,21 +668,20 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return readerInteger.readIntegerUnsignedCopyOptional(token,valueOfOptional);
+					return readerInteger.readIntegerUnsignedCopyOptional(token,readFromIdx);
 				} else {
 					//increment
-					return readerInteger.readIntegerUnsignedIncrementOptional(token,valueOfOptional);	
+					return readerInteger.readIntegerUnsignedIncrementOptional(token,readFromIdx);	
 				}	
 			} else {
 				// default
-				return readerInteger.readIntegerUnsignedDefaultOptional(token,valueOfOptional);
+				return readerInteger.readIntegerUnsignedDefaultOptional(token,readFromIdx);
 			}		
 		}
 	
 	}
 
 	private int readIntegerUnsigned(int token) {
-		readerInteger.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -711,14 +689,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerUnsigned(token);
+					return readerInteger.readIntegerUnsigned(token,readFromIdx);
 				} else {
 					//delta
-					return readerInteger.readIntegerUnsignedDelta(token);
+					return readerInteger.readIntegerUnsignedDelta(token,readFromIdx);
 				}	
 			} else {
 				//constant
-				return readerInteger.readIntegerUnsignedConstant(token);
+				return readerInteger.readIntegerUnsignedConstant(token,readFromIdx);
 			}
 			
 		} else {
@@ -727,14 +705,14 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return readerInteger.readIntegerUnsignedCopy(token);
+					return readerInteger.readIntegerUnsignedCopy(token,readFromIdx);
 				} else {
 					//increment
-					return readerInteger.readIntegerUnsignedIncrement(token);
+					return readerInteger.readIntegerUnsignedIncrement(token,readFromIdx);
 				}	
 			} else {
 				// default
-				return readerInteger.readIntegerUnsignedDefault(token);
+				return readerInteger.readIntegerUnsignedDefault(token,readFromIdx);
 			}		
 		}
 	}
@@ -790,7 +768,7 @@ public class FASTReaderDispatch{
 	}
 	
 	private int readByteArrayOptional(int token) {
-		readerInteger.setReadFrom(readFromIdx);
+		readerBytes.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -881,9 +859,7 @@ public class FASTReaderDispatch{
 //		return false;//no sequence to start
 //	}
 
-	
 
-	
 	/**
 	 * Returns true if there is no sequence in play or if the active sequence can be closed.
 	 * Once a sequence is closed the reader should move to the next point in the sequence. 
@@ -892,11 +868,14 @@ public class FASTReaderDispatch{
 	 * @return
 	 */
 	public boolean completeSequence(int token) {
+
+		checkSequence = 0;//reset for next time
 		
-		if (sequenceCountStackHead<0) {
-			//no sequence to worry about
+		if (sequenceCountStackHead<=0) {
+			//no sequence to worry about or not the right time
 			return true;
 		}
+		
 		
 		//each sequence will need to repeat the pmap but we only need to push
 		//and pop the stack when the sequence is first encountered.
@@ -907,13 +886,12 @@ public class FASTReaderDispatch{
 				//&&	0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))
 			) {
 			//this group is a sequence so pop it off the stack.
-			//TODO: this pop is too early so caller will not know 
-			System.err.println("finished seq");
+			//System.err.println("finished seq");
 			--sequenceCountStackHead;
 			//this sequence (the active one) has now completed
 			return true;
 		}
-		System.err.println("Incomplete seq with count:"+sequenceCountStack[sequenceCountStackHead]);
+		//System.err.println("Incomplete seq with count:"+sequenceCountStack[sequenceCountStackHead]);
 		return false;
 	}
 	
@@ -926,9 +904,11 @@ public class FASTReaderDispatch{
 			reader.closePMap();
 		}
 		
+		checkSequence = (token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER));
+		
 	}
 
-	public int readDecimalExponent(int token, int valueOfOptional) {
+	public int readDecimalExponent(int token) {
 		readerDecimal.setReadFrom(readFromIdx);
 				
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
@@ -938,12 +918,12 @@ public class FASTReaderDispatch{
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 			return readerDecimal.readDecimalExponent(token);
 		} else {
-			return readerDecimal.readDecimalExponentOptional(token, valueOfOptional);
+			return readerDecimal.readDecimalExponentOptional(token);
 		}
 	}
 	
 
-	public long readDecimalMantissa(int token, long valueOfOptional) {
+	public long readDecimalMantissa(int token) {
 		readerDecimal.setReadFrom(readFromIdx);
 				
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
@@ -953,7 +933,7 @@ public class FASTReaderDispatch{
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 			return readerDecimal.readDecimalMantissa(token);
 		} else {
-			return readerDecimal.readDecimalMantissaOptional(token, valueOfOptional);
+			return readerDecimal.readDecimalMantissaOptional(token);
 		}
 	}
 
@@ -985,7 +965,6 @@ public class FASTReaderDispatch{
 	}
 
 	private int readTextUTF8Optional(int token) {
-		readerChar.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -994,22 +973,22 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					//System.err.println("none");
-					return readerChar.readUTF8Optional(token);
+					return readerChar.readUTF8Optional(token,readFromIdx);
 				} else {
 					//tail
 					//System.err.println("tail");
-					return readerChar.readUTF8TailOptional(token);
+					return readerChar.readUTF8TailOptional(token,readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					//System.err.println("const");
-					return readerChar.readUTF8ConstantOptional(token);
+					return readerChar.readUTF8ConstantOptional(token,readFromIdx);
 				} else {
 					//delta
 					//System.err.println("delta");
-					return readerChar.readUTF8DeltaOptional(token);
+					return readerChar.readUTF8DeltaOptional(token,readFromIdx);
 				}
 			}
 		} else {
@@ -1017,18 +996,17 @@ public class FASTReaderDispatch{
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				//System.err.println("copy");
-				return readerChar.readUTF8CopyOptional(token);
+				return readerChar.readUTF8CopyOptional(token,readFromIdx);
 			} else {
 				//default
 				//System.err.println("default");
-				return readerChar.readUTF8DefaultOptional(token);
+				return readerChar.readUTF8DefaultOptional(token,readFromIdx);
 			}
 		}
 		
 	}
 
 	private int readTextASCII(int token) {
-		readerChar.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1036,35 +1014,34 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerChar.readASCII(token);
+					return readerChar.readASCII(token,readFromIdx);
 				} else {
 					//tail
-					return readerChar.readASCIITail(token);
+					return readerChar.readASCIITail(token,readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return readerChar.readASCIIConstant(token);
+					return readerChar.readASCIIConstant(token,readFromIdx);
 				} else {
 					//delta
-					return readerChar.readASCIIDelta(token);
+					return readerChar.readASCIIDelta(token,readFromIdx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				return readerChar.readASCIICopy(token);
+				return readerChar.readASCIICopy(token,readFromIdx);
 			} else {
 				//default
-				return readerChar.readASCIIDefault(token);
+				return readerChar.readASCIIDefault(token,readFromIdx);
 			}
 		}
 	}
 
 	private int readTextUTF8(int token) {
-		readerChar.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1073,22 +1050,22 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 				//	System.err.println("none");
-					return readerChar.readUTF8(token);
+					return readerChar.readUTF8(token,readFromIdx);
 				} else {
 					//tail
 				//	System.err.println("tail");
-					return readerChar.readUTF8Tail(token);
+					return readerChar.readUTF8Tail(token,readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 				//	System.err.println("const");
-					return readerChar.readUTF8Constant(token);
+					return readerChar.readUTF8Constant(token,readFromIdx);
 				} else {
 					//delta
 				//	System.err.println("delta read");
-					return readerChar.readUTF8Delta(token);
+					return readerChar.readUTF8Delta(token,readFromIdx);
 				}
 			}
 		} else {
@@ -1096,18 +1073,17 @@ public class FASTReaderDispatch{
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				//System.err.println("copy");
-				return readerChar.readUTF8Copy(token);
+				return readerChar.readUTF8Copy(token,readFromIdx);
 			} else {
 				//default
 				//System.err.println("default");
-				return readerChar.readUTF8Default(token);
+				return readerChar.readUTF8Default(token,readFromIdx);
 			}
 		}
 		
 	}
 
 	private int readTextASCIIOptional(int token) {
-		readerChar.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1115,29 +1091,29 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerChar.readASCII(token);
+					return readerChar.readASCII(token,readFromIdx);
 				} else {
 					//tail
-					return readerChar.readASCIITailOptional(token);
+					return readerChar.readASCIITailOptional(token,readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return readerChar.readASCIIConstantOptional(token);
+					return readerChar.readASCIIConstantOptional(token,readFromIdx);
 				} else {
 					//delta
-					return readerChar.readASCIIDeltaOptional(token);
+					return readerChar.readASCIIDeltaOptional(token,readFromIdx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				return readerChar.readASCIICopyOptional(token);
+				return readerChar.readASCIICopyOptional(token,readFromIdx);
 			} else {
 				//default
-				return readerChar.readASCIIDefaultOptional(token);
+				return readerChar.readASCIIDefaultOptional(token,readFromIdx);
 			}
 		}
 

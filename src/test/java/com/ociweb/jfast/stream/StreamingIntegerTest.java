@@ -12,6 +12,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -150,12 +151,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-						if (Integer.MIN_VALUE!=value) {
-							assertEquals(Integer.MIN_VALUE, value);
+			     		int value = fr.readInt(tokenLookup[f]);
+						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
+							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
+						int value = fr.readInt(tokenLookup[f]);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -165,12 +166,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f], Integer.MIN_VALUE);
-						if (Integer.MIN_VALUE!=value) {
-							assertEquals(Integer.MIN_VALUE, value);
+			     		int value = fr.readInt(tokenLookup[f]);
+						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
+							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f], Integer.MAX_VALUE);
+						int value = fr.readInt(tokenLookup[f]);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);

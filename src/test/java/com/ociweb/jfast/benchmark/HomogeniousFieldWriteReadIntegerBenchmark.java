@@ -1,7 +1,7 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.benchmark;
 
 import java.nio.ByteBuffer;
 
@@ -209,7 +209,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedCopyOptional(token, 0);
+				result |= fr.readIntegerSignedCopyOptional(token,-1);
 			}
 			if (pmapSize>0) {
 				pr.closePMap();
@@ -262,7 +262,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedConstant(token);
+				result |= fr.readIntegerSignedConstant(token,-1);
 			}
 			if (pmapSize>0) {
 				pr.closePMap();
@@ -314,7 +314,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedDeltaOptional(token,0);
+				result |= fr.readIntegerSignedDeltaOptional(token,-1);
 			}
 			if (pmapSize>0) {
 				pr.closePMap();

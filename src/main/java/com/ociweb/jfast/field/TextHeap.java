@@ -36,7 +36,7 @@ public class TextHeap {
 	private final int itemCount;
 	
 	//text allocation table
-	private final int[] tat;
+	final int[] tat;
 	//4 ints per text body.
 	//start index position (inclusive)
 	//stop index limit (exclusive)
@@ -410,22 +410,6 @@ public class TextHeap {
 	void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
-	}
-	
-	int offset(int idx) {
-		return idx<<2;
-	}
-	
-	int nextLimit(int offset) {
-		return tat[offset+4];
-	}
-	
-	int stopIndex(int offset) {
-		return tat[offset+1];
-	}
-	
-	int stopIndex(int offset, int value) {
-		return tat[offset+1] = value;
 	}
 	
 	//never call without calling setZeroLength first then a sequence of these

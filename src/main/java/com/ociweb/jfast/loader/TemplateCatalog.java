@@ -24,7 +24,7 @@ public class TemplateCatalog {
 	
 	
 	//Runtime specific message prefix, only used for some transmission technologies
-	int prefixSize=0; //default is none
+	byte prefixSize=0; //default is none
 	
 	public TemplateCatalog(PrimitiveReader reader) {
 				
@@ -47,7 +47,7 @@ public class TemplateCatalog {
 	}
 
 	
-	public void setMessagePrefix(int prefixSize) {
+	public void setMessagePrefix(byte prefixSize) {
 		this.prefixSize = prefixSize;
 	}
 	
@@ -201,7 +201,7 @@ public class TemplateCatalog {
 		return dictionaryFactory;
 	}
 
-	public int getMessagePrefixSize() {
+	public byte getMessagePrefixSize() {
 		return prefixSize;
 	}
 

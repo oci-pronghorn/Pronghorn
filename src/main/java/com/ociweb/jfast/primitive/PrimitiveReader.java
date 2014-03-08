@@ -34,7 +34,7 @@ public final class PrimitiveReader {
 	
 	//Hack test to get a feeling for the cost of adding this feature.
 	//TODO: this call creates garbage and must not be here in the future.
-	static WindowedFingerprint windowedFingerprint = com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
+	static WindowedFingerprint windowedFingerprint = null;//com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
 	
 	private int position;
 	private int limit;
@@ -55,7 +55,7 @@ public final class PrimitiveReader {
 
 
 	public PrimitiveReader(FASTInput input) {
-		this(4096,input,1024);
+		this(2048,input,256);
 	}
 	
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
@@ -201,7 +201,7 @@ public final class PrimitiveReader {
 	
 	public final void readByteData(byte[] target, int offset, int length) {
 		//ensure all the bytes are in the buffer before calling visitor
-		if (position>limit - length) {
+        if (limit - position < length) {
 			fetch(length);
 		}
 		System.arraycopy(buffer, position, target, offset, length);
@@ -401,23 +401,23 @@ public final class PrimitiveReader {
 	
 	public final int readIntegerUnsigned() {
 		
-		if (position>limit-5) {//near the end so must do it the slow way?
-			return readIntegerUnsignedSlow();
-		}
-		byte v = buffer[position++];
-		int accumulator;
-		if (v>=0) {//(v & 0x80)==0) {
-			accumulator = v<<7;
-		} else {
-			return (v&0x7F);
-		}
-		
-		v = buffer[position++];
-	    while (v>=0) { //(v & 0x80)==0) {
-	    	accumulator = (accumulator|v)<<7;
-	    	v = buffer[position++];
-	    }
-	    return accumulator|(v&0x7F);
+		if (limit-position>=5) {//not near end so go fast.
+	
+			byte v = buffer[position++];
+			int accumulator;
+			if (v>=0) {//(v & 0x80)==0) {
+				accumulator = v<<7;
+			} else {
+				return (v&0x7F);
+			}
+			
+		    while ((v = buffer[position++])>=0) { //(v & 0x80)==0) {
+		    	accumulator = (accumulator|v)<<7;
+		    }
+		    return accumulator|(v&0x7F);
+	   } else { 
+		   return readIntegerUnsignedSlow();
+	   }
 	}
 
 	private int readIntegerUnsignedSlow() {

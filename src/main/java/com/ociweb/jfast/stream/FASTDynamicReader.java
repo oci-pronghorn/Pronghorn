@@ -6,6 +6,7 @@ package com.ociweb.jfast.stream;
 import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalog;
@@ -36,19 +37,24 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final FASTReaderDispatch readerDispatch;
 	private final TemplateCatalog catalog;
 	
-	int activeScriptTemplateId;
-	long[] activeScript;
-	int activeScriptCursor;
+	private int activeScriptTemplateMask;
+	private long[] activeScript;
+	private int activeScriptLength;
+	private int activeScriptCursor;
 	
-	byte[] prefixData;
+	private final byte[] prefixData;
+	private final byte prefixDataLength;
+	
+	private long messageCount = 0;
 	
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
 	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog) {
 		this.catalog = catalog;
-		this.prefixData = new byte[catalog.getMessagePrefixSize()];
-		this.activeScriptTemplateId = -1; //no selected script				
+		this.prefixDataLength=catalog.getMessagePrefixSize();
+		this.prefixData = new byte[prefixDataLength];
+		this.activeScriptTemplateMask = -1; //no selected script				
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
 				                                catalog.templatesCount(), 
@@ -56,10 +62,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 			
 	}
 	
-	int count = 0;
+	public long messageCount() {
+		return messageCount;
+	}
+	
     public void reset() {
-    	count = 0;
-    	this.activeScriptTemplateId = -1; //no selected script
+    	messageCount = 0;
+    	this.activeScriptTemplateMask = -1; //no selected script
     	this.activeScriptCursor = -1;
     	this.readerDispatch.reset();
     }
@@ -88,103 +97,67 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 * 
 	 * @return
 	 */
-	
+
+    
 	public int hasMore() {
 		
-		//System.err.println("has more call");
+		//System.err.println("hasMore call");
 		
 		do {
-			if (activeScriptTemplateId<0) {
+			if (activeScriptTemplateMask<0) {
 				//start new script or detect that the end of the data has been reached
 				if (readerDispatch.isEOF()) {
 					return 0;
 				}
 				
-				///read prefix bytes if any (only used by some implementations)
-				if (prefixData.length>0) {
-					readerDispatch.dispatchReadPrefix(prefixData);
-					//System.err.println("read prefix:"+toBinary(prefixData));
-				};
-				///////////////////
+				//get next token id then immediately start processing the script
+				parseNextTokenId();
 				
-				//open message (special type of group)			
-				int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
-				if (templateId>=0) {
-					activeScriptTemplateId = templateId;
-					count++;
-				
-				} else {
-					//System.err.println("messagesRead:"+count);
-					//TODO: hack to stop test at this point.***********************************
-					return 0;
-					
-//					throw new FASTException("Unimplemented case when template is not found in message header");
-				}
-							
-				//set the script and cursor for this template			
-				activeScript = catalog.templateScript(activeScriptTemplateId);
-				activeScriptCursor = 0;
-				
-			} else {
-				//continue existing script
-				long val = activeScript[activeScriptCursor++];
-				int fieldId = (int)(val>>>32);
-				int token = (int)(val&0xFFFFFFFF);
-				
-				//TODO: if fieldId is zero then it should be a group!!!!
-	//			System.err.println(activeScriptTemplateId+" active cursor:"+activeScriptCursor+" id:"+fieldId+
-	//					           " "+TokenBuilder.tokenToString(token));
-				
-				//group templates open close //no need to build token because it is in catalog
-				//group sequence open close  //steps in script inside group.
-				//group group open close     //steps in script inside group.
-				
-				
-				//TODO: dispatch two if token was a sequence? needed to fetch the length?
-				//TODO: but length could be anywhere in the data so what now??
-				
-				
-				if (!readerDispatch.dispatchReadByToken(fieldId, token)) {
-					//hit end of sequence because false is returned (TODO: refactor to not include message)
-					
-					if (!readerDispatch.completeSequence(token)) {
-						//return back to top of this sequence.
-						activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token)+1;
-					}
-					
-					int level = 1; //TODO: change to ordinal position in template script.
-					return (activeScriptTemplateId<<10)|level; //TODO: hack test for now need to formalize shift
-	
-				}
-				
-//				//System.err.println("type:"+TokenBuilder.extractType(token)+" "+TypeMask.toString(TokenBuilder.extractType(token)));
-//				if ((TokenBuilder.extractType(token)|1)==TypeMask.TextASCIIOptional) {
-//					System.err.println("text<"+readerDispatch.textHeap().get(readText(fieldId), new StringBuilder())+">");
-//				}
-//				if ((TokenBuilder.extractType(token)|1)==TypeMask.IntegerUnsignedOptional) {
-//					System.err.println("int<"+readInt(fieldId)+">");
-//				}
-//				if ((TokenBuilder.extractType(token)|1)==TypeMask.LongUnsignedOptional) {
-//					System.err.println("long<"+readLong(fieldId)+">");
-//				}
-//				if (TokenBuilder.extractType(token)==TypeMask.GroupLength) {
-//					System.err.println("seqLen<"+readInt(fieldId)+">");
-//				}
-				
-				
-				//reached the end of the script so close and prep for the next one
-				if (activeScriptCursor>=activeScript.length) {
-				
-					readerDispatch.closeMessage();
-					int result = activeScriptTemplateId<<10;
-					activeScriptTemplateId = -1;//find next template
-					
-					//TODO need to loop script back.
-					return result;//TODO: not sure what to return but must let caller process data so far
-				}			
+			} 
+			
+			//continue existing script
+			long val = activeScript[activeScriptCursor];
+			int token = (int)(val&0xFFFFFFFF);
+			
+			//jump to top if at end of sequence with count remaining
+			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token)) {
+					//jump back to top of this sequence in the script.
+					//return this cursor position as the unique id for this sequence.
+					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token));
 			}
-		} while (true);
+							
+			
+		} while (++activeScriptCursor<activeScriptLength);
 		
+		//reached the end of the script so close and prep for the next one
+
+		int result = activeScriptTemplateMask;
+		activeScriptTemplateMask = -1;//find next template
+		readerDispatch.closeMessage();
+		return result;//returns the template mask for the end of this message
+	
+		
+	}
+
+	private void parseNextTokenId() {
+		///read prefix bytes if any (only used by some implementations)
+		if (prefixDataLength!=0) {
+			readerDispatch.dispatchReadPrefix(prefixData);
+			//System.err.println("read prefix:"+toBinary(prefixData));
+		};
+		///////////////////
+		
+		//open message (special type of group)			
+		int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
+		if (templateId>=0) {
+			activeScriptTemplateMask = templateId<<TokenBuilder.MAX_FIELD_ID_BITS; //for id returned to caller
+			messageCount++;
+		}
+					
+		//set the script and cursor for this template			
+		activeScript = catalog.templateScript(templateId);
+		activeScriptLength = activeScript.length;
+		activeScriptCursor = 0;
 	}
 	
 	public byte[] prefix() {

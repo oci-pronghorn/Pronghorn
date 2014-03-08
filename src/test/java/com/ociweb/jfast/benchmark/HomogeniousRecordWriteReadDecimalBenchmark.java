@@ -1,7 +1,7 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.benchmark;
 
 import static org.junit.Assert.*;
 
@@ -18,6 +18,8 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
+import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTWriterDispatch;
 
 public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
@@ -322,8 +324,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			staticReader.openGroup(groupToken, pmapSize);
 			j = intTestData.length;
 			while (--j>=0) {
-				staticReader.readDecimalExponent(token, 0);
-				result |= staticReader.readDecimalMantissa(token, 0);
+				staticReader.readDecimalExponent(token);
+				result |= staticReader.readDecimalMantissa(token);
 			}
 			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 		}

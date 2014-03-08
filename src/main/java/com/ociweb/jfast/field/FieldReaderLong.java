@@ -4,6 +4,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderLong {
@@ -12,6 +13,9 @@ public class FieldReaderLong {
 	private final PrimitiveReader reader;
 	final long[]  lastValue;
 
+	//TODO: add advanced API for modification
+	private long[] absentLongs = new long[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG};
+	
 
 	public FieldReaderLong(PrimitiveReader reader, long[] values) {
 		
@@ -36,10 +40,10 @@ public class FieldReaderLong {
 		return lastValue[token & INSTANCE_MASK] = reader.readLongUnsigned();
 	}
 
-	public long readLongUnsignedOptional(int token, long valueOfOptional) {
+	public long readLongUnsignedOptional(int token) {
 		long value = reader.readLongUnsigned();
 		if (0==value) {
-			return valueOfOptional;
+			return absentLongs[TokenBuilder.extractAbsent(token)];
 		} else {
 			return --value;
 		}
@@ -50,8 +54,8 @@ public class FieldReaderLong {
 		return lastValue[token & INSTANCE_MASK];
 	}
 	
-	public long readLongUnsignedConstantOptional(int token, long valueOfOptional) {
-		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	public long readLongUnsignedConstantOptional(int token) {
+		return (reader.popPMapBit()==0 ? absentLongs[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
 	}
 
 	public long readLongSignedConstant(int token) {
@@ -59,8 +63,8 @@ public class FieldReaderLong {
 		return lastValue[token & INSTANCE_MASK];
 	}
 	
-	public long readLongSignedConstantOptional(int token, long valueOfOptional) {
-		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	public long readLongSignedConstantOptional(int token) {
+		return (reader.popPMapBit()==0 ? absentLongs[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
 	}
 
 	public long readLongUnsignedCopy(int token) {
@@ -69,14 +73,14 @@ public class FieldReaderLong {
 			     (lastValue[token & INSTANCE_MASK] = reader.readLongUnsigned()));
 	}
 
-	public long readLongUnsignedCopyOptional(int token, long valueOfOptional) {
+	public long readLongUnsignedCopyOptional(int token) {
 		long value;
 		if (reader.popPMapBit()==0) {
 			value = lastValue[token & INSTANCE_MASK];
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readLongUnsigned();
 		}
-		return (0 == value ? valueOfOptional: value-1);
+		return (0 == value ? absentLongs[TokenBuilder.extractAbsent(token)]: value-1);
 	}
 	
 	
@@ -85,12 +89,12 @@ public class FieldReaderLong {
 		return lastValue[token & INSTANCE_MASK] += reader.readLongSigned();
 	}
 	
-	public long readLongUnsignedDeltaOptional(int token, long valueOfOptional) {
+	public long readLongUnsignedDeltaOptional(int token) {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK]=0;
-			return valueOfOptional;
+			return absentLongs[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += (value-1);
 			
@@ -108,15 +112,15 @@ public class FieldReaderLong {
 		}
 	}
 
-	public long readLongUnsignedDefaultOptional(int token, long valueOfOptional) {
+	public long readLongUnsignedDefaultOptional(int token) {
 		if (reader.popPMapBit()==0) {
 			
 			long last = lastValue[token & INSTANCE_MASK];
-			return 0==last?valueOfOptional:last;
+			return 0==last?absentLongs[TokenBuilder.extractAbsent(token)]:last;
 		} else {
 			long value;
 			if ((value = reader.readLongUnsigned())==0) {
-				return valueOfOptional;
+				return absentLongs[TokenBuilder.extractAbsent(token)];
 			} else {
 				return value-1;
 			}
@@ -135,16 +139,16 @@ public class FieldReaderLong {
 	}
 
 
-	public long readLongUnsignedIncrementOptional(int token, long valueOfOptional) {
+	public long readLongUnsignedIncrementOptional(int token) {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentLongs[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
 		} else {
 			long value = reader.readLongUnsigned();
 			if (value==0) {
 				lastValue[instance] = 0;
-				return valueOfOptional;
+				return absentLongs[TokenBuilder.extractAbsent(token)];
 			} else {
 				return (lastValue[instance] = value)-1;
 			}
@@ -160,11 +164,11 @@ public class FieldReaderLong {
 		return lastValue[token & INSTANCE_MASK] = reader.readLongSigned();
 	}
 
-	public long readLongSignedOptional(int token, long valueOfOptional) {
+	public long readLongSignedOptional(int token) {
 		long value = reader.readLongSigned();
 		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
 		if (0==value) {
-			return valueOfOptional;
+			return absentLongs[TokenBuilder.extractAbsent(token)];
 		} else {
 			return value-1;
 		}
@@ -176,7 +180,7 @@ public class FieldReaderLong {
 			     (lastValue[token & INSTANCE_MASK] = reader.readLongSigned()));
 	}
 
-	public long readLongSignedCopyOptional(int token, long valueOfOptional) {
+	public long readLongSignedCopyOptional(int token) {
 		//if zero then use old value.
 		long value;
 		if (reader.popPMapBit()==0) {
@@ -184,7 +188,7 @@ public class FieldReaderLong {
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readLongSigned();
 		}
-		return (0 == value ? valueOfOptional: (value>0 ? value-1 : value));
+		return (0 == value ? absentLongs[TokenBuilder.extractAbsent(token)]: (value>0 ? value-1 : value));
 	}
 	
 	
@@ -194,12 +198,12 @@ public class FieldReaderLong {
 		
 	}
 	
-	public long readLongSignedDeltaOptional(int token, long valueOfOptional) {
+	public long readLongSignedDeltaOptional(int token) {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK] = 0;
-			return valueOfOptional;
+			return absentLongs[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += 
 					(value + ((value>>>63)-1) );
@@ -218,14 +222,14 @@ public class FieldReaderLong {
 		}
 	}
 
-	public long readLongSignedDefaultOptional(int token, long valueOfOptional) {
+	public long readLongSignedDefaultOptional(int token) {
 		if (reader.popPMapBit()==0) {
 			long last = lastValue[token & INSTANCE_MASK];
-			return 0==last?valueOfOptional:last;			
+			return 0==last?absentLongs[TokenBuilder.extractAbsent(token)]:last;			
 		} else {
 			long value;
 			if ((value = reader.readLongSigned())==0) {
-				return valueOfOptional;
+				return absentLongs[TokenBuilder.extractAbsent(token)];
 			} else {
 				return value>0? value-1 : value;
 			}
@@ -243,15 +247,15 @@ public class FieldReaderLong {
 	}
 
 
-	public long readLongSignedIncrementOptional(int token, long valueOfOptional) {
+	public long readLongSignedIncrementOptional(int token) {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentLongs[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
 		} else {
 			long value;
 			if ((lastValue[instance] = value = reader.readLongSigned())==0) {
-				return valueOfOptional;
+				return absentLongs[TokenBuilder.extractAbsent(token)];
 			} else {
 				//lastValue[instance] = value;
 				//return (value + (value>>>63))-1;

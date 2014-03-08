@@ -11,7 +11,7 @@ public class TokenBuilder {
 	 *  1 token flag
 	 *  5 type   (1 new 2x spec types, 3 existing types, 1 isOptional)
 	 *  6 operation  (for decimal its 3 and 3) all others use bottom 4
-	 *  2 dictionary
+	 *  2 value of null
 	 * 18 instance - max value 262144 (field id OR script steps inside this group)
 	 * 
 	 * read the type first then each can have its own operation parse logic.
@@ -35,13 +35,14 @@ public class TokenBuilder {
 	public static final int MAX_FIELD_ID_VALUE = (1<<MAX_FIELD_ID_BITS)-1;
 	public static final int MAX_FIELD_MASK     = 0xFFFFFFFF^MAX_FIELD_ID_VALUE;
 	
-	public static final int SHIFT_DICT         = MAX_FIELD_ID_BITS;
-	public static final int BITS_DICT          = 2;
-	public static final int SHIFT_OPER         = SHIFT_DICT+BITS_DICT;
+	public static final int SHIFT_ABSENT        = MAX_FIELD_ID_BITS;
+	public static final int BITS_ABSENT        = 2;
+	public static final int SHIFT_OPER         = SHIFT_ABSENT+BITS_ABSENT;
 	public static final int BITS_OPER          = 6;
 	public static final int SHIFT_TYPE         = SHIFT_OPER+BITS_OPER;
 	public static final int BITS_TYPE          = 5;
 	
+	public static final int MASK_ABSENT        = 0x3; //2 bits //also default value
 	public static final int MASK_OPER          = 0x3F; //6 bits
 	public static final int MASK_OPER_DECIMAL_EX  = 0x07; //3 bits
 	public static final int SHIFT_OPER_DECIMAL_EX = 3; 
@@ -56,6 +57,9 @@ public class TokenBuilder {
 	}
 	public static int extractOper(int token) {
 		return (token>>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER;
+	}
+	public static int extractAbsent(int token) {
+		return (token>>>TokenBuilder.SHIFT_ABSENT)&TokenBuilder.MASK_ABSENT;
 	}
 	
 	public static boolean isOptional(int token) {
@@ -74,6 +78,7 @@ public class TokenBuilder {
 		return 0x80000000 |  
 		       (tokenType<<TokenBuilder.SHIFT_TYPE) |
 		       (tokenOpps<<TokenBuilder.SHIFT_OPER) |
+		       (MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT) | //default absent value
 		       count&MAX_INSTANCE;
 
 	}
@@ -125,6 +130,7 @@ public class TokenBuilder {
 		}
 		
 	}
+
 
 	
 }

@@ -47,7 +47,7 @@ public class TemplateHandler extends DefaultHandler {
     //TODO: find better name for stop node block.
     
     //every dictionary must be converted into an integer so we will use the index in a simple list.
-    final List<String> dictionaryNames = new ArrayList<String>(100);
+    final List<String> dictionaryNames = new ArrayList<String>(128);
     int activeDictionary = -1;
     final String globalDictionaryName = "global"; 
     
@@ -467,7 +467,7 @@ public class TemplateHandler extends DefaultHandler {
     		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
     		
     		
-    		int opMask = OperatorMask.Group_Bit_Close;
+    		int opMask = OperatorMask.Group_Bit_Close|OperatorMask.Group_Bit_Seq;
     		int openToken = groupOpenTokenStack[groupTokenStackHead];
     		if (pmapMaxBytes>0) {
     			opMask |= OperatorMask.Group_Bit_PMap;
@@ -559,6 +559,12 @@ public class TemplateHandler extends DefaultHandler {
 	}
 	
 	private void buildDictionaryMemberLists() {
+		
+		//each dictionary needs one long array but this will need to be built in multiple passes.
+		int dictionaryCount = dictionaryNames.size();
+		//need one array for each of these, but not sure how long the arrays will be
+		
+		
 		
 		//TODO: walk dictionary map for each field id.
 		//walk down dictionaries and it.

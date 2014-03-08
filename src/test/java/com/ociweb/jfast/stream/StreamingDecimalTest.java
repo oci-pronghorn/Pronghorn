@@ -12,6 +12,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -150,7 +151,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 			
-		long none = Integer.MIN_VALUE/2;
+		long none = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 		
 		int i = operationIters;
 		int g = fieldsPerGroup;
@@ -184,17 +185,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
 	private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
 		if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-			int exp = fr.readDecimalExponent(tokenLookup[f],-1);
-			if (exp!=-1) {
-				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+			int exp = fr.readDecimalExponent(tokenLookup[f]);
+			if (exp!=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
 			}
-			long man = fr.readDecimalMantissa(tokenLookup[f],none);
+			long man = fr.readDecimalMantissa(tokenLookup[f]);
 			if (none!=man) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
 			}
 		} else { 
-			int exp = fr.readDecimalExponent(tokenLookup[f],0);
-			long man = fr.readDecimalMantissa(tokenLookup[f],none);
+			int exp = fr.readDecimalExponent(tokenLookup[f]);
+			long man = fr.readDecimalMantissa(tokenLookup[f]);
 			if (testData[f]!=man) {
 				assertEquals(testData[f], man);
 			}
@@ -203,17 +204,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
 	private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token, int i) {
 		if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-			int exp = fr.readDecimalExponent(tokenLookup[f],-1);
-			if (exp!=-1) {
-				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),-1, exp);
+			int exp = fr.readDecimalExponent(tokenLookup[f]);
+			if (exp!=TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
+				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
 			}
-			long man = fr.readDecimalMantissa(tokenLookup[f],none);
+			long man = fr.readDecimalMantissa(tokenLookup[f]);
 			if (none!=man) {
 				assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, man);
 			}
 		} else { 
-			int exp = fr.readDecimalExponent(tokenLookup[f],0);
-			long man = fr.readDecimalMantissa(tokenLookup[f],none);
+			int exp = fr.readDecimalExponent(tokenLookup[f]);
+			long man = fr.readDecimalMantissa(tokenLookup[f]);
 			if (testMantConst!=man) {
 				assertEquals(testMantConst, man);
 			}

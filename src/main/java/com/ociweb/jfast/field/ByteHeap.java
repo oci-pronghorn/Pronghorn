@@ -396,22 +396,6 @@ public class ByteHeap {
 		}
 	}
 	
-	int offset(int idx) {
-		return idx<<2;
-	}
-	
-	int nextLimit(int offset) {
-		return tat[offset+4];
-	}
-	
-	int stopIndex(int offset) {
-		return tat[offset+1];
-	}
-	
-	int stopIndex(int offset, int value) {
-		return tat[offset+1] = value;
-	}
-	
 	//never call without calling setZeroLength first then a sequence of these
 	//never call without calling offset() for first argument
 	int appendTail(int offset, int nextLimit, byte value) {

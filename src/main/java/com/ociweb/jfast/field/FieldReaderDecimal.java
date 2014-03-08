@@ -11,7 +11,7 @@ public class FieldReaderDecimal {
 	private PrimitiveReader reader;
 	private final FieldReaderInteger exponent;
 	private final FieldReaderLong mantissa;
-		
+	private int readFromIdx = -1;	
 	
 	public FieldReaderDecimal(PrimitiveReader reader, int[] decimalExponentDictionary, long[] decimalMantissaDictionary) {
 		this.reader = reader;
@@ -31,7 +31,7 @@ public class FieldReaderDecimal {
 		mantissa.copy(sourceToken, targetToken);
 	}
 	
-	public int readDecimalExponentOptional(int token, int valueOfOptional) {
+	public int readDecimalExponentOptional(int token) {
 		
 		//oppExp
 				if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
@@ -40,14 +40,14 @@ public class FieldReaderDecimal {
 						//none, delta
 						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 							//none
-							return exponent.readIntegerSignedOptional(token,valueOfOptional);
+							return exponent.readIntegerSignedOptional(token,readFromIdx );
 						} else {
 							//delta
-							return exponent.readIntegerSignedDeltaOptional(token, valueOfOptional);
+							return exponent.readIntegerSignedDeltaOptional(token,readFromIdx );
 						}	
 					} else {
 						//constant
-						return exponent.readIntegerSignedConstantOptional(token, valueOfOptional);
+						return exponent.readIntegerSignedConstantOptional(token,readFromIdx );
 					}
 					
 				} else {
@@ -56,14 +56,14 @@ public class FieldReaderDecimal {
 						//copy, increment
 						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 							//copy
-							return exponent.readIntegerSignedCopyOptional(token,valueOfOptional);
+							return exponent.readIntegerSignedCopyOptional(token,readFromIdx );
 						} else {
 							//increment
-							return exponent.readIntegerSignedIncrementOptional(token, valueOfOptional);
+							return exponent.readIntegerSignedIncrementOptional(token,readFromIdx );
 						}	
 					} else {
 						// default
-						return exponent.readIntegerSignedDefaultOptional(token, valueOfOptional);
+						return exponent.readIntegerSignedDefaultOptional(token,readFromIdx );
 					}		
 				}
 				
@@ -78,14 +78,14 @@ public class FieldReaderDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					return exponent.readIntegerSigned(token);
+					return exponent.readIntegerSigned(token,readFromIdx);
 				} else {
 					//delta
-					return exponent.readIntegerSignedDelta(token);
+					return exponent.readIntegerSignedDelta(token,readFromIdx);
 				}	
 			} else {
 				//constant
-				return exponent.readIntegerSignedConstant(token);
+				return exponent.readIntegerSignedConstant(token,readFromIdx);
 			}
 			
 		} else {
@@ -94,20 +94,20 @@ public class FieldReaderDecimal {
 				//copy, increment
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
-					return exponent.readIntegerSignedCopy(token);
+					return exponent.readIntegerSignedCopy(token,readFromIdx);
 				} else {
 					//increment
-					return exponent.readIntegerSignedIncrement(token);
+					return exponent.readIntegerSignedIncrement(token,readFromIdx);
 				}	
 			} else {
 				// default
-				return exponent.readIntegerSignedDefault(token);
+				return exponent.readIntegerSignedDefault(token,readFromIdx);
 			}		
 		}
 		
 	}
 
-	public long readDecimalMantissaOptional(int token, long valueOfOptional) {
+	public long readDecimalMantissaOptional(int token) {
 		//oppMaint
 				if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 					//none, constant, delta
@@ -115,14 +115,14 @@ public class FieldReaderDecimal {
 						//none, delta
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//none
-							return mantissa.readLongSignedOptional(token,valueOfOptional);
+							return mantissa.readLongSignedOptional(token );
 						} else {
 							//delta
-							return mantissa.readLongSignedDeltaOptional(token, valueOfOptional);
+							return mantissa.readLongSignedDeltaOptional(token );
 						}	
 					} else {
 						//constant
-						return mantissa.readLongSignedConstantOptional(token, valueOfOptional);
+						return mantissa.readLongSignedConstantOptional(token );
 					}
 					
 				} else {
@@ -131,14 +131,14 @@ public class FieldReaderDecimal {
 						//copy, increment
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//copy
-							return mantissa.readLongSignedCopyOptional(token,valueOfOptional);
+							return mantissa.readLongSignedCopyOptional(token );
 						} else {
 							//increment
-							return mantissa.readLongSignedIncrementOptional(token, valueOfOptional);
+							return mantissa.readLongSignedIncrementOptional(token );
 						}	
 					} else {
 						// default
-						return mantissa.readLongSignedDefaultOptional(token, valueOfOptional);
+						return mantissa.readLongSignedDefaultOptional(token );
 					}		
 				}
 		

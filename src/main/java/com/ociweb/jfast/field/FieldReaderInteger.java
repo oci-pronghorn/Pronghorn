@@ -4,6 +4,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
 
@@ -12,6 +13,9 @@ public class FieldReaderInteger {
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;	
 	final int[]  lastValue;
+	
+	//TODO: add advanced API for modification
+	private int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
 
 	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
 
@@ -38,74 +42,74 @@ public class FieldReaderInteger {
 		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
 	}
 
-	public int readIntegerUnsigned(int token) {
+	public int readIntegerUnsigned(int token, int readFromIdx) {
 		//no need to set initValueFlags for field that can never be null
 		return lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned();
 	}
 
-	public int readIntegerUnsignedOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedOptional(int token, int readFromIdx) {
 		int value = reader.readIntegerUnsigned();
-		return value==0 ? valueOfOptional : value-1;
+		return value==0 ? absentInts[TokenBuilder.extractAbsent(token)] : value-1;
 	}
 
-	public int readIntegerUnsignedConstant(int token) {
+	public int readIntegerUnsignedConstant(int token, int readFromIdx) {
 		//always return this required value.
 		return lastValue[token & INSTANCE_MASK];
 	}
 	
-	public int readIntegerUnsignedConstantOptional(int token, int valueOfOptional) {
-		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	public int readIntegerUnsignedConstantOptional(int token, int readFromIdx) {
+		return (reader.popPMapBit()==0 ? absentInts[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
 	}
 
-	public int readIntegerSignedConstant(int token) {
+	public int readIntegerSignedConstant(int token, int readFromIdx) {
 		//always return this required value.
 		return lastValue[token & INSTANCE_MASK];
 	}
 	
-	public int readIntegerSignedConstantOptional(int token, int valueOfOptional) {
-		return (reader.popPMapBit()==0 ? valueOfOptional : lastValue[token & INSTANCE_MASK]);
+	public int readIntegerSignedConstantOptional(int token, int readFromIdx) {
+		return (reader.popPMapBit()==0 ? absentInts[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
 	}
 	
 	//TODO: refactor required to support complex dictionary configuration where different ID is used.
 	//We need to read from one IDX and write to another, this is a required feature.
 	
 	
-	public int readIntegerUnsignedCopy(int token) {
+	public int readIntegerUnsignedCopy(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? 
 				 lastValue[token & INSTANCE_MASK] : 
 			     (lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned()));
 	}
 
-	public int readIntegerUnsignedCopyOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedCopyOptional(int token, int readFromIdx) {
 		int value;
 		if (reader.popPMapBit()==0) {
 			value = lastValue[token & INSTANCE_MASK];
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readIntegerUnsigned();
 		}
-		return (0 == value ? valueOfOptional: value-1);
+		return (0 == value ? absentInts[TokenBuilder.extractAbsent(token)]: value-1);
 	}
 	
 	
-	public int readIntegerUnsignedDelta(int token) {
+	public int readIntegerUnsignedDelta(int token, int readFromIdx) {
 		//Delta opp never uses PMAP
 		return (lastValue[token & INSTANCE_MASK] += reader.readLongSigned());
 		
 	}
 	
-	public int readIntegerUnsignedDeltaOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedDeltaOptional(int token, int readFromIdx) {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK]=0;
-			return valueOfOptional;
+			return absentInts[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += (value>0 ? value-1 : value);
 			
 		}
 	}
 
-	public int readIntegerUnsignedDefault(int token) {
+	public int readIntegerUnsignedDefault(int token, int readFromIdx) {
 		
 		if (reader.popPMapBit()==0) {
 			//default value 
@@ -116,23 +120,23 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerUnsignedDefaultOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedDefaultOptional(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			
 			int last = lastValue[token & INSTANCE_MASK];
 			return last == 0 ?
 					//default value is null so return optional.
-					valueOfOptional : 
+					absentInts[TokenBuilder.extractAbsent(token)] : 
 					//default value 
 					last;
 	
 		} else {
 			int value = reader.readIntegerUnsigned();
-			return value==0 ? valueOfOptional : value-1;
+			return value==0 ? absentInts[TokenBuilder.extractAbsent(token)] : value-1;
 		}
 	}
 
-	public int readIntegerUnsignedIncrement(int token) {
+	public int readIntegerUnsignedIncrement(int token, int readFromIdx) {
 		
 		if (reader.popPMapBit()==0) {
 			//increment old value
@@ -144,16 +148,16 @@ public class FieldReaderInteger {
 	}
 
 
-	public int readIntegerUnsignedIncrementOptional(int token, int valueOfOptional) {
+	public int readIntegerUnsignedIncrementOptional(int token, int readFromIdx) {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentInts[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
 		} else {
 			int value;
 			if ((value = reader.readIntegerUnsigned())==0) {
 				lastValue[instance] = 0;
-				return valueOfOptional;
+				return absentInts[TokenBuilder.extractAbsent(token)];
 			} else {
 				return (lastValue[instance] = value)-1;
 			}
@@ -164,25 +168,25 @@ public class FieldReaderInteger {
 	//////////////
 	//////////////
 	
-	public int readIntegerSigned(int token) {
+	public int readIntegerSigned(int token, int readFromIdx) {
 		//no need to set initValueFlags for field that can never be null
 		return lastValue[token & INSTANCE_MASK] = reader.readIntegerSigned();
 	}
 
-	public int readIntegerSignedOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedOptional(int token, int readFromIdx) {
 		int value = reader.readIntegerSigned();
 		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
-		return value==0 ? valueOfOptional : value-1;
+		return value==0 ? absentInts[TokenBuilder.extractAbsent(token)] : value-1;
 	}
 
 
-	public int readIntegerSignedCopy(int token) {
+	public int readIntegerSignedCopy(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? 
 				 lastValue[token & INSTANCE_MASK] : 
 			     (lastValue[token & INSTANCE_MASK] = reader.readIntegerSigned()));
 	}
 
-	public int readIntegerSignedCopyOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedCopyOptional(int token, int readFromIdx) {
 		//if zero then use old value.
 		int value;
 		if (reader.popPMapBit()==0) {
@@ -190,21 +194,21 @@ public class FieldReaderInteger {
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readIntegerSigned();
 		}
-		return (0 == value ? valueOfOptional: (value>0 ? value-1 : value));
+		return (0 == value ? absentInts[TokenBuilder.extractAbsent(token)]: (value>0 ? value-1 : value));
 	}
 	
 	
-	public int readIntegerSignedDelta(int token) {
+	public int readIntegerSignedDelta(int token, int readFromIdx) {
 		//Delta opp never uses PMAP
 		return (lastValue[token & INSTANCE_MASK] += reader.readLongSigned());
 	}
 	
-	public int readIntegerSignedDeltaOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedDeltaOptional(int token, int readFromIdx) {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK]=0;
-			return valueOfOptional;
+			return absentInts[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += 
 					(value + ((value>>>63)-1) );
@@ -212,7 +216,7 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerSignedDefault(int token) {
+	public int readIntegerSignedDefault(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			//default value 
 			return lastValue[token & INSTANCE_MASK];
@@ -222,21 +226,21 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerSignedDefaultOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedDefaultOptional(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			int last = lastValue[token & INSTANCE_MASK];
-			return 0==last?valueOfOptional:last;			
+			return 0==last?absentInts[TokenBuilder.extractAbsent(token)]:last;			
 		} else {
 			int value;
 			if ((value = reader.readIntegerSigned())==0) {
-				return valueOfOptional;
+				return absentInts[TokenBuilder.extractAbsent(token)];
 			} else {
 				return value>0 ? value-1 : value;
 			}
 		}
 	}
 
-	public int readIntegerSignedIncrement(int token) {
+	public int readIntegerSignedIncrement(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			//increment old value
 			return ++lastValue[token & INSTANCE_MASK];
@@ -247,15 +251,15 @@ public class FieldReaderInteger {
 	}
 
 
-	public int readIntegerSignedIncrementOptional(int token, int valueOfOptional) {
+	public int readIntegerSignedIncrementOptional(int token, int readFromIdx) {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? valueOfOptional: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentInts[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
 		} else {
 			int value;
 			if ((lastValue[instance] = value = reader.readIntegerSigned())==0) {
-				return valueOfOptional;
+				return absentInts[TokenBuilder.extractAbsent(token)];
 			} else {
 				//lastValue[instance] = value;
 				//return (value + (value>>>31)) -1;
@@ -264,8 +268,4 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public void setReadFrom(int readFromIdx) {
-		// TODO Auto-generated method stub
-		
-	}
 }

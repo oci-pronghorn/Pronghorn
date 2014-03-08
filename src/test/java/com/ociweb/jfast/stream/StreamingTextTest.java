@@ -10,6 +10,7 @@ import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;

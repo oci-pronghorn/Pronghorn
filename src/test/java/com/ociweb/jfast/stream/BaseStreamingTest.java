@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.MappedByteBuffer;
 
+import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;

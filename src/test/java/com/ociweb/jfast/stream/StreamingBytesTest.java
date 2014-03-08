@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderBytes;

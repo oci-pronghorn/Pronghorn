@@ -44,47 +44,50 @@ public class FieldReaderChar {
 
 	final byte NULL_STOP = (byte)0x80;
 
-	public int readASCIICopy(int token) {
+	public int readASCIICopy(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
-			readASCIIToHeap(idx);
+			byte val = reader.readTextASCIIByte();
+			if (0!=(val&0x7F)) {
+				//real data, this is the most common case;
+				charDictionary.setZeroLength(idx);				
+				fastHeapAppend(idx, val);
+			} else {
+				readASCIIToHeapNone(idx, val);
+			}
 		}
 		return idx;
 	}
 
 	
-	private void readASCIIToHeap(int idx) {
-		
+	private void readASCIIToHeapNone(int idx, byte val) {
 		// 0x80 is a null string.
 		// 0x00, 0x80 is zero length string
-		byte val = reader.readTextASCIIByte();
-		if (val==0) {
+		if (0==val) {
+			//almost never happens
 			charDictionary.setZeroLength(idx);
 			//must move cursor off the second byte
-			val = reader.readTextASCIIByte();
+			val = reader.readTextASCIIByte(); //< .1%
 			//at least do a validation because we already have what we need
-			assert((val&0xFF)==0x80);
+			assert((val&0xFF)==0x80);			
 		} else {
-			if (val==NULL_STOP) {
-				charDictionary.setNull(idx);				
-			} else {
-				charDictionary.setZeroLength(idx);				
-				fastHeapAppend(idx, val);
-			}
+			//happens rarely when it equals 0x80
+			charDictionary.setNull(idx);				
+			
 		}
 	}
 
 	private void fastHeapAppend(int idx, byte val) {
-		int offset = charDictionary.offset(idx);
-		int nextLimit = charDictionary.nextLimit(offset);
-		int targIndex = charDictionary.stopIndex(offset);
+		int offset = idx<<2;
+		int nextLimit = charDictionary.tat[offset+4];
+		int targIndex = charDictionary.tat[offset+1];
 		
 		char[] targ = charDictionary.rawAccess();
 				
 		if (targIndex>nextLimit) {
 			charDictionary.makeSpaceForAppend(offset, 2); //also space for last char
-			nextLimit = charDictionary.nextLimit(offset);
+			nextLimit = charDictionary.tat[offset+4];
 		}
 		
 		if(val>=0) {
@@ -97,7 +100,7 @@ public class FieldReaderChar {
 					targIndex-=len;
 					System.err.println("NOW DELETE THIS,  tested make space:"+offset);
 					charDictionary.makeSpaceForAppend(offset, 2); //also space for last char
-					nextLimit = charDictionary.nextLimit(offset);
+					nextLimit = charDictionary.tat[offset+4];
 				} else {
 					targIndex+=len;
 				}
@@ -105,65 +108,72 @@ public class FieldReaderChar {
 		} else {
 			targ[targIndex++] = (char)(0x7F & val);
 		}
-		charDictionary.stopIndex(offset,targIndex);
+		int stopIndex = charDictionary.tat[offset+1] = targIndex;
 	}
 	
 	
-	public int readASCIIConstant(int token) {
+	public int readASCIIConstant(int token, int readFromIdx) {
 		//always return this required value.
 		return token & INSTANCE_MASK;
 	}
 	
-	public int readASCIIConstantOptional(int token) {
+	public int readASCIIConstantOptional(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 
-	public int readUTF8Constant(int token) {
+	public int readUTF8Constant(int token, int readFromIdx) {
 		//always return this required value.
 		return token & INSTANCE_MASK;
 	}
 	
-	public int readUTF8ConstantOptional(int token) {
+	public int readUTF8ConstantOptional(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 	
-	public int readASCIIDefault(int token) {
+	public int readASCIIDefault(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
-			readASCIIToHeap(idx);
+			byte val = reader.readTextASCIIByte();
+			if (0!=(val&0x7F)) {
+				//real data, this is the most common case;
+				charDictionary.setZeroLength(idx);				
+				fastHeapAppend(idx, val);
+			} else {
+				readASCIIToHeapNone(idx, val);
+			}
 			return idx;
 		}
 	}
 	
-	public int readASCIIDefaultOptional(int token) {
+	public int readASCIIDefaultOptional(int token, int readFromIdx) {
 		//for ASCII we don't need special behavior for optional
-		return readASCIIDefault(token); 
+		return readASCIIDefault(token, readFromIdx); 
 	}
 
-	public int readASCIIDeltaOptional(int token) {
-		return readASCIIDelta(token);//TODO: need null logic here.
+	public int readASCIIDeltaOptional(int token, int readFromIdx) {
+		return readASCIIDelta(token, readFromIdx);//TODO: need null logic here.
 	}
 
-	public int readASCIIDelta(int token) {
+	public int readASCIIDelta(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
 		
 		if (trim>=0) {
-			return readASCIITail(idx, trim);
+			return readASCIITail(idx, trim, readFromIdx);
 		} else {
-			return readASCIIHead(idx, trim);
+			return readASCIIHead(idx, trim, readFromIdx);
 		}
 	}
 
-	public int readASCIITail(int token) {
-		return readASCIITail(token & INSTANCE_MASK, reader.readIntegerUnsigned());
+	public int readASCIITail(int token, int readFromIdx) {
+		return readASCIITail(token & INSTANCE_MASK, reader.readIntegerUnsigned(), readFromIdx);
 	}
 
-	private int readASCIITail(int idx, int trim) {
+	private int readASCIITail(int idx, int trim, int readFromIdx) {
 		if (trim>0) {
 			charDictionary.trimTail(idx, trim);
 		}
@@ -192,7 +202,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 	
-	public int readASCIITailOptional(int token) {
+	public int readASCIITailOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 				
 		int tail = reader.readIntegerUnsigned();
@@ -225,14 +235,14 @@ public class FieldReaderChar {
 		return idx;
 	}
 	
-	private int readASCIIHead(int idx, int trim) {
+	private int readASCIIHead(int idx, int trim, int readFromIdx) {
 		if (trim<0) {
 			charDictionary.trimHead(idx, -trim);
 		}
 
 		byte value = reader.readTextASCIIByte();
-		int offset = charDictionary.offset(idx);
-		int nextLimit = charDictionary.nextLimit(offset);
+		int offset = idx<<2;
+		int nextLimit = charDictionary.tat[offset+4];
 		
 		if (trim>=0) {
 			while (value>=0) {
@@ -254,11 +264,18 @@ public class FieldReaderChar {
 	}
 
 
-	public int readASCIICopyOptional(int token) {
+	public int readASCIICopyOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
-			readASCIIToHeap(idx);
+			byte val = reader.readTextASCIIByte();
+			if (0!=(val&0x7F)) {
+				//real data, this is the most common case;
+				charDictionary.setZeroLength(idx);				
+				fastHeapAppend(idx, val);
+			} else {
+				readASCIIToHeapNone(idx, val);
+			}
 		}
 		return idx;
 	}
@@ -267,7 +284,7 @@ public class FieldReaderChar {
 
 
 
-	public int readUTF8Default(int token) {
+	public int readUTF8Default(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
@@ -284,7 +301,7 @@ public class FieldReaderChar {
 	}
 	
 
-	public int readUTF8DefaultOptional(int token) {
+	public int readUTF8DefaultOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
@@ -300,7 +317,7 @@ public class FieldReaderChar {
 		}
 	}
 
-	public int readUTF8Delta(int token) {
+	public int readUTF8Delta(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
@@ -317,7 +334,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readUTF8Tail(int token) {
+	public int readUTF8Tail(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
@@ -329,7 +346,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 	
-	public int readUTF8Copy(int token) {
+	public int readUTF8Copy(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
@@ -340,7 +357,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readUTF8CopyOptional(int token) {
+	public int readUTF8CopyOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {			
 			int length = reader.readIntegerUnsigned()-1;
@@ -352,7 +369,7 @@ public class FieldReaderChar {
 	}
 
 
-	public int readUTF8DeltaOptional(int token) {
+	public int readUTF8DeltaOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
@@ -380,7 +397,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readUTF8TailOptional(int token) {
+	public int readUTF8TailOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerUnsigned();
@@ -398,17 +415,24 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readASCII(int token) {
+	public int readASCII(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
-		readASCIIToHeap(idx);
+		byte val = reader.readTextASCIIByte();
+		if (0!=(val&0x7F)) {
+			//real data, this is the most common case;
+			charDictionary.setZeroLength(idx);				
+			fastHeapAppend(idx, val);
+		} else {
+			readASCIIToHeapNone(idx, val);
+		}
 		return idx;
 	}
 	
-	public int readTextASCIIOptional(int token) {
-		return readASCII(token);
+	public int readTextASCIIOptional(int token, int readFromIdx) {
+		return readASCII(token, readFromIdx);
 	}
 
-	public int readUTF8(int token) {
+	public int readUTF8(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
 		reader.readTextUTF8(charDictionary.rawAccess(), 
@@ -417,7 +441,7 @@ public class FieldReaderChar {
 		return idx;
 	}
 
-	public int readUTF8Optional(int token) {
+	public int readUTF8Optional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
 		reader.readTextUTF8(charDictionary.rawAccess(), 
@@ -425,13 +449,6 @@ public class FieldReaderChar {
 				            length);
 		return idx;
 	}
-
-	public void setReadFrom(int readFromIdx) {
-		// TODO Auto-generated method stub
-		
-	}
-
-
 
 	
 }

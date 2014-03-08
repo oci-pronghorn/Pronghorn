@@ -11,6 +11,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -136,7 +137,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 			
-		long none = Integer.MIN_VALUE/2;
+		long none = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 		
 		int i = operationIters;
 		int g = fieldsPerGroup;

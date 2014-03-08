@@ -78,105 +78,89 @@ public class TemplateLoaderTest {
 		return builder.toString();
 	}
 	
+//TODO: build FAST debugger that can break data without template on stop bit and provide multiple possible interpretations.
+	
+	// Runs very well with these JVM arguments
+	// -XX:CompileThreshold=64 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:+AggressiveOpts
+	// ?? -XX:+UseFPUForSpilling 
+			
 	@Test
-	public void testTwo() {	
+	public void testDecodeComplex30000() {	
 		
 		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
 		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
 		
-		int prefixSize = 4;
+		byte prefixSize = 4;
 		catalog.setMessagePrefix(prefixSize);	
-
 		
 		//connect to file		
 		URL sourceData = getClass().getResource("/performance/complex30000.dat");
-		File fileSource = new File(sourceData.getFile());
+
+		FASTInputByteArray fastInput = buildInputForTesting(new File(sourceData.getFile()));
+		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
+		
+		System.gc();
+		
+		//TODO: Dictionary members and single list of start/stop values and an index list
+		//TODO: textHEap.reset() just these ranges flagged do reset lazy.
+		
+		double start=0;
+		int warmup = 120;//set much larger for profiler
+		int count = 20;
+		int iter = count+warmup;
+		int result = 0;
+		while (--iter>=0) {
+
+			int data = 0; //same id needed for writer construction
+			while (0!=(data = dynamicReader.hasMore())) {
+				result |=data;
+			}
 			
+			fastInput.reset();
+			primitiveReader.reset();
+			if (0==start) {
+				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
+				if (iter==count) {
+					start = System.nanoTime();
+				}
+			}
+			dynamicReader.reset();
+			
+		}
+		double duration = System.nanoTime()-start;
+		int ns = (int)(duration/count);
+		System.err.println("Avg duration:"+ns+"ns");
+		assertTrue(result!=0);	
+		
+	}
+
+	@Test
+	public void testDecodeEncodeComplex30000() {	
+		
+		assertTrue(true);//
+		//TODO: COPY DECODE TEST AND CALL DECODE
+		
+	}
+	
+	private FASTInputByteArray buildInputForTesting(File fileSource) {
+		byte[] fileData = null;
 		try {
 			//do not want to time file access so copy file to memory
-			byte[] fileData = new byte[sourceData.getFile().length()];
+			fileData = new byte[(int) fileSource.length()];
 			FileInputStream inputStream = new FileInputStream(fileSource);
 			int readBytes = inputStream.read(fileData);
 			inputStream.close();
 			assertEquals(fileData.length,readBytes);
 			
-			FASTInputByteArray fastInput = new FASTInputByteArray(fileData);
-			PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
-			FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
-			
-			double start=0;
-			int warmup = 10000;
-			int count = 100; 
-			int iter = count+warmup;
-			while (--iter>=0) {
-
-				int data = 0; //same id needed for writer construction
-				while (0!=(data = dynamicReader.hasMore())) {
-					
-				
-					
-					//switch on data?
-					
-					//System.err.println("data:"+Integer.toHexString(data)+"  "+data);
-					
-					//int value = dynamicReader.readInt(33);
-					//pass dynamic reader into  nextData = dynamicWriter.write(data,dynamicReader); //write can then be stateless
-					
-				}
-				
-				fastInput.reset();
-				primitiveReader.reset();
-				dynamicReader.reset();
-				
-				if (0==start && iter==count) {
-					start = System.nanoTime();
-				}
-				
-			}
-			double duration = System.nanoTime()-start;
-			System.err.println("Duration:"+(duration/(double)count)+"ns");
-			
-			//TODO: print expected template for 2
-			
-//			PrimitiveReader pr = new PrimitiveReader(fist);
-//			byte[] targetBuffer = new byte[4];
-//			pr.readByteData(targetBuffer, 0, 4);
-//						
-//			System.err.println("DATA:"+hexString(targetBuffer));
-//			System.err.println("DATA:"+Arrays.toString(targetBuffer));
-//			System.err.println("DATA:"+binString(targetBuffer));
-//			
-//			pr.openPMap(1);
-//			System.err.println("template:"+pr.readIntegerUnsigned());
-//			System.err.println("34:"+pr.readIntegerUnsigned());
-//			System.err.println("52:"+pr.readIntegerUnsigned());
-//			System.err.println("131:"+pr.readTextASCII(new StringBuilder()));
-//			//pr.openPMap(1);
-//			System.err.println("len 146:"+pr.readIntegerUnsigned());
-			
-			//System.err.println(pr.readIntegerUnsigned());
-//			System.err.println(pr.readIntegerUnsigned());
-//			System.err.println(pr.readIntegerUnsigned());
-//			System.err.println(pr.readIntegerUnsigned());		
-//			System.err.println(pr.readIntegerUnsigned());
-			//System.err.println(pr.readIntegerUnsigned());
-			//System.err.println(pr.readTextASCII(new StringBuilder()));
-			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		
-		
-//		ByteArrayInputStream bais = new ByteArrayInputStream()
-//		
-//		
-//		ByteArrayOutputStream sourceBuffer = new ByteArrayOutputStream(1<<22);
-		
-		
-		
+		}	
+			
+			FASTInputByteArray fastInput = new FASTInputByteArray(fileData);
+		return fastInput;
 	}
 
 	
