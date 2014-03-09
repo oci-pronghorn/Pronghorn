@@ -35,6 +35,11 @@ public class FieldReaderInteger {
 		return length==1;
 	}
 
+
+	public void reset(int idx) {
+		lastValue[idx] = 0;
+	}
+	
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
 	}
@@ -267,5 +272,6 @@ public class FieldReaderInteger {
 			}
 		}
 	}
+
 
 }

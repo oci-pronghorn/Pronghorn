@@ -130,7 +130,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields, new int[0][0]);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -153,12 +153,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f], none);
+				     		long value = fr.readLong(tokenLookup[f]);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f], none);
+							long value = fr.readLong(tokenLookup[f]);
 							if (testConst!=value) {
 								assertEquals(testConst, value);
 							}
@@ -167,12 +167,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f],none);
+				     		long value = fr.readLong(tokenLookup[f]);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f],none);
+							long value = fr.readLong(tokenLookup[f]);
 							if (testData[f]!=value) {
 								assertEquals(testData[f], value);
 							}

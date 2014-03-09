@@ -267,8 +267,12 @@ public class FieldReaderLong {
 	}
 
 	public void setReadFrom(int readFromIdx) {
-		// TODO Auto-generated method stub
+		// TODO delete.
 		
+	}
+
+	public void reset(int idx) {
+		lastValue[idx] = 0;
 	}
 	
 	

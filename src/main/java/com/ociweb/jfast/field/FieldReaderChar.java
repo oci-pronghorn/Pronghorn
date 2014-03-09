@@ -450,5 +450,11 @@ public class FieldReaderChar {
 		return idx;
 	}
 
+	public void reset(int idx) {
+		if (null!=charDictionary) {
+			charDictionary.setNull(idx);
+		}
+	}
+
 	
 }

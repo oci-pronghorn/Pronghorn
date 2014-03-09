@@ -186,6 +186,11 @@ public class FieldReaderDecimal {
 		
 	}
 
+	public void reset(int idx) {
+		exponent.reset(idx);
+		mantissa.reset(idx);		
+	}
+
 
 
 }

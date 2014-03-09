@@ -207,6 +207,12 @@ public class FieldReaderBytes {
 		
 	}
 
+	public void reset(int idx) {
+		if (null!=byteHeap) {
+			byteHeap.setNull(idx);
+		}
+	}
+
 
 
 }

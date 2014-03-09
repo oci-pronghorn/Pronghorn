@@ -58,7 +58,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
 				                                catalog.templatesCount(), 
-				                                3, catalog.maxFieldId());
+				                                3, catalog.maxFieldId(),
+				                                catalog.dictionaryMembers());
 			
 	}
 	
@@ -99,9 +100,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 */
 
     
-	public int hasMore() {
+	public int hasMore(long[] target) {
 		
 		//System.err.println("hasMore call");
+		int t = 0;
 		
 		do {
 			if (activeScriptTemplateMask<0) {
@@ -120,7 +122,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 			int token = (int)(val&0xFFFFFFFF);
 			
 			//jump to top if at end of sequence with count remaining
-			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token)) {
+			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token, target, t++)) {
 					//jump back to top of this sequence in the script.
 					//return this cursor position as the unique id for this sequence.
 					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token));

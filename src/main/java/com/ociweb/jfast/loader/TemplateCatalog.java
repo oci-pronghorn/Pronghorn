@@ -22,6 +22,7 @@ public class TemplateCatalog {
 	final int maxNonTemplatePMapSize;
 	final int maxFieldId;
 	
+	final int[][] dictionaryMembers;
 	
 	//Runtime specific message prefix, only used for some transmission technologies
 	byte prefixSize=0; //default is none
@@ -33,6 +34,11 @@ public class TemplateCatalog {
 		scriptsCatalog = new long[1<<templatePow][];
 		
 		loadTemplateScripts(reader);
+		
+		int dictionaryCount = reader.readIntegerUnsigned();
+		dictionaryMembers = new int[dictionaryCount][];
+		
+		loadDictionaryMembers(reader);
 		
 		maxFieldId = reader.readIntegerUnsigned();
 		//it is assumed that template PMaps are smaller or larger than the other PMaps so these are kept separate
@@ -46,7 +52,9 @@ public class TemplateCatalog {
 		
 	}
 
-	
+
+
+
 	public void setMessagePrefix(byte prefixSize) {
 		this.prefixSize = prefixSize;
 	}
@@ -105,11 +113,14 @@ public class TemplateCatalog {
 			                  int uniqueIds, int biggestId, 
 			                  int uniqueTemplateIds, int biggestTemplateId,
 			                  long[][] scripts, DictionaryFactory df, 
-			                  int maxTemplatePMap, int maxNonTemplatePMap) {
+			                  int maxTemplatePMap, int maxNonTemplatePMap, 
+			                  int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
 		
 		//TODO: Remove absent value this will be set client side as needed and can be different.
 		
-		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);				
+		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);			
+		
+		saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
 				
 		writer.writeIntegerUnsigned(biggestId);
 	//	System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
@@ -122,9 +133,44 @@ public class TemplateCatalog {
 		
 	}
 
-
+	
+	private static void saveDictionaryMembers(PrimitiveWriter writer, int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
+		//save count of dictionaries
+		int dictionaryCount = tokenIdxMembers.length;
+		writer.writeIntegerUnsigned(dictionaryCount);
+		//
+		int d = dictionaryCount;
+		while (--d>=0) {
+			int[] members = tokenIdxMembers[d];
+			int h = tokenIdxMemberHeads[d];
+			writer.writeIntegerUnsigned(h);//length of reset script (eg member list)
+			while (--h>=0) {
+				writer.writeIntegerSigned(members[h]);
+			}			
+		}
+	}
 
 	
+	private void loadDictionaryMembers(PrimitiveReader reader) {
+		// //target  int[][]  dictionaryMembers
+		int dictionaryCount = dictionaryMembers.length;
+		int d = dictionaryCount;
+		while (--d>=0) {
+			int h = reader.readIntegerUnsigned();//length of reset script (eg member list)
+			int[] members = new int[h];
+			while (--h>=0) {
+				members[h] = reader.readIntegerSigned();
+			}	
+			dictionaryMembers[d] = members;
+		}
+	}
+	
+
+    private int[] resetList(int dictionary) {
+    	return dictionaryMembers[dictionary];
+    }
+
+
 	/**
 	 * 
 	 * Save template scripts to the catalog file.
@@ -212,6 +258,10 @@ public class TemplateCatalog {
 
 	public int maxFieldId() {
 		return maxFieldId;
+	}
+
+	public int[][] dictionaryMembers() {
+		return dictionaryMembers;
 	}
 
 	

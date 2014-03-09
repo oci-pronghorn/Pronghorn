@@ -27,9 +27,6 @@ public class FASTReaderDispatch{
 	
 	private final PrimitiveReader reader;
 	
-	private final int[] intLookup; //key is field id
-	private final long[] longLookup; //key is field id
-	
 	private int readFromIdx = -1; 
 	
 	//This is the GLOBAL dictionary
@@ -42,6 +39,7 @@ public class FASTReaderDispatch{
 		
 	
     private final int nonTemplatePMapSize;
+    private final int[][] dictionaryMembers;
 	
 	private final DictionaryFactory dictionaryFactory;
 	
@@ -56,25 +54,37 @@ public class FASTReaderDispatch{
 	int sequenceCountStackHead = -1;
 	int checkSequence;
 	
+	int[] integerDictionary;
+	long[] longDictionary;
+	int[] decimalExponentDictionary;
+	long[] decimalMantissaDictionary;
+	TextHeap charDictionary;
+	ByteHeap byteDictionary;
 	
 		
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
-			                   int maxTemplates, int nonTemplatePMapSize, int maxFieldId) {
+			                   int maxTemplates, int nonTemplatePMapSize, int maxFieldId, 
+			                   int[][] dictionaryMembers) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
+		this.dictionaryMembers = dictionaryMembers;
+		
 		
 		assert(maxFieldId>1);
-		//TODO: not sure these are a good idea, a simple list would be better.
-//		System.err.println("max field id for array:"+maxFieldId);
-		this.intLookup = new int[maxFieldId+1];
-		this.longLookup = new long[maxFieldId+1];
 		
-		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary());
-		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary());
-		this.readerDecimal = new FieldReaderDecimal(reader, dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.readerChar = new FieldReaderChar(reader,dcr.charDictionary());
-		this.readerBytes = new FieldReaderBytes(reader,dcr.byteDictionary());
+		this.integerDictionary = dcr.integerDictionary();
+		this.longDictionary = dcr.longDictionary();
+		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
+		this.decimalMantissaDictionary = dcr.decimalMantissaDictionary();
+		this.charDictionary = dcr.charDictionary();
+		this.byteDictionary = dcr.byteDictionary();
+		
+		this.readerInteger = new FieldReaderInteger(reader,integerDictionary);
+		this.readerLong = new FieldReaderLong(reader,longDictionary);
+		this.readerDecimal = new FieldReaderDecimal(reader, decimalExponentDictionary,decimalMantissaDictionary);
+		this.readerChar = new FieldReaderChar(reader,charDictionary);
+		this.readerBytes = new FieldReaderBytes(reader,byteDictionary);
 	}
 
 	public void reset() {
@@ -98,41 +108,77 @@ public class FASTReaderDispatch{
 	}
 	
 	int lastInt(int id) {
-		return intLookup[id];
+		return 0;//intLookup[id];
 	}
 	
 	long lastLong(int id) {
-		return longLookup[id];
+		return 0;//longLookup[id];
 	}
 	
 	public void dispatchReadPrefix(byte[] target) {
 		reader.readByteData(target, 0, target.length);
 	}
 	
+	int j = 0;
 	//package protected, unless we find a need to expose it?
-	boolean dispatchReadByToken(int id, int token) {
-	   
+	boolean dispatchReadByToken(int id, int token, long[] target, int t) {
+	   //The nested IFs for this short tree are slightly faster than switch 
+	   //for more JVM configurations and when switch is faster (eg lots of JVM -XX: args)
+	   //it is only slightly faster.
+		
+	   //For a dramatic speed up of this dispatch code look into code generation of the
+	   //script as a series of function calls against the specific FieldReader*.class
+	   //This is expected to save 4ns per field on the AMD hardware or a speedup > 12%.
+				
+	//TODO: hold target/disruptor and write there with blocking for read loop.
+		//TODO: textHeap and byteHeap require blocking support for the handoff.
+		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					dispatchReadByToken000(id, token);
+					target[t]=dispatchReadByToken000(id, token);//int
 				} else {
-					dispatchReadByToken001(id, token);
+					target[t]=dispatchReadByToken001(id, token);//long
 				}
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					dispatchReadByToken010(id, token);
+					target[t]=dispatchReadByToken010(id, token);//int for text
 				} else {
-					dispatchReadByToken011(id, token);
+					//011??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0110? Decimal and DecimalOptional
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							target[t]=readerDecimal.readDecimalExponent(token);
+							target[t]=readerDecimal.readDecimalMantissa(token);
+						} else {
+							//intLookup[posInt++]=
+							        readerDecimal.readDecimalExponentOptional(token);
+							//longLookup[posLong++]=
+							        readerDecimal.readDecimalMantissaOptional(token);
+						}
+					} else {
+						target[t]=	dispatchReadByToken0111(token);//int for bytes
+					}
 				}
 			}
 			return false;
 		} else {
 			//pause node for more work processing will return false 
 			return dispatchReadByToken1(id, token);	
+		}
+	}
+
+	private int dispatchReadByToken0111(int token) {
+		//0111?
+		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+			//01110 ByteArray
+			return readByteArray(token);
+		} else {
+			//01111 ByteArrayOptional
+			return readByteArrayOptional(token);
 		}
 	}
 	
@@ -169,7 +215,7 @@ public class FASTReaderDispatch{
 				int length = readIntegerUnsigned(token);
 				sequenceCountStack[++sequenceCountStackHead] = length;
 				//S//ystem.err.println("set new length:"+length);
-				intLookup[id] = length; 
+				//intLookup[id] = length; 
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 //					//1010?
@@ -235,16 +281,53 @@ public class FASTReaderDispatch{
 	private void readDictionaryCommand(int token) {
 
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-			//OperatorMask.Dictionary_Reset      0000
-			//clear all previous values to un-set for this dictionary only.
 			
-			//TODO: look up list of token ids for this dictionary.
+			//need dictionary id?
+			int dictionary = TokenBuilder.MAX_INSTANCE&token;
+
+			int[] members = dictionaryMembers[dictionary];
+			int m = 0;
+			int limit = members.length;
+			if (limit>0) {
+				int idx = members[m++];
+				while (m<limit) {
+					assert(idx<0);
+					
+					if (0==(idx&(8<<TokenBuilder.SHIFT_TYPE))) {
+						if (0==(idx&(4<<TokenBuilder.SHIFT_TYPE))) {
+							//integer
+							while (m<limit && (idx = members[m++])>=0) {
+								readerInteger.reset(idx);
+							}
+						} else {
+							//long
+							while (m<limit && (idx = members[m++])>=0) {
+								readerLong.reset(idx);
+							}
+						}
+					} else {
+						if (0==(idx&(4<<TokenBuilder.SHIFT_TYPE))) {
+							//text
+							while (m<limit && (idx = members[m++])>=0) {
+								readerChar.reset(idx);
+							}
+						} else {
+							if (0==(idx&(2<<TokenBuilder.SHIFT_TYPE))) {
+								//decimal
+								while (m<limit && (idx = members[m++])>=0) {
+									readerDecimal.reset(idx);
+								}
+							} else {
+								//bytes
+								while (m<limit && (idx = members[m++])>=0) {
+									readerBytes.reset(idx);
+								}
+							}
+						}
+					}	
+				}
+			}
 			
-			readerInteger.reset(dictionaryFactory);
-			readerLong.reset(dictionaryFactory);
-			readerDecimal.reset(dictionaryFactory);
-			readerChar.reset();
-			readerBytes.reset(); 
 		} else {
 			//OperatorMask.Dictionary_Read_From  0001
 			//next read will need to use this index to pull the right initial value.
@@ -262,124 +345,77 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private void dispatchReadByToken0(int id, int token) {
-		//0????
-		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-			//00???
-			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-				dispatchReadByToken000(id, token);
-			} else {
-				dispatchReadByToken001(id, token);
-			}
-		} else {
-			//01???
-			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-				dispatchReadByToken010(id, token);
-			} else {
-				dispatchReadByToken011(id, token);
-			}
-		}
-	}
 
-	private void dispatchReadByToken011(int id, int token) {
-		//011??
-		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-			//0110? Decimal and DecimalOptional
-			
-			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-				intLookup[id] =	readerDecimal.readDecimalExponent(token);
-			} else {
-				intLookup[id] =	readerDecimal.readDecimalExponentOptional(token);
-			}
-		
-			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-				longLookup[id] =  readerDecimal.readDecimalMantissa(token);
-			} else {
-				longLookup[id] =  readerDecimal.readDecimalMantissaOptional(token);
-			}
-			
-		} else {
-			//0111?
-			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-				//01110 ByteArray
-				intLookup[id] =	readByteArray(token);
-			} else {
-				//01111 ByteArrayOptional
-				intLookup[id] =	readByteArrayOptional(token);
-			}
-		}
-	}
-
-	private void dispatchReadByToken010(int id, int token) {
+	private int dispatchReadByToken010(int id, int token) {
 		//010??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0100?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//01000 TextASCII
-				intLookup[id] =	readTextASCII(token);
+				return 	readTextASCII(token);
 			} else {
 				//01001 TextASCIIOptional
-				intLookup[id] =	readTextASCIIOptional(token);
+				return 	readTextASCIIOptional(token);
 			}
 		} else {
 			//0101?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//01010 TextUTF8
-				intLookup[id] =	readTextUTF8(token);
+				return 	readTextUTF8(token);
 			} else {
 				//01011 TextUTF8Optional
-				intLookup[id] =	readTextUTF8Optional(token);
+				return 	readTextUTF8Optional(token);
 			}
 		}
 	}
 
-	private void dispatchReadByToken001(int id, int token) {
+	private long dispatchReadByToken001(int id, int token) {
 		//001??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0010?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//00100 LongUnsigned
-				longLookup[id] = readLongUnsigned(token);
+				return readLongUnsigned(token);
 			} else {
 				//00101 LongUnsignedOptional
-				longLookup[id] = readLongUnsignedOptional(token);
+				return readLongUnsignedOptional(token);
 			}
 		} else {
 			//0011?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//00110 LongSigned
-				longLookup[id] = readLongSigned(token);
+				return readLongSigned(token);
 			} else {
 				//00111 LongSignedOptional
-				longLookup[id] = readLongSignedOptional(token);
+				return readLongSignedOptional(token);
 			}
 		}
 	}
 
-	private void dispatchReadByToken000(int id, int token) {
+	private int dispatchReadByToken000(int id, int token) {
 		//000??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0000?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//00000 IntegerUnsigned
-				intLookup[id] =	readIntegerUnsigned(token);
+				return readIntegerUnsigned(token);
 			} else {
 				//00001 IntegerUnsignedOptional
-				intLookup[id] =	readIntegerUnsignedOptional(token); 
+				return readIntegerUnsignedOptional(token); 
 			}
 		} else {
 			//0001?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//00010 IntegerSigned
-				intLookup[id] =	readIntegerSigned(token);
+				return	readIntegerSigned(token);
 			} else {
 				//00011 IntegerSignedOptional
-				intLookup[id] =	readIntegerSignedOptional(token);
+				return	readIntegerSignedOptional(token);
 			}
 		}
 	}
 	
-	public long readLong(int token, long valueOfOptional) {
+	public long readLong(int token) {
 				
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		

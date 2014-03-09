@@ -4,6 +4,8 @@
 package com.ociweb.jfast.loader;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,6 +34,10 @@ public class TemplateHandler extends DefaultHandler {
     long[][] catalogScripts = new long[TokenBuilder.MAX_FIELD_ID_VALUE][];
     int catalogLargestTemplatePMap = 0;
     int catalogLargestNonTemplatePMap = 0;
+    
+	//post processing for catalog
+	int[][] tokenIdxMembers;
+	int[] tokenIdxMemberHeads;
     
     //compact slower structure to determine dictionaries because data is very sparse and not large
     //FieldId, Dictionary, Token
@@ -313,8 +319,8 @@ public class TemplateHandler extends DefaultHandler {
     	    if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
     	    	//add Dictionary command to reset in the script
     	    	int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary,
-	    										OperatorMask.Dictionary_Reset, 
-	    										0);
+			    									  	 OperatorMask.Dictionary_Reset, 
+			    										 activeDictionary);
     	    	catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&resetToken); //Top 32 are zero id for reset.
     	    }
     	    
@@ -540,7 +546,9 @@ public class TemplateHandler extends DefaultHandler {
 			if (null!=dTokens) {
 				System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
 			}
-			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, count.getAndIncrement());
+			int tokCount = count.getAndIncrement();
+			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount);
+			saveMember(activeDictionary,fieldType,tokCount);
 			fieldTokensUnique++;
 			dictionaryMap[fieldId]=dTokens=newDTokens;
 			
@@ -551,23 +559,50 @@ public class TemplateHandler extends DefaultHandler {
 					throw new SAXException("Field id can not be redefined within the same dictionary.");
 				}
 			} else {
-				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, count.getAndIncrement());
+				int tokCount = count.getAndIncrement();
+				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount);
+				saveMember(activeDictionary,fieldType,tokCount);
 				fieldTokensUnique++;
 			}
 		}
+		
 		return token;
 	}
 	
+	List<List<Integer>> members = new ArrayList<List<Integer>>();
+	
+	private void saveMember(int activeDictionary, int fieldType, int tokCount) {
+		int listId = (activeDictionary<<TokenBuilder.BITS_TYPE)|fieldType;
+		while (members.size()<=listId) {
+			members.add(new ArrayList<Integer>());
+		}
+		//these are ever increasing in value, the order makes a difference in performance at run time.
+		assert(members.get(listId).size()==0 || members.get(listId).get(members.get(listId).size()-1).intValue()<tokCount);
+		members.get(listId).add(tokCount);
+	}
+
 	private void buildDictionaryMemberLists() {
 		
-		//each dictionary needs one long array but this will need to be built in multiple passes.
+		//walk the lists of dictionary members and join them into a master list for each dictionary.
+		//each section must start with stop bit and type for the following identifiers. All cache friendly forward motion.
+
 		int dictionaryCount = dictionaryNames.size();
-		//need one array for each of these, but not sure how long the arrays will be
+		tokenIdxMembers = new int[dictionaryCount][TokenBuilder.MAX_FIELD_ID_VALUE];
+		tokenIdxMemberHeads = new int[dictionaryCount];
 		
-		
-		
-		//TODO: walk dictionary map for each field id.
-		//walk down dictionaries and it.
+		int j = members.size();
+		while (--j>=0) {
+			if (!members.get(j).isEmpty()) {
+				int d = j>>>TokenBuilder.BITS_TYPE;
+		        int t = j&TokenBuilder.MASK_TYPE;
+		        int stopInt = 0xFFFF0000|t;
+		        tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = stopInt;
+		        for(Integer i:members.get(j)) {
+		        	tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i;
+		        }
+			}
+		}
+		//tokenIdxMembers are ready to be saved but must be trimmed by heads
 		
 	}
 
@@ -589,7 +624,14 @@ public class TemplateHandler extends DefaultHandler {
 
 	
 	public void postProcessing() {
-		int singleTextLength = 128; //TODO: must set somewhere. but not here its not part of template.
+		
+		buildDictionaryMemberLists();
+		
+		//the catalog file need not be "Small" but it probably will be.
+		//the catalog file must be "Fast" to load without any "Processing" needed by the consumer.
+		//this enables fast startup/recovery times that do not produce garbage.
+		
+		int singleTextLength = 128; //TODO: must set somewhere. but not here its not part of template. Set with absent values!
 				
 		DictionaryFactory df = new DictionaryFactory(tokenBuilderIntCount.intValue(),
 				                                     tokenBuilderLongCount.intValue(), 
@@ -597,12 +639,13 @@ public class TemplateHandler extends DefaultHandler {
 				                                     singleTextLength, 
 													 tokenBuilderDecimalCount.intValue(), 
 													 tokenBuilderByteCount.intValue());
-		
-		
+				
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, 
 						     templateIdUnique, templateIdBiggest,
-						     catalogScripts, df, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap);
+						     catalogScripts, df, catalogLargestTemplatePMap, 
+						     catalogLargestNonTemplatePMap, 
+						     tokenIdxMembers, tokenIdxMemberHeads);
 				
 		//close stream.
 		writer.flush();

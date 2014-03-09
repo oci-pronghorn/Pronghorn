@@ -41,7 +41,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(302, catalogByteArray.length);
+			assertEquals(396, catalogByteArray.length);
 			
 			script = catalog.templateScript(2);
 			assertEquals(16, script.length);
@@ -81,8 +81,8 @@ public class TemplateLoaderTest {
 //TODO: build FAST debugger that can break data without template on stop bit and provide multiple possible interpretations.
 	
 	// Runs very well with these JVM arguments
-	// -XX:CompileThreshold=64 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:+AggressiveOpts
-	// ?? -XX:+UseFPUForSpilling 
+	// -XX:CompileThreshold=64 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:+AggressiveOpts -XX:MaxInlineLevel=20
+	// ?? -XX:+UseFPUForSpilling -XX:InlineSmallCode=65536
 			
 	@Test
 	public void testDecodeComplex30000() {	
@@ -110,10 +110,11 @@ public class TemplateLoaderTest {
 		int count = 20;
 		int iter = count+warmup;
 		int result = 0;
+		long[] target = new long[256];
 		while (--iter>=0) {
 
 			int data = 0; //same id needed for writer construction
-			while (0!=(data = dynamicReader.hasMore())) {
+			while (0!=(data = dynamicReader.hasMore(target))) {
 				result |=data;
 			}
 			
@@ -135,13 +136,58 @@ public class TemplateLoaderTest {
 		
 	}
 
-	@Test
-	public void testDecodeEncodeComplex30000() {	
-		
-		assertTrue(true);//
-		//TODO: COPY DECODE TEST AND CALL DECODE
-		
-	}
+//	@Test
+//	public void testDecodeEncodeComplex30000() {	
+//		
+//		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+//		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+//		
+//		byte prefixSize = 4;
+//		catalog.setMessagePrefix(prefixSize);	
+//		
+//		//connect to file		
+//		URL sourceData = getClass().getResource("/performance/complex30000.dat");
+//
+//		FASTInputByteArray fastInput = buildInputForTesting(new File(sourceData.getFile()));
+//		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
+//		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
+//		
+//		System.gc();
+//		
+//		//TODO: Dictionary members and single list of start/stop values and an index list
+//		//TODO: textHEap.reset() just these ranges flagged do reset lazy.
+//		
+//		double start=0;
+//		int warmup = 12;//set much larger for profiler
+//		int count = 2;
+//		int iter = count+warmup;
+//		int result = 0;
+//		while (--iter>=0) {
+//
+//			int data = 0; //same id needed for writer construction
+//			while (0!=(data = dynamicReader.hasMore())) {
+//				
+//				//dynamicReader.
+//				result |=data;
+//			}
+//			
+//			fastInput.reset();
+//			primitiveReader.reset();
+//			if (0==start) {
+//				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
+//				if (iter==count) {
+//					start = System.nanoTime();
+//				}
+//			}
+//			dynamicReader.reset();
+//			
+//		}
+//		double duration = System.nanoTime()-start;
+//		int ns = (int)(duration/count);
+//		System.err.println("Avg duration:"+ns+"ns");
+//		assertTrue(result!=0);	
+//		
+//	}
 	
 	private FASTInputByteArray buildInputForTesting(File fileSource) {
 		byte[] fileData = null;

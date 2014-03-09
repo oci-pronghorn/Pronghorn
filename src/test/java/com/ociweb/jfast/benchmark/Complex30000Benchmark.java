@@ -84,13 +84,15 @@ public class Complex30000Benchmark extends Benchmark {
 		System.err.println("done");
 	}
 	
+	long[] target = new long[100];
+	
 	public int timeDecodeComplex30000(int reps) {
 
 		    int result = 0;
 			while (--reps>=0) {
 
 				int data = 0;
-				while (0!=(data = dynamicReader.hasMore())) {
+				while (0!=(data = dynamicReader.hasMore(target))) {
 					//This is where we will do the Encode for the other benchmark
 					result |= data;
 				}
