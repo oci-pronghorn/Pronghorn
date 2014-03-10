@@ -3,12 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import java.util.Arrays;
-
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -46,6 +41,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final byte prefixDataLength;
 	
 	private long messageCount = 0;
+	
+	private final FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)16);//65536 TODO: hack test.
 	
 	//read groups field ids and build repeating lists of tokens.
 	
@@ -100,10 +97,9 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 */
 
     
-	public int hasMore(long[] target) {
+	public int hasMore() {
 		
 		//System.err.println("hasMore call");
-		int t = 0;
 		
 		do {
 			if (activeScriptTemplateMask<0) {
@@ -121,8 +117,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 			long val = activeScript[activeScriptCursor];
 			int token = (int)(val&0xFFFFFFFF);
 			
+			//Instead of dispatchReadByToken these could be called manually.
+			//readerDispatch.readInt(token);
+			//readerDispatch.readLong(token);
+			
+			
 			//jump to top if at end of sequence with count remaining
-			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token, target, t++)) {
+			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token, ringBuffer)) {
 					//jump back to top of this sequence in the script.
 					//return this cursor position as the unique id for this sequence.
 					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token));
@@ -166,28 +167,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 		return prefixData;
 	}
 	
-	public int readInt(int id) {
-		return readerDispatch.lastInt(id);
-	}
-
-	public long readLong(int id) {
-		return readerDispatch.lastLong(id);
-	}
-
-	public int readBytes(int id) {
-		return readerDispatch.lastInt(id);
-	}
-
-	public int readDecimalExponent(int id) {
-		return readerDispatch.lastInt(id);
-	}
-
-	public long readDecimalMantissa(int id) {
-		return readerDispatch.lastLong(id);
-	}
-	
-	public int readText(int id) {
-		return readerDispatch.lastInt(id);
+	public FASTRingBuffer ringBuffer() {
+		return ringBuffer;
 	}
 
 

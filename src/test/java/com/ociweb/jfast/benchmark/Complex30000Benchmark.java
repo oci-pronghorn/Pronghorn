@@ -92,7 +92,7 @@ public class Complex30000Benchmark extends Benchmark {
 			while (--reps>=0) {
 
 				int data = 0;
-				while (0!=(data = dynamicReader.hasMore(target))) {
+				while (0!=(data = dynamicReader.hasMore())) {
 					//This is where we will do the Encode for the other benchmark
 					result |= data;
 				}

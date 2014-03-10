@@ -762,4 +762,49 @@ public class ByteHeap {
 		}		
 		set(targetIdx, buffer, startFrom, length(sourceIdx));
 	}
+
+
+	public int getIntoRing(int idx, int[] target, int targetIdx, int targetMask) {
+		byte[] buf;
+		int len;
+		int pos;
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			
+			pos = initTat[offset];
+			len = initTat[offset+1]-pos;
+			buf = initBuffer;
+			
+		} else {
+		
+			int offset = idx<<2;
+			
+			pos = tat[offset];
+			len = tat[offset+1]-pos;
+			buf = data;
+		}
+		
+		int i = len;
+		int j = 4;
+		int v = 0;
+		int k = (len+3)>>>2;
+		while (--i>=0) {//TODO: 4 bytes to the int
+			
+			//int value = Integer.
+			if (--j>=0) {
+				v = (v<<8)|buf[pos+i];
+			}
+			if (j==0) {
+				target[(targetMask)&(targetIdx+k)] = v;
+				k--;
+				j = 4;
+			}	
+			
+		}	
+		if (j!=4) {
+			target[(targetMask)&(targetIdx+k)] = v;
+		}
+		
+		return len;
+	}
 }

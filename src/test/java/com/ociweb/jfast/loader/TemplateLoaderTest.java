@@ -20,10 +20,14 @@ import org.xml.sax.SAXException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class TemplateLoaderTest {
 
@@ -102,19 +106,19 @@ public class TemplateLoaderTest {
 		
 		System.gc();
 		
-		//TODO: Dictionary members and single list of start/stop values and an index list
-		//TODO: textHEap.reset() just these ranges flagged do reset lazy.
-		
 		double start=0;
 		int warmup = 120;//set much larger for profiler
 		int count = 20;
 		int iter = count+warmup;
 		int result = 0;
-		long[] target = new long[256];
+		
 		while (--iter>=0) {
 
 			int data = 0; //same id needed for writer construction
-			while (0!=(data = dynamicReader.hasMore(target))) {
+			while (0!=(data = dynamicReader.hasMore())) {
+				
+				FASTRingBuffer buffer = dynamicReader.ringBuffer();
+								
 				result |=data;
 			}
 			
@@ -136,58 +140,60 @@ public class TemplateLoaderTest {
 		
 	}
 
-//	@Test
-//	public void testDecodeEncodeComplex30000() {	
-//		
-//		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-//		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
-//		
-//		byte prefixSize = 4;
-//		catalog.setMessagePrefix(prefixSize);	
-//		
-//		//connect to file		
-//		URL sourceData = getClass().getResource("/performance/complex30000.dat");
-//
-//		FASTInputByteArray fastInput = buildInputForTesting(new File(sourceData.getFile()));
-//		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
-//		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
-//		
-//		System.gc();
-//		
-//		//TODO: Dictionary members and single list of start/stop values and an index list
-//		//TODO: textHEap.reset() just these ranges flagged do reset lazy.
-//		
-//		double start=0;
-//		int warmup = 12;//set much larger for profiler
-//		int count = 2;
-//		int iter = count+warmup;
-//		int result = 0;
-//		while (--iter>=0) {
-//
-//			int data = 0; //same id needed for writer construction
-//			while (0!=(data = dynamicReader.hasMore())) {
-//				
-//				//dynamicReader.
-//				result |=data;
-//			}
-//			
-//			fastInput.reset();
-//			primitiveReader.reset();
-//			if (0==start) {
-//				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
-//				if (iter==count) {
-//					start = System.nanoTime();
-//				}
-//			}
-//			dynamicReader.reset();
-//			
-//		}
-//		double duration = System.nanoTime()-start;
-//		int ns = (int)(duration/count);
-//		System.err.println("Avg duration:"+ns+"ns");
-//		assertTrue(result!=0);	
-//		
-//	}
+	@Test
+	public void testDecodeEncodeComplex30000() {	
+		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+		
+		byte prefixSize = 4;
+		catalog.setMessagePrefix(prefixSize);	
+		
+		//connect to file		
+		URL sourceData = getClass().getResource("/performance/complex30000.dat");
+
+		File fileSource = new File(sourceData.getFile());
+		FASTInputByteArray fastInput = buildInputForTesting(fileSource);
+		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
+		
+		byte[] targetBuffer = new byte[(int)fileSource.length()];
+		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
+		PrimitiveWriter primitiveWriter = new PrimitiveWriter(fastOutput);
+		FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(primitiveWriter, catalog);
+		
+		
+		
+		System.gc();
+		
+		double start=0;
+		int warmup = 120;//set much larger for profiler
+		int count = 20;
+		int iter = count+warmup;
+		FASTRingBuffer queue = dynamicReader.ringBuffer();
+		
+		while (--iter>=0) {
+
+			int data = 0; //same id needed for writer construction
+			while (0!=(data = dynamicReader.hasMore())) {				
+				dynamicWriter.write(data, queue);			
+			}
+			
+			fastInput.reset();
+			primitiveReader.reset();
+			if (0==start) {
+				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
+				if (iter==count) {
+					start = System.nanoTime();
+				}
+			}
+			dynamicReader.reset();
+			
+		}
+		double duration = System.nanoTime()-start;
+		int ns = (int)(duration/count);
+		System.err.println("Avg duration:"+ns+"ns");
+				
+	}
 	
 	private FASTInputByteArray buildInputForTesting(File fileSource) {
 		byte[] fileData = null;

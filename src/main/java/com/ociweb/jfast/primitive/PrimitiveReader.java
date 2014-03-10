@@ -79,8 +79,8 @@ public final class PrimitiveReader {
 		return limit-position;
 	}
 	
-	public final void fetch() {
-		fetch(1);
+	public void fetch() {
+		fetch(0);
 	}
 	
 	//Will not return until the need is met because the parser has
@@ -90,7 +90,7 @@ public final class PrimitiveReader {
 	private void fetch(int need) {
 		int count = 0;
 		need = fetchAvail(need);
-		while (need>0) {
+		while (need>0) { //TODO: if orignial need was zero should also compact?
 			if (0==count++) {
 				
 				//compact and prep for data spike

@@ -131,10 +131,10 @@ public class FieldReaderChar {
 	}
 	
 	public int readASCIIDefault(int token, int readFromIdx) {
+				
 		int idx = token & INSTANCE_MASK;
-		
 		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
+			return INIT_VALUE_MASK|idx;//use constant
 		} else {
 			byte val = reader.readTextASCIIByte();
 			if (0!=(val&0x7F)) {

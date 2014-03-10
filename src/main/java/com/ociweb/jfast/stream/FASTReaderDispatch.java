@@ -9,17 +9,10 @@ import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.FieldReaderDecimal;
 import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.FieldReaderLong;
-import com.ociweb.jfast.field.FieldWriterBytes;
-import com.ociweb.jfast.field.FieldWriterChar;
-import com.ociweb.jfast.field.FieldWriterDecimal;
-import com.ociweb.jfast.field.FieldWriterInteger;
-import com.ociweb.jfast.field.FieldWriterLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 //May drop interface if this causes a performance problem from virtual table
@@ -107,13 +100,6 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-	int lastInt(int id) {
-		return 0;//intLookup[id];
-	}
-	
-	long lastLong(int id) {
-		return 0;//longLookup[id];
-	}
 	
 	public void dispatchReadPrefix(byte[] target) {
 		reader.readByteData(target, 0, target.length);
@@ -121,7 +107,7 @@ public class FASTReaderDispatch{
 	
 	int j = 0;
 	//package protected, unless we find a need to expose it?
-	boolean dispatchReadByToken(int id, int token, long[] target, int t) {
+	boolean dispatchReadByToken(int id, int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
 	   //for more JVM configurations and when switch is faster (eg lots of JVM -XX: args)
 	   //it is only slightly faster.
@@ -129,38 +115,49 @@ public class FASTReaderDispatch{
 	   //For a dramatic speed up of this dispatch code look into code generation of the
 	   //script as a series of function calls against the specific FieldReader*.class
 	   //This is expected to save 4ns per field on the AMD hardware or a speedup > 12%.
-				
-	//TODO: hold target/disruptor and write there with blocking for read loop.
-		//TODO: textHeap and byteHeap require blocking support for the handoff.
+						
+		
+		//THOUGHTS
+		//Build fixed length and put all in ring buffer, consumers can
+		//look at leading int to determine what kind of message they have
+		//and the script position can be looked up by field id once for their needs.
+		//each "mini-message is expected to be very small" and all in cache
+		
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					target[t]=dispatchReadByToken000(id, token);//int
+					
+//					while (!outputQueue.hasRoom(1)) {
+//						reader.fetch();
+//						//if it continues to not have room must sleep?
+//						//or queue must alert upon removal?
+//					}
+					
+					outputQueue.append(dispatchReadByToken000(id, token));//int
 				} else {
-					target[t]=dispatchReadByToken001(id, token);//long
+					outputQueue.append(dispatchReadByToken001(id, token));//long
 				}
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					target[t]=dispatchReadByToken010(id, token);//int for text
+					//int for text
+					outputQueue.append(dispatchReadByToken010(id, token), charDictionary);				
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 						//0110? Decimal and DecimalOptional
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							target[t]=readerDecimal.readDecimalExponent(token);
-							target[t]=readerDecimal.readDecimalMantissa(token);
+							outputQueue.append(readerDecimal.readDecimalExponent(token),
+							                   readerDecimal.readDecimalMantissa(token));
 						} else {
-							//intLookup[posInt++]=
-							        readerDecimal.readDecimalExponentOptional(token);
-							//longLookup[posLong++]=
-							        readerDecimal.readDecimalMantissaOptional(token);
+							outputQueue.append(readerDecimal.readDecimalExponentOptional(token),
+							    		       readerDecimal.readDecimalMantissaOptional(token));
 						}
 					} else {
-						target[t]=	dispatchReadByToken0111(token);//int for bytes
+						outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
 					}
 				}
 			}
@@ -1121,38 +1118,31 @@ public class FASTReaderDispatch{
 
 	private int readTextASCIIOptional(int token) {
 		
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-			//none constant delta tail 
-			if (0==(token&(6<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-				//none tail
-				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
-					//none
-					return readerChar.readASCII(token,readFromIdx);
-				} else {
-					//tail
-					return readerChar.readASCIITailOptional(token,readFromIdx);
-				}
+		if (0==(token&((4|2|1)<<TokenBuilder.SHIFT_OPER))) {
+			if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
+				//none
+				return readerChar.readASCII(token,readFromIdx);
 			} else {
-				// constant delta
-				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
-					//constant
-					return readerChar.readASCIIConstantOptional(token,readFromIdx);
-				} else {
-					//delta
-					return readerChar.readASCIIDeltaOptional(token,readFromIdx);
-				}
+				//tail
+				return readerChar.readASCIITailOptional(token,readFromIdx);
 			}
 		} else {
-			//copy default
-			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-				//copy
-				return readerChar.readASCIICopyOptional(token,readFromIdx);
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+					return readerChar.readASCIIDeltaOptional(token,readFromIdx);
+				} else {
+					return readerChar.readASCIIConstantOptional(token,readFromIdx);
+				}		
 			} else {
-				//default
-				return readerChar.readASCIIDefaultOptional(token,readFromIdx);
+				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+					return readerChar.readASCIICopyOptional(token,readFromIdx);
+				} else {
+					return readerChar.readASCIIDefaultOptional(token,readFromIdx);
+				}
+				
 			}
 		}
-
+		
 	}
 
 	public boolean isEOF() {

@@ -394,7 +394,7 @@ public class TextHeap {
 	}
 
 
-	public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
+	void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
 		//if not room make room checking after first because thats where we want to copy the tail.
 		int targetPos = makeSpaceForAppend(idx, trimTail, value.length()-startFrom);	
 		int srcLimit = value.length();
@@ -590,11 +590,6 @@ public class TextHeap {
 	//////////
 	//////////
 	
-
-//	public char getChar(int idx, int index) {
-//		return data[tat[idx<<2]+index];
-//	}
-	
 	public int get(int idx, char[] target, int targetIdx) {
 		if (idx<0) {
 			int offset = idx << 1; //this shift left also removes the top bit! sweet.
@@ -614,6 +609,38 @@ public class TextHeap {
 			System.arraycopy(data, pos, target, targetIdx, len);
 			return len;
 		}
+	}
+	
+	public int getIntoRing(int idx, int[] target, int targetIdx, int targetMask) {
+		char[] buf;
+		int len;
+		int pos;
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			
+			pos = initTat[offset];
+			len = initTat[offset+1]-pos;
+			buf = initBuffer;
+			
+		} else {
+		
+			int offset = idx<<2;
+			
+			pos = tat[offset];
+			len = tat[offset+1]-pos;
+			buf = data;
+		}
+		
+		int i = len;
+		while (--i>=0) {
+			target[(targetMask)&(targetIdx+i)] = (int)buf[pos+i];
+		}
+			
+		
+		return len;
+		
+		
+		
 	}
 	
 	public boolean equals(int idx, CharSequence value) {
@@ -806,7 +833,7 @@ public class TextHeap {
 	}
 
 
-	public void copy(int sourceIdx, int targetIdx) {
+	void copy(int sourceIdx, int targetIdx) {
 		int len;
 		int startFrom;
 		char[] buffer;
