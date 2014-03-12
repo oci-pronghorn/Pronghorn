@@ -79,6 +79,11 @@ public class FASTDynamicReader implements FASTDataProvider {
     	return builder.toString();
     }
     
+	//Instead of dispatchReadByToken these could be called manually.
+	//This would be a fixed/static implementation for a set of templates.
+    //readerDispatch.readInt(token);
+	//readerDispatch.readLong(token);
+    
 	
 	/**
 	 * Read up to the end of the next sequence or message (eg. a repeating group)
@@ -95,51 +100,40 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 * 
 	 * @return
 	 */
-
+    boolean needTemplate = true;
     
 	public int hasMore() {
 		
 		//System.err.println("hasMore call");
 		
 		do {
-			if (activeScriptTemplateMask<0) {
+			if (needTemplate) { //activeScriptTemplateMask<0) {
 				//start new script or detect that the end of the data has been reached
 				if (readerDispatch.isEOF()) {
 					return 0;
-				}
-				
+				}				
 				//get next token id then immediately start processing the script
 				parseNextTokenId();
-				
+				needTemplate = false;
 			} 
-			
-			//continue existing script
-			long val = activeScript[activeScriptCursor];
-			int token = (int)(val&0xFFFFFFFF);
-			
-			//Instead of dispatchReadByToken these could be called manually.
-			//readerDispatch.readInt(token);
-			//readerDispatch.readLong(token);
-			
-			
 			//jump to top if at end of sequence with count remaining
-			if (readerDispatch.dispatchReadByToken((int)(val>>>32), token, ringBuffer)) {
+			//TODO: we are no longer using the ID so must REMOVE from the script!!!
+			if (readerDispatch.dispatchReadByToken((int)(activeScript[activeScriptCursor]&0xFFFFFFFF), ringBuffer)) {
 					//jump back to top of this sequence in the script.
 					//return this cursor position as the unique id for this sequence.
-					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&token));
+					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&activeScript[activeScriptCursor]));
 			}
-							
-			
 		} while (++activeScriptCursor<activeScriptLength);
 		
-		//reached the end of the script so close and prep for the next one
-
-		int result = activeScriptTemplateMask;
-		activeScriptTemplateMask = -1;//find next template
+//		//reached the end of the script so close and prep for the next one
+//		int result = activeScriptTemplateMask;
+//		activeScriptTemplateMask = -1;//find next template
+//		readerDispatch.closeMessage();
+//		return result;//returns the template mask for the end of this message
+			
+		needTemplate = true;
 		readerDispatch.closeMessage();
-		return result;//returns the template mask for the end of this message
-	
-		
+		return activeScriptTemplateMask;
 	}
 
 	private void parseNextTokenId() {

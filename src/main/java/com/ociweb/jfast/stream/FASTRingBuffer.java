@@ -56,29 +56,41 @@ public class FASTRingBuffer {
 		return (((long)buffer[idx])<<32)|(0xFFFFFFFFl&buffer[idx+1]);
 	}
 	
-	public boolean hasRoom(int need) {
-		return false;//TODO: has room
-	}
 
-	//need blocking append ?
+	//NOTE: FAST decoding is assumed to be running on 1 thread on 1 core which
+	//is dedicated to this purpose. In order to minimize jitter and maximize 
+	//low-latency a spin-lock is used when the ringBuffer does not have enough
+	//room for new items. Saving CPU is less important here.
+	//when lock spinning the monitor class must be notified so we know that the 
+	//consumer is too slow or the ringBuffer is too small.
 	
-	public boolean append(int value) {
+	//TODO: new smaller ring buffer for text that changes, then this ring can use fixed
+	//sizes for the fields so an offset table can be used.  The caller must lookup the 
+	//appropriate offset given the fieldID.  
+	//TODO: the sequence return is wasting cycles at the top level and must be removed.
+	
+	
+	public void append(int value) {
 				
 		int pos = addCount.get();
-		if (pos-removeCount.get()==maxSize) {
-			return false;
+		
+		int temp = maxSize-1;
+		while (pos-removeCount.get()>=temp) {	
 		}
 		
 		buffer[mask&pos] = value;
 		addCount.lazySet(1+pos);		
 		
-		//TODO: what happens if there is no room to push on to queue?
-		return true;
 	}
 	
 	public void append(long value) {
 		
 		int pos = addCount.get();
+		
+		int temp = maxSize-2;
+		while (pos-removeCount.get()>=temp) {	
+		}
+		
 		buffer[mask&pos] = (int)(value>>>32);
 		buffer[mask&(pos+1)] = (int)(value&0xFFFFFFFF);
 		
@@ -90,6 +102,17 @@ public class FASTRingBuffer {
 		
 		int pos = addCount.get();	
 		int length = heap.length(idx); //required to ensure we have the space.
+		//System.err.println("'append "+length+" "+heap.get(idx,new StringBuilder()));
+		int temp = maxSize-length;
+		if (temp<0) {
+			throw new UnsupportedOperationException();
+		}
+		while (pos-removeCount.get()>=temp) {	
+		}		
+		//System.err.println(Integer.toBinaryString(idx)+" "+heap.get(idx, new StringBuilder()));
+		
+		//TODO: according to the template all of these should have been constants.
+		//TODO: if it is a constant/default then point to that rather than make a copy.
 		
 		pos+=heap.getIntoRing(idx, buffer, pos, mask);
 		addCount.lazySet(pos);
@@ -99,7 +122,13 @@ public class FASTRingBuffer {
 	public void append(int idx, ByteHeap heap) {
 		
 		int pos = addCount.get();	
-		int length = heap.length(idx); //required to ensure we have the space.
+		int length = heap.length(idx)>>2; //required to ensure we have the space.
+		int temp = maxSize-length;
+		if (temp<0) {
+			throw new UnsupportedOperationException();
+		}
+		while (pos-removeCount.get()>=temp) {	
+		}	
 		
 		pos+=heap.getIntoRing(idx, buffer, pos, mask);
 		addCount.lazySet(pos);
@@ -109,12 +138,24 @@ public class FASTRingBuffer {
 	public void append(int readDecimalExponent, long readDecimalMantissa) {
 		
 		int pos = addCount.get();
+		
+		int temp = maxSize-3;
+		while (pos-removeCount.get()>=temp) {	
+		}
+		
 		buffer[mask&pos] = readDecimalExponent;
 		buffer[mask&(pos+1)] = (int)(readDecimalMantissa>>>32);
 		buffer[mask&(pos+2)] = (int)(readDecimalMantissa&0xFFFFFFFF);
 		
 		addCount.lazySet(3+pos);
 		
+	}
+	
+	public void dump() {
+		//TODO: must periodically remove maxSize from both remove and add
+		
+		//System.err.println("dumping:"+(addCount.get()-removeCount.get()));
+		removeCount.set(addCount.get());
 	}
 	
 	

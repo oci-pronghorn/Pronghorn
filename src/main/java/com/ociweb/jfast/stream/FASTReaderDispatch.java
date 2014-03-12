@@ -54,6 +54,8 @@ public class FASTReaderDispatch{
 	TextHeap charDictionary;
 	ByteHeap byteDictionary;
 	
+	final int maxVarSize = 256;//TODO: move into catalog
+	
 		
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
 			                   int maxTemplates, int nonTemplatePMapSize, int maxFieldId, 
@@ -70,8 +72,8 @@ public class FASTReaderDispatch{
 		this.longDictionary = dcr.longDictionary();
 		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
 		this.decimalMantissaDictionary = dcr.decimalMantissaDictionary();
-		this.charDictionary = dcr.charDictionary();
-		this.byteDictionary = dcr.byteDictionary();
+		this.charDictionary = dcr.charDictionary(maxVarSize);
+		this.byteDictionary = dcr.byteDictionary(maxVarSize);
 		
 		this.readerInteger = new FieldReaderInteger(reader,integerDictionary);
 		this.readerLong = new FieldReaderLong(reader,longDictionary);
@@ -107,7 +109,7 @@ public class FASTReaderDispatch{
 	
 	int j = 0;
 	//package protected, unless we find a need to expose it?
-	boolean dispatchReadByToken(int id, int token, FASTRingBuffer outputQueue) {
+	boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
 	   //for more JVM configurations and when switch is faster (eg lots of JVM -XX: args)
 	   //it is only slightly faster.
@@ -136,15 +138,15 @@ public class FASTReaderDispatch{
 //						//or queue must alert upon removal?
 //					}
 					
-					outputQueue.append(dispatchReadByToken000(id, token));//int
+					outputQueue.append(dispatchReadByToken000(token));//int
 				} else {
-					outputQueue.append(dispatchReadByToken001(id, token));//long
+					outputQueue.append(dispatchReadByToken001(token));//long
 				}
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 					//int for text
-					outputQueue.append(dispatchReadByToken010(id, token), charDictionary);				
+					outputQueue.append(dispatchReadByToken010(token), charDictionary);				
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -164,7 +166,7 @@ public class FASTReaderDispatch{
 			return false;
 		} else {
 			//pause node for more work processing will return false 
-			return dispatchReadByToken1(id, token);	
+			return dispatchReadByToken1(token);	
 		}
 	}
 
@@ -179,7 +181,7 @@ public class FASTReaderDispatch{
 		}
 	}
 	
-	private boolean dispatchReadByToken1(int id, int token) {
+	private boolean dispatchReadByToken1(int token) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 			//10???
@@ -210,6 +212,7 @@ public class FASTReaderDispatch{
 				//Length Type, no others defined so no need to keep checking
 				//Only happens once before a node sequence so push it on the count stack
 				int length = readIntegerUnsigned(token);
+				//TODO: remove System.err.println("sequenceSize:"+length); //1-5 in the test data Sequence is burning a lot
 				sequenceCountStack[++sequenceCountStackHead] = length;
 				//S//ystem.err.println("set new length:"+length);
 				//intLookup[id] = length; 
@@ -343,7 +346,7 @@ public class FASTReaderDispatch{
 	}
 
 
-	private int dispatchReadByToken010(int id, int token) {
+	private int dispatchReadByToken010(int token) {
 		//010??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0100?
@@ -366,7 +369,7 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private long dispatchReadByToken001(int id, int token) {
+	private long dispatchReadByToken001(int token) {
 		//001??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0010?
@@ -389,7 +392,7 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private int dispatchReadByToken000(int id, int token) {
+	private int dispatchReadByToken000(int token) {
 		//000??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0000?

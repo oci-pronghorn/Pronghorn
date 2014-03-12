@@ -34,6 +34,8 @@ public class TemplateHandler extends DefaultHandler {
     long[][] catalogScripts = new long[TokenBuilder.MAX_FIELD_ID_VALUE][];
     int catalogLargestTemplatePMap = 0;
     int catalogLargestNonTemplatePMap = 0;
+	
+	DictionaryFactory defaultConstValues = new DictionaryFactory();
     
 	//post processing for catalog
 	int[][] tokenIdxMembers;
@@ -87,10 +89,12 @@ public class TemplateHandler extends DefaultHandler {
     boolean fieldExponentOptional = false;
     int      fieldExponentAbsent;
     int      fieldExponentOperator;
+    String   fieldExponentOperatorValue;
     
     boolean fieldMantissaOptional = false;
     long     fieldMantissaAbsent;
     int      fieldMantissaOperator;
+    String   fieldMantissaOperatorValue;
     
     int      fieldPMapInc = 1;//changes to 2 only when inside twin decimal
     
@@ -382,12 +386,13 @@ public class TemplateHandler extends DefaultHandler {
     		    		
     		int token = buildToken(tokenBuilderIntCount);
     		    		
-    		//TODO: duplicate this save of default/const value for the others as a method call once complete.
     		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    			//only set if the value was given
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-    				//TODO: must convert to int and save in the catalog as the default value for this field.
-    				
-    			}
+    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
+    											Integer.parseInt(fieldOperatorValue));
+    			} 
+    			fieldOperatorValue=null;
     		}
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
@@ -396,12 +401,28 @@ public class TemplateHandler extends DefaultHandler {
        		
     		int token = buildToken(tokenBuilderLongCount);
     		
+    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    			//only set if the value was given
+    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
+    											Long.parseLong(fieldOperatorValue));
+    			} 
+    			fieldOperatorValue=null;
+    		}
+    		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     	
     	} else if (qName.equalsIgnoreCase("string")) {
     		
     		int token = buildToken(tokenBuilderTextCount);
     		
+    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    			//only set if the value was given
+    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,fieldOperatorValue.toCharArray());
+    			} 
+    			fieldOperatorValue=null;
+    		}
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     		
@@ -416,16 +437,34 @@ public class TemplateHandler extends DefaultHandler {
     		
     		int token = buildToken(tokenBuilderDecimalCount);
     		
+    		if (fieldExponentOperator==OperatorMask.Field_Constant ||fieldExponentOperator==OperatorMask.Field_Default) {
+    			//only set if the value was given
+    			if (null!=fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
+    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
+    											       Integer.parseInt(fieldExponentOperatorValue));
+    			} 
+    			fieldExponentOperatorValue=null;
+    		}    	
+    		if (fieldMantissaOperator==OperatorMask.Field_Constant ||fieldMantissaOperator==OperatorMask.Field_Default) {
+    			//only set if the value was given
+    			if (null!=fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
+    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
+    											       Long.parseLong(fieldMantissaOperatorValue));
+    			} 
+    			fieldMantissaOperatorValue=null;
+    		} 
     		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
 
     		fieldPMapInc=1;//set back to 1 we are leaving decimal processing
     	} else if (qName.equalsIgnoreCase("exponent")) {
     		fieldExponentOperator = fieldOperator;
-    		
+    		fieldExponentOperatorValue = fieldOperatorValue;
+    		fieldOperatorValue =  null;
     	} else if (qName.equalsIgnoreCase("mantissa")) {
     		fieldMantissaOperator = fieldOperator;
-    		
+    		fieldMantissaOperatorValue = fieldOperatorValue;
+    		fieldOperatorValue =  null;
     	} else if (qName.equalsIgnoreCase("bytevector")) {
     		
     		int token = buildToken(tokenBuilderByteCount);
@@ -630,20 +669,17 @@ public class TemplateHandler extends DefaultHandler {
 		//the catalog file need not be "Small" but it probably will be.
 		//the catalog file must be "Fast" to load without any "Processing" needed by the consumer.
 		//this enables fast startup/recovery times that do not produce garbage.
-		
-		int singleTextLength = 128; //TODO: must set somewhere. but not here its not part of template. Set with absent values!
-				
-		DictionaryFactory df = new DictionaryFactory(tokenBuilderIntCount.intValue(),
-				                                     tokenBuilderLongCount.intValue(), 
-				                                     tokenBuilderTextCount.intValue(), 
-				                                     singleTextLength, 
-													 tokenBuilderDecimalCount.intValue(), 
-													 tokenBuilderByteCount.intValue());
+
+		defaultConstValues.setTypeCounts(tokenBuilderIntCount.intValue(),
+                         tokenBuilderLongCount.intValue(), 
+                         tokenBuilderTextCount.intValue(), 
+						 tokenBuilderDecimalCount.intValue(), 
+						 tokenBuilderByteCount.intValue());
 				
 		//write catalog data.
 		TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, 
 						     templateIdUnique, templateIdBiggest,
-						     catalogScripts, df, catalogLargestTemplatePMap, 
+						     catalogScripts, defaultConstValues, catalogLargestTemplatePMap, 
 						     catalogLargestNonTemplatePMap, 
 						     tokenIdxMembers, tokenIdxMemberHeads);
 				

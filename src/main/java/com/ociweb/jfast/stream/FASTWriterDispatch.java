@@ -37,6 +37,8 @@ public final class FASTWriterDispatch {
 	//template specific dictionaries
 	private final int maxTemplates;
 	
+	final int maxVarSize = 256;//TODO: move into catalog
+	
 			
 	private int readFromIdx = -1;
 	
@@ -54,8 +56,8 @@ public final class FASTWriterDispatch {
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary());
-		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary());
+		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxVarSize));
+		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxVarSize));
 		
 		this.maxTemplates = maxTemplates;
 		

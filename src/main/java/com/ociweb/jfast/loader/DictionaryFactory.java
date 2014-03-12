@@ -52,11 +52,11 @@ public class DictionaryFactory {
 	private static final int INIT_GROW_STEP = 16;
 	private final int singleGapSize = 64; //default to avoid false cache sharing. 
 		
-	private final int integerCount;
-	private final int longCount;
-	private final int charCount;
-	private final int decimalCount;
-	private final int bytesCount;
+	private int integerCount;
+	private int longCount;
+	private int charCount;
+	private int decimalCount;
+	private int bytesCount;
 	
 	private int integerInitCount;
 	private int[] integerInitIndex;
@@ -85,17 +85,7 @@ public class DictionaryFactory {
 	
 	private int byteInitTotalLength;
 		
-	private int singleTextSize; //TODO: need an independent value for byteValues?
-
-	
-		
-	public DictionaryFactory(int integerCount, int longCount, int charCount, 
-			                  int singleCharLength, int decimalCount, int bytesCount) {
-		 this.integerCount=integerCount;
-		 this.longCount=longCount;
-		 this.charCount=charCount;
-		 this.decimalCount=decimalCount;
-		 this.bytesCount=bytesCount;
+	public DictionaryFactory() {
 		
 		 
 		 this.integerInitCount=0;
@@ -109,7 +99,6 @@ public class DictionaryFactory {
 		 this.charInitCount=0;
 		 this.charInitIndex = new int[INIT_GROW_STEP];
 		 this.charInitValue = new char[INIT_GROW_STEP][];
-		 this.singleTextSize = singleCharLength;
 		
 		 this.decimalExponentInitCount=0;
 		 this.decimalExponentInitIndex = new int[INIT_GROW_STEP];
@@ -122,6 +111,14 @@ public class DictionaryFactory {
 		 this.byteInitCount=0;
 		 this.byteInitIndex = new int[INIT_GROW_STEP];
 		 this.byteInitValue = new byte[INIT_GROW_STEP][];
+	}
+
+	public void setTypeCounts(int integerCount, int longCount, int charCount, int decimalCount, int bytesCount) {
+		this.integerCount=integerCount;
+		 this.longCount=longCount;
+		 this.charCount=charCount;
+		 this.decimalCount=decimalCount;
+		 this.bytesCount=bytesCount;
 	}
 	
 	public DictionaryFactory(PrimitiveReader reader) {
@@ -161,6 +158,7 @@ public class DictionaryFactory {
 			reader.readTextUTF8(value, 0 , len);
 			charInitValue[c] = value;
 		}
+		this.charInitTotalLength = reader.readIntegerUnsigned();
 		
 		this.decimalExponentInitCount = reader.readIntegerUnsigned();
 		this.decimalExponentInitIndex = new int[decimalExponentInitCount];
@@ -193,7 +191,6 @@ public class DictionaryFactory {
 			byteInitValue[c] = value;
 		}
 		byteInitTotalLength = reader.readIntegerUnsigned();
-		singleTextSize = reader.readIntegerUnsigned();
 
 		
 	}
@@ -257,8 +254,6 @@ public class DictionaryFactory {
 			pw.writeByteArrayData(value,0,value.length);
 		}
 		pw.writeIntegerUnsigned(byteInitTotalLength);
-
-		pw.writeIntegerUnsigned(singleTextSize);
 				
 		
 		
@@ -441,7 +436,7 @@ public class DictionaryFactory {
 		return array;
 	}
 	
-	public TextHeap charDictionary() {
+	public TextHeap charDictionary(int singleTextSize) {
 		if (charCount==0) {
 			return null;
 		}
@@ -451,11 +446,11 @@ public class DictionaryFactory {
 		return heap;
 	}
 	
-	public ByteHeap byteDictionary() {
+	public ByteHeap byteDictionary(int singleBytesSize) {
 		if (bytesCount==0) {
 			return null;
 		}
-		ByteHeap heap = new ByteHeap(singleTextSize, singleGapSize, nextPowerOfTwo(bytesCount),
+		ByteHeap heap = new ByteHeap(singleBytesSize, singleGapSize, nextPowerOfTwo(bytesCount),
                                      byteInitTotalLength, byteInitIndex, byteInitValue);
 		heap.reset();
 		return heap;

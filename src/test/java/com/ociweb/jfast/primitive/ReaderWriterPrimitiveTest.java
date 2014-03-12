@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -19,6 +20,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.net.StandardSocketOptions;
 
@@ -143,17 +145,34 @@ public class ReaderWriterPrimitiveTest {
 		/////////////////
 		/////////////////
 		/////////////////		
-
+		
+		//will increment the port as needed in case test framework is already using this port
+		//needed in larger test environments when tests run in parallel.
+		final AtomicInteger myTestPort = new AtomicInteger(8083);
+		
 		try {			            
 			//run this as new thread to block until we connect further down.
 			new Thread(new Runnable(){
 
 				@Override
 				public void run() {
-					ServerSocketChannel serverSocketChannel;
+					ServerSocketChannel serverSocketChannel = null;
 					try {
-						serverSocketChannel = ServerSocketChannel.open();
-						serverSocketChannel.socket().bind(new InetSocketAddress(8083));
+						int repeat = 100;//try this many ports
+						do {
+							try {
+								serverSocketChannel = ServerSocketChannel.open();
+								serverSocketChannel.socket().bind(new InetSocketAddress(myTestPort.get()));
+								repeat = 0;
+							} catch(BindException be) {
+								if (-1==be.getMessage().indexOf("in use")) {
+									throw be;
+								} else {
+									System.err.println("port:"+myTestPort+" in use. Trying another.");
+									myTestPort.incrementAndGet();
+								}
+							}
+						} while (--repeat>0);
 						serverSocketChannel.configureBlocking(true);
 						SocketChannel socketChannel = serverSocketChannel.accept();
 						pwIOSpeed = new PrimitiveWriter(capacity, new FASTOutputSocketChannel(socketChannel), (int) count, minimizeLatency);
@@ -167,8 +186,8 @@ public class ReaderWriterPrimitiveTest {
 			SocketChannel socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);			
 			//typical setup for low latency will turn on the nodelay option
-			socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
-			socketChannel.connect(new InetSocketAddress("127.0.0.1", 8083));
+//			socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true);
+			socketChannel.connect(new InetSocketAddress("127.0.0.1", myTestPort.get()));
 			//must loop because we are in NON-blocking mode.
 			while (!socketChannel.finishConnect()) {
 				Thread.yield();

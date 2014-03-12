@@ -59,7 +59,10 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
-	static final DictionaryFactory dcr = new DictionaryFactory(fields,fields,fields,singleCharLength,fields,fields);
+	static final DictionaryFactory dcr = new DictionaryFactory();
+	static {
+		dcr.setTypeCounts(fields,fields,fields,fields,fields);
+	}
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
 	
