@@ -63,6 +63,8 @@ public class StreamingTextTest extends BaseStreamingTest {
                    TypeMask.TextASCII,
                    TypeMask.TextASCIIOptional,
 				 };
+		
+		//TODO: will fail without good message if HeapText is too small!!
 		int[] operators = new int[] {
                   OperatorMask.Field_None,   //W5 R16 w/o equals
 				  OperatorMask.Field_Constant, //W6 R16 w/o equals
@@ -204,7 +206,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, fields, new int[0][0]);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, new int[0][0], 300,0);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();

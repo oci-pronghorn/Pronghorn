@@ -56,8 +56,8 @@ public final class FASTWriterDispatch {
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxVarSize));
-		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxVarSize));
+		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxVarSize,8)); //TODO: pass in gap size?
+		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxVarSize,8));
 		
 		this.maxTemplates = maxTemplates;
 		

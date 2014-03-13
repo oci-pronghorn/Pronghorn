@@ -26,6 +26,9 @@ public class TemplateCatalog {
 	
 	//Runtime specific message prefix, only used for some transmission technologies
 	byte prefixSize=0; //default is none
+	int maxTextLength = 16;//default
+	int maxByteVectorLength = 16;
+	
 	
 	public TemplateCatalog(PrimitiveReader reader) {
 				
@@ -262,6 +265,34 @@ public class TemplateCatalog {
 
 	public int[][] dictionaryMembers() {
 		return dictionaryMembers;
+	}
+
+
+
+
+	public int getMaxTextLength() {
+		return maxTextLength;
+	}
+
+
+
+
+	public void setMaxTextLength(int maxTextLength) {
+		this.maxTextLength = maxTextLength;
+	}
+
+
+
+
+	public int getMaxByteVectorLength() {
+		return maxByteVectorLength;
+	}
+
+
+
+
+	public void setMaxByteVectorLength(int maxByteVectorLength) {
+		this.maxByteVectorLength = maxByteVectorLength;
 	}
 
 	

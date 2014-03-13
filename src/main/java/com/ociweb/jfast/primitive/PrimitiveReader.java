@@ -6,7 +6,6 @@ package com.ociweb.jfast.primitive;
 import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.rabin.WindowedFingerprint;
 
 /**
  * PrimitiveReader
@@ -25,17 +24,10 @@ public final class PrimitiveReader {
 	private final FASTInput input;
 	private long totalReader;
 	final byte[] buffer;
-	final long[] hashBuffer;
 	
 	private final byte[] invPmapStack;
 	private int invPmapStackDepth;
-	
-	private final boolean useFingerprint = false;
-	
-	//Hack test to get a feeling for the cost of adding this feature.
-	//TODO: this call creates garbage and must not be here in the future.
-	static WindowedFingerprint windowedFingerprint = null;//com.ociweb.rabin.WindowedFingerprintFactory.buildNew();
-	
+
 	private int position;
 	private int limit;
 	
@@ -55,13 +47,12 @@ public final class PrimitiveReader {
 
 
 	public PrimitiveReader(FASTInput input) {
-		this(2048,input,256);
+		this(2048,input,64);
 	}
 	
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
 		this.input = input;
 		this.buffer = new byte[initBufferSize];
-		this.hashBuffer = new long[initBufferSize];
 		
 		this.position = 0;
 		this.limit = 0;
@@ -124,9 +115,7 @@ public final class PrimitiveReader {
 
 			//
 			totalReader += filled;
-			limit += filled;		
-			//
-			buildFingerprint(filled);	
+			limit += filled;			
 			//
 			return need-filled;
 		} else {
@@ -150,55 +139,11 @@ public final class PrimitiveReader {
 		position = 0;
 		totalReader+=filled;
 		limit = populated+filled;
-		
-		buildFingerprint(filled);	
+			
 		return need-filled;
 		
 	}
-	
-	private void buildFingerprint(int c) {
-		//This feature will NOT be used when de-multiplexing redundant
-		//feeds for hot fail over however it will be needed for 
-		//trusted delivery of data to mobile devices that only have 1 
-		//incoming feed.
 		
-		//this works well for the last mile problem into homes or to mobile devices.
-		//Home Routers 1mbps-30mbps are common on DSL.
-		//3G       600kbps -  3.1 mbps
-		//4g         3mbps - 10mbps
-		//4glte      5mbps - 12mbps
-		//802.11n  100mbps - 300mbps
-		
-		//without finger prints the stream can easily saturate 500mbps
-		//finger prints will add no more than 10% overhead and therefore is
-		//a good fit for all these slow networks where it would not be
-		//appropriate to send 3 separate streams.
-		
-		
-		if (useFingerprint) {
-			//TODO: replace this with garbage free Rabin fingerprints 
-			// called on RecordEnd or SequenceBottom
-			
-			int x = limit-c;
-			while (--c>=0) {
-				
-				//write finger print based on all previous bytes not including this one.
-				hashBuffer[x] = windowedFingerprint.fingerprint;
-				//now eat this byte
-				windowedFingerprint.eat(buffer[x++]);		
-			}
-		}
-	}
-
-	/**
-	 * Call this at the 
-	 * @return
-	 */
-	
-	public long getFingerprint() {
-		return hashBuffer[position];
-	}
-	
 	public final void readByteData(byte[] target, int offset, int length) {
 		//ensure all the bytes are in the buffer before calling visitor
         if (limit - position < length) {

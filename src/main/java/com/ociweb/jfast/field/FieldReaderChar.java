@@ -8,7 +8,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderChar {
 
-	private static final int INIT_VALUE_MASK = 0x80000000;
+	public static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
 	private final TextHeap charDictionary;
 	private final int INSTANCE_MASK;
@@ -108,33 +108,32 @@ public class FieldReaderChar {
 		} else {
 			targ[targIndex++] = (char)(0x7F & val);
 		}
-		int stopIndex = charDictionary.tat[offset+1] = targIndex;
+		charDictionary.tat[offset+1] = targIndex;
 	}
-	
-	
+
 	public int readASCIIConstant(int token, int readFromIdx) {
 		//always return this required value.
-		return token & INSTANCE_MASK;
+		return (token & INSTANCE_MASK) | INIT_VALUE_MASK;
 	}
 	
 	public int readASCIIConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
+		return (reader.popPMapBit()!=0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 
 	public int readUTF8Constant(int token, int readFromIdx) {
 		//always return this required value.
-		return token & INSTANCE_MASK;
+		return (token & INSTANCE_MASK) | INIT_VALUE_MASK;
 	}
 	
 	public int readUTF8ConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
+		return (reader.popPMapBit()!=0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 	
 	public int readASCIIDefault(int token, int readFromIdx) {
 				
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()==0) {
-			return INIT_VALUE_MASK|idx;//use constant
+			return INIT_VALUE_MASK|idx;//use default
 		} else {
 			byte val = reader.readTextASCIIByte();
 			if (0!=(val&0x7F)) {

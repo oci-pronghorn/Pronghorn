@@ -97,6 +97,12 @@ public class TemplateLoaderTest {
 		byte prefixSize = 4;
 		catalog.setMessagePrefix(prefixSize);	
 		
+		int maxByteVector = 0;
+		catalog.setMaxByteVectorLength(maxByteVector);
+				
+		int maxTextLength = 14;
+		catalog.setMaxTextLength(maxTextLength);
+		
 		//connect to file		
 		URL sourceData = getClass().getResource("/performance/complex30000.dat");
 
@@ -117,6 +123,7 @@ public class TemplateLoaderTest {
 
 			int data = 0; //same id needed for writer construction
 			while (0!=(data = dynamicReader.hasMore())) {
+				//TODO: only jump to next record instead of dumping all
 				queue.dump(); //must dump values in buffer or we will hang when reading.
 				result |=data;
 			}

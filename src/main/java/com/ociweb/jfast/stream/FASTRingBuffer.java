@@ -3,6 +3,7 @@ package com.ociweb.jfast.stream;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.TextHeap;
 
 /**
@@ -23,11 +24,19 @@ public class FASTRingBuffer {
 	final AtomicInteger addCount = new AtomicInteger();
 	final int maxSize;
 	
-	public FASTRingBuffer(byte bits) {
+	final int maxCharSize;
+	final int charMask;
+	final char[] charBuffer;
+	
+	public FASTRingBuffer(byte bits, byte charBits) {
 		assert(bits>=1);
-		maxSize = 1<<bits;
-		mask = maxSize-1;
-		buffer = new int[maxSize];
+		this.maxSize = 1<<bits;
+		this.mask = maxSize-1;
+		this.buffer = new int[maxSize];
+			
+		this.maxCharSize = 1<<charBits;
+		this.charMask = maxCharSize-1;
+		this.charBuffer = new char[maxCharSize];
 	}
 	
 	//adjust these from the offset of the biginning of the message.
@@ -99,41 +108,36 @@ public class FASTRingBuffer {
 	}
 
 	public void append(int idx, TextHeap heap) {
+		//3 different modes but this always consumes a single int in ring buffer.
+		//Dynamic RingBuffer -     00 length (reader will index each text to jump w/o array?)
+		//Constant TextHeap -      10 full index
+		//Up to 3 ascii chars here 110000nn up to 3 ascii chars 
 		
-		//TODO: bulk of time is here need to implement zero copy strings.
+		int pos = addCount.get();
 		
-//		int pos = addCount.get();	
-//		int length = heap.length(idx); //required to ensure we have the space.
-//		//System.err.println("'append "+length+" "+heap.get(idx,new StringBuilder()));
-//		int temp = maxSize-length;
-//		if (temp<0) {
-//			throw new UnsupportedOperationException();
-//		}
-//		while (pos-removeCount.get()>=temp) {	
-//		}		
-//		//System.err.println(Integer.toBinaryString(idx)+" "+heap.get(idx, new StringBuilder()));
-//		
-//		//TODO: according to the template all of these should have been constants.
-//		//TODO: if it is a constant/default then point to that rather than make a copy.
-//		
-//		pos+=heap.getIntoRing(idx, buffer, pos, mask);
-//		addCount.lazySet(pos);
+		int temp = maxSize-1;
+		while (pos-removeCount.get()>=temp) {	
+		}
 		
+		if (idx<0) {//points to constant, high bit already set.
+			buffer[mask&pos] = idx;			
+		} else {
+			if ((buffer[mask&pos] = heap.triASCIIToken(idx))>0) {
+				
+				//TODO: Must copy full string to secondary RingBuffer.
+				System.err.println("unsupported");
+				
+			}
+			
+		}
+		
+		addCount.lazySet(1+pos);	
+				
 	}
 
 	public void append(int idx, ByteHeap heap) {
 		
-		int pos = addCount.get();	
-		int length = heap.length(idx)>>2; //required to ensure we have the space.
-		int temp = maxSize-length;
-		if (temp<0) {
-			throw new UnsupportedOperationException();
-		}
-		while (pos-removeCount.get()>=temp) {	
-		}	
-		
-		pos+=heap.getIntoRing(idx, buffer, pos, mask);
-		addCount.lazySet(pos);
+		throw new UnsupportedOperationException();//TODO: copy text soution
 		
 	}
 

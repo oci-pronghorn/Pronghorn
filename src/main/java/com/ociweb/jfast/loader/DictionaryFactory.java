@@ -49,8 +49,7 @@ public class DictionaryFactory {
 	
 	char[][] appTypes = null;//appType identifiers used in XML
 	
-	private static final int INIT_GROW_STEP = 16;
-	private final int singleGapSize = 64; //default to avoid false cache sharing. 
+	private static final int INIT_GROW_STEP = 16; 
 		
 	private int integerCount;
 	private int longCount;
@@ -436,21 +435,21 @@ public class DictionaryFactory {
 		return array;
 	}
 	
-	public TextHeap charDictionary(int singleTextSize) {
+	public TextHeap charDictionary(int singleTextSize, int gapSize) {
 		if (charCount==0) {
 			return null;
 		}
-		TextHeap heap = new TextHeap(singleTextSize, singleGapSize, nextPowerOfTwo(charCount),
+		TextHeap heap = new TextHeap(singleTextSize, gapSize, nextPowerOfTwo(charCount),
 				                     charInitTotalLength, charInitIndex, charInitValue);
 		heap.reset();	
 		return heap;
 	}
 	
-	public ByteHeap byteDictionary(int singleBytesSize) {
+	public ByteHeap byteDictionary(int singleBytesSize, int gapSize) {
 		if (bytesCount==0) {
 			return null;
 		}
-		ByteHeap heap = new ByteHeap(singleBytesSize, singleGapSize, nextPowerOfTwo(bytesCount),
+		ByteHeap heap = new ByteHeap(singleBytesSize, gapSize, nextPowerOfTwo(bytesCount),
                                      byteInitTotalLength, byteInitIndex, byteInitValue);
 		heap.reset();
 		return heap;

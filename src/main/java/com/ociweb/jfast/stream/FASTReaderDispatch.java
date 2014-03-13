@@ -54,26 +54,21 @@ public class FASTReaderDispatch{
 	TextHeap charDictionary;
 	ByteHeap byteDictionary;
 	
-	final int maxVarSize = 256;//TODO: move into catalog
-	
-		
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
-			                   int maxTemplates, int nonTemplatePMapSize, int maxFieldId, 
-			                   int[][] dictionaryMembers) {
+			                   int maxTemplates, int nonTemplatePMapSize, int[][] dictionaryMembers, 
+			                   int maxTextLen, int maxVectorLen) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		this.dictionaryMembers = dictionaryMembers;
-		
-		
-		assert(maxFieldId>1);
-		
+				
 		this.integerDictionary = dcr.integerDictionary();
 		this.longDictionary = dcr.longDictionary();
 		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
 		this.decimalMantissaDictionary = dcr.decimalMantissaDictionary();
-		this.charDictionary = dcr.charDictionary(maxVarSize);
-		this.byteDictionary = dcr.byteDictionary(maxVarSize);
+		this.charDictionary = dcr.charDictionary(maxTextLen,4); //TODO: pass in gap size?
+		this.byteDictionary = dcr.byteDictionary(maxVectorLen,4);
+		
 		
 		this.readerInteger = new FieldReaderInteger(reader,integerDictionary);
 		this.readerLong = new FieldReaderLong(reader,longDictionary);
@@ -347,6 +342,8 @@ public class FASTReaderDispatch{
 
 
 	private int dispatchReadByToken010(int token) {
+	//	System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
+		
 		//010??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0100?

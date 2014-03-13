@@ -106,15 +106,8 @@ public class TextHeap {
 	public void reset() {
 	
 		int i = itemCount;
-
 		while (--i>=0) {
-			int b = i<<1;
-						
-			if (initTat[b]==initTat[b+1]) { //TODO: rethink, reset to see if it can be faster.
-				setNull(i);				
-			} else {
-				set(i, initBuffer, initTat[b], initTat[b+1]-initTat[b]);
-			}			
+			setNull(i);				
 		}
 	}
 	
@@ -826,6 +819,37 @@ public class TextHeap {
 			result = tat[offset+1] - tat[offset];
 		}
 		return result < 0 ? 0 : result;
+	}
+	
+	//returns length or token if ASCII of 3 chars or less is possible
+	public int triASCIIToken(int idx) {
+		assert(idx>=0) : "Only supported for primary values";
+		int offset = idx<<2;
+		int stop = tat[offset+1];
+		int start = tat[offset];
+		
+		int len = stop-start;
+		if (len>3) {
+			return len;
+		}
+		int result;
+		if (len<0) {
+			result = 0xC4000000;//set high bit of three if it is null vs empty
+		} else {
+			result = (0xC0|len)<<((3-len)<<3);//11000LEN eight bits
+			//Ensure result ends up with high bits on
+		}
+		
+		int i = len;		
+		while (--i>=0) {
+			int v = (int)data[i];
+			if (0==(v>>8)) {
+				result = (result<<8)|v;
+			} else {
+				return len;
+			}
+		}
+		return result;
 	}
 
 

@@ -42,7 +42,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	private long messageCount = 0;
 	
-	private final FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)16);//65536 TODO: hack test.
+	//the smaller the better to make it fit inside the cache.
+	private final FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)7, (byte)6);// TODO: hack test.
 	
 	//read groups field ids and build repeating lists of tokens.
 	
@@ -55,8 +56,9 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
 				                                catalog.templatesCount(), 
-				                                3, catalog.maxFieldId(),
-				                                catalog.dictionaryMembers());
+				                                3, catalog.dictionaryMembers(),
+				                                catalog.getMaxTextLength(),
+				                                catalog.getMaxByteVectorLength()); 
 			
 	}
 	
