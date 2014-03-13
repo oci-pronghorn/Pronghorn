@@ -496,15 +496,12 @@ public class TemplateHandler extends DefaultHandler {
     		int token = buildToken(tokenBuilderIntCount);
     		
     		
+    		//NOTE: we want the sequence length to come first then the repeating group pmap therefore
+    		//we are waiting until now to add the open group token.
+    		
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (((long)fieldId)<<32)|(0xFFFFFFFFl&token);
     		catalogTemplateScript[catalogTemplateScriptIdx++] = (0xFFFFFFFFl&groupOpenTokenStack[groupTokenStackHead]); 
-    		
-    		
-    		//NOTE: we want the sequence length to come first then the repeating group pmap therefore
-    	    //we are waiting until now to add the open group token.
-    		
-    		//TODO: urgen finish xx
-    		
+    		    		
     	} else if (qName.equalsIgnoreCase("sequence")  ) {
     		
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];

@@ -115,14 +115,14 @@ public class FieldReaderDecimal {
 						//none, delta
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//none
-							return mantissa.readLongSignedOptional(token );
+							return mantissa.readLongSignedOptional(token, readFromIdx);
 						} else {
 							//delta
-							return mantissa.readLongSignedDeltaOptional(token );
+							return mantissa.readLongSignedDeltaOptional(token, readFromIdx);
 						}	
 					} else {
 						//constant
-						return mantissa.readLongSignedConstantOptional(token );
+						return mantissa.readLongSignedConstantOptional(token, readFromIdx);
 					}
 					
 				} else {
@@ -131,14 +131,14 @@ public class FieldReaderDecimal {
 						//copy, increment
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//copy
-							return mantissa.readLongSignedCopyOptional(token );
+							return mantissa.readLongSignedCopyOptional(token, readFromIdx);
 						} else {
 							//increment
-							return mantissa.readLongSignedIncrementOptional(token );
+							return mantissa.readLongSignedIncrementOptional(token, readFromIdx);
 						}	
 					} else {
 						// default
-						return mantissa.readLongSignedDefaultOptional(token );
+						return mantissa.readLongSignedDefaultOptional(token, readFromIdx);
 					}		
 				}
 		
@@ -151,14 +151,14 @@ public class FieldReaderDecimal {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return mantissa.readLongSigned(token);
+					return mantissa.readLongSigned(token, readFromIdx);
 				} else {
 					//delta
-					return mantissa.readLongSignedDelta(token);
+					return mantissa.readLongSignedDelta(token, readFromIdx);
 				}	
 			} else {
 				//constant
-				return mantissa.readLongSignedConstant(token);
+				return mantissa.readLongSignedConstant(token, readFromIdx);
 			}
 			
 		} else {
@@ -167,14 +167,14 @@ public class FieldReaderDecimal {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return mantissa.readLongSignedCopy(token);
+					return mantissa.readLongSignedCopy(token, readFromIdx);
 				} else {
 					//increment
-					return mantissa.readLongSignedIncrement(token);
+					return mantissa.readLongSignedIncrement(token, readFromIdx);
 				}	
 			} else {
 				// default
-				return mantissa.readLongSignedDefault(token);
+				return mantissa.readLongSignedDefault(token, readFromIdx);
 			}		
 		}
 		

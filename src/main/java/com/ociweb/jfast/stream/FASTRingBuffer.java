@@ -100,22 +100,24 @@ public class FASTRingBuffer {
 
 	public void append(int idx, TextHeap heap) {
 		
-		int pos = addCount.get();	
-		int length = heap.length(idx); //required to ensure we have the space.
-		//System.err.println("'append "+length+" "+heap.get(idx,new StringBuilder()));
-		int temp = maxSize-length;
-		if (temp<0) {
-			throw new UnsupportedOperationException();
-		}
-		while (pos-removeCount.get()>=temp) {	
-		}		
-		//System.err.println(Integer.toBinaryString(idx)+" "+heap.get(idx, new StringBuilder()));
+		//TODO: bulk of time is here need to implement zero copy strings.
 		
-		//TODO: according to the template all of these should have been constants.
-		//TODO: if it is a constant/default then point to that rather than make a copy.
-		
-		pos+=heap.getIntoRing(idx, buffer, pos, mask);
-		addCount.lazySet(pos);
+//		int pos = addCount.get();	
+//		int length = heap.length(idx); //required to ensure we have the space.
+//		//System.err.println("'append "+length+" "+heap.get(idx,new StringBuilder()));
+//		int temp = maxSize-length;
+//		if (temp<0) {
+//			throw new UnsupportedOperationException();
+//		}
+//		while (pos-removeCount.get()>=temp) {	
+//		}		
+//		//System.err.println(Integer.toBinaryString(idx)+" "+heap.get(idx, new StringBuilder()));
+//		
+//		//TODO: according to the template all of these should have been constants.
+//		//TODO: if it is a constant/default then point to that rather than make a copy.
+//		
+//		pos+=heap.getIntoRing(idx, buffer, pos, mask);
+//		addCount.lazySet(pos);
 		
 	}
 

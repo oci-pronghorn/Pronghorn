@@ -121,7 +121,12 @@ public class FASTDynamicReader implements FASTDataProvider {
 			if (readerDispatch.dispatchReadByToken((int)(activeScript[activeScriptCursor]&0xFFFFFFFF), ringBuffer)) {
 					//jump back to top of this sequence in the script.
 					//return this cursor position as the unique id for this sequence.
-					return activeScriptTemplateMask|(activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&activeScript[activeScriptCursor]));
+			    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&activeScript[activeScriptCursor]);
+					
+			    	//TODO: this is not hepling as much as I thought. Must fix string/text first
+			    	//must add one because while will subtract one.
+			    	//activeScriptCursor--;   	//TODO: No longer return at end of sequence? May want to for large records??
+				   return activeScriptTemplateMask|activeScriptCursor;
 			}
 		} while (++activeScriptCursor<activeScriptLength);
 		

@@ -105,16 +105,12 @@ public class TextHeap {
 
 	public void reset() {
 	
-		///TODO: must optimize reset, takes 20% of initial test.
-		
 		int i = itemCount;
-
-		//TODO: 16 texts but only 9 need reset because reset is dictionary specific. Must keep member list.
 
 		while (--i>=0) {
 			int b = i<<1;
 						
-			if (initTat[b]==initTat[b+1]) {
+			if (initTat[b]==initTat[b+1]) { //TODO: rethink, reset to see if it can be faster.
 				setNull(i);				
 			} else {
 				set(i, initBuffer, initTat[b], initTat[b+1]-initTat[b]);

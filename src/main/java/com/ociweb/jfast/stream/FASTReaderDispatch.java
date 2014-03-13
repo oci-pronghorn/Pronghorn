@@ -438,7 +438,6 @@ public class FASTReaderDispatch{
 	}
 
 	private long readLongSignedOptional(int token) {
-		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -446,14 +445,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongSignedOptional(token );
+					return  readerLong.readLongSignedOptional(token, readFromIdx);
 				} else {
 					//delta
-					return  readerLong.readLongSignedDeltaOptional(token );
+					return  readerLong.readLongSignedDeltaOptional(token, readFromIdx );
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongSignedConstantOptional(token );
+				return  readerLong.readLongSignedConstantOptional(token, readFromIdx );
 			}
 			
 		} else {
@@ -462,21 +461,20 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongSignedCopyOptional(token );
+					return  readerLong.readLongSignedCopyOptional(token, readFromIdx );
 				} else {
 					//increment
-					return  readerLong.readLongSignedIncrementOptional(token );
+					return  readerLong.readLongSignedIncrementOptional(token, readFromIdx );
 				}	
 			} else {
 				// default
-				return  readerLong.readLongSignedDefaultOptional(token );
+				return  readerLong.readLongSignedDefaultOptional(token, readFromIdx );
 			}		
 		}
 		
 	}
 
 	private long readLongSigned(int token) {
-		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -484,14 +482,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongSigned(token);
+					return  readerLong.readLongSigned(token, readFromIdx);
 				} else {
 					//delta
-					return  readerLong.readLongSignedDelta(token);
+					return  readerLong.readLongSignedDelta(token, readFromIdx);
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongSignedConstant(token);
+				return  readerLong.readLongSignedConstant(token, readFromIdx);
 			}
 			
 		} else {
@@ -500,20 +498,19 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongSignedCopy(token);
+					return  readerLong.readLongSignedCopy(token, readFromIdx);
 				} else {
 					//increment
-					return  readerLong.readLongSignedIncrement(token);	
+					return  readerLong.readLongSignedIncrement(token, readFromIdx);	
 				}	
 			} else {
 				// default
-				return  readerLong.readLongSignedDefault(token);
+				return  readerLong.readLongSignedDefault(token, readFromIdx);
 			}		
 		}
 	}
 
 	private long readLongUnsignedOptional(int token) {
-		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -521,14 +518,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongUnsignedOptional(token);
+					return  readerLong.readLongUnsignedOptional(token, readFromIdx);
 				} else {
 					//delta
-					return  readerLong.readLongUnsignedDeltaOptional(token );
+					return  readerLong.readLongUnsignedDeltaOptional(token, readFromIdx);
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongUnsignedConstantOptional(token );
+				return  readerLong.readLongUnsignedConstantOptional(token, readFromIdx);
 			}
 			
 		} else {
@@ -537,21 +534,20 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongUnsignedCopyOptional(token );
+					return  readerLong.readLongUnsignedCopyOptional(token, readFromIdx);
 				} else {
 					//increment
-					return  readerLong.readLongUnsignedIncrementOptional(token );
+					return  readerLong.readLongUnsignedIncrementOptional(token, readFromIdx);
 				}	
 			} else {
 				// default
-				return  readerLong.readLongUnsignedDefaultOptional(token );
+				return  readerLong.readLongUnsignedDefaultOptional(token, readFromIdx);
 			}		
 		}
 
 	}
 
 	private long readLongUnsigned(int token) {
-		readerLong.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -559,14 +555,14 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return  readerLong.readLongUnsigned(token);
+					return  readerLong.readLongUnsigned(token, readFromIdx);
 				} else {
 					//delta
-					return  readerLong.readLongUnsignedDelta(token);
+					return  readerLong.readLongUnsignedDelta(token, readFromIdx);
 				}	
 			} else {
 				//constant
-				return  readerLong.readLongUnsignedConstant(token);
+				return  readerLong.readLongUnsignedConstant(token, readFromIdx);
 			}
 			
 		} else {
@@ -575,14 +571,14 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return  readerLong.readLongUnsignedCopy(token);
+					return  readerLong.readLongUnsignedCopy(token, readFromIdx);
 				} else {
 					//increment
-					return  readerLong.readLongUnsignedIncrement(token);		
+					return  readerLong.readLongUnsignedIncrement(token, readFromIdx);		
 				}	
 			} else {
 				// default
-				return  readerLong.readLongUnsignedDefault(token);
+				return  readerLong.readLongUnsignedDefault(token, readFromIdx);
 			}		
 		}
 		
