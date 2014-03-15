@@ -45,7 +45,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private long messageCount = 0;
 	
 	//the smaller the better to make it fit inside the cache.
-	private final FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)7, (byte)6);// TODO: hack test.
+	private final FASTRingBuffer ringBuffer;
 	
 	//read groups field ids and build repeating lists of tokens.
 	
@@ -59,8 +59,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 				                                catalog.dictionaryFactory(), 
 				                                3, 
 				                                catalog.dictionaryMembers(), catalog.getMaxTextLength(),
-				                                catalog.getMaxByteVectorLength()); 
-		this.fullScript = catalog.fullScript();	
+				                                catalog.getMaxByteVectorLength(), 4, 4); 
+		this.fullScript = catalog.fullScript();
+		this.ringBuffer = new FASTRingBuffer((byte)7, (byte)6);// TODO: hack test.
+		 
 	}
 	
 	public long messageCount() {
@@ -115,39 +117,45 @@ public class FASTDynamicReader implements FASTDataProvider {
 				
 				int step = 1;//TODO: lookup size from template id.
 				ringBuffer.blockOnNeed(step);//block if there is NOT enough space.
+				//TODO ..return 0x80000000  if block on need!!
 				
 				//set the cursor start and stop for this template				
 				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
 				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+				
+				//ringBuffer.printPos("set template "+templateId);
+				
 				ringBuffer.append(templateId);//write template id at the beginning of this message
 				
 				needTemplate = false;
 			} 
-			if (readerDispatch.dispatchReadByToken((int)(fullScript[activeScriptCursor]&0xFFFFFFFF), ringBuffer)) {
+			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {
 					//jump back to top of this sequence in the script.
-			    	int step = 1;//TODO: lookup size from template id script.
-				    ringBuffer.blockOnNeed(step);//block if there is NOT enough space for this sequence.
-					//return this cursor position as the unique id for this sequence.
-			    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor]);
-					
-			    	//TODO: this is not hepling as much as I thought. Must fix string/text first
-			    	//must add one because while will subtract one.
-			    	//activeScriptCursor--;   	//TODO: No longer return at end of sequence? May want to for large records??
-			    	ringBuffer.moveForward();
-				    return activeScriptTemplateMask|activeScriptCursor;
+				
+				    if (readerDispatch.isSkippedSequence()) {
+				    	System.err.println("has now been tested, please delete");
+						activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
+				    } else {
+				    	//	int step = 1;//TODO: lookup size from template id script.
+				    	//  ringBuffer.blockOnNeed(step);//block if there is NOT enough space for this sequence.
+					    if (!readerDispatch.isNewSequence()) {
+					    	//return this cursor position as the unique id for this sequence.
+					    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor]);
+					    } else {
+					    	activeScriptCursor++;
+					    }
+				    	ringBuffer.moveForward();
+					    return 1;//has sequence group to read
+				    }
 			}
 		} while (++activeScriptCursor<activeScriptLimit);
 		
-//		//reached the end of the script so close and prep for the next one
-//		int result = activeScriptTemplateMask;
-//		activeScriptTemplateMask = -1;//find next template
-//		readerDispatch.closeMessage();
-//		return result;//returns the template mask for the end of this message
+		//reached the end of the script so close and prep for the next one
 			
 		needTemplate = true;
 		readerDispatch.closeMessage();
 		ringBuffer.moveForward();
-		return activeScriptTemplateMask;
+		return 2;//finished reading full message
 	}
 
 	private int parseNextTokenId() {
@@ -164,6 +172,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 			activeScriptTemplateMask = templateId<<TokenBuilder.MAX_FIELD_ID_BITS; //for id returned to caller
 			messageCount++;
 		}
+	//	System.err.println(activeScriptTemplateMask+"  new template:"+templateId);
 					
 		return templateId;
 

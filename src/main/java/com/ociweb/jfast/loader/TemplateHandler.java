@@ -37,7 +37,9 @@ public class TemplateHandler extends DefaultHandler {
     int catalogLargestNonTemplatePMap = 0;
 	
 	DictionaryFactory defaultConstValues = new DictionaryFactory();
-    
+    	
+	List<List<Integer>> members = new ArrayList<List<Integer>>();
+	
 	//post processing for catalog
 	int[][] tokenIdxMembers;
 	int[] tokenIdxMemberHeads;
@@ -613,8 +615,7 @@ public class TemplateHandler extends DefaultHandler {
 		
 		return token;
 	}
-	
-	List<List<Integer>> members = new ArrayList<List<Integer>>();
+
 	
 	private void saveMember(int activeDictionary, int fieldType, int tokCount) {
 		int listId = (activeDictionary<<TokenBuilder.BITS_TYPE)|fieldType;

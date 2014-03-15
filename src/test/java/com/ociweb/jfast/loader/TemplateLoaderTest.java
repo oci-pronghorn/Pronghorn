@@ -119,13 +119,32 @@ public class TemplateLoaderTest {
 		while (--iter>=0) {
 			msgs = 0;
 			grps = 0;
-			int data = 0; //same id needed for writer construction
-			while (0!=(data = dynamicReader.hasMore())) {
-				queue.dump(); //must dump values in buffer or we will hang when reading.
-				if (0==(data&0x3FF)) {
+			int flag = 0; //same id needed for writer construction
+			while (0!=(flag = dynamicReader.hasMore())) {
+				//New flags TODO: build some constants.
+				//0  eof
+				//1  has sequence group to read (TODO: refactor to always be end of sequence?
+				//2  end of message
+				//neg  unable to write
+				
+				
+				if (0!=(flag&0x02)) {
 					msgs++;
+					//this is a template message. TODO: need unit test here.
+					int templateId = queue.readInteger(0);
+					assertTrue(1==templateId || 2==templateId || 99==templateId);
+					
+					//must dump values in buffer or we will hang when reading.
+					//only dump at end of template not end of sequence.
+					//the removePosition must remain at the beginning until message is complete.					
+					queue.dump(); 
+				} else {
+					
+					
 				}
 				grps++;
+				
+				
 			}		
 			fastInput.reset();
 			primitiveReader.reset();
@@ -136,21 +155,25 @@ public class TemplateLoaderTest {
 		while (--iter>=0) {
 
 			double start = System.nanoTime();
-			
-			int data; //same id needed for writer construction
-			while (0!=(data = dynamicReader.hasMore())) {
-				queue.dump(); //must dump values in buffer or we will hang when reading.
-				result|=data;//must do some real work or hot-spot deletes this loop.
-			}
+			int flag;
+			while (0!=(flag=dynamicReader.hasMore())) {
+				if (0!=(flag&0x02)) {
+					result|=queue.readInteger(0);//must do some real work or hot-spot may delete this loop.
+					queue.dump(); //must dump values in buffer or we will hang when reading.
+				}
 				
+			}				
 			double duration = System.nanoTime()-start;
+			
 			int ns = (int)(duration/count);
 			float mmsgPerSec = (msgs*(float)1000l/ns);
 			float nsPerByte = (ns/(float)totalTestBytes);
+			int mbps = (int)((1000l*totalTestBytes*8l)/ns);
 					
 			System.err.println("Duration:"+ns+"ns "+
 					           " "+mmsgPerSec+"MM/s "+
-					           " "+nsPerByte+"ns/B "+
+					           " "+nsPerByte+"nspB "+
+					           " "+mbps+"mbps "+
 					           " Bytes:"+totalTestBytes+
 					           " Messages:"+msgs+
    			           		   " Groups:"+grps); //Phrases/Clauses
@@ -219,9 +242,7 @@ public class TemplateLoaderTest {
 		while (--iter>=0) {
 
 			double start = System.nanoTime();
-			
-				int data; //same id needed for writer construction
-				while (0!=(data = dynamicReader.hasMore())) {
+				while (0!=dynamicReader.hasMore()) {
 					dynamicWriter.write(queue);
 				}
 				

@@ -47,7 +47,7 @@ public final class PrimitiveReader {
 
 
 	public PrimitiveReader(FASTInput input) {
-		this(2048,input,64);
+		this(2048,input,16);
 	}
 	
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {

@@ -6,18 +6,34 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 public class FASTDynamicWriter {
 
 	private final FASTWriterDispatch writerDispatch;
+	private final TemplateCatalog catalog;
+	
 	
 	public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog) {
 
-		writerDispatch = new FASTWriterDispatch(primitiveWriter,
+		this.writerDispatch = new FASTWriterDispatch(primitiveWriter,
 										catalog.dictionaryFactory(),
 										catalog.templatesCount());
+		this.catalog = catalog;
 		
 	}
 
 	public void write(FASTRingBuffer queue) {
 				
-		// TODO Auto-generated method stub
+		
+	//	int step = 1;//need to know the size of this record.
+		
+	//	queue.removeForward(step);
+		
+		int tokenId = queue.readInteger(0);
+		
+		//tokens - reading 
+		int[] fullScript = catalog.fullScript();
+		
+		
+		
+		//queue.readInteger(catalog.fieldIdx(x));
+		
 		
 		//read flags to pick the right scripts
 		//play down script to call write methods.

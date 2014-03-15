@@ -46,6 +46,7 @@ public class FASTReaderDispatch{
 	int[] sequenceCountStack = new int[maxNestedSeqDepth];
 	int sequenceCountStackHead = -1;
 	int checkSequence;
+	int newSequence;
 	
 	int[] integerDictionary;
 	long[] longDictionary;
@@ -56,7 +57,7 @@ public class FASTReaderDispatch{
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
 			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
-			                   int maxVectorLen) {
+			                   int maxVectorLen, int charGap, int bytesGap) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -66,8 +67,8 @@ public class FASTReaderDispatch{
 		this.longDictionary = dcr.longDictionary();
 		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
 		this.decimalMantissaDictionary = dcr.decimalMantissaDictionary();
-		this.charDictionary = dcr.charDictionary(maxTextLen,4); //TODO: pass in gap size?
-		this.byteDictionary = dcr.byteDictionary(maxVectorLen,4);
+		this.charDictionary = dcr.charDictionary(maxTextLen,charGap);
+		this.byteDictionary = dcr.byteDictionary(maxVectorLen,bytesGap);
 		
 		
 		this.readerInteger = new FieldReaderInteger(reader,integerDictionary);
@@ -177,6 +178,14 @@ public class FASTReaderDispatch{
 		}
 	}
 	
+	public boolean isNewSequence() {
+		return newSequence>0;
+	}
+	
+	public boolean isSkippedSequence() {
+		return newSequence<0;
+	}
+	
 	private boolean dispatchReadByToken1(int token, FASTRingBuffer outputQueue) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
@@ -209,8 +218,14 @@ public class FASTReaderDispatch{
 				//Only happens once before a node sequence so push it on the count stack
 				int length;
 				outputQueue.append(length = readIntegerUnsigned(token));
-				sequenceCountStack[++sequenceCountStackHead] = length;
-				
+				if (length==0) {
+					System.err.println("testing squence length of zero");
+					newSequence = -1;
+				} else {			
+					sequenceCountStack[++sequenceCountStackHead] = length;
+					newSequence = 1;
+				}
+				return true;
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 //					//1010?
 //					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
@@ -897,6 +912,7 @@ public class FASTReaderDispatch{
 	 */
 	public boolean completeSequence(int token) {
 
+		newSequence = 0;
 		checkSequence = 0;//reset for next time
 		
 		if (sequenceCountStackHead<=0) {

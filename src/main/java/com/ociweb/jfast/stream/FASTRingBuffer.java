@@ -29,6 +29,7 @@ public class FASTRingBuffer {
 	final char[] charBuffer;
 	
 	int addPos = 0;
+	int remPos = 0;
 	
 	public FASTRingBuffer(byte bits, byte charBits) {
 		assert(bits>=1);
@@ -146,12 +147,30 @@ public class FASTRingBuffer {
 	}
 	
 	public void removeForward(int step) {
-		removeCount.lazySet(removeCount.get()+step);
+		//remPos = removeCount.get()+step;
+		//removeCount.lazySet(remPos);
 	}
 	
 	public void dump() {
+		//move the removePosition up to the addPosition
+		//System.err.println("resetup to "+addPos);
+		remPos = addPos;
 		removeCount.lazySet(addPos);
 	}
+
+	public void printPos(String label) {
+		System.err.println(label+" remPos:"+remPos+"  addPos:"+addPos);
+	}
 	
+	public int readInteger(int idx) {
+		return buffer[mask&(remPos+idx)];
+	}
+	
+	public long readLong(int idx) {
+		
+		int i = remPos+idx;
+		return (((long)buffer[mask&i])<<32) | (((long)buffer[mask&(i+1)])&0xFFFFFFFFl);
+
+	}
 	
 }
