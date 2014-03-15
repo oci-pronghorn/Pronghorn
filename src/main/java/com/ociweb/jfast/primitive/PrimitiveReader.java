@@ -56,7 +56,7 @@ public final class PrimitiveReader {
 		
 		this.position = 0;
 		this.limit = 0;
-		
+		//TODO: URGENT perf increase. 64 seems a bit large, must get exact value from nested tempplates.. System.err.println(maxPMapCount);
 		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
 		this.invPmapStackDepth = invPmapStack.length-2;
 				

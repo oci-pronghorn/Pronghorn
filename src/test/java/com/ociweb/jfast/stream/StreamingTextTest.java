@@ -206,7 +206,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 100, 3, new int[0][0], 300,0);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 300, 0);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();

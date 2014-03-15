@@ -76,21 +76,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	}
 	
 	
-	FASTWriterDispatch fw = null;
 
 	@Override
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		//TODO: determine how to cache this to speed up the testing.
-		//if (null==fw) {
-			fw = new FASTWriterDispatch(pw, dcr, 100);
-		//} else {
-		//	fw.flush();
-		//	resetOutputWriter();
-		//	fw.reset(dcr);
-		//}
-		
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100);
+
 		long start = System.nanoTime();
 		if (operationIters<3) {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
@@ -140,7 +132,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			                      DictionaryFactory dcr) {
 		
 		//if (null==fr) {
-			fr = new FASTReaderDispatch(pr, dcr, 100, 3, new int[0][0], 0,0);
+			fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0);
 		//} else {
 		//	//pr.reset();
 		//	fr.reset();

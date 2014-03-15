@@ -12,7 +12,8 @@ public class FieldReaderLong {
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;
 	final long[]  lastValue; //TODO: try converting to array of int and then merge with FieldReaderInteger.
-
+								//NOTE: step two merge with Decimals.
+	
 	//TODO: add advanced API for modification
 	private long[] absentLongs = new long[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG};
 	

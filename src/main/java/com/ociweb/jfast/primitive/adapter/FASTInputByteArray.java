@@ -24,6 +24,10 @@ public class FASTInputByteArray implements FASTInput {
 		this.limit = limit;
 	}
 	
+	public int remaining() {
+		return limit-position;
+	}
+	
 	public void reset(byte[] buffer) {
 		this.position = 0;
 		this.buffer = buffer;

@@ -16,11 +16,17 @@ public class TemplateCatalog {
 	public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 	private static final long NO_ID = 0xFFFFFFFF00000000l;
 	
-	final long[][] scriptsCatalog; //top 32 bits id, lower 32 bits token
 	final DictionaryFactory dictionaryFactory;
 	final int maxTemplatePMapSize;
 	final int maxNonTemplatePMapSize;
 	final int maxFieldId;
+	
+	final int[] templateStartIdx;
+	final int[] templateLimitIdx;
+	
+	final int[] scriptTokens;
+	final int[] scriptFieldIds;
+	final int templatesInCatalog;
 	
 	final int[][] dictionaryMembers;
 	
@@ -29,12 +35,24 @@ public class TemplateCatalog {
 	int maxTextLength = 16;//default
 	int maxByteVectorLength = 16;
 	
+	public int getTemplateStartIdx(int templateId) {
+		return templateStartIdx[templateId];
+	}
+	public int getTemplateLimitIdx(int templateId) {
+		return templateLimitIdx[templateId];
+	}
 	
 	public TemplateCatalog(PrimitiveReader reader) {
 				
 		int templatePow = reader.readIntegerUnsigned();
 		assert(templatePow<32) : "Corrupt catalog file";
-		scriptsCatalog = new long[1<<templatePow][];
+		templateStartIdx = new int[1<<templatePow];
+		templateLimitIdx = new int[1<<templatePow];		
+		
+		int fullScriptLength = reader.readIntegerUnsigned();
+		scriptTokens = new int[fullScriptLength];
+		scriptFieldIds = new int[fullScriptLength];
+		templatesInCatalog = reader.readIntegerUnsigned();
 		
 		loadTemplateScripts(reader);
 		
@@ -64,64 +82,56 @@ public class TemplateCatalog {
 	
 	//Assumes that the tokens are already loaded and ready for use.
 	private void loadTemplateScripts(PrimitiveReader reader) {
-		
-		int templatesInCatalog = reader.readIntegerUnsigned();
-		
-		int tic = templatesInCatalog;
-		while (--tic>=0) {
+				
+		int i = templatesInCatalog;
+		while (--i>=0) {
+			//look up for script index given the templateId
 			int templateId = reader.readIntegerUnsigned();
-			int s = reader.readIntegerUnsigned();
-			long[] script = new long[s]; //top 32 are id, low 32 are token
-			while (--s>=0) { //TODO: need to add full field names to be looked up upon error etc.
-				script[s] = reader.readLongUnsigned();
-				
-				//int fieldId = (int)(script[s]>>>32);
-				//int token = (int)(script[s]&0xFFFFFFFF);
-				//System.err.println("Load:"+Long.toHexString(script[s])+" "+fieldId+" "+TokenBuilder.tokenToString(token));
-
-				
-			}
-			
-
-			//save the script into the catalog
-			scriptsCatalog[templateId] = script;
-			
-			//one bit in pmap for tempalteid?
-			//seqNO channel  pmap  templateId message
-			// 4     1        n       x        y
-			
-			//first bit template
-			//pmap               template    34        52     131
-			//64                    2         1      58782   string
-			
-			//TODO: build a helper for printing scripts with human readable commands
-			//System.err.println("load new template:"+templateId+" len "+script.length+"  "+Arrays.toString(script));
-			
-	//		stream    message* | block*
-	//		block     BlockSize message+
-	//		message   segment
-	//		segment   PresenceMap TemplateIdentifier? (field | segment)*
-	//*		field     integer | string | delta | ScaledNumber | ByteVector
-	//*		integer   UnsignedInteger | SignedInteger
-	//*		string    ASCIIString | UnicodeString
-	//*		delta     IntegerDelta | ScaledNumberDelta | ASCIIStringDelta |ByteVectorDelta
-						
-			
+			templateStartIdx[templateId] = reader.readIntegerUnsigned();
+			templateLimitIdx[templateId] = reader.readIntegerUnsigned();
+			//System.err.println("templateId "+templateId);			
 		}
+		//System.err.println("total:"+templatesInCatalog);
+
+		i = scriptTokens.length;
+		while (--i>=0) {
+			scriptTokens[i]=reader.readIntegerSigned();
+			scriptFieldIds[i]=reader.readIntegerUnsigned(); 
+		}
+		
+	//	System.err.println("script tokens/fields "+scriptTokens.length);//46
+	//	System.err.println("templateId idx start/stop count "+this.templateStartIdx.length);//128
+		
+
 	}
 	
 
+//	//		stream    message* | block*
+//	//		block     BlockSize message+
+//	//		message   segment
+//	//		segment   PresenceMap TemplateIdentifier? (field | segment)*
+//	//*		field     integer | string | delta | ScaledNumber | ByteVector
+//	//*		integer   UnsignedInteger | SignedInteger
+//	//*		string    ASCIIString | UnicodeString
+//	//*		delta     IntegerDelta | ScaledNumberDelta | ASCIIStringDelta |ByteVectorDelta
 	
 	public static void save(PrimitiveWriter writer, 
 			                  int uniqueIds, int biggestId, 
 			                  int uniqueTemplateIds, int biggestTemplateId,
-			                  long[][] scripts, DictionaryFactory df, 
-			                  int maxTemplatePMap, int maxNonTemplatePMap, 
-			                  int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
+			                  DictionaryFactory df, int maxTemplatePMap, 
+			                  int maxNonTemplatePMap, int[][] tokenIdxMembers, 
+			                  int[] tokenIdxMemberHeads,
+			                  int[] catalogScriptTokens,
+			                  int[] catalogScriptFieldIds,
+			                  int scriptLength,
+			                  int[] templateIdx, 
+			                  int[] templateLimit) {
 		
-		//TODO: Remove absent value this will be set client side as needed and can be different.
 		
-		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, scripts);			
+		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, 
+				            catalogScriptTokens,
+				            catalogScriptFieldIds, scriptLength,
+				            templateIdx, templateLimit);			
 		
 		saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
 				
@@ -191,8 +201,13 @@ public class TemplateCatalog {
 	 * @param biggestTemplateId
 	 * @param scripts
 	 */
-	private static void saveTemplateScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
-			long[][] scripts) {
+	private static void saveTemplateScripts(PrimitiveWriter writer, 
+			                                  int uniqueTemplateIds, int biggestTemplateId,
+			    			                  int[] catalogScriptTokens,
+			    			                  int[] catalogScriptFieldIds,
+			    			                  int scriptLength,
+			    			                  int[] templateStartIdx, 
+			    			                  int[] templateLimitIdx) {
 		//what size array will we need for template lookup. this must be a power of two
 		//therefore we will only store the exponent given a base of two.
 		//this is not so much for making the file smaller but rather to do the computation
@@ -205,45 +220,28 @@ public class TemplateCatalog {
 		}
 		assert(pow<32);
 		writer.writeIntegerUnsigned(pow);//will be < 32
+		writer.writeIntegerUnsigned(scriptLength);
 				
 		//total number of templates are are defining here in the catalog
-		writer.writeIntegerUnsigned(uniqueTemplateIds);		
-		//now write each template
-		int j = scripts.length;
-		int x = 0;
-		while (--j>=0) {
-			long[] script = scripts[j];
-			if (null!=script) {
-				x++;
-				writer.writeIntegerUnsigned(j);
-				int i = script.length;
-				writer.writeIntegerUnsigned(i);//length of script written first
-				
-				//System.err.println(j+" has script length of "+i);
-				
-				while (--i>=0) {
-					//int fieldId = (int)(script[i]>>>32);
-					//int token = (int)(script[i]&0xFFFFFFFF);
-					//.err.println("Write:"+Long.toHexString(script[i])+" "+fieldId+" "+TokenBuilder.tokenToString(token));
-					writer.writeLongUnsigned(script[i]);
-				}
-			}
+		writer.writeIntegerUnsigned(uniqueTemplateIds);	
+		//write each template index
+		int i = templateStartIdx.length;
+		while (--i>=0) {
+			if (0!=templateStartIdx[i]) {
+				writer.writeIntegerUnsigned(i);
+				writer.writeIntegerUnsigned(templateStartIdx[i]-1); //return the index to its original value (-1)
+				writer.writeIntegerUnsigned(templateLimitIdx[i]);
+			}			
 		}
-	}
-	
-	public long[] templateScript(int templateId) {
-		return scriptsCatalog[templateId];
-	}
-
-	public int templatesCount() {
-		int tmp = 0;
-		int x=scriptsCatalog.length;
-		while (--x>=0) {
-			if (null!=scriptsCatalog[x]) {
-				tmp++;
-			}
+		
+		//write the scripts
+		i = scriptLength;
+		while (--i>=0) {
+			writer.writeIntegerSigned(catalogScriptTokens[i]);
+			writer.writeIntegerUnsigned(catalogScriptFieldIds[i]); //not sure about how helpfull this structure is.
 		}
-		return tmp;
+				
+		
 	}
 	
 	public DictionaryFactory dictionaryFactory() {
@@ -293,6 +291,17 @@ public class TemplateCatalog {
 
 	public void setMaxByteVectorLength(int maxByteVectorLength) {
 		this.maxByteVectorLength = maxByteVectorLength;
+	}
+
+
+
+
+	public int templatesCount() {
+		return templatesInCatalog;
+	}
+
+	public int[] fullScript() {
+		return scriptTokens;
 	}
 
 	

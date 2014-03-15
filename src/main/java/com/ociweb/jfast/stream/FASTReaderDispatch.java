@@ -55,8 +55,8 @@ public class FASTReaderDispatch{
 	ByteHeap byteDictionary;
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
-			                   int maxTemplates, int nonTemplatePMapSize, int[][] dictionaryMembers, 
-			                   int maxTextLen, int maxVectorLen) {
+			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
+			                   int maxVectorLen) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -120,6 +120,7 @@ public class FASTReaderDispatch{
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
 		
+		//System.err.println("token:"+TokenBuilder.tokenToString(token));
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
@@ -161,7 +162,7 @@ public class FASTReaderDispatch{
 			return false;
 		} else {
 			//pause node for more work processing will return false 
-			return dispatchReadByToken1(token);	
+			return dispatchReadByToken1(token, outputQueue);	
 		}
 	}
 
@@ -176,7 +177,7 @@ public class FASTReaderDispatch{
 		}
 	}
 	
-	private boolean dispatchReadByToken1(int token) {
+	private boolean dispatchReadByToken1(int token, FASTRingBuffer outputQueue) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 			//10???
@@ -206,11 +207,9 @@ public class FASTReaderDispatch{
 				//101??
 				//Length Type, no others defined so no need to keep checking
 				//Only happens once before a node sequence so push it on the count stack
-				int length = readIntegerUnsigned(token);
-				//TODO: remove System.err.println("sequenceSize:"+length); //1-5 in the test data Sequence is burning a lot
+				int length;
+				outputQueue.append(length = readIntegerUnsigned(token));
 				sequenceCountStack[++sequenceCountStackHead] = length;
-				//S//ystem.err.println("set new length:"+length);
-				//intLookup[id] = length; 
 				
 //				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 //					//1010?

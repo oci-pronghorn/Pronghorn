@@ -33,9 +33,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final TemplateCatalog catalog;
 	
 	private int activeScriptTemplateMask;
-	private long[] activeScript;
-	private int activeScriptLength;
+	
 	private int activeScriptCursor;
+	private int activeScriptLimit;
+	
+	private final int[] fullScript;
 	
 	private final byte[] prefixData;
 	private final byte prefixDataLength;
@@ -55,11 +57,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.activeScriptTemplateMask = -1; //no selected script				
 		this.readerDispatch = new FASTReaderDispatch(reader, 
 				                                catalog.dictionaryFactory(), 
-				                                catalog.templatesCount(), 
-				                                3, catalog.dictionaryMembers(),
-				                                catalog.getMaxTextLength(),
+				                                3, 
+				                                catalog.dictionaryMembers(), catalog.getMaxTextLength(),
 				                                catalog.getMaxByteVectorLength()); 
-			
+		this.fullScript = catalog.fullScript();	
 	}
 	
 	public long messageCount() {
@@ -80,11 +81,6 @@ public class FASTDynamicReader implements FASTDataProvider {
     	}
     	return builder.toString();
     }
-    
-	//Instead of dispatchReadByToken these could be called manually.
-	//This would be a fixed/static implementation for a set of templates.
-    //readerDispatch.readInt(token);
-	//readerDispatch.readLong(token);
     
 	
 	/**
@@ -115,22 +111,32 @@ public class FASTDynamicReader implements FASTDataProvider {
 					return 0;
 				}				
 				//get next token id then immediately start processing the script
-				parseNextTokenId();
+				int templateId = parseNextTokenId();
+				
+				int step = 1;//TODO: lookup size from template id.
+				ringBuffer.blockOnNeed(step);//block if there is NOT enough space.
+				
+				//set the cursor start and stop for this template				
+				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
+				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+				ringBuffer.append(templateId);//write template id at the beginning of this message
+				
 				needTemplate = false;
 			} 
-			//jump to top if at end of sequence with count remaining
-			//TODO: we are no longer using the ID so must REMOVE from the script!!!
-			if (readerDispatch.dispatchReadByToken((int)(activeScript[activeScriptCursor]&0xFFFFFFFF), ringBuffer)) {
+			if (readerDispatch.dispatchReadByToken((int)(fullScript[activeScriptCursor]&0xFFFFFFFF), ringBuffer)) {
 					//jump back to top of this sequence in the script.
+			    	int step = 1;//TODO: lookup size from template id script.
+				    ringBuffer.blockOnNeed(step);//block if there is NOT enough space for this sequence.
 					//return this cursor position as the unique id for this sequence.
-			    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&activeScript[activeScriptCursor]);
+			    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor]);
 					
 			    	//TODO: this is not hepling as much as I thought. Must fix string/text first
 			    	//must add one because while will subtract one.
 			    	//activeScriptCursor--;   	//TODO: No longer return at end of sequence? May want to for large records??
-				   return activeScriptTemplateMask|activeScriptCursor;
+			    	ringBuffer.moveForward();
+				    return activeScriptTemplateMask|activeScriptCursor;
 			}
-		} while (++activeScriptCursor<activeScriptLength);
+		} while (++activeScriptCursor<activeScriptLimit);
 		
 //		//reached the end of the script so close and prep for the next one
 //		int result = activeScriptTemplateMask;
@@ -140,10 +146,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 			
 		needTemplate = true;
 		readerDispatch.closeMessage();
+		ringBuffer.moveForward();
 		return activeScriptTemplateMask;
 	}
 
-	private void parseNextTokenId() {
+	private int parseNextTokenId() {
 		///read prefix bytes if any (only used by some implementations)
 		if (prefixDataLength!=0) {
 			readerDispatch.dispatchReadPrefix(prefixData);
@@ -158,10 +165,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 			messageCount++;
 		}
 					
-		//set the script and cursor for this template			
-		activeScript = catalog.templateScript(templateId);
-		activeScriptLength = activeScript.length;
-		activeScriptCursor = 0;
+		return templateId;
+
 	}
 	
 	public byte[] prefix() {

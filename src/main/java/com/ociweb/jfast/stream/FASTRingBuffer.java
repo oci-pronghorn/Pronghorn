@@ -28,6 +28,8 @@ public class FASTRingBuffer {
 	final int charMask;
 	final char[] charBuffer;
 	
+	int addPos = 0;
+	
 	public FASTRingBuffer(byte bits, byte charBits) {
 		assert(bits>=1);
 		this.maxSize = 1<<bits;
@@ -78,32 +80,28 @@ public class FASTRingBuffer {
 	//appropriate offset given the fieldID.  
 	//TODO: the sequence return is wasting cycles at the top level and must be removed.
 	
+    public void blockOnNeed(int step) { //TODO: call upon start of group when we know the size?
+    	
+    	int temp = maxSize-step;
+    	while (addPos-removeCount.get()>=temp) {	
+    	}
+    	
+    }
+	
 	
 	public void append(int value) {
-				
-		int pos = addCount.get();
-		
-		int temp = maxSize-1;
-		while (pos-removeCount.get()>=temp) {	
-		}
-		
-		buffer[mask&pos] = value;
-		addCount.lazySet(1+pos);		
+						
+		buffer[mask&addPos] = value;
+		addPos++;
 		
 	}
 	
 	public void append(long value) {
 		
-		int pos = addCount.get();
+		buffer[mask&addPos] = (int)(value>>>32);
+		buffer[mask&(addPos+1)] = (int)(value&0xFFFFFFFF);
 		
-		int temp = maxSize-2;
-		while (pos-removeCount.get()>=temp) {	
-		}
-		
-		buffer[mask&pos] = (int)(value>>>32);
-		buffer[mask&(pos+1)] = (int)(value&0xFFFFFFFF);
-		
-		addCount.lazySet(2+pos);		
+		addPos+=2;		
 		
 	}
 
@@ -113,25 +111,16 @@ public class FASTRingBuffer {
 		//Constant TextHeap -      10 full index
 		//Up to 3 ascii chars here 110000nn up to 3 ascii chars 
 		
-		int pos = addCount.get();
-		
-		int temp = maxSize-1;
-		while (pos-removeCount.get()>=temp) {	
-		}
-		
 		if (idx<0) {//points to constant, high bit already set.
-			buffer[mask&pos] = idx;			
+			buffer[mask&addPos] = idx;			
 		} else {
-			if ((buffer[mask&pos] = heap.triASCIIToken(idx))>0) {
-				
+			if ((buffer[mask&addPos] = heap.triASCIIToken(idx))>0) {
 				//TODO: Must copy full string to secondary RingBuffer.
 				System.err.println("unsupported");
-				
 			}
-			
 		}
 		
-		addCount.lazySet(1+pos);	
+		addPos++;	
 				
 	}
 
@@ -143,25 +132,25 @@ public class FASTRingBuffer {
 
 	public void append(int readDecimalExponent, long readDecimalMantissa) {
 		
-		int pos = addCount.get();
+		buffer[mask&addPos] = readDecimalExponent;
+		buffer[mask&(addPos+1)] = (int)(readDecimalMantissa>>>32);
+		buffer[mask&(addPos+2)] = (int)(readDecimalMantissa&0xFFFFFFFF);
 		
-		int temp = maxSize-3;
-		while (pos-removeCount.get()>=temp) {	
-		}
-		
-		buffer[mask&pos] = readDecimalExponent;
-		buffer[mask&(pos+1)] = (int)(readDecimalMantissa>>>32);
-		buffer[mask&(pos+2)] = (int)(readDecimalMantissa&0xFFFFFFFF);
-		
-		addCount.lazySet(3+pos);
+		addPos+=3;
 		
 	}
 	
+	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
+	public void moveForward() {
+		addCount.lazySet(addPos); 
+	}
+	
+	public void removeForward(int step) {
+		removeCount.lazySet(removeCount.get()+step);
+	}
+	
 	public void dump() {
-		//TODO: must periodically remove maxSize from both remove and add
-		
-		//System.err.println("dumping:"+(addCount.get()-removeCount.get()));
-		removeCount.set(addCount.get());
+		removeCount.lazySet(addPos);
 	}
 	
 	

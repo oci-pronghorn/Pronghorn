@@ -41,15 +41,16 @@ public class TemplateLoaderTest {
 		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(input));
 		
 		boolean ok = false;
-		long[] script = null;
+		int[] script = null;
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(469, catalogByteArray.length);
+			assertEquals(496, catalogByteArray.length);
 			
-			script = catalog.templateScript(2);
-			assertEquals(16, script.length);
-			assertEquals(1128, (script[0]>>32));//First Id
+			script = catalog.fullScript();
+			assertEquals(46, script.length);
+			//TODO: need better tests.
+		//	assertEquals(1128, (script[0]>>32));//First Id
 			
 			//CMD:Group:010000/Close:PMap::010001/9
 			//assertEquals(0xC110_0009l,0xFFFFFFFFl&script[script.length-1]);//Last Token
@@ -64,17 +65,10 @@ public class TemplateLoaderTest {
 		}
 	}
 
-	private String convertScriptToString(long[] script) {
+	private String convertScriptToString(int[] script) {
 		StringBuilder builder = new StringBuilder();
-		for(long val:script) {
-			int id = (int)(val>>>32);
-			int token = (int)(val&0xFFFFFFFF);
-			
-			if (id>=0) {
-				builder.append('[').append(id).append(']');
-			} else {
-				builder.append("CMD:");
-			}
+		for(int token:script) {
+	
 			builder.append(TokenBuilder.tokenToString(token));
 			
 			builder.append("\n");
@@ -107,100 +101,154 @@ public class TemplateLoaderTest {
 		URL sourceData = getClass().getResource("/performance/complex30000.dat");
 
 		FASTInputByteArray fastInput = buildInputForTesting(new File(sourceData.getFile()));
+		int totalTestBytes = fastInput.remaining();
 		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
 		
 		System.gc();
 		
-		double start=0;
-		int warmup = 120;//120;//set much larger for profiler
-		int count = 20;//20;
-		int iter = count+warmup;
+		int warmup = 30;//set much larger for profiler
+		int count = 5;
 		int result = 0;
+		
 		FASTRingBuffer queue = dynamicReader.ringBuffer();
 		
+		int msgs = 0;
+		int grps = 0;
+		int iter = warmup;
 		while (--iter>=0) {
-
+			msgs = 0;
+			grps = 0;
 			int data = 0; //same id needed for writer construction
 			while (0!=(data = dynamicReader.hasMore())) {
-				//TODO: only jump to next record instead of dumping all
 				queue.dump(); //must dump values in buffer or we will hang when reading.
-				result |=data;
-			}
-			
+				if (0==(data&0x3FF)) {
+					msgs++;
+				}
+				grps++;
+			}		
 			fastInput.reset();
 			primitiveReader.reset();
-			if (0==start) {
-				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
-				if (iter==count) {
-					start = System.nanoTime();
-				}
+			dynamicReader.reset();
+		}
+		
+		iter = count;
+		while (--iter>=0) {
+
+			double start = System.nanoTime();
+			
+			int data; //same id needed for writer construction
+			while (0!=(data = dynamicReader.hasMore())) {
+				queue.dump(); //must dump values in buffer or we will hang when reading.
+				result|=data;//must do some real work or hot-spot deletes this loop.
 			}
+				
+			double duration = System.nanoTime()-start;
+			int ns = (int)(duration/count);
+			float mmsgPerSec = (msgs*(float)1000l/ns);
+			float nsPerByte = (ns/(float)totalTestBytes);
+					
+			System.err.println("Duration:"+ns+"ns "+
+					           " "+mmsgPerSec+"MM/s "+
+					           " "+nsPerByte+"ns/B "+
+					           " Bytes:"+totalTestBytes+
+					           " Messages:"+msgs+
+   			           		   " Groups:"+grps); //Phrases/Clauses
+			
+			////////
+			//reset the data to run the test again.
+			////////
+			fastInput.reset();
+			primitiveReader.reset();
 			dynamicReader.reset();
 			
 		}
-		double duration = System.nanoTime()-start;
-		int ns = (int)(duration/count);
-		System.err.println("Avg duration:"+ns+"ns");
 		assertTrue(result!=0);	
 		
 	}
 
-//	@Test
-//	public void testDecodeEncodeComplex30000() {	
-//		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-//		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
-//		
-//		byte prefixSize = 4;
-//		catalog.setMessagePrefix(prefixSize);	
-//		
-//		//connect to file		
-//		URL sourceData = getClass().getResource("/performance/complex30000.dat");
-//
-//		File fileSource = new File(sourceData.getFile());
-//		FASTInputByteArray fastInput = buildInputForTesting(fileSource);
-//		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
-//		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
-//		
-//		byte[] targetBuffer = new byte[(int)fileSource.length()];
-//		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
-//		PrimitiveWriter primitiveWriter = new PrimitiveWriter(fastOutput);
-//		FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(primitiveWriter, catalog);
-//		
-//		
-//		
-//		System.gc();
-//		
-//		double start=0;
-//		int warmup = 120;//set much larger for profiler
-//		int count = 20;
-//		int iter = count+warmup;
-//		FASTRingBuffer queue = dynamicReader.ringBuffer();
-//		
-//		while (--iter>=0) {
-//
-//			int data = 0; //same id needed for writer construction
-//			while (0!=(data = dynamicReader.hasMore())) {	
-//				queue.dump();//Hack for now
-//				dynamicWriter.write(data, queue);			
-//			}
-//			
-//			fastInput.reset();
-//			primitiveReader.reset();
-//			if (0==start) {
-//				//System.err.println(warmup-(count+warmup-iter)+" "+dynamicReader.messageCount());
-//				if (iter==count) {
-//					start = System.nanoTime();
-//				}
-//			}
-//			dynamicReader.reset();
-//			
-//		}
-//		double duration = System.nanoTime()-start;
-//		int ns = (int)(duration/count);
-//		System.err.println("Avg duration:"+ns+"ns");
-//				
-//	}
+	@Test
+	public void testDecodeEncodeComplex30000() {	
+		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+		
+		byte prefixSize = 4;
+		catalog.setMessagePrefix(prefixSize);	
+		
+		//connect to file		
+		URL sourceData = getClass().getResource("/performance/complex30000.dat");
+
+		File fileSource = new File(sourceData.getFile());
+		FASTInputByteArray fastInput = buildInputForTesting(fileSource);
+		int totalTestBytes = fastInput.remaining();
+		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog);
+		
+		byte[] targetBuffer = new byte[(int)fileSource.length()];
+		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
+		PrimitiveWriter primitiveWriter = new PrimitiveWriter(fastOutput);
+		FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(primitiveWriter, catalog);
+		
+		System.gc();
+		
+		int warmup = 3;//set much larger for profiler
+		int count = 5;
+		
+		FASTRingBuffer queue = dynamicReader.ringBuffer();
+		
+		int msgs = 0;
+		int grps = 0;
+		int iter = warmup;
+		while (--iter>=0) {
+			msgs = 0;
+			grps = 0;
+			int data = 0; //same id needed for writer construction
+			while (0!=(data = dynamicReader.hasMore())) {
+				dynamicWriter.write(queue);
+				grps++;
+				if (0==(data&0x3FF)) {
+					msgs++;
+				}
+			}		
+			fastInput.reset();
+			primitiveReader.reset();
+			dynamicReader.reset();
+		}
+		
+		iter = count;
+		while (--iter>=0) {
+
+			double start = System.nanoTime();
+			
+				int data; //same id needed for writer construction
+				while (0!=(data = dynamicReader.hasMore())) {
+					dynamicWriter.write(queue);
+				}
+				
+			double duration = System.nanoTime()-start;
+			int ns = (int)(duration/count);
+			float mmsgPerSec = (msgs*(float)1000l/ns);
+			float nsPerByte = (ns/(float)totalTestBytes);
+					
+			System.err.println("Duration:"+ns+"ns "+
+					           " "+mmsgPerSec+"MM/s "+
+					           " "+nsPerByte+"ns/B "+
+					           " Bytes:"+totalTestBytes+
+					           " Messages:"+msgs+
+					           " Groups:"+grps); 
+			
+			//TODO: confirm generated bytes match parsed.
+			
+			////////
+			//reset the data to run the test again.
+			////////
+			fastInput.reset();
+			primitiveReader.reset();
+			dynamicReader.reset();
+			
+		}	
+				
+	}
 	
 	private FASTInputByteArray buildInputForTesting(File fileSource) {
 		byte[] fileData = null;

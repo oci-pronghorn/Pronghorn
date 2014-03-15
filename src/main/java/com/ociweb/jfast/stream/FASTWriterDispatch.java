@@ -33,10 +33,7 @@ public final class FASTWriterDispatch {
 	private final FieldWriterDecimal writerDecimal;
 	private final FieldWriterChar writerChar;
 	private final FieldWriterBytes writerBytes;
-	
-	//template specific dictionaries
-	private final int maxTemplates;
-	
+		
 	final int maxVarSize = 256;//TODO: move into catalog
 	
 			
@@ -58,9 +55,7 @@ public final class FASTWriterDispatch {
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
 		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxVarSize,8)); //TODO: pass in gap size?
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxVarSize,8));
-		
-		this.maxTemplates = maxTemplates;
-		
+				
 		this.templateStack = new int[maxTemplates];
 	}
 	

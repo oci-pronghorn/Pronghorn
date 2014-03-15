@@ -331,8 +331,7 @@ public class ReaderWriterPrimitiveTest {
 			//must reset bytes back to beginning
 			byteArrayInput.reset();
 			
-			//TODO: this is NOT clear why this is required!
-			pr = new PrimitiveReader(byteArrayInput);
+			pr.reset();
 			
 			start = System.nanoTime();
 			 p = passes;
