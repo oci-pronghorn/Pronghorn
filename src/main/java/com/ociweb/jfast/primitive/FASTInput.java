@@ -5,7 +5,7 @@ package com.ociweb.jfast.primitive;
 
 public interface FASTInput {
 
-	int fill (int offset, int count);
+	int fill(int offset, int count);
 		
 	void init(byte[] targetBuffer);
 

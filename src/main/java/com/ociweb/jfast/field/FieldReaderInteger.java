@@ -47,12 +47,12 @@ public class FieldReaderInteger {
 		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
 	}
 
-	public int readIntegerUnsigned(int token, int readFromIdx) {
+	public int readIntegerUnsigned(int token) {
 		//no need to set initValueFlags for field that can never be null
 		return lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned();
 	}
 
-	public int readIntegerUnsignedOptional(int token, int readFromIdx) {
+	public int readIntegerUnsignedOptional(int token) {
 		int value = reader.readIntegerUnsigned();
 		return value==0 ? absentInts[TokenBuilder.extractAbsent(token)] : value-1;
 	}
@@ -81,14 +81,14 @@ public class FieldReaderInteger {
 	
 	public int readIntegerUnsignedCopy(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? 
-				 lastValue[token & INSTANCE_MASK] : 
+				 lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK] : 
 			     (lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned()));
 	}
 
 	public int readIntegerUnsignedCopyOptional(int token, int readFromIdx) {
 		int value;
 		if (reader.popPMapBit()==0) {
-			value = lastValue[token & INSTANCE_MASK];
+			value = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readIntegerUnsigned();
 		}
@@ -128,7 +128,7 @@ public class FieldReaderInteger {
 	public int readIntegerUnsignedDefaultOptional(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			
-			int last = lastValue[token & INSTANCE_MASK];
+			int last = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
 			return last == 0 ?
 					//default value is null so return optional.
 					absentInts[TokenBuilder.extractAbsent(token)] : 
@@ -216,8 +216,8 @@ public class FieldReaderInteger {
 			return absentInts[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += 
-					(value + ((value>>>63)-1) );
-					//(value>0?value-1:value);
+					//(value + ((value>>>63)-1) );
+			        (value>0?value-1:value);
 		}
 	}
 

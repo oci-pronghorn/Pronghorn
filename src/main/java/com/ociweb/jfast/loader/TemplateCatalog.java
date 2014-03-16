@@ -21,7 +21,7 @@ public class TemplateCatalog {
 	final int maxNonTemplatePMapSize;
 	final int maxFieldId;
 	
-	final int[] templateStartIdx;
+	final int[] templateStartIdx; //TODO: these two arrays can be shortened!
 	final int[] templateLimitIdx;
 	
 	final int[] scriptTokens;
@@ -31,9 +31,11 @@ public class TemplateCatalog {
 	final int[][] dictionaryMembers;
 	
 	//Runtime specific message prefix, only used for some transmission technologies
-	byte prefixSize=0; //default is none
+	byte preambleSize=0; //default is none
 	int maxTextLength = 16;//default
-	int maxByteVectorLength = 16;
+	int maxByteVectorLength = 16;//default
+	int textLengthGap = 8;//default
+	int byteVectorGap = 8;//default
 	
 	public int getTemplateStartIdx(int templateId) {
 		return templateStartIdx[templateId];
@@ -76,8 +78,8 @@ public class TemplateCatalog {
 
 
 
-	public void setMessagePrefix(byte prefixSize) {
-		this.prefixSize = prefixSize;
+	public void setMessagePreambleSize(byte size) {
+		this.preambleSize = size;
 	}
 	
 	//Assumes that the tokens are already loaded and ready for use.
@@ -249,7 +251,7 @@ public class TemplateCatalog {
 	}
 
 	public byte getMessagePrefixSize() {
-		return prefixSize;
+		return preambleSize;
 	}
 
 	public int maxTemplatePMapSize() {
@@ -272,28 +274,19 @@ public class TemplateCatalog {
 		return maxTextLength;
 	}
 
-
-
-
-	public void setMaxTextLength(int maxTextLength) {
+	public void setMaxTextLength(int maxTextLength, int gap) {
 		this.maxTextLength = maxTextLength;
+		this.textLengthGap = gap;
 	}
-
-
-
 
 	public int getMaxByteVectorLength() {
 		return maxByteVectorLength;
 	}
 
-
-
-
-	public void setMaxByteVectorLength(int maxByteVectorLength) {
+	public void setMaxByteVectorLength(int maxByteVectorLength, int gap) {
 		this.maxByteVectorLength = maxByteVectorLength;
+		this.byteVectorGap = gap;
 	}
-
-
 
 
 	public int templatesCount() {
@@ -304,6 +297,12 @@ public class TemplateCatalog {
 		return scriptTokens;
 	}
 
+	public int getByteVectorGap() {
+		return byteVectorGap;
+	}
 	
+	public int getTextGap() {
+		return textLengthGap;
+	}
 	
 }

@@ -34,27 +34,24 @@ public final class FASTWriterDispatch {
 	private final FieldWriterChar writerChar;
 	private final FieldWriterBytes writerBytes;
 		
-	final int maxVarSize = 256;//TODO: move into catalog
-	
 			
 	private int readFromIdx = -1;
 	
 	private final DictionaryFactory dictionaryFactory;
 	
 	
-	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates) {
-		//TODO: must set the initial values for default/constants from the template here.
-		
+	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
+			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes) {
+
 		this.writer = writer;
 		this.dictionaryFactory = dcr;
 		
-		//TODO: move these values into DictionaryFactory so it does the construction and can cache if needed.
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
 		//
 		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
-		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxVarSize,8)); //TODO: pass in gap size?
-		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxVarSize,8));
+		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxCharSize,gapChars)); 
+		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxBytesSize,gapBytes));
 				
 		this.templateStack = new int[maxTemplates];
 	}
@@ -1033,6 +1030,51 @@ public final class FASTWriterDispatch {
 		writerChar.reset(dictionaryFactory);
 		writerBytes.reset(dictionaryFactory);
 		templateStackHead = 0;
+	}
+
+	public void dispatchWriteByToken(int token, FASTRingBuffer queue, int fieldPos) {
+		
+		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
+			//0????
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//00???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					write(token,queue.getInt(fieldPos));
+				} else {
+					write(token,queue.getLong(fieldPos));
+				}
+			} else {
+				//01???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+									
+					int len = queue.getCharLength(fieldPos);
+					int off = queue.getCharOffset(fieldPos);
+					char[] buf = queue.getCharBuffer(fieldPos);
+					write(token, buf, off, len);
+									
+				} else {
+					//011??
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0110? Decimal and DecimalOptional
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							// TODO URGENT: must be other side of FASTReaerDispatch
+							//outputQueue.append(readerDecimal.readDecimalExponent(token),
+							//                   readerDecimal.readDecimalMantissa(token));
+						} else {
+							//outputQueue.append(readerDecimal.readDecimalExponentOptional(token),
+							//    		       readerDecimal.readDecimalMantissaOptional(token));
+						}
+					} else {
+						//outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
+					}
+				}
+			}
+			//return false;
+		} else {
+			//pause node for more work processing will return false 
+			//return dispatchReadByToken1(token, outputQueue);	
+		}
+		
 	}
 
 

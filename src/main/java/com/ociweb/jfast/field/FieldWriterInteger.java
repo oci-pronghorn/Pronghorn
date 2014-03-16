@@ -49,8 +49,8 @@ public final class FieldWriterInteger {
 	 */
 	
 	public void writeIntegerUnsigned(int value, int token) {
-		//int idx = token & INSTANCE_MASK;
-		//lastValue[idx] = value;//TODO: not sure if this feature will be needed.
+		int idx = token & INSTANCE_MASK;
+		lastValue[idx] = value;
 		writer.writeIntegerUnsigned(value);
 	}
 	
@@ -179,8 +179,8 @@ public final class FieldWriterInteger {
 	////////////////
 	
 	public void writeIntegerSigned(int value, int token) {
-		//int idx = token & INSTANCE_MASK;
-		//lastValue[idx] = value;//TODO: not sure if this feature will be needed.
+		int idx = token & INSTANCE_MASK;
+		lastValue[idx] = value;
 		writer.writeIntegerSigned(value);
 	}
 	

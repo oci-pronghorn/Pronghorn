@@ -12,6 +12,7 @@ import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -46,7 +47,8 @@ public class FASTReaderDispatch{
 	int[] sequenceCountStack = new int[maxNestedSeqDepth];
 	int sequenceCountStackHead = -1;
 	int checkSequence;
-	int newSequence;
+	boolean finishedSequence;
+	boolean skippedSequence;
 	
 	int[] integerDictionary;
 	long[] longDictionary;
@@ -128,13 +130,6 @@ public class FASTReaderDispatch{
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					
-//					while (!outputQueue.hasRoom(1)) {
-//						reader.fetch();
-//						//if it continues to not have room must sleep?
-//						//or queue must alert upon removal?
-//					}
-					
 					outputQueue.append(dispatchReadByToken000(token));//int
 				} else {
 					outputQueue.append(dispatchReadByToken001(token));//long
@@ -143,7 +138,7 @@ public class FASTReaderDispatch{
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 					//int for text
-					outputQueue.append(dispatchReadByToken010(token), charDictionary);				
+					outputQueue.appendText(dispatchReadByToken010(token));				
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -178,12 +173,12 @@ public class FASTReaderDispatch{
 		}
 	}
 	
-	public boolean isNewSequence() {
-		return newSequence>0;
+	public boolean isSkippedSequence() {
+		return skippedSequence;
 	}
 	
-	public boolean isSkippedSequence() {
-		return newSequence<0;
+	public boolean isFinishedSequence() {
+		return finishedSequence;
 	}
 	
 	private boolean dispatchReadByToken1(int token, FASTRingBuffer outputQueue) {
@@ -194,23 +189,7 @@ public class FASTReaderDispatch{
 				//100??
 				//Group Type, no others defined so no need to keep checking
 				readGroupCommand(token);
-				return 	checkSequence!=0 && !completeSequence(token);
-				
-//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-//					//1000?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//10000 GroupSimple
-//					} else {
-//						//10001 GroupTemplated
-//					}
-//				} else {
-//					//1001?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//10010
-//					} else {
-//						//10011
-//					}
-//				}
+				return 	checkSequence!=0 && completeSequence(token);	
 				
 			} else {
 				//101??
@@ -220,27 +199,13 @@ public class FASTReaderDispatch{
 				outputQueue.append(length = readIntegerUnsigned(token));
 				if (length==0) {
 					System.err.println("testing squence length of zero");
-					newSequence = -1;
+					skippedSequence = true;
+					finishedSequence = true;
 				} else {			
+					skippedSequence = false;
+					finishedSequence = false;
 					sequenceCountStack[++sequenceCountStackHead] = length;
-					newSequence = 1;
 				}
-				return true;
-//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-//					//1010?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//10100
-//					} else {
-//						//10101
-//					}
-//				} else {
-//					//1011?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//10110
-//					} else {
-//						//10111
-//					}
-//				}
 				
 			}
 		} else {
@@ -248,41 +213,6 @@ public class FASTReaderDispatch{
 			//Dictionary Type, no others defined so no need to keep checking
 			readDictionaryCommand(token);
 			
-//			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-//				//110??
-//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-//					//1100?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//11000
-//					} else {
-//						//11001
-//					}
-//				} else {
-//					//1101?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//11010
-//					} else {
-//						//11011
-//					}
-//				}
-//			} else {
-//				//111??
-//				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-//					//1110?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//11100
-//					} else {
-//						//11101
-//					}
-//				} else {
-//					//1111?
-//					if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-//						//11110
-//					} else {
-//						//11111
-//					}
-//				}
-//			}
 		}
 		return false;
 	}
@@ -302,8 +232,8 @@ public class FASTReaderDispatch{
 				while (m<limit) {
 					assert(idx<0);
 					
-					if (0==(idx&(8<<TokenBuilder.SHIFT_TYPE))) {
-						if (0==(idx&(4<<TokenBuilder.SHIFT_TYPE))) {
+					if (0==(idx&8)) {
+						if (0==(idx&4)) {
 							//integer
 							while (m<limit && (idx = members[m++])>=0) {
 								readerInteger.reset(idx);
@@ -315,13 +245,13 @@ public class FASTReaderDispatch{
 							}
 						}
 					} else {
-						if (0==(idx&(4<<TokenBuilder.SHIFT_TYPE))) {
+						if (0==(idx&4)) {							
 							//text
 							while (m<limit && (idx = members[m++])>=0) {
 								readerChar.reset(idx);
 							}
 						} else {
-							if (0==(idx&(2<<TokenBuilder.SHIFT_TYPE))) {
+							if (0==(idx&2)) {								
 								//decimal
 								while (m<limit && (idx = members[m++])>=0) {
 									readerDecimal.reset(idx);
@@ -695,7 +625,8 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerUnsignedOptional(token,readFromIdx);
+					assert(readFromIdx<0);
+					return readerInteger.readIntegerUnsignedOptional(token);
 				} else {
 					//delta
 					return readerInteger.readIntegerUnsignedDeltaOptional(token,readFromIdx);
@@ -732,7 +663,8 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerInteger.readIntegerUnsigned(token,readFromIdx);
+					assert(readFromIdx<0);
+					return readerInteger.readIntegerUnsigned(token);
 				} else {
 					//delta
 					return readerInteger.readIntegerUnsignedDelta(token,readFromIdx);
@@ -911,13 +843,12 @@ public class FASTReaderDispatch{
 	 * @return
 	 */
 	public boolean completeSequence(int token) {
-
-		newSequence = 0;
+		
 		checkSequence = 0;//reset for next time
 		
 		if (sequenceCountStackHead<=0) {
 			//no sequence to worry about or not the right time
-			return true;
+			return false;
 		}
 		
 		
@@ -925,18 +856,15 @@ public class FASTReaderDispatch{
 		//and pop the stack when the sequence is first encountered.
 		//if count is zero we can pop it off but not until then.
 		
-		if (--sequenceCountStack[sequenceCountStackHead]<1 
-			//not needed if only called on sequence.
-				//&&	0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))
-			) {
+		if (--sequenceCountStack[sequenceCountStackHead]<1) {
 			//this group is a sequence so pop it off the stack.
 			//System.err.println("finished seq");
 			--sequenceCountStackHead;
-			//this sequence (the active one) has now completed
-			return true;
+			finishedSequence = true;
+		} else {
+			finishedSequence = false;
 		}
-		//System.err.println("Incomplete seq with count:"+sequenceCountStack[sequenceCountStackHead]);
-		return false;
+		return true;
 	}
 	
 	public void closeGroup(int token) {

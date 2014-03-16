@@ -47,7 +47,7 @@ public final class PrimitiveReader {
 
 
 	public PrimitiveReader(FASTInput input) {
-		this(2048,input,16);
+		this(2048,input,32);
 	}
 	
 	public PrimitiveReader(int initBufferSize, FASTInput input, int maxPMapCount) {
@@ -56,7 +56,6 @@ public final class PrimitiveReader {
 		
 		this.position = 0;
 		this.limit = 0;
-		//TODO: URGENT perf increase. 64 seems a bit large, must get exact value from nested tempplates.. System.err.println(maxPMapCount);
 		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
 		this.invPmapStackDepth = invPmapStack.length-2;
 				
@@ -167,14 +166,14 @@ public final class PrimitiveReader {
 		//push the old index for resume
 		invPmapStack[invPmapStackDepth-1] = (byte)pmapIdx;
 
-		int k = invPmapStackDepth -= (pmapMaxSize+2);         
+		int k = invPmapStackDepth -= (pmapMaxSize+2); 
     	if (position>=limit) {
 			fetch(1);
 		}		
 		bitBlock = buffer[position];
 		if (limit-position>pmapMaxSize) {
 	        do {
-//	        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
+	        	//System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);	
 		} else {
 			//must use slow path because we are near the end of the buffer.
@@ -182,7 +181,7 @@ public final class PrimitiveReader {
 	        	if (position>=limit) {
 					fetch(1);
 				}				
-//	        	System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
+	        	//System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
 			} while ((invPmapStack[k++] = buffer[position++])>=0);
 		}
         invPmapStack[k] = (byte)(3+pmapMaxSize+(invPmapStackDepth-k));
@@ -191,22 +190,33 @@ public final class PrimitiveReader {
         pmapIdx = 6;
 	}
 
+	
 	//called at every field to determine operation
-	public final byte popPMapBit() {
-		if (pmapIdx>0 || (pmapIdx==0 && bitBlock<0)) {
-			//Frequent, 6 out of every 7 plus the last bit block
-			return (byte)(1&(bitBlock>>>pmapIdx--));
-		} else {
-			if (pmapIdx>=0) {
-				//SOMETIMES one of 7 we need to move up to the next byte
-				pmapIdx = 6;
-				byte result = (byte)(1&bitBlock);
-				bitBlock = invPmapStack[++invPmapStackDepth];
-				return result;
+	public final byte popPMapBit() {		
+
+			byte tmp = pmapIdx;
+			byte bb = bitBlock;
+			if (tmp>0 || (tmp==0 && bb<0)) {
+
+				//Frequent, 6 out of every 7 plus the last bit block
+				pmapIdx = (byte)(tmp-1);	
+				return (byte)(1&(bb>>>tmp));
+
 			} else {
-				return 0;
+				if (tmp>=0) {
+					//SOMETIMES one of 7 we need to move up to the next byte
+					
+					//The order of these lines should not be changed without profile
+					pmapIdx = 6;
+					byte result = (byte)(1&bb);					
+					bitBlock = invPmapStack[++invPmapStackDepth];
+					return result;
+
+				} else {
+					return 0;
+				}
 			}
-		}
+
 	}
 
 	//called at the end of each group

@@ -7,6 +7,10 @@ import com.google.caliper.runner.CaliperMain;
 
 public class RunCaliper {
 
+	//TODO: need performance comparisons with Kryo
+	//TODO: need performance comparisons with OpenFast (urgent)
+	
+	
 	public static void main(String[] args) {
 
 	//run(HomogeniousRecordWriteReadDecimalBenchmark.class); 

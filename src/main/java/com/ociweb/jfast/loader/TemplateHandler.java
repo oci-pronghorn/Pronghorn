@@ -491,9 +491,9 @@ public class TemplateHandler extends DefaultHandler {
     		
     		//templates always add 1 more for the templateId in the pmap
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead]+1;
-    		
     		//convert pmap bits to FAST 7bit bytes
     		int pmapMaxBytes = (pmapMaxBits+6)/7; 
+    		//System.err.println("pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
     		assert (pmapMaxBytes>0) : "Dynamic templates always have a pmap of at least 1 byte";
 
     		//save biggest found template pmap for use by the catalog
@@ -526,6 +526,7 @@ public class TemplateHandler extends DefaultHandler {
     		
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
     		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
+    		//System.err.println("x pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
     		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
     		
     		
@@ -554,6 +555,7 @@ public class TemplateHandler extends DefaultHandler {
     		
     		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
     		int pmapMaxBytes = (pmapMaxBits+6)/7; //if bits is zero this will be zero.
+    		//System.err.println("y pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
     		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap,pmapMaxBytes);
     		
     		

@@ -27,12 +27,16 @@ public class FASTRingBuffer {
 	final int maxCharSize;
 	final int charMask;
 	final char[] charBuffer;
+	final TextHeap textHeap;
+	
+	int addCharPos = 0;
 	
 	int addPos = 0;
 	int remPos = 0;
-	
-	public FASTRingBuffer(byte bits, byte charBits) {
+		
+	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {
 		assert(bits>=1);
+		this.textHeap = heap;
 		this.maxSize = 1<<bits;
 		this.mask = maxSize-1;
 		this.buffer = new int[maxSize];
@@ -79,67 +83,77 @@ public class FASTRingBuffer {
 	//TODO: new smaller ring buffer for text that changes, then this ring can use fixed
 	//sizes for the fields so an offset table can be used.  The caller must lookup the 
 	//appropriate offset given the fieldID.  
-	//TODO: the sequence return is wasting cycles at the top level and must be removed.
 	
-    public void blockOnNeed(int step) { //TODO: call upon start of group when we know the size?
-    	
-    	int temp = maxSize-step;
-    	while (addPos-removeCount.get()>=temp) {	
+    public boolean isBlocked(int step) {
+    	if (step>maxSize) {
+    		throw new UnsupportedOperationException("Ring buffer is not large enough to hold template");
     	}
-    	
+    	return addPos-remPos>=(maxSize-step);    	
     }
 	
 	
 	public void append(int value) {
 						
-		buffer[mask&addPos] = value;
-		addPos++;
-		
+		buffer[mask&addPos++] = value;
 	}
 	
 	public void append(long value) {
 		
-		buffer[mask&addPos] = (int)(value>>>32);
-		buffer[mask&(addPos+1)] = (int)(value&0xFFFFFFFF);
-		
-		addPos+=2;		
-		
+		buffer[mask&addPos++] = (int)(value>>>32);
+		buffer[mask&addPos++] = (int)(value&0xFFFFFFFF);
 	}
 
-	public void append(int idx, TextHeap heap) {
-		//3 different modes but this always consumes a single int in ring buffer.
-		//Dynamic RingBuffer -     00 length (reader will index each text to jump w/o array?)
-		//Constant TextHeap -      10 full index
-		//Up to 3 ascii chars here 110000nn up to 3 ascii chars 
+	
+	//Text RingBuffer encoding for two ints
+	// neg  neg  char ring buffer, length and position
+	// neg  pos  heap constant index
+	// pos   *   up to 8 inlined ASCII chars, +len value
+	
+	public void appendText(int heapId) {
+		//TODO: urgent rewrite of text storage.
 		
-		if (idx<0) {//points to constant, high bit already set.
-			buffer[mask&addPos] = idx;			
+		if (heapId<0) {//points to constant, high bit already set.
+			buffer[mask&addPos++] = heapId;
+			buffer[mask&addPos++] = 0;//placeholder for now.
+			
 		} else {
-			if ((buffer[mask&addPos] = heap.triASCIIToken(idx))>0) {
-				//TODO: Must copy full string to secondary RingBuffer.
-				System.err.println("unsupported");
-			}
-		}
-		
-		addPos++;	
+			int t = textHeap.triASCIIToken(heapId);//TODO: upgrade to two ints for 8  ascii chars.
+			if (t<0) {
+				buffer[mask&addPos++] = t;
+				buffer[mask&addPos++] = 0;//placeholder for now.
+			} else {
+				//must store length in char sequence and store the position index.
+				//with two ints can store both length and position.
+				buffer[mask&addPos++] = t;//length of text
+			
+				buffer[mask&addPos++] = addCharPos;//placeholder for now. (need offset in text)
+
+				//TODO: must copy bytes into this location.
+					
+				addCharPos+=t;
 				
+				
+			}
+			
+		}
+						
 	}
 
 	public void append(int idx, ByteHeap heap) {
 		
-		throw new UnsupportedOperationException();//TODO: copy text soution
+		throw new UnsupportedOperationException();//TODO: copy text solution once finished.
 		
 	}
 
 	public void append(int readDecimalExponent, long readDecimalMantissa) {
+
+		buffer[mask&addPos++] = readDecimalExponent;
+		buffer[mask&addPos++] = (int)(readDecimalMantissa>>>32);
+		buffer[mask&addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
 		
-		buffer[mask&addPos] = readDecimalExponent;
-		buffer[mask&(addPos+1)] = (int)(readDecimalMantissa>>>32);
-		buffer[mask&(addPos+2)] = (int)(readDecimalMantissa&0xFFFFFFFF);
-		
-		addPos+=3;
 		
 	}
+
 	
 	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
 	public void moveForward() {
@@ -171,6 +185,47 @@ public class FASTRingBuffer {
 		int i = remPos+idx;
 		return (((long)buffer[mask&i])<<32) | (((long)buffer[mask&(i+1)])&0xFFFFFFFFl);
 
+	}
+	
+	//Text RingBuffer encoding for two ints
+	// neg  neg  char ring buffer, length and position
+	// neg  pos  heap constant index
+	// pos   *   up to 8 inlined ASCII chars, +len value
+	
+	
+	public int getCharLength(int fieldPos) {
+		int ref1 = buffer[fieldPos];
+		int ref2 = buffer[fieldPos+1];
+		if (ref1<0) {
+			if (ref2<0) {
+				//dynamic ring buffer
+				
+			} else {
+				//constant on text heap.
+				//very common
+				
+			}
+		} else {			
+			//inline ASCII chars up to 8
+			//very common (mostly symbols)
+			
+			
+		}
+		
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public int getCharOffset(int fieldPos) {
+		//What is the location inside the char ring buffer!!??!!
+		
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	public char[] getCharBuffer(int fieldPos) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 }

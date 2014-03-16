@@ -39,8 +39,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	private final int[] fullScript;
 	
-	private final byte[] prefixData;
-	private final byte prefixDataLength;
+	private final byte[] preambleData;
+	private final byte preambleDataLength;
 	
 	private long messageCount = 0;
 	
@@ -50,18 +50,14 @@ public class FASTDynamicReader implements FASTDataProvider {
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
-	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog) {
+	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog, FASTRingBuffer ringBuffer, FASTReaderDispatch dispatch) {
 		this.catalog = catalog;
-		this.prefixDataLength=catalog.getMessagePrefixSize();
-		this.prefixData = new byte[prefixDataLength];
+		this.preambleDataLength=catalog.getMessagePrefixSize();
+		this.preambleData = new byte[preambleDataLength];
 		this.activeScriptTemplateMask = -1; //no selected script				
-		this.readerDispatch = new FASTReaderDispatch(reader, 
-				                                catalog.dictionaryFactory(), 
-				                                3, 
-				                                catalog.dictionaryMembers(), catalog.getMaxTextLength(),
-				                                catalog.getMaxByteVectorLength(), 4, 4); 
+		this.readerDispatch = dispatch;
 		this.fullScript = catalog.fullScript();
-		this.ringBuffer = new FASTRingBuffer((byte)7, (byte)6);// TODO: hack test.
+		this.ringBuffer = ringBuffer;
 		 
 	}
 	
@@ -69,11 +65,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 		return messageCount;
 	}
 	
-    public void reset() {
-    	messageCount = 0;
+    public void reset(boolean clearData) {
+    	this.messageCount = 0;
     	this.activeScriptTemplateMask = -1; //no selected script
     	this.activeScriptCursor = -1;
-    	this.readerDispatch.reset();
+    	if (clearData) {
+    		this.readerDispatch.reset();
+    	}
     }
 	
     public String toBinary(byte[] input) {
@@ -114,37 +112,56 @@ public class FASTDynamicReader implements FASTDataProvider {
 				}				
 				//get next token id then immediately start processing the script
 				int templateId = parseNextTokenId();
-				
-				int step = 1;//TODO: lookup size from template id.
-				ringBuffer.blockOnNeed(step);//block if there is NOT enough space.
-				//TODO ..return 0x80000000  if block on need!!
-				
+								
 				//set the cursor start and stop for this template				
-				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
+				activeScriptCursor = catalog.getTemplateStartIdx(templateId); 
 				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
 				
-				//ringBuffer.printPos("set template "+templateId);
+				int seqScriptLength = activeScriptLimit-activeScriptCursor;
+		    	//Worst case scenario is that this is full of decimals which each need 3.
+		    	//but for easy math we will use 4, will require a little more empty space in buffer
+		    	//however we will not need a lookup table 
+				if (ringBuffer.isBlocked(seqScriptLength<<2)) {
+					//TODO: what to return when? ..return 0x80000000 
+				}
 				
 				ringBuffer.append(templateId);//write template id at the beginning of this message
 				
 				needTemplate = false;
 			} 
 			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {
-					//jump back to top of this sequence in the script.
-				
+				    ringBuffer.moveForward();
 				    if (readerDispatch.isSkippedSequence()) {
+				    	//jumping over sequence
 				    	System.err.println("has now been tested, please delete");
 						activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
+				    	if (activeScriptCursor==activeScriptLimit) {
+				    		needTemplate = true;
+				    		readerDispatch.closeMessage();
+				    		return 2;//finished reading full message but we have no sequence
+				    	}
 				    } else {
-				    	//	int step = 1;//TODO: lookup size from template id script.
-				    	//  ringBuffer.blockOnNeed(step);//block if there is NOT enough space for this sequence.
-					    if (!readerDispatch.isNewSequence()) {
+				    	
+				    	
+					    if (!readerDispatch.isFinishedSequence()) {
+					    	int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
+					    	//Worst case scenario is that this is full of decimals which each need 3.
+					    	//but for easy math we will use 4, will require a little more empty space in buffer
+					    	//however we will not need a lookup table 
+					    	if (ringBuffer.isBlocked(seqScriptLength<<2)) {
+					    		//TODO: what to return when? ..return 0x80000000 
+					    	};
+					    	//jump back to top of this sequence in the script.
 					    	//return this cursor position as the unique id for this sequence.
-					    	activeScriptCursor -= (TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor]);
+							activeScriptCursor -= seqScriptLength;
 					    } else {
-					    	activeScriptCursor++;
+					    	//finished sequence, no need to jump
+					    	if (++activeScriptCursor==activeScriptLimit) {
+					    		needTemplate = true;
+					    		readerDispatch.closeMessage();
+					    		return 3;//finished reading full message and the sequence
+					    	}
 					    }
-				    	ringBuffer.moveForward();
 					    return 1;//has sequence group to read
 				    }
 			}
@@ -160,8 +177,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 
 	private int parseNextTokenId() {
 		///read prefix bytes if any (only used by some implementations)
-		if (prefixDataLength!=0) {
-			readerDispatch.dispatchReadPrefix(prefixData);
+		if (preambleDataLength!=0) {
+			readerDispatch.dispatchReadPrefix(preambleData);
 			//System.err.println("read prefix:"+toBinary(prefixData));
 		};
 		///////////////////
@@ -179,7 +196,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	}
 	
 	public byte[] prefix() {
-		return prefixData;
+		return preambleData;
 	}
 	
 	public FASTRingBuffer ringBuffer() {
