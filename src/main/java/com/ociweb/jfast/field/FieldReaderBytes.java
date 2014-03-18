@@ -26,7 +26,7 @@ public class FieldReaderBytes {
 		this.byteHeap = byteDictionary;
 	}
 
-	public int readBytes(int token) {
+	public int readBytes(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
 		reader.readByteData(byteHeap.rawAccess(), 
@@ -36,7 +36,7 @@ public class FieldReaderBytes {
 	}
 
 
-	public int readBytesTail(int token) {
+	public int readBytesTail(int token, int readFromIdx) {
 		
 		//return readBytesCopy(token);
 		
@@ -59,12 +59,12 @@ public class FieldReaderBytes {
 	}
 
 	
-	public int readBytesConstant(int token) {
+	public int readBytesConstant(int token, int readFromIdx) {
 		//always return this required value
 		return token & INSTANCE_MASK;
 	}
 
-	public int readBytesDelta(int token) {
+	public int readBytesDelta(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
@@ -80,7 +80,7 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesCopy(int token) {
+	public int readBytesCopy(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
@@ -91,7 +91,7 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesDefault(int token) {
+	public int readBytesDefault(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
@@ -112,7 +112,7 @@ public class FieldReaderBytes {
 		}
 	}
 
-	public int readBytesOptional(int token) {
+	public int readBytesOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
 		reader.readByteData(byteHeap.rawAccess(), 
@@ -121,7 +121,7 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesTailOptional(int token) {
+	public int readBytesTailOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerUnsigned();
@@ -139,11 +139,11 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesConstantOptional(int token) {
+	public int readBytesConstantOptional(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
 	}
 
-	public int readBytesDeltaOptional(int token) {
+	public int readBytesDeltaOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
@@ -168,7 +168,7 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesCopyOptional(int token) {
+	public int readBytesCopyOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {			
 			int length = reader.readIntegerUnsigned()-1;
@@ -179,7 +179,7 @@ public class FieldReaderBytes {
 		return idx;
 	}
 
-	public int readBytesDefaultOptional(int token) {
+	public int readBytesDefaultOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
@@ -200,11 +200,6 @@ public class FieldReaderBytes {
 
 	public ByteHeap byteHeap() {
 		return byteHeap;
-	}
-
-	public void setReadFrom(int readFromIdx) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	public void reset(int idx) {

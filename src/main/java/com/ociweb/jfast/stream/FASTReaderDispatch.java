@@ -65,10 +65,10 @@ public class FASTReaderDispatch{
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		this.dictionaryMembers = dictionaryMembers;
 				
-		this.integerDictionary = dcr.integerDictionary();
 		this.longDictionary = dcr.longDictionary();
-		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
+		this.integerDictionary = dcr.integerDictionary();
 		this.decimalMantissaDictionary = dcr.decimalMantissaDictionary();
+		this.decimalExponentDictionary = dcr.decimalExponentDictionary();
 		this.charDictionary = dcr.charDictionary(maxTextLen,charGap);
 		this.byteDictionary = dcr.byteDictionary(maxVectorLen,bytesGap);
 		
@@ -105,7 +105,6 @@ public class FASTReaderDispatch{
 		reader.readByteData(target, 0, target.length);
 	}
 	
-	int j = 0;
 	//package protected, unless we find a need to expose it?
 	boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
@@ -144,11 +143,11 @@ public class FASTReaderDispatch{
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 						//0110? Decimal and DecimalOptional
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							outputQueue.append(readerDecimal.readDecimalExponent(token),
-							                   readerDecimal.readDecimalMantissa(token));
+							outputQueue.append(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
+							                   readerDecimal.readDecimalMantissa(token, -1));
 						} else {
-							outputQueue.append(readerDecimal.readDecimalExponentOptional(token),
-							    		       readerDecimal.readDecimalMantissaOptional(token));
+							outputQueue.append(readerDecimal.readDecimalExponentOptional(token, -1),
+							    		       readerDecimal.readDecimalMantissaOptional(token, -1));
 						}
 					} else {
 						outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
@@ -707,7 +706,6 @@ public class FASTReaderDispatch{
 	}
 
 	private int readByteArray(int token) {
-		readerBytes.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -715,35 +713,34 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerBytes.readBytes(token);
+					return readerBytes.readBytes(token, readFromIdx);
 				} else {
 					//tail
-					return readerBytes.readBytesTail(token);
+					return readerBytes.readBytesTail(token, readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return readerBytes.readBytesConstant(token);
+					return readerBytes.readBytesConstant(token, readFromIdx);
 				} else {
 					//delta
-					return readerBytes.readBytesDelta(token);
+					return readerBytes.readBytesDelta(token, readFromIdx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				return readerBytes.readBytesCopy(token);
+				return readerBytes.readBytesCopy(token, readFromIdx);
 			} else {
 				//default
-				return readerBytes.readBytesDefault(token);
+				return readerBytes.readBytesDefault(token, readFromIdx);
 			}
 		}
 	}
 	
 	private int readByteArrayOptional(int token) {
-		readerBytes.setReadFrom(readFromIdx);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -751,35 +748,29 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-	//				System.err.println("none o");
-					return readerBytes.readBytesOptional(token);
+					return readerBytes.readBytesOptional(token, readFromIdx);
 				} else {
 					//tail
-	//				System.err.println("tail o");
-					return readerBytes.readBytesTailOptional(token);
+					return readerBytes.readBytesTailOptional(token, readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-	//				System.err.println("const o");
-					return readerBytes.readBytesConstantOptional(token);
+					return readerBytes.readBytesConstantOptional(token, readFromIdx);
 				} else {
 					//delta
-	//				System.err.println("delta read o");
-					return readerBytes.readBytesDeltaOptional(token);
+					return readerBytes.readBytesDeltaOptional(token, readFromIdx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-	//			System.err.println("copy o");
-				return readerBytes.readBytesCopyOptional(token);
+				return readerBytes.readBytesCopyOptional(token, readFromIdx);
 			} else {
 				//default
-	//			System.err.println("default 0");
-				return readerBytes.readBytesDefaultOptional(token);
+				return readerBytes.readBytesDefaultOptional(token, readFromIdx);
 			}
 		}
 	}
@@ -881,31 +872,28 @@ public class FASTReaderDispatch{
 	}
 
 	public int readDecimalExponent(int token) {
-		readerDecimal.setReadFrom(readFromIdx);
-				
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return readerDecimal.readDecimalExponent(token);
+			return readerDecimal.readDecimalExponent(token, readFromIdx);
 		} else {
-			return readerDecimal.readDecimalExponentOptional(token);
+			return readerDecimal.readDecimalExponentOptional(token, readFromIdx);
 		}
 	}
 	
 
 	public long readDecimalMantissa(int token) {
-		readerDecimal.setReadFrom(readFromIdx);
-				
+		
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return readerDecimal.readDecimalMantissa(token);
+			return readerDecimal.readDecimalMantissa(token, readFromIdx);
 		} else {
-			return readerDecimal.readDecimalMantissaOptional(token);
+			return readerDecimal.readDecimalMantissaOptional(token, readFromIdx);
 		}
 	}
 

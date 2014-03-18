@@ -849,8 +849,7 @@ public final class PrimitiveWriter {
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
-			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less!
-			//TODO: what if we cached the buffer writes and did arraycopy later.
+			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes and did arraycopy later.
 			
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			

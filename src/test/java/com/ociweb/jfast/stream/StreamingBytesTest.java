@@ -119,21 +119,21 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		
 		//read value back
 		int id;
-		id = byteReader.readBytesTail(token);
+		id = byteReader.readBytesTail(token,-1);
 		assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-		id = byteReader.readBytesDelta(token);
+		id = byteReader.readBytesDelta(token,-1);
 		assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-		id = byteReader.readBytesConstant(token);
+		id = byteReader.readBytesConstant(token,-1);
 		assertTrue(dictionaryReader.equals(id, value, offset, length));
 		
 		reader.openPMap(1);
 		
-			id = byteReader.readBytesCopy(token);
+			id = byteReader.readBytesCopy(token,-1);
 			assertTrue(dictionaryReader.equals(id, value, offset, length));
 			
-			id = byteReader.readBytesDefault(token);
+			id = byteReader.readBytesDefault(token,-1);
 			assertTrue(dictionaryReader.equals(id, value, offset, length));
 			
 		reader.closePMap();
@@ -190,7 +190,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null);
 		
 		long start = System.nanoTime();
 		int i = operationIters;

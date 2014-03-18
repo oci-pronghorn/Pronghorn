@@ -37,6 +37,9 @@ public class TemplateCatalog {
 	int textLengthGap = 8;//default
 	int byteVectorGap = 8;//default
 	
+	public static final int END_OF_SEQ_ENTRY = 0x01;
+	public static final int END_OF_MESSAGE = 0x02;
+	
 	public int getTemplateStartIdx(int templateId) {
 		return templateStartIdx[templateId];
 	}

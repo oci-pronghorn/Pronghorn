@@ -38,10 +38,12 @@ public final class FASTWriterDispatch {
 	private int readFromIdx = -1;
 	
 	private final DictionaryFactory dictionaryFactory;
+	private final FASTRingBuffer queue;
 	
 	
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
-			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes) {
+			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes,
+			                   FASTRingBuffer queue) {
 
 		this.writer = writer;
 		this.dictionaryFactory = dcr;
@@ -54,6 +56,7 @@ public final class FASTWriterDispatch {
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxBytesSize,gapBytes));
 				
 		this.templateStack = new int[maxTemplates];
+		this.queue = queue;
 	}
 	
 	/**
@@ -1032,7 +1035,7 @@ public final class FASTWriterDispatch {
 		templateStackHead = 0;
 	}
 
-	public void dispatchWriteByToken(int token, FASTRingBuffer queue, int fieldPos) {
+	public void dispatchWriteByToken(int token, int fieldPos) {
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
@@ -1046,11 +1049,10 @@ public final class FASTWriterDispatch {
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-									
-					int len = queue.getCharLength(fieldPos);
-					int off = queue.getCharOffset(fieldPos);
-					char[] buf = queue.getCharBuffer(fieldPos);
-					write(token, buf, off, len);
+					
+					queue.selectCharSequence(fieldPos);
+					//NOTE: Use CharSequence implementation today, direct ring buffer tomorrow.
+					write(token,queue);
 									
 				} else {
 					//011??

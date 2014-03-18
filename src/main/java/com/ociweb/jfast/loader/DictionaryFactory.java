@@ -195,11 +195,7 @@ public class DictionaryFactory {
 	}
 
 	public void save(PrimitiveWriter pw) {
-		
-		//TODO: remove System.err.println(integerCount+" "+longCount+" "+charCount+" "+decimalCount+" "+bytesCount);
-		
-		//TODO: find but in dictionary factorys save load, it is not using the same number of bytes!!
-		
+				
 		pw.writeIntegerUnsigned(integerCount);
 		pw.writeIntegerUnsigned(longCount);
 		pw.writeIntegerUnsigned(charCount);

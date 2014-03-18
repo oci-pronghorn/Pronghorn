@@ -8,21 +8,25 @@ public class FASTDynamicWriter {
 	private final FASTWriterDispatch writerDispatch;
 	private final TemplateCatalog catalog;
 	private final int[] fullScript;
+	private final FASTRingBuffer ringBuffer;
 	
 	private int activeScriptCursor;
 	private int activeScriptLimit;
 	
-	public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog) {
+	public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, FASTRingBuffer ringBuffer) {
 
 		this.writerDispatch = new FASTWriterDispatch(primitiveWriter,
 										catalog.dictionaryFactory(),
-										catalog.templatesCount(), 64, 64, 8, 8);
+										catalog.templatesCount(), 
+										catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
+										catalog.getTextGap(), catalog.getByteVectorGap(),
+										ringBuffer);
 		this.catalog = catalog;
 		this.fullScript = catalog.fullScript();
-		
+		this.ringBuffer = ringBuffer;
 	}
 
-	public void write(FASTRingBuffer queue) {
+	public void write() {
 				
 		
 		//	random access to fields is supported in the ring buffer however the dynamic writer
@@ -30,7 +34,7 @@ public class FASTDynamicWriter {
 		//  Once a message/sequence is written the queue position is moved forward.
 		
 		
-		if (queue.isBlocked(1)) {
+		if (ringBuffer.isBlocked(1)) {
 			//TODO: what to do if can not read next?
 			return;//try again later
 		};
@@ -43,19 +47,19 @@ public class FASTDynamicWriter {
 		
 		
 		int idx = 0;
-		int templateId = queue.readInteger(idx); 				
+		int templateId = ringBuffer.readInteger(idx); 				
 		//tokens - reading 
 		activeScriptCursor = catalog.getTemplateStartIdx(templateId);
 		activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
 		
 		int token = 0;
-		writerDispatch.dispatchWriteByToken(token,queue,idx);
+		writerDispatch.dispatchWriteByToken(token,idx);
 		
 		
 		
 		////
 		//Hack until the move forward is called.
-		queue.dump(); //must dump values in buffer or we will hang when reading.
+		ringBuffer.dump(); //must dump values in buffer or we will hang when reading.
 		
 		
 	}

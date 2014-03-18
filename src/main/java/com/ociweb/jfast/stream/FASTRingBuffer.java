@@ -5,6 +5,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.loader.TemplateCatalog;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream.
@@ -16,7 +18,7 @@ import com.ociweb.jfast.field.TextHeap;
  * @author Nathan Tippy
  *
  */
-public class FASTRingBuffer {
+public class FASTRingBuffer implements CharSequence {
 
 	final AtomicInteger removeCount = new AtomicInteger();
 	final int[] buffer;
@@ -27,7 +29,8 @@ public class FASTRingBuffer {
 	final int maxCharSize;
 	final int charMask;
 	final char[] charBuffer;
-	final TextHeap textHeap;
+	final TextHeap textHeap; 
+	final char[] rawConstHeap;
 	
 	int addCharPos = 0;
 	
@@ -37,6 +40,8 @@ public class FASTRingBuffer {
 	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {
 		assert(bits>=1);
 		this.textHeap = heap;
+		this.rawConstHeap = textHeap.rawInitAccess();
+		
 		this.maxSize = 1<<bits;
 		this.mask = maxSize-1;
 		this.buffer = new int[maxSize];
@@ -91,52 +96,51 @@ public class FASTRingBuffer {
     	return addPos-remPos>=(maxSize-step);    	
     }
 	
-	
-	public void append(int value) {
-						
+	public final void append(int value) {
 		buffer[mask&addPos++] = value;
 	}
 	
-	public void append(long value) {
-		
+	public void append(long value) {		
 		buffer[mask&addPos++] = (int)(value>>>32);
 		buffer[mask&addPos++] = (int)(value&0xFFFFFFFF);
 	}
 
 	
 	//Text RingBuffer encoding for two ints
-	// neg  neg  char ring buffer, length and position
+	// pos  pos  char ring buffer, length and position
 	// neg  pos  heap constant index
-	// pos   *   up to 8 inlined ASCII chars, +len value
+	// pos  neg  null
 	
 	public void appendText(int heapId) {
-		//TODO: urgent rewrite of text storage.
 		
-		if (heapId<0) {//points to constant, high bit already set.
-			buffer[mask&addPos++] = heapId;
-			buffer[mask&addPos++] = 0;//placeholder for now.
-			
+		if (heapId<0) {//points to constant in hash, high bit already set.
+			buffer[mask&addPos++] = heapId; //must be neg - constants only
+			buffer[mask&addPos++] = textHeap.length(heapId);//length.		
+			//System.err.println(textHeap.get(heapId,  new StringBuilder()));
+			//System.err.println(Integer.toHexString(heapId)+"  "+textHeap.length(heapId));
 		} else {
-			int t = textHeap.triASCIIToken(heapId);//TODO: upgrade to two ints for 8  ascii chars.
-			if (t<0) {
-				buffer[mask&addPos++] = t;
-				buffer[mask&addPos++] = 0;//placeholder for now.
+			assert(heapId>=0) : "Only supported for primary values";
+			if (textHeap.isNull(heapId)) {
+				buffer[mask&addPos++] = 0;
+				buffer[mask&addPos++] = -1;
 			} else {
-				//must store length in char sequence and store the position index.
-				//with two ints can store both length and position.
-				buffer[mask&addPos++] = t;//length of text
-			
-				buffer[mask&addPos++] = addCharPos;//placeholder for now. (need offset in text)
-
-				//TODO: must copy bytes into this location.
-					
-				addCharPos+=t;
-				
-				
+		    	storeTextInRingBuffer(heapId);
 			}
-			
+		}						
+	}
+
+	private void storeTextInRingBuffer(int heapId) {
+		//must store length in char sequence and store the position index.
+		//with two ints can store both length and position.
+		int len = textHeap.length(heapId);
+		buffer[mask&addPos++] = addCharPos;//offset in text
+		buffer[mask&addPos++] = len;//length of text
+		//TODO: how to make this write wrap!!
+        //copy text into ring buffer.
+		if (len>0) {
+			textHeap.get(heapId, charBuffer, addCharPos, charMask);
+			addCharPos+=len;
 		}
-						
 	}
 
 	public void append(int idx, ByteHeap heap) {
@@ -186,46 +190,67 @@ public class FASTRingBuffer {
 		return (((long)buffer[mask&i])<<32) | (((long)buffer[mask&(i+1)])&0xFFFFFFFFl);
 
 	}
-	
-	//Text RingBuffer encoding for two ints
-	// neg  neg  char ring buffer, length and position
-	// neg  pos  heap constant index
-	// pos   *   up to 8 inlined ASCII chars, +len value
-	
-	
-	public int getCharLength(int fieldPos) {
-		int ref1 = buffer[fieldPos];
-		int ref2 = buffer[fieldPos+1];
+		
+	public int getCharLength(int idx) {
+		//second int is always the length 
+		return buffer[mask&(remPos+idx+1)];
+	}
+
+	//this is for fast direct WRITE TO target
+	public void readChars(int idx, char[] target, int targetIdx) {
+		int ref1 = buffer[mask&(remPos+idx)];
 		if (ref1<0) {
-			if (ref2<0) {
-				//dynamic ring buffer
-				
-			} else {
-				//constant on text heap.
-				//very common
-				
+			textHeap.get(ref1, target, targetIdx);
+		} else {
+			int len = buffer[mask&(remPos+idx+1)];
+			//copy into target but may need to loop from text buffer
+			while (--len>=0) {
+				target[targetIdx+len] = charBuffer[(ref1+len)&charMask];
 			}
-		} else {			
-			//inline ASCII chars up to 8
-			//very common (mostly symbols)
-			
-			
 		}
-		
-		// TODO Auto-generated method stub
-		return 0;
+	}
+	
+	//WARNING: consumer of these may need to loop around end of buffer !!
+    //these are needed for fast direct READ FROM here
+	public  int readRingCharPos(int fieldPos) {
+		int ref1 = buffer[fieldPos];
+		//constant from heap or dynamic from char ringBuffer
+		return ref1<0 ? textHeap.initStartOffset(ref1) : ref1;
 	}
 
-	public int getCharOffset(int fieldPos) {
-		//What is the location inside the char ring buffer!!??!!
-		
-		// TODO Auto-generated method stub
-		return 0;
+	public char[] readRingCharBuffer(int fieldPos) {
+		//constant from heap or dynamic from char ringBuffer
+		return buffer[fieldPos]<0 ? this.rawConstHeap : this.charBuffer;	
+	}
+	
+	public int readRingCharMask() {
+		return charMask;
 	}
 
-	public char[] getCharBuffer(int fieldPos) {
-		// TODO Auto-generated method stub
-		return null;
+	int charSeqIdx;
+	
+	public void selectCharSequence(int idx) {
+		charSeqIdx = idx;
+	}
+	
+	@Override
+	public int length() {
+		return buffer[mask&(remPos+charSeqIdx+1)];
+	}
+
+	@Override
+	public char charAt(int at) {
+		int ref1 = buffer[mask&(remPos+charSeqIdx)];
+		if (ref1<0) {
+			return textHeap.charAt(ref1,at);
+		} else {
+			return charBuffer[(ref1+at)&charMask];
+		}
+	}
+
+	@Override
+	public CharSequence subSequence(int start, int end) {
+		throw new UnsupportedOperationException();
 	}
 	
 }

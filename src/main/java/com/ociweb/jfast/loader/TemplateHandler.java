@@ -270,7 +270,7 @@ public class TemplateHandler extends DefaultHandler {
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
     		catalogScriptTokens[catalogTemplateScriptIdx] = token;
-    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; //TODO: id is zero for group? 
+    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; //Zero id for group
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
     		

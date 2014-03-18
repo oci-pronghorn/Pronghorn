@@ -14,9 +14,15 @@ public class FieldReaderInteger {
 	private final PrimitiveReader reader;	
 	final int[]  lastValue;
 	
-	//TODO: add advanced API for modification
-	private int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
-
+	//TODO: add advanced API for modification, TODO: can this be compressed to a const long? w/o heap usage?
+	private final int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
+//    static {//TODO: produce 0 1 1x32 1x31 from XL given a 00 01 10 11
+//    	// (1>>(32*b1))>>>b2
+//    	System.err.println(Integer.toBinaryString(0));
+//    	System.err.println(Integer.toBinaryString(1));
+//    	System.err.println(Integer.toBinaryString(-1));
+//    	System.err.println(Integer.toBinaryString(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT));
+//    }
 	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
 
 		assert(values.length<TokenBuilder.MAX_INSTANCE);

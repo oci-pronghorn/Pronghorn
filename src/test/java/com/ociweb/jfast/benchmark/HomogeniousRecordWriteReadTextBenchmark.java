@@ -75,7 +75,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
 	
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 24, 0, 4, 4);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);

@@ -29,7 +29,6 @@ public class OperatorMask {
 	public static final int Group_Bit_Close          = 0x01; //count value will be tokens back to top, otherwise pmap max bytes.
 	public static final int Group_Bit_Templ          = 0x02; //template must be found before this group
 	public static final int Group_Bit_Seq            = 0x04; //use length field and use jump back logic
-	public static final int Group_Bit_Msg            = 0x08; //this group is a full message TODO: not sure we need this.
 	public static final int Group_Bit_PMap           = 0x10; //group requires a pmap
 	
 	//group, sequence, message or ...??		
@@ -66,10 +65,6 @@ public class OperatorMask {
 				if (0!=(Group_Bit_Seq&opp)){
 					builder.append("Seq:");
 				}
-				
-				if (0!=(Group_Bit_Msg&opp)){
-					builder.append("Msg:");
-				} 
 				
 				if (0!=(Group_Bit_PMap&opp)){
 					builder.append("PMap:");

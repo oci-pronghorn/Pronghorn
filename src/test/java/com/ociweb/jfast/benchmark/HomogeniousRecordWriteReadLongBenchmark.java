@@ -81,7 +81,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 
 			                                                                0, 0, 4, 4);
 	

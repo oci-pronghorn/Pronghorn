@@ -138,7 +138,7 @@ public class TemplateLoaderTest {
 			
 			int flag;
 			while (0!=(flag=dynamicReader.hasMore())) {
-				if (0!=(flag&0x02)) {
+				if (0!=(flag&TemplateCatalog.END_OF_MESSAGE)) {
 					result|=queue.readInteger(0);//must do some real work or hot-spot may delete this loop.
 					queue.dump(); //must dump values in buffer or we will hang when reading.
 				}
@@ -208,7 +208,7 @@ public class TemplateLoaderTest {
 		
 		System.gc();
 		
-		int warmup = 10;//set much larger for profiler
+		int warmup = 80;//set much larger for profiler
 		int count = 5;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
@@ -222,7 +222,7 @@ public class TemplateLoaderTest {
 			grps = 0;
 			int flag = 0; //same id needed for writer construction
 			while (0!=(flag = dynamicReader.hasMore())) {
-				//New flags TODO: build some constants.
+				//New flags 
 				//0000  eof
 				//0001  has sequence group to read (may be combined with end of message)
 				//0010  has message to read
@@ -235,7 +235,7 @@ public class TemplateLoaderTest {
 				//spin lock if input stream is not ready.
 				//
 				
-				if (0!=(flag&0x02)) {
+				if (0!=(flag&TemplateCatalog.END_OF_MESSAGE)) {
 					msgs++;
 					//this is a template message. 
 					int bufferIdx = 0;
@@ -243,24 +243,20 @@ public class TemplateLoaderTest {
 					bufferIdx+=1;//point to first field
 					assertTrue("found "+templateId,1==templateId || 2==templateId || 99==templateId);
 					
-					//TODO: count bytes seen in here
 					int i = catalog.getTemplateStartIdx(templateId);
 					int limit = catalog.getTemplateLimitIdx(templateId);
-					
+					//System.err.println("new templateId "+templateId);
 					while (i<limit) {
 						int token = fullScript[i++];	
+						//System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 						
 						if (isText(token)) {
-							
-							//from second ringbuffer.
 							queuedBytes += (4*queue.getCharLength(bufferIdx));
-							
+														
 						}
 						
 						//find the next index after this token.
-						int stepSize = stepSizeInRingBuffer(token);
-						bufferIdx+=stepSize;
-						
+						bufferIdx += stepSizeInRingBuffer(token);
 						
 					}
 					queuedBytes += bufferIdx;//ring buffer bytes, NOT full string byteVector data.
@@ -285,7 +281,7 @@ public class TemplateLoaderTest {
 			
 			int flag;
 			while (0!=(flag=dynamicReader.hasMore())) {
-				if (0!=(flag&0x02)) {
+				if (0!=(flag&TemplateCatalog.END_OF_MESSAGE)) {
 					result|=queue.readInteger(0);//must do some real work or hot-spot may delete this loop.
 					queue.dump(); //must dump values in buffer or we will hang when reading.
 				}
@@ -340,7 +336,7 @@ public class TemplateLoaderTest {
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//int for text
+					//int for text (takes up 2 slots)
 					stepSize = 2;			
 				} else {
 					//011??
@@ -349,7 +345,7 @@ public class TemplateLoaderTest {
 						stepSize = 3;
 					} else {
 						//int for bytes
-						stepSize = 2;
+						stepSize = 0;//BYTES ARE NOT IMPLEMENTED YET BUT WILL BE 2;
 					}
 				}
 			}
@@ -372,6 +368,7 @@ public class TemplateLoaderTest {
 				stepSize = 0;
 			}
 		}
+		
 		return stepSize;
 	}
 
@@ -427,7 +424,7 @@ public class TemplateLoaderTest {
 //			int data = 0; //same id needed for writer construction
 //			while (0!=(data = dynamicReader.hasMore())) {
 //				dynamicWriter.write(queue);
-//				if (0!=(data&0x02)) {
+//				if (0!=(data&END_OF_MESSAGE)) {
 //					msgs++;
 //				}
 //				grps++;

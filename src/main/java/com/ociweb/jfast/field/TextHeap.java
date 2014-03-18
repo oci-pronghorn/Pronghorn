@@ -56,11 +56,14 @@ public class TextHeap {
 		
 		gapCount = fixedTextItemCount+1;
 		dataLength = (singleGapSize*gapCount)+(singleTextSize*fixedTextItemCount);
-		data = new char[dataLength];
 		tatLength = (fixedTextItemCount<<2);
 		tat = new int[tatLength+1];//plus 1 to get dataLength without conditional 
 		tat[tatLength]=dataLength;
 		initTat = new int[fixedTextItemCount<<1];
+		
+		//TODO: pass in int array and offset to share array with other Field** classes.
+		//allocate last so index work is near the front of the heap
+		data = new char[dataLength];
 		
 		
 		int i = tatLength;
@@ -125,8 +128,12 @@ public class TextHeap {
 		int offset = idx<<2;
 		return tat[offset+1] == tat[offset]-1;
 	}
-
-
+	
+	public char[] rawInitAccess() {
+		return initBuffer;
+	}
+	
+	
 	char[] rawAccess() {
 		return data;
 	}
@@ -469,6 +476,7 @@ public class TextHeap {
 
 
 	void makeSpaceForAppend(int offset, int textLen) {
+		
 		int floor = offset-3>=0 ? tat[offset-3] : 0;
 		int need = tat[offset+1]+textLen - tat[offset];
 		
@@ -573,11 +581,40 @@ public class TextHeap {
 	}
 	
 	
+	
 	///////////
 	//////////
 	//read access methods
 	//////////
 	//////////
+	
+	//get for ring buffer only
+	public int get(int idx, char[] target, int targetIdx, int targetMask) {
+		//Does not support init values
+		assert(idx>0);
+		
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int len = tat[offset+1]-pos;
+		
+		int tStart = targetIdx&targetMask;
+		if (1==len) {
+			//simplification because 1 char can not loop around ring buffer.
+			target[tStart] = data[pos];
+		} else {
+			int tStop = (targetIdx+len)&targetMask;
+			if(tStop>tStart) {
+				System.arraycopy(data, pos, target, tStart, len);
+			} else {
+				//done as two copies			
+				int firstLen = targetMask-tStart;
+				System.arraycopy(data, pos, target, tStart, firstLen);			
+				System.arraycopy(data, pos+firstLen, target, 0, len-firstLen);
+			}
+		}
+		return len;
+	}
 	
 	public int get(int idx, char[] target, int targetIdx) {
 		if (idx<0) {
@@ -594,9 +631,18 @@ public class TextHeap {
 			
 			int pos = tat[offset];
 			int len = tat[offset+1]-pos;
-			
 			System.arraycopy(data, pos, target, targetIdx, len);
 			return len;
+		}
+	}
+	
+	public char charAt(int idx, int at) {
+		if (idx<0) {
+			int offset = idx << 1; //this shift left also removes the top bit! sweet.
+			return initBuffer[initTat[offset]+at];
+		} else {		
+			int offset = idx<<2;			
+			return data[tat[offset]+at];
 		}
 	}
 	
@@ -809,6 +855,10 @@ public class TextHeap {
 		return tatLength>>2;
 	}
 	
+	public int initStartOffset(int idx) {
+		return initTat[idx<<1];
+	}
+	
 	public int length(int idx) {
 		int result;
 		if (idx<0) {
@@ -821,38 +871,6 @@ public class TextHeap {
 		return result < 0 ? 0 : result;
 	}
 	
-	//returns length or token if ASCII of 3 chars or less is possible
-	public int triASCIIToken(int idx) {
-		assert(idx>=0) : "Only supported for primary values";
-		int offset = idx<<2;
-		int stop = tat[offset+1];
-		int start = tat[offset];
-		
-		int len = stop-start;
-		if (len>3) {
-			return len;
-		}
-		int result;
-		if (len<0) {
-			result = 0xC4000000;//set high bit of three if it is null vs empty
-		} else {
-			result = (0xC0|len)<<((3-len)<<3);//11000LEN eight bits
-			//Ensure result ends up with high bits on
-		}
-		
-		int i = len;		
-		while (--i>=0) {
-			int v = (int)data[i];
-			if (0==(v>>8)) {
-				result = (result<<8)|v;
-			} else {
-				return len;
-			}
-		}
-		return result;
-	}
-
-
 	void copy(int sourceIdx, int targetIdx) {
 		int len;
 		int startFrom;
@@ -873,5 +891,15 @@ public class TextHeap {
 			return;
 		}		
 		set(targetIdx, buffer, startFrom, length(sourceIdx));
+	}
+
+
+	public int start(int offset) {
+		return tat[offset];
+	}
+
+
+	public int stop(int offset) {
+		return tat[offset+1];
 	}
 }
