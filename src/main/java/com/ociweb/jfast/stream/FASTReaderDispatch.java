@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.FieldReaderChar;
@@ -224,6 +226,8 @@ public class FASTReaderDispatch{
 			int dictionary = TokenBuilder.MAX_INSTANCE&token;
 
 			int[] members = dictionaryMembers[dictionary];
+			//System.err.println(members.length+" "+Arrays.toString(members));
+			
 			int m = 0;
 			int limit = members.length;
 			if (limit>0) {

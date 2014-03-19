@@ -1058,15 +1058,9 @@ public final class FASTWriterDispatch {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 						//0110? Decimal and DecimalOptional
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							// TODO URGENT: must be other side of FASTReaerDispatch
-							//outputQueue.append(readerDecimal.readDecimalExponent(token),
-							//                   readerDecimal.readDecimalMantissa(token));
-						} else {
-							//outputQueue.append(readerDecimal.readDecimalExponentOptional(token),
-							//    		       readerDecimal.readDecimalMantissaOptional(token));
-						}
+						write(token,queue.getInt(fieldPos),queue.getLong(fieldPos+1));
 					} else {
+						
 						//outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
 					}
 				}

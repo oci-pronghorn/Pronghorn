@@ -160,7 +160,6 @@ public final class PrimitiveReader {
 	// D delta to last position
 	// I pmapIdx of last stack frame	
 	////
-	
 	//called at the start of each group unless group knows it has no pmap
 	public final void openPMap(final int pmapMaxSize) {
 		//push the old index for resume
@@ -189,23 +188,20 @@ public final class PrimitiveReader {
         //set next bit to read
         pmapIdx = 6;
 	}
-
 	
 	//called at every field to determine operation
 	public final byte popPMapBit() {		
-
 			byte tmp = pmapIdx;
 			byte bb = bitBlock;
 			if (tmp>0 || (tmp==0 && bb<0)) {
-
 				//Frequent, 6 out of every 7 plus the last bit block
 				pmapIdx = (byte)(tmp-1);	
 				return (byte)(1&(bb>>>tmp));
 
 			} else {
-				if (tmp>=0) {
+				if (tmp>=0) {	
 					//SOMETIMES one of 7 we need to move up to the next byte
-					
+					//System.err.println(invPmapStackDepth);
 					//The order of these lines should not be changed without profile
 					pmapIdx = 6;
 					byte result = (byte)(1&bb);					
@@ -223,7 +219,6 @@ public final class PrimitiveReader {
 	public final void closePMap() {
 		//assert(bitBlock<0);
 		//assert(invPmapStack[invPmapStackDepth+1]>=0);
-		
 		bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth+1])];
 		pmapIdx = invPmapStack[invPmapStackDepth-1];
 		

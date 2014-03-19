@@ -620,7 +620,23 @@ public class TemplateHandler extends DefaultHandler {
 
 	
 	private void saveMember(int activeDictionary, int fieldType, int tokCount) {
-		int listId = (activeDictionary<<TokenBuilder.BITS_TYPE)|fieldType;
+		
+		if (TypeMask.GroupLength==fieldType) {
+			return;//these are not needed for reset because it is part of the sequence definition.
+		}
+		
+		//only need to group by major type.
+		int d = activeDictionary<<TokenBuilder.BITS_TYPE;
+		
+		if (fieldType<0x0C) {
+			fieldType = fieldType&0xFC;
+		} else {
+			fieldType = fieldType&0xFE;
+		}
+			
+		int listId = d|fieldType;
+		
+		
 		while (members.size()<=listId) {
 			members.add(new ArrayList<Integer>());
 		}
@@ -645,6 +661,7 @@ public class TemplateHandler extends DefaultHandler {
 		        int t = j&TokenBuilder.MASK_TYPE;
 		        int stopInt = 0xFFFF0000|t;
 		        tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = stopInt;
+		        //System.err.println("stopInt:"+stopInt+" "+Integer.toBinaryString(stopInt)+" "+TypeMask.toString(t));
 		        for(Integer i:members.get(j)) {
 		        	tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i;
 		        }

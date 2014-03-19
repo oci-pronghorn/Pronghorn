@@ -49,7 +49,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(496, catalogByteArray.length);
+			assertEquals(467, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -208,7 +208,7 @@ public class TemplateLoaderTest {
 		
 		System.gc();
 		
-		int warmup = 80;//set much larger for profiler
+		int warmup = 90;//set much larger for profiler
 		int count = 5;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
