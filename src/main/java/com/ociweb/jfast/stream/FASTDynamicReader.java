@@ -98,37 +98,56 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 * 
 	 * @return
 	 */
-    boolean needTemplate = true;
+    int neededSpaceOrTemplate = -1;
+    int lastCapacity = 0;
     
 	public int hasMore() {
 		
-		//System.err.println("hasMore call");
+
+		if (neededSpaceOrTemplate<0) { 
+			//start new script or detect that the end of the data has been reached
+
+			//checking EOF first before checking for blocked queue
+			if (readerDispatch.isEOF()) {
+				return 0;
+			}				
+			
+			//must have room to store the new template
+			
+			if (lastCapacity<1) {
+				lastCapacity = ringBuffer.availableCapacity();
+				if (lastCapacity<1) {
+					return 0x80000000;
+				}
+			}
+			lastCapacity-=1;
+			
+			//get next token id then immediately start processing the script
+			int templateId = parseNextTokenId();
+			
+			ringBuffer.append(templateId);//write template id at the beginning of this message
+							
+			//set the cursor start and stop for this template				
+			activeScriptCursor = catalog.getTemplateStartIdx(templateId); 
+			activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+							
+	    	//Worst case scenario is that this is full of decimals which each need 3.
+	    	//but for easy math we will use 4, will require a little more empty space in buffer		    	
+			//however we will not need a lookup table 
+			neededSpaceOrTemplate = (activeScriptLimit-activeScriptCursor)<<2;
+			assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
+		} 
+		
+		if (lastCapacity<neededSpaceOrTemplate) {
+			lastCapacity = ringBuffer.availableCapacity();
+			if (lastCapacity<neededSpaceOrTemplate) {
+				return 0x80000000;
+			}
+		}
+		lastCapacity-=neededSpaceOrTemplate;
+				
 		
 		do {
-			if (needTemplate) { //activeScriptTemplateMask<0) {
-				//start new script or detect that the end of the data has been reached
-				if (readerDispatch.isEOF()) {
-					return 0;
-				}				
-				//get next token id then immediately start processing the script
-				int templateId = parseNextTokenId();
-								
-				//set the cursor start and stop for this template				
-				activeScriptCursor = catalog.getTemplateStartIdx(templateId); 
-				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
-				
-				int seqScriptLength = activeScriptLimit-activeScriptCursor;
-		    	//Worst case scenario is that this is full of decimals which each need 3.
-		    	//but for easy math we will use 4, will require a little more empty space in buffer
-		    	//however we will not need a lookup table 
-				if (ringBuffer.isBlocked(seqScriptLength<<2)) {
-					//TODO: what to return when? ..return 0x80000000 
-				}
-				
-				ringBuffer.append(templateId);//write template id at the beginning of this message
-				
-				needTemplate = false;
-			} 
 			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {
 				    ringBuffer.moveForward();
 				    if (readerDispatch.isSkippedSequence()) {
@@ -136,28 +155,25 @@ public class FASTDynamicReader implements FASTDataProvider {
 				    	System.err.println("has now been tested, please delete");
 						activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
 				    	if (activeScriptCursor==activeScriptLimit) {
-				    		needTemplate = true;
+				    		neededSpaceOrTemplate = -1;
 				    		readerDispatch.closeMessage();
 				    		return 2;//finished reading full message but we have no sequence
 				    	}
 				    } else {
-				    	
-				    	
 					    if (!readerDispatch.isFinishedSequence()) {
 					    	int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
 					    	//Worst case scenario is that this is full of decimals which each need 3.
 					    	//but for easy math we will use 4, will require a little more empty space in buffer
 					    	//however we will not need a lookup table 
-					    	if (ringBuffer.isBlocked(seqScriptLength<<2)) {
-					    		//TODO: what to return when? ..return 0x80000000 
-					    	};
+					    	neededSpaceOrTemplate = seqScriptLength<<2;
+					    	
 					    	//jump back to top of this sequence in the script.
 					    	//return this cursor position as the unique id for this sequence.
 							activeScriptCursor -= seqScriptLength;
 					    } else {
 					    	//finished sequence, no need to jump
 					    	if (++activeScriptCursor==activeScriptLimit) {
-					    		needTemplate = true;
+					    		neededSpaceOrTemplate = -1;
 					    		readerDispatch.closeMessage();
 					    		return 3;//finished reading full message and the sequence
 					    	}
@@ -166,10 +182,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 				    }
 			}
 		} while (++activeScriptCursor<activeScriptLimit);
+
 		
 		//reached the end of the script so close and prep for the next one
-			
-		needTemplate = true;
+		neededSpaceOrTemplate = -1;
 		readerDispatch.closeMessage();
 		ringBuffer.moveForward();
 		return 2;//finished reading full message
@@ -179,7 +195,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 		///read prefix bytes if any (only used by some implementations)
 		if (preambleDataLength!=0) {
 			readerDispatch.dispatchReadPrefix(preambleData);
-			//System.err.println("read prefix:"+toBinary(prefixData));
 		};
 		///////////////////
 		
@@ -189,7 +204,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 			activeScriptTemplateMask = templateId<<TokenBuilder.MAX_FIELD_ID_BITS; //for id returned to caller
 			messageCount++;
 		}
-	//	System.err.println(activeScriptTemplateMask+"  new template:"+templateId);
 					
 		return templateId;
 

@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -34,10 +36,11 @@ public class FASTDynamicWriter {
 		//  Once a message/sequence is written the queue position is moved forward.
 		
 		
-		if (ringBuffer.isBlocked(1)) {
-			//TODO: what to do if can not read next?
-			return;//try again later
-		};
+		//avalaible for read check
+//		if (ringBuffer.isBlocked(1)) {
+//			//TODO: what to do if can not read next?
+//			return;//try again later
+//		};
 		
 		//RingBuffer rules
 		//Writer will not release the templateId unless all the fields are also released up to sequence or end.
@@ -46,17 +49,30 @@ public class FASTDynamicWriter {
 		
 		
 		
+		//TODO: open the group.
 		int idx = 0;
 		int templateId = ringBuffer.readInteger(idx); 				
 		//tokens - reading 
 		activeScriptCursor = catalog.getTemplateStartIdx(templateId);
 		activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
 		
-		int token = 0;
-		writerDispatch.dispatchWriteByToken(token,idx);
+		do {
+			int token = fullScript[activeScriptCursor];			
+			
+			int tokenType = TokenBuilder.extractType(token);
+			if (TypeMask.GroupLength==tokenType) {
+				//TODO: loop over this length for each sequence.
+				
+				
+			}
+			
+			
+			writerDispatch.dispatchWriteByToken(token,idx);		
+		} while (++activeScriptCursor<activeScriptLimit);
+		//TODO: close the group
 		
 		
-		
+		//ringBuffer.removeForward(step);
 		////
 		//Hack until the move forward is called.
 		ringBuffer.dump(); //must dump values in buffer or we will hang when reading.

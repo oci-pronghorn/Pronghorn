@@ -77,24 +77,20 @@ public class FASTRingBuffer implements CharSequence {
 		return (((long)buffer[idx])<<32)|(0xFFFFFFFFl&buffer[idx+1]);
 	}
 	
-
-	//NOTE: FAST decoding is assumed to be running on 1 thread on 1 core which
-	//is dedicated to this purpose. In order to minimize jitter and maximize 
-	//low-latency a spin-lock is used when the ringBuffer does not have enough
-	//room for new items. Saving CPU is less important here.
-	//when lock spinning the monitor class must be notified so we know that the 
-	//consumer is too slow or the ringBuffer is too small.
+ 
 	
-	//TODO: new smaller ring buffer for text that changes, then this ring can use fixed
-	//sizes for the fields so an offset table can be used.  The caller must lookup the 
-	//appropriate offset given the fieldID.  
-	
-    public boolean isBlocked(int step) {
-    	if (step>maxSize) {
-    		throw new UnsupportedOperationException("Ring buffer is not large enough to hold template");
-    	}
-    	return addPos-remPos>=(maxSize-step);    	
+//    public boolean isBlocked(int need) {
+//    	assert(need<maxSize) : "Ring buffer is not large enough to hold template";
+//    	return (addPos-remPos)>=(maxSize-need); 
+////           (addpos-rempos)+need>=maxSize;
+//    	//ok
+//    	//  (addPos-remPos)+need<maxSize
+//    	//   need < maxSize - (addPos-remPos);
+//    }
+    public int availableCapacity() {
+    	return maxSize-(addPos-remPos);
     }
+    
 	
 	public final void append(int value) {
 		buffer[mask&addPos++] = value;
@@ -116,8 +112,6 @@ public class FASTRingBuffer implements CharSequence {
 		if (heapId<0) {//points to constant in hash, high bit already set.
 			buffer[mask&addPos++] = heapId; //must be neg - constants only
 			buffer[mask&addPos++] = textHeap.length(heapId);//length.		
-			//System.err.println(textHeap.get(heapId,  new StringBuilder()));
-			//System.err.println(Integer.toHexString(heapId)+"  "+textHeap.length(heapId));
 		} else {
 			assert(heapId>=0) : "Only supported for primary values";
 			if (textHeap.isNull(heapId)) {
@@ -135,7 +129,7 @@ public class FASTRingBuffer implements CharSequence {
 		int len = textHeap.length(heapId);
 		buffer[mask&addPos++] = addCharPos;//offset in text
 		buffer[mask&addPos++] = len;//length of text
-		//TODO: how to make this write wrap!!
+
         //copy text into ring buffer.
 		if (len>0) {
 			textHeap.get(heapId, charBuffer, addCharPos, charMask);
@@ -161,6 +155,7 @@ public class FASTRingBuffer implements CharSequence {
 	
 	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
 	public void moveForward() {
+		//consumer is allowed to read up to addCount
 		addCount.lazySet(addPos); 
 	}
 	

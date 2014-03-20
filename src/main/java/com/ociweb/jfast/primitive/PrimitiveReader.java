@@ -20,6 +20,13 @@ import com.ociweb.jfast.error.FASTException;
  */
 
 public final class PrimitiveReader {
+
+	// Runs very well with these JVM arguments
+	// -XX:CompileThreshold=8 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:MaxInlineLevel=12 -XX:InlineSmallCode=16300
+			
+	//Note: only the type/opp combos used will get in-lined, this small footprint will fit in execution cache.
+	//      if we in-line too much the block will be to large and may spill.
+	
 	
 	private final FASTInput input;
 	private long totalReader;
@@ -355,11 +362,18 @@ public final class PrimitiveReader {
 	
 			byte v = buffer[position++];
 			int accumulator;
-			if (v>=0) {//(v & 0x80)==0) {
-				accumulator = v<<7;
-			} else {
+			if (v<0) {
 				return (v&0x7F);
+			} else {
+				accumulator = v<<7;
 			}
+			
+			v = buffer[position++];
+			if (v<0) {
+				return accumulator|(v&0x7F);
+			} else {
+				accumulator = (accumulator|v)<<7;
+			}			
 			
 		    while ((v = buffer[position++])>=0) { //(v & 0x80)==0) {
 		    	accumulator = (accumulator|v)<<7;

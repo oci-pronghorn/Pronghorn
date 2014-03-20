@@ -21,6 +21,7 @@ import org.junit.Test;
 import org.xml.sax.SAXException;
 
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -53,11 +54,11 @@ public class TemplateLoaderTest {
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
-			//TODO: need better tests.
-		//	assertEquals(1128, (script[0]>>32));//First Id
+			assertEquals(TypeMask.TextASCII, TokenBuilder.extractType(script[0]));//First Token
 			
 			//CMD:Group:010000/Close:PMap::010001/9
-			//assertEquals(0xC110_0009l,0xFFFFFFFFl&script[script.length-1]);//Last Token
+			assertEquals(TypeMask.Group,TokenBuilder.extractType(script[script.length-1]));//Last Token
+						
 			ok = true;
 		} finally {
 			if (!ok) {
@@ -79,14 +80,7 @@ public class TemplateLoaderTest {
 		}
 		return builder.toString();
 	}
-	
-//TODO: build FAST debugger that can break data without template on stop bit and provide multiple possible interpretations.
-	
-	// Runs very well with these JVM arguments
-	// -XX:CompileThreshold=8 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:MaxInlineLevel=12 -XX:InlineSmallCode=16300
-			
-	//Note: only the type/opp combos used will get in-lined, this small footprint will fit in execution cache.
-	//      if we in-line too much the block will be to large and may spill.
+
 	public static void main(String[] args) {
 		TemplateLoaderTest tlt = new TemplateLoaderTest();
 		tlt.testDecodeComplex30000Two();
@@ -423,7 +417,7 @@ public class TemplateLoaderTest {
 //			grps = 0;
 //			int data = 0; //same id needed for writer construction
 //			while (0!=(data = dynamicReader.hasMore())) {
-//				dynamicWriter.write(queue);
+//				dynamicWriter.write();
 //				if (0!=(data&END_OF_MESSAGE)) {
 //					msgs++;
 //				}
