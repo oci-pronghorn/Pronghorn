@@ -850,7 +850,7 @@ public final class PrimitiveWriter {
 	public final void writePMapBit(byte bit) {
 		if (0 == --pMapIdxWorking) {
 			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes and did arraycopy later.
-			
+			assert(safetyStackDepth>0) : "PMap must be open before write of bits.";
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			
 			

@@ -10,7 +10,7 @@ public class FieldReaderChar {
 
 	public static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
-	private final TextHeap textHeap;
+	private final TextHeap heap;
 	private final char[] targ;
 	private final int INSTANCE_MASK;
 	
@@ -22,17 +22,17 @@ public class FieldReaderChar {
 		this.INSTANCE_MASK = null==heap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (heap.itemCount()-1));
 		
 		this.reader = reader;
-		this.textHeap = heap;
-		this.targ = null==textHeap?null:textHeap.rawAccess();
+		this.heap = heap;
+		this.targ = null==heap?null:heap.rawAccess();
 	}
 	
 	public TextHeap textHeap() {
-		return textHeap;
+		return heap;
 	}
 	
 	public void reset() {
-		if (null!=textHeap) {
-			textHeap.reset();		
+		if (null!=heap) {
+			heap.reset();		
 		}
 	}
 	
@@ -53,7 +53,7 @@ public class FieldReaderChar {
 			byte val = reader.readTextASCIIByte();
 			if (0!=(val&0x7F)) {
 				//real data, this is the most common case;
-				textHeap.setZeroLength(idx);				
+				heap.setZeroLength(idx);				
 				fastHeapAppend(idx, val);
 			} else {
 				readASCIIToHeapNone(idx, val);
@@ -68,14 +68,14 @@ public class FieldReaderChar {
 		// 0x00, 0x80 is zero length string
 		if (0==val) {
 			//almost never happens
-			textHeap.setZeroLength(idx);
+			heap.setZeroLength(idx);
 			//must move cursor off the second byte
 			val = reader.readTextASCIIByte(); //< .1%
 			//at least do a validation because we already have what we need
 			assert((val&0xFF)==0x80);			
 		} else {
 			//happens rarely when it equals 0x80
-			textHeap.setNull(idx);				
+			heap.setNull(idx);				
 			
 		}
 	}
@@ -84,13 +84,13 @@ public class FieldReaderChar {
 		final int offset = idx<<2;
 		final int off4 = offset+4;
 		final int off1 = offset+1;
-		int nextLimit = textHeap.tat[off4];
-		int targIndex = textHeap.tat[off1];
+		int nextLimit = heap.tat[off4];
+		int targIndex = heap.tat[off1];
 						
 		if (targIndex>=nextLimit) {
-			textHeap.makeSpaceForAppend(offset, 2); //also space for last char
-			targIndex = textHeap.tat[off1];
-			nextLimit = textHeap.tat[off4];
+			heap.makeSpaceForAppend(offset, 2); //also space for last char
+			targIndex = heap.tat[off1];
+			nextLimit = heap.tat[off4];
 		}
 		
 		if(val<0) {
@@ -98,7 +98,7 @@ public class FieldReaderChar {
 		} else {
 			targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
 		}
-		textHeap.tat[off1] = targIndex;
+		heap.tat[off1] = targIndex;
 	}
 
 	private int fastHeapAppendLong(byte val, final int offset, final int off4, int nextLimit, int targIndex) {
@@ -109,8 +109,8 @@ public class FieldReaderChar {
 			len = reader.readTextASCII2(targ, targIndex, nextLimit);
 			if (len<0) {
 				targIndex-=len;
-				textHeap.makeSpaceForAppend(offset, 2); //also space for last char
-				nextLimit = textHeap.tat[off4];
+				heap.makeSpaceForAppend(offset, 2); //also space for last char
+				nextLimit = heap.tat[off4];
 			} else {
 				targIndex+=len;
 			}
@@ -148,17 +148,17 @@ public class FieldReaderChar {
 			if (0!=tmp) {//low 7 bits have data
 				//real data, this is the most common case;
 				///  2/3 of calls here
-				textHeap.setZeroLength(idx);				
+				heap.setZeroLength(idx);				
 				final int offset = idx<<2;
 				final int off4 = offset+4;
 				final int off1 = offset+1;
-				int nextLimit = textHeap.tat[off4];
-				int targIndex = textHeap.tat[off1];
+				int nextLimit = heap.tat[off4];
+				int targIndex = heap.tat[off1];
 								
 				if (targIndex>=nextLimit) {
-					textHeap.makeSpaceForAppend(offset, 2); //also space for last char
-					targIndex = textHeap.tat[off1];
-					nextLimit = textHeap.tat[off4];
+					heap.makeSpaceForAppend(offset, 2); //also space for last char
+					targIndex = heap.tat[off1];
+					nextLimit = heap.tat[off4];
 				}
 				
 				if(val<0) {
@@ -166,7 +166,7 @@ public class FieldReaderChar {
 				} else {
 					targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
 				}
-				textHeap.tat[off1] = targIndex;
+				heap.tat[off1] = targIndex;
 			} else {
 				readASCIIToHeapNone(idx, val);
 			}
@@ -201,7 +201,7 @@ public class FieldReaderChar {
 
 	private int readASCIITail(int idx, int trim, int readFromIdx) {
 		if (trim>0) {
-			textHeap.trimTail(idx, trim);
+			heap.trimTail(idx, trim);
 		}
 		
 		//System.err.println("read: trim "+trim);
@@ -216,10 +216,10 @@ public class FieldReaderChar {
 		} else {
 			if (val==NULL_STOP) {
 				//nothing to append and sent value is null
-				textHeap.setNull(idx);				
+				heap.setNull(idx);				
 			} else {		
-				if (textHeap.isNull(idx)) {
-					textHeap.setZeroLength(idx);
+				if (heap.isNull(idx)) {
+					heap.setZeroLength(idx);
 				}
 				fastHeapAppend(idx, val);
 			}
@@ -233,12 +233,12 @@ public class FieldReaderChar {
 				
 		int tail = reader.readIntegerUnsigned();
 		if (0==tail) {
-			textHeap.setNull(idx);
+			heap.setNull(idx);
 			return idx;
 		}
 		tail--;
 				
-		textHeap.trimTail(idx, tail);
+		heap.trimTail(idx, tail);
 		byte val = reader.readTextASCIIByte();
 		if (val==0) {
 			//nothing to append
@@ -251,8 +251,8 @@ public class FieldReaderChar {
 				//nothing to append
 				//charDictionary.setNull(idx);				
 			} else {		
-				if (textHeap.isNull(idx)) {
-					textHeap.setZeroLength(idx);
+				if (heap.isNull(idx)) {
+					heap.setZeroLength(idx);
 				}
 				fastHeapAppend(idx, val);
 			}
@@ -263,25 +263,25 @@ public class FieldReaderChar {
 	
 	private int readASCIIHead(int idx, int trim, int readFromIdx) {
 		if (trim<0) {
-			textHeap.trimHead(idx, -trim);
+			heap.trimHead(idx, -trim);
 		}
 
 		byte value = reader.readTextASCIIByte();
 		int offset = idx<<2;
-		int nextLimit = textHeap.tat[offset+4];
+		int nextLimit = heap.tat[offset+4];
 		
 		if (trim>=0) {
 			while (value>=0) {
-				nextLimit = textHeap.appendTail(offset, nextLimit, (char)value);
+				nextLimit = heap.appendTail(offset, nextLimit, (char)value);
 				value = reader.readTextASCIIByte();
 			}
-			textHeap.appendTail(offset, nextLimit, (char)(value&0x7F) );
+			heap.appendTail(offset, nextLimit, (char)(value&0x7F) );
 		} else {
 			while (value>=0) {
-				textHeap.appendHead(offset, (char)value);
+				heap.appendHead(offset, (char)value);
 				value = reader.readTextASCIIByte();
 			}
-			textHeap.appendHead(offset, (char)(value&0x7F) );
+			heap.appendHead(offset, (char)(value&0x7F) );
 		}
 		
 	//	System.out.println("new ASCII string:"+charDictionary.get(idx, new StringBuilder()));
@@ -297,7 +297,7 @@ public class FieldReaderChar {
 			byte val = reader.readTextASCIIByte();
 			if (0!=(val&0x7F)) {
 				//real data, this is the most common case;
-				textHeap.setZeroLength(idx);				
+				heap.setZeroLength(idx);				
 				fastHeapAppend(idx, val);
 			} else {
 				readASCIIToHeapNone(idx, val);
@@ -318,8 +318,8 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(textHeap.rawAccess(), 
-					            textHeap.allocate(idx, length),
+			reader.readTextUTF8(heap.rawAccess(), 
+					            heap.allocate(idx, length),
 					            length);
 						
 			return idx;
@@ -335,8 +335,8 @@ public class FieldReaderChar {
 		} else {
 			
 			int length = reader.readIntegerUnsigned()-1;
-			reader.readTextUTF8(textHeap.rawAccess(), 
-					            textHeap.allocate(idx, length),
+			reader.readTextUTF8(heap.rawAccess(), 
+					            heap.allocate(idx, length),
 					            length);
 						
 			return idx;
@@ -350,10 +350,10 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
 			//append to tail
-			reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+			reader.readTextUTF8(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+			reader.readTextUTF8(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
 		//	System.out.println("new UTF8 string:"+charDictionary.get(idx, new StringBuilder()));
 		}
 		
@@ -367,8 +367,8 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned(); 
 
 		//append to tail	
-		int targetOffset = textHeap.makeSpaceForAppend(idx, trim, utfLength);
-		reader.readTextUTF8(textHeap.rawAccess(), targetOffset, utfLength);
+		int targetOffset = heap.makeSpaceForAppend(idx, trim, utfLength);
+		reader.readTextUTF8(heap.rawAccess(), targetOffset, utfLength);
 		return idx;
 	}
 	
@@ -376,8 +376,8 @@ public class FieldReaderChar {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
-			reader.readTextUTF8(textHeap.rawAccess(), 
-					            textHeap.allocate(idx, length),
+			reader.readTextUTF8(heap.rawAccess(), 
+					            heap.allocate(idx, length),
 					            length);
 		}
 		return idx;
@@ -387,8 +387,8 @@ public class FieldReaderChar {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {			
 			int length = reader.readIntegerUnsigned()-1;
-			reader.readTextUTF8(textHeap.rawAccess(), 
-					            textHeap.allocate(idx, length),
+			reader.readTextUTF8(heap.rawAccess(), 
+					            heap.allocate(idx, length),
 					            length);
 		}
 		return idx;
@@ -400,7 +400,7 @@ public class FieldReaderChar {
 		
 		int trim = reader.readIntegerSigned();
 		if (0==trim) {
-			textHeap.setNull(idx);
+			heap.setNull(idx);
 			return idx;
 		}
 		if (trim>0) {
@@ -411,12 +411,12 @@ public class FieldReaderChar {
 		if (trim>=0) {
 			//append to tail
 			//System.err.println("oldString :"+charDictionary.get(idx, new StringBuilder())+" TAIL");
-			reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+			reader.readTextUTF8(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 			//System.err.println("new UTF8 Opp   trim tail "+trim+" added to head "+utfLength+" string:"+charDictionary.get(idx, new StringBuilder()));
 		} else {
 			//append to head
 			//System.err.println("oldString :"+charDictionary.get(idx, new StringBuilder())+" HEAD");
-			reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+			reader.readTextUTF8(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
 			//System.err.println("new UTF8 Opp   trim head "+trim+" added to head "+utfLength+" string:"+charDictionary.get(idx, new StringBuilder()));
 		}
 		
@@ -428,7 +428,7 @@ public class FieldReaderChar {
 		
 		int trim = reader.readIntegerUnsigned();
 		if (trim==0) {
-			textHeap.setNull(idx);
+			heap.setNull(idx);
 			return idx;
 		} 
 		trim--;
@@ -436,7 +436,7 @@ public class FieldReaderChar {
 		int utfLength = reader.readIntegerUnsigned(); //subtract for optional
 
 		//append to tail	
-		reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+		reader.readTextUTF8(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		
 		return idx;
 	}
@@ -446,7 +446,7 @@ public class FieldReaderChar {
 		byte val = reader.readTextASCIIByte();
 		if (0!=(val&0x7F)) {
 			//real data, this is the most common case;
-			textHeap.setZeroLength(idx);				
+			heap.setZeroLength(idx);				
 			fastHeapAppend(idx, val);
 		} else {
 			readASCIIToHeapNone(idx, val);
@@ -461,8 +461,8 @@ public class FieldReaderChar {
 	public int readUTF8(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
-		reader.readTextUTF8(textHeap.rawAccess(), 
-				            textHeap.allocate(idx, length),
+		reader.readTextUTF8(heap.rawAccess(), 
+				            heap.allocate(idx, length),
 				            length);
 		return idx;
 	}
@@ -470,15 +470,15 @@ public class FieldReaderChar {
 	public int readUTF8Optional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
-		reader.readTextUTF8(textHeap.rawAccess(), 
-				            textHeap.allocate(idx, length),
+		reader.readTextUTF8(heap.rawAccess(), 
+				            heap.allocate(idx, length),
 				            length);
 		return idx;
 	}
 
 	public void reset(int idx) {
-		if (null!=textHeap) {
-			textHeap.setNull(idx);
+		if (null!=heap) {
+			heap.setNull(idx);
 		}
 	}
 

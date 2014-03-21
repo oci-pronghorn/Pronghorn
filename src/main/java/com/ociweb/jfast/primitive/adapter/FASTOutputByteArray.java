@@ -37,7 +37,7 @@ public final class FASTOutputByteArray implements FASTOutput {
 		
 		int size = dataTransfer.nextBlockSize();
 		while (size>0) {
-			
+			//System.err.println("position "+position);
 			System.arraycopy(dataTransfer.rawBuffer(), 
 			         		 dataTransfer.nextOffset(), 
 			         		 buffer, position, size);

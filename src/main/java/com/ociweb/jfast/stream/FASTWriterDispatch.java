@@ -33,20 +33,30 @@ public final class FASTWriterDispatch {
 	private final FieldWriterDecimal writerDecimal;
 	private final FieldWriterChar writerChar;
 	private final FieldWriterBytes writerBytes;
+	
+	final int nonTemplatePMapSize;
 		
 			
 	private int readFromIdx = -1;
 	
 	private final DictionaryFactory dictionaryFactory;
 	private final FASTRingBuffer queue;
+	private final int[][] dictionaryMembers;
 	
-	
+	private final int[] sequenceCountStack;
+	private int sequenceCountStackHead = -1;
+	private boolean isFirstSequenceItem = false;
+	private boolean isSkippedSequence = false;
+		
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
 			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes,
-			                   FASTRingBuffer queue) {
+			                   FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers) {
 
 		this.writer = writer;
 		this.dictionaryFactory = dcr;
+		this.nonTemplatePMapSize = nonTemplatePMapSize;
+		
+		this.sequenceCountStack = new int[100];//TODO: find the right size
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
@@ -57,6 +67,7 @@ public final class FASTWriterDispatch {
 				
 		this.templateStack = new int[maxTemplates];
 		this.queue = queue;
+		this.dictionaryMembers = dictionaryMembers;
 	}
 	
 	/**
@@ -1035,7 +1046,18 @@ public final class FASTWriterDispatch {
 		templateStackHead = 0;
 	}
 
-	public void dispatchWriteByToken(int token, int fieldPos) {
+	
+	public boolean isFirstSequenceItem() {
+		return isFirstSequenceItem;
+	}
+	
+	public boolean isSkippedSequence() {
+		return isSkippedSequence;
+	}	
+	
+	public boolean dispatchWriteByToken(int token, int fieldPos) {
+		
+		///System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
@@ -1060,19 +1082,122 @@ public final class FASTWriterDispatch {
 						//0110? Decimal and DecimalOptional
 						write(token,queue.getInt(fieldPos),queue.getLong(fieldPos+1));
 					} else {
-						
-						//outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
+//						//0111? ByteArray
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01110 ByteArray
+							//queue.selectByteSequence(fieldPos);
+							//write(token,queue); TODO: copy the text implementation
+						} else {
+							//01111 ByteArrayOptional
+							//queue.selectByteSequence(fieldPos);
+							//write(token,queue); TODO: copy the text implementation
+						}
 					}
 				}
 			}
-			//return false;
 		} else {
-			//pause node for more work processing will return false 
-			//return dispatchReadByToken1(token, outputQueue);	
-		}
-		
-	}
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//10???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//100??
+					//Group Type, no others defined so no need to keep checking
+					if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
 
+						isSkippedSequence = false;
+						isFirstSequenceItem = false;
+						//this is NOT a message/template so the non-template pmapSize is used.			
+				//		System.err.println("open group:"+TokenBuilder.tokenToString(token));
+						openGroup(token, nonTemplatePMapSize);
+					} else {
+					//	System.err.println("close group:"+TokenBuilder.tokenToString(token));
+						closeGroup(token);//closing this seq causing throw!!
+						if (0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))) {
+				    		//must always pop because open will always push
+							if (0 == --sequenceCountStack[sequenceCountStackHead]) {
+								sequenceCountStackHead--;//pop sequence off because they have all been used.
+							}
+							return true;
+						}
+					}
+					
+				} else {
+					//101??
+					//Length Type, no others defined so no need to keep checking
+					//Only happens once before a node sequence so push it on the count stack
+					int length=queue.getInt(fieldPos);
+					write(token, length);
+					
+					if (length==0) {
+						isFirstSequenceItem = false;
+						isSkippedSequence = true;
+					} else {		
+						isFirstSequenceItem = true;
+						isSkippedSequence = false;
+						sequenceCountStack[++sequenceCountStackHead] = length;
+					}
+					return true;
+				}
+			} else {
+				//11???
+				//Dictionary Type, no others defined so no need to keep checking
+				if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+					//reset the values
+					int dictionary = TokenBuilder.MAX_INSTANCE&token;
+
+					int[] members = dictionaryMembers[dictionary];
+					//System.err.println(members.length+" "+Arrays.toString(members));
+					
+					int m = 0;
+					int limit = members.length;
+					if (limit>0) {
+						int idx = members[m++];
+						while (m<limit) {
+							assert(idx<0);
+							
+							if (0==(idx&8)) {
+								if (0==(idx&4)) {
+									//integer
+									while (m<limit && (idx = members[m++])>=0) {
+										writerInteger.reset(idx);
+									}
+								} else {
+									//long
+									while (m<limit && (idx = members[m++])>=0) {
+										writerLong.reset(idx);
+									}
+								}
+							} else {
+								if (0==(idx&4)) {							
+									//text
+									while (m<limit && (idx = members[m++])>=0) {
+										writerChar.reset(idx);
+									}
+								} else {
+									if (0==(idx&2)) {								
+										//decimal
+										while (m<limit && (idx = members[m++])>=0) {
+											writerDecimal.reset(idx);
+										}
+									} else {
+										//bytes
+										while (m<limit && (idx = members[m++])>=0) {
+											writerBytes.reset(idx);
+										}
+									}
+								}
+							}	
+						}
+					}
+				} else {
+					//use last value from this location
+					readFromIdx = TokenBuilder.MAX_INSTANCE&token;
+				}
+					
+			}
+			
+		}
+		return false;
+	}
 
 
 

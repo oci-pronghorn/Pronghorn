@@ -148,8 +148,7 @@ public class FASTRingBuffer implements CharSequence {
 		buffer[mask&addPos++] = readDecimalExponent;
 		buffer[mask&addPos++] = (int)(readDecimalMantissa>>>32);
 		buffer[mask&addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
-		
-		
+				
 	}
 
 	
@@ -243,9 +242,15 @@ public class FASTRingBuffer implements CharSequence {
 		}
 	}
 
+	//TODO: putting things in the ring buffer out of order may break the inner char ring buffer, MUST fix.
+	
 	@Override
 	public CharSequence subSequence(int start, int end) {
 		throw new UnsupportedOperationException();
+	}
+
+	public boolean hasContent() {
+		return addPos>remPos;
 	}
 	
 }

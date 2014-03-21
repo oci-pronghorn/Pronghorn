@@ -12,7 +12,7 @@ public class FieldReaderBytes {
 	private static final int INIT_VALUE_MASK = 0x80000000;
 	final byte NULL_STOP = (byte)0x80;
 	private final PrimitiveReader reader;
-	private final ByteHeap byteHeap;
+	private final ByteHeap heap;
 	private final int INSTANCE_MASK;
 	
 	//TODO: improvement reader/writer bytes/chars should never build this object when it is not in use.
@@ -23,14 +23,14 @@ public class FieldReaderBytes {
 		this.INSTANCE_MASK = null==byteDictionary ? 0 :Math.min(TokenBuilder.MAX_INSTANCE, byteDictionary.itemCount()-1);
 		
 		this.reader = reader;
-		this.byteHeap = byteDictionary;
+		this.heap = byteDictionary;
 	}
 
 	public int readBytes(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
-		reader.readByteData(byteHeap.rawAccess(), 
-							byteHeap.allocate(idx, length),
+		reader.readByteData(heap.rawAccess(), 
+							heap.allocate(idx, length),
 				            length);
 		return idx;
 	}
@@ -46,15 +46,15 @@ public class FieldReaderBytes {
 		int length = reader.readIntegerUnsigned(); 
 		
 		//append to tail	
-		int targetOffset = byteHeap.makeSpaceForAppend(idx, trim, length);
-		reader.readByteData(byteHeap.rawAccess(), targetOffset, length);
+		int targetOffset = heap.makeSpaceForAppend(idx, trim, length);
+		reader.readByteData(heap.rawAccess(), targetOffset, length);
 				
 		return idx;
 	}
 	
 	public void reset() {
-		if (null!=byteHeap) {
-			byteHeap.reset();
+		if (null!=heap) {
+			heap.reset();
 		}
 	}
 
@@ -71,10 +71,10 @@ public class FieldReaderBytes {
 		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
 			//append to tail
-			reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+			reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+			reader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
 		}
 		
 		return idx;
@@ -84,8 +84,8 @@ public class FieldReaderBytes {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
-			reader.readByteData(byteHeap.rawAccess(), 
-								byteHeap.allocate(idx, length),
+			reader.readByteData(heap.rawAccess(), 
+								heap.allocate(idx, length),
 					            length);
 		}
 		return idx;
@@ -104,8 +104,8 @@ public class FieldReaderBytes {
 				throw new FASTException("do you really want ByteArray of size "+length);
 			}
 			assert(length>=0) : "Unsigned int are never negative";
-			reader.readByteData(byteHeap.rawAccess(), 
-								byteHeap.allocate(idx, length),
+			reader.readByteData(heap.rawAccess(), 
+								heap.allocate(idx, length),
 					            length);
 						
 			return idx;
@@ -115,8 +115,8 @@ public class FieldReaderBytes {
 	public int readBytesOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
-		reader.readByteData(byteHeap.rawAccess(), 
-							byteHeap.allocate(idx, length),
+		reader.readByteData(heap.rawAccess(), 
+							heap.allocate(idx, length),
 				            length);
 		return idx;
 	}
@@ -126,7 +126,7 @@ public class FieldReaderBytes {
 		
 		int trim = reader.readIntegerUnsigned();
 		if (trim==0) {
-			byteHeap.setNull(idx);
+			heap.setNull(idx);
 			return idx;
 		} 
 		trim--;
@@ -134,7 +134,7 @@ public class FieldReaderBytes {
 		int utfLength = reader.readIntegerUnsigned();
 
 		//append to tail	
-		reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+		reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		
 		return idx;
 	}
@@ -148,7 +148,7 @@ public class FieldReaderBytes {
 		
 		int trim = reader.readIntegerSigned();
 		if (0==trim) {
-			byteHeap.setNull(idx);
+			heap.setNull(idx);
 			return idx;
 		}
 		if (trim>0) {
@@ -159,10 +159,10 @@ public class FieldReaderBytes {
 
 		if (trim>=0) {
 			//append to tail
-			reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+			reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
 		} else {
 			//append to head
-			reader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+			reader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
 		}
 		
 		return idx;
@@ -172,8 +172,8 @@ public class FieldReaderBytes {
 		int idx = token & INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {			
 			int length = reader.readIntegerUnsigned()-1;
-			reader.readByteData(byteHeap.rawAccess(), 
-								byteHeap.allocate(idx, length),
+			reader.readByteData(heap.rawAccess(), 
+								heap.allocate(idx, length),
 					            length);
 		}	
 		return idx;
@@ -190,8 +190,8 @@ public class FieldReaderBytes {
 			if (length>65535 || length<0) {
 				throw new FASTException("do you really want ByteArray of size "+length);
 			}
-			reader.readByteData(byteHeap.rawAccess(), 
-								byteHeap.allocate(idx, length),
+			reader.readByteData(heap.rawAccess(), 
+								heap.allocate(idx, length),
 					            length);
 						
 			return idx;
@@ -199,12 +199,12 @@ public class FieldReaderBytes {
 	}
 
 	public ByteHeap byteHeap() {
-		return byteHeap;
+		return heap;
 	}
 
 	public void reset(int idx) {
-		if (null!=byteHeap) {
-			byteHeap.setNull(idx);
+		if (null!=heap) {
+			heap.setNull(idx);
 		}
 	}
 

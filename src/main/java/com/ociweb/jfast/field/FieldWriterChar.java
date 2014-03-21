@@ -672,4 +672,10 @@ public class FieldWriterChar {
 		writer.writeTextASCII(value,offset,length);
 	}
 
+	public void reset(int idx) {
+		if (null!=heap) {
+			heap.reset();		
+		}
+	}
+
 }

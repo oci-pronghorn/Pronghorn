@@ -168,7 +168,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 					    	neededSpaceOrTemplate = seqScriptLength<<2;
 					    	
 					    	//jump back to top of this sequence in the script.
-					    	//return this cursor position as the unique id for this sequence.
 							activeScriptCursor -= seqScriptLength;
 					    } else {
 					    	//finished sequence, no need to jump

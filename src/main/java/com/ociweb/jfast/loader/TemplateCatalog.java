@@ -307,5 +307,8 @@ public class TemplateCatalog {
 	public int getTextGap() {
 		return textLengthGap;
 	}
+	public int maxNonTemplatePMapSize() {
+		return maxNonTemplatePMapSize;
+	}
 	
 }

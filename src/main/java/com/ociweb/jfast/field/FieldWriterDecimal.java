@@ -201,4 +201,10 @@ public class FieldWriterDecimal {
 		writerDecimalExponent.writeNull(token); //TODO: this is not done yet
 		writerDecimalMantissa.writeNull(token);
 	}
+
+
+	public void reset(int idx) {
+		writerDecimalExponent.reset(idx);
+		writerDecimalMantissa.reset(idx);	
+	}
 }

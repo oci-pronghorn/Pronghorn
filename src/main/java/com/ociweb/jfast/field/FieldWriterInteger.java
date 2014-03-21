@@ -358,5 +358,9 @@ public final class FieldWriterInteger {
 	public void writerIntegerUnsignedOptional(int value, int token) {
 		writer.writeIntegerUnsigned(value+1);
 	}
+
+	public void reset(int idx) {
+		lastValue[idx] = 0;
+	}
 	
 }

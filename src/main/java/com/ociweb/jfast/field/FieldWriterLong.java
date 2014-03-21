@@ -357,4 +357,8 @@ public final class FieldWriterLong {
 	public void writeLongSignedOptional(long value, int token) {
 		writer.writeLongSignedOptional(value);
 	}
+
+	public void reset(int idx) {
+		lastValue[idx] = 0;
+	}
 }
