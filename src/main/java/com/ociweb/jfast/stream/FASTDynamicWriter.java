@@ -101,24 +101,6 @@ public class FASTDynamicWriter {
 		
 		
 		
-//		//TODO: open the group.
-
-//		
-//		do {
-//			int token = fullScript[activeScriptCursor];			
-//			
-//			int tokenType = TokenBuilder.extractType(token);
-//			if (TypeMask.GroupLength==tokenType) {
-//				//TODO: loop over this length for each sequence.
-//							
-//			}
-//			
-//			writerDispatch.dispatchWriteByToken(token,idx);		
-//		} while (++activeScriptCursor<activeScriptLimit);
-		//TODO: close the group
-		
-		
-		
 		////
 		//Hack until the move forward is called.
 		ringBuffer.dump(); //must dump values in buffer or we will hang when reading.

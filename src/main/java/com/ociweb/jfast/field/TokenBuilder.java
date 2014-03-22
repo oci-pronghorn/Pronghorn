@@ -42,7 +42,9 @@ public class TokenBuilder {
 	public static final int SHIFT_TYPE         = SHIFT_OPER+BITS_OPER;
 	public static final int BITS_TYPE          = 5;
 	
-	public static final int MASK_ABSENT        = 0x3; //2 bits //also default value
+	public static final int MASK_ABSENT        = 0x3; //2 bits 
+	public static final int MASK_ABSENT_DEFAULT= 0x2; //2 bits //default value
+	
 	public static final int MASK_OPER          = 0x3F; //6 bits
 	public static final int MASK_OPER_DECIMAL_EX  = 0x07; //3 bits
 	public static final int SHIFT_OPER_DECIMAL_EX = 3; 
@@ -78,7 +80,7 @@ public class TokenBuilder {
 		return 0x80000000 |  
 		       (tokenType<<TokenBuilder.SHIFT_TYPE) |
 		       (tokenOpps<<TokenBuilder.SHIFT_OPER) |
-		       (MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT) | //default absent value
+		       (MASK_ABSENT_DEFAULT<<TokenBuilder.SHIFT_ABSENT) | //default absent value
 		       count&MAX_INSTANCE;
 
 	}

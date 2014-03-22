@@ -95,6 +95,8 @@ public final class PrimitiveReader {
 			} else {
 				if (count<10) { 
 					Thread.yield();
+					//TODO: if we are in the middle of parsing a field this becomes a blocking read
+					
 				} else {				
 					try {
 						Thread.sleep(0, 100);

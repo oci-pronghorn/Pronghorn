@@ -14,15 +14,30 @@ public class FieldReaderInteger {
 	private final PrimitiveReader reader;	
 	final int[]  lastValue;
 	
-	//TODO: add advanced API for modification, TODO: can this be compressed to a const long? w/o heap usage?
-	private final int[] absentInts = new int[]{0,1,-1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT};
+	//TODO: can this be compressed to a const long? w/o heap usage?
+	private final int[] absentInts = new int[]{0,1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT,-1};
 //    static {//TODO: produce 0 1 1x32 1x31 from XL given a 00 01 10 11
 //    	// (1>>(32*b1))>>>b2
+//    	
+//    	// 
+//    	
+//    	
+//    	System.err.println(Integer.toBinaryString(temp(0)));
+//    	System.err.println(Integer.toBinaryString(temp(1)));
+//    	System.err.println(Integer.toBinaryString(temp(2)));
+//    	System.err.println(Integer.toBinaryString(temp(3)));
+//    	
+//    	
 //    	System.err.println(Integer.toBinaryString(0));
 //    	System.err.println(Integer.toBinaryString(1));
-//    	System.err.println(Integer.toBinaryString(-1));
 //    	System.err.println(Integer.toBinaryString(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT));
+//    	System.err.println(Integer.toBinaryString(-1));
 //    }
+    
+    public static int temp(int b) {
+    	return ((0x7FFFFFFF*(b>>1))<<(1&b))|(1&b);    	
+    }
+    
 	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
 
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
@@ -137,8 +152,9 @@ public class FieldReaderInteger {
 			int last = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
 			return last == 0 ?
 					//default value is null so return optional.
-					absentInts[TokenBuilder.extractAbsent(token)] : 
-					//default value 
+					temp(TokenBuilder.extractAbsent(token)) : //TODO: experiment with compute vs lookup.
+//					absentInts[TokenBuilder.extractAbsent(token)] : 
+						//default value 
 					last;
 	
 		} else {

@@ -31,6 +31,10 @@ public class TemplateHandler extends DefaultHandler {
     //Catalog represents all the templates supported 
     int[] catalogScriptTokens = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     int[] catalogScriptFieldIds = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
+    
+    //TODO: not sure about this idea. We know the bits used for normal but with compression may not appear
+    byte[] catalogScriptStops = new byte[TokenBuilder.MAX_FIELD_ID_VALUE];
+    
     int catalogTemplateScriptIdx = 0;
  
     int catalogLargestTemplatePMap = 0;
@@ -270,6 +274,7 @@ public class TemplateHandler extends DefaultHandler {
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
     		catalogScriptTokens[catalogTemplateScriptIdx] = token;
+    		catalogScriptStops[catalogTemplateScriptIdx] = -1;//unkown
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; //Zero id for group
     		
     	} else if (qName.equalsIgnoreCase("sequence")) {   		
@@ -334,6 +339,7 @@ public class TemplateHandler extends DefaultHandler {
 			    										 activeDictionary);
     	    	
     	    	catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
+    	    	catalogScriptStops[catalogTemplateScriptIdx] = 0; //nothing
         		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
        	    }
     	    
@@ -404,6 +410,7 @@ public class TemplateHandler extends DefaultHandler {
     			fieldOperatorValue=null;
     		}
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = 1;
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
     		
     	} else if (qName.equalsIgnoreCase("uint64") ||
@@ -421,6 +428,7 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = 1;
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
     	
     	} else if (qName.equalsIgnoreCase("string")) {
@@ -436,6 +444,7 @@ public class TemplateHandler extends DefaultHandler {
     		}
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -2; //dynamic
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
     		
     	} else if (qName.equalsIgnoreCase("decimal")) {
@@ -467,6 +476,7 @@ public class TemplateHandler extends DefaultHandler {
     		} 
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = 2;
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
     		fieldPMapInc=1;//set back to 1 we are leaving decimal processing
@@ -483,6 +493,7 @@ public class TemplateHandler extends DefaultHandler {
     		int token = buildToken(tokenBuilderByteCount);
 
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -2;
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
     		
     	} else if (qName.equalsIgnoreCase("template")) {
@@ -516,9 +527,11 @@ public class TemplateHandler extends DefaultHandler {
     		//NOTE: we want the sequence length to come first then the repeating group pmap therefore
     		//we are waiting until now to add the open group token.
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = 2;//repeat
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = groupOpenTokenStack[groupTokenStackHead];
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -1;//unknown need to rest the previous.
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
     		
     		    		
@@ -544,10 +557,12 @@ public class TemplateHandler extends DefaultHandler {
 			//change open token so it has the total number of script steps inside the group.
 	    	catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
 					(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize));
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
     		catalogScriptFieldIds[openGroupIdx++] = 0;
 						
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -1;//unknown
+	    	catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
     		
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
 
@@ -573,10 +588,12 @@ public class TemplateHandler extends DefaultHandler {
 			//change open token so it has the total number of script steps inside the group.
 	    	catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = (TokenBuilder.MAX_FIELD_MASK&openToken) |
 					(TokenBuilder.MAX_FIELD_ID_VALUE&groupSize));
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
     		catalogScriptFieldIds[openGroupIdx++] = 0;
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
+	    	catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
     		
     		groupTokenStackHead--;//pop this group off the stack to work on the previous.
 
@@ -587,6 +604,7 @@ public class TemplateHandler extends DefaultHandler {
 
     }
 
+    
 	private int buildToken(AtomicInteger count) throws SAXException {
 		int token;
 		int[] dTokens = dictionaryMap[fieldId];
