@@ -28,7 +28,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 	
 	//Must double because we may need 1 bit for exponent and another for mantissa
 	final int pmapSize = maxMPapBytes*2;
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,pmapSize);
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,pmapSize, TokenBuilder.MASK_ABSENT_DEFAULT);
 
 	boolean sendNulls = true;
 	

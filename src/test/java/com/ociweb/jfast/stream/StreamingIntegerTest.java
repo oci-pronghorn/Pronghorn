@@ -22,7 +22,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingIntegerTest extends BaseStreamingTest {
 	
-	final int groupToken 	  = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
+	final int groupToken 	  = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 	final int[] testData     = buildTestDataUnsigned(fields);
 	final int   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	boolean sendNulls        = true;

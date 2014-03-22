@@ -103,6 +103,7 @@ public class FASTDynamicReader implements FASTDataProvider {
     
 	public int hasMore() {
 		
+		int i;
 
 		if (neededSpaceOrTemplate<0) { 
 			//start new script or detect that the end of the data has been reached
@@ -123,13 +124,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 			lastCapacity-=1;
 			
 			//get next token id then immediately start processing the script
-			int templateId = parseNextTokenId();
+			i = parseNextTokenId();
 			
-			ringBuffer.append(templateId);//write template id at the beginning of this message
+			ringBuffer.append(i);//write template id at the beginning of this message
 							
 			//set the cursor start and stop for this template				
-			activeScriptCursor = catalog.getTemplateStartIdx(templateId); 
-			activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+			activeScriptCursor = catalog.getTemplateStartIdx(i); 
+			activeScriptLimit = catalog.getTemplateLimitIdx(i);
 							
 	    	//Worst case scenario is that this is full of decimals which each need 3.
 	    	//but for easy math we will use 4, will require a little more empty space in buffer		    	
@@ -149,47 +150,53 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
 		do {
 			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {
-				    ringBuffer.moveForward();
-				    if (readerDispatch.isSkippedSequence()) {
-				    	//jumping over sequence
+
+     				ringBuffer.moveForward();
+  				    i = readerDispatch.jumpSequence();
+				    if (i>0) {
+				    	//jumping (backward) to do this sequence again.
+				    	
+				    	//int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
+				    	//Worst case scenario is that this is full of decimals which each need 3.
+				    	//but for easy math we will use 4, will require a little more empty space in buffer
+				    	//however we will not need a lookup table 
+				    	neededSpaceOrTemplate = i<<2;
+				    	
+				    	//jump back to top of this sequence in the script.
+						activeScriptCursor -= i;
+						return 1;//has sequence group to read
+				    } else if(0==i) {
+
+				    	//finished sequence, no need to jump
+				    	if (++activeScriptCursor==activeScriptLimit) {
+				    		neededSpaceOrTemplate = -1;
+				    		readerDispatch.closeMessage();
+				    		return 3;//finished reading full message and the sequence
+				    	}
+				    	return 1;//has sequence group to read
+				    } else {
+				    	//jumping over sequence (forward) it was skipped (rare case)
 				    	System.err.println("has now been tested, please delete");
 						activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
 				    	if (activeScriptCursor==activeScriptLimit) {
 				    		neededSpaceOrTemplate = -1;
 				    		readerDispatch.closeMessage();
 				    		return 2;//finished reading full message but we have no sequence
-				    	}
-				    } else {
-					    if (!readerDispatch.isFinishedSequence()) {
-					    	int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
-					    	//Worst case scenario is that this is full of decimals which each need 3.
-					    	//but for easy math we will use 4, will require a little more empty space in buffer
-					    	//however we will not need a lookup table 
-					    	neededSpaceOrTemplate = seqScriptLength<<2;
-					    	
-					    	//jump back to top of this sequence in the script.
-							activeScriptCursor -= seqScriptLength;
-					    } else {
-					    	//finished sequence, no need to jump
-					    	if (++activeScriptCursor==activeScriptLimit) {
-					    		neededSpaceOrTemplate = -1;
-					    		readerDispatch.closeMessage();
-					    		return 3;//finished reading full message and the sequence
-					    	}
-					    }
-					    return 1;//has sequence group to read
+				    	}				    	
 				    }
+				    
 			}
 		} while (++activeScriptCursor<activeScriptLimit);
 
 		
 		//reached the end of the script so close and prep for the next one
+		ringBuffer.moveForward();
 		neededSpaceOrTemplate = -1;
 		readerDispatch.closeMessage();
-		ringBuffer.moveForward();
 		return 2;//finished reading full message
 	}
 
+	
 	private int parseNextTokenId() {
 		///read prefix bytes if any (only used by some implementations)
 		if (preambleDataLength!=0) {

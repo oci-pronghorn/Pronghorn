@@ -43,7 +43,7 @@ public class TokenBuilder {
 	public static final int BITS_TYPE          = 5;
 	
 	public static final int MASK_ABSENT        = 0x3; //2 bits 
-	public static final int MASK_ABSENT_DEFAULT= 0x2; //2 bits //default value
+	public static final int MASK_ABSENT_DEFAULT= 0x3; //2 bits //default value
 	
 	public static final int MASK_OPER          = 0x3F; //6 bits
 	public static final int MASK_OPER_DECIMAL_EX  = 0x07; //3 bits
@@ -69,7 +69,7 @@ public class TokenBuilder {
 	}
 	
 	//Decimals must pass in both operators in the tokenOpps field together
-	public static int buildToken(int tokenType, int tokenOpps, int count) {
+	public static int buildToken(int tokenType, int tokenOpps, int count, int absentVal) {
 		assert(count<=MAX_INSTANCE);
 		assert(TypeMask.toString(tokenType).indexOf("unknown")==-1) : "Unknown type of "+tokenType+" "+Integer.toHexString(tokenType);
 		assert(tokenType>=0);
@@ -80,7 +80,7 @@ public class TokenBuilder {
 		return 0x80000000 |  
 		       (tokenType<<TokenBuilder.SHIFT_TYPE) |
 		       (tokenOpps<<TokenBuilder.SHIFT_OPER) |
-		       (MASK_ABSENT_DEFAULT<<TokenBuilder.SHIFT_ABSENT) | //default absent value
+		       (absentVal<<TokenBuilder.SHIFT_ABSENT) | 
 		       count&MAX_INSTANCE;
 
 	}

@@ -81,8 +81,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4);
 	
-	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
-	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
+	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -106,7 +106,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
-			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
+			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
 					
 		}
 		return lookup;
@@ -151,7 +151,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	
@@ -160,7 +160,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	
@@ -169,7 +169,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	
@@ -178,7 +178,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalConstant(int reps) {
@@ -186,7 +186,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.Decimal, //constant operator can not be optional
 						    OperatorMask.Field_Constant, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 
 	public long timeStaticDecimalDefault(int reps) {
@@ -194,7 +194,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalDefaultOptional(int reps) {
@@ -202,7 +202,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalDelta(int reps) {
@@ -210,7 +210,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 						TypeMask.Decimal, 
 						OperatorMask.Field_Delta, 
-						0), groupTokenNoMap, 0);
+						0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	public long timeStaticDecimalDeltaOptional(int reps) {
@@ -218,7 +218,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Delta, 
-						     0), groupTokenNoMap, 0);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	
@@ -227,7 +227,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.Decimal, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	public long timeStaticDecimalIncrementOptional(int reps) {
@@ -235,7 +235,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.DecimalOptional, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 4);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 4);
 	}
 	
 	

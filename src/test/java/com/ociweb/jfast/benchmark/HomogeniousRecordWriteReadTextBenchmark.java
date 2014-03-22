@@ -78,8 +78,8 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 24, 0, 4, 4);
 	
-	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
-	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0);
+	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
 		
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -103,7 +103,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
-			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
+			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
 					
 		}
 		return lookup;
@@ -150,7 +150,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextASCIINoneOptional(int reps) {
@@ -158,7 +158,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextUTF8None(int reps) {
@@ -166,7 +166,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextUTF8NoneOptional(int reps) {
@@ -174,7 +174,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	////
@@ -184,7 +184,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_Constant, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextASCIIConstantOptional(int reps) {
@@ -192,7 +192,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_Constant, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8Constant(int reps) {
@@ -200,7 +200,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_Constant, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8ConstantOptional(int reps) {
@@ -208,7 +208,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_Constant, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	////
@@ -218,7 +218,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_Copy, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextASCIICopyOptional(int reps) {
@@ -226,7 +226,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_Copy, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8Copy(int reps) {
@@ -234,7 +234,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_Copy, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8CopyOptional(int reps) {
@@ -242,7 +242,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_Copy, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	/////
@@ -252,7 +252,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_Default, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextASCIIDefaultOptional(int reps) {
@@ -260,7 +260,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_Default, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8Default(int reps) {
@@ -268,7 +268,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_Default, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8DefaultOptional(int reps) {
@@ -276,7 +276,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_Default, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	////
@@ -292,7 +292,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_Delta, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextASCIIDeltaOptional(int reps) {
@@ -300,7 +300,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_Delta, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextUTF8Delta(int reps) {
@@ -308,7 +308,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_Delta, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticTextUTF8DeltaOptional(int reps) {
@@ -316,7 +316,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_Delta, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	////
@@ -327,7 +327,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCII,
 							OperatorMask.Field_Tail, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextASCIITailOptional(int reps) {
@@ -335,7 +335,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextASCIIOptional,
 							OperatorMask.Field_Tail, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8Tail(int reps) {
@@ -343,7 +343,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8,
 							OperatorMask.Field_Tail, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticTextUTF8TailOptional(int reps) {
@@ -351,7 +351,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.TextUTF8Optional,
 							OperatorMask.Field_Tail, 
-							0), groupTokenMap, 2);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	

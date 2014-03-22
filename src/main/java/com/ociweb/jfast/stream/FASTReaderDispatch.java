@@ -3,8 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import java.util.Arrays;
-
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.FieldReaderChar;
@@ -14,7 +12,6 @@ import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -32,8 +29,7 @@ public class FASTReaderDispatch{
 	private final FieldReaderDecimal readerDecimal;
 	private final FieldReaderChar readerChar;
 	private final FieldReaderBytes readerBytes;
-		
-	
+			
     private final int nonTemplatePMapSize;
     private final int[][] dictionaryMembers;
 	
@@ -45,12 +41,11 @@ public class FASTReaderDispatch{
 	//
 	//default fields can be the default or overridden this one time with a new value.
 
-	int maxNestedSeqDepth = 64;
+	int maxNestedSeqDepth = 64; //TODO: need value from template
 	int[] sequenceCountStack = new int[maxNestedSeqDepth];
 	int sequenceCountStackHead = -1;
 	int checkSequence;
-	boolean finishedSequence;
-	boolean skippedSequence;
+    int jumpSequence;
 	
 	int[] integerDictionary;
 	long[] longDictionary;
@@ -174,14 +169,10 @@ public class FASTReaderDispatch{
 		}
 	}
 	
-	public boolean isSkippedSequence() {
-		return skippedSequence;
+	public int jumpSequence() {
+		return jumpSequence;
 	}
-	
-	public boolean isFinishedSequence() {
-		return finishedSequence;
-	}
-	
+		
 	private boolean dispatchReadByToken1(int token, FASTRingBuffer outputQueue) {
 		//1????
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
@@ -200,11 +191,9 @@ public class FASTReaderDispatch{
 				outputQueue.append(length = readIntegerUnsigned(token));
 				if (length==0) {
 					System.err.println("testing squence length of zero");
-					skippedSequence = true;
-					finishedSequence = true;
+					jumpSequence = -1;
 				} else {			
-					skippedSequence = false;
-					finishedSequence = false;
+					jumpSequence = 0;
 					sequenceCountStack[++sequenceCountStackHead] = length;
 				}
 				
@@ -855,9 +844,11 @@ public class FASTReaderDispatch{
 			//this group is a sequence so pop it off the stack.
 			//System.err.println("finished seq");
 			--sequenceCountStackHead;
-			finishedSequence = true;
+			//finished this sequence so leave pointer where it is
+			jumpSequence= 0;
 		} else {
-			finishedSequence = false;
+			//do this sequence again so move pointer back
+			jumpSequence = (TokenBuilder.MAX_INSTANCE&token);
 		}
 		return true;
 	}

@@ -154,7 +154,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 		}
 		int g = fieldsPerGroup;
 		
-		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 		
 		fw.openGroup(groupToken, maxMPapBytes);
 		
@@ -215,7 +215,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+i);
 		}
 		int g = fieldsPerGroup;
-		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
+		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 		
 		fr.openGroup(groupToken, maxMPapBytes);
 		

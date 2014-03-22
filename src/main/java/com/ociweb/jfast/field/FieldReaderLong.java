@@ -4,7 +4,6 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderLong {
@@ -13,9 +12,7 @@ public class FieldReaderLong {
 	private final PrimitiveReader reader;
 	final long[]  lastValue; 
 	
-	private long[] absentLongs = new long[]{0,1,TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG,-1};
 	
-
 	public FieldReaderLong(PrimitiveReader reader, long[] values) {
 		
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
@@ -26,6 +23,35 @@ public class FieldReaderLong {
 		this.reader = reader;
 		this.lastValue = values;
 	}
+	
+    /**
+     * Computes the absent values as needed.
+     * 00 ->  1
+     * 01 ->  0
+     * 10 -> -1
+     * 11 -> TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG
+     * 
+     * 0
+     * 1
+     * 1111111111111111111111111111111111111111111111111111111111111111
+     * 111111111111111111111111111111111111111111111111111111111111111
+     * 
+     * @param b
+     * @return
+     */
+    private static long absentValue(int b) {
+    	return ((1|(0l-(b>>1)))>>>(1&b));  	
+    }
+    
+//    static { //TODO: build unit test for these 4 values.
+//    	System.err.println(Long.toBinaryString(absentValue(0)));
+//    	System.err.println(Long.toBinaryString(absentValue(1)));
+//    	System.err.println(Long.toBinaryString(absentValue(2)));
+//    	System.err.println(Long.toBinaryString(absentValue(3)));
+//    	
+//    	
+//    }
+    
 	
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);
@@ -42,7 +68,7 @@ public class FieldReaderLong {
 	public long readLongUnsignedOptional(int token, int readFromIdx) {
 		long value = reader.readLongUnsigned();
 		if (0==value) {
-			return absentLongs[TokenBuilder.extractAbsent(token)];
+			return absentValue(TokenBuilder.extractAbsent(token));
 		} else {
 			return --value;
 		}
@@ -54,7 +80,7 @@ public class FieldReaderLong {
 	}
 	
 	public long readLongUnsignedConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()==0 ? absentLongs[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
+		return (reader.popPMapBit()==0 ? absentValue(TokenBuilder.extractAbsent(token)) : lastValue[token & INSTANCE_MASK]);
 	}
 
 	public long readLongSignedConstant(int token, int readFromIdx) {
@@ -63,7 +89,7 @@ public class FieldReaderLong {
 	}
 	
 	public long readLongSignedConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()==0 ? absentLongs[TokenBuilder.extractAbsent(token)] : lastValue[token & INSTANCE_MASK]);
+		return (reader.popPMapBit()==0 ? absentValue(TokenBuilder.extractAbsent(token)) : lastValue[token & INSTANCE_MASK]);
 	}
 
 	public long readLongUnsignedCopy(int token, int readFromIdx) {
@@ -79,7 +105,7 @@ public class FieldReaderLong {
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readLongUnsigned();
 		}
-		return (0 == value ? absentLongs[TokenBuilder.extractAbsent(token)]: value-1);
+		return (0 == value ? absentValue(TokenBuilder.extractAbsent(token)): value-1);
 	}
 	
 	
@@ -93,7 +119,7 @@ public class FieldReaderLong {
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK]=0;
-			return absentLongs[TokenBuilder.extractAbsent(token)];
+			return absentValue(TokenBuilder.extractAbsent(token));
 		} else {
 			return lastValue[token & INSTANCE_MASK] += (value-1);
 			
@@ -115,11 +141,11 @@ public class FieldReaderLong {
 		if (reader.popPMapBit()==0) {
 			
 			long last = lastValue[token & INSTANCE_MASK];
-			return 0==last?absentLongs[TokenBuilder.extractAbsent(token)]:last;
+			return 0==last?absentValue(TokenBuilder.extractAbsent(token)):last;
 		} else {
 			long value;
 			if ((value = reader.readLongUnsigned())==0) {
-				return absentLongs[TokenBuilder.extractAbsent(token)];
+				return absentValue(TokenBuilder.extractAbsent(token));
 			} else {
 				return value-1;
 			}
@@ -142,12 +168,12 @@ public class FieldReaderLong {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? absentLongs[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentValue(TokenBuilder.extractAbsent(token)): ++lastValue[instance]);
 		} else {
 			long value = reader.readLongUnsigned();
 			if (value==0) {
 				lastValue[instance] = 0;
-				return absentLongs[TokenBuilder.extractAbsent(token)];
+				return absentValue(TokenBuilder.extractAbsent(token));
 			} else {
 				return (lastValue[instance] = value)-1;
 			}
@@ -167,7 +193,7 @@ public class FieldReaderLong {
 		long value = reader.readLongSigned();
 		lastValue[token & INSTANCE_MASK] = value;//needed for dynamic read behavior.
 		if (0==value) {
-			return absentLongs[TokenBuilder.extractAbsent(token)];
+			return absentValue(TokenBuilder.extractAbsent(token));
 		} else {
 			return value-1;
 		}
@@ -187,7 +213,7 @@ public class FieldReaderLong {
 		} else {
 			lastValue[token & INSTANCE_MASK] = value = reader.readLongSigned();
 		}
-		return (0 == value ? absentLongs[TokenBuilder.extractAbsent(token)]: (value>0 ? value-1 : value));
+		return (0 == value ? absentValue(TokenBuilder.extractAbsent(token)): (value>0 ? value-1 : value));
 	}
 	
 	
@@ -202,7 +228,8 @@ public class FieldReaderLong {
 		long value = reader.readLongSigned();
 		if (0==value) {
 			lastValue[token & INSTANCE_MASK] = 0;
-			return absentLongs[TokenBuilder.extractAbsent(token)];
+			return absentValue(TokenBuilder.extractAbsent(token));
+					//absentLongs[TokenBuilder.extractAbsent(token)];
 		} else {
 			return lastValue[token & INSTANCE_MASK] += 
 					(value + ((value>>>63)-1) );
@@ -224,11 +251,11 @@ public class FieldReaderLong {
 	public long readLongSignedDefaultOptional(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			long last = lastValue[token & INSTANCE_MASK];
-			return 0==last?absentLongs[TokenBuilder.extractAbsent(token)]:last;			
+			return 0==last?absentValue(TokenBuilder.extractAbsent(token)):last;			
 		} else {
 			long value;
 			if ((value = reader.readLongSigned())==0) {
-				return absentLongs[TokenBuilder.extractAbsent(token)];
+				return absentValue(TokenBuilder.extractAbsent(token));
 			} else {
 				return value>0? value-1 : value;
 			}
@@ -250,11 +277,11 @@ public class FieldReaderLong {
 		int instance = token & INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
-			return (lastValue[instance] == 0 ? absentLongs[TokenBuilder.extractAbsent(token)]: ++lastValue[instance]);
+			return (lastValue[instance] == 0 ? absentValue(TokenBuilder.extractAbsent(token)): ++lastValue[instance]);
 		} else {
 			long value;
 			if ((lastValue[instance] = value = reader.readLongSigned())==0) {
-				return absentLongs[TokenBuilder.extractAbsent(token)];
+				return absentValue(TokenBuilder.extractAbsent(token));
 			} else {
 				//lastValue[instance] = value;
 				//return (value + (value>>>63))-1;

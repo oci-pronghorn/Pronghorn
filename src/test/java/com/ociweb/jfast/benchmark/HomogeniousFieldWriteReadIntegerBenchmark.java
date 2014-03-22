@@ -79,9 +79,9 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary());
 		
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
-	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
 	
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
@@ -106,7 +106,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
-			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
+			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
 					
 		}
 		return lookup;
@@ -148,7 +148,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken,2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken,2);
 	}
 	
 	public int timeStaticIntegerSignedConstantWR(int reps) {
@@ -156,7 +156,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken,2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken,2);
 	}
 
 	public int timeStaticIntegerSignedDeltaOptionalWR(int reps) {
@@ -164,7 +164,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), simpleGroupToken, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken, 2);
 	}
 	
 	

@@ -266,7 +266,7 @@ public class TemplateHandler extends DefaultHandler {
     		//the Count updated to the right value.
     		int token = TokenBuilder.buildToken(TypeMask.Group,
 							    				0, 
-							    				catalogTemplateScriptIdx);
+							    				catalogTemplateScriptIdx, TokenBuilder.MASK_ABSENT_DEFAULT);
     		
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
@@ -287,7 +287,7 @@ public class TemplateHandler extends DefaultHandler {
     		//the Count updated to the right value.
     		int token = TokenBuilder.buildToken(TypeMask.Group,
 							    				OperatorMask.Group_Bit_Seq, 
-							    				catalogTemplateScriptIdx+1);//we jump over the length field
+							    				catalogTemplateScriptIdx+1, TokenBuilder.MASK_ABSENT_DEFAULT);//we jump over the length field
     		
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
@@ -317,7 +317,7 @@ public class TemplateHandler extends DefaultHandler {
     		//the Count updated to the right value.
     		int token = TokenBuilder.buildToken(TypeMask.Group,
 							    				0, 
-							    				0);
+							    				0, TokenBuilder.MASK_ABSENT_DEFAULT);
     		
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
@@ -336,7 +336,7 @@ public class TemplateHandler extends DefaultHandler {
     	    	//add Dictionary command to reset in the script
     	    	int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary,
 			    									  	 OperatorMask.Dictionary_Reset, 
-			    										 activeDictionary);
+			    										 activeDictionary, TokenBuilder.MASK_ABSENT_DEFAULT);
     	    	
     	    	catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
     	    	catalogScriptStops[catalogTemplateScriptIdx] = 0; //nothing
@@ -560,7 +560,7 @@ public class TemplateHandler extends DefaultHandler {
 	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
     		catalogScriptFieldIds[openGroupIdx++] = 0;
 						
-	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize, TokenBuilder.MASK_ABSENT_DEFAULT);
 	    	catalogScriptStops[catalogTemplateScriptIdx] = -1;//unknown
 	    	catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
     		
@@ -591,7 +591,7 @@ public class TemplateHandler extends DefaultHandler {
 	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
     		catalogScriptFieldIds[openGroupIdx++] = 0;
     		
-	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+	    	catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize, TokenBuilder.MASK_ABSENT_DEFAULT);
 	    	catalogScriptStops[catalogTemplateScriptIdx] = -1; //unkown
 	    	catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
     		
@@ -614,7 +614,7 @@ public class TemplateHandler extends DefaultHandler {
 				System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
 			}
 			int tokCount = count.getAndIncrement();
-			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount);
+			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount, TokenBuilder.MASK_ABSENT_DEFAULT);
 			saveMember(activeDictionary,fieldType,tokCount);
 			fieldTokensUnique++;
 			dictionaryMap[fieldId]=dTokens=newDTokens;
@@ -627,7 +627,7 @@ public class TemplateHandler extends DefaultHandler {
 				}
 			} else {
 				int tokCount = count.getAndIncrement();
-				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount);
+				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount, TokenBuilder.MASK_ABSENT_DEFAULT);
 				saveMember(activeDictionary,fieldType,tokCount);
 				fieldTokensUnique++;
 			}

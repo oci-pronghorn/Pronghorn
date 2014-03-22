@@ -201,7 +201,7 @@ public class TemplateLoaderTest {
 		System.gc();
 		
 		int warmup = 90;//set much larger for profiler
-		int count = 5;
+		int count = 10;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
 		
@@ -244,7 +244,6 @@ public class TemplateLoaderTest {
 						
 						if (isText(token)) {
 							queuedBytes += (4*queue.getCharLength(bufferIdx));
-														
 						}
 						
 						//find the next index after this token.

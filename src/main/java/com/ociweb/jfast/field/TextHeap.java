@@ -871,6 +871,16 @@ public class TextHeap {
 		return result < 0 ? 0 : result;
 	}
 	
+	public int valueLength(int idx) {
+		int offset = idx<<2;
+		return tat[offset+1] - tat[offset];
+	}
+	
+	public int initLength(int idx) {
+		int offset = idx << 1; //this shift left also removes the top bit! sweet.
+		return initTat[offset+1] - initTat[offset];
+	}
+	
 	void copy(int sourceIdx, int targetIdx) {
 		int len;
 		int startFrom;

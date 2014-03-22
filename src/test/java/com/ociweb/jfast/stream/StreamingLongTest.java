@@ -21,7 +21,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
 public class StreamingLongTest extends BaseStreamingTest {
 
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 	final long[] testData     = buildTestDataUnsignedLong(fields);
 	final long   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	

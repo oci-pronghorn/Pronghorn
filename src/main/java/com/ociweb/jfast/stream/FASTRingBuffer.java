@@ -111,22 +111,22 @@ public class FASTRingBuffer implements CharSequence {
 		
 		if (heapId<0) {//points to constant in hash, high bit already set.
 			buffer[mask&addPos++] = heapId; //must be neg - constants only
-			buffer[mask&addPos++] = textHeap.length(heapId);//length.		
+			buffer[mask&addPos++] = textHeap.initLength(heapId);//length, -1 for null.		
 		} else {
 			assert(heapId>=0) : "Only supported for primary values";
-			if (textHeap.isNull(heapId)) {
+			int len = textHeap.valueLength(heapId);
+			if (len<0) { //is null
 				buffer[mask&addPos++] = 0;
 				buffer[mask&addPos++] = -1;
 			} else {
-		    	storeTextInRingBuffer(heapId);
+		    	storeTextInRingBuffer(heapId, len);
 			}
 		}						
 	}
 
-	private void storeTextInRingBuffer(int heapId) {
+	private void storeTextInRingBuffer(int heapId, int len) {
 		//must store length in char sequence and store the position index.
 		//with two ints can store both length and position.
-		int len = textHeap.length(heapId);
 		buffer[mask&addPos++] = addCharPos;//offset in text
 		buffer[mask&addPos++] = len;//length of text
 

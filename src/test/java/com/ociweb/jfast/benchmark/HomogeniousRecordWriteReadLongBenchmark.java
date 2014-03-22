@@ -85,8 +85,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 
 			                                                                0, 0, 4, 4);
 	
-	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0);
-	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 0);
+	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 0, TokenBuilder.MASK_ABSENT_DEFAULT);
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
 		int[] lookup = new int[count];
@@ -119,7 +119,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				
 			}
 			
-			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
+			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
 					
 		}
 		return lookup;
@@ -159,7 +159,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticLongUnsignedNoneOptional(int reps) {
@@ -167,7 +167,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	
@@ -176,7 +176,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedCopyOptional(int reps) {
@@ -184,7 +184,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedConstant(int reps) {
@@ -192,7 +192,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.LongUnsigned, //constant operator can not be optional
 						    OperatorMask.Field_Constant, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedDefault(int reps) {
@@ -200,7 +200,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedDefaultOptional(int reps) {
@@ -208,7 +208,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedDelta(int reps) {
@@ -216,7 +216,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 						TypeMask.LongUnsigned, 
 						OperatorMask.Field_Delta, 
-						0), groupTokenNoMap, 0);
+						0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	public long timeStaticLongUnsignedDeltaOptional(int reps) {
@@ -224,7 +224,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
 						    OperatorMask.Field_Delta, 
-						     0), groupTokenNoMap, 0);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	
@@ -233,7 +233,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsigned, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongUnsignedIncrementOptional(int reps) {
@@ -241,7 +241,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongUnsignedOptional, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	//Long does not support Tail operator
@@ -251,7 +251,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	public long timeStaticLongSignedNoneOptional(int reps) {
@@ -259,7 +259,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional,
 							OperatorMask.Field_None, 
-							0), groupTokenNoMap, 0);
+							0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	
@@ -268,7 +268,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedCopyOptional(int reps) {
@@ -276,7 +276,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedConstant(int reps) {
@@ -284,7 +284,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(//special because there is no optional constant
 							TypeMask.LongSigned, //constant operator can not be optional
 						    OperatorMask.Field_Constant, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedDefault(int reps) {
@@ -292,7 +292,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedDefaultOptional(int reps) {
@@ -300,7 +300,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
 						    OperatorMask.Field_Default, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedDelta(int reps) {
@@ -308,7 +308,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 						TypeMask.LongSigned, 
 						OperatorMask.Field_Delta, 
-						0), groupTokenNoMap, 0);
+						0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 
 	public long timeStaticLongSignedDeltaOptional(int reps) {
@@ -316,7 +316,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
 						    OperatorMask.Field_Delta, 
-						     0), groupTokenNoMap, 0);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenNoMap, 0);
 	}
 	
 	
@@ -325,7 +325,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSigned, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 	
 	public long timeStaticLongSignedIncrementOptional(int reps) {
@@ -333,7 +333,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.LongSignedOptional, 
 						    OperatorMask.Field_Increment, 
-						     0), groupTokenMap, 2);
+						     0, TokenBuilder.MASK_ABSENT_DEFAULT), groupTokenMap, 2);
 	}
 
 	
