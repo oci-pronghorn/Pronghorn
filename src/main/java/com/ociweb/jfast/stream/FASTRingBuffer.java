@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderChar;
 import com.ociweb.jfast.field.TextHeap;
@@ -20,10 +21,8 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  */
 public class FASTRingBuffer implements CharSequence {
 
-	final AtomicInteger removeCount = new AtomicInteger();
 	final int[] buffer;
 	final int mask;
-	final AtomicInteger addCount = new AtomicInteger();
 	final int maxSize;
 	
 	final int maxCharSize;
@@ -32,8 +31,9 @@ public class FASTRingBuffer implements CharSequence {
 	final TextHeap textHeap; 
 	final char[] rawConstHeap;
 	
+	final AtomicInteger removeCount = new AtomicInteger();
+	final AtomicInteger addCount = new AtomicInteger();
 	int addCharPos = 0;
-	
 	int addPos = 0;
 	int remPos = 0;
 		
@@ -49,6 +49,17 @@ public class FASTRingBuffer implements CharSequence {
 		this.maxCharSize = 1<<charBits;
 		this.charMask = maxCharSize-1;
 		this.charBuffer = new char[maxCharSize];
+	}
+	
+	/**
+	 * Empty and restore to original values.
+	 */
+	public void reset() {
+		addCharPos = 0;
+		addPos = 0;
+		remPos = 0;
+		removeCount.set(0);
+		addCount.set(0);		
 	}
 	
 	//adjust these from the offset of the biginning of the message.
@@ -69,24 +80,8 @@ public class FASTRingBuffer implements CharSequence {
 	//or we could skip the fields we do not want decoded.
 	//or we could read the buffer sequentially.
 	
-	public int getInt(int idx) {
-		return buffer[idx];
-	}
+
 	
-	public long getLong(int idx) {
-		return (((long)buffer[idx])<<32)|(0xFFFFFFFFl&buffer[idx+1]);
-	}
-	
- 
-	
-//    public boolean isBlocked(int need) {
-//    	assert(need<maxSize) : "Ring buffer is not large enough to hold template";
-//    	return (addPos-remPos)>=(maxSize-need); 
-////           (addpos-rempos)+need>=maxSize;
-//    	//ok
-//    	//  (addPos-remPos)+need<maxSize
-//    	//   need < maxSize - (addPos-remPos);
-//    }
     public int availableCapacity() {
     	return maxSize-(addPos-remPos);
     }
@@ -108,6 +103,7 @@ public class FASTRingBuffer implements CharSequence {
 	// pos  neg  null
 	
 	public void appendText(int heapId) {
+		int p = addPos;
 		
 		if (heapId<0) {//points to constant in hash, high bit already set.
 			buffer[mask&addPos++] = heapId; //must be neg - constants only
@@ -121,7 +117,11 @@ public class FASTRingBuffer implements CharSequence {
 			} else {
 		    	storeTextInRingBuffer(heapId, len);
 			}
-		}						
+		}					
+
+		
+	//	System.err.println("setStringPos:"+p+"  SetStringId:"+buffer[mask&(p)]+" SetStringLength:"+buffer[mask&(p+1)]);
+
 	}
 
 	private void storeTextInRingBuffer(int heapId, int len) {
@@ -150,7 +150,6 @@ public class FASTRingBuffer implements CharSequence {
 		buffer[mask&addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
 				
 	}
-
 	
 	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
 	public void moveForward() {
@@ -159,8 +158,9 @@ public class FASTRingBuffer implements CharSequence {
 	}
 	
 	public void removeForward(int step) {
-		//remPos = removeCount.get()+step;
-		//removeCount.lazySet(remPos);
+		remPos = removeCount.get()+step;
+		assert(remPos<=addPos);
+		removeCount.lazySet(remPos);
 	}
 	
 	public void dump() {
@@ -184,6 +184,7 @@ public class FASTRingBuffer implements CharSequence {
 		return (((long)buffer[mask&i])<<32) | (((long)buffer[mask&(i+1)])&0xFFFFFFFFl);
 
 	}
+	
 		
 	public int getCharLength(int idx) {
 		//second int is always the length 
@@ -229,6 +230,7 @@ public class FASTRingBuffer implements CharSequence {
 	
 	@Override
 	public int length() {
+		//System.err.println("Pulling length value:"+buffer[mask&(remPos+charSeqIdx+1)]);
 		return buffer[mask&(remPos+charSeqIdx+1)];
 	}
 
@@ -252,5 +254,7 @@ public class FASTRingBuffer implements CharSequence {
 	public boolean hasContent() {
 		return addPos>remPos;
 	}
+
+
 	
 }

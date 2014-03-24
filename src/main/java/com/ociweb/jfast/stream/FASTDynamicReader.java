@@ -31,11 +31,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 
 	private final FASTReaderDispatch readerDispatch;
 	private final TemplateCatalog catalog;
-	
-	private int activeScriptTemplateMask;
-	
-	private int activeScriptCursor;
-	private int activeScriptLimit;
+		
 	
 	private final int[] fullScript;
 	
@@ -43,6 +39,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final byte preambleDataLength;
 	
 	private long messageCount = 0;
+	private int activeScriptCursor;
+	private int activeScriptLimit;
 	
 	//the smaller the better to make it fit inside the cache.
 	private final FASTRingBuffer ringBuffer;
@@ -53,26 +51,25 @@ public class FASTDynamicReader implements FASTDataProvider {
 	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog, FASTRingBuffer ringBuffer, FASTReaderDispatch dispatch) {
 		this.catalog = catalog;
 		this.preambleDataLength=catalog.getMessagePrefixSize();
-		this.preambleData = new byte[preambleDataLength];
-		this.activeScriptTemplateMask = -1; //no selected script				
+		this.preambleData = new byte[preambleDataLength];				
 		this.readerDispatch = dispatch;
 		this.fullScript = catalog.fullScript();
 		this.ringBuffer = ringBuffer;
 		 
 	}
-	
-	public long messageCount() {
-		return messageCount;
-	}
-	
+		
     public void reset(boolean clearData) {
     	this.messageCount = 0;
-    	this.activeScriptTemplateMask = -1; //no selected script
-    	this.activeScriptCursor = -1;
+    	this.activeScriptCursor = 0;
+    	this.activeScriptLimit = 0;
     	if (clearData) {
     		this.readerDispatch.reset();
     	}
     }
+	
+	public long messageCount() {
+		return messageCount;
+	}
 	
     public String toBinary(byte[] input) {
     	StringBuilder builder = new StringBuilder();
@@ -121,7 +118,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 					return 0x80000000;
 				}
 			}
-			lastCapacity-=1;
+			lastCapacity -= 1;
 			
 			//get next token id then immediately start processing the script
 			i = parseNextTokenId();
@@ -145,7 +142,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 				return 0x80000000;
 			}
 		}
-		lastCapacity-=neededSpaceOrTemplate;
+		lastCapacity -= neededSpaceOrTemplate;
 				
 		
 		do {
@@ -207,7 +204,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 		//open message (special type of group)			
 		int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
 		if (templateId>=0) {
-			activeScriptTemplateMask = templateId<<TokenBuilder.MAX_FIELD_ID_BITS; //for id returned to caller
 			messageCount++;
 		}
 					

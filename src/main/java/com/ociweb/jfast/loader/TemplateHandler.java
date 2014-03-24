@@ -32,7 +32,10 @@ public class TemplateHandler extends DefaultHandler {
     int[] catalogScriptTokens = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     int[] catalogScriptFieldIds = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     
-    //TODO: not sure about this idea. We know the bits used for normal but with compression may not appear
+    //TODO: not sure about this idea but it is worth lining about.
+    //We know the bits used for normal but with compression may not appear
+    //the dynamic text/bytes lists must be read but the pmaps may also need interpreting.
+    //this feature will allow for reading and breaking between fields when possible.
     byte[] catalogScriptStops = new byte[TokenBuilder.MAX_FIELD_ID_VALUE];
     
     int catalogTemplateScriptIdx = 0;

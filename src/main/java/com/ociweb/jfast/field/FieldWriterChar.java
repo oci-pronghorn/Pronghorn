@@ -292,6 +292,7 @@ public class FieldWriterChar {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
+			//System.err.println("char seq length:"+value.length());
 			writer.writeTextASCII(value);
 			heap.set(idx, value, 0, value.length());
 		}
@@ -660,12 +661,16 @@ public class FieldWriterChar {
 		writer.writeTextASCII(value);
 	}
 
-	public void writeASCIITextOptional(int token, char[] value, int offset, int length) {
+	public void writeASCIITextOptional(char[] value, int offset, int length) {
 		writer.writeTextASCII(value,offset,length);
 	}
 
-	public void writeASCIITextOptional(int token, CharSequence value) {
-		writer.writeTextASCII(value);
+	public void writeASCIITextOptional(CharSequence value) {
+	    if (null==value) {
+	    	writer.writeNull();
+	    } else {
+	    	writer.writeTextASCII(value);
+	    }
 	}
 
 	public void writeASCIIText(int token, char[] value, int offset, int length) {

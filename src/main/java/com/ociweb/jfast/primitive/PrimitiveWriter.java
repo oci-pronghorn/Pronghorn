@@ -890,7 +890,8 @@ public final class PrimitiveWriter {
 			encodeZeroLengthASCII();
 			return;
 		} else	if (limit>buffer.length-length) {
-			//if it was not zero and was too long flush
+			assert (length<buffer.length) :"Internal buffer is only: "+buffer.length+"B but this text requires a length of: "+length+"B";
+			//if it was not zero and was too long then flush
 			output.flush();
 		}
 		int c = 0;

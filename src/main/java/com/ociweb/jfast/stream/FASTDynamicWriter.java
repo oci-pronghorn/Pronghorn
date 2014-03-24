@@ -1,5 +1,6 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalog;
@@ -35,7 +36,8 @@ public class FASTDynamicWriter {
 		//because writer does not move pointer up until full unit is ready to go
 		//we only need to check if data is available, not the size.
 		if (ringBuffer.hasContent()) {
-			int idx = 0;			
+			int idx = 0;		
+			
 			if (needTemplate) {
 				//template processing (can these be nested?) 
 				int templateId = ringBuffer.readInteger(idx); 	
@@ -43,23 +45,37 @@ public class FASTDynamicWriter {
 				//tokens - reading 
 				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
 				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+				
+				if (0==activeScriptLimit && 0==activeScriptCursor) {
+					throw new FASTException("Unknown template:"+templateId);
+				}
+				
+				System.err.println("tmpl "+ringBuffer.remPos+"  templateId:"+templateId+" script:"+activeScriptCursor+"_"+activeScriptLimit);
+				if (62==ringBuffer.remPos) {
+					System.err.println("xxxxx ");
+				}
 			}
 						
 			do{
 				int token = fullScript[activeScriptCursor];
-		
+								
 				if (writerDispatch.dispatchWriteByToken(token, idx)) {
-					//starting a sequence or finished a sequence					
-					if (++activeScriptCursor==activeScriptLimit) {
+					
+					//finished both end of message and end of sequence				
+					if (1+activeScriptCursor==activeScriptLimit) {
 						needTemplate = true;
 						idx += stepSizeInRingBuffer(token);
+						ringBuffer.removeForward(idx);
+						activeScriptCursor++;
+						//System.err.println("xx "+idx);
 						return;
 					}
-					int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor];
+					
+					int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[1+activeScriptCursor];
 					if (writerDispatch.isSkippedSequence()) {
+						System.err.println("skipped foreward :"+seqScriptLength);
 						//jump over sequence group in script
 						activeScriptCursor += seqScriptLength;
-						
 					} else if (!writerDispatch.isFirstSequenceItem()) {						
 				    	//jump back to top of this sequence in the script.
 						System.err.println(TokenBuilder.tokenToString(fullScript[activeScriptCursor])+
@@ -67,10 +83,16 @@ public class FASTDynamicWriter {
 						
 						activeScriptCursor -= seqScriptLength;
 						
+						
+						
+					} else {
+						activeScriptCursor++;
 					}
 					
 					needTemplate = false;
 					idx += stepSizeInRingBuffer(token);
+					ringBuffer.removeForward(idx);
+					//System.err.println("yy "+idx);
 					return;
 				}
 				
@@ -79,37 +101,18 @@ public class FASTDynamicWriter {
 			
 			} while (++activeScriptCursor<activeScriptLimit);
 			needTemplate = true;
-
-				//TODO: play sequence group
-				//if last sequence then needTemplateTrue
-				//else loop to top of sequence cursor.
-				
-			
-			
-			
-			
-			//last thing TODO: step is the number of items removed from queue.
-			//ringBuffer.removeForward(step);
+			ringBuffer.removeForward(idx);
 		}
-		
-		
-		
-		//RingBuffer rules
-		//Writer will not release the templateId unless all the fields are also released up to sequence or end.
-		//Each sequence is released in full. 
-		//As a result reader only needs to check for overrun in those two cases.
-		
-		
-		
-		////
-		//Hack until the move forward is called.
-		ringBuffer.dump(); //must dump values in buffer or we will hang when reading.
-		
 		
 	}
 
 	public void reset(boolean clearData) {
+
 		needTemplate=true;
+		
+		activeScriptCursor=0;
+		activeScriptLimit=0;
+		
     	if (clearData) {
     		this.writerDispatch.reset();
     	}
@@ -164,7 +167,7 @@ public class FASTDynamicWriter {
 				stepSize = 0;
 			}
 		}
-		
+	//	System.err.println("inc by:"+stepSize+" token "+TokenBuilder.tokenToString(token));
 		return stepSize;
 	}
 

@@ -10,11 +10,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -177,13 +180,13 @@ public class TemplateLoaderTest {
 		long totalTestBytes = sourceDataFile.length();
 		
 		
-		//FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
+		FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
 
 		//New memory mapped solution. No need to cache because we warm up and OS already has it.
-		FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
+		//FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
 
 		
-		int bufferSize = 4096;
+		int bufferSize = 2048;
 		int pmapDepth = 10;//TODO: Catalog must compute this? 2+(templatePMAP+2)+(max depth + 2 each)
 		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,pmapDepth);
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(
@@ -198,9 +201,9 @@ public class TemplateLoaderTest {
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		System.gc();
 		
-		int warmup = 90;//set much larger for profiler
+		
+		int warmup =90;//set much larger for profiler
 		int count = 10;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
@@ -264,6 +267,37 @@ public class TemplateLoaderTest {
 			primitiveReader.reset();
 			dynamicReader.reset(true);
 		}
+		
+//		Thread.yield();
+//		System.gc();
+//		try {
+//			Thread.sleep(300);
+//		} catch (InterruptedException e) {
+//			e.printStackTrace();
+//		}
+
+//		try { // may be helpful on i7 platform
+//			
+//			String name = "/dev/cpu/0/msr";
+//			String mode = "rw";
+//			long msrNumber = 1;
+//			
+//			ByteBuffer buffer = ByteBuffer.allocateDirect(1024);		
+//			
+//			RandomAccessFile f = new RandomAccessFile(name, mode);
+//			FileChannel ch = f.getChannel();
+//			buffer.order(ByteOrder.LITTLE_ENDIAN);
+//			ch.read(buffer, msrNumber);
+//			long value = buffer.getLong(0);
+//			
+//			System.err.println("msr:"+msrNumber+" value:"+value);
+//			
+//			f.close();
+//		} catch (FileNotFoundException e) {
+//			e.printStackTrace();
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//		} 
 		
 		iter = count;
 		while (--iter>=0) {
@@ -394,10 +428,10 @@ public class TemplateLoaderTest {
 		long totalTestBytes = sourceDataFile.length();
 		
 		
-		//FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
+		FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
 
 		//New memory mapped solution. No need to cache because we warm up and OS already has it.
-		FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
+		//FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
 		
 		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader, 
@@ -411,10 +445,12 @@ public class TemplateLoaderTest {
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		byte[] targetBuffer = new byte[(int)totalTestBytes];
+		byte[] targetBuffer = new byte[(int)totalTestBytes*10];//TODO: large for now until testing is complete.
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
-		PrimitiveWriter primitiveWriter = new PrimitiveWriter(2048,fastOutput,128,false);
-		FASTWriterDispatch writerDispatch = 		new FASTWriterDispatch(primitiveWriter,
+		int writeBuffer = 2048;
+		int maxGroupCount = 256;
+		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,true);
+		FASTWriterDispatch writerDispatch = new FASTWriterDispatch(primitiveWriter,
 				catalog.dictionaryFactory(),
 				catalog.templatesCount(), 
 				catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
@@ -425,7 +461,7 @@ public class TemplateLoaderTest {
 		
 		System.gc();
 		
-		int warmup = 30;//set much larger for profiler
+		int warmup = 0;//30;//set much larger for profiler
 		int count = 5;
 				
 		Exception temp = null;
@@ -445,12 +481,16 @@ public class TemplateLoaderTest {
 						temp = e;
 					}
 					queue.dump();
+					break;
 				}
 				if (0!=(flags&TemplateCatalog.END_OF_MESSAGE)) {
 					msgs++;
 				}
 				grps++;
 			}		
+			
+			queue.reset();
+			
 			fastInput.reset();
 			primitiveReader.reset();
 			dynamicReader.reset(true);
@@ -460,6 +500,8 @@ public class TemplateLoaderTest {
 			dynamicWriter.reset(true);
 			
 		}
+		
+		System.err.println("----------");
 		
 		iter = count;
 		while (--iter>=0) {
@@ -473,6 +515,7 @@ public class TemplateLoaderTest {
 							temp = e;
 						}
 						queue.dump();
+						break;
 					}
 				}
 			double duration = System.nanoTime()-start;
@@ -492,9 +535,13 @@ public class TemplateLoaderTest {
 			
 			//TODO: confirm generated bytes match parsed.
 			
+			//Expected total read fields:2126101
+			
 			////////
 			//reset the data to run the test again.
 			////////
+			queue.reset();
+			
 			fastInput.reset();
 			primitiveReader.reset();
 			dynamicReader.reset(true);

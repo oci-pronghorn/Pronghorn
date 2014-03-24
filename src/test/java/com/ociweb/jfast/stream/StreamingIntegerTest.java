@@ -32,6 +32,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	
 	FASTInputByteArray input;
 	PrimitiveReader pr;
+
+	int MASK = 0xF;
 	
 	@AfterClass
 	public static void cleanup() {
@@ -75,7 +77,30 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		tester(types, operators, "SignedInteger",0 ,0);
 	}
 
-	int MASK = 0xF;
+	@Test
+	public void integerFullTest() {
+		int[] types = new int[] {
+                  TypeMask.IntegerSigned,
+				  TypeMask.IntegerSignedOptional,
+                  TypeMask.IntegerUnsigned,
+		    	  TypeMask.IntegerUnsignedOptional,
+				  };
+		
+		int[] operators = new int[] {
+                OperatorMask.Field_None,  //no need for pmap
+                OperatorMask.Field_Delta, //no need for pmap
+                OperatorMask.Field_Copy,
+                OperatorMask.Field_Increment,
+                OperatorMask.Field_Constant, 
+                OperatorMask.Field_Default
+                };
+		int repeat = 1;//bump up for profiler
+		while (--repeat>=0) {
+			tester(types, operators, "SignedInteger",0 ,0);
+		}
+	}
+
+	
 	
 	
 	@Override
@@ -98,7 +123,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 				int token = tokenLookup[f]; 
 							
-				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
+				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
@@ -148,8 +173,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 			while (--f>=0) {
 				
 				int token = tokenLookup[f]; 	
-				
-				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
+														
+				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
 			     		int value = fr.readInt(tokenLookup[f]);
 						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {

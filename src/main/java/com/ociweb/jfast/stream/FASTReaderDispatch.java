@@ -78,6 +78,10 @@ public class FASTReaderDispatch{
 	}
 
 	public void reset() {
+		
+		//System.err.println("total read fields:"+totalReadFields);
+	//	totalReadFields = 0;
+		
 		//clear all previous values to un-set
 		readerInteger.reset(dictionaryFactory);
 		readerLong.reset(dictionaryFactory);
@@ -102,6 +106,8 @@ public class FASTReaderDispatch{
 		reader.readByteData(target, 0, target.length);
 	}
 	
+//	long totalReadFields = 0;
+	
 	//package protected, unless we find a need to expose it?
 	boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
@@ -112,6 +118,7 @@ public class FASTReaderDispatch{
 	   //script as a series of function calls against the specific FieldReader*.class
 	   //This is expected to save 4ns per field on the AMD hardware or a speedup > 12%.
 						
+	//	totalReadFields++;
 		
 		//THOUGHTS
 		//Build fixed length and put all in ring buffer, consumers can
@@ -119,7 +126,6 @@ public class FASTReaderDispatch{
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
 		
-		//System.err.println("token:"+TokenBuilder.tokenToString(token));
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????

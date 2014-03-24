@@ -208,33 +208,34 @@ public final class PrimitiveReader {
 				return (byte)(1&(bb>>>tmp));
 
 			} else {
-				if (tmp>=0) {	
-					//SOMETIMES one of 7 we need to move up to the next byte
-					//System.err.println(invPmapStackDepth);
-					//The order of these lines should not be changed without profile
-					pmapIdx = 6;
-					byte result = (byte)(1&bb);					
-					bitBlock = invPmapStack[++invPmapStackDepth];
-					return result;
-
-				} else {
-					return 0;
-				}
+				return popPMapBitLow(tmp, bb);
 			}
 
+	}
+
+
+	private byte popPMapBitLow(byte tmp, byte bb) {
+		if (tmp>=0) {	
+			//SOMETIMES one of 7 we need to move up to the next byte
+			//System.err.println(invPmapStackDepth);
+			//The order of these lines should not be changed without profile
+			pmapIdx = 6;
+			byte result = (byte)(1&bb);					
+			bitBlock = invPmapStack[++invPmapStackDepth];
+			return result;
+
+		} else {
+			return 0;
+		}
 	}
 
 	//called at the end of each group
 	public final void closePMap() {
 		//assert(bitBlock<0);
-		//assert(invPmapStack[invPmapStackDepth+1]>=0);
+		assert(invPmapStack[invPmapStackDepth+1]>=0);
 		bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth+1])];
 		pmapIdx = invPmapStack[invPmapStackDepth-1];
-		
-		//
-		//TODO: need to add hash at this point for close of group.
-		//Or if we use the external length id this can be done by FASTInput.
-		
+
 	}
 	
 	/////////////////////////////////////

@@ -735,7 +735,7 @@ public final class FASTWriterDispatch {
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "+TokenBuilder.tokenToString(token);
-					writerChar.writeASCIITextOptional(token, value);
+					writerChar.writeASCIITextOptional(value);
 				} else {
 					//tail
 					assert(	TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "+TokenBuilder.tokenToString(token);
@@ -913,7 +913,7 @@ public final class FASTWriterDispatch {
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerChar.writeASCIITextOptional(token, value, offset, length);
+					writerChar.writeASCIITextOptional(value, offset, length);
 				} else {
 					//tail
 					writerChar.writeASCIITailOptional(token, value, offset, length);
@@ -1036,6 +1036,10 @@ public final class FASTWriterDispatch {
 
 	
 	public void reset() {
+		
+		System.err.println("wrote fields count:"+fieldCount);
+		fieldCount=0;
+		
 		//reset all values to unset
 		//TODO: must find faster way to do this for both writer and reader!
 		writerInteger.reset(dictionaryFactory);
@@ -1055,18 +1059,24 @@ public final class FASTWriterDispatch {
 		return isSkippedSequence;
 	}	
 	
+    long fieldCount = 0;
+	
 	public boolean dispatchWriteByToken(int token, int fieldPos) {
+	
 		
-		///System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
+		System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
+
+		
+		fieldCount++;
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					write(token,queue.getInt(fieldPos));
+					write(token,queue.readInteger(fieldPos));
 				} else {
-					write(token,queue.getLong(fieldPos));
+					write(token,queue.readLong(fieldPos));
 				}
 			} else {
 				//01???
@@ -1074,13 +1084,13 @@ public final class FASTWriterDispatch {
 					
 					queue.selectCharSequence(fieldPos);
 					//NOTE: Use CharSequence implementation today, direct ring buffer tomorrow.
-					write(token,queue);
+					write(token,queue.length()<0?null:queue);
 									
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 						//0110? Decimal and DecimalOptional
-						write(token,queue.getInt(fieldPos),queue.getLong(fieldPos+1));
+						write(token,queue.readInteger(fieldPos),queue.readLong(fieldPos+1));
 					} else {
 //						//0111? ByteArray
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
@@ -1124,7 +1134,7 @@ public final class FASTWriterDispatch {
 					//101??
 					//Length Type, no others defined so no need to keep checking
 					//Only happens once before a node sequence so push it on the count stack
-					int length=queue.getInt(fieldPos);
+					int length=queue.readInteger(fieldPos);
 					write(token, length);
 					
 					if (length==0) {

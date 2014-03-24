@@ -142,16 +142,16 @@ public class FieldReaderChar {
 			//  1/3 of calls here
 			return INIT_VALUE_MASK|(INSTANCE_MASK&token);//use default
 		} else {
-			int idx = token & INSTANCE_MASK;
 			byte val = reader.readTextASCIIByte();
 			int tmp = 0x7F&val;
+			int idx = token & INSTANCE_MASK;
 			if (0!=tmp) {//low 7 bits have data
 				//real data, this is the most common case;
 				///  2/3 of calls here
-				heap.setZeroLength(idx);				
-				final int offset = idx<<2;
+				int offset = idx<<2;
 				final int off4 = offset+4;
 				final int off1 = offset+1;
+				heap.tat[off1] = heap.tat[offset];//set to zero length
 				int nextLimit = heap.tat[off4];
 				int targIndex = heap.tat[off1];
 								

@@ -140,11 +140,7 @@ public abstract class BaseStreamingTest {
 
 				System.out.println(label+msg);
 
-				if (!Double.isNaN(pctAvgVsMin)) {
-					assertTrue("Avg is too large vs min:"+pctAvgVsMin+" "+msg,pctAvgVsMin<PCT_LIMIT);
-				}
-			//	assertTrue("Max is too large vs avg: "+msg,perByteMax <= (MAX_X_LIMIT*perByteAvg));
-								
+			
 			}
 
 	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
