@@ -12,6 +12,7 @@ import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -109,7 +110,7 @@ public class FASTReaderDispatch{
 //	long totalReadFields = 0;
 	
 	//package protected, unless we find a need to expose it?
-	boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
+	final boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
 	   //for more JVM configurations and when switch is faster (eg lots of JVM -XX: args)
 	   //it is only slightly faster.
@@ -128,15 +129,36 @@ public class FASTReaderDispatch{
 		//look at leading int to determine what kind of message they have
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
+				
 		
-		//System.err.println("---- write "+TokenBuilder.tokenToString(token)+" at "+outputQueue.addPos);
-		
+		//The trick here is to keep all the conditionals in this method and do the work elsewhere.
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
+					
+					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+						//0000?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00000 IntegerUnsigned
+							outputQueue.appendInteger(readIntegerUnsigned(token));
+						} else {
+							//00001 IntegerUnsignedOptional
+							outputQueue.appendInteger(readIntegerUnsignedOptional(token)); 
+						}
+					} else {
+						//0001?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//00010 IntegerSigned
+							outputQueue.appendInteger(readIntegerSigned(token));
+						} else {
+							//00011 IntegerSignedOptional
+							outputQueue.appendInteger(readIntegerSignedOptional(token));
+						}
+					}
+					
+					//outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
 				} else {
 					outputQueue.appendLong(dispatchReadByTokenForLong(token));//long
 				}
@@ -157,133 +179,113 @@ public class FASTReaderDispatch{
 							    		       		  readerDecimal.readDecimalMantissaOptional(token, -1));
 						}
 					} else {
-						outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
+						//0111?
+						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+							//01110 ByteArray
+							outputQueue.append(readByteArray(token), byteDictionary);
+						} else {
+							//01111 ByteArrayOptional
+							outputQueue.append(readByteArrayOptional(token), byteDictionary);
+						}
 					}
 				}
 			}
 			return false;
-		} else {
-			//pause node for more work processing will return false 
-			return dispatchReadByToken1(token, outputQueue);	
-		}
-	}
-
-	private int dispatchReadByToken0111(int token) {
-		//0111?
-		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			//01110 ByteArray
-			return readByteArray(token);
-		} else {
-			//01111 ByteArrayOptional
-			return readByteArrayOptional(token);
-		}
-	}
-	
-	public int jumpSequence() {
-		return jumpSequence;
-	}
-		
-	private boolean dispatchReadByToken1(int token, FASTRingBuffer outputQueue) {
-		//1????
-		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-			//10???
-			if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-				//100??
-				//Group Type, no others defined so no need to keep checking
-				readGroupCommand(token);
-				return 	checkSequence!=0 && completeSequence(token);	
-				
-			} else {
-				//101??
-				//Length Type, no others defined so no need to keep checking
-				//Only happens once before a node sequence so push it on the count stack
-				int length;
-				outputQueue.appendInteger(length = readIntegerUnsigned(token));
-				if (length==0) {
-	//				System.err.println("testing squence length of zero"); //TODO: build test to cover this.
-					jumpSequence = -1;
-				} else {			
-					jumpSequence = 0;
-					sequenceCountStack[++sequenceCountStackHead] = length;
-				}
-			//	System.err.println("---- looping:"+length);
-				
-			}
-		} else {
-			//11???
-			//Dictionary Type, no others defined so no need to keep checking
-			readDictionaryCommand(token);
-			
-		}
-		return false;
-	}
-
-	private void readDictionaryCommand(int token) {
-
-		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-			
-			//need dictionary id?
-			int dictionary = TokenBuilder.MAX_INSTANCE&token;
-
-			int[] members = dictionaryMembers[dictionary];
-			//System.err.println(members.length+" "+Arrays.toString(members));
-			
-			int m = 0;
-			int limit = members.length;
-			if (limit>0) {
-				int idx = members[m++];
-				while (m<limit) {
-					assert(idx<0);
+		} else { 
+			//1????
+			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+				//10???
+				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+					//100??
+					//Group Type, no others defined so no need to keep checking
+					if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+						//this is NOT a message/template so the non-template pmapSize is used.			
+						openGroup(token, nonTemplatePMapSize);
+					} else {
+						closeGroup(token);
+						return 	checkSequence!=0 && completeSequence(token);	
+					}
 					
-					if (0==(idx&8)) {
-						if (0==(idx&4)) {
-							//integer
-							while (m<limit && (idx = members[m++])>=0) {
-								readerInteger.reset(idx);
-							}
-						} else {
-							//long
-							while (m<limit && (idx = members[m++])>=0) {
-								readerLong.reset(idx);
-							}
+				} else {
+					//101??
+					sequenceLength(token, outputQueue);
+				}
+			} else {
+				//11???
+				//Dictionary Type, no others defined so no need to keep checking
+				if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+					resetDictionary(token);					
+				} else {
+					//OperatorMask.Dictionary_Read_From  0001
+					//next read will need to use this index to pull the right initial value.
+					//after it is used it must be cleared/reset to -1
+					readFromIdx = TokenBuilder.MAX_INSTANCE&token;
+				}				
+			}
+			return false;	
+		}
+	}
+
+	private void sequenceLength(int token, FASTRingBuffer outputQueue) {
+		//Length Type, no others defined so no need to keep checking
+		//Only happens once before a node sequence so push it on the count stack
+		int length;
+		outputQueue.appendInteger(length = readIntegerUnsigned(token));
+		if (length==0) {
+			jumpSequence = -1;//TODO: build test to cover this.
+		} else {			
+			jumpSequence = 0;
+			sequenceCountStack[++sequenceCountStackHead] = length;
+		}
+	}
+
+	private void resetDictionary(int token) {
+		//need dictionary id?
+		int dictionary = TokenBuilder.MAX_INSTANCE&token;
+
+		int[] members = dictionaryMembers[dictionary];
+		//System.err.println(members.length+" "+Arrays.toString(members));
+		
+		int m = 0;
+		int limit = members.length;
+		if (limit>0) {
+			int idx = members[m++];
+			while (m<limit) {
+				assert(idx<0);
+				
+				if (0==(idx&8)) {
+					if (0==(idx&4)) {
+						//integer
+						while (m<limit && (idx = members[m++])>=0) {
+							readerInteger.reset(idx);
 						}
 					} else {
-						if (0==(idx&4)) {							
-							//text
+						//long
+						while (m<limit && (idx = members[m++])>=0) {
+							readerLong.reset(idx);
+						}
+					}
+				} else {
+					if (0==(idx&4)) {							
+						//text
+						while (m<limit && (idx = members[m++])>=0) {
+							readerChar.reset(idx);
+						}
+					} else {
+						if (0==(idx&2)) {								
+							//decimal
 							while (m<limit && (idx = members[m++])>=0) {
-								readerChar.reset(idx);
+								readerDecimal.reset(idx);
 							}
 						} else {
-							if (0==(idx&2)) {								
-								//decimal
-								while (m<limit && (idx = members[m++])>=0) {
-									readerDecimal.reset(idx);
-								}
-							} else {
-								//bytes
-								while (m<limit && (idx = members[m++])>=0) {
-									readerBytes.reset(idx);
-								}
+							//bytes
+							while (m<limit && (idx = members[m++])>=0) {
+								readerBytes.reset(idx);
 							}
 						}
-					}	
-				}
+					}
+				}	
 			}
-			
-		} else {
-			//OperatorMask.Dictionary_Read_From  0001
-			//next read will need to use this index to pull the right initial value.
-			//after it is used it must be cleared/reset to -1
-			readFromIdx = TokenBuilder.MAX_INSTANCE&token;
-		}
-	}
-	
-	private void readGroupCommand(int token) {
-		if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-			//this is NOT a message/template so the non-template pmapSize is used.			
-			openGroup(token, nonTemplatePMapSize);
-		} else {
-			closeGroup(token);
 		}
 	}
 
