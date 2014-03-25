@@ -739,6 +739,11 @@ public class TextHeap {
 			buf = data;
 		}
 
+		return eq(target, targetIdx, length, pos, lim, buf);
+	}
+
+
+	private boolean eq(char[] target, int targetIdx, int length, int pos, int lim, char[] buf) {
 		int len = lim-pos;
 		if (len<0 && length==0) {
 			return true;

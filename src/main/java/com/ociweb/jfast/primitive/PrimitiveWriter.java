@@ -707,7 +707,7 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeIntegerUnsigned(int value) {
-		assert(value>=0);
+		assert(value>=0) : "Java limitation must code this case special to reconstruct unsigned on the wire";
 		if (value < 0x00000080) {
 			if (buffer.length - limit < 1) {
 				output.flush();

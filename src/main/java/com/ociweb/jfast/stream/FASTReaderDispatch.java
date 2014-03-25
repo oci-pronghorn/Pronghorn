@@ -117,6 +117,9 @@ public class FASTReaderDispatch{
 	   //For a dramatic speed up of this dispatch code look into code generation of the
 	   //script as a series of function calls against the specific FieldReader*.class
 	   //This is expected to save 4ns per field on the AMD hardware or a speedup > 12%.
+		
+		//Yet another idea is to process two tokens together and add a layer of
+		//mangled functions that have "pre-coded" scripts. What if we just repeat the same type?
 						
 	//	totalReadFields++;
 		
@@ -126,31 +129,32 @@ public class FASTReaderDispatch{
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
 		
+		//System.err.println("---- write "+TokenBuilder.tokenToString(token)+" at "+outputQueue.addPos);
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					outputQueue.append(dispatchReadByToken000(token));//int
+					outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
 				} else {
-					outputQueue.append(dispatchReadByToken001(token));//long
+					outputQueue.appendLong(dispatchReadByTokenForLong(token));//long
 				}
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//int for text
-					outputQueue.appendText(dispatchReadByToken010(token));				
+					//int for text					
+					outputQueue.appendText(dispatchReadByTokenForText(token));				
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 						//0110? Decimal and DecimalOptional
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							outputQueue.append(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
-							                   readerDecimal.readDecimalMantissa(token, -1));
+							outputQueue.appendDecimal(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
+							                   		  readerDecimal.readDecimalMantissa(token, -1));
 						} else {
-							outputQueue.append(readerDecimal.readDecimalExponentOptional(token, -1),
-							    		       readerDecimal.readDecimalMantissaOptional(token, -1));
+							outputQueue.appendDecimal(readerDecimal.readDecimalExponentOptional(token, -1),
+							    		       		  readerDecimal.readDecimalMantissaOptional(token, -1));
 						}
 					} else {
 						outputQueue.append(dispatchReadByToken0111(token), byteDictionary);//int for bytes
@@ -194,14 +198,15 @@ public class FASTReaderDispatch{
 				//Length Type, no others defined so no need to keep checking
 				//Only happens once before a node sequence so push it on the count stack
 				int length;
-				outputQueue.append(length = readIntegerUnsigned(token));
+				outputQueue.appendInteger(length = readIntegerUnsigned(token));
 				if (length==0) {
-					System.err.println("testing squence length of zero");
+	//				System.err.println("testing squence length of zero"); //TODO: build test to cover this.
 					jumpSequence = -1;
 				} else {			
 					jumpSequence = 0;
 					sequenceCountStack[++sequenceCountStackHead] = length;
 				}
+			//	System.err.println("---- looping:"+length);
 				
 			}
 		} else {
@@ -283,7 +288,7 @@ public class FASTReaderDispatch{
 	}
 
 
-	private int dispatchReadByToken010(int token) {
+	private int dispatchReadByTokenForText(int token) {
 	//	System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
 		
 		//010??
@@ -308,7 +313,7 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private long dispatchReadByToken001(int token) {
+	private long dispatchReadByTokenForLong(int token) {
 		//001??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0010?
@@ -331,7 +336,7 @@ public class FASTReaderDispatch{
 		}
 	}
 
-	private int dispatchReadByToken000(int token) {
+	private int dispatchReadByTokenForInteger(int token) {
 		//000??
 		if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 			//0000?

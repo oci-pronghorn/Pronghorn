@@ -256,11 +256,7 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value);
 		int trimTail = heap.length(idx)-headCount;
-		
-		if (trimTail<0) {
-			System.err.println("2 write tail? "+trimTail);
-		}
-		
+
 		writer.writeIntegerUnsigned(trimTail+1); 
 		writeASCIITail(idx, headCount, value, trimTail);
 
@@ -493,9 +489,7 @@ public class FieldWriterChar {
 		int idx = token & INSTANCE_MASK;
 		int headCount = heap.countHeadMatch(idx, value, offset, length);
 		int trimTail = heap.length(idx)-headCount; //head count is total that match from head.
-		if (trimTail<0) {
-			System.err.println("write tail? "+trimTail);
-		}
+
 		writer.writeIntegerUnsigned(trimTail+1); //cut off these from tail
 		
 		int valueSend = length-headCount;

@@ -1037,17 +1037,13 @@ public final class FASTWriterDispatch {
 	
 	public void reset() {
 		
-		System.err.println("wrote fields count:"+fieldCount);
-		fieldCount=0;
-		
-		//reset all values to unset
-		//TODO: must find faster way to do this for both writer and reader!
 		writerInteger.reset(dictionaryFactory);
 		writerLong.reset(dictionaryFactory);
 		writerDecimal.reset(dictionaryFactory);
 		writerChar.reset(dictionaryFactory);
 		writerBytes.reset(dictionaryFactory);
 		templateStackHead = 0;
+		sequenceCountStackHead=0;
 	}
 
 	
@@ -1059,15 +1055,15 @@ public final class FASTWriterDispatch {
 		return isSkippedSequence;
 	}	
 	
-    long fieldCount = 0;
+   // long fieldCount = 0;
 	
 	public boolean dispatchWriteByToken(int token, int fieldPos) {
 	
 		
-		System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
+	//	System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
 
 		
-		fieldCount++;
+	//	fieldCount++;
 		
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
@@ -1125,8 +1121,10 @@ public final class FASTWriterDispatch {
 				    		//must always pop because open will always push
 							if (0 == --sequenceCountStack[sequenceCountStackHead]) {
 								sequenceCountStackHead--;//pop sequence off because they have all been used.
+								return false;//this sequence is done.
+							} else {
+								return true;//true if this sequence must be visited again.
 							}
-							return true;
 						}
 					}
 					

@@ -445,7 +445,7 @@ public class TemplateLoaderTest {
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		byte[] targetBuffer = new byte[(int)totalTestBytes*10];//TODO: large for now until testing is complete.
+		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.05)];//TODO: large for now until testing is complete.
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		int writeBuffer = 2048;
 		int maxGroupCount = 256;
@@ -461,7 +461,7 @@ public class TemplateLoaderTest {
 		
 		System.gc();
 		
-		int warmup = 0;//30;//set much larger for profiler
+		int warmup = 30;//set much larger for profiler
 		int count = 5;
 				
 		Exception temp = null;
@@ -500,9 +500,7 @@ public class TemplateLoaderTest {
 			dynamicWriter.reset(true);
 			
 		}
-		
-		System.err.println("----------");
-		
+				
 		iter = count;
 		while (--iter>=0) {
 

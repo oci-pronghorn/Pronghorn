@@ -82,16 +82,16 @@ public class FASTRingBuffer implements CharSequence {
 	
 
 	
-    public int availableCapacity() {
+    public final int availableCapacity() {
     	return maxSize-(addPos-remPos);
     }
     
 	
-	public final void append(int value) {
+	public final void appendInteger(int value) {
 		buffer[mask&addPos++] = value;
 	}
 	
-	public void append(long value) {		
+	public final void appendLong(long value) {		
 		buffer[mask&addPos++] = (int)(value>>>32);
 		buffer[mask&addPos++] = (int)(value&0xFFFFFFFF);
 	}
@@ -102,7 +102,7 @@ public class FASTRingBuffer implements CharSequence {
 	// neg  pos  heap constant index
 	// pos  neg  null
 	
-	public void appendText(int heapId) {
+	public final void appendText(int heapId) {
 		int p = addPos;
 		
 		if (heapId<0) {//points to constant in hash, high bit already set.
@@ -143,7 +143,7 @@ public class FASTRingBuffer implements CharSequence {
 		
 	}
 
-	public void append(int readDecimalExponent, long readDecimalMantissa) {
+	public void appendDecimal(int readDecimalExponent, long readDecimalMantissa) {
 
 		buffer[mask&addPos++] = readDecimalExponent;
 		buffer[mask&addPos++] = (int)(readDecimalMantissa>>>32);

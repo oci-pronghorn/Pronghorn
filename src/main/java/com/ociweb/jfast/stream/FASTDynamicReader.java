@@ -45,6 +45,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 	//the smaller the better to make it fit inside the cache.
 	private final FASTRingBuffer ringBuffer;
 	
+	//When setting neededSpace
+	//Worst case scenario is that this is full of decimals which each need 3.
+	//but for easy math we will use 4, will require a little more empty space in buffer
+	//however we will not need a lookup table 
+    int neededSpaceOrTemplate = -1;
+    int lastCapacity = 0;
+    
 	//read groups field ids and build repeating lists of tokens.
 	
 	//only look up the most recent value read and return it to the caller.
@@ -55,6 +62,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.readerDispatch = dispatch;
 		this.fullScript = catalog.fullScript();
 		this.ringBuffer = ringBuffer;
+		this.lastCapacity = ringBuffer.availableCapacity();
 		 
 	}
 		
@@ -95,102 +103,97 @@ public class FASTDynamicReader implements FASTDataProvider {
 	 * 
 	 * @return
 	 */
-    int neededSpaceOrTemplate = -1;
-    int lastCapacity = 0;
+    
+
+    
+    //TODO: has more takes up too much time in profiler, because methods are too large!
+    //TODO: dispatch is repeating the same if sequence for type, these could be grouped!
     
 	public int hasMore() {
-		
-		int i;
-
+		//start new script or detect that the end of the data has been reached
 		if (neededSpaceOrTemplate<0) { 
-			//start new script or detect that the end of the data has been reached
-
 			//checking EOF first before checking for blocked queue
 			if (readerDispatch.isEOF()) {
 				return 0;
-			}				
-			
+			}	
 			//must have room to store the new template
-			
 			if (lastCapacity<1) {
 				lastCapacity = ringBuffer.availableCapacity();
 				if (lastCapacity<1) {
 					return 0x80000000;
 				}
 			}
-			lastCapacity -= 1;
+			lastCapacity--;
 			
-			//get next token id then immediately start processing the script
-			i = parseNextTokenId();
-			
-			ringBuffer.append(i);//write template id at the beginning of this message
-							
-			//set the cursor start and stop for this template				
-			activeScriptCursor = catalog.getTemplateStartIdx(i); 
-			activeScriptLimit = catalog.getTemplateLimitIdx(i);
-							
-	    	//Worst case scenario is that this is full of decimals which each need 3.
-	    	//but for easy math we will use 4, will require a little more empty space in buffer		    	
-			//however we will not need a lookup table 
-			neededSpaceOrTemplate = (activeScriptLimit-activeScriptCursor)<<2;
-			assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
+			startNewTemplate();
 		} 
 		
-		if (lastCapacity<neededSpaceOrTemplate) {
-			lastCapacity = ringBuffer.availableCapacity();
+		if (neededSpaceOrTemplate>0) {
 			if (lastCapacity<neededSpaceOrTemplate) {
-				return 0x80000000;
+				lastCapacity = ringBuffer.availableCapacity();
+				if (lastCapacity<neededSpaceOrTemplate) {
+					return 0x80000000;
+				}
 			}
+			lastCapacity -= neededSpaceOrTemplate;
 		}
-		lastCapacity -= neededSpaceOrTemplate;
-				
 		
 		do {
-			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {
-
-     				ringBuffer.moveForward();
-  				    i = readerDispatch.jumpSequence();
-				    if (i>0) {
-				    	//jumping (backward) to do this sequence again.
-				    	
-				    	//int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
-				    	//Worst case scenario is that this is full of decimals which each need 3.
-				    	//but for easy math we will use 4, will require a little more empty space in buffer
-				    	//however we will not need a lookup table 
-				    	neededSpaceOrTemplate = i<<2;
-				    	
-				    	//jump back to top of this sequence in the script.
-						activeScriptCursor -= i;
-						return 1;//has sequence group to read
-				    } else if(0==i) {
-
-				    	//finished sequence, no need to jump
-				    	if (++activeScriptCursor==activeScriptLimit) {
-				    		neededSpaceOrTemplate = -1;
-				    		readerDispatch.closeMessage();
-				    		return 3;//finished reading full message and the sequence
-				    	}
-				    	return 1;//has sequence group to read
-				    } else {
-				    	//jumping over sequence (forward) it was skipped (rare case)
-				    	System.err.println("has now been tested, please delete");
-						activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
-				    	if (activeScriptCursor==activeScriptLimit) {
-				    		neededSpaceOrTemplate = -1;
-				    		readerDispatch.closeMessage();
-				    		return 2;//finished reading full message but we have no sequence
-				    	}				    	
-				    }
-				    
+			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {		
+					ringBuffer.moveForward();
+					if (readerDispatch.jumpSequence>=0) {
+					    return processSequence(readerDispatch.jumpSequence); 
+					}
+				    //jumping over sequence (forward) it was skipped (rare case)
+				    activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
+				    //while clause will inc 1 to move past group close				    
 			}
 		} while (++activeScriptCursor<activeScriptLimit);
+		return finishTemplate();
+	}
 
-		
+	private int finishTemplate() {
 		//reached the end of the script so close and prep for the next one
 		ringBuffer.moveForward();
 		neededSpaceOrTemplate = -1;
 		readerDispatch.closeMessage();
 		return 2;//finished reading full message
+	}
+
+	private int processSequence(int i) {
+		if (i>0) {	//jumping (backward) to do this sequence again.
+			neededSpaceOrTemplate = 1+(i<<2);
+			activeScriptCursor -= i;
+			return 1;//has sequence group to read
+		} else {
+			assert(0==1);
+			//finished sequence, no need to jump
+			if (++activeScriptCursor==activeScriptLimit) {
+				neededSpaceOrTemplate = -1;
+				readerDispatch.closeMessage();
+				return 3;//finished reading full message and the sequence
+			}
+			return 1;//has sequence group to read
+		}
+	}
+
+	
+
+	private void startNewTemplate() {
+		//get next token id then immediately start processing the script
+		int i = parseNextTokenId();
+//	System.err.println("**** write template id:"+i+" at "+ringBuffer.addPos);
+		ringBuffer.appendInteger(i);//write template id at the beginning of this message
+						
+		//set the cursor start and stop for this template				
+		activeScriptCursor = catalog.getTemplateStartIdx(i); 
+		activeScriptLimit = catalog.getTemplateLimitIdx(i);
+						
+		//Worst case scenario is that this is full of decimals which each need 3.
+		//but for easy math we will use 4, will require a little more empty space in buffer		    	
+		//however we will not need a lookup table 
+		neededSpaceOrTemplate = (activeScriptLimit-activeScriptCursor)<<2;
+		assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
 	}
 
 	
