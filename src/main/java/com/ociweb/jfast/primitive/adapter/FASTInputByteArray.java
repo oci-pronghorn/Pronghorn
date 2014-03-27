@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.primitive.adapter;
 
-import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
 
@@ -55,5 +54,9 @@ public class FASTInputByteArray implements FASTInput {
 	@Override
 	public boolean isEOF() {
 		return position>=limit;
+	}
+
+	public byte[] getSource() {
+		return buffer;
 	}
 }

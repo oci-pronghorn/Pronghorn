@@ -413,11 +413,21 @@ public class TemplateHandler extends DefaultHandler {
     		    		
     		int token = buildToken(tokenBuilderIntCount);
     		    		
-    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    		if (fieldOperator==OperatorMask.Field_Constant ||
+    			fieldOperator==OperatorMask.Field_Default) {
+    			
+    			int optionalOffset = 0;
+    			if (fieldOperator==OperatorMask.Field_Default) {
+    				if ((fieldType&1)!=0) {
+    					//optional default
+    					optionalOffset=1; //TODO: also missing case for...
+    				}
+    			}
+    			
     			//only set if the value was given
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
     				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    											Integer.parseInt(fieldOperatorValue));
+    										optionalOffset+Integer.parseInt(fieldOperatorValue));
     			} 
     			fieldOperatorValue=null;
     		}
@@ -430,11 +440,21 @@ public class TemplateHandler extends DefaultHandler {
        		
     		int token = buildToken(tokenBuilderLongCount);
     		
-    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
+    		if (fieldOperator==OperatorMask.Field_Constant ||
+    			fieldOperator==OperatorMask.Field_Default) {
+    			
+    			int optionalOffset = 0;
+    			if (fieldOperator==OperatorMask.Field_Default) {
+    				if ((fieldType&1)!=0) {
+    					//optional default
+    					optionalOffset=1;
+    				}
+    			}
+    			
     			//only set if the value was given
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
     				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    											Long.parseLong(fieldOperatorValue));
+    										optionalOffset+Long.parseLong(fieldOperatorValue));
     			} 
     			fieldOperatorValue=null;
     		}
@@ -470,7 +490,17 @@ public class TemplateHandler extends DefaultHandler {
     		
     		int token = buildToken(tokenBuilderDecimalCount);
     		
-    		if (fieldExponentOperator==OperatorMask.Field_Constant ||fieldExponentOperator==OperatorMask.Field_Default) {
+    		if (fieldExponentOperator==OperatorMask.Field_Constant ||
+    			fieldExponentOperator==OperatorMask.Field_Default) {
+    			
+    			int optionalOffset = 0;
+    			if (fieldOperator==OperatorMask.Field_Default) {
+    				if ((fieldType&1)!=0) {
+    					//optional default
+    					optionalOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
+    				}
+    			}
+    			
     			//only set if the value was given
     			if (null!=fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
     				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,

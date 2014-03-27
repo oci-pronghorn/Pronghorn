@@ -110,7 +110,7 @@ public class FASTReaderDispatch{
 	}
 	
 	
-	public void dispatchReadPrefix(byte[] target) {
+	public void dispatchPreamble(byte[] target) {
 		reader.readByteData(target, 0, target.length);
 	}
 	
@@ -154,6 +154,13 @@ public class FASTReaderDispatch{
 		
 		do {
 			int token = script[cursor];
+			
+			if (false) {
+				long absPos = reader.totalRead()-reader.remaining();
+				if (absPos<25) {
+					System.err.println(absPos+" RRR "+TokenBuilder.tokenToString(token));
+				}
+			}
 			
 			//TODO: Need group method with optional support
 			//TODO: Need a way to unify Decimal? Do as two Tokens?

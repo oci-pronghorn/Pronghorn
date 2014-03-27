@@ -54,7 +54,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	//only look up the most recent value read and return it to the caller.
 	public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog, FASTRingBuffer ringBuffer, FASTReaderDispatch dispatch) {
 		this.catalog = catalog;
-		this.preambleDataLength=catalog.getMessagePrefixSize();
+		this.preambleDataLength=catalog.getMessagePreambleSize();
 		this.preambleData = new byte[preambleDataLength];				
 		this.readerDispatch = dispatch;
 		this.fullScript = catalog.fullScript();
@@ -193,7 +193,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private int parseNextTokenId() {
 		///read prefix bytes if any (only used by some implementations)
 		if (preambleDataLength!=0) {
-			readerDispatch.dispatchReadPrefix(preambleData);
+			readerDispatch.dispatchPreamble(preambleData);
 		};
 		///////////////////
 		

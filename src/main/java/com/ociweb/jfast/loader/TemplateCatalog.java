@@ -253,7 +253,7 @@ public class TemplateCatalog {
 		return dictionaryFactory;
 	}
 
-	public byte getMessagePrefixSize() {
+	public byte getMessagePreambleSize() {
 		return preambleSize;
 	}
 

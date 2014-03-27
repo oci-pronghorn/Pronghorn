@@ -571,6 +571,77 @@ public final class PrimitiveReader {
 		return target;
 	}
 	
+	public void readSkipByStop() {
+		if (position>=limit) {
+			fetch(1);
+		}
+		while (buffer[position++]>=0) { 
+			if (position>=limit) {
+				fetch(1);
+			}
+		}
+	}
+	
+	public void readSkipByLengthByt(int len) {
+		if (limit - position < len) {
+			fetch(len);
+		}
+		position+=len;
+	}
+	
+	public void readSkipByLengthUTF(int len) {
+		//len is units of utf-8 chars so we must check the
+		//code points for each before fetching and jumping.
+		//no validation at all because we are not building a string.
+		while (--len>=0) {
+			if (position>=limit) {
+				fetch(1);
+			}
+			byte b = buffer[position++];
+			if (b<0) {
+				//longer pattern than 1 byte
+				if (0!=(b&0x20)) {
+					//longer pattern than 2 bytes
+					if (0!=(b&0x10)) {
+						//longer pattern than 3 bytes
+						if (0!=(b&0x08)) {
+							//longer pattern than 4 bytes
+							if (0!=(b&0x04)) {
+								//longer pattern than 5 bytes
+								if (position>=limit) {
+									fetch(5);
+								}
+								position+=5;
+							} else {
+								if (position>=limit) {
+									fetch(4);
+								}	
+								position+=4;
+							}
+						} else {
+							if (position>=limit) {
+								fetch(3);
+							}
+							position+=3;
+						}	
+					} else {
+						if (position>=limit) {
+							fetch(2);
+						}
+						position+=2;
+					}
+				} else {
+					if (position>=limit) {
+						fetch(1);
+					}
+					position++;
+				}								
+			}			
+		}
+	}
+	
+	
+	
 	public void readTextUTF8(char[] target, int offset, int charCount) {
 		//System.err.println("B");
 		byte b;
@@ -620,7 +691,7 @@ public final class PrimitiveReader {
 				//code point 11	
 				result  = (b&0x1F);	
 			} else {
-				if (((byte)(0xFF&(b<<3)))>=0) {
+				if (((byte)(0xFF&(b<<3)))>=0) { //TODO: these would be faster/simpler by factoring out the constant in this comparison.
 					//code point 16
 					result = (b&0x0F);
 				}  else {

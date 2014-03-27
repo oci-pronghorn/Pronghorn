@@ -859,6 +859,14 @@ public final class PrimitiveWriter {
 	//called by ever field that needs to set a bit either 1 or 0
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
+		
+//		//Help when debugging odd bits.
+//		long absPos = totalWritten()+remaining();
+//		if (bit==1 && absPos<20 && absPos!=5) {
+//			new Exception("found 1 here at "+absPos).printStackTrace(System.err);
+//			
+//		}
+		
 		if (0 == --pMapIdxWorking) {
 			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes and did arraycopy later.
 			assert(safetyStackDepth>0) : "PMap must be open before write of bits.";

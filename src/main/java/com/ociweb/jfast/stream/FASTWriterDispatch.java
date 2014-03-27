@@ -1062,7 +1062,12 @@ public final class FASTWriterDispatch {
 		
 		
 	//	System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
-
+		if (false) {
+			long absPos = writer.totalWritten()+writer.remaining();
+			if (absPos<25) {
+				System.err.println(absPos+" WWW "+TokenBuilder.tokenToString(token));
+			}
+		}
 		
 	//	fieldCount++;
 		
@@ -1208,6 +1213,18 @@ public final class FASTWriterDispatch {
 		return false;
 	}
 
+	public void dispatchPreable(byte[] preambleData) {
+		writer.writeByteArrayData(preambleData, 0, preambleData.length);
+	}
+
+	public void openMessage(int pmapMaxSize, int templateId) {
+		
+		writer.openPMap(pmapMaxSize);
+		writer.writePMapBit((byte)1);
+		writer.closePMap();//TODO: this needs to be close but not sure this is the right location.
+		writer.writeIntegerUnsigned(templateId);
+
+	}
 
 
 }

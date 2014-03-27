@@ -448,7 +448,7 @@ public class TemplateLoaderTest {
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.1)];//TODO: large for now until testing is complete.
+		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.5)];//TODO: large for now until testing is complete.
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		int writeBuffer = 2048;
 		int maxGroupCount = 256;
@@ -503,6 +503,21 @@ public class TemplateLoaderTest {
 			dynamicWriter.reset(true);
 			
 		}
+		
+		//TODO:test shows that preable is missing plus pmap in front of message.
+		//Check arrays
+		//Group at index 12 should only be 1 byte long!!! must resolve. why its 2
+		byte[] sourceBuffer = fastInput.getSource();
+		int i = 0;
+		while (i<50) {
+			System.err.println(i+" "+sourceBuffer[i]+"  "+targetBuffer[i]);
+			
+					 //          "  "+Integer.toBinaryString(sourceBuffer[i])+
+					 //          "  "+Integer.toBinaryString(targetBuffer[i]));
+			 
+			i++;
+		}
+		
 				
 		iter = count;
 		while (--iter>=0) {

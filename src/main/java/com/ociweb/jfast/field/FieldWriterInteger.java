@@ -113,8 +113,9 @@ public final class FieldWriterInteger {
 		}
 	}
 	
+	//TODO: default optional must be +1 when setting.
 	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
-		//room for zero so we add one first
+		//room for zero so we add one first TODO: MUST ADD ONE BUT IT SHOULD BE DONE IN PARSE
 		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {

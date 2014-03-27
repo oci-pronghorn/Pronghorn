@@ -16,14 +16,20 @@ public class FASTDynamicWriter {
 	private int activeScriptCursor;
 	private int activeScriptLimit;
 	boolean needTemplate = true;
+	final int preambleDataLength;
+	final byte[] preambleData;
 	
-	public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, FASTRingBuffer ringBuffer, FASTWriterDispatch writerDispatch) {
+	public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, 
+			                  FASTRingBuffer ringBuffer, FASTWriterDispatch writerDispatch) {
 
 		this.writerDispatch = writerDispatch;
 
 		this.catalog = catalog;
 		this.fullScript = catalog.fullScript();
 		this.ringBuffer = ringBuffer;
+		
+		this.preambleDataLength = catalog.getMessagePreambleSize();
+		this.preambleData = new byte[preambleDataLength]; //TODO: should this be in ring buffer?
 	}
 
 	
@@ -39,9 +45,18 @@ public class FASTDynamicWriter {
 			int idx = 0;		
 			
 			if (needTemplate) {
+				
+
+				if (preambleDataLength!=0) {
+					writerDispatch.dispatchPreable(preambleData);
+				};
+								
 				//template processing (can these be nested?) 
 				int templateId = ringBuffer.readInteger(idx); 	
 				idx++;
+				
+				writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId);
+				
 				//tokens - reading 
 				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
 				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
