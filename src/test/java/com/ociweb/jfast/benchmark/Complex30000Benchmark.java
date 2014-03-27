@@ -75,7 +75,8 @@ public class Complex30000Benchmark extends Benchmark {
 							                    catalog.getMaxTextLength(),
 							                    catalog.getMaxByteVectorLength(),
 							                    catalog.getTextGap(),
-							                    catalog.getByteVectorGap()); 
+							                    catalog.getByteVectorGap(), 
+							                    catalog.fullScript()); 
 			queue = new FASTRingBuffer((byte)8, 
 					                   (byte)7, 
 					                   readerDispatch.textHeap());// TODO: hack test.

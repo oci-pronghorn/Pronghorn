@@ -52,6 +52,7 @@ public final class PrimitiveReader {
 		
 	}
 
+	//TODO: add primitive methods for skipping fields. with Unit tests
 
 	public PrimitiveReader(FASTInput input) {
 		this(2048,input,32);
@@ -95,7 +96,7 @@ public final class PrimitiveReader {
 			} else {
 				if (count<10) { 
 					Thread.yield();
-					//TODO: if we are in the middle of parsing a field this becomes a blocking read
+					//TODO: if we are in the middle of parsing a field this becomes a blocking read and requires a timeout and throw.
 					
 				} else {				
 					try {

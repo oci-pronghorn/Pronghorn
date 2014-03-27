@@ -1060,6 +1060,7 @@ public final class FASTWriterDispatch {
 	public boolean dispatchWriteByToken(int token, int fieldPos) {
 	
 		
+		
 	//	System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
 
 		

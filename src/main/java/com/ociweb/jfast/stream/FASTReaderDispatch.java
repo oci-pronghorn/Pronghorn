@@ -54,10 +54,16 @@ public class FASTReaderDispatch{
 	long[] decimalMantissaDictionary;
 	TextHeap charDictionary;
 	ByteHeap byteDictionary;
+
+	int activeScriptCursor;
+	int activeScriptLimit;
+	
+	int[] fullScript;
+
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
 			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
-			                   int maxVectorLen, int charGap, int bytesGap) {
+			                   int maxVectorLen, int charGap, int bytesGap, int[] fullScript) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -70,6 +76,7 @@ public class FASTReaderDispatch{
 		this.charDictionary = dcr.charDictionary(maxTextLen,charGap);
 		this.byteDictionary = dcr.byteDictionary(maxVectorLen,bytesGap);
 		
+		this.fullScript = fullScript;
 		
 		this.readerInteger = new FieldReaderInteger(reader,integerDictionary);
 		this.readerLong = new FieldReaderLong(reader,longDictionary);
@@ -109,8 +116,6 @@ public class FASTReaderDispatch{
 	
 //	long totalReadFields = 0;
 	
-	//package protected, unless we find a need to expose it?
-	final boolean dispatchReadByToken(int token, FASTRingBuffer outputQueue) {
 	   //The nested IFs for this short tree are slightly faster than switch 
 	   //for more JVM configurations and when switch is faster (eg lots of JVM -XX: args)
 	   //it is only slightly faster.
@@ -129,114 +134,118 @@ public class FASTReaderDispatch{
 		//look at leading int to determine what kind of message they have
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
-				
-		
-		//The trick here is to keep all the conditionals in this method and do the work elsewhere.
-		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
-			//0????
-			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-				//00???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0000?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00000 IntegerUnsigned
-							outputQueue.appendInteger(readIntegerUnsigned(token));
-						} else {
-							//00001 IntegerUnsignedOptional
-							outputQueue.appendInteger(readIntegerUnsignedOptional(token)); 
-						}
-					} else {
-						//0001?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//00010 IntegerSigned
-							outputQueue.appendInteger(readIntegerSigned(token));
-						} else {
-							//00011 IntegerSignedOptional
-							outputQueue.appendInteger(readIntegerSignedOptional(token));
-						}
-					}
-					
-					//outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
-				} else {
-					outputQueue.appendLong(dispatchReadByTokenForLong(token));//long
-				}
-			} else {
-				//01???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//int for text					
-					outputQueue.appendText(dispatchReadByTokenForText(token));				
-				} else {
-					//011??
-					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-						//0110? Decimal and DecimalOptional
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							outputQueue.appendDecimal(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
-							                   		  readerDecimal.readDecimalMantissa(token, -1));
-						} else {
-							outputQueue.appendDecimal(readerDecimal.readDecimalExponentOptional(token, -1),
-							    		       		  readerDecimal.readDecimalMantissaOptional(token, -1));
-						}
-					} else {
-						//0111?
-						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-							//01110 ByteArray
-							outputQueue.append(readByteArray(token), byteDictionary);
-						} else {
-							//01111 ByteArrayOptional
-							outputQueue.append(readByteArrayOptional(token), byteDictionary);
-						}
-					}
-				}
-			}
-			return false;
-		} else { 
-			//1????
-			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
-				//10???
-				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					//100??
-					//Group Type, no others defined so no need to keep checking
-					if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
-						//this is NOT a message/template so the non-template pmapSize is used.			
-						openGroup(token, nonTemplatePMapSize);
-					} else {
-						closeGroup(token);
-						return 	checkSequence!=0 && completeSequence(token);	
-					}
-					
-				} else {
-					//101??
-					sequenceLength(token, outputQueue);
-				}
-			} else {
-				//11???
-				//Dictionary Type, no others defined so no need to keep checking
-				if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-					resetDictionary(token);					
-				} else {
-					//OperatorMask.Dictionary_Read_From  0001
-					//next read will need to use this index to pull the right initial value.
-					//after it is used it must be cleared/reset to -1
-					readFromIdx = TokenBuilder.MAX_INSTANCE&token;
-				}				
-			}
-			return false;	
-		}
-	}
+	//package protected, unless we find a need to expose it?
+	final boolean dispatchReadByToken(FASTRingBuffer outputQueue) {
 
-	private void sequenceLength(int token, FASTRingBuffer outputQueue) {
-		//Length Type, no others defined so no need to keep checking
-		//Only happens once before a node sequence so push it on the count stack
-		int length;
-		outputQueue.appendInteger(length = readIntegerUnsigned(token));
-		if (length==0) {
-			jumpSequence = -1;//TODO: build test to cover this.
-		} else {			
-			jumpSequence = 0;
-			sequenceCountStack[++sequenceCountStackHead] = length;
-		}
+		//TODO: 40% of the time is here in dispatch. Can be fixed by code generation.
+		//can be up to 8 conditionals before arrival at the right method.
+		//the virtual call may be much faster?
+		
+		//move everything needed in this tight loop to the stack
+		int cursor = activeScriptCursor;
+		int limit = activeScriptLimit;
+		int[] script = fullScript;
+		
+		//this is a unique definition for the series of fields to follow.
+		//if this can be cached it would be a big reduction in work!!!
+		//System.err.println("cursor:"+cursor);
+		//TODO: could build linked list for each location?
+		
+		
+		do {
+			int token = script[cursor];
+			
+			//TODO: Need group method with optional support
+			//TODO: Need a way to unify Decimal? Do as two Tokens?
+//			StringBuilder target = new StringBuilder();
+//			TokenBuilder.methodNameRead(token, target);
+//			System.err.println(target);
+			
+			//The trick here is to keep all the conditionals in this method and do the work elsewhere.
+			if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
+				//0????
+				if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+					//00???
+					if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+						outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
+					} else {
+						outputQueue.appendLong(dispatchReadByTokenForLong(token));//long
+					}
+				} else {
+					//01???
+					if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+						//int for text					
+						outputQueue.appendText(dispatchReadByTokenForText(token));				
+					} else {
+						//011??
+						if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+							//0110? Decimal and DecimalOptional
+							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+								outputQueue.appendDecimal(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
+								                   		  readerDecimal.readDecimalMantissa(token, -1));
+							} else {
+								outputQueue.appendDecimal(readerDecimal.readDecimalExponentOptional(token, -1),
+								    		       		  readerDecimal.readDecimalMantissaOptional(token, -1));
+							}
+						} else {
+							//0111?
+							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
+								//01110 ByteArray
+								outputQueue.append(readByteArray(token), byteDictionary);
+							} else {
+								//01111 ByteArrayOptional
+								outputQueue.append(readByteArrayOptional(token), byteDictionary);
+							}
+						}
+					}
+				}
+			} else { 
+				//1????
+				if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
+					//10???
+					if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
+						//100??
+						//Group Type, no others defined so no need to keep checking
+						if (0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER))) {
+							//this is NOT a message/template so the non-template pmapSize is used.			
+							openGroup(token, nonTemplatePMapSize);
+						} else {
+							closeGroup(token);
+							activeScriptCursor = cursor;
+							return 	checkSequence!=0 && completeSequence(token);	
+						}
+						
+					} else {
+						//101??
+						//Length Type, no others defined so no need to keep checking
+						//Only happens once before a node sequence so push it on the count stack
+						int length;
+						outputQueue.appendInteger(length = readIntegerUnsigned(token));
+						if (length==0) {
+							jumpSequence = -1;//TODO: build test to cover this.
+							activeScriptCursor = cursor;
+							return true;
+						} else {			
+							jumpSequence = 0;
+							sequenceCountStack[++sequenceCountStackHead] = length;
+						}
+					}
+				} else {
+					//11???
+					//Dictionary Type, no others defined so no need to keep checking
+					if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+						resetDictionary(token);					
+					} else {
+						//OperatorMask.Dictionary_Read_From  0001
+						//next read will need to use this index to pull the right initial value.
+						//after it is used it must be cleared/reset to -1
+						readFromIdx = TokenBuilder.MAX_INSTANCE&token;
+					}				
+				}	
+			}
+		} while (++cursor<limit);
+		activeScriptCursor = cursor;
+		return false;
 	}
 
 	private void resetDictionary(int token) {

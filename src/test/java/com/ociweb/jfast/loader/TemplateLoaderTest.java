@@ -116,7 +116,8 @@ public class TemplateLoaderTest {
                 catalog.getMaxTextLength(),
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
-                catalog.getByteVectorGap()); 
+                catalog.getByteVectorGap(),
+                catalog.fullScript()); 
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
@@ -197,7 +198,8 @@ public class TemplateLoaderTest {
 									                catalog.getMaxTextLength(),
 									                catalog.getMaxByteVectorLength(),
 									                catalog.getTextGap(),
-									                catalog.getByteVectorGap()); 
+									                catalog.getByteVectorGap(),
+									                catalog.fullScript()); 
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
@@ -441,11 +443,12 @@ public class TemplateLoaderTest {
                 catalog.getMaxTextLength(),
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
-                catalog.getByteVectorGap()); 
+                catalog.getByteVectorGap(),
+                catalog.fullScript()); 
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.05)];//TODO: large for now until testing is complete.
+		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.1)];//TODO: large for now until testing is complete.
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		int writeBuffer = 2048;
 		int maxGroupCount = 256;

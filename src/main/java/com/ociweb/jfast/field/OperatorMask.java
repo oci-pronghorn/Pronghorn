@@ -5,9 +5,6 @@ package com.ociweb.jfast.field;
 
 public class OperatorMask {
 
-	//Offsets much match mask values of OperatorMask
-	public static final String[] OPP_NAME = new String[]{"","copy","constant","default","delta","increment","tail"};
-	
 	//4 bits required for operator
 	
 	public static final int Field_None      = 0x00;  //0000      //group
@@ -29,11 +26,30 @@ public class OperatorMask {
 	public static final int Group_Bit_Close          = 0x01; //count value will be tokens back to top, otherwise pmap max bytes.
 	public static final int Group_Bit_Templ          = 0x02; //template must be found before this group
 	public static final int Group_Bit_Seq            = 0x04; //use length field and use jump back logic
-	public static final int Group_Bit_PMap           = 0x10; //group requires a pmap
+	public static final int Group_Bit_PMap           = 0x08; //group requires a pmap
 	
 	//group, sequence, message or ...??		
 	//pmap is only in group or sequence never message
 	//
+	
+	public final static String[] methodOperatorName = new String[]{
+		"",
+		"Copy",
+		"Constant",
+		"Default",
+		"Delta",
+		"Increment",
+		"Reserved6",
+		"Reserved7",
+		"Tail",
+		"","","",
+		"","","",
+		"","","",
+		"","","",
+		"","","",
+		"","","",
+		"","",""
+	};
 	
 	private static String prefix(int len, char c, String value) {
 		StringBuilder builder = new StringBuilder();

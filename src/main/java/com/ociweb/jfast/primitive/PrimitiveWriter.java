@@ -707,7 +707,18 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeIntegerUnsigned(int value) {
-		assert(value>=0) : "Java limitation must code this case special to reconstruct unsigned on the wire";
+		if (value<0) {//TODO: needs unit test for these large unsigned values.
+			if (buffer.length - limit < 5) {
+				output.flush();
+			}
+			buffer[limit++] = (byte)(((value >> 28) & 0x7F));
+			buffer[limit++] = (byte) (((value >> 21) & 0x7F));
+			buffer[limit++] = (byte) (((value >> 14) & 0x7F));
+			buffer[limit++] = (byte) (((value >> 7) & 0x7F));
+			buffer[limit++] = (byte) (((value & 0x7F) | 0x80));			
+			return;
+		}
+	//	assert(value>=0) : "Java limitation must code this case special to reconstruct unsigned on the wire";
 		if (value < 0x00000080) {
 			if (buffer.length - limit < 1) {
 				output.flush();

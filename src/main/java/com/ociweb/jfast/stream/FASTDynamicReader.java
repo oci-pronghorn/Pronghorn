@@ -39,9 +39,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private final byte preambleDataLength;
 	
 	private long messageCount = 0;
-	private int activeScriptCursor;
-	private int activeScriptLimit;
-	
 	//the smaller the better to make it fit inside the cache.
 	private final FASTRingBuffer ringBuffer;
 	
@@ -68,8 +65,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
     public void reset(boolean clearData) {
     	this.messageCount = 0;
-    	this.activeScriptCursor = 0;
-    	this.activeScriptLimit = 0;
+    	this.readerDispatch.activeScriptCursor = 0;
+    	this.readerDispatch.activeScriptLimit = 0;
     	if (clearData) {
     		this.readerDispatch.reset();
     	}
@@ -138,17 +135,14 @@ public class FASTDynamicReader implements FASTDataProvider {
 			lastCapacity -= neededSpaceOrTemplate;
 		}
 		
-		do {
-			if (readerDispatch.dispatchReadByToken(fullScript[activeScriptCursor], ringBuffer)) {		
-					ringBuffer.moveForward();
-					if (readerDispatch.jumpSequence>=0) {
-					    return processSequence(readerDispatch.jumpSequence); 
-					}
-				    //jumping over sequence (forward) it was skipped (rare case)
-				    activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++activeScriptCursor]);
-				    //while clause will inc 1 to move past group close				    
-			}
-		} while (++activeScriptCursor<activeScriptLimit);
+		if (readerDispatch.dispatchReadByToken(ringBuffer)) {		
+				ringBuffer.moveForward();
+				if (readerDispatch.jumpSequence>=0) {
+				    return processSequence(readerDispatch.jumpSequence); 
+				}
+			    //jumping over sequence (forward) it was skipped (rare case)
+				readerDispatch.activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++readerDispatch.activeScriptCursor])+1;			    
+		}
 		return finishTemplate();
 	}
 
@@ -163,12 +157,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 	private int processSequence(int i) {
 		if (i>0) {	//jumping (backward) to do this sequence again.
 			neededSpaceOrTemplate = 1+(i<<2);
-			activeScriptCursor -= i;
+			readerDispatch.activeScriptCursor -= i;
 			return 1;//has sequence group to read
 		} else {
-			assert(0==1);
 			//finished sequence, no need to jump
-			if (++activeScriptCursor==activeScriptLimit) {
+			if (++readerDispatch.activeScriptCursor==readerDispatch.activeScriptLimit) {
 				neededSpaceOrTemplate = -1;
 				readerDispatch.closeMessage();
 				return 3;//finished reading full message and the sequence
@@ -186,13 +179,13 @@ public class FASTDynamicReader implements FASTDataProvider {
 		ringBuffer.appendInteger(i);//write template id at the beginning of this message
 						
 		//set the cursor start and stop for this template				
-		activeScriptCursor = catalog.getTemplateStartIdx(i); 
-		activeScriptLimit = catalog.getTemplateLimitIdx(i);
+		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); 
+		readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
 						
 		//Worst case scenario is that this is full of decimals which each need 3.
 		//but for easy math we will use 4, will require a little more empty space in buffer		    	
 		//however we will not need a lookup table 
-		neededSpaceOrTemplate = (activeScriptLimit-activeScriptCursor)<<2;
+		neededSpaceOrTemplate = (readerDispatch.activeScriptLimit-readerDispatch.activeScriptCursor)<<2;
 		assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
 	}
 

@@ -68,6 +68,17 @@ public class TokenBuilder {
 		return (0!=(token&(1<<TokenBuilder.SHIFT_TYPE)));
 	}
 	
+	public static void methodNameRead(int token, StringBuilder target) {
+		int type = extractType(token);
+		
+		int oper = extractOper(token);
+		target.append("read")
+		      .append(TypeMask.methodTypeName[type])
+		      .append(OperatorMask.methodOperatorName[oper])
+		      .append(TypeMask.methodTypeSuffix[type]).append(" ").append(Integer.toBinaryString(oper));
+				
+	}
+	
 	//Decimals must pass in both operators in the tokenOpps field together
 	public static int buildToken(int tokenType, int tokenOpps, int count, int absentVal) {
 		assert(count<=MAX_INSTANCE);

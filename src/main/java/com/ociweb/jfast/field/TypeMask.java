@@ -39,6 +39,59 @@ public final class TypeMask {
 	
 	public final static int Dictionary               = 0x18;//11000
 	
+	//TODO: build unit test to confirm by reflection that every generated Token can be found
+	
+	//for code generation need to know the substring of the method related to this type.
+	public final static String[] methodTypeName = new String[]{
+		"IntegerUnsigned",
+		"IntegerUnsigned",
+		"IntegerSigned",
+		"IntegerSigned",
+		"LongUnsigned",
+		"LongUnsigned",
+		"LongSigned",
+		"LongSigned",
+		"ASCII",
+		"ASCII",
+		"UTF8",
+		"UTF8",
+		"Decimal", //need  exponent and mantissa strings.
+		"Decimal",
+		"Bytes",
+		"Bytes",
+		"Group",
+		"Reserved1",
+		"Reserved2",
+		"Reserved3",
+		"Length",
+		"Reserved5",
+		"Reserved6",
+		"Reserved7",
+		"Dictionary"
+		};
+	
+	public final static String[] methodTypeSuffix = new String[]{
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"",
+		"Optional",
+		"","","",
+		"","","",
+		"","",""
+		};
+	
 	
 	//lots of room for the next revision, eg booleans and enums
 	
@@ -58,50 +111,11 @@ public final class TypeMask {
 	
 	//This method for debugging and therefore can produce garbage.
 	public static String toString(int typeMask) {
-		switch (typeMask) {
-			case IntegerUnsigned:
-				return "IntegerUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case IntegerUnsignedOptional:
-				return "IntegerUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case IntegerSigned:
-				return "IntegerSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case IntegerSignedOptional:
-				return "IntegerSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case LongUnsigned:
-				return "LongUnsigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case LongUnsignedOptional:
-				return "LongUnsignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case LongSigned:
-				return "LongSigned:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case LongSignedOptional:
-				return "LongSignedOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case TextASCII:
-				return "TextASCII:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case TextASCIIOptional:
-				return "TextASCIIOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case TextUTF8:
-				return "TextUTF8:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case TextUTF8Optional:
-				return "TextUTF8Optional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case Decimal:
-				return "Decimal:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case DecimalOptional:
-				return "DecimalOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case ByteArray:
-				return "ByteArray:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case ByteArrayOptional:
-				return "ByteArrayOptional:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-				
-			case Group:
-				return "Group:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-			case GroupLength:
-				return "GroupLength:"+prefix(6,'0',Integer.toBinaryString(typeMask));				
-			case Dictionary:
-				return "Dictionary:"+prefix(6,'0',Integer.toBinaryString(typeMask));	
-				
-			default:
-				return "unknown type:"+prefix(6,'0',Integer.toBinaryString(typeMask));
-		}
+		
+		return methodTypeName[typeMask]+
+				methodTypeSuffix[typeMask]+
+				":"+				
+				prefix(6,'0',Integer.toBinaryString(typeMask));
 		
 	}
 	

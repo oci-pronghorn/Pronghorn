@@ -132,7 +132,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 			                      DictionaryFactory dcr) {
 		
 		//if (null==fr) {
-			fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4);
+			fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null);
 		//} else {
 		//	//pr.reset();
 		//	fr.reset();

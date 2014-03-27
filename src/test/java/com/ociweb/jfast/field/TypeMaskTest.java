@@ -10,8 +10,8 @@ public class TypeMaskTest {
 	@Test
 	public void toStringTest() {
 		
-		assertEquals(              "ByteArray:001110",TypeMask.toString(TypeMask.ByteArray));
-		assertEquals(      "ByteArrayOptional:001111",TypeMask.toString(TypeMask.ByteArrayOptional));
+		assertEquals(                  "Bytes:001110",TypeMask.toString(TypeMask.ByteArray));
+		assertEquals(          "BytesOptional:001111",TypeMask.toString(TypeMask.ByteArrayOptional));
 		
 		assertEquals(                "Decimal:001100",TypeMask.toString(TypeMask.Decimal));
 		assertEquals(        "DecimalOptional:001101",TypeMask.toString(TypeMask.DecimalOptional));
@@ -28,11 +28,11 @@ public class TypeMaskTest {
 		assertEquals(           "LongUnsigned:000100",TypeMask.toString(TypeMask.LongUnsigned));
 		assertEquals(   "LongUnsignedOptional:000101",TypeMask.toString(TypeMask.LongUnsignedOptional));
 		
-		assertEquals(              "TextASCII:001000",TypeMask.toString(TypeMask.TextASCII));
-		assertEquals(      "TextASCIIOptional:001001",TypeMask.toString(TypeMask.TextASCIIOptional));
+		assertEquals(              "ASCII:001000",TypeMask.toString(TypeMask.TextASCII));
+		assertEquals(      "ASCIIOptional:001001",TypeMask.toString(TypeMask.TextASCIIOptional));
 			
-		assertEquals(              "TextUTF8:001010",TypeMask.toString(TypeMask.TextUTF8));
-		assertEquals(      "TextUTF8Optional:001011",TypeMask.toString(TypeMask.TextUTF8Optional));
+		assertEquals(              "UTF8:001010",TypeMask.toString(TypeMask.TextUTF8));
+		assertEquals(      "UTF8Optional:001011",TypeMask.toString(TypeMask.TextUTF8Optional));
 	}
 	
 }
