@@ -81,7 +81,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 
 			                                                                0, 0, 4, 4, null);
 	
@@ -397,7 +397,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = longTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, longTestData[j]);
+				staticWriter.writeLong(token, longTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

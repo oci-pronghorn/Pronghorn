@@ -10,14 +10,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -29,6 +28,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
+import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
@@ -51,7 +51,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(467, catalogByteArray.length);
+			assertEquals(473, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -209,6 +209,7 @@ public class TemplateLoaderTest {
 		int count = 10;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
+		byte[] preamble = new byte[catalog.preambleSize];
 		
 		int msgs = 0;
 		int grps = 0;
@@ -236,6 +237,11 @@ public class TemplateLoaderTest {
 					msgs++;
 					//this is a template message. 
 					int bufferIdx = 0;
+					if (preamble.length>0) {
+						queue.readBytes(bufferIdx, preamble);
+						bufferIdx+=preamble.length;
+					}
+					
 					int templateId = queue.readInteger(bufferIdx);
 					bufferIdx+=1;//point to first field
 					assertTrue("found "+templateId,1==templateId || 2==templateId || 99==templateId);
@@ -417,7 +423,7 @@ public class TemplateLoaderTest {
 	@Test
 	public void testDecodeEncodeComplex30000() {	
 		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-		TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+		final TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
 		
 		//values which need to be set client side and are not in the template.
 		catalog.setMessagePreambleSize((byte)4);	
@@ -448,7 +454,8 @@ public class TemplateLoaderTest {
 		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
-		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.5)];//TODO: large for now until testing is complete.
+				
+		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.25)];//TODO: large for now until testing is complete.
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		int writeBuffer = 2048;
 		int maxGroupCount = 256;
@@ -458,13 +465,39 @@ public class TemplateLoaderTest {
 				catalog.templatesCount(), 
 				catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
 				catalog.getTextGap(), catalog.getByteVectorGap(),
-				queue, catalog.maxNonTemplatePMapSize(),catalog.dictionaryMembers());
+				queue, catalog.maxNonTemplatePMapSize(),catalog.dictionaryMembers(),
+				catalog.fullScript());
 		
 		FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(primitiveWriter, catalog, queue, writerDispatch);
 		
+		
+		final Map<Long,String> reads = new HashMap<Long,String>();
+		final Map<Long,String> writes = new HashMap<Long,String>();
+		readerDispatch.setDispatchObserver(new DispatchObserver(){
+
+			@Override
+			public void tokenItem(long absPos, int token, int cursor) {
+				    String msg = "\nR_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" cur:"+cursor;
+					if (reads.containsKey(absPos)) {
+						msg = reads.get(absPos)+" "+msg;
+					}
+					reads.put(absPos, msg);
+			}});
+		writerDispatch.setDispatchObserver(new DispatchObserver(){
+
+			@Override
+			public void tokenItem(long absPos, int token, int cursor) {
+					String msg = "\nW_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" cur:"+cursor;
+					if (writes.containsKey(absPos)) {
+						msg = writes.get(absPos)+" "+msg;
+					}
+					writes.put(absPos, msg);
+			}});
+		
+		
 		System.gc();
 		
-		int warmup = 30;//set much larger for profiler
+		int warmup = 20;//set much larger for profiler
 		int count = 5;
 				
 		Exception temp = null;
@@ -502,21 +535,12 @@ public class TemplateLoaderTest {
 			primitiveWriter.reset();
 			dynamicWriter.reset(true);
 			
+			//only need to collect data on the first run
+			readerDispatch.setDispatchObserver(null);
+			writerDispatch.setDispatchObserver(null);
 		}
 		
-		//TODO:test shows that preable is missing plus pmap in front of message.
-		//Check arrays
-		//Group at index 12 should only be 1 byte long!!! must resolve. why its 2
-		byte[] sourceBuffer = fastInput.getSource();
-		int i = 0;
-		while (i<50) {
-			System.err.println(i+" "+sourceBuffer[i]+"  "+targetBuffer[i]);
-			
-					 //          "  "+Integer.toBinaryString(sourceBuffer[i])+
-					 //          "  "+Integer.toBinaryString(targetBuffer[i]));
-			 
-			i++;
-		}
+		scanForFirstMismatch(targetBuffer,  fastInput.getSource(), reads, writes);
 		
 				
 		iter = count;
@@ -569,6 +593,65 @@ public class TemplateLoaderTest {
 		}	
 		if (null!=temp) {
 			temp.printStackTrace(System.err);
+		}
+	}
+
+	private void scanForFirstMismatch(byte[] targetBuffer, byte[] sourceBuffer, 
+			                            Map<Long, String> reads, Map<Long, String> writes) {
+		int lookAhead = 11;
+		int maxDisplay = 21;
+		
+		int i = 0;
+		boolean err = false;
+		int displayed = 0;
+		while (i<sourceBuffer.length && displayed<maxDisplay) {
+			//Check data for mismatch
+			if (i+lookAhead<sourceBuffer.length &&
+				i+lookAhead<targetBuffer.length &&
+				sourceBuffer[i+lookAhead]!=targetBuffer[i+lookAhead]) {
+				err= true;
+			}
+			//Check script for mismatch
+//			Long posLookAhead = Long.valueOf(i+lookAhead);
+//			if (reads.containsKey(posLookAhead) && reads.get(posLookAhead).contains("Decimal")) {
+//				err = true;
+//			}
+			
+//			if (reads.containsKey(posLookAhead) && writes.containsKey(posLookAhead)) {
+//				if (!reads.get(posLookAhead).substring(3).equals(writes.get(posLookAhead).substring(3))) {
+//					err=true;
+//				}
+//			}
+			
+			if (err) {
+				displayed++;
+				StringBuilder builder = new StringBuilder();
+				builder.append(i).append(' ')
+				       .append(" R").append(hex(sourceBuffer[i])).append(' ')
+				       .append(" W").append(hex(targetBuffer[i])).append(' ');
+				Long lng = Long.valueOf(i);
+				if (reads.containsKey(lng)) {
+					builder.append(reads.get(lng)).append(' ');
+				} else {
+					builder.append("                ");
+				}
+				if (writes.containsKey(lng)) {
+					builder.append(writes.get(lng)).append(' ');
+				}
+				
+				System.err.println(builder);
+				
+			}
+			i++;
+		}
+	}
+	
+	private String hex(int x) {
+		String t = Integer.toHexString(0xFF&x);
+		if (t.length()==1) {
+			return '0'+t;
+		} else {
+			return t;
 		}
 	}
 	

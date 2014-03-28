@@ -13,8 +13,6 @@ public class FASTDynamicWriter {
 	private final int[] fullScript;
 	private final FASTRingBuffer ringBuffer;
 	
-	private int activeScriptCursor;
-	private int activeScriptLimit;
 	boolean needTemplate = true;
 	final int preambleDataLength;
 	final byte[] preambleData;
@@ -48,7 +46,9 @@ public class FASTDynamicWriter {
 				
 
 				if (preambleDataLength!=0) {
+					ringBuffer.readBytes(idx, preambleData);
 					writerDispatch.dispatchPreable(preambleData);
+					idx+=preambleDataLength;
 				};
 								
 				//template processing (can these be nested?) 
@@ -58,10 +58,10 @@ public class FASTDynamicWriter {
 				writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId);
 				
 				//tokens - reading 
-				activeScriptCursor = catalog.getTemplateStartIdx(templateId);
-				activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+				writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(templateId);
+				writerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
 				
-				if (0==activeScriptLimit && 0==activeScriptCursor) {
+				if (0==writerDispatch.activeScriptLimit && 0==writerDispatch.activeScriptCursor) {
 					throw new FASTException("Unknown template:"+templateId);
 				}		
 				//System.err.println("tmpl "+ringBuffer.remPos+"  templateId:"+templateId+" script:"+activeScriptCursor+"_"+activeScriptLimit);
@@ -69,27 +69,27 @@ public class FASTDynamicWriter {
 			}
 						
 			do{
-				int token = fullScript[activeScriptCursor];
+				int token = fullScript[writerDispatch.activeScriptCursor];
 								
-				if (writerDispatch.dispatchWriteByToken(token, idx)) {
+				if (writerDispatch.dispatchWriteByToken(idx)) {
 										
 					if (writerDispatch.isSkippedSequence()) {
-						int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[1+activeScriptCursor];
+						int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[1+writerDispatch.activeScriptCursor];
 						//System.err.println("skipped foreward :"+seqScriptLength);
 						//jump over sequence group in script
-						activeScriptCursor += seqScriptLength;
+						writerDispatch.activeScriptCursor += seqScriptLength;
 					} else if (!writerDispatch.isFirstSequenceItem()) {						
 				    	//jump back to top of this sequence in the script.
-						int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[activeScriptCursor];
+						int seqScriptLength = TokenBuilder.MAX_INSTANCE&fullScript[writerDispatch.activeScriptCursor];
 						//System.err.println(TokenBuilder.tokenToString(fullScript[activeScriptCursor])+
 						//		           " jump to "+TokenBuilder.tokenToString(fullScript[activeScriptCursor-seqScriptLength]));
 						
-						activeScriptCursor -= seqScriptLength;
+						writerDispatch.activeScriptCursor -= seqScriptLength;
 						
 						
 						
 					} else {
-						activeScriptCursor++;
+						writerDispatch.activeScriptCursor++;
 					}
 					
 					needTemplate = false;
@@ -102,7 +102,7 @@ public class FASTDynamicWriter {
 				idx += stepSizeInRingBuffer(token);
 				
 			
-			} while (++activeScriptCursor<activeScriptLimit);
+			} while (++writerDispatch.activeScriptCursor<writerDispatch.activeScriptLimit);
 			needTemplate = true;
 			ringBuffer.removeForward(idx);
 		}
@@ -113,8 +113,8 @@ public class FASTDynamicWriter {
 
 		needTemplate=true;
 		
-		activeScriptCursor=0;
-		activeScriptLimit=0;
+		writerDispatch.activeScriptCursor=0;
+		writerDispatch.activeScriptLimit=0;
 		
     	if (clearData) {
     		this.writerDispatch.reset();

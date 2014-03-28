@@ -114,15 +114,42 @@ public class FASTDynamicReader implements FASTDataProvider {
 				return 0;
 			}	
 			//must have room to store the new template
-			if (lastCapacity<1) {
+			int req = preambleDataLength+1;
+			if (lastCapacity<req) {
 				lastCapacity = ringBuffer.availableCapacity();
-				if (lastCapacity<1) {
+				if (lastCapacity<req) {
 					return 0x80000000;
 				}
 			}
-			lastCapacity--;
+			lastCapacity-=req;
 			
-			startNewTemplate();
+			//get next token id then immediately start processing the script
+					///read prefix bytes if any (only used by some implementations)
+					if (preambleDataLength!=0) {
+						readerDispatch.dispatchPreamble(preambleData);
+						ringBuffer.appendBytes(preambleData);
+						
+					};
+					///////////////////
+					
+					//open message (special type of group)			
+					int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
+					if (templateId>=0) {
+						messageCount++;
+					}
+					int i = templateId;
+			//	System.err.println("**** write template id:"+i+" at "+ringBuffer.addPos);
+					ringBuffer.appendInteger(i);//write template id at the beginning of this message
+									
+					//set the cursor start and stop for this template				
+					readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); 
+					readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
+									
+					//Worst case scenario is that this is full of decimals which each need 3.
+					//but for easy math we will use 4, will require a little more empty space in buffer		    	
+					//however we will not need a lookup table 
+					neededSpaceOrTemplate = (readerDispatch.activeScriptLimit-readerDispatch.activeScriptCursor)<<2;
+					assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
 		} 
 		
 		if (neededSpaceOrTemplate>0) {
@@ -172,41 +199,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 
 	
 
-	private void startNewTemplate() {
-		//get next token id then immediately start processing the script
-		int i = parseNextTokenId();
-//	System.err.println("**** write template id:"+i+" at "+ringBuffer.addPos);
-		ringBuffer.appendInteger(i);//write template id at the beginning of this message
-						
-		//set the cursor start and stop for this template				
-		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); 
-		readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
-						
-		//Worst case scenario is that this is full of decimals which each need 3.
-		//but for easy math we will use 4, will require a little more empty space in buffer		    	
-		//however we will not need a lookup table 
-		neededSpaceOrTemplate = (readerDispatch.activeScriptLimit-readerDispatch.activeScriptCursor)<<2;
-		assert(neededSpaceOrTemplate>0) : "Script must have positive value";// zero is used for unknown template
-	}
-
-	
-	private int parseNextTokenId() {
-		///read prefix bytes if any (only used by some implementations)
-		if (preambleDataLength!=0) {
-			readerDispatch.dispatchPreamble(preambleData);
-		};
-		///////////////////
-		
-		//open message (special type of group)			
-		int templateId = readerDispatch.openMessage(catalog.maxTemplatePMapSize());
-		if (templateId>=0) {
-			messageCount++;
-		}
-					
-		return templateId;
-
-	}
-	
 	public byte[] prefix() {
 		return preambleData;
 	}

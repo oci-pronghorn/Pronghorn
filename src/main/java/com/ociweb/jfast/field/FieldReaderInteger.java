@@ -45,7 +45,7 @@ public class FieldReaderInteger {
      * @param b
      * @return
      */
-    private static final int absentValue(int b) {
+    static final int absentValue(int b) {
     	return ((1|(0-(b>>1)))>>>(1&b));  
     }
 
@@ -144,10 +144,8 @@ public class FieldReaderInteger {
 			int last = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
 			return last == 0 ?
 					//default value is null so return optional.
-					absentValue(TokenBuilder.extractAbsent(token)) : //TODO: experiment with compute vs lookup.
-//					absentInts[TokenBuilder.extractAbsent(token)] : 
-						//default value 
-					last;
+					absentValue(TokenBuilder.extractAbsent(token)) : 
+					last-1;
 	
 		} else {
 			int value = reader.readIntegerUnsigned();

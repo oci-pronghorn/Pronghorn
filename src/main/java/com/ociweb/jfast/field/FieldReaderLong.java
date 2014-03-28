@@ -39,19 +39,9 @@ public class FieldReaderLong {
      * @param b
      * @return
      */
-    private static long absentValue(int b) {
+    static long absentValue(int b) {
     	return ((1|(0l-(b>>1)))>>>(1&b));  	
     }
-    
-//    static { //TODO: build unit test for these 4 values.
-//    	System.err.println(Long.toBinaryString(absentValue(0)));
-//    	System.err.println(Long.toBinaryString(absentValue(1)));
-//    	System.err.println(Long.toBinaryString(absentValue(2)));
-//    	System.err.println(Long.toBinaryString(absentValue(3)));
-//    	
-//    	
-//    }
-    
 	
 	public void reset(DictionaryFactory df) {
 		df.reset(lastValue);

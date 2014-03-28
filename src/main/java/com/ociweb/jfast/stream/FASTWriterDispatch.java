@@ -15,6 +15,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
@@ -47,11 +48,17 @@ public final class FASTWriterDispatch {
 	private int sequenceCountStackHead = -1;
 	private boolean isFirstSequenceItem = false;
 	private boolean isSkippedSequence = false;
+	private DispatchObserver observer;
+	int activeScriptCursor;
+	int activeScriptLimit;
+	final int[] fullScript;
 		
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
 			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes,
-			                   FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers) {
+			                   FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers,
+			                   int[] fullScript) {
 
+		this.fullScript = fullScript;
 		this.writer = writer;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -68,6 +75,10 @@ public final class FASTWriterDispatch {
 		this.templateStack = new int[maxTemplates];
 		this.queue = queue;
 		this.dictionaryMembers = dictionaryMembers;
+	}
+	
+	public void setDispatchObserver(DispatchObserver observer) {
+		this.observer=observer;
 	}
 	
 	/**
@@ -114,7 +125,7 @@ public final class FASTWriterDispatch {
 	 * To write the "null" or absence of a value use 
 	 *    void write(int id) 
 	 */
-	public void write(int token, long value) {
+	public void writeLong(int token, long value) {
 		
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE)));
 		
@@ -126,12 +137,16 @@ public final class FASTWriterDispatch {
 				acceptLongSigned(token, value);
 			}
 		} else {
-			//optional
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				acceptLongUnsignedOptional(token, value);
-			} else {
-				acceptLongSignedOptional(token, value);
-			}	
+			if (value==TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
+				write(token);
+			} else {	
+				//optional
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					acceptLongUnsignedOptional(token, value);
+				} else {
+					acceptLongSignedOptional(token, value);
+				}	
+			}
 		}
 	}
 
@@ -282,7 +297,7 @@ public final class FASTWriterDispatch {
 	 * To write the "null" or absence of an integer use 
 	 *    void write(int id) 
 	 */
-	public void write(int token, int value) {
+	public void writeInteger(int token, int value) {
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			//not optional
@@ -292,12 +307,16 @@ public final class FASTWriterDispatch {
 				acceptIntegerSigned(token, value);
 			}
 		} else {
-			//optional
-			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
-				acceptIntegerUnsignedOptional(token, value);
-			} else {
-				acceptIntegerSignedOptional(token, value);
-			}	
+			if (value==TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
+				write(token);
+			} else {				
+				//optional
+				if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
+					acceptIntegerUnsignedOptional(token, value);
+				} else {
+					acceptIntegerSignedOptional(token, value);
+				}	
+			}
 		}
 	}
 	
@@ -1057,28 +1076,20 @@ public final class FASTWriterDispatch {
 	
    // long fieldCount = 0;
 	
-	public boolean dispatchWriteByToken(int token, int fieldPos) {
+	public boolean dispatchWriteByToken(int fieldPos) {
 	
+		int token = fullScript[activeScriptCursor];
 		
-		
-	//	System.err.println("Dispatch "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos+" ringIdx:"+(queue.remPos+fieldPos) );
-		if (false) {
-			long absPos = writer.totalWritten()+writer.remaining();
-			if (absPos<25) {
-				System.err.println(absPos+" WWW "+TokenBuilder.tokenToString(token));
-			}
-		}
-		
-	//	fieldCount++;
-		
+		assert(gatherWriteData(writer, token, activeScriptCursor, fieldPos, queue));
+				
 		if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
 			//0????
 			if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 				//00???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					write(token,queue.readInteger(fieldPos));
+					writeInteger(token,queue.readInteger(fieldPos));
 				} else {
-					write(token,queue.readLong(fieldPos));
+					writeLong(token,queue.readLong(fieldPos));
 				}
 			} else {
 				//01???
@@ -1120,6 +1131,7 @@ public final class FASTWriterDispatch {
 						//this is NOT a message/template so the non-template pmapSize is used.			
 				//		System.err.println("open group:"+TokenBuilder.tokenToString(token));
 						openGroup(token, nonTemplatePMapSize);
+						
 					} else {
 					//	System.err.println("close group:"+TokenBuilder.tokenToString(token));
 						closeGroup(token);//closing this seq causing throw!!
@@ -1139,7 +1151,7 @@ public final class FASTWriterDispatch {
 					//Length Type, no others defined so no need to keep checking
 					//Only happens once before a node sequence so push it on the count stack
 					int length=queue.readInteger(fieldPos);
-					write(token, length);
+					writeInteger(token, length);
 					
 					if (length==0) {
 						isFirstSequenceItem = false;
@@ -1211,6 +1223,16 @@ public final class FASTWriterDispatch {
 			
 		}
 		return false;
+	}
+
+	private boolean gatherWriteData(PrimitiveWriter writer, int token, int cursor, int fieldPos, FASTRingBuffer queue) {
+		
+		if (null!=observer) {
+			long absPos = writer.totalWritten()+writer.remaining()-1; 
+			observer.tokenItem(absPos, token, cursor);
+		}
+		
+		return true;
 	}
 
 	public void dispatchPreable(byte[] preambleData) {

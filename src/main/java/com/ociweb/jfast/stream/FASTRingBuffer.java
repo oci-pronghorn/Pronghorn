@@ -96,6 +96,14 @@ public class FASTRingBuffer implements CharSequence {
 		buffer[mask&addPos++] = (int)(value&0xFFFFFFFF);
 	}
 
+	public void appendBytes(byte[] source) {
+		
+		int i = 0;
+		while (i<source.length) {
+			buffer[mask&addPos++] = source[i++];
+		}
+	}
+
 	
 	//Text RingBuffer encoding for two ints
 	// pos  pos  char ring buffer, length and position
@@ -191,6 +199,16 @@ public class FASTRingBuffer implements CharSequence {
 		return buffer[mask&(remPos+idx+1)];
 	}
 
+	
+	public void readBytes(int idx, byte[] target) {
+		//TODO: this is not a compact form, check this later if we have performnce problems.
+		int i = 0;
+		while (i<target.length) {
+			target[i] = (byte)buffer[mask&(remPos+idx+i)];
+			i++;
+		}
+	}
+	
 	//this is for fast direct WRITE TO target
 	public void readChars(int idx, char[] target, int targetIdx) {
 		int ref1 = buffer[mask&(remPos+idx)];
@@ -254,6 +272,7 @@ public class FASTRingBuffer implements CharSequence {
 	public boolean hasContent() {
 		return addPos>remPos;
 	}
+
 
 
 	

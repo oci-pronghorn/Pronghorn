@@ -82,7 +82,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -630,7 +630,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = intTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, intTestData[j]);
+				staticWriter.writeInteger(token, intTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
@@ -670,7 +670,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = intTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, intTestData[j]);
+				staticWriter.writeInteger(token, intTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

@@ -36,6 +36,10 @@ public class FASTReaderDispatch{
 	
 	private final DictionaryFactory dictionaryFactory;
 	
+
+	private DispatchObserver observer;
+	
+	
 	//constant fields are always the same or missing but never anything else.
 	//         manditory constant does not use pmap and has constant injected at destnation never xmit
 	//         optional constant does use the pmap 1 (use initial const) 0 (not present)
@@ -155,13 +159,8 @@ public class FASTReaderDispatch{
 		do {
 			int token = script[cursor];
 			
-			if (false) {
-				long absPos = reader.totalRead()-reader.remaining();
-				if (absPos<25) {
-					System.err.println(absPos+" RRR "+TokenBuilder.tokenToString(token));
-				}
-			}
-			
+			assert(gatherReadData(reader,token,cursor));
+
 			//TODO: Need group method with optional support
 			//TODO: Need a way to unify Decimal? Do as two Tokens?
 //			StringBuilder target = new StringBuilder();
@@ -253,6 +252,20 @@ public class FASTReaderDispatch{
 		} while (++cursor<limit);
 		activeScriptCursor = cursor;
 		return false;
+	}
+
+	public void setDispatchObserver(DispatchObserver observer) {
+		this.observer=observer;
+	}
+	
+	private boolean gatherReadData(PrimitiveReader reader, int token, int cursor) {
+
+		if (null!=observer) {
+			long absPos = reader.totalRead()-reader.remaining();
+			observer.tokenItem(absPos,token,cursor);
+		}
+		
+		return true;
 	}
 
 	private void resetDictionary(int token) {

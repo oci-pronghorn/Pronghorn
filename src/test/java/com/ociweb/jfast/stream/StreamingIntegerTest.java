@@ -107,7 +107,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
 		
 		long start = System.nanoTime();
 		assert(operationIters>3) : "must allow operations to have 3 data points but only had "+operationIters;
@@ -129,14 +129,14 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
-						fw.write(token, testConst); 
+						fw.writeInteger(token, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
 						//System.err.println("write null");
 						fw.write(token);
 					} else {
-						fw.write(token, testData[f]); 
+						fw.writeInteger(token, testData[f]); 
 					}
 				}
 							

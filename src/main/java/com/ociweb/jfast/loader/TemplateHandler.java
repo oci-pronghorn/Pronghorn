@@ -428,7 +428,11 @@ public class TemplateHandler extends DefaultHandler {
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
     				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
     										optionalOffset+Integer.parseInt(fieldOperatorValue));
-    			} 
+    				//System.err.println("default value saved for:"+fieldId+"  of "+(optionalOffset+Integer.parseInt(fieldOperatorValue))+" with "+optionalOffset);
+    			} else if (optionalOffset!=0){
+    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
+    						optionalOffset);
+    			}
     			fieldOperatorValue=null;
     		}
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
@@ -455,7 +459,10 @@ public class TemplateHandler extends DefaultHandler {
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
     				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
     										optionalOffset+Long.parseLong(fieldOperatorValue));
-    			} 
+    			} else if (optionalOffset!=0){
+    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
+    						optionalOffset);
+    			}
     			fieldOperatorValue=null;
     		}
     		
@@ -493,27 +500,44 @@ public class TemplateHandler extends DefaultHandler {
     		if (fieldExponentOperator==OperatorMask.Field_Constant ||
     			fieldExponentOperator==OperatorMask.Field_Default) {
     			
-    			int optionalOffset = 0;
-    			if (fieldOperator==OperatorMask.Field_Default) {
+    			int optionalExponentOffset = 0;
+    			if (fieldExponentOperator==OperatorMask.Field_Default) {
     				if ((fieldType&1)!=0) {
     					//optional default
-    					optionalOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
+    					optionalExponentOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
     				}
     			}
     			
     			//only set if the value was given
     			if (null!=fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
     				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-    											       Integer.parseInt(fieldExponentOperatorValue));
-    			} 
+    								optionalExponentOffset+Integer.parseInt(fieldExponentOperatorValue));
+    			} else if (optionalExponentOffset!=0){
+    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
+							optionalExponentOffset);
+    			}
     			fieldExponentOperatorValue=null;
     		}    	
-    		if (fieldMantissaOperator==OperatorMask.Field_Constant ||fieldMantissaOperator==OperatorMask.Field_Default) {
+    		if (fieldMantissaOperator==OperatorMask.Field_Constant ||
+    			fieldMantissaOperator==OperatorMask.Field_Default) {
+    			
+    			
+    			int optionalMantissaOffset = 0;
+    			if (fieldMantissaOperator==OperatorMask.Field_Default) {
+    				if ((fieldType&1)!=0) {
+    					//optional default
+    					optionalMantissaOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
+    				}
+    			}
+    			
     			//only set if the value was given
     			if (null!=fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
     				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-    											       Long.parseLong(fieldMantissaOperatorValue));
-    			} 
+    						optionalMantissaOffset+Long.parseLong(fieldMantissaOperatorValue));
+    			} else if (optionalMantissaOffset!=0){
+    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
+    						optionalMantissaOffset);
+    			}
     			fieldMantissaOperatorValue=null;
     		} 
     		

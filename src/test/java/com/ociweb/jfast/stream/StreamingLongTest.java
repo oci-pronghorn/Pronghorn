@@ -80,7 +80,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0]);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -104,13 +104,13 @@ public class StreamingLongTest extends BaseStreamingTest {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
-						fw.write(token, testConst); 
+						fw.writeLong(token, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
-						fw.write(token, testData[f]); 
+						fw.writeLong(token, testData[f]); 
 					}
 				}	
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
