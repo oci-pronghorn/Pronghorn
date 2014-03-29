@@ -168,7 +168,7 @@ public final class FieldWriterLong {
 		int idx = token & INSTANCE_MASK;
 		long tmp = value - lastValue[idx];
 		lastValue[idx] = value;		
-		System.err.println("*** long-delta "+value);
+		//System.err.println("*** long-delta "+value);
 		writer.writeLongSigned(tmp);
 	}
 	
@@ -177,7 +177,7 @@ public final class FieldWriterLong {
 		int idx = token & INSTANCE_MASK;
 		long delta = value - lastValue[idx];
 		lastValue[idx] = value;
-		System.err.println("long-delta-optional "+value);
+		//System.err.println("long-delta-optional "+value);
 		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 	}
 

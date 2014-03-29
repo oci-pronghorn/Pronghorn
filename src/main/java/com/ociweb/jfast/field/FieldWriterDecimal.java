@@ -4,6 +4,7 @@
 package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterDecimal {
@@ -36,13 +37,22 @@ public class FieldWriterDecimal {
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
 		
-		writeExponentOptional(token, exponent);
-		writeMantissaOptional(token, mantissa);
+		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
+			writerDecimalExponent.writeNull(token);
+		} else {
+			writeExponentOptional(token, exponent);
+		}
 		
+		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
+			writerDecimalMantissa.writeLongNull(token);
+		} else {
+			writeMantissaOptional(token, mantissa);
+		}		
 	}
 
 
 	private void writeMantissaOptional(int token, long mantissa) {
+		
 		//oppMaint
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
