@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.FieldReaderChar;
+import com.ociweb.jfast.field.FieldReaderText;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalog;

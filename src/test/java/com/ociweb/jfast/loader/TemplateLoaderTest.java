@@ -455,11 +455,11 @@ public class TemplateLoaderTest {
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
 		
 				
-		byte[] targetBuffer = new byte[(int)(totalTestBytes*1.25)];//TODO: large for now until testing is complete.
+		byte[] targetBuffer = new byte[(int)(totalTestBytes)];
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		int writeBuffer = 2048;
 		int maxGroupCount = 256;
-		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,true);
+		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,false);//TODO: investigated setting true and false for same behavior.
 		FASTWriterDispatch writerDispatch = new FASTWriterDispatch(primitiveWriter,
 				catalog.dictionaryFactory(),
 				catalog.templatesCount(), 
@@ -476,8 +476,9 @@ public class TemplateLoaderTest {
 		readerDispatch.setDispatchObserver(new DispatchObserver(){
 
 			@Override
-			public void tokenItem(long absPos, int token, int cursor) {
-				    String msg = "\nR_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" cur:"+cursor;
+			public void tokenItem(long absPos, int token, int cursor, String value) {
+				    String msg = "\nR_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
+				    		         " tok:"+token+" "+value;
 					if (reads.containsKey(absPos)) {
 						msg = reads.get(absPos)+" "+msg;
 					}
@@ -486,8 +487,9 @@ public class TemplateLoaderTest {
 		writerDispatch.setDispatchObserver(new DispatchObserver(){
 
 			@Override
-			public void tokenItem(long absPos, int token, int cursor) {
-					String msg = "\nW_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" cur:"+cursor;
+			public void tokenItem(long absPos, int token, int cursor, String value) {
+					String msg = "\nW_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
+							 " tok:"+token+" "+value;
 					if (writes.containsKey(absPos)) {
 						msg = writes.get(absPos)+" "+msg;
 					}
@@ -501,7 +503,7 @@ public class TemplateLoaderTest {
 		int count = 5;
 				
 		Exception temp = null;
-		
+		long wroteSize = 0;
 		int msgs = 0;
 		int grps = 0;
 		int iter = warmup;
@@ -531,6 +533,8 @@ public class TemplateLoaderTest {
 			primitiveReader.reset();
 			dynamicReader.reset(true);
 			
+			primitiveWriter.flush();
+			wroteSize = primitiveWriter.totalWritten();
 			fastOutput.reset();
 			primitiveWriter.reset();
 			dynamicWriter.reset(true);
@@ -539,8 +543,10 @@ public class TemplateLoaderTest {
 			readerDispatch.setDispatchObserver(null);
 			writerDispatch.setDispatchObserver(null);
 		}
+	 	
 		
 		scanForFirstMismatch(targetBuffer,  fastInput.getSource(), reads, writes);
+		assertEquals("test file bytes",totalTestBytes,wroteSize);
 		
 				
 		iter = count;
@@ -599,7 +605,7 @@ public class TemplateLoaderTest {
 	private void scanForFirstMismatch(byte[] targetBuffer, byte[] sourceBuffer, 
 			                            Map<Long, String> reads, Map<Long, String> writes) {
 		int lookAhead = 11;
-		int maxDisplay = 21;
+		int maxDisplay = 31;
 		
 		int i = 0;
 		boolean err = false;
@@ -629,6 +635,14 @@ public class TemplateLoaderTest {
 				builder.append(i).append(' ')
 				       .append(" R").append(hex(sourceBuffer[i])).append(' ')
 				       .append(" W").append(hex(targetBuffer[i])).append(' ');
+				
+				builder.append(" R").append(bin(sourceBuffer[i])).append(' ');
+				builder.append(" W").append(bin(targetBuffer[i])).append(' ');
+				
+				if (sourceBuffer[i]!=targetBuffer[i]) {
+					builder.append(" ****** ");
+				}
+				
 				Long lng = Long.valueOf(i);
 				if (reads.containsKey(lng)) {
 					builder.append(reads.get(lng)).append(' ');
@@ -654,6 +668,15 @@ public class TemplateLoaderTest {
 			return t;
 		}
 	}
+    private String bin(int x) {
+    	String t = Integer.toBinaryString(0xFF&x);
+    	while (t.length()<8) {
+    		t='0'+t;
+    	} 
+    	
+    	return t.substring(t.length()-8);
+    	
+    }
 	
 	private FASTInputByteArray buildInputForTestingByteArray(File fileSource) {
 		byte[] fileData = null;

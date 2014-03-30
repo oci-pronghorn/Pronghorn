@@ -11,16 +11,18 @@ public final class FieldWriterLong {
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
 	final long[]  lastValue;
+	final long[]  init;
 	private final int INSTANCE_MASK;
 	private final PrimitiveWriter writer;
 
-	public FieldWriterLong(PrimitiveWriter writer, long[] values) {
+	public FieldWriterLong(PrimitiveWriter writer, long[] values, long[] init) {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(values.length));
 		
 		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.writer = writer;
 		this.lastValue = values;
+		this.init = init;
 	}
 	
 	public void reset(DictionaryFactory df) {
@@ -361,6 +363,6 @@ public final class FieldWriterLong {
 	}
 
 	public void reset(int idx) {
-		lastValue[idx] = 0;
+		lastValue[idx] = init[idx];
 	}
 }

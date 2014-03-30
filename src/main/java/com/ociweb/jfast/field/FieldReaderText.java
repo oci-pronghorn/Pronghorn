@@ -6,7 +6,7 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FieldReaderChar {
+public class FieldReaderText {
 
 	public static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
@@ -14,7 +14,7 @@ public class FieldReaderChar {
 	private final char[] targ;
 	private final int INSTANCE_MASK;
 	
-	public FieldReaderChar(PrimitiveReader reader, TextHeap heap) {
+	public FieldReaderText(PrimitiveReader reader, TextHeap heap) {
 		
 		assert(null==heap || heap.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(null==heap || FieldReaderInteger.isPowerOfTwo(heap.itemCount()));

@@ -12,11 +12,10 @@ public class FieldWriterDecimal {
 	private final FieldWriterInteger writerDecimalExponent;
 	private final FieldWriterLong writerDecimalMantissa;
 	
-	public FieldWriterDecimal(PrimitiveWriter writer, int[] exponentValues, long[] mantissaValues) {
-		writerDecimalExponent = new FieldWriterInteger(writer, exponentValues);
-		writerDecimalMantissa = new FieldWriterLong(writer, mantissaValues);
+	public FieldWriterDecimal(PrimitiveWriter writer, int[] exponentValues, int[] exponentInit, long[] mantissaValues, long[] mantissaInit) {
+		writerDecimalExponent = new FieldWriterInteger(writer, exponentValues, exponentInit);
+		writerDecimalMantissa = new FieldWriterLong(writer, mantissaValues, mantissaValues);
 	}
-
 
 	public void writeDecimalNone(int token, int exponent, long mantissa) {
 		

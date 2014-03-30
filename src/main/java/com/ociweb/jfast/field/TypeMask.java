@@ -70,6 +70,34 @@ public final class TypeMask {
 		"Dictionary"
 		};
 	
+	public final static String[] methodTypeInstanceName = new String[]{
+		"readerInteger",
+		"readerInteger",
+		"readerInteger",
+		"readerInteger",
+		"readerLong",
+		"readerLong",
+		"readerLong",
+		"readerLong",
+		"readerText",
+		"readerText",
+		"readerText",
+		"readerText",
+		"readerDecimal", //need  exponent and mantissa strings.
+		"readerDecimal",
+		"readerBytes",
+		"readerBytes",
+		"this",
+		"Reserved1",
+		"Reserved2",
+		"Reserved3",
+		"this",
+		"Reserved5",
+		"Reserved6",
+		"Reserved7",
+		"this"
+		};
+	
 	public final static String[] methodTypeSuffix = new String[]{
 		"",
 		"Optional",

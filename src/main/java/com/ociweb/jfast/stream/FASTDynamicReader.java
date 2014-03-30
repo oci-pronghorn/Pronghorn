@@ -167,8 +167,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 				if (readerDispatch.jumpSequence>=0) {
 				    return processSequence(readerDispatch.jumpSequence); 
 				}
-			    //jumping over sequence (forward) it was skipped (rare case)
-				readerDispatch.activeScriptCursor += (TokenBuilder.MAX_INSTANCE&fullScript[++readerDispatch.activeScriptCursor])+1;			    
+		    
 		}
 		return finishTemplate();
 	}

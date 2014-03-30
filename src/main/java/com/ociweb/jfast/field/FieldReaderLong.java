@@ -10,10 +10,10 @@ public class FieldReaderLong {
 	
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;
-	final long[]  lastValue; 
+	final long[] lastValue; 
+	final long[] init;
 	
-	
-	public FieldReaderLong(PrimitiveReader reader, long[] values) {
+	public FieldReaderLong(PrimitiveReader reader, long[] values, long[] init) {
 		
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(FieldReaderInteger.isPowerOfTwo(values.length));
@@ -22,6 +22,7 @@ public class FieldReaderLong {
 		
 		this.reader = reader;
 		this.lastValue = values;
+		this.init = init;
 	}
 	
     /**
@@ -283,7 +284,7 @@ public class FieldReaderLong {
 	}
 
 	public void reset(int idx) {
-		lastValue[idx] = 0;
+		lastValue[idx] = init[idx];
 	}
 	
 	

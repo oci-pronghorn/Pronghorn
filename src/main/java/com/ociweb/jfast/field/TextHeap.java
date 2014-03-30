@@ -721,39 +721,23 @@ public class TextHeap {
 
 	public boolean equals(int idx, char[] target, int targetIdx, int length) {
 		
-		int pos;
-		int lim;
-		char[] buf;
 		if (idx<0) {
 			int offset = idx<<1;
-			
-			pos = initTat[offset];
-			lim = initTat[offset+1];
-			buf = initBuffer;
-			
+			return eq(target, targetIdx, length, initTat[offset], initTat[offset+1], initBuffer);
 		} else {
 			int offset = idx<<2;
-			
-			pos = tat[offset];
-			lim = tat[offset+1];
-			buf = data;
+			return eq(target, targetIdx, length, tat[offset], tat[offset+1], data);
 		}
-
-		return eq(target, targetIdx, length, pos, lim, buf);
 	}
 
 
 	private boolean eq(char[] target, int targetIdx, int length, int pos, int lim, char[] buf) {
 		int len = lim-pos;
-		if (len<0 && length==0) {
-			return true;
-		}
-		
-		int i = length;
-		if (len != i) {
+		if (len != length) {
 			return false;
 		}
 				
+		int i = length;
 		while (--i>=0) {
 			if (target[targetIdx+i]!=buf[pos+i]) {
 				return false;

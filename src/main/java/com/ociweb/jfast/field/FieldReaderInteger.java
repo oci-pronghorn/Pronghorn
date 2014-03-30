@@ -11,8 +11,9 @@ public class FieldReaderInteger {
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;	
 	final int[]  lastValue;
+	final int[]  init;
    
-	public FieldReaderInteger(PrimitiveReader reader, int[] values) {
+	public FieldReaderInteger(PrimitiveReader reader, int[] values, int[] init) {
 
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
 		assert(isPowerOfTwo(values.length));
@@ -20,6 +21,7 @@ public class FieldReaderInteger {
 		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.reader = reader;
 		this.lastValue = values;
+		this.init = init;
 	}
 	
 	public static boolean isPowerOfTwo(int length) {
@@ -50,7 +52,9 @@ public class FieldReaderInteger {
     }
 
 	public void reset(int idx) {
-		lastValue[idx] = 0;
+
+		//System.err.println("reset write idx "+idx+" to "+init[idx]);
+		lastValue[idx] = init[idx];
 	}
 	
 	public void reset(DictionaryFactory df) {

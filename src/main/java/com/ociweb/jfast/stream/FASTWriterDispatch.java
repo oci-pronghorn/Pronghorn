@@ -65,10 +65,14 @@ public final class FASTWriterDispatch {
 		
 		this.sequenceCountStack = new int[100];//TODO: find the right size
 		
-		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary());
-		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary());
+		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary(),dcr.integerDictionary());
+		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary(),dcr.longDictionary());
 		//
-		this.writerDecimal         = new FieldWriterDecimal(writer,dcr.decimalExponentDictionary(),dcr.decimalMantissaDictionary());
+		this.writerDecimal         = new FieldWriterDecimal(writer,
+															dcr.decimalExponentDictionary(),
+															dcr.decimalExponentDictionary(),		
+															dcr.decimalMantissaDictionary(),
+															dcr.decimalMantissaDictionary());
 		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxCharSize,gapChars)); 
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxBytesSize,gapBytes));
 				
@@ -1228,8 +1232,21 @@ public final class FASTWriterDispatch {
 	private boolean gatherWriteData(PrimitiveWriter writer, int token, int cursor, int fieldPos, FASTRingBuffer queue) {
 		
 		if (null!=observer) {
+			
+			String value = "";
+			int type = TokenBuilder.extractType(token);
+			if (type==TypeMask.GroupLength  ||
+			    type==TypeMask.IntegerSigned ||
+			    type==TypeMask.IntegerSignedOptional ||
+			    type==TypeMask.IntegerUnsigned ||
+			    type==TypeMask.IntegerUnsignedOptional) {
+				
+				value = "<"+queue.readInteger(fieldPos)+">";
+				
+			}
+						
 			long absPos = writer.totalWritten()+writer.remaining()-1; 
-			observer.tokenItem(absPos, token, cursor);
+			observer.tokenItem(absPos, token, cursor, value);
 		}
 		
 		return true;

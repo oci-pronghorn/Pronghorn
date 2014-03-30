@@ -13,10 +13,14 @@ public class FieldReaderDecimal {
 	private final FieldReaderLong mantissa;
 	private int readFromIdx = -1;	
 	
-	public FieldReaderDecimal(PrimitiveReader reader, int[] decimalExponentDictionary, long[] decimalMantissaDictionary) {
+	public FieldReaderDecimal(PrimitiveReader reader, 
+			                  int[] decimalExponentDictionary, 
+			                  int[] decimalExponentInit,
+			                  long[] decimalMantissaDictionary,
+			                  long[] decimalMantissaInit) {
 		this.reader = reader;
-		this.exponent = new FieldReaderInteger(reader, decimalExponentDictionary);
-		this.mantissa = new FieldReaderLong(reader, decimalMantissaDictionary);
+		this.exponent = new FieldReaderInteger(reader, decimalExponentDictionary, decimalExponentInit);
+		this.mantissa = new FieldReaderLong(reader, decimalMantissaDictionary, decimalMantissaInit);
 	}
 
 	//TODO: Optional absent null is not implemented yet for Decimal type.

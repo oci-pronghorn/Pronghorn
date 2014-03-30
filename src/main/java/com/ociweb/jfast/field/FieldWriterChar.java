@@ -671,9 +671,12 @@ public class FieldWriterChar {
 		writer.writeTextASCII(value,offset,length);
 	}
 
-	public void reset(int idx) {
+	public void reset(int idx) {		
 		if (null!=heap) {
-			heap.reset();		
+			//TODO: for read and WRITE this is wrong and URGENT TO FIX.
+			
+			heap.setNull(idx);
+			
 		}
 	}
 

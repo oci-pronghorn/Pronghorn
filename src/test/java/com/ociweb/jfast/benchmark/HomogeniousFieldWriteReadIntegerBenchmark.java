@@ -75,8 +75,8 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	
-	static final FieldWriterInteger fw = new FieldWriterInteger(pw,dcr.integerDictionary());
-	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary());
+	static final FieldWriterInteger fw = new FieldWriterInteger(pw,dcr.integerDictionary(),dcr.integerDictionary());
+	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary(),dcr.integerDictionary());
 		
 	
 	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4, TokenBuilder.MASK_ABSENT_DEFAULT);
