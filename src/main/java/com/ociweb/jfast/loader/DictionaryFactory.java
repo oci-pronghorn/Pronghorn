@@ -270,7 +270,7 @@ public class DictionaryFactory {
 	
 	
 	
-	public void addInit(int idx, int value) {
+	public void addInitInteger(int idx, int value) {
 		
 		integerInitIndex[integerInitCount] = idx;
 		integerInitValue[integerInitCount] = value;
@@ -286,7 +286,7 @@ public class DictionaryFactory {
 		
 	}
 	
-	public void addInit(int idx, long value) {
+	public void addInitLong(int idx, long value) {
 		
 		longInitIndex[longInitCount] = idx;
 		longInitValue[longInitCount] = value;
@@ -302,7 +302,7 @@ public class DictionaryFactory {
 		
 	}
 	
-	public void addInitDecimal(int idx, int exponent) {
+	public void addInitDecimalExponent(int idx, int exponent) {
 		
 		decimalExponentInitIndex[decimalExponentInitCount] = idx;
 		decimalExponentInitValue[decimalExponentInitCount] = exponent;
@@ -318,7 +318,7 @@ public class DictionaryFactory {
 		
 	}
 	
-	public void addInitDecimal(int idx, long mantissa) {
+	public void addInitDecimalMantissa(int idx, long mantissa) {
 		
 		decimalMantissaInitIndex[decimalMantissaInitCount] = idx;
 		decimalMantissaInitValue[decimalMantissaInitCount] = mantissa;

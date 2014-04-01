@@ -120,7 +120,9 @@ public class TokenBuilder {
 	}
 	
 	public static String tokenToString(int token) {
-		
+		if (token==-1) {
+			return "Unknown";
+		}
 		int type = extractType(token);
 		int count = token & TokenBuilder.MAX_INSTANCE;
 		

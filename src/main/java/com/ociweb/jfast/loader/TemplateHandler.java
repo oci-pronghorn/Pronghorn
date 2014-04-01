@@ -242,7 +242,8 @@ public class TemplateHandler extends DefaultHandler {
     		fieldName = attributes.getValue("name");
     		
     	} else if (qName.equalsIgnoreCase("copy")) { 
-    		fieldOperator = OperatorMask.Field_Copy;
+    		fieldOperator = OperatorMask.Field_Copy;    	
+    		fieldOperatorValue = attributes.getValue("value");
     		groupOpenTokenPMapStack[groupTokenStackHead]+=fieldPMapInc;
     		
     	} else if (qName.equalsIgnoreCase("constant")) {
@@ -259,11 +260,13 @@ public class TemplateHandler extends DefaultHandler {
     	    
     	} else if (qName.equalsIgnoreCase("delta")) {
     		fieldOperator = OperatorMask.Field_Delta;
+    		fieldOperatorValue = attributes.getValue("value");
     		//Never uses pmap
     		
     	} else if (qName.equalsIgnoreCase("increment")) {
     	    fieldOperator = OperatorMask.Field_Increment;
     	    groupOpenTokenPMapStack[groupTokenStackHead]+=fieldPMapInc;
+    	    fieldOperatorValue = attributes.getValue("value");
     	    
     	} else if (qName.equalsIgnoreCase("tail")) {
     		fieldOperator = OperatorMask.Field_Tail;
@@ -413,39 +416,6 @@ public class TemplateHandler extends DefaultHandler {
     		    		
     		int token = buildToken(tokenBuilderIntCount);
     		    		
-    		if (fieldOperator==OperatorMask.Field_Constant ||
-    			fieldOperator==OperatorMask.Field_Default) {
-    			
-    			int optionalOffset = 0;
-    			if (fieldOperator==OperatorMask.Field_Default) {
-    				if ((fieldType&1)!=0) {
-    					//optional default
-    					optionalOffset=1; //TODO: also missing case for...
-    				}
-    			}
-    			
-    			//only set if the value was given
-    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    										optionalOffset+Integer.parseInt(fieldOperatorValue));
-    				//System.err.println("default value saved for:"+fieldId+"  of "+(optionalOffset+Integer.parseInt(fieldOperatorValue))+" with "+optionalOffset);
-    			} else if (optionalOffset!=0){
-    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    						optionalOffset);
-    			}
-    			fieldOperatorValue=null;
-    		}
-	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
-	    	catalogScriptStops[catalogTemplateScriptIdx] = 1;
-    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-    		
-    	} else if (qName.equalsIgnoreCase("uint64") ||
-    			    qName.equalsIgnoreCase("int64")) {
-       		
-    		int token = buildToken(tokenBuilderLongCount);
-    		
-    		if (fieldOperator==OperatorMask.Field_Constant ||
-    			fieldOperator==OperatorMask.Field_Default) {
     			
     			int optionalOffset = 0;
     			if (fieldOperator==OperatorMask.Field_Default) {
@@ -457,14 +427,41 @@ public class TemplateHandler extends DefaultHandler {
     			
     			//only set if the value was given
     			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    										optionalOffset+Long.parseLong(fieldOperatorValue));
-    			} else if (optionalOffset!=0){
-    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,
-    						optionalOffset);
-    			}
+    				int tmp = Integer.parseInt(fieldOperatorValue);
+    				defaultConstValues.addInitInteger(token&TokenBuilder.MAX_INSTANCE,
+                        						tmp<0?tmp:optionalOffset+tmp);//+1 for optional not applied to negative values.
+    			} 
+    			//if no default is set the field must be undefined and therefore remains zero
+    			
     			fieldOperatorValue=null;
-    		}
+
+	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
+	    	catalogScriptStops[catalogTemplateScriptIdx] = 1;
+    		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+    		
+    	} else if (qName.equalsIgnoreCase("uint64") ||
+    			    qName.equalsIgnoreCase("int64")) {
+       		
+    		int token = buildToken(tokenBuilderLongCount);
+    		
+	
+    			int optionalOffset = 0;
+    			if (fieldOperator==OperatorMask.Field_Default) {
+    				if ((fieldType&1)!=0) {
+    					//optional default
+    					optionalOffset=1;
+    				}
+    			}
+    			
+    			//only set if the value was given
+    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+    				long tmp = Long.parseLong(fieldOperatorValue);
+    				defaultConstValues.addInitLong(token&TokenBuilder.MAX_INSTANCE,
+    						tmp<0?tmp:optionalOffset+tmp);//+1 for optional not applied to negative values.
+    			} 
+    			//if no default is set the field must be undefined and therefore remains zero
+    			
+    			fieldOperatorValue=null;
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
 	    	catalogScriptStops[catalogTemplateScriptIdx] = 1;
@@ -497,49 +494,44 @@ public class TemplateHandler extends DefaultHandler {
     		
     		int token = buildToken(tokenBuilderDecimalCount);
     		
-    		if (fieldExponentOperator==OperatorMask.Field_Constant ||
-    			fieldExponentOperator==OperatorMask.Field_Default) {
-    			
+
     			int optionalExponentOffset = 0;
     			if (fieldExponentOperator==OperatorMask.Field_Default) {
     				if ((fieldType&1)!=0) {
     					//optional default
-    					optionalExponentOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
+    					optionalExponentOffset=1; 
     				}
     			}
     			
     			//only set if the value was given
     			if (null!=fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
-    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-    								optionalExponentOffset+Integer.parseInt(fieldExponentOperatorValue));
-    			} else if (optionalExponentOffset!=0){
-    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-							optionalExponentOffset);
+    				int tmp = Integer.parseInt(fieldExponentOperatorValue);
+    				defaultConstValues.addInitDecimalExponent(token&TokenBuilder.MAX_INSTANCE,
+    								tmp<0?tmp:optionalExponentOffset+tmp);//+1 for optional not applied to negative values.
     			}
+    			//if no default is set the field must be undefined and therefore remains zero
+
     			fieldExponentOperatorValue=null;
-    		}    	
-    		if (fieldMantissaOperator==OperatorMask.Field_Constant ||
-    			fieldMantissaOperator==OperatorMask.Field_Default) {
-    			
+
     			
     			int optionalMantissaOffset = 0;
     			if (fieldMantissaOperator==OperatorMask.Field_Default) {
     				if ((fieldType&1)!=0) {
     					//optional default
-    					optionalMantissaOffset=1;  //TODO: NEED TO ADD TO BOTH FIELDS?
+    					optionalMantissaOffset=1;
     				}
     			}
     			
     			//only set if the value was given
     			if (null!=fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
-    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-    						optionalMantissaOffset+Long.parseLong(fieldMantissaOperatorValue));
-    			} else if (optionalMantissaOffset!=0){
-    				defaultConstValues.addInitDecimal(token&TokenBuilder.MAX_INSTANCE,
-    						optionalMantissaOffset);
-    			}
+    				long tmp = Long.parseLong(fieldMantissaOperatorValue);
+    				defaultConstValues.addInitDecimalMantissa(token&TokenBuilder.MAX_INSTANCE,
+    						tmp<0?tmp:optionalMantissaOffset+tmp);//+1 for optional not applied to negative values.
+    			} 
+    			//if no default is set the field must be undefined and therefore remains zero
+    			
     			fieldMantissaOperatorValue=null;
-    		} 
+
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
 	    	catalogScriptStops[catalogTemplateScriptIdx] = 2;

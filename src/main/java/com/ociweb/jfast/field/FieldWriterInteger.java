@@ -112,13 +112,8 @@ public final class FieldWriterInteger {
 			writer.writeIntegerUnsigned(value);
 		}
 	}
-	
-	//TODO: default optional must be +1 when setting.
+
 	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
-		//room for zero so we add one first 
-//		if (0==value && token == -2076442619  ) {
-//			System.err.println("xx");
-//		}
 		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
@@ -364,25 +359,6 @@ public final class FieldWriterInteger {
 	}
 
 	public void reset(int idx) {
-		/*
-		 * reset write idx 0 to 0
-reset write idx 1 to 1
-reset write idx 0 to 0
-reset write idx 1 to 0
-reset write idx 2 to 0
-reset write idx 4 to 0
-reset write idx 5 to 2
-reset write idx 6 to 0
-reset write idx 7 to 9
-reset write idx 8 to 0
-reset write idx 9 to 0
-reset write idx 10 to 0
-reset write idx 11 to 0
-reset write idx 12 to 0
-reset write idx 13 to 1
-reset write idx 14 to 1
-		 */
-	//	System.err.println("reset write idx "+idx+" to "+init[idx]);
 		lastValue[idx] = init[idx];//TODO: this is WRONG and is stopping the encoding of the file. we must have the default.
 	}
 	

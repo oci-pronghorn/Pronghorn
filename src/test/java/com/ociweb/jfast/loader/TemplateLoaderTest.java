@@ -51,7 +51,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(473, catalogByteArray.length);
+			assertEquals(471, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -254,7 +254,7 @@ public class TemplateLoaderTest {
 						//System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 						
 						if (isText(token)) {
-							queuedBytes += (4*queue.getCharLength(bufferIdx));
+							queuedBytes += (4*queue.readCharsLength(bufferIdx));
 						}
 						
 						//find the next index after this token.
@@ -457,9 +457,11 @@ public class TemplateLoaderTest {
 				
 		byte[] targetBuffer = new byte[(int)(totalTestBytes)];
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
+		
+		//TODO: when minimize latency set to false these need to be much bigger?
 		int writeBuffer = 2048;
-		int maxGroupCount = 256;
-		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,false);//TODO: investigated setting true and false for same behavior.
+		int maxGroupCount = 3;//NOTE: may need to be VERY large if minimize latency is turned off!!
+		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,true);
 		FASTWriterDispatch writerDispatch = new FASTWriterDispatch(primitiveWriter,
 				catalog.dictionaryFactory(),
 				catalog.templatesCount(), 
@@ -477,24 +479,27 @@ public class TemplateLoaderTest {
 
 			@Override
 			public void tokenItem(long absPos, int token, int cursor, String value) {
-				    String msg = "\nR_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
+				    String msg = "\n    R_"+TokenBuilder.tokenToString(token)+" id:"+(cursor>=catalog.scriptFieldIds.length? "ERR": ""+catalog.scriptFieldIds[cursor])+" curs:"+cursor+
 				    		         " tok:"+token+" "+value;
 					if (reads.containsKey(absPos)) {
 						msg = reads.get(absPos)+" "+msg;
 					}
 					reads.put(absPos, msg);
 			}});
-		writerDispatch.setDispatchObserver(new DispatchObserver(){
-
-			@Override
-			public void tokenItem(long absPos, int token, int cursor, String value) {
-					String msg = "\nW_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
-							 " tok:"+token+" "+value;
-					if (writes.containsKey(absPos)) {
-						msg = writes.get(absPos)+" "+msg;
-					}
-					writes.put(absPos, msg);
-			}});
+//		writerDispatch.setDispatchObserver(new DispatchObserver(){
+//
+//			@Override
+//			public void tokenItem(long absPos, int token, int cursor, String value) {
+//					absPos-=2;//TODO: we need the max pmap length and the real pmap length to get this right.
+//					
+//					
+//					String msg = "\n    W_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
+//							 " tok:"+token+" "+value;
+//					if (writes.containsKey(absPos)) {
+//						msg = writes.get(absPos)+" "+msg;
+//					}
+//					writes.put(absPos, msg);
+//			}});
 		
 		
 		System.gc();
@@ -526,6 +531,10 @@ public class TemplateLoaderTest {
 				}
 				grps++;
 			}		
+			while (queue.hasContent()) {
+				dynamicWriter.write();				
+			}
+			
 			
 			queue.reset();
 			
@@ -534,7 +543,7 @@ public class TemplateLoaderTest {
 			dynamicReader.reset(true);
 			
 			primitiveWriter.flush();
-			wroteSize = primitiveWriter.totalWritten();
+			wroteSize = Math.max(wroteSize, primitiveWriter.totalWritten());
 			fastOutput.reset();
 			primitiveWriter.reset();
 			dynamicWriter.reset(true);
@@ -546,6 +555,9 @@ public class TemplateLoaderTest {
 	 	
 		
 		scanForFirstMismatch(targetBuffer,  fastInput.getSource(), reads, writes);
+		if (null!=temp) {
+			temp.printStackTrace(System.err);
+		}
 		assertEquals("test file bytes",totalTestBytes,wroteSize);
 		
 				
@@ -554,15 +566,10 @@ public class TemplateLoaderTest {
 
 			double start = System.nanoTime();
 				while (0!=dynamicReader.hasMore()) {
-					try {
 						dynamicWriter.write();
-					} catch (Exception e) {//TODO: hack until this gets fixed.
-						if (null==temp) {
-							temp = e;
-						}
-						queue.dump();
-						break;
-					}
+				}
+				while (queue.hasContent()) {
+					dynamicWriter.write();				
 				}
 			double duration = System.nanoTime()-start;
 			
@@ -606,30 +613,20 @@ public class TemplateLoaderTest {
 			                            Map<Long, String> reads, Map<Long, String> writes) {
 		int lookAhead = 11;
 		int maxDisplay = 31;
+		int nthErr = 1;
 		
 		int i = 0;
-		boolean err = false;
+		int err = 0;
 		int displayed = 0;
 		while (i<sourceBuffer.length && displayed<maxDisplay) {
 			//Check data for mismatch
 			if (i+lookAhead<sourceBuffer.length &&
 				i+lookAhead<targetBuffer.length &&
 				sourceBuffer[i+lookAhead]!=targetBuffer[i+lookAhead]) {
-				err= true;
+				err++;;
 			}
-			//Check script for mismatch
-//			Long posLookAhead = Long.valueOf(i+lookAhead);
-//			if (reads.containsKey(posLookAhead) && reads.get(posLookAhead).contains("Decimal")) {
-//				err = true;
-//			}
 			
-//			if (reads.containsKey(posLookAhead) && writes.containsKey(posLookAhead)) {
-//				if (!reads.get(posLookAhead).substring(3).equals(writes.get(posLookAhead).substring(3))) {
-//					err=true;
-//				}
-//			}
-			
-			if (err) {
+			if (err>=nthErr) {
 				displayed++;
 				StringBuilder builder = new StringBuilder();
 				builder.append(i).append(' ')
@@ -640,7 +637,7 @@ public class TemplateLoaderTest {
 				builder.append(" W").append(bin(targetBuffer[i])).append(' ');
 				
 				if (sourceBuffer[i]!=targetBuffer[i]) {
-					builder.append(" ****** ");
+					builder.append(" ***ERROR*** ");
 				}
 				
 				Long lng = Long.valueOf(i);
@@ -724,8 +721,7 @@ public class TemplateLoaderTest {
 	}
 
 	private byte[] buildRawCatalogData() {
-		URL source = getClass().getResource("/performance/example.xml");
-			
+		URL source = getClass().getResource("/performance/example.xml");			
 		
 		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
 		File fileSource = new File(source.getFile());

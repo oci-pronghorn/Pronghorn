@@ -60,12 +60,9 @@ public class TextHeap {
 		tat = new int[tatLength+1];//plus 1 to get dataLength without conditional 
 		tat[tatLength]=dataLength;
 		initTat = new int[fixedTextItemCount<<1];
-		
-		//TODO: pass in int array and offset to share array with other Field** classes.
-		//allocate last so index work is near the front of the heap
+
 		data = new char[dataLength];
-		
-		
+				
 		int i = tatLength;
 		int j = dataLength+(singleTextSize>>1);
 		while (--i>=0) {

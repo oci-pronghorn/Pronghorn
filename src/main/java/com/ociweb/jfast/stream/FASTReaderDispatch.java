@@ -111,6 +111,7 @@ public class FASTReaderDispatch{
 	
 	
 	public void dispatchPreamble(byte[] target) {
+		assert(gatherReadData(reader,"Preamble"));
 		reader.readByteData(target, 0, target.length);
 	}
 	
@@ -151,29 +152,29 @@ public class FASTReaderDispatch{
 		//System.err.println("cursor:"+cursor);
 		//TODO: could build linked list for each location?
 		
-		boolean codeGen = false;
-		//TODO: once this code matches the methods used here take it out and move it to the TemplateLoader
+//		boolean codeGen = false;
+//		//TODO: once this code matches the methods used here take it out and move it to the TemplateLoader
+//		
+//		if (codeGen) {
+//			//code generation test
+//			System.err.println(" case "+cursor+":");			
+//			
+//		}
 		
-		if (codeGen) {
-			//code generation test
-			System.err.println(" case "+cursor+":");			
-			
-		}
-		
-		try {
+//		try {
 		do {
 			int token = script[cursor];
 			
-			if (codeGen) {
-				StringBuilder builder = new StringBuilder();
-				builder.append("   ");
-				TokenBuilder.methodNameRead(token, builder);
-				builder.append("(token,readFromIdx);");
-				
-				System.err.println(builder);
-				
-				
-			}
+//			if (codeGen) {
+//				StringBuilder builder = new StringBuilder();
+//				builder.append("   ");
+//				TokenBuilder.methodNameRead(token, builder);
+//				builder.append("(token,readFromIdx);");
+//				
+//				System.err.println(builder);
+//				
+//				
+//			}
 			
 			assert(gatherReadData(reader,token,cursor));
 
@@ -261,25 +262,25 @@ public class FASTReaderDispatch{
 		} while (++cursor<limit);
 		activeScriptCursor = cursor;
 		return false;
-		} finally {
-			if (codeGen) {
-				//code generation test
-				System.err.println("break;");			
-				
-			}
-		}
+//		} finally {
+//			if (codeGen) {
+//				//code generation test
+//				System.err.println("break;");			
+//				
+//			}
+//		}
 	}
 
-private int sequenceJump(int length, int cursor) {
-	if (length==0) {
-	    //jumping over sequence (forward) it was skipped (rare case)
-		cursor += (TokenBuilder.MAX_INSTANCE&fullScript[++cursor])+1;
-	} else {			
-		jumpSequence = 0;//TODO: not sure this is needed.
-		sequenceCountStack[++sequenceCountStackHead] = length;
+	private int sequenceJump(int length, int cursor) {
+		if (length==0) {
+		    //jumping over sequence (forward) it was skipped (rare case)
+			cursor += (TokenBuilder.MAX_INSTANCE&fullScript[++cursor])+1;
+		} else {			
+			jumpSequence = 0;//TODO: not sure this is needed.
+			sequenceCountStack[++sequenceCountStackHead] = length;
+		}
+		return cursor;
 	}
-	return cursor;
-}
 
 	private void readDictionaryFromField(int token) {
 		readFromIdx = TokenBuilder.MAX_INSTANCE&token;
@@ -303,8 +304,20 @@ private int sequenceJump(int length, int cursor) {
 
 		if (null!=observer) {
 			String value = "";
-			long absPos = reader.totalRead()-reader.remaining();
+			//totalRead is bytes loaded from stream.
+			
+			long absPos = reader.totalRead()-reader.bytesReadyToParse();
 			observer.tokenItem(absPos,token,cursor, value);
+		}
+		
+		return true;
+	}
+	
+	private boolean gatherReadData(PrimitiveReader reader, String msg) {
+
+		if (null!=observer) {
+			long absPos = reader.totalRead()-reader.bytesReadyToParse();
+			observer.tokenItem(absPos, -1, activeScriptCursor, msg);
 		}
 		
 		return true;
@@ -853,7 +866,7 @@ private int sequenceJump(int length, int cursor) {
 	}
 	
 	public int openMessage(int pmapMaxSize) {
-		
+		assert(gatherReadData(reader,"OpenMessage"));
 		reader.openPMap(pmapMaxSize);
 		//return template id or unknown
 		return (0!=reader.popPMapBit()) ? reader.readIntegerUnsigned() : -1;//template Id

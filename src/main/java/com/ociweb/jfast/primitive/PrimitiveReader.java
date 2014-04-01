@@ -73,7 +73,7 @@ public final class PrimitiveReader {
 	public long totalRead() {
 		return totalReader;
 	}
-	public int remaining() {
+	public int bytesReadyToParse() {
 		return limit-position;
 	}
 	
@@ -997,7 +997,7 @@ public final class PrimitiveReader {
 
 	public boolean isEOF() {
 		fetch(0);
-		return (remaining()>0)? false: input.isEOF();
+		return (bytesReadyToParse()>0)? false: input.isEOF();
 	}
 	
 }

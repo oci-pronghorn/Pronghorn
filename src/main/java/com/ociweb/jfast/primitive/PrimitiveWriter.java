@@ -229,7 +229,7 @@ public final class PrimitiveWriter {
 		return nextOffset;
 	}
 	
-	public final int remaining() {
+	public final int bytesReadyToWrite() {
 		return limit-position;
 	}
     

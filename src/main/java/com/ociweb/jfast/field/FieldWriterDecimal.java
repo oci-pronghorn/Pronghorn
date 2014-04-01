@@ -14,7 +14,7 @@ public class FieldWriterDecimal {
 	
 	public FieldWriterDecimal(PrimitiveWriter writer, int[] exponentValues, int[] exponentInit, long[] mantissaValues, long[] mantissaInit) {
 		writerDecimalExponent = new FieldWriterInteger(writer, exponentValues, exponentInit);
-		writerDecimalMantissa = new FieldWriterLong(writer, mantissaValues, mantissaValues);
+		writerDecimalMantissa = new FieldWriterLong(writer, mantissaValues, mantissaInit);
 	}
 
 	public void writeDecimalNone(int token, int exponent, long mantissa) {
@@ -36,14 +36,14 @@ public class FieldWriterDecimal {
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
 		
-		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
+		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {//TODO: sending zero but is not absent??
 			writerDecimalExponent.writeNull(token);
 		} else {
 			writeExponentOptional(token, exponent);
 		}
 		
 		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-			writerDecimalMantissa.writeLongNull(token);
+			writerDecimalMantissa.writeNull(token);
 		} else {
 			writeMantissaOptional(token, mantissa);
 		}		
@@ -96,7 +96,7 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					writerDecimalExponent.writeIntegerSigned(1+exponent, token);
+					writerDecimalExponent.writeIntegerSigned(1+exponent, token);//TODO: check this should not add if exponent is negative??
 				} else {
 					//delta
 					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);

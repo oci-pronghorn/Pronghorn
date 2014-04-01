@@ -194,7 +194,7 @@ public class FASTRingBuffer implements CharSequence {
 	}
 	
 		
-	public int getCharLength(int idx) {
+	public int readCharsLength(int idx) {
 		//second int is always the length 
 		return buffer[mask&(remPos+idx+1)];
 	}

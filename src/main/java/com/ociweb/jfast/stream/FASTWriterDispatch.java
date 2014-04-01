@@ -1135,7 +1135,7 @@ public final class FASTWriterDispatch {
 						//this is NOT a message/template so the non-template pmapSize is used.			
 				//		System.err.println("open group:"+TokenBuilder.tokenToString(token));
 						openGroup(token, nonTemplatePMapSize);
-						
+
 					} else {
 					//	System.err.println("close group:"+TokenBuilder.tokenToString(token));
 						closeGroup(token);//closing this seq causing throw!!
@@ -1228,6 +1228,7 @@ public final class FASTWriterDispatch {
 		}
 		return false;
 	}
+	
 
 	private boolean gatherWriteData(PrimitiveWriter writer, int token, int cursor, int fieldPos, FASTRingBuffer queue) {
 		
@@ -1243,9 +1244,24 @@ public final class FASTWriterDispatch {
 				
 				value = "<"+queue.readInteger(fieldPos)+">";
 				
+			} else if (type == TypeMask.Decimal ||
+					   type == TypeMask.DecimalOptional) {
+				
+				value = "<e:"+queue.readInteger(fieldPos)+"m:"+queue.readLong(fieldPos+1)+">";
+				
+			} else if (type == TypeMask.TextASCII ||
+					   type == TypeMask.TextASCIIOptional||
+					   type == TypeMask.TextUTF8 ||
+					   type == TypeMask.TextUTF8Optional) {
+				value = "<len:"+queue.readCharsLength(fieldPos)+">";
 			}
+			
+			//TotalWritten is updated each time the pump pulls more bytes to write.
 						
-			long absPos = writer.totalWritten()+writer.remaining()-1; 
+			long absPos = writer.totalWritten()+writer.bytesReadyToWrite(); 
+			//TODO: this position is never right because it is changed by the pmap length which gets trimmed.
+			
+			
 			observer.tokenItem(absPos, token, cursor, value);
 		}
 		

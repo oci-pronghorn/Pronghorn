@@ -52,8 +52,6 @@ public class FieldReaderInteger {
     }
 
 	public void reset(int idx) {
-
-		//System.err.println("reset write idx "+idx+" to "+init[idx]);
 		lastValue[idx] = init[idx];
 	}
 	

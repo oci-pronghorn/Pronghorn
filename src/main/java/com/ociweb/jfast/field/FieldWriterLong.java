@@ -36,18 +36,6 @@ public final class FieldWriterLong {
 		writer.flush();
 	}
 	
-
-	public void writeLongNull(int token) {
-		lastValue[token & INSTANCE_MASK] = 0;
-		writer.writeNull();
-	}
-	
-	public void writeLongNullPMap(int token, byte bit) {
-		lastValue[token & INSTANCE_MASK] = 0;
-		writer.writePMapBit(bit);
-		writer.writeNull();
-	}
-	
 	/*
 	 * Method name convention to group the work 
 	 *  write <FIELD_TYPE><OPERATOR>
