@@ -36,7 +36,7 @@ public class FieldWriterDecimal {
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
 		
-		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {//TODO: sending zero but is not absent??
+		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
 			writerDecimalExponent.writeNull(token);
 		} else {
 			writeExponentOptional(token, exponent);

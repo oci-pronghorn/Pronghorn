@@ -359,7 +359,7 @@ public final class FieldWriterInteger {
 	}
 
 	public void reset(int idx) {
-		lastValue[idx] = init[idx];//TODO: this is WRONG and is stopping the encoding of the file. we must have the default.
+		lastValue[idx] = init[idx];
 	}
 	
 	public void reset(DictionaryFactory df) {

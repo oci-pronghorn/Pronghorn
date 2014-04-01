@@ -10,6 +10,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
@@ -276,37 +278,7 @@ public class TemplateLoaderTest {
 			dynamicReader.reset(true);
 		}
 		
-//		Thread.yield();
-//		System.gc();
-//		try {
-//			Thread.sleep(300);
-//		} catch (InterruptedException e) {
-//			e.printStackTrace();
-//		}
-
-//		try { // may be helpful on i7 platform
-//			
-//			String name = "/dev/cpu/0/msr";
-//			String mode = "rw";
-//			long msrNumber = 1;
-//			
-//			ByteBuffer buffer = ByteBuffer.allocateDirect(1024);		
-//			
-//			RandomAccessFile f = new RandomAccessFile(name, mode);
-//			FileChannel ch = f.getChannel();
-//			buffer.order(ByteOrder.LITTLE_ENDIAN);
-//			ch.read(buffer, msrNumber);
-//			long value = buffer.getLong(0);
-//			
-//			System.err.println("msr:"+msrNumber+" value:"+value);
-//			
-//			f.close();
-//		} catch (FileNotFoundException e) {
-//			e.printStackTrace();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		} 
-		
+	
 		iter = count;
 		while (--iter>=0) {
 
@@ -518,7 +490,10 @@ public class TemplateLoaderTest {
 			int flags = 0; //same id needed for writer construction
 			while (0!=(flags = dynamicReader.hasMore())) {
 				try {
-					dynamicWriter.write();
+					Thread.yield();
+					while (queue.hasContent()) {
+						dynamicWriter.write();				
+					}		
 				} catch (Exception e) {//TODO: hack until this gets fixed.
 					if (null==temp) {
 						temp = e;
@@ -530,11 +505,7 @@ public class TemplateLoaderTest {
 					msgs++;
 				}
 				grps++;
-			}		
-			while (queue.hasContent()) {
-				dynamicWriter.write();				
-			}
-			
+			}			
 			
 			queue.reset();
 			
@@ -551,8 +522,7 @@ public class TemplateLoaderTest {
 			//only need to collect data on the first run
 			readerDispatch.setDispatchObserver(null);
 			writerDispatch.setDispatchObserver(null);
-		}
-	 	
+		}	 	
 		
 		scanForFirstMismatch(targetBuffer,  fastInput.getSource(), reads, writes);
 		if (null!=temp) {
@@ -566,10 +536,9 @@ public class TemplateLoaderTest {
 
 			double start = System.nanoTime();
 				while (0!=dynamicReader.hasMore()) {
-						dynamicWriter.write();
-				}
-				while (queue.hasContent()) {
-					dynamicWriter.write();				
+					while (queue.hasContent()) {
+						dynamicWriter.write();				
+					}
 				}
 			double duration = System.nanoTime()-start;
 			

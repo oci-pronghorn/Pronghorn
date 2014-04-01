@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 

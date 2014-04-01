@@ -26,9 +26,9 @@ import com.ociweb.jfast.error.FASTException;
 public final class PrimitiveWriter {
 
     //TODO: the write to output is not implemented right it must send one giant block when possible
-	//TODO: we should have min and max block size? this may cover all cases.
-	
-    private static final int BLOCK_SIZE = 4096;//128;// in bytes
+	//TODO: we should have min and max block size? this may cover all cases.	
+    private static final int BLOCK_SIZE = 512;//4096;//128;// in bytes
+    
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; //top 4 are bit pos, bottom 28 are byte pos
@@ -850,30 +850,17 @@ public final class PrimitiveWriter {
     	}
     	
 	}
-//
-//	int[] temp = new int[1024];
-//	int tempHead = -1;
-//	int tempIdx = -1;
 	
 	
 	//called by ever field that needs to set a bit either 1 or 0
 	//must be fast because it is frequently called.
 	public final void writePMapBit(byte bit) {
-		
-//		//Help when debugging odd bits.
-//		long absPos = totalWritten()+remaining();
-//		if (bit==1 && absPos<20 && absPos!=5) {
-//			new Exception("found 1 here at "+absPos).printStackTrace(System.err);
-//			
-//		}
-		
+				
 		if (0 == --pMapIdxWorking) {
-			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes and did arraycopy later.
+			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes?
 			assert(safetyStackDepth>0) : "PMap must be open before write of bits.";
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			
-			
-			//byte b;
 			//save this byte and if it was not a zero save that fact as well //NOTE: pos pos will not rollover so can inc
 			if (0 != (buffer[idx] = (byte) (bit==0? pMapByteAccum :  (pMapByteAccum | bit)))) {	
 				long stackFrame = safetyStackPosPos[safetyStackDepth-1];
@@ -883,14 +870,6 @@ public final class PrimitiveWriter {
 				assert (lastPopulatedIdx<flushSkips[(int)(stackFrame>>32)+1]):"Too many bits in PMAP.";
 				flushSkips[(int)(stackFrame>>32)] = lastPopulatedIdx;
 			}
-//			
-//			if (tempIdx<0) {
-//				tempIdx= idx;
-//			}
-//			temp[++tempHead] = b;
-			
-			
-		//	buffer[idx] = b;
 			
 			pMapIdxWorking = 7;
 			pMapByteAccum = 0;
