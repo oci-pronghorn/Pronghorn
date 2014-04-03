@@ -145,7 +145,7 @@ public class FASTRingBuffer implements CharSequence {
 		}
 	}
 
-	public void append(int idx, ByteHeap heap) {
+	public void appendBytes(int idx, ByteHeap heap) {
 		
 		throw new UnsupportedOperationException();//TODO: copy text solution once finished.
 		

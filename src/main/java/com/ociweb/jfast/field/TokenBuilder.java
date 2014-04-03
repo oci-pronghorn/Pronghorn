@@ -71,13 +71,23 @@ public class TokenBuilder {
 	public static CharSequence methodNameRead(int token, StringBuilder target) {
 		int type = extractType(token);
 		
+		String typeName = TypeMask.methodTypeInstanceName[type];
+		
 		int oper = extractOper(token);
-		target.append(TypeMask.methodTypeInstanceName[type])
-		      .append('.')
-			  .append("read")
+		target.append("outputQueue.append")
+		      .append(typeName)
+		      .append("(");
+		
+		if (!typeName.isEmpty()) {
+			target.append("reader").append(typeName).append('.');			
+		}
+		      
+		target.append("read")
 		      .append(TypeMask.methodTypeName[type])
 		      .append(OperatorMask.methodOperatorName[oper])
-		      .append(TypeMask.methodTypeSuffix[type]);
+		      .append(TypeMask.methodTypeSuffix[type])
+		      .append("(token,readFromIdx)")
+		      .append(");");
 		return target;		
 	}
 	

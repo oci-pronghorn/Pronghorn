@@ -109,6 +109,132 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
+	public boolean dispatchTest(FASTRingBuffer outputQueue, int cursor) {
+		boolean result = false;
+		switch(cursor) {
+			 //TODO: hardcode the token INDEX values into here instead of script lookups with token mask!!!
+		
+			 case 0:
+				   //System.err.println("0x"+Integer.toHexString(script[cursor]));
+				   outputQueue.appendText(readerText.readASCIIConstant(0xa02c0000,readFromIdx));
+				   activeScriptCursor = 1;
+				   break;
+				
+			 case 1:
+				   //outputQueue.appendthis(readerthis.readDictionary(token,readFromIdx));
+				   readDictionaryReset(0xe00c0002);	 
+				   outputQueue.appendText(readerText.readASCIIConstant(0xa02c0001,readFromIdx)); 
+				   outputQueue.appendText(readerText.readASCIIConstant(0xa02c0002,readFromIdx)); 
+				   outputQueue.appendText(readerText.readASCIIConstant(0xa02c0003,readFromIdx));
+				   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0000,readFromIdx));
+				   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0001,readFromIdx));
+				   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0002,readFromIdx));
+				   
+				   cursor+=8;
+				   							   
+				   //outputQueue.append(readLength(token,readFromIdx));
+					int length;
+					outputQueue.appendInteger(length = readIntegerUnsigned(0xd00c0003));
+
+					if (length==0) {
+					    //jumping over sequence (forward) it was skipped (rare case)
+						cursor += 22;
+					} else {			
+						jumpSequence = 0;//TODO: not sure this is needed.
+						sequenceCountStack[++sequenceCountStackHead] = length;
+					}		
+					
+				   //TODO: this is rather questionable because the length can be zero but falls through for now.
+				   
+			 case 9:
+
+			
+			//outputQueue.append(readGroup(token,readFromIdx));
+			   readGroupOpen(0xc0cc0014);
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedCopy(0x801c0004,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDefaultOptional(0x843c0005,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIICopy(0xa01c0004,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedOptional(0x840c0006,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedConstant(0x802c0007,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedCopy(0x801c0008,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedIncrement(0x805c0009,readFromIdx));
+
+			   //outputQueue.appendDecimal(readerDecimal.readDecimal(token,readFromIdx));
+			   outputQueue.appendDecimal(readerDecimal.readDecimalExponent(0xb1cc0000, -1), 
+					                     readerDecimal.readDecimalMantissa(0xb1cc0000, -1));
+
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedCopy(0x801c000a,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerSignedDeltaOptional(0x8c4c000b,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDeltaOptional(0x844c000c,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0005,readFromIdx));
+			
+			   //outputQueue.appendDecimal(readerDecimal.readDecimalOptional(token,readFromIdx));
+			   outputQueue.appendDecimal(readerDecimal.readDecimalExponentOptional(0xb5cc0001, -1), 
+					                     readerDecimal.readDecimalMantissaOptional(0xb5cc0001, -1));
+			
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDefaultOptional(0x843c000d,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0006,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0007,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0008,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDefaultOptional(0x843c000e,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0009,readFromIdx));
+			
+			   cursor+=21;
+			   //outputQueue.append(readGroup(token,readFromIdx));
+			   result = readGroupClose(0xc0dc0014, cursor-1); //TODO: wrong tokens for jump!!!
+			   activeScriptCursor = cursor-1;
+				 
+				   break;
+					
+			 case 30:
+			
+				//   System.err.println("-------");
+				///   System.err.println("0x"+Integer.toHexString(script[cursor]));
+				 
+		    	outputQueue.appendText(readerText.readASCIIConstant(0xa02c000a,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000b,readFromIdx));
+			   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000c,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c000f,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0010,readFromIdx));
+			   outputQueue.appendText(readerText.readASCII(0xa40c000d,readFromIdx));
+			
+			   cursor+=6;
+			   //outputQueue.append(readLength(token,readFromIdx));
+				int length2;
+				outputQueue.appendInteger(length2 = readIntegerUnsigned(0xd00c0011));
+
+				if (length2==0) {
+				    //jumping over sequence (forward) it was skipped (rare case)
+					cursor += 10;
+				} else {			
+					jumpSequence = 0;//TODO: not sure this is needed.
+					sequenceCountStack[++sequenceCountStackHead] = length2;
+				}				
+			
+			   //outputQueue.append(readGroup(token,readFromIdx));
+			   readGroupOpen(0xc0cc0008);
+			   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000e,readFromIdx));
+			   outputQueue.appendLong(readerLong.readLongUnsignedOptional(0x940c0000,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDefaultOptional(0x843c0012,readFromIdx));
+			   outputQueue.appendLong(readerLong.readLongUnsigned(0x900c0001,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedDefault(0x803c0013,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0014,readFromIdx));
+			   outputQueue.appendInteger(readerInteger.readIntegerUnsignedConstant(0x802c0015,readFromIdx));
+	
+			   cursor+=10;
+			   //outputQueue.append(readGroup(token,readFromIdx));
+			   result = readGroupClose(0xc0dc0008, cursor-1);
+			   activeScriptCursor = cursor-1;
+				   break;
+			default:
+					throw new UnsupportedOperationException();
+		
+		}
+		return result;
+	}
+
+
+	
 	
 	public void dispatchPreamble(byte[] target) {
 		assert(gatherReadData(reader,"Preamble"));
@@ -138,6 +264,11 @@ public class FASTReaderDispatch{
 	//package protected, unless we find a need to expose it?
 	final boolean dispatchReadByToken(FASTRingBuffer outputQueue) {
 
+		//	System.err.println("cursor:"+activeScriptCursor);
+	//	if (true) {
+			return dispatchTest(outputQueue, activeScriptCursor);
+		/*}
+			
 		//TODO: 40% of the time is here in dispatch. Can be fixed by code generation.
 		//can be up to 8 conditionals before arrival at the right method.
 		//the virtual call may be much faster?
@@ -151,30 +282,32 @@ public class FASTReaderDispatch{
 		//if this can be cached it would be a big reduction in work!!!
 		//System.err.println("cursor:"+cursor);
 		//TODO: could build linked list for each location?
-		
-//		boolean codeGen = false;
-//		//TODO: once this code matches the methods used here take it out and move it to the TemplateLoader
 //		
-//		if (codeGen) {
-//			//code generation test
-//			System.err.println(" case "+cursor+":");			
-//			
-//		}
+		boolean codeGen = cursor!=9 && cursor!=1 && cursor!=30 && cursor!=0;
+		//TODO: once this code matches the methods used here take it out and move it to the TemplateLoader
 		
-//		try {
+		int zz = cursor;
+		
+		if (codeGen) {
+			//code generation test
+			System.err.println(" case "+cursor+":");			
+			
+		}
+		
+		try {
 		do {
 			int token = script[cursor];
 			
-//			if (codeGen) {
-//				StringBuilder builder = new StringBuilder();
-//				builder.append("   ");
-//				TokenBuilder.methodNameRead(token, builder);
-//				builder.append("(token,readFromIdx);");
-//				
-//				System.err.println(builder);
-//				
-//				
-//			}
+			if (codeGen) {
+				StringBuilder builder = new StringBuilder();
+				builder.append("   ");
+				TokenBuilder.methodNameRead(token, builder);
+				
+				
+				System.err.println(builder);
+				
+				
+			}
 			
 			assert(gatherReadData(reader,token,cursor));
 
@@ -214,10 +347,10 @@ public class FASTReaderDispatch{
 							//0111?
 							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 								//01110 ByteArray
-								outputQueue.append(readByteArray(token), byteDictionary);
+								outputQueue.appendBytes(readByteArray(token), byteDictionary);
 							} else {
 								//01111 ByteArrayOptional
-								outputQueue.append(readByteArrayOptional(token), byteDictionary);
+								outputQueue.appendBytes(readByteArrayOptional(token), byteDictionary);
 							}
 						}
 					}
@@ -233,7 +366,12 @@ public class FASTReaderDispatch{
 							//this is NOT a message/template so the non-template pmapSize is used.			
 							readGroupOpen(token);
 						} else {
-							return readGroupClose(token, cursor);	
+							boolean result = readGroupClose(token, cursor);	
+							//if (1!=zz && 9!=zz && 30!=zz) {
+							//	System.err.println(zz+" yy "+activeScriptCursor);
+							//}
+
+							return result;
 						}
 						
 					} else {
@@ -244,7 +382,9 @@ public class FASTReaderDispatch{
 						int length;
 						outputQueue.appendInteger(length = readIntegerUnsigned(token));
 						
+						//int oldCursor = cursor;
 						cursor = sequenceJump(length, cursor);
+					//	System.err.println("jumpDif:"+(cursor-oldCursor));
 					}
 				} else {
 					//11???
@@ -260,15 +400,24 @@ public class FASTReaderDispatch{
 				}	
 			}
 		} while (++cursor<limit);
+		
+		if (codeGen) {
+			System.err.println("delta "+(cursor-activeScriptCursor));
+		}
 		activeScriptCursor = cursor;
+		
+		if (0!=zz) {
+			System.err.println(zz+" xx "+activeScriptCursor);
+		}
+
 		return false;
-//		} finally {
-//			if (codeGen) {
-//				//code generation test
-//				System.err.println("break;");			
-//				
-//			}
-//		}
+		} finally {
+			if (codeGen) {
+				//code generation test
+				System.err.println("break;");			
+				
+			}
+		} */
 	}
 
 	private int sequenceJump(int length, int cursor) {
@@ -288,6 +437,7 @@ public class FASTReaderDispatch{
 
 	private boolean readGroupClose(int token, int cursor) {
 		closeGroup(token);
+		//System.err.println("delta "+(cursor-activeScriptCursor));
 		activeScriptCursor = cursor;
 		return 	checkSequence!=0 && completeSequence(token);
 	}

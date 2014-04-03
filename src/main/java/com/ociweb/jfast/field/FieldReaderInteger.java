@@ -62,11 +62,18 @@ public class FieldReaderInteger {
 		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
 	}
 
+	public int readIntegerUnsigned(int token, int readFromIdx) {
+		return readIntegerUnsigned(token);
+	}
 	public int readIntegerUnsigned(int token) {
 		//no need to set initValueFlags for field that can never be null
 		return lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned();
 	}
 
+	public int readIntegerUnsignedOptional(int token, int readFromIdx) {
+		return readIntegerUnsignedOptional(token);
+	}
+	
 	public int readIntegerUnsignedOptional(int token) {
 		int value = reader.readIntegerUnsigned();
 		return value==0 ? absentValue(TokenBuilder.extractAbsent(token)) : value-1;
