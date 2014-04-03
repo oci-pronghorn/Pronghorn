@@ -111,25 +111,31 @@ public class FASTRingBuffer implements CharSequence {
 	// pos  neg  null
 	
 	public final void appendText(int heapId) {
-		int p = addPos;
+		int m = mask;
+		int[] buf = buffer;
 		
 		if (heapId<0) {//points to constant in hash, high bit already set.
-			buffer[mask&addPos++] = heapId; //must be neg - constants only
-			buffer[mask&addPos++] = textHeap.initLength(heapId);//length, -1 for null.		
+			buf[m&addPos++] = heapId; //must be neg - constants only
+			buf[m&addPos++] = textHeap.initLength(heapId);//length, -1 for null.		
 		} else {
 			assert(heapId>=0) : "Only supported for primary values";
 			int len = textHeap.valueLength(heapId);
 			if (len<0) { //is null
-				buffer[mask&addPos++] = 0;
-				buffer[mask&addPos++] = -1;
+				buf[m&addPos++] = 0;
+				buf[m&addPos++] = -1;
 			} else {
-		    	storeTextInRingBuffer(heapId, len);
+		    	//must store length in char sequence and store the position index.
+				//with two ints can store both length and position.
+				buf[m&addPos++] = addCharPos;//offset in text
+				buf[m&addPos++] = len;//length of text
+				
+				//copy text into ring buffer.
+				if (len>0) {
+					textHeap.get(heapId, charBuffer, addCharPos, charMask);
+					addCharPos+=len;
+				}
 			}
-		}					
-
-		
-	//	System.err.println("setStringPos:"+p+"  SetStringId:"+buffer[mask&(p)]+" SetStringLength:"+buffer[mask&(p+1)]);
-
+		}
 	}
 
 	private void storeTextInRingBuffer(int heapId, int len) {

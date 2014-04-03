@@ -162,7 +162,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 			lastCapacity -= neededSpaceOrTemplate;
 		}
 		
-		if (readerDispatch.dispatchReadByToken(ringBuffer)) {		
+		if (readerDispatch.dispatchReadByTokenGen(ringBuffer)) {
+		//if (readerDispatch.dispatchReadByToken(ringBuffer)) {		
 				ringBuffer.moveForward();
 				if (readerDispatch.jumpSequence>=0) {
 				    return processSequence(readerDispatch.jumpSequence); 

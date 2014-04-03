@@ -207,8 +207,8 @@ public class TemplateLoaderTest {
 		
 		
 		
-		int warmup =90;//set much larger for profiler
-		int count = 10;
+		int warmup =20;
+		int count = 512;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
 		byte[] preamble = new byte[catalog.preambleSize];
@@ -294,21 +294,22 @@ public class TemplateLoaderTest {
 			}				
 
 			double duration = System.nanoTime()-start;
-			
-			
-			int ns = (int)duration;
-			float mmsgPerSec = (msgs*(float)1000l/ns);
-			float nsPerByte = (ns/(float)totalTestBytes);
-			int mbps = (int)((1000l*totalTestBytes*8l)/ns);
-					
-			System.err.println("Duration:"+ns+"ns "+
-					           " "+mmsgPerSec+"MM/s "+
-					           " "+nsPerByte+"nspB "+
-					           " "+mbps+"mbps "+
-					           " In:"+totalTestBytes+
-					           " Out:"+queuedBytes+" pct "+(totalTestBytes/(float)queuedBytes)+
-					           " Messages:"+msgs+
-   			           		   " Groups:"+grps); //Phrases/Clauses
+			Thread.yield();
+			if ((0x7F&iter)==0) {
+				int ns = (int)duration;
+				float mmsgPerSec = (msgs*(float)1000l/ns);
+				float nsPerByte = (ns/(float)totalTestBytes);
+				int mbps = (int)((1000l*totalTestBytes*8l)/ns);
+						
+				System.err.println("Duration:"+ns+"ns "+
+						           " "+mmsgPerSec+"MM/s "+
+						           " "+nsPerByte+"nspB "+
+						           " "+mbps+"mbps "+
+						           " In:"+totalTestBytes+
+						           " Out:"+queuedBytes+" pct "+(totalTestBytes/(float)queuedBytes)+
+						           " Messages:"+msgs+
+	   			           		   " Groups:"+grps); //Phrases/Clauses
+			}
 			
 			////////
 			//reset the data to run the test again.
