@@ -27,7 +27,8 @@ public class FASTDynamicWriter {
 		this.ringBuffer = ringBuffer;
 		
 		this.preambleDataLength = catalog.getMessagePreambleSize();
-		this.preambleData = new byte[preambleDataLength]; //TODO: should this be in ring buffer?
+		this.preambleData = new byte[preambleDataLength];
+		//TODO: need to hold write of message for update of preamble before flush. (for some clients)
 	}
 
 	

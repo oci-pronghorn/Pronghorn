@@ -77,7 +77,7 @@ public class TemplateLoader {
 		SAXParser sp = spfac.newSAXParser();
 		FASTOutput output = new FASTOutputStream(catalog);
 		TemplateHandler handler = new TemplateHandler(output);
-		
+		System.err.println(source);
 		if (source.isFile()) {
 			sp.parse(source, handler);	
 		} else {

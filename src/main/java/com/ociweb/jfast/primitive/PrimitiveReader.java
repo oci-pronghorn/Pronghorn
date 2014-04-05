@@ -363,29 +363,28 @@ public final class PrimitiveReader {
 	public final int readIntegerUnsigned() {
 		
 		if (limit-position>=5) {//not near end so go fast.
-	
 			byte v = buffer[position++];
-			int accumulator;
 			if (v<0) {
 				return (v&0x7F);
 			} else {
-				accumulator = v<<7;
+				return readIntegerUnsignedLarger(v);
 			}
-			
-			v = buffer[position++];
-			if (v<0) {
-				return accumulator|(v&0x7F);
-			} else {
-				accumulator = (accumulator|v)<<7;
-			}			
-			
-		    while ((v = buffer[position++])>=0) { //(v & 0x80)==0) {
-		    	accumulator = (accumulator|v)<<7;
-		    }
-		    return accumulator|(v&0x7F);
 	   } else { 
 		   return readIntegerUnsignedSlow();
 	   }
+	}
+
+	private int readIntegerUnsignedLarger(byte t) {
+		byte v = buffer[position++];
+		if (v<0) {
+			return (t<<7)|(v&0x7F);
+		} else {
+			int accumulator = ((t<<7)|v)<<7;
+			while ((v = buffer[position++])>=0) {
+				accumulator = (accumulator|v)<<7;
+			}
+			return accumulator|(v&0x7F);
+		}	
 	}
 
 	private int readIntegerUnsignedSlow() {

@@ -6,7 +6,7 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FieldReaderLong {
+public final class FieldReaderLong {
 	
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;

@@ -19,7 +19,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  * @author Nathan Tippy
  *
  */
-public class FASTRingBuffer implements CharSequence {
+public final class FASTRingBuffer implements CharSequence {
 
 	final int[] buffer;
 	final int mask;
@@ -31,6 +31,10 @@ public class FASTRingBuffer implements CharSequence {
 	final TextHeap textHeap; 
 	final char[] rawConstHeap;
 	
+	int[] tat;
+	int[] initTat;
+	char[] data;
+	
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
 	int addCharPos = 0;
@@ -40,6 +44,11 @@ public class FASTRingBuffer implements CharSequence {
 	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {
 		assert(bits>=1);
 		this.textHeap = heap;
+		
+		tat = textHeap.tat;
+		initTat = textHeap.initTat;
+		data = textHeap.data;
+		
 		this.rawConstHeap = textHeap.rawInitAccess();
 		
 		this.maxSize = 1<<bits;
@@ -110,29 +119,39 @@ public class FASTRingBuffer implements CharSequence {
 	// neg  pos  heap constant index
 	// pos  neg  null
 	
+
+	
 	public final void appendText(int heapId) {
 		int m = mask;
 		int[] buf = buffer;
 		
 		if (heapId<0) {//points to constant in hash, high bit already set.
-			buf[m&addPos++] = heapId; //must be neg - constants only
-			buf[m&addPos++] = textHeap.initLength(heapId);//length, -1 for null.		
+			buf[m&addPos++] = heapId;
+			int offset = heapId << 1; //this shift left also removes the top bit! sweet. //must be neg - constants only
+			buf[m&addPos++] = //textHeap.initLength(heapId); 
+				initTat[offset+1] - initTat[offset];//length, -1 for null.	
+			//System.err.println("A");
 		} else {
 			assert(heapId>=0) : "Only supported for primary values";
-			int len = textHeap.valueLength(heapId);
+			int offset = heapId<<2;
+			int len = //textHeap.valueLength(heapId);
+					tat[offset+1] - tat[offset];
 			if (len<0) { //is null
 				buf[m&addPos++] = 0;
 				buf[m&addPos++] = -1;
+				//System.err.println("B -1");
 			} else {
 		    	//must store length in char sequence and store the position index.
 				//with two ints can store both length and position.
 				buf[m&addPos++] = addCharPos;//offset in text
 				buf[m&addPos++] = len;//length of text
-				
+				//System.err.println("C "+len);
 				//copy text into ring buffer.
 				if (len>0) {
-					textHeap.get(heapId, charBuffer, addCharPos, charMask);
+					int p = addCharPos;
 					addCharPos+=len;
+					//end with function call for performance.
+					TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
 				}
 			}
 		}

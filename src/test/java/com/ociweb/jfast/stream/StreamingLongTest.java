@@ -32,6 +32,8 @@ public class StreamingLongTest extends BaseStreamingTest {
 	PrimitiveReader pr;
 
 	boolean sendNulls = true;
+
+	int bufferSize = 512;
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -202,9 +204,10 @@ public class StreamingLongTest extends BaseStreamingTest {
 		pw.reset();
 	}
 
+	
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
+		pw = new PrimitiveWriter(bufferSize, output, maxGroupCount, false);
 	}
 	
 	protected long totalRead() {
@@ -218,6 +221,6 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
 		input = new FASTInputByteArray(writtenData, writtenBytes);
-		pr = new PrimitiveReader(4096, input, maxGroupCount*10);
+		pr = new PrimitiveReader(bufferSize, input, maxGroupCount*10);
 	}
 }

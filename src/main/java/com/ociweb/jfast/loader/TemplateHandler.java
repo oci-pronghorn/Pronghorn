@@ -56,7 +56,6 @@ public class TemplateHandler extends DefaultHandler {
     int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
     
     //TODO: must detect two fieldId defined in different dictionaries when they appear in the same stop node block.
-    //TODO: find better name for stop node block.
     
     //every dictionary must be converted into an integer so we will use the index in a simple list.
     final List<String> dictionaryNames = new ArrayList<String>(128);

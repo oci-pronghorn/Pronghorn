@@ -6,7 +6,7 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FieldReaderText {
+public final class FieldReaderText {
 
 	public static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
@@ -143,37 +143,42 @@ public class FieldReaderText {
 			return INIT_VALUE_MASK|(INSTANCE_MASK&token);//use default
 		} else {
 			byte val = reader.readTextASCIIByte();
-			int tmp = 0x7F&val;
+			int tmp;
 			int idx = token & INSTANCE_MASK;
-			if (0!=tmp) {//low 7 bits have data
-				//real data, this is the most common case;
-				///  2/3 of calls here
-				int offset = idx<<2;
-				final int off4 = offset+4;
-				final int off1 = offset+1;
-				heap.tat[off1] = heap.tat[offset];//set to zero length
-				int nextLimit = heap.tat[off4];
-				int targIndex = heap.tat[off1];
-								
-				if (targIndex>=nextLimit) {
-					heap.makeSpaceForAppend(offset, 2); //also space for last char
-					targIndex = heap.tat[off1];
-					nextLimit = heap.tat[off4];
-				}
-				
-				if(val<0) {
-					targ[targIndex++] = (char)tmp;
-				} else {
-					targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
-				}
-				heap.tat[off1] = targIndex;
+			if (0!=(tmp = 0x7F&val)) {//low 7 bits have data
+				readASCIIDefault2(val, tmp, idx);
 			} else {
 				readASCIIToHeapNone(idx, val);
 			}
 			return idx;
 		}
 	}
-	
+
+	private void readASCIIDefault2(byte val, int tmp, int idx) {
+		int[] tat = heap.tat;
+		//real data, this is the most common case;
+		///  2/3 of calls here
+		int offset = idx<<2;
+		final int off4 = offset+4;
+		final int off1 = offset+1;
+		tat[off1] = tat[offset];//set to zero length
+		int nextLimit = tat[off4];
+		int targIndex = tat[off1];
+						
+		if (targIndex>=nextLimit) {
+			heap.makeSpaceForAppend(offset, 2); //also space for last char
+			targIndex = tat[off1];
+			nextLimit = tat[off4];
+		}
+		
+		if(val<0) {
+			targ[targIndex++] = (char)tmp;
+		} else {
+			targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
+		}
+		tat[off1] = targIndex;
+	}
+
 	public int readASCIIDefaultOptional(int token, int readFromIdx) {
 		//for ASCII we don't need special behavior for optional
 		return readASCIIDefault(token, readFromIdx); 

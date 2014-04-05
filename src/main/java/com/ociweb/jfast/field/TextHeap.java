@@ -23,12 +23,12 @@ public class TextHeap {
 	private int totalContent = 0; //total chars consumed by current text.
 	private int totalWorkspace = 0; //working space around each text.
 	
-	private final char[] data;
+	public final char[] data;
 	private final int gapCount;
 	private final int dataLength;
 	private final int tatLength;
 	
-	private final int[] initTat;
+	public final int[] initTat;
 	private final char[] initBuffer;
 	
 	//remain true unless memory gets low and it has to give up any margin
@@ -36,7 +36,7 @@ public class TextHeap {
 	private final int itemCount;
 	
 	//text allocation table
-	final int[] tat;
+	public final int[] tat;
 	//4 ints per text body.
 	//start index position (inclusive)
 	//stop index limit (exclusive)
@@ -611,6 +611,33 @@ public class TextHeap {
 		return len;
 	}
 	
+	public static int get(int idx, char[] target, int targetIdx, int targetMask, int[] tat, char[] data) {
+		//Does not support init values
+		assert(idx>0);
+		
+		int offset = idx<<2;
+		
+		int pos = tat[offset];
+		int len = tat[offset+1]-pos;
+		
+		if (1==len) {
+			//simplification because 1 char can not loop around ring buffer.
+			target[targetIdx&targetMask] = data[pos];
+		} else {
+			int tStart = targetIdx&targetMask;
+			int tStop = (targetIdx+len)&targetMask;
+			if(tStop>tStart) {
+				System.arraycopy(data, pos, target, tStart, len);
+			} else {
+				//done as two copies			
+				int firstLen = targetMask-tStart;
+				System.arraycopy(data, pos, target, tStart, firstLen);			
+				System.arraycopy(data, pos+firstLen, target, 0, len-firstLen);
+			}
+		}
+		return len;
+	}
+	
 	public int get(int idx, char[] target, int targetIdx) {
 		if (idx<0) {
 			int offset = idx << 1; //this shift left also removes the top bit! sweet.
@@ -860,7 +887,17 @@ public class TextHeap {
 		return tat[offset+1] - tat[offset];
 	}
 	
+	public static int valueLength(int idx, int[] tat) {
+		int offset = idx<<2;
+		return tat[offset+1] - tat[offset];
+	}
+	
 	public int initLength(int idx) {
+		int offset = idx << 1; //this shift left also removes the top bit! sweet.
+		return initTat[offset+1] - initTat[offset];
+	}
+	
+	public static int initLength(int idx, int[] initTat) {
 		int offset = idx << 1; //this shift left also removes the top bit! sweet.
 		return initTat[offset+1] - initTat[offset];
 	}

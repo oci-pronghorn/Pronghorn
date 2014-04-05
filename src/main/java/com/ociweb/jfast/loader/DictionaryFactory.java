@@ -44,8 +44,6 @@ public class DictionaryFactory {
 	 * 
 	 */
 	
-	//TODO: must hold list of token id values for each dictionary.
-	
 	
 	char[][] appTypes = null;//appType identifiers used in XML
 	

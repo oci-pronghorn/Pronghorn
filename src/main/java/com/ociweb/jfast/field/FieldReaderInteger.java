@@ -6,7 +6,7 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FieldReaderInteger {
+public final class FieldReaderInteger {
 
 	private final int INSTANCE_MASK;
 	private final PrimitiveReader reader;	
@@ -70,7 +70,7 @@ public class FieldReaderInteger {
 		return lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned();
 	}
 
-	public int readIntegerUnsignedOptional(int token, int readFromIdx) {
+	public final int readIntegerUnsignedOptional(int token, int readFromIdx) {
 		return readIntegerUnsignedOptional(token);
 	}
 	
@@ -79,7 +79,7 @@ public class FieldReaderInteger {
 		return value==0 ? absentValue(TokenBuilder.extractAbsent(token)) : value-1;
 	}
 
-	public int readIntegerUnsignedConstant(int token, int readFromIdx) {
+	public final int readIntegerUnsignedConstant(int token, int readFromIdx) {
 		//always return this required value.
 		return lastValue[token & INSTANCE_MASK];
 	}
@@ -101,13 +101,13 @@ public class FieldReaderInteger {
 	//We need to read from one IDX and write to another, this is a required feature.
 	
 	
-	public int readIntegerUnsignedCopy(int token, int readFromIdx) {
+	public final int readIntegerUnsignedCopy(int token, int readFromIdx) {
 		return (reader.popPMapBit()==0 ? 
 				 lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK] : 
 			     (lastValue[token & INSTANCE_MASK] = reader.readIntegerUnsigned()));
 	}
 
-	public int readIntegerUnsignedCopyOptional(int token, int readFromIdx) {
+	public final int readIntegerUnsignedCopyOptional(int token, int readFromIdx) {
 		int value;
 		if (reader.popPMapBit()==0) {
 			value = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
@@ -147,7 +147,7 @@ public class FieldReaderInteger {
 		}
 	}
 
-	public int readIntegerUnsignedDefaultOptional(int token, int readFromIdx) {
+	public final int readIntegerUnsignedDefaultOptional(int token, int readFromIdx) {
 		if (reader.popPMapBit()==0) {
 			
 			int last = lastValue[(readFromIdx>=0 ? readFromIdx : token) & INSTANCE_MASK];
@@ -229,7 +229,7 @@ public class FieldReaderInteger {
 		return (lastValue[token & INSTANCE_MASK] += reader.readLongSigned());
 	}
 	
-	public int readIntegerSignedDeltaOptional(int token, int readFromIdx) {
+	public final int readIntegerSignedDeltaOptional(int token, int readFromIdx) {
 		//Delta opp never uses PMAP
 		long value = reader.readLongSigned();
 		if (0==value) {

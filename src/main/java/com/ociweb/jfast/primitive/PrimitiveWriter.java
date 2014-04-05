@@ -240,7 +240,7 @@ public final class PrimitiveWriter {
     protected int computeFlushToIndex() {
 		if (safetyStackDepth>0) {//TODO: this never happens according to coverage test?
 			//only need to check first entry on stack the rest are larger values
-			//TODO: using safetyStackPosPos here may be corrupting the cache!!!
+			//NOTE: using safetyStackPosPos here may not be the best performant idea.
 			int safetyLimit = (((int)safetyStackPosPos[0])&POS_POS_MASK) -1;//still modifying this position but previous is ready to go.
 			return (safetyLimit < limit ? safetyLimit :limit);
 		} else {

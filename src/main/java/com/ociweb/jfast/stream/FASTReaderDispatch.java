@@ -148,7 +148,6 @@ public class FASTReaderDispatch{
 						activeScriptCursor = cursor;
 						break;
 					} else {			
-						//jumpSequence = 0;//TODO: not sure this is needed.
 						sequenceCountStack[++sequenceCountStackHead] = length;
 					}		
 					
@@ -174,7 +173,6 @@ public class FASTReaderDispatch{
 						activeScriptCursor = cursor;
 						break;
 					} else {			
-						//jumpSequence = 0;//TODO: not sure this is needed.
 						sequenceCountStack[++sequenceCountStackHead] = length2;
 					}				
 				
@@ -248,6 +246,7 @@ public class FASTReaderDispatch{
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedDeltaOptional(0x844c000c,-1));
 		   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0005,-1));
 		
+		 //TODO: this is NOT what the generator will do here!!
 	       outputQueue.appendDecimal(rDecimal.readDecimalExponentOptional(0xb5cc0001, -1), 
 						     		  rDecimal.readDecimalMantissaOptional(0xb5cc0001, -1));
 	}
@@ -266,6 +265,7 @@ public class FASTReaderDispatch{
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedCopy(0x801c0008,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedIncrement(0x805c0009,-1));
 
+		   //TODO: this is NOT what the generator will do here!!
 		   //outputQueue.appendDecimal(readerDecimal.readDecimal(token,readFromIdx));
 		   outputQueue.appendDecimal(rDecimal.readDecimalExponent(0xb1cc0000, -1), 
 				   					 rDecimal.readDecimalMantissa(0xb1cc0000, -1));
@@ -517,52 +517,49 @@ public class FASTReaderDispatch{
 	}
 
 	private void readDictionaryReset(int token) {
-		//need dictionary id?
-		int dictionary = TokenBuilder.MAX_INSTANCE&token;
+		readDictionaryReset2(dictionaryMembers[TokenBuilder.MAX_INSTANCE&token]);
+	}
 
-		int[] members = dictionaryMembers[dictionary];
-		//System.err.println(members.length+" "+Arrays.toString(members));
-		
-		int m = 0;
+	//TODO: code generation, may be the best solution for this.
+	private void readDictionaryReset2(int[] members) {
 		int limit = members.length;
-		if (limit>0) {
-			int idx = members[m++];
-			while (m<limit) {
-				assert(idx<0);
-				
-				if (0==(idx&8)) {
-					if (0==(idx&4)) {
-						//integer
-						while (m<limit && (idx = members[m++])>=0) {
-							readerInteger.reset(idx);
-						}
-					} else {
-						//long
-						while (m<limit && (idx = members[m++])>=0) {
-							readerLong.reset(idx);
-						}
+		int m = 0;
+		int idx = members[m++]; //assumes that a dictionary always has at lest 1 member
+		while (m<limit) {
+			assert(idx<0);
+			
+			if (0==(idx&8)) {
+				if (0==(idx&4)) {
+					//integer
+					while (m<limit && (idx = members[m++])>=0) {
+						readerInteger.reset(idx);
 					}
 				} else {
-					if (0==(idx&4)) {							
-						//text
+					//long
+					while (m<limit && (idx = members[m++])>=0) {
+						readerLong.reset(idx);
+					}
+				}
+			} else {
+				if (0==(idx&4)) {							
+					//text
+					while (m<limit && (idx = members[m++])>=0) {
+						readerText.reset(idx);
+					}
+				} else {
+					if (0==(idx&2)) {								
+						//decimal
 						while (m<limit && (idx = members[m++])>=0) {
-							readerText.reset(idx);
+							readerDecimal.reset(idx);
 						}
 					} else {
-						if (0==(idx&2)) {								
-							//decimal
-							while (m<limit && (idx = members[m++])>=0) {
-								readerDecimal.reset(idx);
-							}
-						} else {
-							//bytes
-							while (m<limit && (idx = members[m++])>=0) {
-								readerBytes.reset(idx);
-							}
+						//bytes
+						while (m<limit && (idx = members[m++])>=0) {
+							readerBytes.reset(idx);
 						}
 					}
-				}	
-			}
+				}
+			}	
 		}
 	}
 
@@ -1081,32 +1078,7 @@ public class FASTReaderDispatch{
 		if (pmapSize>0) {
 			reader.openPMap(pmapSize);
 		}
-	
-	//	beginSequence(token);
-			
-		
-//		if (0!=(token&(OperatorMask.Group_Bit_Templ<<TokenBuilder.SHIFT_OPER))) { //TODO:pull from operator!
-//			//always push something on to the stack
-//			int newTop = (reader.popPMapBit()!=0) ? reader.readIntegerUnsigned() : templateStack[templateStackHead];
-//			templateStack[templateStackHead++] = newTop;
-//
-//		}
 	}
-
-//	//called after open group.?? or just near.
-//	public boolean beginSequence(int token) {
-//		//We repeat the open for each sequence but we do not want to push on
-//		//to the seq stack. Upon jump back the token will mask out the seq bit.
-//		if (
-////			 0==(token&((8|4)<<TokenBuilder.SHIFT_TYPE)) &&
-//	//		 0==(token&(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER)) &&
-//				
-//			 0!=(token&(OperatorMask.Group_Bit_Seq<<TokenBuilder.SHIFT_OPER))) {
-//			//System.err.println("starting new sequence ");
-//			return true;//started new sequence
-//		}
-//		return false;//no sequence to start
-//	}
 
 
 	/**

@@ -6,7 +6,7 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FieldReaderDecimal {
+public final class FieldReaderDecimal {
 	
 	private PrimitiveReader reader;
 	private final FieldReaderInteger exponent;
@@ -73,7 +73,7 @@ public class FieldReaderDecimal {
 				
 	}
 
-	public int readDecimalExponent(int token, int readFromIdx2) {
+	public final int readDecimalExponent(int token, int readFromIdx2) {
 		
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
