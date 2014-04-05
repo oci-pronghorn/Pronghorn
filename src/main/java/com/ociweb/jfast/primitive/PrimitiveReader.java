@@ -6,6 +6,7 @@ package com.ociweb.jfast.primitive;
 import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
 
 /**
  * PrimitiveReader
@@ -201,17 +202,18 @@ public final class PrimitiveReader {
 	
 	//called at every field to determine operation
 	public final byte popPMapBit() {		
-			byte tmp = pmapIdx;
-			byte bb = bitBlock;
-			if (tmp>0 || (tmp==0 && bb<0)) {
-				//Frequent, 6 out of every 7 plus the last bit block
-				pmapIdx = (byte)(tmp-1);	
-				return (byte)(1&(bb>>>tmp));
+			return popPMapBit(pmapIdx, bitBlock);
+	}
 
-			} else {
-				return popPMapBitLow(tmp, bb);
-			}
+	private byte popPMapBit(byte tmp, byte bb) {
+		if (tmp>0 || (tmp==0 && bb<0)) {
+			//Frequent, 6 out of every 7 plus the last bit block
+			pmapIdx = (byte)(tmp-1);	
+			return (byte)(1&(bb>>>tmp));
 
+		} else {
+			return popPMapBitLow(tmp, bb);
+		}
 	}
 
 
@@ -244,6 +246,10 @@ public final class PrimitiveReader {
 	/////////////////////////////////////
 	
 	public final long readLongSigned () {
+		return readLongSignedPrivate();
+	}
+
+	private long readLongSignedPrivate() {
 		if (limit-position<=10) {
 			return readLongSignedSlow();
 		}
@@ -359,9 +365,14 @@ public final class PrimitiveReader {
 		return accumulator|(v&0x7F);
 	}
 	
+
 	
 	public final int readIntegerUnsigned() {
 		
+		return readIntegerUnsignedPrivate();
+	}
+
+	private int readIntegerUnsignedPrivate() {
 		if (limit-position>=5) {//not near end so go fast.
 			byte v = buffer[position++];
 			if (v<0) {
@@ -997,6 +1008,83 @@ public final class PrimitiveReader {
 	public boolean isEOF() {
 		fetch(0);
 		return (bytesReadyToParse()>0)? false: input.isEOF();
+	}
+	
+	/////////////////////////////////
+	//Dictionary specific operations
+	/////////////////////////////////
+	
+	public int readIntegerUnsigned(int target, int[] dictionary) {
+		//no need to set initValueFlags for field that can never be null
+		return dictionary[target] = readIntegerUnsignedPrivate();
+	}
+	
+	public int readIntegerUnsignedOptional(int constAbsent) {		
+		int value = readIntegerUnsignedPrivate();
+		return value==0 ? constAbsent : value-1;
+	}
+	
+	public int readIntegerSignedConstantOptional(int constAbsent, int constConst) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constAbsent : constConst);
+	}
+	
+	public int readIntegerUnsignedConstantOptional(int constAbsent, int constConst) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constAbsent : constConst);
+	}
+	
+	public final int readIntegerUnsignedCopy(int target, int source, int[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? dictionary[source] : (dictionary[target] = readIntegerUnsignedPrivate()));
+	}
+	
+	public final int readIntegerUnsignedDelta(int target, int source, int[] dictionary) {
+		//Delta opp never uses PMAP
+		return (dictionary[target] = (int)(dictionary[source]+readLongSignedPrivate()));		
+	}
+	
+	public int readIntegerUnsignedDeltaOptional(int target, int source, int[] dictionary, int constAbsent) {
+		//Delta opp never uses PMAP
+		long value = readLongSignedPrivate();
+		if (0==value) {
+			dictionary[target]=0;//set to absent
+			return constAbsent;
+		} else {			
+			return dictionary[target] = (int)(dictionary[source] + (value>0 ? value-1 : value));
+			
+		}
+	}
+	
+	public final int readIntegerUnsignedDefault(int constDefault) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readIntegerUnsignedPrivate());
+	}
+	
+	public final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent) {
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return constDefault;	
+		} else {
+			int value = readIntegerUnsignedPrivate();
+			return value==0 ? constAbsent : value-1;
+		}
+	}
+	
+	public int readIntegerUnsignedIncrement(int target, int source, int[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? (dictionary[target] = dictionary[source]+1) :
+		                                        	(dictionary[target] = readIntegerUnsignedPrivate()));
+	}
+	
+	public int readIntegerUnsignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
+
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return (dictionary[target] == 0 ? constAbsent:
+				                              (dictionary[target] =  dictionary[source]+1));
+		} else {
+			int value;
+			if ((value = readIntegerUnsignedPrivate())==0) {
+				dictionary[target] = 0;
+				return constAbsent;
+			} else {
+				return (dictionary[target] = value)-1;
+			}
+		}
 	}
 	
 }

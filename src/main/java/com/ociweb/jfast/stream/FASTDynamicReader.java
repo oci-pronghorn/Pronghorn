@@ -116,29 +116,25 @@ public class FASTDynamicReader implements FASTDataProvider {
 			}	
 			//must have room to store the new template
 			int req = preambleDataLength+1;
-			if (lastCapacity<req) {
-				if ((lastCapacity = ringBuffer.availableCapacity())<req) {
-					return 0x80000000;
-				}
+			if ((lastCapacity<req)&&((lastCapacity = ringBuffer.availableCapacity())<req)) {
+				return 0x80000000;
 			}
+			
 			hasMoreNextMessage(req);
 		} 
 		
 		if (neededSpaceOrTemplate>0) {
-			if (lastCapacity<neededSpaceOrTemplate) {				
-				if ((lastCapacity = ringBuffer.availableCapacity())<neededSpaceOrTemplate) {
-					return 0x80000000;
-				}
-			}
+			if ((lastCapacity<neededSpaceOrTemplate)&&((lastCapacity = ringBuffer.availableCapacity())<neededSpaceOrTemplate)) {
+				return 0x80000000;
+			}			
 			lastCapacity -= neededSpaceOrTemplate;
 		}
 		
 		if (readerDispatch.dispatchReadByTokenGen(ringBuffer)) { //TODO: move gen code into here.	
-				ringBuffer.moveForward();
-				if (readerDispatch.jumpSequence>=0) {
-				    return processSequence(readerDispatch.jumpSequence); 
-				}
-		    
+			ringBuffer.moveForward();
+			if (readerDispatch.jumpSequence>=0) {
+			    return processSequence(readerDispatch.jumpSequence); 
+			}
 		}
 		return finishTemplate();
 	}

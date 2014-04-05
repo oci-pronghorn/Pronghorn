@@ -186,11 +186,11 @@ public class FASTReaderDispatch{
 
 	private void case30a(FASTRingBuffer outputQueue) {
 		outputQueue.appendText(readerText.readASCIIConstant(0xa02c000a,readFromIdx));
-   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000b,readFromIdx));
-   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000c,readFromIdx));
-   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c000f,readFromIdx));
-   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0010,readFromIdx));
-   outputQueue.appendText(readerText.readASCII(0xa40c000d,readFromIdx));
+	   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000b,readFromIdx));
+	   outputQueue.appendText(readerText.readASCIIConstant(0xa02c000c,readFromIdx));
+	   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c000f,readFromIdx));
+	   outputQueue.appendInteger(readerInteger.readIntegerUnsigned(0x800c0010,readFromIdx));
+	   outputQueue.appendText(readerText.readASCII(0xa40c000d,readFromIdx));
 	}
 
 	private boolean case30b(FASTRingBuffer outputQueue, int cursor) {
@@ -241,14 +241,19 @@ public class FASTReaderDispatch{
 		   FieldReaderInteger rInt = readerInteger;
 		   FieldReaderDecimal rDecimal = readerDecimal;
 		   
+	   	   //outputQueue.appendInteger(reader.readIntegerUnsignedCopy2(10,10,rInt.lastValue));//0x801c000a,-1));
 	   	   outputQueue.appendInteger(rInt.readIntegerUnsignedCopy(0x801c000a,-1));
+	   	   
 		   outputQueue.appendInteger(rInt.readIntegerSignedDeltaOptional(0x8c4c000b,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedDeltaOptional(0x844c000c,-1));
 		   outputQueue.appendText(readerText.readASCIIDefaultOptional(0xa43c0005,-1));
-		
-		 //TODO: this is NOT what the generator will do here!!
-	       outputQueue.appendDecimal(rDecimal.readDecimalExponentOptional(0xb5cc0001, -1), 
-						     		  rDecimal.readDecimalMantissaOptional(0xb5cc0001, -1));
+			   
+		//    System.err.println(  TokenBuilder.tokenToString(0xb5cc0001));
+		   outputQueue.appendDecimal(rDecimal.exponent.readIntegerSignedDefaultOptional(0xb5cc0001, -1), 
+				                     rDecimal.mantissa.readLongSignedDeltaOptional(0xb5cc0001, -1));
+		   
+	      // outputQueue.appendDecimal(rDecimal.readDecimalExponentOptional(0xb5cc0001, -1), 
+			///			     		  rDecimal.readDecimalMantissaOptional(0xb5cc0001, -1));
 	}
 
 	private void case9a(FASTRingBuffer outputQueue) {
@@ -257,18 +262,28 @@ public class FASTReaderDispatch{
 		   FieldReaderDecimal rDecimal = readerDecimal;
 		
 		   readGroupOpen(0xc0cc0014);
+		   ///outputQueue.appendInteger(reader.readIntegerUnsignedCopy2(4,4,rInt.lastValue));//  0x801c0004,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedCopy(0x801c0004,-1));
+		   
+		   //TODO: expose ringbuffer to make the append methods static here.
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedDefaultOptional(0x843c0005,-1));
 		   outputQueue.appendText(readerText.readASCIICopy(0xa01c0004,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedOptional(0x840c0006,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedConstant(0x802c0007,-1));
+		   
+		   //outputQueue.appendInteger(reader.readIntegerUnsignedCopy2(8,8,rInt.lastValue));//0x801c0008,-1));
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedCopy(0x801c0008,-1));
+		   
+		   
 		   outputQueue.appendInteger(rInt.readIntegerUnsignedIncrement(0x805c0009,-1));
 
+		    //System.err.println(  TokenBuilder.tokenToString(0xb1cc0000));
+		    outputQueue.appendDecimal(rDecimal.exponent.readIntegerSignedDefault(0xb1cc0000, -1), 
+	                                   rDecimal.mantissa.readLongSignedDelta(0xb1cc0000, -1));
 		   //TODO: this is NOT what the generator will do here!!
 		   //outputQueue.appendDecimal(readerDecimal.readDecimal(token,readFromIdx));
-		   outputQueue.appendDecimal(rDecimal.readDecimalExponent(0xb1cc0000, -1), 
-				   					 rDecimal.readDecimalMantissa(0xb1cc0000, -1));
+		   //outputQueue.appendDecimal(rDecimal.readDecimalExponent(0xb1cc0000, -1), 
+			//	   					 rDecimal.readDecimalMantissa(0xb1cc0000, -1));
 	}
 
 	private void case1(FASTRingBuffer outputQueue) {

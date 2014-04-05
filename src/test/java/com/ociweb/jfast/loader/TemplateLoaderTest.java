@@ -208,7 +208,7 @@ public class TemplateLoaderTest {
 		
 		
 		int warmup =20;
-		int count = 5120;
+		int count = 1024;
 		int result = 0;
 		int[] fullScript = catalog.scriptTokens;
 		byte[] preamble = new byte[catalog.preambleSize];

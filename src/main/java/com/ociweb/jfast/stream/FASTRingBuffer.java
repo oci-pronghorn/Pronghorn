@@ -135,7 +135,7 @@ public final class FASTRingBuffer implements CharSequence {
 			assert(heapId>=0) : "Only supported for primary values";
 			int offset = heapId<<2;
 			int len = //textHeap.valueLength(heapId);
-					tat[offset+1] - tat[offset];
+			tat[offset+1] - tat[offset];
 			if (len<0) { //is null
 				buf[m&addPos++] = 0;
 				buf[m&addPos++] = -1;
@@ -157,18 +157,6 @@ public final class FASTRingBuffer implements CharSequence {
 		}
 	}
 
-	private void storeTextInRingBuffer(int heapId, int len) {
-		//must store length in char sequence and store the position index.
-		//with two ints can store both length and position.
-		buffer[mask&addPos++] = addCharPos;//offset in text
-		buffer[mask&addPos++] = len;//length of text
-
-        //copy text into ring buffer.
-		if (len>0) {
-			textHeap.get(heapId, charBuffer, addCharPos, charMask);
-			addCharPos+=len;
-		}
-	}
 
 	public void appendBytes(int idx, ByteHeap heap) {
 		

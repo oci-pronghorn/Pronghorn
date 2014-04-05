@@ -8,6 +8,6 @@ public interface FASTInput {
 	int fill(int offset, int count);
 		
 	void init(byte[] targetBuffer);
-
+	
 	boolean isEOF();
 }

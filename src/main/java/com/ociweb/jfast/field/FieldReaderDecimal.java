@@ -9,8 +9,8 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public final class FieldReaderDecimal {
 	
 	private PrimitiveReader reader;
-	private final FieldReaderInteger exponent;
-	private final FieldReaderLong mantissa;
+	public final FieldReaderInteger exponent;
+	public final FieldReaderLong mantissa;
 	private int readFromIdx = -1;	
 	
 	public FieldReaderDecimal(PrimitiveReader reader, 
@@ -26,14 +26,9 @@ public final class FieldReaderDecimal {
 	//TODO: Optional absent null is not implemented yet for Decimal type.
 	
 	public void reset(DictionaryFactory df) {
-		df.reset(exponent.lastValue,mantissa.lastValue);
+		df.reset(exponent.dictionary,mantissa.lastValue);
 	}	
-	public void copyExponent(int sourceToken, int targetToken) {
-		exponent.copy(sourceToken, targetToken);
-	}
-	public void copyMantissa(int sourceToken, int targetToken) {
-		mantissa.copy(sourceToken, targetToken);
-	}
+
 	
 	public int readDecimalExponentOptional(int token, int readFromIdx2) {
 		
