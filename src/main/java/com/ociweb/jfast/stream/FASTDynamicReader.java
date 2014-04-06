@@ -49,6 +49,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	//however we will not need a lookup table 
     int neededSpaceOrTemplate = -1;
     int lastCapacity = 0;
+	private PrimitiveReader reader;
     
 	//read groups field ids and build repeating lists of tokens.
 	
@@ -59,6 +60,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.preambleDataLength=catalog.getMessagePreambleSize();
 		this.preambleData = new byte[preambleDataLength];				
 		this.readerDispatch = dispatch;
+		this.reader = dispatch.reader;
 		this.fullScript = catalog.fullScript();
 		this.ringBuffer = ringBuffer;
 		this.lastCapacity = ringBuffer.availableCapacity();
@@ -111,9 +113,10 @@ public class FASTDynamicReader implements FASTDataProvider {
 		//start new script or detect that the end of the data has been reached
 		if (neededSpaceOrTemplate<0) { 
 			//checking EOF first before checking for blocked queue
-			if (readerDispatch.isEOF()) { //TODO: stop polling for this and use a all back for EOF
+			if (reader.isEOF()) { //TODO: stop polling for this and use a all back for EOF
 				return 0;
 			}	
+			
 			//must have room to store the new template
 			int req = preambleDataLength+1;
 			if ((lastCapacity<req)&&((lastCapacity = ringBuffer.availableCapacity())<req)) {
@@ -145,14 +148,15 @@ public class FASTDynamicReader implements FASTDataProvider {
 		//get next token id then immediately start processing the script
 		///read prefix bytes if any (only used by some implementations)
 		if (preambleDataLength!=0) {
-			readerDispatch.dispatchPreamble(preambleData);
+			assert(readerDispatch.gatherReadData(readerDispatch.reader,"Preamble"));
+			reader.readByteData(preambleData, 0, preambleData.length);
 			ringBuffer.appendBytes(preambleData);
 			
 		};
 		///////////////////
 		
 		//open message (special type of group)			
-		int templateId = readerDispatch.openMessage(maxTemplatePMapSize);
+		int templateId = reader.openMessage(maxTemplatePMapSize);
 		if (templateId>=0) {
 			messageCount++;
 		}
@@ -161,7 +165,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		ringBuffer.appendInteger(i);//write template id at the beginning of this message
 						
 		//set the cursor start and stop for this template				
-		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); 
+		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: pull in as lists once
 		readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
 						
 		//Worst case scenario is that this is full of decimals which each need 3.
@@ -175,7 +179,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		//reached the end of the script so close and prep for the next one
 		ringBuffer.moveForward();
 		neededSpaceOrTemplate = -1;
-		readerDispatch.closeMessage();
+		readerDispatch.reader.closePMap();
 		return 2;//finished reading full message
 	}
 
@@ -188,7 +192,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 			//finished sequence, no need to jump
 			if (++readerDispatch.activeScriptCursor==readerDispatch.activeScriptLimit) {
 				neededSpaceOrTemplate = -1;
-				readerDispatch.closeMessage();
+				readerDispatch.reader.closePMap();
 				return 3;//finished reading full message and the sequence
 			}
 			return 1;//has sequence group to read

@@ -1,6 +1,6 @@
 package com.ociweb.rabin;
 
-import com.ociweb.jfast.field.FieldReaderInteger;
+import com.ociweb.jfast.field.TokenBuilder;
 
 public class WindowedFingerprint {
 
@@ -19,7 +19,7 @@ public class WindowedFingerprint {
 	public long fingerprint;
 	
 	WindowedFingerprint(int windowSize, int degree, long[] pushTable, long[] popTable) {
-		assert(FieldReaderInteger.isPowerOfTwo(windowSize));
+		assert(TokenBuilder.isPowerOfTwo(windowSize));
 		this.windowBytes = windowSize; //must be power of 2 for rolling.
 		this.byteWindowMask = windowSize-1;
 		this.byteWindow = new byte[windowSize];

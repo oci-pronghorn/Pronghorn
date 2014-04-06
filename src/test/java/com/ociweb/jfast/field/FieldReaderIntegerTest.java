@@ -10,21 +10,21 @@ public class FieldReaderIntegerTest {
 
 	@Test
 	public void testAbsentValue00() {
-		assertEquals(1,FieldReaderInteger.absentValue32(0));		
+		assertEquals(1,TokenBuilder.absentValue32(0));		
 	}
 	
 	@Test
 	public void testAbsentValue01() {
-		assertEquals(0,FieldReaderInteger.absentValue32(1));		
+		assertEquals(0,TokenBuilder.absentValue32(1));		
 	}
 	
 	@Test
 	public void testAbsentValue10() {
-		assertEquals(-1,FieldReaderInteger.absentValue32(2));		
+		assertEquals(-1,TokenBuilder.absentValue32(2));		
 	}
 	
 	@Test
 	public void testAbsentValue11() {
-		assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT,FieldReaderInteger.absentValue32(3));		
+		assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT,TokenBuilder.absentValue32(3));		
 	}
 }

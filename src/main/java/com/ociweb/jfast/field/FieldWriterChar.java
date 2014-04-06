@@ -15,7 +15,7 @@ public class FieldWriterChar {
 	
 	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
 		assert(null==charDictionary || charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
-		assert(null==charDictionary || FieldReaderInteger.isPowerOfTwo(charDictionary.itemCount()));
+		assert(null==charDictionary || TokenBuilder.isPowerOfTwo(charDictionary.itemCount()));
 		
 		this.INSTANCE_MASK = null==charDictionary? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
 		this.heap = charDictionary;

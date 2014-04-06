@@ -157,6 +157,49 @@ public class TokenBuilder {
 		}
 		
 	}
+	/**
+	 * Computes the absent values as needed.
+	 * 00 ->  1
+	 * 01 ->  0
+	 * 10 -> -1
+	 * 11 -> TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT
+	 * 
+	 * 0
+	 * 1
+	 * 11111111111111111111111111111111
+	 * 1111111111111111111111111111111
+	 * 
+	 * @param b
+	 * @return
+	 */
+	public static final int absentValue32(int b) {
+		return ((1|(0-(b>>1)))>>>(1&b));  
+	}
+	public static boolean isPowerOfTwo(int length) {
+		
+		while (0==(length&1)) {
+			length = length>>1;
+		}
+		return length==1;
+	}
+	/**
+	 * Computes the absent values as needed.
+	 * 00 ->  1
+	 * 01 ->  0
+	 * 10 -> -1
+	 * 11 -> TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG
+	 * 
+	 * 0
+	 * 1
+	 * 1111111111111111111111111111111111111111111111111111111111111111
+	 * 111111111111111111111111111111111111111111111111111111111111111
+	 * 
+	 * @param b
+	 * @return
+	 */
+	public static long absentValue64(int b) {
+		return ((1|(0l-(b>>1)))>>>(1&b));  	
+	}
 
 
 	

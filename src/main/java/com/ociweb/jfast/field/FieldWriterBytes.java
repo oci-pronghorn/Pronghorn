@@ -17,7 +17,7 @@ public class FieldWriterBytes {
 	
 	public FieldWriterBytes(PrimitiveWriter writer, ByteHeap byteDictionary) {
 		assert(null==byteDictionary || byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
-		assert(null==byteDictionary || FieldReaderInteger.isPowerOfTwo(byteDictionary.itemCount()));
+		assert(null==byteDictionary || TokenBuilder.isPowerOfTwo(byteDictionary.itemCount()));
 		
 		this.INSTANCE_MASK = null==byteDictionary? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteDictionary.itemCount()-1));
 		

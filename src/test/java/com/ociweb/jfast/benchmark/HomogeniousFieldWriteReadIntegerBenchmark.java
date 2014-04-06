@@ -211,7 +211,13 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedCopyOptional(token,-1);
+				int readFromIdx = -1;
+				int target = token&fr.MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>0? readFromIdx&fr.MAX_INT_INSTANCE_MASK : target;
+				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+				
+				int value = fr.reader.readIntegerSignedCopy(target, source, fr.dictionary);
+				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
 			}
 			if (pmapSize>0) {
 				pr.closePMap();
@@ -264,7 +270,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedConstant(token,-1);
+				result |= fr.dictionary[token & fr.MAX_INT_INSTANCE_MASK];
 			}
 			if (pmapSize>0) {
 				pr.closePMap();
@@ -316,7 +322,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.readIntegerSignedDeltaOptional(token,-1);
+				int readFromIdx = -1;
+				int target = token&fr.MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>0? readFromIdx&fr.MAX_INT_INSTANCE_MASK : target;
+				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+				result |= fr.reader.readIntegerSignedDeltaOptional(target, source, fr.dictionary, constAbsent);
 			}
 			if (pmapSize>0) {
 				pr.closePMap();

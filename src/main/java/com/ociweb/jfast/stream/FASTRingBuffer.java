@@ -21,8 +21,9 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  */
 public final class FASTRingBuffer implements CharSequence {
 
-	final int[] buffer;
-	final int mask;
+	public final int[] buffer;
+	public final int mask;
+	
 	final int maxSize;
 	
 	final int maxCharSize;
@@ -38,7 +39,7 @@ public final class FASTRingBuffer implements CharSequence {
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
 	int addCharPos = 0;
-	int addPos = 0;
+	public int addPos = 0;
 	int remPos = 0;
 		
 	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {

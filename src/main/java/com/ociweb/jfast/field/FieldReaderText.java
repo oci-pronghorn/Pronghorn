@@ -3,23 +3,22 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public final class FieldReaderText {
 
 	public static final int INIT_VALUE_MASK = 0x80000000;
 	private final PrimitiveReader reader;
-	private final TextHeap heap;
+	public final TextHeap heap;
 	private final char[] targ;
-	private final int INSTANCE_MASK;
+	public final int MAX_TEXT_INSTANCE_MASK;
 	
 	public FieldReaderText(PrimitiveReader reader, TextHeap heap) {
 		
 		assert(null==heap || heap.itemCount()<TokenBuilder.MAX_INSTANCE);
-		assert(null==heap || FieldReaderInteger.isPowerOfTwo(heap.itemCount()));
+		assert(null==heap || TokenBuilder.isPowerOfTwo(heap.itemCount()));
 		
-		this.INSTANCE_MASK = null==heap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (heap.itemCount()-1));
+		this.MAX_TEXT_INSTANCE_MASK = null==heap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (heap.itemCount()-1));
 		
 		this.reader = reader;
 		this.heap = heap;
@@ -46,8 +45,9 @@ public final class FieldReaderText {
 
 	final byte NULL_STOP = (byte)0x80;
 
+	//PATTERN: return (popPMapBit(pmapIdx, bitBlock)==0 ? dictionary[source] : (dictionary[target] = readLongUnsignedPrivate()));
 	public int readASCIICopy(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
 			byte val = reader.readTextASCIIByte();
@@ -58,8 +58,10 @@ public final class FieldReaderText {
 			} else {
 				readASCIIToHeapNone(idx, val);
 			}
+			return idx;//target
+		} else {
+			return idx;//source
 		}
-		return idx;
 	}
 
 	
@@ -120,37 +122,38 @@ public final class FieldReaderText {
 
 	public int readASCIIConstant(int token, int readFromIdx) {
 		//always return this required value.
-		return (token & INSTANCE_MASK) | INIT_VALUE_MASK;
+		return (token & MAX_TEXT_INSTANCE_MASK) | INIT_VALUE_MASK;
 	}
 	
 	public int readASCIIConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()!=0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
+		return (reader.popPMapBit()!=0 ? (token & MAX_TEXT_INSTANCE_MASK)|INIT_VALUE_MASK : token & MAX_TEXT_INSTANCE_MASK);
 	}
 
 	public int readUTF8Constant(int token, int readFromIdx) {
 		//always return this required value.
-		return (token & INSTANCE_MASK) | INIT_VALUE_MASK;
+		return (token & MAX_TEXT_INSTANCE_MASK) | INIT_VALUE_MASK;
 	}
 	
 	public int readUTF8ConstantOptional(int token, int readFromIdx) {
-		return (reader.popPMapBit()!=0 ? (token & INSTANCE_MASK)|INIT_VALUE_MASK : token & INSTANCE_MASK);
+		return (reader.popPMapBit()!=0 ? (token & MAX_TEXT_INSTANCE_MASK)|INIT_VALUE_MASK : token & MAX_TEXT_INSTANCE_MASK);
 	}
 	
-	public int readASCIIDefault(int token, int readFromIdx) {
-
-		if (reader.popPMapBit()==0) {
+	//PATTERN:  (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readLongUnsignedPrivate());
+	public int readASCIIDefault(int target) {
+		
+		//NOTE: also supports optional case due to ASII optinal encoding.
+		if (reader.popPMapBit()==0) {//50% of time here in pop pmap
 			//  1/3 of calls here
-			return INIT_VALUE_MASK|(INSTANCE_MASK&token);//use default
+			return INIT_VALUE_MASK|target;//use default
 		} else {
 			byte val = reader.readTextASCIIByte();
 			int tmp;
-			int idx = token & INSTANCE_MASK;
 			if (0!=(tmp = 0x7F&val)) {//low 7 bits have data
-				readASCIIDefault2(val, tmp, idx);
+				readASCIIDefault2(val, tmp, target);
 			} else {
-				readASCIIToHeapNone(idx, val);
+				readASCIIToHeapNone(target, val);
 			}
-			return idx;
+			return target;
 		}
 	}
 
@@ -158,14 +161,14 @@ public final class FieldReaderText {
 		int[] tat = heap.tat;
 		//real data, this is the most common case;
 		///  2/3 of calls here
-		int offset = idx<<2;
+		final int offset = idx<<2;
 		final int off4 = offset+4;
 		final int off1 = offset+1;
-		tat[off1] = tat[offset];//set to zero length
 		int nextLimit = tat[off4];
-		int targIndex = tat[off1];
+		int targIndex = tat[offset]; //because we have zero length
 						
 		if (targIndex>=nextLimit) {
+			tat[off1] = tat[offset];//set to zero length
 			heap.makeSpaceForAppend(offset, 2); //also space for last char
 			targIndex = tat[off1];
 			nextLimit = tat[off4];
@@ -173,15 +176,11 @@ public final class FieldReaderText {
 		
 		if(val<0) {
 			targ[targIndex++] = (char)tmp;
-		} else {
+		} else {//System.err.println("not called in complex text");
+			tat[off1] = tat[offset];//set to zero length
 			targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
 		}
 		tat[off1] = targIndex;
-	}
-
-	public int readASCIIDefaultOptional(int token, int readFromIdx) {
-		//for ASCII we don't need special behavior for optional
-		return readASCIIDefault(token, readFromIdx); 
 	}
 
 	public int readASCIIDeltaOptional(int token, int readFromIdx) {
@@ -189,7 +188,7 @@ public final class FieldReaderText {
 	}
 
 	public int readASCIIDelta(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
 		
@@ -201,7 +200,7 @@ public final class FieldReaderText {
 	}
 
 	public int readASCIITail(int token, int readFromIdx) {
-		return readASCIITail(token & INSTANCE_MASK, reader.readIntegerUnsigned(), readFromIdx);
+		return readASCIITail(token & MAX_TEXT_INSTANCE_MASK, reader.readIntegerUnsigned(), readFromIdx);
 	}
 
 	private int readASCIITail(int idx, int trim, int readFromIdx) {
@@ -234,7 +233,7 @@ public final class FieldReaderText {
 	}
 	
 	public int readASCIITailOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 				
 		int tail = reader.readIntegerUnsigned();
 		if (0==tail) {
@@ -296,7 +295,7 @@ public final class FieldReaderText {
 
 
 	public int readASCIICopyOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		if (reader.popPMapBit()!=0) {
 			byte val = reader.readTextASCIIByte();
@@ -316,7 +315,7 @@ public final class FieldReaderText {
 
 
 	public int readUTF8Default(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
 			return idx|INIT_VALUE_MASK;//use constant
@@ -333,7 +332,7 @@ public final class FieldReaderText {
 	
 
 	public int readUTF8DefaultOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		if (reader.popPMapBit()==0) {
 			return idx|INIT_VALUE_MASK;//use constant
@@ -349,7 +348,7 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8Delta(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned();
@@ -366,7 +365,7 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8Tail(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned(); 
@@ -378,7 +377,7 @@ public final class FieldReaderText {
 	}
 	
 	public int readUTF8Copy(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
 			reader.readTextUTF8(heap.rawAccess(), 
@@ -389,7 +388,7 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8CopyOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		if (reader.popPMapBit()!=0) {			
 			int length = reader.readIntegerUnsigned()-1;
 			reader.readTextUTF8(heap.rawAccess(), 
@@ -401,7 +400,7 @@ public final class FieldReaderText {
 
 
 	public int readUTF8DeltaOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		int trim = reader.readIntegerSigned();
 		if (0==trim) {
@@ -429,7 +428,7 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8TailOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		
 		int trim = reader.readIntegerUnsigned();
 		if (trim==0) {
@@ -447,7 +446,7 @@ public final class FieldReaderText {
 	}
 
 	public int readASCII(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		byte val = reader.readTextASCIIByte();
 		if (0!=(val&0x7F)) {
 			//real data, this is the most common case;
@@ -464,7 +463,7 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned();
 		reader.readTextUTF8(heap.rawAccess(), 
 				            heap.allocate(idx, length),
@@ -473,18 +472,12 @@ public final class FieldReaderText {
 	}
 
 	public int readUTF8Optional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
+		int idx = token & MAX_TEXT_INSTANCE_MASK;
 		int length = reader.readIntegerUnsigned()-1;
 		reader.readTextUTF8(heap.rawAccess(), 
 				            heap.allocate(idx, length),
 				            length);
 		return idx;
-	}
-
-	public void reset(int idx) {
-		if (null!=heap) {
-			heap.setNull(idx);
-		}
 	}
 
 	

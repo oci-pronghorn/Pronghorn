@@ -18,7 +18,7 @@ public final class FieldWriterInteger {
 	
 	public FieldWriterInteger(PrimitiveWriter writer, int[] values, int[] init) {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
-		assert(FieldReaderInteger.isPowerOfTwo(values.length));
+		assert(TokenBuilder.isPowerOfTwo(values.length));
 		
 		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.writer = writer;

@@ -205,6 +205,7 @@ public final class PrimitiveReader {
 			return popPMapBit(pmapIdx, bitBlock);
 	}
 
+	//TODO: rewrite this to not hold state in PR but make it the callers responsiblitly.
 	private byte popPMapBit(byte tmp, byte bb) {
 		if (tmp>0 || (tmp==0 && bb<0)) {
 			//Frequent, 6 out of every 7 plus the last bit block
@@ -212,24 +213,23 @@ public final class PrimitiveReader {
 			return (byte)(1&(bb>>>tmp));
 
 		} else {
-			return popPMapBitLow(tmp, bb);
+			if (tmp>=0) {
+				return popPMapBitLow(tmp, bb);
+			} else {
+				return 0;
+			}
 		}
 	}
 
 
 	private byte popPMapBitLow(byte tmp, byte bb) {
-		if (tmp>=0) {	
 			//SOMETIMES one of 7 we need to move up to the next byte
 			//System.err.println(invPmapStackDepth);
 			//The order of these lines should not be changed without profile
 			pmapIdx = 6;
-			byte result = (byte)(1&bb);					
+			bb = (byte)(1&bb);					
 			bitBlock = invPmapStack[++invPmapStackDepth];
-			return result;
-
-		} else {
-			return 0;
-		}
+			return bb;
 	}
 
 	//called at the end of each group
@@ -286,6 +286,10 @@ public final class PrimitiveReader {
 	
 
 	public final long readLongUnsigned () {
+		return readLongUnsignedPrivate();
+	}
+
+	private long readLongUnsignedPrivate() {
 		if (position>limit-10) {
 			if (position>=limit) {
 				fetch(1);
@@ -333,6 +337,10 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerSigned () {
+		return readIntegerSignedPrivate();
+	}
+
+	private int readIntegerSignedPrivate() {
 		if (limit-position<=5) {
 			return readIntegerSignedSlow();
 		}
@@ -1006,18 +1014,16 @@ public final class PrimitiveReader {
 
 
 	public boolean isEOF() {
+		if (limit!=position) {
+			return false;
+		}
 		fetch(0);
-		return (bytesReadyToParse()>0)? false: input.isEOF();
+		return limit!=position? false: input.isEOF();
 	}
 	
 	/////////////////////////////////
 	//Dictionary specific operations
 	/////////////////////////////////
-	
-	public int readIntegerUnsigned(int target, int[] dictionary) {
-		//no need to set initValueFlags for field that can never be null
-		return dictionary[target] = readIntegerUnsignedPrivate();
-	}
 	
 	public int readIntegerUnsignedOptional(int constAbsent) {		
 		int value = readIntegerUnsignedPrivate();
@@ -1085,6 +1091,216 @@ public final class PrimitiveReader {
 				return (dictionary[target] = value)-1;
 			}
 		}
+	}
+	
+	public int readIntegerSignedOptional(int constAbsent) {		
+		int value = readIntegerSignedPrivate();
+		return value==0 ? constAbsent : (value>0 ? value-1 : value);
+	}
+	
+	public final int readIntegerSignedCopy(int target, int source, int[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? dictionary[source] : (dictionary[target] = readIntegerSignedPrivate()));
+	}
+	
+	public final int readIntegerSignedDelta(int target, int source, int[] dictionary) {
+		//Delta opp never uses PMAP
+		return (dictionary[target] = (int)(dictionary[source]+readLongSignedPrivate()));		
+	}
+	
+	public int readIntegerSignedDeltaOptional(int target, int source, int[] dictionary, int constAbsent) {
+		//Delta opp never uses PMAP
+		long value = readLongSignedPrivate();
+		if (0==value) {
+			dictionary[target]=0;//set to absent
+			return constAbsent;
+		} else {			
+			return dictionary[target] = (int)(dictionary[source] + (value>0 ? value-1 : value));
+			
+		}
+	}
+	
+	public final int readIntegerSignedDefault(int constDefault) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readIntegerSignedPrivate());
+	}
+	
+	public final int readIntegerSignedDefaultOptional(int constDefault, int constAbsent) {
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return constDefault;	
+		} else {
+			int value = readIntegerSignedPrivate();
+			return value==0 ? constAbsent : (value>0 ? value-1 : value);
+		}
+	}
+	
+	public int readIntegerSignedIncrement(int target, int source, int[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? (dictionary[target] = dictionary[source]+1) :
+		                                        	(dictionary[target] = readIntegerSignedPrivate()));
+	}
+	
+	public int readIntegerSignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
+
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return (dictionary[target] == 0 ? constAbsent:
+				                              (dictionary[target] =  dictionary[source]+1));
+		} else {
+			int value;
+			if ((value = readIntegerSignedPrivate())==0) {
+				dictionary[target] = 0;
+				return constAbsent;
+			} else {
+				return (dictionary[target] = value)-1;
+			}
+		}
+	}
+	
+	//For the Long values
+	
+	public long readLongUnsigned(int target, long[] dictionary) {
+		//no need to set initValueFlags for field that can never be null
+		return dictionary[target] = readLongUnsignedPrivate();
+	}
+	
+	public long readLongUnsignedOptional(long constAbsent) {		
+		long value = readLongUnsignedPrivate();
+		return value==0 ? constAbsent : value-1;
+	}
+	
+	public long readLongSignedConstantOptional(long constAbsent, long constConst) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constAbsent : constConst);
+	}
+	
+	public long readLongUnsignedConstantOptional(long constAbsent, long constConst) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constAbsent : constConst);
+	}
+	
+	public long readLongUnsignedCopy(int target, int source, long[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? dictionary[source] : (dictionary[target] = readLongUnsignedPrivate()));
+	}
+	
+	public long readLongUnsignedDelta(int target, int source, long[] dictionary) {
+		//Delta opp never uses PMAP
+		return (dictionary[target] = (dictionary[source]+readLongSignedPrivate()));		
+	}
+	
+	public long readLongUnsignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
+		//Delta opp never uses PMAP
+		long value = readLongSignedPrivate();
+		if (0==value) {
+			dictionary[target]=0;//set to absent
+			return constAbsent;
+		} else {			
+			return dictionary[target] = (dictionary[source] + (value>0 ? value-1 : value));
+			
+		}
+	}
+	
+	public long readLongUnsignedDefault(long constDefault) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readLongUnsignedPrivate());
+	}
+	
+	public long readLongUnsignedDefaultOptional(long constDefault, long constAbsent) {
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return constDefault;	
+		} else {
+			long value = readLongUnsignedPrivate();
+			return value==0 ? constAbsent : value-1;
+		}
+	}
+	
+	public long readLongUnsignedIncrement(int target, int source, long[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? (dictionary[target] = dictionary[source]+1) :
+		                                        	(dictionary[target] = readLongUnsignedPrivate()));
+	}
+	
+	public long readLongUnsignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
+
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return (dictionary[target] == 0 ? constAbsent:
+				                              (dictionary[target] =  dictionary[source]+1));
+		} else {
+			long value;
+			if ((value = readLongUnsignedPrivate())==0) {
+				dictionary[target] = 0;
+				return constAbsent;
+			} else {
+				return (dictionary[target] = value)-1;
+			}
+		}
+	}
+	
+	public long readLongSigned(int target, long[] dictionary) {
+		//no need to set initValueFlags for field that can never be null
+		return dictionary[target] = readLongSignedPrivate();
+	}
+	
+	public long readLongSignedOptional(long constAbsent) {		
+		long value = readLongSignedPrivate();
+		return value==0 ? constAbsent : (value>0 ? value-1 : value);
+	}
+	
+	public long readLongSignedCopy(int target, int source, long[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? dictionary[source] : (dictionary[target] = readLongSignedPrivate()));
+	}
+	
+	public long readLongSignedDelta(int target, int source, long[] dictionary) {
+		//Delta opp never uses PMAP
+		return (dictionary[target] = (dictionary[source]+readLongSignedPrivate()));		
+	}
+	
+	public long readLongSignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
+		//Delta opp never uses PMAP
+		long value = readLongSignedPrivate();
+		if (0==value) {
+			dictionary[target]=0;//set to absent
+			return constAbsent;
+		} else {			
+			return dictionary[target] = (dictionary[source] + (value>0 ? value-1 : value));
+			
+		}
+	}
+	
+	public long readLongSignedDefault(long constDefault) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readLongSignedPrivate());
+	}
+	
+	public long readLongSignedDefaultOptional(long constDefault, long constAbsent) {
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return constDefault;	
+		} else {
+			long value = readLongSignedPrivate();
+			return value==0 ? constAbsent : (value>0 ? value-1 : value);
+		}
+	}
+	
+	public long readLongSignedIncrement(int target, int source, long[] dictionary) {
+		return (popPMapBit(pmapIdx, bitBlock)==0 ? (dictionary[target] = dictionary[source]+1) :
+		                                        	(dictionary[target] = readLongSignedPrivate()));
+	}
+	
+	public long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
+
+		if (popPMapBit(pmapIdx, bitBlock)==0) {
+			return (dictionary[target] == 0 ? constAbsent:
+				                              (dictionary[target] =  dictionary[source]+1));
+		} else {
+			long value;
+			if ((value = readLongSignedPrivate())==0) {
+				dictionary[target] = 0;
+				return constAbsent;
+			} else {
+				return (dictionary[target] = value)-1;
+			}
+		}
+	}
+	
+    ////////////////
+	///////////
+	
+	public int openMessage(int pmapMaxSize) {
+		openPMap(pmapMaxSize);
+		//return template id or unknown
+		return (0!=popPMapBit()) ? readIntegerUnsigned() : -1;//template Id
+
 	}
 	
 }

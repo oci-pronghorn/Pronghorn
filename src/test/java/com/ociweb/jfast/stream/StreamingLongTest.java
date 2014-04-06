@@ -162,7 +162,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 						} else { 
 							long value = fr.readLong(tokenLookup[f]);
 							if (testConst!=value) {
-								assertEquals(testConst, value);
+								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testConst, value);
 							}
 						}
 					
@@ -176,7 +176,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 						} else { 
 							long value = fr.readLong(tokenLookup[f]);
 							if (testData[f]!=value) {
-								assertEquals(testData[f], value);
+								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testData[f], value);
 							}
 						}
 					

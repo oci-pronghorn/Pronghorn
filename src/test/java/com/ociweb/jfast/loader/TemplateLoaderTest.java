@@ -53,7 +53,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(471, catalogByteArray.length);
+			assertEquals(429, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -189,7 +189,7 @@ public class TemplateLoaderTest {
 		//FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
 
 		
-		int bufferSize = 2048000;
+		int bufferSize = 4096;//do not change without testing, 4096 is ideal.
 		int pmapDepth = 10;//TODO: Catalog must compute this? 2+(templatePMAP+2)+(max depth + 2 each)
 		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,pmapDepth);
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(
@@ -282,8 +282,6 @@ public class TemplateLoaderTest {
 		iter = count;
 		while (--iter>=0) {
 
-		//	primitiveReader.fetch();
-			
 			double start = System.nanoTime();
 			
 			int flag;

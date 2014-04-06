@@ -10,22 +10,22 @@ public class FieldReaderLongTest {
 
 	@Test
 	public void testAbsentValue00() {
-		assertEquals(1,FieldReaderLong.absentValue(0));		
+		assertEquals(1,TokenBuilder.absentValue64(0));		
 	}
 	
 	@Test
 	public void testAbsentValue01() {
-		assertEquals(0,FieldReaderLong.absentValue(1));		
+		assertEquals(0,TokenBuilder.absentValue64(1));		
 	}
 	
 	@Test
 	public void testAbsentValue10() {
-		assertEquals(-1,FieldReaderLong.absentValue(2));		
+		assertEquals(-1,TokenBuilder.absentValue64(2));		
 	}
 	
 	@Test
 	public void testAbsentValue11() {
-		assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG,FieldReaderLong.absentValue(3));		
+		assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG,TokenBuilder.absentValue64(3));		
 	}
 	
 	@Test

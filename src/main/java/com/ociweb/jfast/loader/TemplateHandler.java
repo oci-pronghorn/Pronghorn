@@ -644,7 +644,7 @@ public class TemplateHandler extends DefaultHandler {
 			}
 			int tokCount = count.getAndIncrement();
 			newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount, TokenBuilder.MASK_ABSENT_DEFAULT);
-			saveMember(activeDictionary,fieldType,tokCount);
+			saveMember(activeDictionary,fieldType,tokCount, fieldOperator);
 			fieldTokensUnique++;
 			dictionaryMap[fieldId]=dTokens=newDTokens;
 			
@@ -657,7 +657,7 @@ public class TemplateHandler extends DefaultHandler {
 			} else {
 				int tokCount = count.getAndIncrement();
 				dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount, TokenBuilder.MASK_ABSENT_DEFAULT);
-				saveMember(activeDictionary,fieldType,tokCount);
+				saveMember(activeDictionary,fieldType,tokCount, fieldOperator);
 				fieldTokensUnique++;
 			}
 		}
@@ -666,10 +666,18 @@ public class TemplateHandler extends DefaultHandler {
 	}
 
 	
-	private void saveMember(int activeDictionary, int fieldType, int tokCount) {
+	private void saveMember(int activeDictionary, int fieldType, int tokCount, int fieldOperator) {
 		
 		if (TypeMask.GroupLength==fieldType) {
 			return;//these are not needed for reset because it is part of the sequence definition.
+		}
+		
+		//these never update the dictionary so they should never do a reset.
+		if (OperatorMask.Field_None==fieldOperator ||
+			OperatorMask.Field_Constant==fieldOperator ||
+			OperatorMask.Field_Default==fieldOperator) {
+			//System.err.println("skipped "+TypeMask.toString(fieldType));
+			return;
 		}
 		
 		//only need to group by major type.
@@ -682,11 +690,11 @@ public class TemplateHandler extends DefaultHandler {
 		}
 			
 		int listId = d|fieldType;
-		
-		
+				
 		while (members.size()<=listId) {
 			members.add(new ArrayList<Integer>());
 		}
+		
 		//these are ever increasing in value, the order makes a difference in performance at run time.
 		assert(members.get(listId).size()==0 || members.get(listId).get(members.get(listId).size()-1).intValue()<tokCount);
 		members.get(listId).add(tokCount);

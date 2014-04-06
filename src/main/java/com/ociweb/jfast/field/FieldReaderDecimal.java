@@ -26,7 +26,7 @@ public final class FieldReaderDecimal {
 	//TODO: Optional absent null is not implemented yet for Decimal type.
 	
 	public void reset(DictionaryFactory df) {
-		df.reset(exponent.dictionary,mantissa.lastValue);
+		df.reset(exponent.dictionary,mantissa.dictionary);
 	}	
 
 	
@@ -39,14 +39,23 @@ public final class FieldReaderDecimal {
 						//none, delta
 						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 							//none
-							return exponent.readIntegerSignedOptional(token,readFromIdx );
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							
+							return exponent.reader.readIntegerSignedOptional(constAbsent);
 						} else {
 							//delta
-							return exponent.readIntegerSignedDeltaOptional(token,readFromIdx );
+							int target = token&exponent.MAX_INT_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							
+							return exponent.reader.readIntegerSignedDeltaOptional(target, source, exponent.dictionary, constAbsent);
 						}	
 					} else {
 						//constant
-						return exponent.readIntegerSignedConstantOptional(token,readFromIdx );
+						int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+						int constConst = exponent.dictionary[token & exponent.MAX_INT_INSTANCE_MASK];
+						
+						return exponent.reader.readIntegerSignedConstantOptional(constAbsent, constConst);
 					}
 					
 				} else {
@@ -55,14 +64,26 @@ public final class FieldReaderDecimal {
 						//copy, increment
 						if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 							//copy
-							return exponent.readIntegerSignedCopyOptional(token,readFromIdx );
+							int target = token&exponent.MAX_INT_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							
+							int value = exponent.reader.readIntegerSignedCopy(target, source, exponent.dictionary);
+							return (0 == value ? constAbsent: (value>0 ? value-1 : value));
 						} else {
 							//increment
-							return exponent.readIntegerSignedIncrementOptional(token,readFromIdx );
+							int target = token&exponent.MAX_INT_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							
+							return exponent.reader.readIntegerSignedIncrementOptional(target, source, exponent.dictionary, constAbsent);
 						}	
 					} else {
 						// default
-						return exponent.readIntegerSignedDefaultOptional(token,readFromIdx );
+						int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+						int constDefault = exponent.dictionary[token & exponent.MAX_INT_INSTANCE_MASK]==0?constAbsent:exponent.dictionary[token & exponent.MAX_INT_INSTANCE_MASK];
+								
+						return exponent.reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
 					}		
 				}
 				
@@ -77,14 +98,19 @@ public final class FieldReaderDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					return exponent.readIntegerSigned(token,readFromIdx);
+					//no need to set initValueFlags for field that can never be null
+					return exponent.reader.readIntegerSigned();
 				} else {
 					//delta
-					return exponent.readIntegerSignedDelta(token,readFromIdx);
+					int target = token&exponent.MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+					
+					return exponent.reader.readIntegerSignedDelta(target, source, exponent.dictionary);
 				}	
 			} else {
 				//constant
-				return exponent.readIntegerSignedConstant(token,readFromIdx);
+				//always return this required value.
+				return exponent.dictionary[token & exponent.MAX_INT_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -93,14 +119,22 @@ public final class FieldReaderDecimal {
 				//copy, increment
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
-					return exponent.readIntegerSignedCopy(token,readFromIdx);
+					int target = token&exponent.MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+					
+					return exponent.reader.readIntegerSignedCopy(target, source, exponent.dictionary);
 				} else {
 					//increment
-					return exponent.readIntegerSignedIncrement(token,readFromIdx);
+					int target = token&exponent.MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&exponent.MAX_INT_INSTANCE_MASK : target;
+					
+					return exponent.reader.readIntegerSignedIncrement(target, source, exponent.dictionary);
 				}	
 			} else {
 				// default
-				return exponent.readIntegerSignedDefault(token,readFromIdx);
+				int constDefault = exponent.dictionary[token & exponent.MAX_INT_INSTANCE_MASK];	
+				
+				return exponent.reader.readIntegerSignedDefault(constDefault);
 			}		
 		}
 		
@@ -114,14 +148,23 @@ public final class FieldReaderDecimal {
 						//none, delta
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//none
-							return mantissa.readLongSignedOptional(token, readFromIdx);
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+							
+							return mantissa.reader.readLongSignedOptional(constAbsent);
 						} else {
 							//delta
-							return mantissa.readLongSignedDeltaOptional(token, readFromIdx);
+							int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+							
+							return mantissa.reader.readLongSignedDeltaOptional(target, source, mantissa.dictionary, constAbsent);
 						}	
 					} else {
 						//constant
-						return mantissa.readLongSignedConstantOptional(token, readFromIdx);
+						long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+						long constConst = mantissa.dictionary[token & mantissa.MAX_LONG_INSTANCE_MASK];
+						
+						return mantissa.reader.readLongSignedConstantOptional(constAbsent, constConst);
 					}
 					
 				} else {
@@ -130,14 +173,26 @@ public final class FieldReaderDecimal {
 						//copy, increment
 						if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 							//copy
-							return mantissa.readLongSignedCopyOptional(token, readFromIdx);
+							int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+									
+							long value = mantissa.reader.readLongSignedCopy(target, source, mantissa.dictionary);
+							return (0 == value ? constAbsent: value-1);
 						} else {
 							//increment
-							return mantissa.readLongSignedIncrementOptional(token, readFromIdx);
+							int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+							int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+							
+							return mantissa.reader.readLongSignedIncrementOptional(target, source, mantissa.dictionary, constAbsent);
 						}	
 					} else {
 						// default
-						return mantissa.readLongSignedDefaultOptional(token, readFromIdx);
+						long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+						long constDefault = mantissa.dictionary[token & mantissa.MAX_LONG_INSTANCE_MASK]==0?constAbsent:mantissa.dictionary[token & mantissa.MAX_LONG_INSTANCE_MASK];
+						
+						return mantissa.reader.readLongSignedDefaultOptional(constDefault, constAbsent);
 					}		
 				}
 		
@@ -150,14 +205,21 @@ public final class FieldReaderDecimal {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return mantissa.readLongSigned(token, readFromIdx);
+					int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+					
+					return mantissa.reader.readLongSigned(target, mantissa.dictionary);
 				} else {
 					//delta
-					return mantissa.readLongSignedDelta(token, readFromIdx);
+					int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+					
+					
+					return mantissa.reader.readLongSignedDelta(target, source, mantissa.dictionary);
 				}	
 			} else {
 				//constant
-				return mantissa.readLongSignedConstant(token, readFromIdx);
+				//always return this required value.
+				return mantissa.dictionary[token & mantissa.MAX_LONG_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -166,23 +228,27 @@ public final class FieldReaderDecimal {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					return mantissa.readLongSignedCopy(token, readFromIdx);
+					int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+					
+					return mantissa.reader.readLongSignedCopy(target, source, mantissa.dictionary);
 				} else {
 					//increment
-					return mantissa.readLongSignedIncrement(token, readFromIdx);
+					int target = token&mantissa.MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&mantissa.MAX_LONG_INSTANCE_MASK : target;
+					
+					
+					return mantissa.reader.readLongSignedIncrement(target, source, mantissa.dictionary);
 				}	
 			} else {
 				// default
-				return mantissa.readLongSignedDefault(token, readFromIdx);
+				long constDefault = mantissa.dictionary[token & mantissa.MAX_LONG_INSTANCE_MASK];
+				
+				return mantissa.reader.readLongSignedDefault(constDefault);
 			}		
 		}
 		
 		
-	}
-
-	public void reset(int idx) {
-		exponent.reset(idx);
-		mantissa.reset(idx);		
 	}
 
 
