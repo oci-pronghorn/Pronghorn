@@ -77,10 +77,8 @@ public class Complex30000Benchmark extends Benchmark {
 							                    catalog.getTextGap(),
 							                    catalog.getByteVectorGap(), 
 							                    catalog.fullScript()); 
-			queue = new FASTRingBuffer((byte)8, 
-					                   (byte)7, 
-					                   readerDispatch.textHeap());// TODO: hack test.
-			dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
+
+			dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

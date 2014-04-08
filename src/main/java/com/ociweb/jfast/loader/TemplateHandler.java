@@ -450,14 +450,13 @@ public class TemplateHandler extends DefaultHandler {
     	} else if (qName.equalsIgnoreCase("string")) {
     		
     		int token = buildToken(tokenBuilderTextCount);
-    		
-    		if (fieldOperator==OperatorMask.Field_Constant ||fieldOperator==OperatorMask.Field_Default) {
-    			//only set if the value was given
-    			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-    				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,fieldOperatorValue.toCharArray());
-    			} 
-    			fieldOperatorValue=null;
-    		}
+
+			//only set if the value was given
+			if (null!=fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
+				defaultConstValues.addInit(token&TokenBuilder.MAX_INSTANCE,fieldOperatorValue.toCharArray());
+			} 
+			fieldOperatorValue=null;
+
     		
 	    	catalogScriptTokens[catalogTemplateScriptIdx] = token;
     		catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;

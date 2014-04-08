@@ -32,6 +32,8 @@ public class FASTReaderDispatch{
 	private final FieldReaderLong    readerLong;
 	private final FieldReaderDecimal readerDecimal;
 	private final FieldReaderText readerText;
+	private final TextHeap textHeap;
+	
 	private final FieldReaderBytes readerBytes;
 			
     private final int nonTemplatePMapSize;
@@ -63,6 +65,10 @@ public class FASTReaderDispatch{
 	
 	int[] fullScript;
 
+	private final FASTRingBuffer queue;
+	private final int queueMASK;
+	private final int[] queueBuffer;
+
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
 			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
@@ -85,7 +91,20 @@ public class FASTReaderDispatch{
 				                                    dcr.decimalMantissaDictionary(),
 				                                    dcr.decimalMantissaDictionary());
 		this.readerText = new FieldReaderText(reader,charDictionary);
+		this.textHeap = readerText.textHeap();
+		
 		this.readerBytes = new FieldReaderBytes(reader,byteDictionary);
+		
+		this.queue = new FASTRingBuffer((byte)8, 
+						                (byte)7, 
+						                readerText.textHeap());// TODO: hack test.
+		this.queueMASK = queue.mask;
+		this.queueBuffer = queue.buffer;
+		
+	}
+	
+	public FASTRingBuffer ringBuffer() {
+		return queue;
 	}
 
 	public void reset() {
@@ -112,245 +131,241 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-	public boolean dispatchReadByTokenGen(FASTRingBuffer outputQueue) {
 
-		//TODO Ideas:
-		//dispatch code extends RingBuffer
-		//dispatch code extends joined readers?
-		//* readers become static calls with arguments (would help with Julia all the way down)
-		//* can ring buffer pass in needed data?
-		//MUCH OF THIS IS ALREADY OPTIMIZED AT RUN TIME BY JIT THEN WHY IS IT STILL SLOW?
-		//TODO: do end-run around INVOKEVIRTUAL by calling fewer larger methods.
-		
-		int cursor = activeScriptCursor;
-		//TODO: all these methods need to be InvokeStatic or InvokeSpecial!!!
-		// Interface calls are the slowest followed by virtuals then static/special.
-		
-		
-		switch(cursor) {
-			 //TODO: hardcode the token INDEX values into here instead of script lookups with token mask!!!
-		
-			 case 0:
-				   //System.err.println("0x"+Integer.toHexString(script[cursor]));
-				   outputQueue.appendText(readerText.readASCIIConstant(0xa02c0000,readFromIdx));
-				   activeScriptCursor = 1;
-				   return false;
-				
+	public boolean dispatchReadByTokenGen() {
+		switch(activeScriptCursor) {
+			 case 0:		
+				 	return case0();
 			 case 1:
-				   
-				 //TODO: we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
-			    	int[] dictionary = readerInteger.dictionary;
-				   		   
-				   readDictionaryReset(0xe00c0002);	 
-				   int a = readerText.readASCIIConstant(0xa02c0001,-1);
-				   outputQueue.appendText(a); 
-				   int b = readerText.readASCIIConstant(0xa02c0002,-1);
-				   outputQueue.appendText(b); 
-				   int c = readerText.readASCIIConstant(0xa02c0003,-1);
-				   outputQueue.appendText(c);
-				   int d = reader.readIntegerUnsigned();
-				   outputQueue.appendInteger(d);
-				   int e = reader.readIntegerUnsigned();
-				   outputQueue.appendInteger(e);
-				   int f = reader.readIntegerUnsigned();
-				   outputQueue.appendInteger(f);
-				   cursor+=8;
-				   							   
-				   //outputQueue.append(readLength(token,readFromIdx));
-					int length;
-					outputQueue.appendInteger(length = readIntegerUnsigned(0xd00c0003));
-
+				    assert(gatherReadData(reader,fullScript[1],1));
+				    int length = case1();
 					if (length==0) {
-					    //jumping over sequence (forward) it was skipped (rare case)
-						cursor += 22;
-						activeScriptCursor = cursor;
-						break;
-					} else {			
-						sequenceCountStack[++sequenceCountStackHead] = length;
-					}		
+						    //jumping over sequence (forward) it was skipped (rare case)
+							activeScriptCursor = 31;//9+22;
+							return false;
+					} 		
+					sequenceCountStack[++sequenceCountStackHead] = length;
 					
-				   //TODO: this is rather questionable because the length can be zero but falls through for now.
-				   
 			 case 9:
-				 case9a(outputQueue);
-			     case9b(outputQueue);
-			   return readGroupClose(0xc0dc0014, 29); //TODO: wrong tokens for jump!!!
-
-					
+				 	assert(gatherReadData(reader,fullScript[9],9));
+				 	return case9();
 			 case 30:
-							 
-				   case30a(outputQueue);
+				 	assert(gatherReadData(reader,fullScript[30],30));
+				 	return case30();
+			 default:
+   		    		assert(false) : "Unsupported Template";
+			    	return false;				 
+		}		
+	}
+
+	private boolean case0() {
+		assert(gatherReadData(reader,fullScript[0],0));
+		//write a NonNull constant, no need to check more because this can not be null or dynamic.
+		  queue.appendInt2(0x80000000,0x02); //ref and length,  ASCIIConstant 0xa02c0000
+		  activeScriptCursor = 1;
+		  return false;
+	}
+
+	private int case1() {
+		   case1reset();
+		   //TODO: these constants can be 100% computed at code generation!
+		   //textHeap ID and known fixed length
+		   queue.appendInt6(0x80000001,0x03, //ASCIIConstant 0xa02c0001
+		                    0x80000002,0x01, //ASCIIConstant 0xa02c0002
+		                    0x80000003,0x0d); //ASCIIConstant 0xa02c0003
+		   
+		   //TODO: we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
+		   //	int[] dictionary = readerInteger.dictionary;
+		   queue.appendInt3(reader.readIntegerUnsigned(),
+				            reader.readIntegerUnsigned(),
+				            reader.readIntegerUnsigned());
 				
-				   cursor+=6;
-				   //outputQueue.append(readLength(token,readFromIdx));
-					int length2;
-					outputQueue.appendInteger(length2 = readIntegerUnsigned(0xd00c0011));
+		   return queue.appendInt1(reader.readIntegerUnsigned());  //readIntegerUnsigned(0xd00c0003)); 
+
+	}
+
+	private void case1reset() {
+		
+		   //readDictionaryReset2(dictionaryMembers[0x02]);	 //TODO: must expand for disctionary.
+		   readerDecimal.exponent.dictionary[0] = readerDecimal.exponent.init[0];
+		   readerDecimal.mantissa.dictionary[0] = readerDecimal.mantissa.init[0];
+		   readerDecimal.exponent.dictionary[1] = readerDecimal.exponent.init[1];
+		   readerDecimal.mantissa.dictionary[1] = readerDecimal.mantissa.init[1];
+		   readerText.heap.reset(4);
+		   readerInteger.dictionary[4] = readerInteger.init[4];
+		   readerInteger.dictionary[8] = readerInteger.init[8];
+		   readerInteger.dictionary[9] = readerInteger.init[9];
+		   readerInteger.dictionary[10] = readerInteger.init[10];
+		   readerInteger.dictionary[11] = readerInteger.init[11];
+		   readerInteger.dictionary[12] = readerInteger.init[12];
+	}
+
+	private boolean case9() {
+		
+		reader.openPMap(nonTemplatePMapSize);
+		
+		case9b();
+
+		closeGroup(0xc0dc0014);
+		activeScriptCursor = 29;
+		assert(gatherReadData(reader,fullScript[29],29));
+		return checkSequence != 0 && completeSequence(0xc0dc0014); 
+	}
+
+	private void case9b() {
+		int[] dictionary1 = readerInteger.dictionary;
+		
+		
+		queue.appendInt1(reader.readIntegerUnsignedCopy(0x04, 0x04, dictionary1));
+		assert(gatherReadData(reader,fullScript[10],10));//IntegerUnsigned:000000/Copy:000001/4 
+		
+		//writes zero.
+		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(1 /*default or absent value */, constIntAbsent));
+		assert(gatherReadData(reader,fullScript[11],11));//IntegerUnsignedOptional:000001/Default:000011/5
 	
-					if (length2==0) {
-					    //jumping over sequence (forward) it was skipped (rare case)
-						cursor += 10;
-						activeScriptCursor = cursor;
-						break;
-					} else {			
-						sequenceCountStack[++sequenceCountStackHead] = length2;
-					}				
-				
-				   return case30b(outputQueue, cursor);
 		
+		
+		//new group of ints must start here due to text usage.
+		int heapId = readerText.readASCIICopy(0xa01c0004, -1);
+		int xx = textHeap.length2(heapId);
+		//System.err.println(heapId+" "+xx); //4 1
+		queue.appendInt2(textIdRef(heapId, xx),
+				         xx);//not used if null //TODO: absent may be variable reference
+		assert(gatherReadData(reader,fullScript[12],12)); //ASCII:001000/Copy:000001/4
+		
+		
+		//value adjust after causes break
+		int value2 = reader.readIntegerUnsigned();
+		assert(gatherReadData(reader,fullScript[13],13));//IntegerUnsignedOptional:000001/None:000000/6
+		queue.appendInt5(value2 == 0 ? constIntAbsent : value2 - 1,
+				         9,//dictionary1[0x07],//constant?
+				         reader.readIntegerUnsignedCopy(0x08, 0x08, dictionary1),
+				         reader.readIntegerUnsignedIncrement(0x09, 0x09, dictionary1),
+				         reader.readIntegerSignedDefault(0 /* default value */));
+		
+		assert(gatherReadData(reader,fullScript[17],17));
+		
+		//decmial matissa causes break.
+		long h2 = reader.readLongSignedDelta(0x00, 0x00, readerDecimal.mantissa.dictionary);
+		queue.appendInt5((int) (h2 >>> 32),
+				         (int) (h2 & 0xFFFFFFFF),
+				         reader.readIntegerUnsignedCopy(0x0a, 0x0a, dictionary1),
+				         reader.readIntegerSignedDeltaOptional(0x0b, 0x0b, dictionary1,constIntAbsent),
+				         reader.readIntegerUnsignedDeltaOptional(0x0c, 0x0c, dictionary1,constIntAbsent));
+		
+		assert(gatherReadData(reader,fullScript[20],20));
+		
+		case9c();
+	}
+
+	private void case9c() {
+		int heapIdx = readerText.readASCIIDefault(0x05);
+		int heapIdxLen = textHeap.length2(heapIdx);
+		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),
+						 heapIdxLen);//not used if null
+		assert(gatherReadData(reader,fullScript[21],21));
+		                 
+		queue.appendInt1(reader.readIntegerSignedDefaultOptional(2147483647 /* default or absent value */,constIntAbsent));
+		long e21 = reader.readLongSignedDeltaOptional(0x01, 0x01, readerDecimal.mantissa.dictionary, constLongAbsent);
+		queue.appendInt2((int) (e21 >>> 32),
+		                 (int) (e21 & 0xFFFFFFFF));
+		
+		assert(gatherReadData(reader,fullScript[22],22));
+		
+		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent));
+
+		assert(gatherReadData(reader,fullScript[23],23));
+		
+		
+		heapIdx = readerText.readASCIIDefault(0x06);
+		heapIdxLen = textHeap.length2(heapIdx);
+		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null
+		
+		heapIdx = readerText.readASCIIDefault(0x07);
+		heapIdxLen = textHeap.length2(heapIdx);
+		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null
+
+		heapIdx = readerText.readASCIIDefault(0x08);
+		heapIdxLen = textHeap.length2(heapIdx);
+		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null	
+		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(2147483647 ,constIntAbsent));
+
+		heapIdx = readerText.readASCIIDefault(0x09);
+		heapIdxLen = textHeap.length2(heapIdx);
+		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null
+	}
+
+	private int textIdRef(int heapId, int length) {
+
+		if (heapId<0) {//points to constant in hash, high bit already set.
+			 return heapId;
+		} else {
+			if (length>0) {
+				queue.writeTextToRingBuffer(heapId, length);
+			}		
+			return queue.addCharPos;
 		}
+	}
+
+	private boolean case30() {
+		//// example of what code generator must do.			
+ 
+		//write a NonNull constant, no need to check more because this can not be null or dynamic.
+		queue.appendInt2(0x8000000a,0x5);//ASCIIConstant 0xa02c000a
+		queue.appendInt2(0x8000000b,0x0);//ASCIIConstant(0xa02c000b
+		queue.appendInt2(0x8000000c,0x0); ///ASCIIConstant(0xa02c000c
+
+		queue.appendInt2(reader.readIntegerUnsigned(),
+				         reader.readIntegerUnsigned());
 		
-		assert(false) : "Unsupported Template";
-		return false;
+		//System.err.println("0x"+Integer.toHexString(c1)+",0x"+Integer.toHexString(textHeap.initLength(c1)));
+
+		int f1 = readerText.readASCII(0xa40c000d,readFromIdx);
+
+		int len5 = textHeap.length2(f1);
+		queue.appendInt2(textIdRef(f1, len5),len5);//not used if null//normal read without constant, may need copy
+				
+		int length2;//be careful in code generation this can have all the same operators
+		queue.appendInt1(length2 = reader.readIntegerUnsigned());// readIntegerUnsigned(0xd00c0011));
+		if (length2==0) {
+		    //jumping over sequence (forward) it was skipped (rare case)
+			activeScriptCursor = 46;//36+10;
+			return false;
+		} else {			
+			sequenceCountStack[++sequenceCountStackHead] = length2;
+		}		
+
+		reader.openPMap(nonTemplatePMapSize);
+		
+		//write a NonNull constant, no need to check more because this can not be null or dynamic.
+		int a4 = readerText.readASCIIConstant(0xa02c000e,readFromIdx);
+		queue.appendInt2(a4,textHeap.initLength(a4));//TODO:replace with constants
+				
+		long b4 = reader.readLongUnsignedOptional(constLongAbsent);
+		queue.appendInt3((int)(b4>>>32),
+				         (int)(b4&0xFFFFFFFF),
+				         reader.readIntegerUnsignedDefaultOptional(1/*default or optional */, constIntAbsent));
+
+		long d4 = reader.readLongUnsigned(0x01, readerLong.dictionary);
+		queue.appendInt5((int)(d4>>>32),
+				         (int)(d4&0xFFFFFFFF),
+				         reader.readIntegerUnsignedDefault(1/*default value*/),
+				         reader.readIntegerUnsigned(),
+				         readerInteger.dictionary[0x15]);
+
+		closeGroup(0xc0dc0008);
+		activeScriptCursor = 45;
+		return checkSequence!=0 && completeSequence(0xc0dc0008);
+
 	}
 	
 
 	final int constIntAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
 	final long constLongAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 
-	private void case30a(FASTRingBuffer outputQueue) {
-		int a = readerText.readASCIIConstant(0xa02c000a,readFromIdx);
-		outputQueue.appendText(a);
-	    
-		int b = readerText.readASCIIConstant(0xa02c000b,readFromIdx);
-	    outputQueue.appendText(b);
-	   
-	    int c = readerText.readASCIIConstant(0xa02c000c,readFromIdx);
-	    outputQueue.appendText(c);
-	   
-	    int d = reader.readIntegerUnsigned();
-	    outputQueue.appendInteger(d);
 	
-	    int e = reader.readIntegerUnsigned();
-	    outputQueue.appendInteger(e);
-	   
-	    int f = readerText.readASCII(0xa40c000d,readFromIdx);
-	    outputQueue.appendText(f);
-	}
 
-	private boolean case30b(FASTRingBuffer outputQueue, int cursor) {
-		boolean result;
-		reader.openPMap(nonTemplatePMapSize);
 		
-	    int a = readerText.readASCIIConstant(0xa02c000e,readFromIdx);
-		outputQueue.appendText(a);
-		long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(0x940c0000));
-	
-		long b = readerLong.reader.readLongUnsignedOptional(constAbsent);
-		outputQueue.appendLong(b);
-		
-		int t = readerInteger.dictionary[0x12];//TODO: compute runtime constant in code gen
-		int constDefault1 = t == 0 ? constIntAbsent : t-1; //TODO: runtime constant in code gen;
-        int c = reader.readIntegerUnsignedDefaultOptional(constDefault1, constIntAbsent);
-		outputQueue.appendInteger(c);
-		int target = 0x900c0001&readerLong.MAX_LONG_INSTANCE_MASK;
-	
-		long d = readerLong.reader.readLongUnsigned(target, readerLong.dictionary);
-		outputQueue.appendLong(d);
-
-		int constDefault = readerInteger.dictionary[0x13];//TODO: runtime constant to be injected by code generator.
-		int e = reader.readIntegerUnsignedDefault(constDefault);
-		outputQueue.appendInteger(e);
-		
-		int f = reader.readIntegerUnsigned();
-		outputQueue.appendInteger(f);
-		
-		int g = readerInteger.dictionary[0x15];
-		outputQueue.appendInteger(g);
-
-		cursor+=10;
-		   //outputQueue.append(readGroup(token,readFromIdx));
-		result = readGroupClose(0xc0dc0008, cursor-1);
-		activeScriptCursor = cursor-1;
-		return result;
-	}
-
-	private void case9b(FASTRingBuffer outputQueue) {
-
-		   int[] dictionary = readerInteger.dictionary;
-		   
-		   FieldReaderDecimal rDecimal = readerDecimal;
-		
-		   int a1 = reader.readIntegerUnsignedCopy(0x0a, 0x0a, dictionary);
-		   outputQueue.appendInteger(a1);
-		
-		   int b1 = reader.readIntegerSignedDeltaOptional(0x0b, 0x0b, dictionary, constIntAbsent);
-		   outputQueue.appendInteger(b1);
-		
-		   int c1 = reader.readIntegerUnsignedDeltaOptional(0x0c, 0x0c, dictionary, constIntAbsent);
-		   outputQueue.appendInteger(c1);
-
-		   int d1 = readerText.readASCIIDefault(0x05);
-		   outputQueue.appendText(d1);
-		   		   
-		   int constDefault2 = rDecimal.exponent.dictionary[0x01]==0?constIntAbsent:rDecimal.exponent.dictionary[0x01];
-			   
-		   int e1 = reader.readIntegerSignedDefaultOptional(constDefault2, constIntAbsent);
-		   long e2 = reader.readLongSignedDeltaOptional(0x01, 0x01, rDecimal.mantissa.dictionary, constLongAbsent);
-		   outputQueue.appendDecimal(e1, e2);
-		   
-		   int constDefault1 = dictionary[0x0d] == 0 ? constIntAbsent : dictionary[0x0d]-1; //TODO: runtime constant;
-		   int a = reader.readIntegerUnsignedDefaultOptional(constDefault1, constIntAbsent);
-		   outputQueue.appendInteger(a);
-
-		   int b = readerText.readASCIIDefault(0x06);
-		   outputQueue.appendText(b);
-
-		   int c = readerText.readASCIIDefault(0x07);
-		   outputQueue.appendText(c);
-
-		   int d = readerText.readASCIIDefault(0x08);
-		   outputQueue.appendText(d);
-		
-		   int t = dictionary[0x0e];//TODO: runtime constant
-		   int constDefault = t == 0 ? constIntAbsent : t-1; //TODO: runtime constant;
-		   
-		   int e = reader.readIntegerUnsignedDefaultOptional(constDefault, constIntAbsent);
-		   outputQueue.appendInteger(e);
-	
-		   int f = readerText.readASCIIDefault(0x09);
-		   outputQueue.appendText(f);
-	}
-
-	private void case9a(FASTRingBuffer outputQueue) {
-		//TODO: expose ringbuffer to make the append methods static here.
-		
-		   int[] dictionary = readerInteger.dictionary;
-		   FieldReaderDecimal rDecimal = readerDecimal;
-		
-		   reader.openPMap(nonTemplatePMapSize);
-
-		   int a = reader.readIntegerUnsignedCopy(0x04, 0x04, dictionary);
-		   outputQueue.appendInteger(a);
-		   
-
-		   int t = dictionary[0x05];//TODO: runtime constant
-		   int constDefault = t == 0 ? constIntAbsent : t-1; //TODO: runtime constant;
-		   int b = reader.readIntegerUnsignedDefaultOptional(constDefault, constIntAbsent);
-		   outputQueue.appendInteger(b);
-		   
-		   int c = readerText.readASCIICopy(0xa01c0004,-1);
-		   outputQueue.appendText(c);
-		
-		   int value = reader.readIntegerUnsigned();
-		   int d = value==0 ? constIntAbsent : value-1;
-		   outputQueue.appendInteger(d);
-		   
-		   int e = dictionary[0x07];
-		   outputQueue.appendInteger(e);
-		   
-		   int f = reader.readIntegerUnsignedCopy(0x08, 0x08, dictionary);
-  		   outputQueue.appendInteger(f);
-		
-		   int g = reader.readIntegerUnsignedIncrement(0x09, 0x09, dictionary);
-		   outputQueue.appendInteger(g);
-		
-		   int constDefault1 = rDecimal.exponent.dictionary[0x00]; //TODO: runtime constant
-
-		    //System.err.println(  TokenBuilder.tokenToString(0xb1cc0000));
-		    int h1 = reader.readIntegerSignedDefault(constDefault1);
-			long h2 = reader.readLongSignedDelta(0x00, 0x00, rDecimal.mantissa.dictionary);
-			outputQueue.appendDecimal(h1, h2);
-	}
 
 	
 	
@@ -414,7 +429,7 @@ public class FASTReaderDispatch{
 				
 			}
 			
-			assert(gatherReadData(reader,token,cursor));
+			assert(gatherReadData(reader,script[cursor],cursor));
 
 			//TODO: Need group method with optional support
 			//TODO: Need a way to unify Decimal? Do as two Tokens?
@@ -428,9 +443,11 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 					//00???
 					if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-						outputQueue.appendInteger(dispatchReadByTokenForInteger(token));//int
+						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = dispatchReadByTokenForInteger(token);//int
 					} else {
-						outputQueue.appendLong(dispatchReadByTokenForLong(token));//long
+						long value = dispatchReadByTokenForLong(token);
+						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(value>>>32);
+						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(value&0xFFFFFFFF);//long
 					}
 				} else {
 					//01???
@@ -442,11 +459,15 @@ public class FASTReaderDispatch{
 						if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 							//0110? Decimal and DecimalOptional
 							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-								outputQueue.appendDecimal(readerDecimal.readDecimalExponent(token, -1), //TODO: must add support for decimal pulling last value from another dicitonary.
-								                   		  readerDecimal.readDecimalMantissa(token, -1));
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = readerDecimal.readDecimalExponent(token, -1);
+								long readDecimalMantissa = readerDecimal.readDecimalMantissa(token, -1);
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa>>>32);
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
 							} else {
-								outputQueue.appendDecimal(readerDecimal.readDecimalExponentOptional(token, -1),
-								    		       		  readerDecimal.readDecimalMantissaOptional(token, -1));
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = readerDecimal.readDecimalExponentOptional(token, -1);
+								long readDecimalMantissa = readerDecimal.readDecimalMantissaOptional(token, -1);
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa>>>32);
+								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
 							}
 						} else {
 							//0111?
@@ -487,7 +508,8 @@ public class FASTReaderDispatch{
 						//Length Type, no others defined so no need to keep checking
 						//Only happens once before a node sequence so push it on the count stack
 						int length;
-						outputQueue.appendInteger(length = readIntegerUnsigned(token));
+						int value = length = readIntegerUnsigned(token);
+						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = value;
 						
 						//int oldCursor = cursor;
 						cursor = sequenceJump(length, cursor);
@@ -497,7 +519,7 @@ public class FASTReaderDispatch{
 					//11???
 					//Dictionary Type, no others defined so no need to keep checking
 					if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-						readDictionaryReset(token);					
+						readDictionaryReset2(dictionaryMembers[TokenBuilder.MAX_INSTANCE&token]);					
 					} else {
 						//OperatorMask.Dictionary_Read_From  0001
 						//next read will need to use this index to pull the right initial value.
@@ -565,6 +587,17 @@ public class FASTReaderDispatch{
 		
 		return true;
 	}
+	private boolean gatherReadData(PrimitiveReader reader, int token, int cursor, String value) {
+
+		if (null!=observer) {
+			//totalRead is bytes loaded from stream.
+			
+			long absPos = reader.totalRead()-reader.bytesReadyToParse();
+			observer.tokenItem(absPos,token,cursor, value);
+		}
+		
+		return true;
+	}
 	
 	boolean gatherReadData(PrimitiveReader reader, String msg) {
 
@@ -576,16 +609,13 @@ public class FASTReaderDispatch{
 		return true;
 	}
 
-	private void readDictionaryReset(int token) {
-		readDictionaryReset2(dictionaryMembers[TokenBuilder.MAX_INSTANCE&token]);
-	}
-
 	//TODO: code generation, may be the best solution for this.
 	private void readDictionaryReset2(int[] members) {
 		
-		//System.err.println("reset:"+Arrays.toString(members));
-		
-		//TODO: URGENT: no need to reset the values of constants and default where the value is not avoided
+		boolean genCode = false;
+		if (genCode) {
+			System.err.println();;
+		}
 		
 		int limit = members.length;
 		int m = 0;
@@ -596,26 +626,30 @@ public class FASTReaderDispatch{
 			if (0==(idx&8)) {
 				if (0==(idx&4)) {
 					//integer
-					//System.err.println("int");
-					int[] d1 = readerInteger.dictionary;
-					int[] d2 = readerInteger.init;
 					while (m<limit && (idx = members[m++])>=0) {
-						d1[idx] = d2[idx];
+						readerInteger.dictionary[idx] = readerInteger.init[idx];
+						if (genCode) {
+							System.err.println("readerInteger.dictionary["+idx+"] = readerInteger.init["+idx+"];");
+						}
 					}
 				} else {
 					//long
 					//System.err.println("long");
 					while (m<limit && (idx = members[m++])>=0) {
 						readerLong.dictionary[idx] = readerLong.init[idx];
+						if (genCode) {
+							System.err.println("readerLong.dictionary["+idx+"] = readerLong.init["+idx+"];");
+						}
 					}
 				}
 			} else {
 				if (0==(idx&4)) {							
 					//text
-					//System.err.println("text");
-					TextHeap h = readerText.heap;
 					while (m<limit && (idx = members[m++])>=0) {						
-						h.setNull(idx); //TODO: this is not right, must keep value string from template parse.
+						readerText.heap.reset(idx);
+						if (genCode) {
+							System.err.println("readerText.heap.reset("+idx+");");
+						}	
 					}
 				} else {
 					if (0==(idx&2)) {								
@@ -624,11 +658,18 @@ public class FASTReaderDispatch{
 						while (m<limit && (idx = members[m++])>=0) {
 							readerDecimal.exponent.dictionary[idx] = readerDecimal.exponent.init[idx];
 							readerDecimal.mantissa.dictionary[idx] = readerDecimal.mantissa.init[idx];
+							if (genCode) {
+								System.err.println("readerDecimal.exponent.dictionary["+idx+"] = readerDecimal.exponent.init["+idx+"];");
+								System.err.println("readerDecimal.mantissa.dictionary["+idx+"] = readerDecimal.mantissa.init["+idx+"];");
+							}	
 						}
 					} else {
 						//bytes
 						while (m<limit && (idx = members[m++])>=0) {
 							readerBytes.reset(idx);
+							if (genCode) {
+								System.err.println("readerBytes.reset("+idx+");");
+							}	
 						}
 					}
 				}
@@ -645,7 +686,9 @@ public class FASTReaderDispatch{
 			//0100?
 			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 				//01000 TextASCII
-				return 	readTextASCII(token);
+				int tmp = readTextASCII(token);
+				//System.err.println("zzz "+tmp+" "+textHeap.length2(tmp));
+				return tmp;
 			} else {
 				//01001 TextASCIIOptional
 				return 	readTextASCIIOptional(token);

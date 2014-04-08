@@ -16,6 +16,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -53,7 +54,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(429, catalogByteArray.length);
+			assertEquals(430, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -120,8 +121,8 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript()); 
-		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
-		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
+		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
 		System.gc();
 		
@@ -182,7 +183,7 @@ public class TemplateLoaderTest {
 		File sourceDataFile = new File(sourceData.getFile().replace("%20"," "));
 		long totalTestBytes = sourceDataFile.length();
 		
-		
+		//this is much faster because we no longer need to jump out to OS.
 		FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
 
 		//New memory mapped solution. No need to cache because we warm up and OS already has it.
@@ -202,9 +203,8 @@ public class TemplateLoaderTest {
 									                catalog.getTextGap(),
 									                catalog.getByteVectorGap(),
 									                catalog.fullScript()); 
-		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
-		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
-		
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
+		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
 		
 		int warmup =20;
@@ -392,6 +392,119 @@ public class TemplateLoaderTest {
 		}
 		return fastInput;
 	}
+	
+	@Test
+	public void testDecodeGenVsInterp30000() {
+		///////////
+		//ensure the generated code does the same thing as the interpreted code.
+		//plays both together and checks each as they are processed.
+		///////////
+		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+		final TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+		
+		//values which need to be set client side and are not in the template.
+		catalog.setMessagePreambleSize((byte)4);	
+		catalog.setMaxByteVectorLength(0, 0);//byte vectors are unused
+		catalog.setMaxTextLength(14, 8);
+		
+		//connect to file		
+		URL sourceData = getClass().getResource("/performance/complex30000.dat");
+		File sourceDataFile = new File(sourceData.getFile().replace("%20"," "));
+		long totalTestBytes = sourceDataFile.length();
+		
+		
+		FASTInputByteArray fastInput1 = buildInputForTestingByteArray(sourceDataFile);
+		PrimitiveReader primitiveReader1 = new PrimitiveReader(fastInput1);
+		FASTReaderDispatch readerDispatch1 = new FASTReaderDispatch(primitiveReader1, 
+                catalog.dictionaryFactory(),
+                catalog.maxNonTemplatePMapSize(),
+                catalog.dictionaryMembers(), 
+                catalog.getMaxTextLength(),
+                catalog.getMaxByteVectorLength(),
+                catalog.getTextGap(),
+                catalog.getByteVectorGap(),
+                catalog.fullScript()); 
+		FASTDynamicReader dynamicReader1 = new FASTDynamicReader(primitiveReader1, catalog, readerDispatch1);
+		FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
+		
+
+		FASTInputByteArray fastInput2 = buildInputForTestingByteArray(sourceDataFile);
+		final PrimitiveReader primitiveReader2 = new PrimitiveReader(fastInput2);
+		FASTReaderDispatch readerDispatch2 = new FASTReaderDispatch(primitiveReader2, 
+                catalog.dictionaryFactory(),
+                catalog.maxNonTemplatePMapSize(),
+                catalog.dictionaryMembers(), 
+                catalog.getMaxTextLength(),
+                catalog.getMaxByteVectorLength(),
+                catalog.getTextGap(),
+                catalog.getByteVectorGap(),
+                catalog.fullScript()); 
+		FASTDynamicReader dynamicReader2 = new FASTDynamicReader(primitiveReader2, catalog, readerDispatch2);
+		FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
+		
+		
+//		final Map<Long,String> reads1 = new HashMap<Long,String>();
+//		readerDispatch1.setDispatchObserver(new DispatchObserver(){
+//
+//			@Override
+//			public void tokenItem(long absPos, int token, int cursor, String value) {
+//				    String msg = "\n    R_"+TokenBuilder.tokenToString(token)+" id:"+(cursor>=catalog.scriptFieldIds.length? "ERR": ""+catalog.scriptFieldIds[cursor])+" curs:"+cursor+
+//				    		         " tok:"+token+" "+value;
+//					if (reads1.containsKey(absPos)) {
+//						msg = reads1.get(absPos)+" "+msg;
+//					}
+//					reads1.put(absPos, msg);
+//			}});
+		
+		
+		//final Map<Long,String> reads2 = new HashMap<Long,String>();
+		
+		final int keep = 16;
+		final int mask = keep-1;
+		final AtomicInteger idx = new AtomicInteger(0);
+		final String[] reads2 = new String[keep];
+		readerDispatch2.setDispatchObserver(new DispatchObserver(){
+
+			@Override
+			public void tokenItem(long absPos, int token, int cursor, String value) {
+				    String msg =  " "+(primitiveReader2.totalRead()-primitiveReader2.bytesReadyToParse())+
+				    		      " R_"+TokenBuilder.tokenToString(token)+" id:"+(cursor>=catalog.scriptFieldIds.length? "ERR": ""+catalog.scriptFieldIds[cursor])+" curs:"+cursor+
+				    		         " tok:"+token+" "+value;
+				    
+				    reads2[mask&idx.incrementAndGet()]=msg.trim();
+			}});
+		
+		
+		int i =0;
+		while(dynamicReader1.hasMore()!=0 &&
+			  dynamicReader2.hasMoreByTokens()!=0) {
+			
+			while (queue1.hasContent() && queue2.hasContent()) {
+				int int1 = queue1.readInteger(1);
+				int int2 = queue2.readInteger(1);
+				if (int1!=int2) {
+					
+					int c = idx.get();
+					int j = keep;
+					while (--j>=0) {
+						System.err.println(j+" "+reads2[mask&(c-j)]);
+					}
+					System.err.println("1:"+Integer.toBinaryString(int1));
+					System.err.println("2:"+Integer.toBinaryString(int2));
+					
+					
+					String msg = "int "+i+" byte "+(i*4)+"  ";
+					assertEquals(msg,int1,int2);
+				}
+				queue1.removeForward(1);
+				queue2.removeForward(1);
+				i++;
+			}	
+		}
+		assertEquals(primitiveReader1.totalRead(),primitiveReader2.totalRead());
+		
+		
+	}
 
 	@Test
 	public void testDecodeEncodeComplex30000() {	
@@ -424,9 +537,8 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript()); 
-		FASTRingBuffer queue = new FASTRingBuffer((byte)8, (byte)7, readerDispatch.textHeap());// TODO: hack test.
-		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, queue, readerDispatch);
-		
+		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
+		FASTRingBuffer queue = readerDispatch.ringBuffer();
 				
 		byte[] targetBuffer = new byte[(int)(totalTestBytes)];
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
@@ -447,7 +559,6 @@ public class TemplateLoaderTest {
 		
 		
 		final Map<Long,String> reads = new HashMap<Long,String>();
-		final Map<Long,String> writes = new HashMap<Long,String>();
 		readerDispatch.setDispatchObserver(new DispatchObserver(){
 
 			@Override
@@ -459,20 +570,7 @@ public class TemplateLoaderTest {
 					}
 					reads.put(absPos, msg);
 			}});
-//		writerDispatch.setDispatchObserver(new DispatchObserver(){
-//
-//			@Override
-//			public void tokenItem(long absPos, int token, int cursor, String value) {
-//					absPos-=2;//TODO: we need the max pmap length and the real pmap length to get this right.
-//					
-//					
-//					String msg = "\n    W_"+TokenBuilder.tokenToString(token)+" id:"+catalog.scriptFieldIds[cursor]+" curs:"+cursor+
-//							 " tok:"+token+" "+value;
-//					if (writes.containsKey(absPos)) {
-//						msg = writes.get(absPos)+" "+msg;
-//					}
-//					writes.put(absPos, msg);
-//			}});
+
 		
 		
 		System.gc();
@@ -517,7 +615,7 @@ public class TemplateLoaderTest {
 			writerDispatch.setDispatchObserver(null);
 		}	 	
 		
-		scanForFirstMismatch(targetBuffer,  fastInput.getSource(), reads, writes);
+		scanForMismatch(targetBuffer,  fastInput.getSource(), reads);
 		//Expected total read fields:2126101
 		assertEquals("test file bytes",totalTestBytes,wroteSize);
 		
@@ -566,8 +664,8 @@ public class TemplateLoaderTest {
 
 	}
 
-	private void scanForFirstMismatch(byte[] targetBuffer, byte[] sourceBuffer, 
-			                            Map<Long, String> reads, Map<Long, String> writes) {
+	private void scanForMismatch(byte[] targetBuffer, byte[] sourceBuffer, 
+			                            Map<Long, String> reads) {
 		int lookAhead = 11;
 		int maxDisplay = 31;
 		int nthErr = 1;
@@ -594,7 +692,7 @@ public class TemplateLoaderTest {
 				builder.append(" W").append(bin(targetBuffer[i])).append(' ');
 				
 				if (sourceBuffer[i]!=targetBuffer[i]) {
-					builder.append(" ***ERROR*** ");
+					builder.append(" ***ERROR***  decimals "+ (0x7F&sourceBuffer[i]) +"  "+ (0x7F&targetBuffer[i])+" ascii "+ Character.toString((char)(0x7F&sourceBuffer[i])) +"  "+ Character.toString((char)(0x7F&targetBuffer[i])));
 				}
 				
 				Long lng = Long.valueOf(i);
@@ -602,9 +700,6 @@ public class TemplateLoaderTest {
 					builder.append(reads.get(lng)).append(' ');
 				} else {
 					builder.append("                ");
-				}
-				if (writes.containsKey(lng)) {
-					builder.append(writes.get(lng)).append(' ');
 				}
 				
 				System.err.println(builder);

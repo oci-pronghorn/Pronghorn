@@ -29,7 +29,7 @@ public final class FASTRingBuffer implements CharSequence {
 	final int maxCharSize;
 	final int charMask;
 	final char[] charBuffer;
-	final TextHeap textHeap; 
+	public final TextHeap textHeap; 
 	final char[] rawConstHeap;
 	
 	int[] tat;
@@ -46,11 +46,11 @@ public final class FASTRingBuffer implements CharSequence {
 		assert(bits>=1);
 		this.textHeap = heap;
 		
-		tat = textHeap.tat;
-		initTat = textHeap.initTat;
-		data = textHeap.data;
+		tat = null==textHeap?null:textHeap.tat;
+		initTat = null==textHeap?null:textHeap.initTat;
+		data = null==textHeap?null:textHeap.data;
 		
-		this.rawConstHeap = textHeap.rawInitAccess();
+		this.rawConstHeap = null==textHeap?null:textHeap.rawInitAccess();
 		
 		this.maxSize = 1<<bits;
 		this.mask = maxSize-1;
@@ -97,15 +97,6 @@ public final class FASTRingBuffer implements CharSequence {
     }
     
 	
-	public final void appendInteger(int value) {
-		buffer[mask&addPos++] = value;
-	}
-	
-	public final void appendLong(long value) {		
-		buffer[mask&addPos++] = (int)(value>>>32);
-		buffer[mask&addPos++] = (int)(value&0xFFFFFFFF);
-	}
-
 	public void appendBytes(byte[] source) {
 		
 		int i = 0;
@@ -120,42 +111,102 @@ public final class FASTRingBuffer implements CharSequence {
 	// neg  pos  heap constant index
 	// pos  neg  null
 	
-
+	public final int appendInt1(int value) {
+		buffer[mask&addPos++]=value;
+		return value;
+	}
+	public final void appendInt2(int a, int b) {
+		buffer[mask&addPos++]=a;
+		buffer[mask&addPos++]=b;
+	}
+	public final void appendInt3(int a, int b, int c) {
+		buffer[mask&addPos++]=a;
+		buffer[mask&addPos++]=b;
+		buffer[mask&addPos++]=c;
+	}
+	public final void appendInt4(int a, int b, int c, int d) {
+		
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		buffer[M&p++]=d;
+		addPos = p;
+		
+	}
+	public final void appendInt5(int a, int b, int c, int d, int e) {
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		buffer[M&p++]=d;
+		buffer[M&p++]=e;
+		addPos = p;
+	}
+	
+	public final void appendInt6(int a, int b, int c, int d, int e, int f) {
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		buffer[M&p++]=d;
+		buffer[M&p++]=e;
+		buffer[M&p++]=f;		
+		addPos = p;
+	}
+	
+	public final void appendInt7(int a, int b, int c, int d, int e, int f, int g) {
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		buffer[M&p++]=d;
+		buffer[M&p++]=e;
+		buffer[M&p++]=f;		
+		buffer[M&p++]=g;	
+		addPos = p;
+	}
+	
+	public final void appendInt8(int a, int b, int c, int d, int e, int f, int g, int h) {
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		buffer[M&p++]=d;
+		buffer[M&p++]=e;
+		buffer[M&p++]=f;		
+		buffer[M&p++]=g;	
+		buffer[M&p++]=h;
+		addPos = p;
+	}
 	
 	public final void appendText(int heapId) {
-		int m = mask;
-		int[] buf = buffer;
-		
+	    int len = textHeap.length2(heapId);
+
 		if (heapId<0) {//points to constant in hash, high bit already set.
-			buf[m&addPos++] = heapId;
-			int offset = heapId << 1; //this shift left also removes the top bit! sweet. //must be neg - constants only
-			buf[m&addPos++] = //textHeap.initLength(heapId); 
-				initTat[offset+1] - initTat[offset];//length, -1 for null.	
-			//System.err.println("A");
+			buffer[mask&addPos++] = heapId;
+			buffer[mask&addPos++] = len;
 		} else {
-			assert(heapId>=0) : "Only supported for primary values";
-			int offset = heapId<<2;
-			int len = //textHeap.valueLength(heapId);
-			tat[offset+1] - tat[offset];
-			if (len<0) { //is null
-				buf[m&addPos++] = 0;
-				buf[m&addPos++] = -1;
-				//System.err.println("B -1");
-			} else {
-		    	//must store length in char sequence and store the position index.
-				//with two ints can store both length and position.
-				buf[m&addPos++] = addCharPos;//offset in text
-				buf[m&addPos++] = len;//length of text
-				//System.err.println("C "+len);
-				//copy text into ring buffer.
-				if (len>0) {
-					int p = addCharPos;
-					addCharPos+=len;
-					//end with function call for performance.
-					TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
-				}
+			buffer[mask&addPos++] = addCharPos;//not used if null
+			buffer[mask&addPos++] = len;//will be -1 when null
+
+			if (len>0) {
+				writeTextToRingBuffer(heapId, len);
 			}
+
 		}
+	}
+
+	public void writeTextToRingBuffer(int heapId, int len) {
+		int p = addCharPos;
+		addCharPos+=len;
+		//end with function call for performance.
+		TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
 	}
 
 
@@ -165,14 +216,6 @@ public final class FASTRingBuffer implements CharSequence {
 		
 	}
 
-	public void appendDecimal(int readDecimalExponent, long readDecimalMantissa) {
-
-		buffer[mask&addPos++] = readDecimalExponent;
-		buffer[mask&addPos++] = (int)(readDecimalMantissa>>>32);
-		buffer[mask&addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
-				
-	}
-	
 	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
 	public void moveForward() {
 		//consumer is allowed to read up to addCount

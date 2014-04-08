@@ -347,7 +347,7 @@ public class DictionaryFactory {
 			charInitIndex = temp1;
 			charInitValue = temp2;			
 		}
-		
+		//System.err.println("default   "+idx+" is "+new String(value));
 	}	
 	
 	private char[] ZERO_LENGTH_CHARS = new char[0];
