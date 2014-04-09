@@ -7,7 +7,9 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public final class FieldReaderText {
 
-	public static final int INIT_VALUE_MASK = 0x80000000;
+	private static final int INIT_VALUE_MASK = 0x80000000;
+	private static final int INT_VALUE_SHIFT = 31;
+	
 	private final PrimitiveReader reader;
 	public final TextHeap heap;
 	private final char[] targ;
@@ -141,19 +143,33 @@ public final class FieldReaderText {
 	//PATTERN:  (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readLongUnsignedPrivate());
 	public int readASCIIDefault(int target) {
 		
+		//TODO: can shift the high bit from the value of popPMapBit.
+		//if >=0 target then compute the value.
+		
+//		int result = (((int)reader.popPMapBit())<<31/*INT_VALUE_SHIFT*/)|target;
+//		if (result>=0) {
+//			temp(target, reader.readTextASCIIByte());
+//		}
+//		return result;
+		
+		
 		//NOTE: also supports optional case due to ASII optinal encoding.
 		if (reader.popPMapBit()==0) {//50% of time here in pop pmap
 			//  1/3 of calls here
 			return INIT_VALUE_MASK|target;//use default
 		} else {
-			byte val = reader.readTextASCIIByte();
-			int tmp;
-			if (0!=(tmp = 0x7F&val)) {//low 7 bits have data
-				readASCIIDefault2(val, tmp, target);
-			} else {
-				readASCIIToHeapNone(target, val);
-			}
+			temp(target, reader.readTextASCIIByte());
 			return target;
+		}
+		
+	}
+
+	private void temp(int target, byte val) {
+		int tmp;
+		if (0!=(tmp = 0x7F&val)) {//low 7 bits have data
+			readASCIIDefault2(val, tmp, target);
+		} else {
+			readASCIIToHeapNone(target, val);
 		}
 	}
 

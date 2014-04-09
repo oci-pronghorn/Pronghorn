@@ -131,7 +131,8 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-
+    //TODO: this code generation must take place when loading the catalog binary file.
+	//TODO: caller must be able to choose generated or interpreted execution.
 	public boolean dispatchReadByTokenGen() {
 		switch(activeScriptCursor) {
 			 case 0:		
@@ -216,14 +217,9 @@ public class FASTReaderDispatch{
 		int[] dictionary1 = readerInteger.dictionary;
 		
 		
-		queue.appendInt1(reader.readIntegerUnsignedCopy(0x04, 0x04, dictionary1));
-		assert(gatherReadData(reader,fullScript[10],10));//IntegerUnsigned:000000/Copy:000001/4 
-		
-		//writes zero.
-		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(1 /*default or absent value */, constIntAbsent));
-		assert(gatherReadData(reader,fullScript[11],11));//IntegerUnsignedOptional:000001/Default:000011/5
-	
-		
+		queue.appendInt2(reader.readIntegerUnsignedCopy(0x04, 0x04, dictionary1),
+				         reader.readIntegerUnsignedDefaultOptional(1 /*default or absent value */, constIntAbsent));
+			
 		
 		//new group of ints must start here due to text usage.
 		int heapId = readerText.readASCIICopy(0xa01c0004, -1);
@@ -231,20 +227,15 @@ public class FASTReaderDispatch{
 		//System.err.println(heapId+" "+xx); //4 1
 		queue.appendInt2(textIdRef(heapId, xx),
 				         xx);//not used if null //TODO: absent may be variable reference
-		assert(gatherReadData(reader,fullScript[12],12)); //ASCII:001000/Copy:000001/4
-		
-		
+				
 		//value adjust after causes break
 		int value2 = reader.readIntegerUnsigned();
-		assert(gatherReadData(reader,fullScript[13],13));//IntegerUnsignedOptional:000001/None:000000/6
 		queue.appendInt5(value2 == 0 ? constIntAbsent : value2 - 1,
 				         9,//dictionary1[0x07],//constant?
 				         reader.readIntegerUnsignedCopy(0x08, 0x08, dictionary1),
 				         reader.readIntegerUnsignedIncrement(0x09, 0x09, dictionary1),
 				         reader.readIntegerSignedDefault(0 /* default value */));
-		
-		assert(gatherReadData(reader,fullScript[17],17));
-		
+				
 		//decmial matissa causes break.
 		long h2 = reader.readLongSignedDelta(0x00, 0x00, readerDecimal.mantissa.dictionary);
 		queue.appendInt5((int) (h2 >>> 32),
@@ -252,31 +243,21 @@ public class FASTReaderDispatch{
 				         reader.readIntegerUnsignedCopy(0x0a, 0x0a, dictionary1),
 				         reader.readIntegerSignedDeltaOptional(0x0b, 0x0b, dictionary1,constIntAbsent),
 				         reader.readIntegerUnsignedDeltaOptional(0x0c, 0x0c, dictionary1,constIntAbsent));
-		
-		assert(gatherReadData(reader,fullScript[20],20));
-		
+				
 		case9c();
 	}
 
 	private void case9c() {
+		long e21;
 		int heapIdx = readerText.readASCIIDefault(0x05);
 		int heapIdxLen = textHeap.length2(heapIdx);
-		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),
-						 heapIdxLen);//not used if null
-		assert(gatherReadData(reader,fullScript[21],21));
-		                 
-		queue.appendInt1(reader.readIntegerSignedDefaultOptional(2147483647 /* default or absent value */,constIntAbsent));
-		long e21 = reader.readLongSignedDeltaOptional(0x01, 0x01, readerDecimal.mantissa.dictionary, constLongAbsent);
-		queue.appendInt2((int) (e21 >>> 32),
-		                 (int) (e21 & 0xFFFFFFFF));
-		
-		assert(gatherReadData(reader,fullScript[22],22));
-		
-		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent));
-
-		assert(gatherReadData(reader,fullScript[23],23));
-		
-		
+		queue.appendInt6(textIdRef(heapIdx, heapIdxLen),
+						 heapIdxLen,
+						 reader.readIntegerSignedDefaultOptional(2147483647 /* default or absent value */,constIntAbsent),
+						 (int) ((e21 = reader.readLongSignedDeltaOptional(0x01, 0x01, readerDecimal.mantissa.dictionary, constLongAbsent)) >>> 32),
+		                 (int) (e21 & 0xFFFFFFFF),
+		                 reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent));
+				
 		heapIdx = readerText.readASCIIDefault(0x06);
 		heapIdxLen = textHeap.length2(heapIdx);
 		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null
@@ -287,8 +268,9 @@ public class FASTReaderDispatch{
 
 		heapIdx = readerText.readASCIIDefault(0x08);
 		heapIdxLen = textHeap.length2(heapIdx);
-		queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null	
-		queue.appendInt1(reader.readIntegerUnsignedDefaultOptional(2147483647 ,constIntAbsent));
+		queue.appendInt3(textIdRef(heapIdx, heapIdxLen),
+				         heapIdxLen,
+				         reader.readIntegerUnsignedDefaultOptional(2147483647 ,constIntAbsent));
 
 		heapIdx = readerText.readASCIIDefault(0x09);
 		heapIdxLen = textHeap.length2(heapIdx);
