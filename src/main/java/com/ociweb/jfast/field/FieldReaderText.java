@@ -146,7 +146,7 @@ public final class FieldReaderText {
 		//TODO: can shift the high bit from the value of popPMapBit.
 		//if >=0 target then compute the value.
 		
-//		int result = (((int)reader.popPMapBit())<<31/*INT_VALUE_SHIFT*/)|target;
+//		int result = (((int)reader.popPMapBit()-1)&INIT_VALUE_MASK)|target;
 //		if (result>=0) {
 //			temp(target, reader.readTextASCIIByte());
 //		}

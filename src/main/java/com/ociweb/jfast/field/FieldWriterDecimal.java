@@ -96,7 +96,7 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					writerDecimalExponent.writeIntegerSigned(1+exponent, token);//TODO: check this should not add if exponent is negative??
+					writerDecimalExponent.writeIntegerSigned(exponent>=0?1+exponent:exponent, token);
 				} else {
 					//delta
 					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);

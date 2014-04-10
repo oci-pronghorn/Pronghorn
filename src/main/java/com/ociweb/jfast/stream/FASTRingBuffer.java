@@ -184,29 +184,15 @@ public final class FASTRingBuffer implements CharSequence {
 		buffer[M&p++]=h;
 		addPos = p;
 	}
-	
-	public final void appendText(int heapId) {
-	    int len = textHeap.length2(heapId);
 
-		if (heapId<0) {//points to constant in hash, high bit already set.
-			buffer[mask&addPos++] = heapId;
-			buffer[mask&addPos++] = len;
-		} else {
-			buffer[mask&addPos++] = addCharPos;//not used if null
-			buffer[mask&addPos++] = len;//will be -1 when null
-
-			if (len>0) {
-				writeTextToRingBuffer(heapId, len);
-			}
-
-		}
-	}
-
-	public void writeTextToRingBuffer(int heapId, int len) {
+	public int writeTextToRingBuffer(int heapId, int len) {
 		int p = addCharPos;
-		addCharPos+=len;
-		//end with function call for performance.
-		TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
+		if (len>0) {
+			addCharPos+=len;
+			//end with function call for performance.
+			TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
+		}
+		return p;
 	}
 
 
@@ -330,7 +316,9 @@ public final class FASTRingBuffer implements CharSequence {
 		return addPos>remPos;
 	}
 
-
+	public int contentRemaining() {
+		return addPos-remPos;
+	}
 
 	
 }
