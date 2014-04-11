@@ -7,7 +7,7 @@ import org.rabinfingerprint.polynomial.Polynomial;
 //Note this class is NOT garbage free and should only be used when building the new catalog and support files.
 public class WindowedFingerprintFactory {
 
-	//TODO: All this must be refactored for use inside the catalog builder.
+	//TODO: Z, Fingerprint of feed, All this must be refactored for use inside the catalog builder.
 	
 	
 	public static WindowedFingerprint buildNew() {

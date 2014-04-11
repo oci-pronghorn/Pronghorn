@@ -28,7 +28,7 @@ public class FASTDynamicWriter {
 		
 		this.preambleDataLength = catalog.getMessagePreambleSize();
 		this.preambleData = new byte[preambleDataLength];
-		//TODO: need to hold write of message for update of preamble before flush. (for some clients)
+		//TODO: C, need to hold write of message for update of preamble before flush. (for some clients)
 	}
 
 	

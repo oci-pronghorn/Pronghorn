@@ -107,13 +107,13 @@ public class FASTDynamicReader implements FASTDataProvider {
     
 
     
-    //TODO: has more takes up too much time in profiler, must allow for inline of hasMore!
+    //TODO: X, needs optimization, has more takes up too much time in profiler, must allow for inline of hasMore!
     
 	public int hasMore() {
 		//start new script or detect that the end of the data has been reached
 		if (neededSpaceOrTemplate<0) { 
 			//checking EOF first before checking for blocked queue
-			if (reader.isEOF()) { //TODO: stop polling for this and use a all back for EOF
+			if (reader.isEOF()) {
 				return 0;
 			}	
 			//must have room to store the new template
@@ -133,7 +133,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
 		//must use this one for debug.
 		//if (readerDispatch.dispatchReadByToken(this.ringBuffer)) {
-		if (readerDispatch.dispatchReadByTokenGen()) { //TODO: move gen code into here.	
+		if (readerDispatch.dispatchReadByTokenGen()) { 
 			ringBuffer.moveForward();
 			if (readerDispatch.jumpSequence>=0) {
 			    return processSequence(readerDispatch.jumpSequence); 
@@ -146,7 +146,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		//start new script or detect that the end of the data has been reached
 		if (neededSpaceOrTemplate<0) { 
 			//checking EOF first before checking for blocked queue
-			if (reader.isEOF()) { //TODO: stop polling for this and use a all back for EOF
+			if (reader.isEOF()) {
 				return 0;
 			}	
 			//must have room to store the new template
@@ -166,7 +166,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		
 		//must use this one for debug.
 		if (readerDispatch.dispatchReadByToken(this.ringBuffer)) {
-		//if (readerDispatch.dispatchReadByTokenGen()) { //TODO: move gen code into here.	
+		//if (readerDispatch.dispatchReadByTokenGen()) { 	
 			ringBuffer.moveForward();
 			if (readerDispatch.jumpSequence>=0) {
 			    return processSequence(readerDispatch.jumpSequence); 
@@ -198,7 +198,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		ringBuffer.buffer[ringBuffer.mask&ringBuffer.addPos++] = i;//write template id at the beginning of this message
 						
 		//set the cursor start and stop for this template				
-		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: pull in as lists once
+		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: C, pull in as lists once
 		readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
 						
 		//Worst case scenario is that this is full of decimals which each need 3.

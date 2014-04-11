@@ -704,8 +704,7 @@ public class ReaderWriterKryoTest {
 	}
 /*
  * 
-	//TODO: add utf8 test here
-	//TODO: add utf8 encoder/decoder test here.
+	//TODO: T, add utf8 encoder/decoder test here.
 	
 	@Test 
 	public void testStrings() {

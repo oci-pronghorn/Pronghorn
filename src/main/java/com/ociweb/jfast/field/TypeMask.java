@@ -39,7 +39,7 @@ public final class TypeMask {
 	
 	public final static int Dictionary               = 0x18;//11000
 	
-	//TODO: build unit test to confirm by reflection that every generated Token can be found
+	//TODO: T, build unit test to confirm by reflection that every generated Token can be found
 	
 	//for code generation need to know the substring of the method related to this type.
 	public final static String[] methodTypeName = new String[]{

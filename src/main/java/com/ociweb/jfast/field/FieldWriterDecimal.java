@@ -207,7 +207,7 @@ public class FieldWriterDecimal {
 	}
 
 	public void writeNull(int token) {
-		writerDecimalExponent.writeNull(token); //TODO: this is not done yet
+		writerDecimalExponent.writeNull(token); //TODO: A, must implement null for decimals, this is not done yet
 		writerDecimalMantissa.writeNull(token);
 	}
 

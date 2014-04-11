@@ -50,11 +50,11 @@ public class FASTReaderDispatch{
 	//
 	//default fields can be the default or overridden this one time with a new value.
 
-	int maxNestedSeqDepth = 64; //TODO: need value from template
+	int maxNestedSeqDepth = 64; //TODO: B, compute early need value from template
 	int[] sequenceCountStack = new int[maxNestedSeqDepth];
 	int sequenceCountStackHead = -1;
 	int checkSequence;
-    int jumpSequence;
+    int jumpSequence; //Only needs to be set when returning true.
 	
 	TextHeap charDictionary;
 	ByteHeap byteDictionary;
@@ -96,9 +96,9 @@ public class FASTReaderDispatch{
 		
 		this.readerBytes = new FieldReaderBytes(reader,byteDictionary);
 		
-		this.queue = new FASTRingBuffer((byte)8, 
+		this.queue = new FASTRingBuffer((byte)8, //TODO: A, Generate values in template loader
 						                (byte)7, 
-						                readerText.textHeap());// TODO: hack test.
+						                readerText.textHeap());
 		this.queueMASK = queue.mask;
 		this.queueBuffer = queue.buffer;
 		
@@ -132,8 +132,10 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-    //TODO: this code generation must take place when loading the catalog binary file.
-	//TODO: caller must be able to choose generated or interpreted execution.
+    //TODO: A, this code generation must take place when loading the catalog binary file.
+	
+	//TODO: A, caller must be able to choose generated or interpreted execution.
+	
 	public boolean dispatchReadByTokenGen() {
 		switch(activeScriptCursor) {
 			 case 0:		
@@ -170,14 +172,14 @@ public class FASTReaderDispatch{
 
 	private int case1() {
 		   case1reset();
-		   //TODO: these constants can be 100% computed at code generation!
+		   
 		   //textHeap ID and known fixed length
 		   queue.appendInt6(0x80000001,0x03, //ASCIIConstant 0xa02c0001
 		                    0x80000002,0x01, //ASCIIConstant 0xa02c0002
 		                    0x80000003,0x0d); //ASCIIConstant 0xa02c0003
 		   
-		   //TODO: we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
-		   //	int[] dictionary = readerInteger.dictionary;
+		   //TODO: A, Code gen, we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
+
 		   queue.appendInt3(reader.readIntegerUnsigned(),
 				            reader.readIntegerUnsigned(),
 				            reader.readIntegerUnsigned());
@@ -188,7 +190,6 @@ public class FASTReaderDispatch{
 
 	private void case1reset() {
 		
-		   //readDictionaryReset2(dictionaryMembers[0x02]);	 //TODO: must expand for disctionary.
 		   readerDecimal.exponent.dictionary[0] = readerDecimal.exponent.init[0];
 		   readerDecimal.mantissa.dictionary[0] = readerDecimal.mantissa.init[0];
 		   readerDecimal.exponent.dictionary[1] = readerDecimal.exponent.init[1];
@@ -305,9 +306,7 @@ public class FASTReaderDispatch{
 
 		reader.openPMap(nonTemplatePMapSize);
 		
-		//write a NonNull constant, no need to check more because this can not be null or dynamic.
-		int a4 = readerText.readASCIIConstant(0xa02c000e,readFromIdx);
-		queue.appendInt2(a4,textHeap.initLength(a4));//TODO:replace with constants
+		queue.appendInt2(0x8000000e,0x0); //ASCIIConstant(0xa02c000e
 				
 		long b4 = reader.readLongUnsignedOptional(constLongAbsent);
 		queue.appendInt3((int)(b4>>>32),
@@ -366,13 +365,9 @@ public class FASTReaderDispatch{
 		int limit = activeScriptLimit;
 		int[] script = fullScript;
 		
-		//this is a unique definition for the series of fields to follow.
-		//if this can be cached it would be a big reduction in work!!!
-		//System.err.println("cursor:"+cursor);
-		//TODO: could build linked list for each location?
 //		
 		boolean codeGen = false;// true;//cursor!=9 && cursor!=1 && cursor!=30 && cursor!=0;
-		//TODO: once this code matches the methods used here take it out and move it to the TemplateLoader
+		//TODO: A, once this code matches the methods used here take it out and move it to the TemplateLoader
 		
 	//	int zz = cursor;
 		
@@ -398,12 +393,6 @@ public class FASTReaderDispatch{
 			}
 			
 			assert(gatherReadData(reader,script[cursor],cursor));
-
-			//TODO: Need group method with optional support
-			//TODO: Need a way to unify Decimal? Do as two Tokens?
-//			StringBuilder target = new StringBuilder();
-//			TokenBuilder.methodNameRead(token, target);
-//			System.err.println(target);
 			
 			//The trick here is to keep all the conditionals in this method and do the work elsewhere.
 			if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
@@ -521,7 +510,7 @@ public class FASTReaderDispatch{
 		    //jumping over sequence (forward) it was skipped (rare case)
 			cursor += (TokenBuilder.MAX_INSTANCE&fullScript[++cursor])+1;
 		} else {			
-			jumpSequence = 0;//TODO: not sure this is needed.
+			//jumpSequence = 0;
 			sequenceCountStack[++sequenceCountStackHead] = length;
 		}
 		return cursor;
@@ -576,7 +565,6 @@ public class FASTReaderDispatch{
 		return true;
 	}
 
-	//TODO: code generation, may be the best solution for this.
 	private void readDictionaryReset2(int[] members) {
 		
 		boolean genCode = false;
@@ -1102,7 +1090,7 @@ public class FASTReaderDispatch{
 					//delta
 					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
 					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
-					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));//TODO: runtime constant		
+					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));		
 					
 					return readerInteger.reader.readIntegerUnsignedDeltaOptional(target, source, rIntDictionary, constAbsent);
 				}	
@@ -1138,9 +1126,9 @@ public class FASTReaderDispatch{
 				// default
 				int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
 				int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
-				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));//TODO: runtime constant.
-				int t = rIntDictionary[source];//TODO: runtime constant
-				int constDefault = t == 0 ? constAbsent : t-1; //TODO: runtime constant;
+				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+				int t = rIntDictionary[source];
+				int constDefault = t == 0 ? constAbsent : t-1; 
 				
 				return readerInteger.reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
 			}		
@@ -1180,7 +1168,6 @@ public class FASTReaderDispatch{
 					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
 					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
 							
-					//TODO: do each refactor like this . then inline each of these wrapping methods. ReadFrom/To will be implemented this way.
 					return readerInteger.reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
 				} else {
 					//increment
@@ -1193,7 +1180,7 @@ public class FASTReaderDispatch{
 				// default
 				int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
 				int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
-				int constDefault = rIntDictionary[source];//TODO: runtime constant to be injected by code generator.
+				int constDefault = rIntDictionary[source];
 				
 				return readerInteger.reader.readIntegerUnsignedDefault(constDefault);
 			}		

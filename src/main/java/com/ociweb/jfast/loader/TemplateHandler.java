@@ -55,7 +55,7 @@ public class TemplateHandler extends DefaultHandler {
     
     int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
     
-    //TODO: must detect two fieldId defined in different dictionaries when they appear in the same stop node block.
+    //TODO: B, must detect two fieldId defined in different dictionaries when they appear in the same stop node block.
     
     //every dictionary must be converted into an integer so we will use the index in a simple list.
     final List<String> dictionaryNames = new ArrayList<String>(128);
@@ -64,7 +64,7 @@ public class TemplateHandler extends DefaultHandler {
     
     
     //Name space for all the active templates if they do not define their own.
-    String templatesXMLns; //TODO: name space processing is not implemented yet.
+    String templatesXMLns; //TODO: C, name space processing is not implemented yet.
     
     //Templates never nest and only appear one after the other. Therefore 
     //these fields never need to be in a stack and the values put here by the
@@ -117,6 +117,7 @@ public class TemplateHandler extends DefaultHandler {
     int[] groupOpenTokenPMapStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];//Need not be this big.
     int   groupTokenStackHead = -1;
+    int   maxGroupTokenStackDepth;
         
 	
     public TemplateHandler(FASTOutput output) {
@@ -270,6 +271,7 @@ public class TemplateHandler extends DefaultHandler {
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
     		groupOpenTokenStack[++groupTokenStackHead] = token;
+    		maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
     		catalogScriptTokens[catalogTemplateScriptIdx] = token;
@@ -290,6 +292,7 @@ public class TemplateHandler extends DefaultHandler {
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
     		groupOpenTokenStack[++groupTokenStackHead] = token;
+    		maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
     		//sequence token is not added to the script until the Length field is seen
@@ -320,6 +323,7 @@ public class TemplateHandler extends DefaultHandler {
     		//this token will tell how to get back to the index in the script to fix it.
     		//this value will also be needed for the back jump value in the closing task.
     		groupOpenTokenStack[++groupTokenStackHead] = token;
+    		maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
     		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
     		
     		//messages do not need to be listed in catalogTemplateScript because they are the top level group.
@@ -327,7 +331,7 @@ public class TemplateHandler extends DefaultHandler {
     		templateXMLns = attributes.getValue("xmlns");
     		templateName = attributes.getValue("name");
     	    
-    		//TODO: must also add dictionary logic to group etc. not just template
+    		//TODO: A, must also add dictionary logic to group etc. not just template
     		setActiveDictionary(attributes);
     		    	    
     	    if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
@@ -354,7 +358,7 @@ public class TemplateHandler extends DefaultHandler {
 		if ("template".equalsIgnoreCase(dictionaryName)) {
 			dictionaryName = SPECIAL_PREFIX+templateId;
 		} else if ("apptype".equalsIgnoreCase(dictionaryName)) {
-			int appType = -1;//TODO: implement application type in XML parse    			
+			int appType = -1;//TODO: C, implement application type in XML parse    			
 			dictionaryName = SPECIAL_PREFIX+appType;
 		}
 		int idx = dictionaryNames.indexOf(dictionaryName);
@@ -727,6 +731,8 @@ public class TemplateHandler extends DefaultHandler {
 
 	public void postProcessing() {
 		
+		//System.err.println("maxGroupDepth:"+maxGroupTokenStackDepth);
+		
 		buildDictionaryMemberLists();
 		
 		//the catalog file need not be "Small" but it probably will be.
@@ -747,7 +753,9 @@ public class TemplateHandler extends DefaultHandler {
 						     tokenIdxMemberHeads,
 						     catalogScriptTokens,
 						     catalogScriptFieldIds, catalogTemplateScriptIdx,
-						     templateIdx, templateLimit);
+						     templateIdx, templateLimit,
+						     maxGroupTokenStackDepth+1 //add one for surrounding template
+						     );
 				
 		//close stream.
 		writer.flush();

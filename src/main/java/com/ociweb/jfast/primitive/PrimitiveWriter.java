@@ -25,8 +25,8 @@ import com.ociweb.jfast.error.FASTException;
 
 public final class PrimitiveWriter {
 
-    //TODO: the write to output is not implemented right it must send one giant block when possible
-	//TODO: we should have min and max block size? this may cover all cases.	
+    //TODO: D, the write to output is not implemented right it must send one giant block when possible
+	//TODO: D, we should have min and max block size? this may cover all cases.	
     private static final int BLOCK_SIZE = 512;//4096;//128;// in bytes
     
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
@@ -66,8 +66,7 @@ public final class PrimitiveWriter {
 	
 	public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 		
-		//TODO POS_POS_MASK can be shortened to only match the length of buffer.
-		//but then buffer always must be a power of two.
+		//NOTE: POS_POS_MASK can be shortened to only match the length of buffer. but then buffer always must be a power of two.
 		
 		if (initBufferSize<BLOCK_SIZE_LAZY*2) {
 			initBufferSize = BLOCK_SIZE_LAZY*2;
@@ -82,7 +81,7 @@ public final class PrimitiveWriter {
 				
 		this.output = output;
 		
-		//TODO: writing to one end and reading the other may be causing problem
+		//TODO: Z, writing to one end and reading the other of flushSkips may be causing performance issues 
 		this.flushSkipsSize = maxGroupCount*2;
 		this.flushSkips = new int[flushSkipsSize];//this may grow very large, to fields per group
 		
@@ -129,7 +128,7 @@ public final class PrimitiveWriter {
 		return nextBlockSize;
 	}
 
-	//TODO: investigate moving first block to the rest first.
+	//TODO: X, investigate moving first block to the rest first.
 	private void buildNextBlockWithSkips() {
 		int sourceOffset = position;
 		int targetOffset = position;
@@ -238,7 +237,7 @@ public final class PrimitiveWriter {
     }
     
     protected int computeFlushToIndex() {
-		if (safetyStackDepth>0) {//TODO: this never happens according to coverage test?
+		if (safetyStackDepth>0) {//TODO: E, this never happens according to coverage test?
 			//only need to check first entry on stack the rest are larger values
 			//NOTE: using safetyStackPosPos here may not be the best performant idea.
 			int safetyLimit = (((int)safetyStackPosPos[0])&POS_POS_MASK) -1;//still modifying this position but previous is ready to go.
@@ -707,7 +706,7 @@ public final class PrimitiveWriter {
 	}
 	
 	public final void writeIntegerUnsigned(int value) {
-		if (value<0) {//TODO: needs unit test for these large unsigned values.
+		if (value<0) {
 			if (buffer.length - limit < 5) {
 				output.flush();
 			}
@@ -857,7 +856,7 @@ public final class PrimitiveWriter {
 	public final void writePMapBit(byte bit) {
 				
 		if (0 == --pMapIdxWorking) {
-			//TODO: note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes?
+			//TODO: X, note we only corrupt the buffer cache line once every 7 bits but it must be less! what if we cached the buffer writes?
 			assert(safetyStackDepth>0) : "PMap must be open before write of bits.";
 			int idx = (int)(POS_POS_MASK&safetyStackPosPos[safetyStackDepth-1]++);
 			

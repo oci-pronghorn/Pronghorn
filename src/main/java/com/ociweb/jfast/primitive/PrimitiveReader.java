@@ -53,8 +53,6 @@ public final class PrimitiveReader {
 		
 	}
 
-	//TODO: add primitive methods for skipping fields. with Unit tests
-
 	public PrimitiveReader(FASTInput input) {
 		this(2048,input,32);
 	}
@@ -65,7 +63,7 @@ public final class PrimitiveReader {
 		
 		this.position = 0;
 		this.limit = 0;
-		this.invPmapStack = new byte[maxPMapCount]; //TODO: need two bytes of gap between each!!! how to external?
+		this.invPmapStack = new byte[maxPMapCount]; 
 		this.invPmapStackDepth = invPmapStack.length-2;
 				
 		input.init(this.buffer);
@@ -89,7 +87,7 @@ public final class PrimitiveReader {
 	private void fetch(int need) {
 		int count = 0;
 		need = fetchAvail(need);
-		while (need>0) { //TODO: if orignial need was zero should also compact?
+		while (need>0) { //TODO: C, if orignial need was zero should also compact?
 			if (0==count++) {
 				
 				//compact and prep for data spike
@@ -97,7 +95,7 @@ public final class PrimitiveReader {
 			} else {
 				if (count<10) { 
 					Thread.yield();
-					//TODO: if we are in the middle of parsing a field this becomes a blocking read and requires a timeout and throw.
+					//TODO: C, if we are in the middle of parsing a field this becomes a blocking read and requires a timeout and throw.
 					
 				} else {				
 					try {
@@ -205,19 +203,13 @@ public final class PrimitiveReader {
 			return popPMapBit(pmapIdx, bitBlock);
 	}
 
-	//TODO: rewrite this to not hold state in PR but make it the callers responsiblitly.
 	private byte popPMapBit(byte tmp, byte bb) {
 		if (tmp>0 || (tmp==0 && bb<0)) {
 			//Frequent, 6 out of every 7 plus the last bit block
-			pmapIdx = (byte)(tmp-1);	
+			pmapIdx = (byte)(tmp-1);  //TODO: Z, What if caller keeps the pmapIdx instead of keeping state here?	
 			return (byte)(1&(bb>>>tmp));
-
 		} else {
-			if (tmp>=0) {
-				return popPMapBitLow(tmp, bb);
-			} else {
-				return 0;
-			}
+			return (tmp>=0?popPMapBitLow(tmp, bb):0);
 		}
 	}
 
@@ -476,10 +468,8 @@ public final class PrimitiveReader {
 
 	public int readTextASCII(char[] target, int targetOffset, int targetLimit) {
 		
-		
-		
-		//TODO:add fast copy by fetch of limit
-		//then return error when limit is reached? Do not call fetch on limit we do not know that we need them.
+			
+		//TODO: Z, speed up textASCII, by add fast copy by fetch of limit, then return error when limit is reached? Do not call fetch on limit we do not know that we need them.
 		
 		
 		if (limit - position < 2) {
@@ -709,7 +699,7 @@ public final class PrimitiveReader {
 				//code point 11	
 				result  = (b&0x1F);	
 			} else {
-				if (((byte)(0xFF&(b<<3)))>=0) { //TODO: these would be faster/simpler by factoring out the constant in this comparison.
+				if (((byte)(0xFF&(b<<3)))>=0) { //TODO: C, these would be faster/simpler by factoring out the constant in this comparison.
 					//code point 16
 					result = (b&0x0F);
 				}  else {

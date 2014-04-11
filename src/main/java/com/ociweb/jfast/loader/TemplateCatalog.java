@@ -18,9 +18,10 @@ public class TemplateCatalog {
 	final DictionaryFactory dictionaryFactory;
 	final int maxTemplatePMapSize;
 	final int maxNonTemplatePMapSize;
+	final int maxPMapDepth;
 	final int maxFieldId;
 	
-	final int[] templateStartIdx; //TODO: these two arrays can be shortened!
+	final int[] templateStartIdx; //TODO: X, these two arrays can be shortened!
 	final int[] templateLimitIdx;
 	
 	final int[] scriptTokens;
@@ -69,6 +70,7 @@ public class TemplateCatalog {
 		//it is assumed that template PMaps are smaller or larger than the other PMaps so these are kept separate
 		maxTemplatePMapSize = reader.readIntegerUnsigned();
 		maxNonTemplatePMapSize = reader.readIntegerUnsigned();
+		maxPMapDepth = reader.readIntegerUnsigned();
 		
 	//	System.err.println("PMaps sizes templates:"+maxTemplatePMapSize+" nonTemplates:"+maxNonTemplatePMapSize+" both should be very small for best peformance.");
 
@@ -129,7 +131,8 @@ public class TemplateCatalog {
 			                  int[] catalogScriptFieldIds,
 			                  int scriptLength,
 			                  int[] templateIdx, 
-			                  int[] templateLimit) {
+			                  int[] templateLimit,
+			                  int maxPMapDepth) {
 		
 		
 		saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, 
@@ -143,6 +146,7 @@ public class TemplateCatalog {
 	//	System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
 		writer.writeIntegerUnsigned(maxTemplatePMap);
 		writer.writeIntegerUnsigned(maxNonTemplatePMap);
+		writer.writeIntegerUnsigned(maxPMapDepth);
 
 		df.save(writer);
 		
@@ -308,6 +312,11 @@ public class TemplateCatalog {
 	}
 	public int maxNonTemplatePMapSize() {
 		return maxNonTemplatePMapSize;
+	}
+	
+	public int maxPMapDepth() { //TODO: X, Move back into PM, not sure?
+		//adds 2 between each template for max depth of usage, needed to allocate space
+		return (2+((Math.max(maxTemplatePMapSize,maxNonTemplatePMapSize)+2)*maxPMapDepth));
 	}
 	
 }

@@ -54,7 +54,7 @@ public class TemplateLoaderTest {
 		try{
 			// /performance/example.xml contains 3 templates.
 			assertEquals(3, catalog.templatesCount());
-			assertEquals(430, catalogByteArray.length);
+			assertEquals(431, catalogByteArray.length);
 			
 			script = catalog.fullScript();
 			assertEquals(46, script.length);
@@ -110,8 +110,7 @@ public class TemplateLoaderTest {
 		FASTInputByteArray fastInput = buildInputForTestingByteArray(new File(sourceData.getFile()));
 		int totalTestBytes = fastInput.remaining();
 		int bufferSize = 4096;
-		int pmapDepth = 10;//TODO: Catalog must compute this? 2+(templatePMAP+2)+(max depth + 2 each)
-		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,pmapDepth);
+		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,catalog.maxPMapDepth());
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader, 
                 catalog.dictionaryFactory(), 
                 3, 
@@ -191,8 +190,7 @@ public class TemplateLoaderTest {
 
 		
 		int bufferSize = 4096;//do not change without testing, 4096 is ideal.
-		int pmapDepth = 10;//TODO: Catalog must compute this? 2+(templatePMAP+2)+(max depth + 2 each)
-		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,pmapDepth);
+		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,catalog.maxPMapDepth());
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(
 													primitiveReader, 
 									                catalog.dictionaryFactory(), 
@@ -206,6 +204,8 @@ public class TemplateLoaderTest {
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
+		//TODO: B, if generated class if found use it else use slower method.
+		//TODO: B, generator code should take TemplateCatalog to build class if needed.
 		
 		int warmup =20;
 		int count = 1024;
@@ -501,8 +501,8 @@ public class TemplateLoaderTest {
 						
 						
 						String msg = "int "+i+" byte "+(i*4)+"  ";
-						//TODO: regenerate code for this section that does not match.
-						//TODO: skip pmap mismatch and look for real change
+						//TODO: Z, regenerate code for this section that does not match.
+						//TODO: Z, skip pmap mismatch and look for real change
 						//all problems happen after this ASCIIOptional:001001/Default:000011/9 id:5799 curs:28 tok:-1539571703
 						
 						assertEquals(msg,int1,int2);
@@ -555,7 +555,7 @@ public class TemplateLoaderTest {
 		byte[] targetBuffer = new byte[(int)(totalTestBytes)];
 		FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
 		
-		//TODO: when minimize latency set to false these need to be much bigger?
+		//TODO: Z, force this error and add friendly message, when minimize latency set to false these need to be much bigger?
 		int writeBuffer = 2048;
 		int maxGroupCount = 3;//NOTE: may need to be VERY large if minimize latency is turned off!!
 		PrimitiveWriter primitiveWriter = new PrimitiveWriter(writeBuffer,fastOutput,maxGroupCount,true);

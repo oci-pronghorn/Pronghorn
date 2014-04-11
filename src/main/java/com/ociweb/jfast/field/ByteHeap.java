@@ -788,8 +788,7 @@ public class ByteHeap {
 		int j = 4;
 		int v = 0;
 		int k = (len+3)>>>2;
-		while (--i>=0) {//TODO: 4 bytes to the int
-			
+		while (--i>=0) {//NOTE: may want to unroll if this becomes a problem.			
 			//int value = Integer.
 			if (--j>=0) {
 				v = (v<<8)|buf[pos+i];

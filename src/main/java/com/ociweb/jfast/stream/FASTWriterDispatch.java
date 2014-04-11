@@ -63,7 +63,7 @@ public final class FASTWriterDispatch {
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		
-		this.sequenceCountStack = new int[100];//TODO: find the right size
+		this.sequenceCountStack = new int[100];//TODO: A, must compute right size in template, find the right size
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary(),dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary(),dcr.longDictionary());
@@ -92,7 +92,7 @@ public final class FASTWriterDispatch {
 	public void write(int token) {
 				
 		//only optional field types can use this method.
-		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE))); //TODO: in testing assert(failOnBadArg()) 
+		assert(0!=(token&(1<<TokenBuilder.SHIFT_TYPE))); //TODO: T, in testing assert(failOnBadArg()) 
 		
 		//select on type, each dictionary will need to remember the null was written
 		if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
@@ -567,7 +567,7 @@ public final class FASTWriterDispatch {
 		}
 	}
 
-	//TODO: add writeDup(int id) for repeating the last value sent,
+	//TODO: Z, add writeDup(int id) for repeating the last value sent,
 	//this can avoid string check for copy operation if its already known that we are sending the same value.
 	
 	
@@ -1113,11 +1113,11 @@ public final class FASTWriterDispatch {
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 							//01110 ByteArray
 							//queue.selectByteSequence(fieldPos);
-							//write(token,queue); TODO: copy the text implementation
+							//write(token,queue); TODO: C, copy the text implementation
 						} else {
 							//01111 ByteArrayOptional
 							//queue.selectByteSequence(fieldPos);
-							//write(token,queue); TODO: copy the text implementation
+							//write(token,queue); TODO: C, copy the text implementation
 						}
 					}
 				}
@@ -1259,7 +1259,7 @@ public final class FASTWriterDispatch {
 			//TotalWritten is updated each time the pump pulls more bytes to write.
 						
 			long absPos = writer.totalWritten()+writer.bytesReadyToWrite(); 
-			//TODO: this position is never right because it is changed by the pmap length which gets trimmed.
+			//TODO: Z, this position is never right because it is changed by the pmap length which gets trimmed.
 			
 			
 			observer.tokenItem(absPos, token, cursor, value);
@@ -1276,7 +1276,7 @@ public final class FASTWriterDispatch {
 		
 		writer.openPMap(pmapMaxSize);
 		writer.writePMapBit((byte)1);
-		writer.closePMap();//TODO: this needs to be close but not sure this is the right location.
+		writer.closePMap();//TODO: B, this needs to be close but not sure this is the right location.
 		writer.writeIntegerUnsigned(templateId);
 
 	}

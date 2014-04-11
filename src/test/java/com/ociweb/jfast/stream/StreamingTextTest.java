@@ -64,7 +64,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                    TypeMask.TextASCIIOptional,
 				 };
 		
-		//TODO: will fail without good message if HeapText is too small!!
+		//TODO: Z, Force this error and introduce more discriptive error, will fail without good message if HeapText is too small!!
 		int[] operators = new int[] {
                   OperatorMask.Field_None,   //W5 R16 w/o equals
 				  OperatorMask.Field_Constant, //W6 R16 w/o equals

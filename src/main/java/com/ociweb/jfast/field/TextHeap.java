@@ -98,7 +98,7 @@ public class TextHeap {
 			}	
 		}
 		
-		//TODO: confirm new constructed TextHeap matches reset.
+		//TODO: C, confirm new constructed TextHeap matches reset.
 		
 	}
 	

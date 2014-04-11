@@ -15,7 +15,7 @@ public class WindowedFingerprint {
 	private long[] popTable;  //256 length
 	private long[] pushTable; //512 length
 	
-	///TODO: may need two sets of these to get the required error bars.
+	///TODO: X, may need two sets of these to get the required error bars.
 	public long fingerprint;
 	
 	WindowedFingerprint(int windowSize, int degree, long[] pushTable, long[] popTable) {

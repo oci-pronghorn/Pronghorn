@@ -120,9 +120,12 @@ public final class FASTRingBuffer implements CharSequence {
 		buffer[mask&addPos++]=b;
 	}
 	public final void appendInt3(int a, int b, int c) {
-		buffer[mask&addPos++]=a;
-		buffer[mask&addPos++]=b;
-		buffer[mask&addPos++]=c;
+		int M = mask;
+		int p = addPos;
+		buffer[M&p++]=a;
+		buffer[M&p++]=b;
+		buffer[M&p++]=c;
+		addPos = p;
 	}
 	public final void appendInt4(int a, int b, int c, int d) {
 		
@@ -195,10 +198,11 @@ public final class FASTRingBuffer implements CharSequence {
 		return p;
 	}
 
+	//TODO: B, Use static method to access fields by offset based on templateId.
 
 	public void appendBytes(int idx, ByteHeap heap) {
 		
-		throw new UnsupportedOperationException();//TODO: copy text solution once finished.
+		throw new UnsupportedOperationException();//TODO: C,copy text solution once finished.
 		
 	}
 
@@ -244,7 +248,7 @@ public final class FASTRingBuffer implements CharSequence {
 
 	
 	public void readBytes(int idx, byte[] target) {
-		//TODO: this is not a compact form, check this later if we have performnce problems.
+		//TODO: X, Would it be better to store 4 bytes per int. this is not a compact form, check this later if we have performnce problems.
 		int i = 0;
 		while (i<target.length) {
 			target[i] = (byte)buffer[mask&(remPos+idx+i)];
@@ -305,7 +309,7 @@ public final class FASTRingBuffer implements CharSequence {
 		}
 	}
 
-	//TODO: putting things in the ring buffer out of order may break the inner char ring buffer, MUST fix.
+	//TODO: C, putting things in the ring buffer out of order may break the inner char ring buffer, MUST fix.
 	
 	@Override
 	public CharSequence subSequence(int start, int end) {

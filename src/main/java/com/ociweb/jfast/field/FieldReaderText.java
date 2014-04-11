@@ -142,25 +142,24 @@ public final class FieldReaderText {
 	
 	//PATTERN:  (popPMapBit(pmapIdx, bitBlock)==0 ? constDefault : readLongUnsignedPrivate());
 	public int readASCIIDefault(int target) {
-		
-		//TODO: can shift the high bit from the value of popPMapBit.
+		//TODO: X, still optimizing,  can shift the high bit from the value of popPMapBit.
 		//if >=0 target then compute the value.
 		
-//		int result = (((int)reader.popPMapBit()-1)&INIT_VALUE_MASK)|target;
-//		if (result>=0) {
-//			temp(target, reader.readTextASCIIByte());
-//		}
-//		return result;
+		int result = (((int)reader.popPMapBit()-1)&INIT_VALUE_MASK)|target;
+		if (result>=0) {
+			temp(target, reader.readTextASCIIByte());
+		}
+		return result;
 		
 		
 		//NOTE: also supports optional case due to ASII optinal encoding.
-		if (reader.popPMapBit()==0) {//50% of time here in pop pmap
-			//  1/3 of calls here
-			return INIT_VALUE_MASK|target;//use default
-		} else {
-			temp(target, reader.readTextASCIIByte());
-			return target;
-		}
+//		if (reader.popPMapBit()==0) {//50% of time here in pop pmap
+//			//  1/3 of calls here
+//			return INIT_VALUE_MASK|target;//use default
+//		} else {
+//			temp(target, reader.readTextASCIIByte());
+//			return target;
+//		}
 		
 	}
 
@@ -200,7 +199,7 @@ public final class FieldReaderText {
 	}
 
 	public int readASCIIDeltaOptional(int token, int readFromIdx) {
-		return readASCIIDelta(token, readFromIdx);//TODO: need null logic here.
+		return readASCIIDelta(token, readFromIdx);//TODO: C, ASCII need null logic here.
 	}
 
 	public int readASCIIDelta(int token, int readFromIdx) {

@@ -673,10 +673,7 @@ public class FieldWriterChar {
 
 	public void reset(int idx) {		
 		if (null!=heap) {
-			//TODO: for read and WRITE this is wrong and URGENT TO FIX.
-			
-			heap.setNull(idx);
-			
+			heap.reset(idx);
 		}
 	}
 
