@@ -6,14 +6,14 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public class FieldWriterChar {
+public class FieldWriterText {
 
 	private final TextHeap heap;
 	private final PrimitiveWriter writer;
 	private final int INSTANCE_MASK;
 	private static final int INIT_VALUE_MASK = 0x80000000;
 	
-	public FieldWriterChar(PrimitiveWriter writer, TextHeap charDictionary) {
+	public FieldWriterText(PrimitiveWriter writer, TextHeap charDictionary) {
 		assert(null==charDictionary || charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(null==charDictionary || TokenBuilder.isPowerOfTwo(charDictionary.itemCount()));
 		

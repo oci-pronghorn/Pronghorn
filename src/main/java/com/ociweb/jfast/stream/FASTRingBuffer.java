@@ -83,14 +83,19 @@ public final class FASTRingBuffer implements CharSequence {
 		//provide offset to the beginning of this message.
 		
 	}
-	
-	//fields by type are fixed length however char is not so then what?
-	//we know the type by the order however we do NOT have random access?
-	//or we could add direct jump value table in the front.
-	//or we could skip the fields we do not want decoded.
-	//or we could read the buffer sequentially.
-	
 
+	
+	//TODO: B, model after java8 lambda behavior.  xxx.stream().filter(x).map(y).max() If objects can not escape or are reused this should be performant 
+	//filter() use predicate to took at template id or sequence and while roll forward to next or pass on current.
+	//         by avoid of write to ring buffer in first place majority of filters would give performance boost.
+	//map() 
+	//reduce()?
+	
+//TODO: C, Add Forgetful functor to ignore  messages OR sequence groups OR groups that do not need to be added to ring buffer.
+//TODO: C, Add blocking consumer on the complete answer of preamble. (not sure this is first class)
+	
+	//TODO: B, add functors in general to do custom work before ring buffer
+	//TODO: B, add functors in general to do custom work from ring buffer before encoding?
 	
     public final int availableCapacity() {
     	return maxSize-(addPos-remPos);

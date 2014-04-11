@@ -50,8 +50,9 @@ public class FASTReaderDispatch{
 	//
 	//default fields can be the default or overridden this one time with a new value.
 
-	int maxNestedSeqDepth = 64; //TODO: B, compute early need value from template
-	int[] sequenceCountStack = new int[maxNestedSeqDepth];
+	final int maxNestedSeqDepth;
+	final int[] sequenceCountStack;
+	
 	int sequenceCountStackHead = -1;
 	int checkSequence;
     int jumpSequence; //Only needs to be set when returning true.
@@ -71,7 +72,8 @@ public class FASTReaderDispatch{
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
 			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
-			                   int maxVectorLen, int charGap, int bytesGap, int[] fullScript) {
+			                   int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
+			                   int maxNestedGroupDepth) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -79,6 +81,9 @@ public class FASTReaderDispatch{
 				
 		this.charDictionary = dcr.charDictionary(maxTextLen,charGap);
 		this.byteDictionary = dcr.byteDictionary(maxVectorLen,bytesGap);
+		
+		this.maxNestedSeqDepth = maxNestedGroupDepth; 
+		this.sequenceCountStack = new int[maxNestedSeqDepth];
 		
 		this.fullScript = fullScript;
 		
@@ -132,9 +137,8 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-    //TODO: A, this code generation must take place when loading the catalog binary file.
+    //TODO: B, this code generation must take place when loading the catalog binary file.
 	
-	//TODO: A, caller must be able to choose generated or interpreted execution.
 	
 	public boolean dispatchReadByTokenGen() {
 		switch(activeScriptCursor) {
@@ -178,7 +182,7 @@ public class FASTReaderDispatch{
 		                    0x80000002,0x01, //ASCIIConstant 0xa02c0002
 		                    0x80000003,0x0d); //ASCIIConstant 0xa02c0003
 		   
-		   //TODO: A, Code gen, we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
+		   //TODO: B, Code gen, we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
 
 		   queue.appendInt3(reader.readIntegerUnsigned(),
 				            reader.readIntegerUnsigned(),
@@ -268,12 +272,7 @@ public class FASTReaderDispatch{
 
 
 	private int textIdRef(int heapId, int length) {
-
-		if (heapId<0) {//points to constant in hash, high bit already set.
-			return heapId;
-		} else {
-			return queue.writeTextToRingBuffer(heapId, length);
-		}
+		return heapId<0 ? heapId : queue.writeTextToRingBuffer(heapId, length);
 	}
 
 	private boolean case30() {
@@ -367,7 +366,7 @@ public class FASTReaderDispatch{
 		
 //		
 		boolean codeGen = false;// true;//cursor!=9 && cursor!=1 && cursor!=30 && cursor!=0;
-		//TODO: A, once this code matches the methods used here take it out and move it to the TemplateLoader
+		//TODO: B, once this code matches the methods used here take it out and move it to the TemplateLoader
 		
 	//	int zz = cursor;
 		

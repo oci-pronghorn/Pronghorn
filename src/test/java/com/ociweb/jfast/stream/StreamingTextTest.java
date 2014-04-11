@@ -145,7 +145,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
+		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
 		
 		long start = System.nanoTime();
 		int i = operationIters;
@@ -206,7 +206,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 300, 0, 4, 4, null);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 300, 0, 4, 4, null,64);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();

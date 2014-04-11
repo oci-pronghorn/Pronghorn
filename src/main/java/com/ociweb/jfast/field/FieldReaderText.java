@@ -12,6 +12,7 @@ public final class FieldReaderText {
 	
 	private final PrimitiveReader reader;
 	public final TextHeap heap;
+	private final int[] heapTat;
 	private final char[] targ;
 	public final int MAX_TEXT_INSTANCE_MASK;
 	
@@ -24,6 +25,7 @@ public final class FieldReaderText {
 		
 		this.reader = reader;
 		this.heap = heap;
+		this.heapTat = null==heap?null:heap.tat;
 		this.targ = null==heap?null:heap.rawAccess();
 	}
 	
@@ -145,57 +147,62 @@ public final class FieldReaderText {
 		//TODO: X, still optimizing,  can shift the high bit from the value of popPMapBit.
 		//if >=0 target then compute the value.
 		
-		int result = (((int)reader.popPMapBit()-1)&INIT_VALUE_MASK)|target;
-		if (result>=0) {
-			temp(target, reader.readTextASCIIByte());
-		}
-		return result;
+//		int result = (((int)reader.popPMapBit()-1)&INIT_VALUE_MASK)|target;
+//		if (result>=0) {
+//			temp(target, reader.readTextASCIIByte());
+//		}
+//		return result;
+		return reader.popPMapBit()==0 ? (INIT_VALUE_MASK|target) : temp(target);
 		
-		
-		//NOTE: also supports optional case due to ASII optinal encoding.
+//		//NOTE: also supports optional case due to ASII optinal encoding.
 //		if (reader.popPMapBit()==0) {//50% of time here in pop pmap
 //			//  1/3 of calls here
 //			return INIT_VALUE_MASK|target;//use default
 //		} else {
-//			temp(target, reader.readTextASCIIByte());
-//			return target;
+//			return temp(target);
 //		}
 		
 	}
 
-	private void temp(int target, byte val) {
+	private int temp(int target) {
+		byte val;
 		int tmp;
-		if (0!=(tmp = 0x7F&val)) {//low 7 bits have data
+		if (0!=(tmp = 0x7F&(val = reader.readTextASCIIByte()))) {//low 7 bits have data
 			readASCIIDefault2(val, tmp, target);
 		} else {
 			readASCIIToHeapNone(target, val);
 		}
+		return target;
 	}
 
 	private void readASCIIDefault2(byte val, int tmp, int idx) {
-		int[] tat = heap.tat;
-		//real data, this is the most common case;
-		///  2/3 of calls here
-		final int offset = idx<<2;
-		final int off4 = offset+4;
-		final int off1 = offset+1;
-		int nextLimit = tat[off4];
-		int targIndex = tat[offset]; //because we have zero length
-						
-		if (targIndex>=nextLimit) {
-			tat[off1] = tat[offset];//set to zero length
-			heap.makeSpaceForAppend(offset, 2); //also space for last char
-			targIndex = tat[off1];
-			nextLimit = tat[off4];
+										
+		if(val<0) {//TODO: X, can this be moved into textHeap?
+			final int offset = idx<<2;
+			int targIndex = heapTat[offset]; //because we have zero length
+			
+			//TODO: B, This implementation assumes that all text can always support length of 1
+			targ[targIndex] = (char)tmp;
+			heapTat[offset+1]=1+targIndex;
+		} else {
+			final int offset = idx<<2;
+			int targIndex = heapTat[offset]; //because we have zero length
+			
+			int nextLimit;
+			int off4;
+			
+			//ensure there is enough space for the text
+			if (targIndex>=(nextLimit = heapTat[off4 = offset+4])) {
+				heapTat[offset+1] = heapTat[offset];//set to zero length
+				heap.makeSpaceForAppend(offset, 2); //also space for last char
+				targIndex = heapTat[offset+1];
+				nextLimit = heapTat[off4];
+			}
+			
+			//copy all the text into the heap
+			heapTat[offset+1] = heapTat[offset];//set to zero length
+			heapTat[offset+1] = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
 		}
-		
-		if(val<0) {
-			targ[targIndex++] = (char)tmp;
-		} else {//System.err.println("not called in complex text");
-			tat[off1] = tat[offset];//set to zero length
-			targIndex = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex);
-		}
-		tat[off1] = targIndex;
 	}
 
 	public int readASCIIDeltaOptional(int token, int readFromIdx) {

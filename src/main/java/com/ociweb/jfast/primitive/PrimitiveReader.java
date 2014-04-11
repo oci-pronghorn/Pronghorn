@@ -699,12 +699,26 @@ public final class PrimitiveReader {
 				//code point 11	
 				result  = (b&0x1F);	
 			} else {
-				if (((byte)(0xFF&(b<<3)))>=0) { //TODO: C, these would be faster/simpler by factoring out the constant in this comparison.
+				/*
+				 * 				//longer pattern than 1 byte
+				if (0!=(b&0x20)) {
+					//longer pattern than 2 bytes
+					if (0!=(b&0x10)) {
+						//longer pattern than 3 bytes
+						if (0!=(b&0x08)) {
+							//longer pattern than 4 bytes
+							if (0!=(b&0x04)) {
+				 */
+				
+				if (0!=(b&0x20)) { 
+				//if (((byte) (0xFF&(b<<3)) )>=0) { //TODO: T, Need UTF8 test and then these would be faster/simpler by factoring out the constant in this comparison.
 					//code point 16
 					result = (b&0x0F);
 				}  else {
-					if (((byte)(0xFF&(b<<4)))>=0) {
+					if (0!=(b&0x10)) {
+					//if (((byte)(0xFF&(b<<4)))>=0) {
 						//code point 21
+						if (true) throw new UnsupportedOperationException("this is not getting tested!");
 						result = (b&0x07);
 					} else {
 						if (((byte)(0xFF&(b<<5)))>=0) {

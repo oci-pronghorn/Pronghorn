@@ -81,9 +81,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 
-			                                                                0, 0, 4, 4, null);
+			                                                                0, 0, 4, 4, null,64);
 	
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0, TokenBuilder.MASK_ABSENT_DEFAULT);
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 0, TokenBuilder.MASK_ABSENT_DEFAULT);

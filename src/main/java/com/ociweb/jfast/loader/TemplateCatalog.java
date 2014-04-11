@@ -319,4 +319,8 @@ public class TemplateCatalog {
 		return (2+((Math.max(maxTemplatePMapSize,maxNonTemplatePMapSize)+2)*maxPMapDepth));
 	}
 	
+	public int getMaxGroupDepth() {
+		return maxPMapDepth;
+	}
+	
 }

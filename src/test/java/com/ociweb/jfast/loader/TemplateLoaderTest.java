@@ -119,7 +119,8 @@ public class TemplateLoaderTest {
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
-                catalog.fullScript()); 
+                catalog.fullScript(),
+                catalog.getMaxGroupDepth()); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
@@ -200,11 +201,12 @@ public class TemplateLoaderTest {
 									                catalog.getMaxByteVectorLength(),
 									                catalog.getTextGap(),
 									                catalog.getByteVectorGap(),
-									                catalog.fullScript()); 
+									                catalog.fullScript(),
+									                catalog.getMaxGroupDepth()); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
-		//TODO: B, if generated class if found use it else use slower method.
+		//TODO: B, Use generated class if found else use slower base class behavior.
 		//TODO: B, generator code should take TemplateCatalog to build class if needed.
 		
 		int warmup =20;
@@ -423,7 +425,8 @@ public class TemplateLoaderTest {
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
-                catalog.fullScript()); 
+                catalog.fullScript(),
+                catalog.getMaxGroupDepth()); 
 		FASTDynamicReader dynamicReader1 = new FASTDynamicReader(primitiveReader1, catalog, readerDispatch1);
 		FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 		
@@ -438,7 +441,8 @@ public class TemplateLoaderTest {
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
-                catalog.fullScript()); 
+                catalog.fullScript(),
+                catalog.getMaxGroupDepth()); 
 		FASTDynamicReader dynamicReader2 = new FASTDynamicReader(primitiveReader2, catalog, readerDispatch2);
 		FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 		
@@ -548,7 +552,8 @@ public class TemplateLoaderTest {
                 catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
-                catalog.fullScript()); 
+                catalog.fullScript(),
+                catalog.getMaxGroupDepth()); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 				
@@ -565,7 +570,8 @@ public class TemplateLoaderTest {
 				catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
 				catalog.getTextGap(), catalog.getByteVectorGap(),
 				queue, catalog.maxNonTemplatePMapSize(),catalog.dictionaryMembers(),
-				catalog.fullScript());
+				catalog.fullScript(),
+				catalog.getMaxGroupDepth());
 		
 		FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(primitiveWriter, catalog, queue, writerDispatch);
 		

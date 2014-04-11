@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.FieldWriterBytes;
-import com.ociweb.jfast.field.FieldWriterChar;
+import com.ociweb.jfast.field.FieldWriterText;
 import com.ociweb.jfast.field.FieldWriterDecimal;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
@@ -32,7 +32,7 @@ public final class FASTWriterDispatch {
 	private final FieldWriterInteger writerInteger;
 	private final FieldWriterLong writerLong;
 	private final FieldWriterDecimal writerDecimal;
-	private final FieldWriterChar writerChar;
+	private final FieldWriterText writerChar;
 	private final FieldWriterBytes writerBytes;
 	
 	final int nonTemplatePMapSize;
@@ -56,14 +56,14 @@ public final class FASTWriterDispatch {
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
 			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes,
 			                   FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers,
-			                   int[] fullScript) {
+			                   int[] fullScript, int maxNestedGroupDepth) {
 
 		this.fullScript = fullScript;
 		this.writer = writer;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
 		
-		this.sequenceCountStack = new int[100];//TODO: A, must compute right size in template, find the right size
+		this.sequenceCountStack = new int[maxNestedGroupDepth];
 		
 		this.writerInteger 			= new FieldWriterInteger(writer, dcr.integerDictionary(),dcr.integerDictionary());
 		this.writerLong    			= new FieldWriterLong(writer,dcr.longDictionary(),dcr.longDictionary());
@@ -73,7 +73,7 @@ public final class FASTWriterDispatch {
 															dcr.decimalExponentDictionary(),		
 															dcr.decimalMantissaDictionary(),
 															dcr.decimalMantissaDictionary());
-		this.writerChar 			= new FieldWriterChar(writer,dcr.charDictionary(maxCharSize,gapChars)); 
+		this.writerChar 			= new FieldWriterText(writer,dcr.charDictionary(maxCharSize,gapChars)); 
 		this.writerBytes 			= new FieldWriterBytes(writer,dcr.byteDictionary(maxBytesSize,gapBytes));
 				
 		this.templateStack = new int[maxTemplates];

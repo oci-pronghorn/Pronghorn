@@ -25,8 +25,8 @@ import com.ociweb.jfast.error.FASTException;
 
 public final class PrimitiveWriter {
 
-    //TODO: D, the write to output is not implemented right it must send one giant block when possible
-	//TODO: D, we should have min and max block size? this may cover all cases.	
+    //TODO: X, the write to output is not implemented right it must send one giant block when possible
+	//TODO: X, we should have min and max block size? this may cover all cases.	
     private static final int BLOCK_SIZE = 512;//4096;//128;// in bytes
     
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE*3)+(BLOCK_SIZE>>1);
