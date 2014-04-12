@@ -30,6 +30,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FASTDynamicReader implements FASTDataProvider {
 
 	private final FASTReaderDispatch readerDispatch;
+	
 	private final TemplateCatalog catalog;
 		
 	
@@ -131,9 +132,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 			lastCapacity -= neededSpaceOrTemplate;
 		}
 		
-		//must use this one for debug.
-		//if (readerDispatch.dispatchReadByToken(this.ringBuffer)) {
-		if (readerDispatch.dispatchReadByTokenGen()) { 
+		if (readerDispatch.dispatchReadByToken()) {
 			ringBuffer.moveForward();
 			if (readerDispatch.jumpSequence>=0) {
 			    return processSequence(readerDispatch.jumpSequence); 
@@ -142,38 +141,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 		return finishTemplate();
 	}
 	
-	public int hasMoreByTokens() {
-		//start new script or detect that the end of the data has been reached
-		if (neededSpaceOrTemplate<0) { 
-			//checking EOF first before checking for blocked queue
-			if (reader.isEOF()) {
-				return 0;
-			}	
-			//must have room to store the new template
-			int req = preambleDataLength+1;
-			if ((lastCapacity<req)&&((lastCapacity = ringBuffer.availableCapacity())<req)) {
-				return 0x80000000;
-			}
-			hasMoreNextMessage(req);
-		} 
-		
-		if (neededSpaceOrTemplate>0) {
-			if ((lastCapacity<neededSpaceOrTemplate)&&((lastCapacity = ringBuffer.availableCapacity())<neededSpaceOrTemplate)) {
-				return 0x80000000;
-			}			
-			lastCapacity -= neededSpaceOrTemplate;
-		}
-		
-		//must use this one for debug.
-		if (readerDispatch.dispatchReadByToken(this.ringBuffer)) {
-		//if (readerDispatch.dispatchReadByTokenGen()) { 	
-			ringBuffer.moveForward();
-			if (readerDispatch.jumpSequence>=0) {
-			    return processSequence(readerDispatch.jumpSequence); 
-			}
-		}
-		return finishTemplate();
-	}
 
 	private void hasMoreNextMessage(int req) {
 		lastCapacity-=req;
@@ -195,7 +162,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		}
 		int i = templateId;
 
-		ringBuffer.buffer[ringBuffer.mask&ringBuffer.addPos++] = i;//write template id at the beginning of this message
+		ringBuffer.appendInt1(i);//write template id at the beginning of this message
 						
 		//set the cursor start and stop for this template				
 		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: C, pull in as lists once

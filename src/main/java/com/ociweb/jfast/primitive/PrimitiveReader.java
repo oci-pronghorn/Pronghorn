@@ -374,12 +374,8 @@ public final class PrimitiveReader {
 
 	private int readIntegerUnsignedPrivate() {
 		if (limit-position>=5) {//not near end so go fast.
-			byte v = buffer[position++];
-			if (v<0) {
-				return (v&0x7F);
-			} else {
-				return readIntegerUnsignedLarger(v);
-			}
+		   byte v;
+		   return ((v = buffer[position++])<0)?(v&0x7F):readIntegerUnsignedLarger(v);
 	   } else { 
 		   return readIntegerUnsignedSlow();
 	   }
@@ -1068,12 +1064,8 @@ public final class PrimitiveReader {
 	}
 	
 	public final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent) {
-		if (popPMapBit(pmapIdx, bitBlock)==0) {
-			return constDefault;	
-		} else {
-			int value = readIntegerUnsignedPrivate();
-			return value==0 ? constAbsent : value-1;
-		}
+		int value;
+		return (popPMapBit(pmapIdx, bitBlock)==0)?constDefault:(value = readIntegerUnsignedPrivate())==0 ? constAbsent : value-1;
 	}
 	
 	public int readIntegerUnsignedIncrement(int target, int source, int[] dictionary) {

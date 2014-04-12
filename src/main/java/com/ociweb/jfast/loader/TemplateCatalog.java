@@ -314,11 +314,6 @@ public class TemplateCatalog {
 		return maxNonTemplatePMapSize;
 	}
 	
-	public int maxPMapDepth() { //TODO: X, Move back into PM, not sure?
-		//adds 2 between each template for max depth of usage, needed to allocate space
-		return (2+((Math.max(maxTemplatePMapSize,maxNonTemplatePMapSize)+2)*maxPMapDepth));
-	}
-	
 	public int getMaxGroupDepth() {
 		return maxPMapDepth;
 	}

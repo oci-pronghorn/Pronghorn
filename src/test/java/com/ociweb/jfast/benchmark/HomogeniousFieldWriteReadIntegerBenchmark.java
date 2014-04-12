@@ -8,7 +8,6 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
-import com.ociweb.jfast.field.FieldReaderInteger;
 import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -76,7 +75,10 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	
 	static final FieldWriterInteger fw = new FieldWriterInteger(pw,dcr.integerDictionary(),dcr.integerDictionary());
-	static final FieldReaderInteger fr = new FieldReaderInteger(pr,dcr.integerDictionary(),dcr.integerDictionary());
+	
+	static final int[] rIntDictionary = dcr.integerDictionary();
+	static final int[] rIntInit = dcr.integerDictionary();
+	static final int MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length-1));
 		
 	
 	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -212,11 +214,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			j = intTestData.length;
 			while (--j>=0) {
 				int readFromIdx = -1;
-				int target = token&fr.MAX_INT_INSTANCE_MASK;
-				int source = readFromIdx>0? readFromIdx&fr.MAX_INT_INSTANCE_MASK : target;
+				int target = token&MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 				
-				int value = fr.reader.readIntegerSignedCopy(target, source, fr.dictionary);
+				int value = pr.readIntegerSignedCopy(target, source, rIntDictionary);
 				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
 			}
 			if (pmapSize>0) {
@@ -270,7 +272,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= fr.dictionary[token & fr.MAX_INT_INSTANCE_MASK];
+				result |= rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 			}
 			if (pmapSize>0) {
 				pr.closePMap();
@@ -323,10 +325,10 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			j = intTestData.length;
 			while (--j>=0) {
 				int readFromIdx = -1;
-				int target = token&fr.MAX_INT_INSTANCE_MASK;
-				int source = readFromIdx>0? readFromIdx&fr.MAX_INT_INSTANCE_MASK : target;
+				int target = token&MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				result |= fr.reader.readIntegerSignedDeltaOptional(target, source, fr.dictionary, constAbsent);
+				result |= pr.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent);
 			}
 			if (pmapSize>0) {
 				pr.closePMap();

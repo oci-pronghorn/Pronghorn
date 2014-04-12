@@ -21,8 +21,8 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  */
 public final class FASTRingBuffer implements CharSequence {
 
-	public final int[] buffer;
-	public final int mask;
+	final int[] buffer;
+	final int mask;
 	
 	final int maxSize;
 	
@@ -39,7 +39,7 @@ public final class FASTRingBuffer implements CharSequence {
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
 	int addCharPos = 0;
-	public int addPos = 0;
+	private int addPos = 0;
 	int remPos = 0;
 		
 	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {
@@ -89,7 +89,15 @@ public final class FASTRingBuffer implements CharSequence {
 	//filter() use predicate to took at template id or sequence and while roll forward to next or pass on current.
 	//         by avoid of write to ring buffer in first place majority of filters would give performance boost.
 	//map() 
-	//reduce()?
+	//reduce()?  map.collect()
+	
+	/* Java8 code converting iterator into stream so TODO: B, add toIterator method
+	 * <T> Stream<T> stream(Iterator<T> iterator) {
+    Spliterator<T> spliterator
+        = Spliterators.spliteratorUnknownSize(iterator, 0);
+    return StreamSupport.stream(spliterator, false);
+}
+	 */
 	
 //TODO: C, Add Forgetful functor to ignore  messages OR sequence groups OR groups that do not need to be added to ring buffer.
 //TODO: C, Add blocking consumer on the complete answer of preamble. (not sure this is first class)

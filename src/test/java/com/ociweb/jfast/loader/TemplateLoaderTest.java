@@ -35,6 +35,7 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterDispatch;
 
@@ -110,7 +111,7 @@ public class TemplateLoaderTest {
 		FASTInputByteArray fastInput = buildInputForTestingByteArray(new File(sourceData.getFile()));
 		int totalTestBytes = fastInput.remaining();
 		int bufferSize = 4096;
-		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,catalog.maxPMapDepth());
+		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,(2+((Math.max(catalog.maxTemplatePMapSize(),catalog.maxNonTemplatePMapSize())+2)*catalog.getMaxGroupDepth())));
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader, 
                 catalog.dictionaryFactory(), 
                 3, 
@@ -191,8 +192,8 @@ public class TemplateLoaderTest {
 
 		
 		int bufferSize = 4096;//do not change without testing, 4096 is ideal.
-		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,catalog.maxPMapDepth());
-		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(
+		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,(2+((Math.max(catalog.maxTemplatePMapSize(),catalog.maxNonTemplatePMapSize())+2)*catalog.getMaxGroupDepth())));
+		FASTReaderDispatch readerDispatch = new FASTReaderDispatchGenExample(
 													primitiveReader, 
 									                catalog.dictionaryFactory(), 
 									                3, 
@@ -311,6 +312,9 @@ public class TemplateLoaderTest {
 						           " Out:"+queuedBytes+" pct "+(totalTestBytes/(float)queuedBytes)+
 						           " Messages:"+msgs+
 	   			           		   " Groups:"+grps); //Phrases/Clauses
+				//Helps let us kill off the job.
+				Thread.yield();
+				System.gc();
 			}
 			
 			////////
@@ -433,7 +437,7 @@ public class TemplateLoaderTest {
 
 		FASTInputByteArray fastInput2 = buildInputForTestingByteArray(sourceDataFile);
 		final PrimitiveReader primitiveReader2 = new PrimitiveReader(fastInput2);
-		FASTReaderDispatch readerDispatch2 = new FASTReaderDispatch(primitiveReader2, 
+		FASTReaderDispatch readerDispatch2 = new FASTReaderDispatchGenExample(primitiveReader2, 
                 catalog.dictionaryFactory(),
                 catalog.maxNonTemplatePMapSize(),
                 catalog.dictionaryMembers(), 
@@ -481,7 +485,7 @@ public class TemplateLoaderTest {
 		int errCount = 0;
 		int i =0;
 		while(dynamicReader1.hasMore()!=0 &&
-			  dynamicReader2.hasMoreByTokens()!=0) {
+			  dynamicReader2.hasMore()!=0) {
 			
 			while (queue1.hasContent() && queue2.hasContent()) {
 				int int1 = queue1.readInteger(1);
@@ -544,7 +548,7 @@ public class TemplateLoaderTest {
 		//FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
 		
 		PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
-		FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader, 
+		FASTReaderDispatch readerDispatch = new FASTReaderDispatchGenExample(primitiveReader, 
                 catalog.dictionaryFactory(),
                 catalog.maxNonTemplatePMapSize(),
                 catalog.dictionaryMembers(), 
@@ -604,7 +608,7 @@ public class TemplateLoaderTest {
 			msgs = 0;
 			grps = 0;
 			int flags = 0; //same id needed for writer construction
-			while (0!=(flags = dynamicReader.hasMoreByTokens())) {
+			while (0!=(flags = dynamicReader.hasMore())) {
 					Thread.yield();
 					while (queue.hasContent()) {
 						dynamicWriter.write();				

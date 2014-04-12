@@ -5,7 +5,6 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.FieldWriterBytes;
 import com.ociweb.jfast.field.FieldWriterText;
 import com.ociweb.jfast.field.FieldWriterDecimal;

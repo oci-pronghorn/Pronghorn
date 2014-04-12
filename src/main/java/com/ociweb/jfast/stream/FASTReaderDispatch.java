@@ -5,9 +5,6 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderBytes;
-import com.ociweb.jfast.field.FieldReaderDecimal;
-import com.ociweb.jfast.field.FieldReaderInteger;
-import com.ociweb.jfast.field.FieldReaderLong;
 import com.ociweb.jfast.field.FieldReaderText;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
@@ -25,23 +22,36 @@ public class FASTReaderDispatch{
 	
 	//This is the GLOBAL dictionary
 	//When unspecified in the template GLOBAL is the default so these are used.
-	private final FieldReaderInteger readerInteger;
-	private final int[] rIntDictionary;
+	protected final int MAX_INT_INSTANCE_MASK;
+	protected final int[] rIntDictionary;
+	protected final int[] rIntInit;
 	
-	private final FieldReaderLong    readerLong;
-	private final FieldReaderDecimal readerDecimal;
-	private final FieldReaderText readerText;
-	private final TextHeap textHeap;
+	protected final int MAX_LONG_INSTANCE_MASK;
+	protected final long[] rLongDictionary;
+	protected final long[] rLongInit;
 	
-	private final FieldReaderBytes readerBytes;
+	protected final int DECIMAL_MAX_INT_INSTANCE_MASK;
+	protected final int DECIMAL_MAX_LONG_INSTANCE_MASK;
+	
+	
+	protected final int[] expDictionary;
+	protected final int[] expInit;
+	protected final long[] mantDictionary;
+	protected final long[] mantInit;
+	
+	
+	protected  final FieldReaderText readerText;
+	protected  final TextHeap textHeap;
+	
+	protected  final FieldReaderBytes readerBytes;
 			
-    private final int nonTemplatePMapSize;
-    private final int[][] dictionaryMembers;
+	protected  final int nonTemplatePMapSize;
+	protected  final int[][] dictionaryMembers;
 	
-	private final DictionaryFactory dictionaryFactory;
+	protected  final DictionaryFactory dictionaryFactory;
 	
 
-	private DispatchObserver observer;
+	protected  DispatchObserver observer;
 	
 	
 	//constant fields are always the same or missing but never anything else.
@@ -50,8 +60,8 @@ public class FASTReaderDispatch{
 	//
 	//default fields can be the default or overridden this one time with a new value.
 
-	final int maxNestedSeqDepth;
-	final int[] sequenceCountStack;
+	protected final int maxNestedSeqDepth;
+	protected final int[] sequenceCountStack;
 	
 	int sequenceCountStackHead = -1;
 	int checkSequence;
@@ -65,9 +75,7 @@ public class FASTReaderDispatch{
 	
 	int[] fullScript;
 
-	private final FASTRingBuffer queue;
-	private final int queueMASK;
-	private final int[] queueBuffer;
+	protected  final FASTRingBuffer queue;
 
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
@@ -87,15 +95,37 @@ public class FASTReaderDispatch{
 		
 		this.fullScript = fullScript;
 		
-		this.readerInteger = new FieldReaderInteger(reader,dcr.integerDictionary(),dcr.integerDictionary());
-		this.rIntDictionary = readerInteger.dictionary;
+		this.rIntDictionary = dcr.integerDictionary();
+		this.rIntInit = dcr.integerDictionary();
+		assert(rIntDictionary.length<TokenBuilder.MAX_INSTANCE);
+		assert(TokenBuilder.isPowerOfTwo(rIntDictionary.length));
+		assert(rIntDictionary.length==rIntInit.length);
+		this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length-1));
 		
-		this.readerLong = new FieldReaderLong(reader,dcr.longDictionary(),dcr.longDictionary());
-		this.readerDecimal = new FieldReaderDecimal(reader, 
-													dcr.decimalExponentDictionary(),
-													dcr.decimalExponentDictionary(),
-				                                    dcr.decimalMantissaDictionary(),
-				                                    dcr.decimalMantissaDictionary());
+		this.rLongDictionary = dcr.longDictionary();
+		this.rLongInit = dcr.longDictionary();
+		assert(rLongDictionary.length<TokenBuilder.MAX_INSTANCE);
+		assert(TokenBuilder.isPowerOfTwo(rLongDictionary.length));
+		assert(rLongDictionary.length==rLongInit.length);
+		
+		this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length-1));
+		
+		this.expDictionary = dcr.decimalExponentDictionary();
+		this.expInit = dcr.decimalExponentDictionary();
+		this.mantDictionary = dcr.decimalMantissaDictionary();
+		this.mantInit = dcr.decimalMantissaDictionary();
+				
+		assert(expDictionary.length<TokenBuilder.MAX_INSTANCE);
+		assert(TokenBuilder.isPowerOfTwo(expDictionary.length));
+		assert(expDictionary.length==expInit.length);
+		
+		assert(mantDictionary.length<TokenBuilder.MAX_INSTANCE);
+		assert(TokenBuilder.isPowerOfTwo(mantDictionary.length));
+		assert(mantDictionary.length==mantInit.length);
+
+		this.DECIMAL_MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (expDictionary.length-1));		
+		this.DECIMAL_MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (mantDictionary.length-1));
+		
 		this.readerText = new FieldReaderText(reader,charDictionary);
 		this.textHeap = readerText.textHeap();
 		
@@ -104,8 +134,6 @@ public class FASTReaderDispatch{
 		this.queue = new FASTRingBuffer((byte)8, //TODO: A, Generate values in template loader
 						                (byte)7, 
 						                readerText.textHeap());
-		this.queueMASK = queue.mask;
-		this.queueBuffer = queue.buffer;
 		
 	}
 	
@@ -120,9 +148,11 @@ public class FASTReaderDispatch{
 		
 		//clear all previous values to un-set
 		dictionaryFactory.reset(rIntDictionary);
-		dictionaryFactory.reset(readerLong.dictionary);
-		readerDecimal.reset(dictionaryFactory);
-		readerText.reset();
+		dictionaryFactory.reset(rLongDictionary);
+		dictionaryFactory.reset(expDictionary,mantDictionary);
+		if (null!=readerText.heap) {
+			readerText.heap.reset();		
+		}
 		readerBytes.reset();
 		sequenceCountStackHead = -1;
 		
@@ -137,201 +167,7 @@ public class FASTReaderDispatch{
 		return readerBytes.byteHeap();
 	}
 	
-    //TODO: B, this code generation must take place when loading the catalog binary file.
-	
-	
-	public boolean dispatchReadByTokenGen() {
-		switch(activeScriptCursor) {
-			 case 0:		
-				 	return case0();
-			 case 1:
-				    assert(gatherReadData(reader,fullScript[1],1));
-				    int length = case1();
-					if (length==0) {
-						    //jumping over sequence (forward) it was skipped (rare case)
-							activeScriptCursor = 31;//9+22;
-							return false;
-					} 		
-					sequenceCountStack[++sequenceCountStackHead] = length;
-					
-			 case 9:
-				 	assert(gatherReadData(reader,fullScript[9],9));
-				 	return case9();
-			 case 30:
-				 	assert(gatherReadData(reader,fullScript[30],30));
-				 	return case30();
-			 default:
-   		    		assert(false) : "Unsupported Template";
-			    	return false;				 
-		}		
-	}
 
-	private boolean case0() {
-		assert(gatherReadData(reader,fullScript[0],0));
-		//write a NonNull constant, no need to check more because this can not be null or dynamic.
-		  queue.appendInt2(0x80000000,0x02); //ref and length,  ASCIIConstant 0xa02c0000
-		  activeScriptCursor = 1;
-		  return false;
-	}
-
-	private int case1() {
-		   case1reset();
-		   
-		   //textHeap ID and known fixed length
-		   queue.appendInt6(0x80000001,0x03, //ASCIIConstant 0xa02c0001
-		                    0x80000002,0x01, //ASCIIConstant 0xa02c0002
-		                    0x80000003,0x0d); //ASCIIConstant 0xa02c0003
-		   
-		   //TODO: B, Code gen, we DO want to use this dictiionary and keep NONE opp operators IFF they are referenced by other fields.
-
-		   queue.appendInt3(reader.readIntegerUnsigned(),
-				            reader.readIntegerUnsigned(),
-				            reader.readIntegerUnsigned());
-				
-		   return queue.appendInt1(reader.readIntegerUnsigned());  //readIntegerUnsigned(0xd00c0003)); 
-
-	}
-
-	private void case1reset() {
-		
-		   readerDecimal.exponent.dictionary[0] = readerDecimal.exponent.init[0];
-		   readerDecimal.mantissa.dictionary[0] = readerDecimal.mantissa.init[0];
-		   readerDecimal.exponent.dictionary[1] = readerDecimal.exponent.init[1];
-		   readerDecimal.mantissa.dictionary[1] = readerDecimal.mantissa.init[1];
-		   readerText.heap.reset(4);
-		   rIntDictionary[4] = readerInteger.init[4];
-		   rIntDictionary[8] = readerInteger.init[8];
-		   rIntDictionary[9] = readerInteger.init[9];
-		   rIntDictionary[10] = readerInteger.init[10];
-		   rIntDictionary[11] = readerInteger.init[11];
-		   rIntDictionary[12] = readerInteger.init[12];
-	}
-
-	private boolean case9() {
-		
-		reader.openPMap(nonTemplatePMapSize);
-		
-		case9b1();
-		case9b2();				
-		case9c1();				
-		case9c2();
-
-		closeGroup(0xc0dc0014);
-		activeScriptCursor = 29;
-		assert(gatherReadData(reader,fullScript[29],29));
-		return checkSequence != 0 && completeSequence(0xc0dc0014); 
-	}
-
-	private void case9b2() {
-		long h2;
-		queue.appendInt6(reader.readIntegerSignedDefault(0 /* default value */),
-				         (int) ((h2 = reader.readLongSignedDelta(0x00, 0x00, readerDecimal.mantissa.dictionary)) >>> 32),
-				         (int) (h2 & 0xFFFFFFFF),
-				         reader.readIntegerUnsignedCopy(0x0a, 0x0a, rIntDictionary),
-				         reader.readIntegerSignedDeltaOptional(0x0b, 0x0b, rIntDictionary,constIntAbsent),
-				         reader.readIntegerUnsignedDeltaOptional(0x0c, 0x0c, rIntDictionary,constIntAbsent));
-	}
-
-	private void case9b1() {
-		int heapId;
-		int heapIdxLen;
-		int value2;
-		queue.appendInt8(reader.readIntegerUnsignedCopy(0x04, 0x04, rIntDictionary),
-				         reader.readIntegerUnsignedDefaultOptional(1 /*default or absent value */, constIntAbsent),
-                         textIdRef(heapId = readerText.readASCIICopy(0xa01c0004, -1), heapIdxLen = textHeap.length2(heapId)),
-                         heapIdxLen,
-                         (value2 = reader.readIntegerUnsigned()) == 0 ? constIntAbsent : value2 - 1,
-                         9, //dictionary1[0x07],//constant?
-                         reader.readIntegerUnsignedCopy(0x08, 0x08, rIntDictionary),
-                         reader.readIntegerUnsignedIncrement(0x09, 0x09, rIntDictionary)
-                        );//not used if null 
-	}
-
-	private void case9c1() {
-		int heapIdx;
-		int heapIdxLen;
-		long e21;
-		queue.appendInt8(textIdRef(heapIdx = readerText.readASCIIDefault(0x05), heapIdxLen = textHeap.length2(heapIdx)),heapIdxLen,
-				reader.readIntegerSignedDefaultOptional(2147483647 /* default or absent value */,constIntAbsent),
-				(int) ((e21 = reader.readLongSignedDeltaOptional(0x01, 0x01, readerDecimal.mantissa.dictionary, constLongAbsent)) >>> 32),
-				(int) (e21 & 0xFFFFFFFF),
-				reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent),
-				textIdRef(heapIdx = readerText.readASCIIDefault(0x06), heapIdxLen = textHeap.length2(heapIdx)),heapIdxLen
-				);
-	}
-
-	private void case9c2() {
-		int heapIdx;
-		int heapIdxLen;
-		queue.appendInt7(//not used if null
-		                 textIdRef(heapIdx = readerText.readASCIIDefault(0x07), heapIdxLen = textHeap.length2(heapIdx)),heapIdxLen,
-		                 textIdRef(heapIdx = readerText.readASCIIDefault(0x08), heapIdxLen = textHeap.length2(heapIdx)),heapIdxLen,
-		                 reader.readIntegerUnsignedDefaultOptional(2147483647 ,constIntAbsent),
-		                 textIdRef(heapIdx = readerText.readASCIIDefault(0x09), heapIdxLen = textHeap.length2(heapIdx)),heapIdxLen);//not used if null
-	}
-
-
-	private int textIdRef(int heapId, int length) {
-		return heapId<0 ? heapId : queue.writeTextToRingBuffer(heapId, length);
-	}
-
-	private boolean case30() {
-		//// example of what code generator must do.			
- 
-		//write a NonNull constant, no need to check more because this can not be null or dynamic.
-		queue.appendInt2(0x8000000a,0x5);//ASCIIConstant 0xa02c000a
-		queue.appendInt2(0x8000000b,0x0);//ASCIIConstant(0xa02c000b
-		queue.appendInt2(0x8000000c,0x0); ///ASCIIConstant(0xa02c000c
-
-		queue.appendInt2(reader.readIntegerUnsigned(),
-				         reader.readIntegerUnsigned());
-		
-		//System.err.println("0x"+Integer.toHexString(c1)+",0x"+Integer.toHexString(textHeap.initLength(c1)));
-
-		int f1 = readerText.readASCII(0xa40c000d,readFromIdx);
-
-		int len5 = textHeap.length2(f1);
-		queue.appendInt2(textIdRef(f1, len5),len5);//not used if null//normal read without constant, may need copy
-				
-		int length2;//be careful in code generation this can have all the same operators
-		queue.appendInt1(length2 = reader.readIntegerUnsigned());// readIntegerUnsigned(0xd00c0011));
-		if (length2==0) {
-		    //jumping over sequence (forward) it was skipped (rare case)
-			activeScriptCursor = 46;//36+10;
-			return false;
-		} else {			
-			sequenceCountStack[++sequenceCountStackHead] = length2;
-		}		
-
-		reader.openPMap(nonTemplatePMapSize);
-		
-		queue.appendInt2(0x8000000e,0x0); //ASCIIConstant(0xa02c000e
-				
-		long b4 = reader.readLongUnsignedOptional(constLongAbsent);
-		queue.appendInt3((int)(b4>>>32),
-				         (int)(b4&0xFFFFFFFF),
-				         reader.readIntegerUnsignedDefaultOptional(1/*default or optional */, constIntAbsent));
-
-		long d4 = reader.readLongUnsigned(0x01, readerLong.dictionary);
-		queue.appendInt5((int)(d4>>>32),
-				         (int)(d4&0xFFFFFFFF),
-				         reader.readIntegerUnsignedDefault(1/*default value*/),
-				         reader.readIntegerUnsigned(),
-				         rIntDictionary[0x15]);
-
-		closeGroup(0xc0dc0008);
-		activeScriptCursor = 45;
-		return checkSequence!=0 && completeSequence(0xc0dc0008);
-
-	}
-	
-
-	final int constIntAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-	final long constLongAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
-
-	
-
-		
 
 	
 	
@@ -356,7 +192,7 @@ public class FASTReaderDispatch{
 		//and the script position can be looked up by field id once for their needs.
 		//each "mini-message is expected to be very small" and all in cache
 	//package protected, unless we find a need to expose it?
-	final boolean dispatchReadByToken(FASTRingBuffer outputQueue) {
+	boolean dispatchReadByToken() {
 	
 		
 		//move everything needed in this tight loop to the stack
@@ -391,7 +227,7 @@ public class FASTReaderDispatch{
 				
 			}
 			
-			assert(gatherReadData(reader,script[cursor],cursor));
+			assert(gatherReadData(reader, cursor));
 			
 			//The trick here is to keep all the conditionals in this method and do the work elsewhere.
 			if (0==(token&(16<<TokenBuilder.SHIFT_TYPE))) {
@@ -399,11 +235,11 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_TYPE))) {
 					//00???
 					if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = dispatchReadByTokenForInteger(token);//int
+						queue.appendInt1( dispatchReadByTokenForInteger(token));//int
 					} else {
 						long value = dispatchReadByTokenForLong(token);
-						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(value>>>32);
-						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(value&0xFFFFFFFF);//long
+						queue.appendInt1( (int)(value>>>32));
+						queue.appendInt1( (int)(value&0xFFFFFFFF));//long
 					}
 				} else {
 					//01???
@@ -412,31 +248,238 @@ public class FASTReaderDispatch{
 						
 						int heapIdx = dispatchReadByTokenForText(token);
 						int heapIdxLen = textHeap.length2(heapIdx);
-						queue.appendInt2(textIdRef(heapIdx, heapIdxLen),heapIdxLen);//not used if null
+						queue.appendInt2(heapIdx<0 ? heapIdx : queue.writeTextToRingBuffer(heapIdx, heapIdxLen),heapIdxLen);//not used if null
 						
 					} else {
 						//011??
 						if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 							//0110? Decimal and DecimalOptional
 							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = readerDecimal.readDecimalExponent(token, -1);
-								long readDecimalMantissa = readerDecimal.readDecimalMantissa(token, -1);
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa>>>32);
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
+								int result1;
+								
+								//oppExp
+								if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+									//none, constant, delta
+									if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+										//none, delta
+										if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+											//none
+											//no need to set initValueFlags for field that can never be null
+											result1 = reader.readIntegerSigned();
+										} else {
+											//delta
+											int target1 = token&MAX_INT_INSTANCE_MASK;
+											int source3 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target1;
+											
+											result1 = reader.readIntegerSignedDelta(target1, source3, expDictionary);
+										}	
+									} else {
+										//constant
+										//always return this required value.
+										result1 = expDictionary[token & MAX_INT_INSTANCE_MASK];
+									}
+									
+								} else {
+									//copy, default, increment
+									if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+										//copy, increment
+										if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+											//copy
+											int target2 = token&MAX_INT_INSTANCE_MASK;
+											int source2 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target2;
+											
+											result1 = reader.readIntegerSignedCopy(target2, source2, expDictionary);
+										} else {
+											//increment
+											int target3 = token&MAX_INT_INSTANCE_MASK;
+											int source1 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target3;
+											
+											result1 = reader.readIntegerSignedIncrement(target3, source1, expDictionary);
+										}	
+									} else {
+										// default
+										int constDefault1 = expDictionary[token & MAX_INT_INSTANCE_MASK];	
+										
+										result1 = reader.readIntegerSignedDefault(constDefault1);
+									}		
+								}
+								queue.appendInt1( result1);
+								long result;
+								if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+									//none, constant, delta
+									if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+										//none, delta
+										if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+											//none
+											int target = token&MAX_LONG_INSTANCE_MASK;
+											
+											result = reader.readLongSigned(target, mantDictionary);
+										} else {
+											//delta
+											int target = token&MAX_LONG_INSTANCE_MASK;
+											int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+											
+											
+											result = reader.readLongSignedDelta(target, source, mantDictionary);
+										}	
+									} else {
+										//constant
+										//always return this required value.
+										result = mantDictionary[token & MAX_LONG_INSTANCE_MASK];
+									}
+									
+								} else {
+									//copy, default, increment
+									if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+										//copy, increment
+										if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+											//copy
+											int target = token&MAX_LONG_INSTANCE_MASK;
+											int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+											
+											result = reader.readLongSignedCopy(target, source, mantDictionary);
+										} else {
+											//increment
+											int target = token&MAX_LONG_INSTANCE_MASK;
+											int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+											
+											
+											result = reader.readLongSignedIncrement(target, source, mantDictionary);
+										}	
+									} else {
+										// default
+										long constDefault = mantDictionary[token & MAX_LONG_INSTANCE_MASK];
+										
+										result = reader.readLongSignedDefault(constDefault);
+									}		
+								}
+								long readDecimalMantissa = result;
+								queue.appendInt1( (int)(readDecimalMantissa>>>32));
+								queue.appendInt1( (int)(readDecimalMantissa&0xFFFFFFFF));
 							} else {
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = readerDecimal.readDecimalExponentOptional(token, -1);
-								long readDecimalMantissa = readerDecimal.readDecimalMantissaOptional(token, -1);
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa>>>32);
-								outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = (int)(readDecimalMantissa&0xFFFFFFFF);
+								int result1;
+								//oppExp
+										if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+											//none, constant, delta
+											if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+												//none, delta
+												if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+													//none
+													int constAbsent1 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+													
+													result1 = reader.readIntegerSignedOptional(constAbsent1);
+												} else {
+													//delta
+													int target3 = token&MAX_INT_INSTANCE_MASK;
+													int source2 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target3;
+													int constAbsent2 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+													
+													result1 = reader.readIntegerSignedDeltaOptional(target3, source2, expDictionary, constAbsent2);
+												}	
+											} else {
+												//constant
+												int constAbsent6 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+												int constConst1 = expDictionary[token & MAX_INT_INSTANCE_MASK];
+												
+												result1 = reader.readIntegerSignedConstantOptional(constAbsent6, constConst1);
+											}
+											
+										} else {
+											//copy, default, increment
+											if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+												//copy, increment
+												if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+													//copy
+													int target2 = token&MAX_INT_INSTANCE_MASK;
+													int source1 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target2;
+													int constAbsent3 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+													
+													int value1 = reader.readIntegerSignedCopy(target2, source1, expDictionary);
+													result1 = (0 == value1 ? constAbsent3: (value1>0 ? value1-1 : value1));
+												} else {
+													//increment
+													int target1 = token&MAX_INT_INSTANCE_MASK;
+													int source3 = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target1;
+													int constAbsent4 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+													
+													result1 = reader.readIntegerSignedIncrementOptional(target1, source3, expDictionary, constAbsent4);
+												}	
+											} else {
+												// default
+												int constAbsent5 = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+												int constDefault1 = expDictionary[token & MAX_INT_INSTANCE_MASK]==0?constAbsent5:expDictionary[token & MAX_INT_INSTANCE_MASK];
+														
+												result1 = reader.readIntegerSignedDefaultOptional(constDefault1, constAbsent5);
+											}		
+										}
+										queue.appendInt1( result1);
+								long result;
+								//oppMaint
+										if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+											//none, constant, delta
+											if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+												//none, delta
+												if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+													//none
+													long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+													
+													result = reader.readLongSignedOptional(constAbsent);
+												} else {
+													//delta
+													int target = token&MAX_LONG_INSTANCE_MASK;
+													int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+													long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+													
+													result = reader.readLongSignedDeltaOptional(target, source, mantDictionary, constAbsent);
+												}	
+											} else {
+												//constant
+												long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+												long constConst = mantDictionary[token & MAX_LONG_INSTANCE_MASK];
+												
+												result = reader.readLongSignedConstantOptional(constAbsent, constConst);
+											}
+											
+										} else {
+											//copy, default, increment
+											if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+												//copy, increment
+												if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+													//copy
+													int target = token&MAX_LONG_INSTANCE_MASK;
+													int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+													long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+															
+													long value = reader.readLongSignedCopy(target, source, mantDictionary);
+													result = (0 == value ? constAbsent: value-1);
+												} else {
+													//increment
+													int target = token&MAX_LONG_INSTANCE_MASK;
+													int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
+													long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+													
+													result = reader.readLongSignedIncrementOptional(target, source, mantDictionary, constAbsent);
+												}	
+											} else {
+												// default
+												long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+												long constDefault = mantDictionary[token & MAX_LONG_INSTANCE_MASK]==0?constAbsent:mantDictionary[token & MAX_LONG_INSTANCE_MASK];
+												
+												result = reader.readLongSignedDefaultOptional(constDefault, constAbsent);
+											}		
+										}
+								long readDecimalMantissa = result;
+								queue.appendInt1( (int)(readDecimalMantissa>>>32));
+								queue.appendInt1( (int)(readDecimalMantissa&0xFFFFFFFF));
 							}
 						} else {
 							//0111?
 							if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 								//01110 ByteArray
-								outputQueue.appendBytes(readByteArray(token), byteDictionary);
+								queue.appendBytes(readByteArray(token), byteDictionary);
 							} else {
 								//01111 ByteArrayOptional
-								outputQueue.appendBytes(readByteArrayOptional(token), byteDictionary);
+								queue.appendBytes(readByteArrayOptional(token), byteDictionary);
 							}
 						}
 					}
@@ -464,7 +507,7 @@ public class FASTReaderDispatch{
 						//Only happens once before a node sequence so push it on the count stack
 						int length;
 						int value = length = readIntegerUnsigned(token);
-						outputQueue.buffer[outputQueue.mask&outputQueue.addPos++] = value;
+						queue.appendInt1( value);
 						
 						//int oldCursor = cursor;
 						cursor = sequenceJump(length, cursor);
@@ -523,15 +566,17 @@ public class FASTReaderDispatch{
 		closeGroup(token);
 		//System.err.println("delta "+(cursor-activeScriptCursor));
 		activeScriptCursor = cursor;
-		return 	checkSequence!=0 && completeSequence(token);
+		return 	checkSequence!=0 && completeSequence((TokenBuilder.MAX_INSTANCE&token));
 	}
 
 	public void setDispatchObserver(DispatchObserver observer) {
 		this.observer=observer;
 	}
 	
-	private boolean gatherReadData(PrimitiveReader reader, int token, int cursor) {
+	protected boolean gatherReadData(PrimitiveReader reader, int cursor) {
 
+		int token = fullScript[cursor];
+		
 		if (null!=observer) {
 			String value = "";
 			//totalRead is bytes loaded from stream.
@@ -542,8 +587,10 @@ public class FASTReaderDispatch{
 		
 		return true;
 	}
-	private boolean gatherReadData(PrimitiveReader reader, int token, int cursor, String value) {
+	protected boolean gatherReadData(PrimitiveReader reader, int cursor, String value) {
 
+		int token = fullScript[cursor];
+		
 		if (null!=observer) {
 			//totalRead is bytes loaded from stream.
 			
@@ -554,7 +601,7 @@ public class FASTReaderDispatch{
 		return true;
 	}
 	
-	boolean gatherReadData(PrimitiveReader reader, String msg) {
+	protected boolean gatherReadData(PrimitiveReader reader, String msg) {
 
 		if (null!=observer) {
 			long absPos = reader.totalRead()-reader.bytesReadyToParse();
@@ -581,7 +628,7 @@ public class FASTReaderDispatch{
 				if (0==(idx&4)) {
 					//integer
 					while (m<limit && (idx = members[m++])>=0) {
-						rIntDictionary[idx] = readerInteger.init[idx];
+						rIntDictionary[idx] = rIntInit[idx];
 						if (genCode) {
 							System.err.println("rIntDictionary["+idx+"] = readerInteger.init["+idx+"];");
 						}
@@ -590,7 +637,7 @@ public class FASTReaderDispatch{
 					//long
 					//System.err.println("long");
 					while (m<limit && (idx = members[m++])>=0) {
-						readerLong.dictionary[idx] = readerLong.init[idx];
+						rLongDictionary[idx] = rLongInit[idx];
 						if (genCode) {
 							System.err.println("readerLong.dictionary["+idx+"] = readerLong.init["+idx+"];");
 						}
@@ -610,11 +657,11 @@ public class FASTReaderDispatch{
 						//decimal
 						//System.err.println("decimal");
 						while (m<limit && (idx = members[m++])>=0) {
-							readerDecimal.exponent.dictionary[idx] = readerDecimal.exponent.init[idx];
-							readerDecimal.mantissa.dictionary[idx] = readerDecimal.mantissa.init[idx];
+							expDictionary[idx] = expInit[idx];
+							mantDictionary[idx] = mantInit[idx];
 							if (genCode) {
-								System.err.println("readerDecimal.exponent.dictionary["+idx+"] = readerDecimal.exponent.init["+idx+"];");
-								System.err.println("readerDecimal.mantissa.dictionary["+idx+"] = readerDecimal.mantissa.init["+idx+"];");
+								System.err.println("exponent.dictionary["+idx+"] = exponent.init["+idx+"];");
+								System.err.println("mantissa.dictionary["+idx+"] = mantissa.init["+idx+"];");
 							}	
 						}
 					} else {
@@ -735,21 +782,21 @@ public class FASTReaderDispatch{
 					//none
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongSignedOptional(constAbsent);
+					return reader.readLongSignedOptional(constAbsent);
 				} else {
 					//delta
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongSignedDeltaOptional(target, source, readerLong.dictionary, constAbsent);
+					return reader.readLongSignedDeltaOptional(target, source, rLongDictionary, constAbsent);
 				}	
 			} else {
 				//constant
 				long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
-				long constConst = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constConst = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 				
-				return readerLong.reader.readLongSignedConstantOptional(constAbsent, constConst);
+				return reader.readLongSignedConstantOptional(constAbsent, constConst);
 			}
 			
 		} else {
@@ -758,26 +805,26 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 							
-					long value = readerLong.reader.readLongSignedCopy(target, source, readerLong.dictionary);
+					long value = reader.readLongSignedCopy(target, source, rLongDictionary);
 					return (0 == value ? constAbsent: value-1);
 				} else {
 					//increment
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongSignedIncrementOptional(target, source, readerLong.dictionary, constAbsent);
+					return reader.readLongSignedIncrementOptional(target, source, rLongDictionary, constAbsent);
 				}	
 			} else {
 				// default
 				long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
-				long constDefault = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK]==0?constAbsent:readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK]==0?constAbsent:rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 				
-				return readerLong.reader.readLongSignedDefaultOptional(constDefault, constAbsent);
+				return reader.readLongSignedDefaultOptional(constDefault, constAbsent);
 			}		
 		}
 		
@@ -791,21 +838,21 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
+					int target = token&MAX_LONG_INSTANCE_MASK;
 					
-					return readerLong.reader.readLongSigned(target, readerLong.dictionary);
+					return reader.readLongSigned(target, rLongDictionary);
 				} else {
 					//delta
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
 					
-					return readerLong.reader.readLongSignedDelta(target, source, readerLong.dictionary);
+					return reader.readLongSignedDelta(target, source, rLongDictionary);
 				}	
 			} else {
 				//constant
 				//always return this required value.
-				return readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				return rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -814,23 +861,23 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
-					return readerLong.reader.readLongSignedCopy(target, source, readerLong.dictionary);
+					return reader.readLongSignedCopy(target, source, rLongDictionary);
 				} else {
 					//increment
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
 					
-					return readerLong.reader.readLongSignedIncrement(target, source, readerLong.dictionary);	
+					return reader.readLongSignedIncrement(target, source, rLongDictionary);	
 				}	
 			} else {
 				// default
-				long constDefault = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 				
-				return readerLong.reader.readLongSignedDefault(constDefault);
+				return reader.readLongSignedDefault(constDefault);
 			}		
 		}
 	}
@@ -845,21 +892,21 @@ public class FASTReaderDispatch{
 					//none
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongUnsignedOptional(constAbsent);
+					return reader.readLongUnsignedOptional(constAbsent);
 				} else {
 					//delta
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongUnsignedDeltaOptional(target, source, readerLong.dictionary, constAbsent);
+					return reader.readLongUnsignedDeltaOptional(target, source, rLongDictionary, constAbsent);
 				}	
 			} else {
 				//constant
 				long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
-				long constConst = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constConst = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 						
-				return readerLong.reader.readLongUnsignedConstantOptional(constAbsent, constConst);
+				return reader.readLongUnsignedConstantOptional(constAbsent, constConst);
 			}
 			
 		} else {
@@ -868,26 +915,26 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 							
-					long value = readerLong.reader.readLongUnsignedCopy(target, source, readerLong.dictionary);
+					long value = reader.readLongUnsignedCopy(target, source, rLongDictionary);
 					return (0 == value ? constAbsent: value-1);
 				} else {
 					//increment
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 					
-					return readerLong.reader.readLongUnsignedIncrementOptional(target, source, readerLong.dictionary, constAbsent);
+					return reader.readLongUnsignedIncrementOptional(target, source, rLongDictionary, constAbsent);
 				}	
 			} else {
 				// default
 				long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
-				long constDefault = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK]==0?constAbsent:readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK]==0?constAbsent:rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 				
-				return readerLong.reader.readLongUnsignedDefaultOptional(constDefault, constAbsent);
+				return reader.readLongUnsignedDefaultOptional(constDefault, constAbsent);
 			}		
 		}
 
@@ -901,20 +948,20 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
+					int target = token&MAX_LONG_INSTANCE_MASK;
 					
-					return readerLong.reader.readLongUnsigned(target, readerLong.dictionary);
+					return reader.readLongUnsigned(target, rLongDictionary);
 				} else {
 					//delta
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
-					return readerLong.reader.readLongUnsignedDelta(target, source, readerLong.dictionary);
+					return reader.readLongUnsignedDelta(target, source, rLongDictionary);
 				}	
 			} else {
 				//constant
 				//always return this required value.
-				return readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				return rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -923,22 +970,22 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
-					return readerLong.reader.readLongUnsignedCopy(target, source, readerLong.dictionary);
+					return reader.readLongUnsignedCopy(target, source, rLongDictionary);
 				} else {
 					//increment
-					int target = token&readerLong.MAX_LONG_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerLong.MAX_LONG_INSTANCE_MASK : target;
+					int target = token&MAX_LONG_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_LONG_INSTANCE_MASK : target;
 					
-					return readerLong.reader.readLongUnsignedIncrement(target, source, readerLong.dictionary);		
+					return reader.readLongUnsignedIncrement(target, source, rLongDictionary);		
 				}	
 			} else {
 				// default
-				long constDefault = readerLong.dictionary[token & readerLong.MAX_LONG_INSTANCE_MASK];
+				long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 				
-				return readerLong.reader.readLongUnsignedDefault(constDefault);
+				return reader.readLongUnsignedDefault(constDefault);
 			}		
 		}
 		
@@ -973,21 +1020,21 @@ public class FASTReaderDispatch{
 					//none
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					return readerInteger.reader.readIntegerSignedOptional(constAbsent);
+					return reader.readIntegerSignedOptional(constAbsent);
 				} else {
 					//delta
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					return readerInteger.reader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent);
+					return reader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent);
 				}	
 			} else {
 				//constant
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				int constConst = rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];
+				int constConst = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 				
-				return readerInteger.reader.readIntegerSignedConstantOptional(constAbsent, constConst);
+				return reader.readIntegerSignedConstantOptional(constAbsent, constConst);
 			}
 			
 		} else {
@@ -996,26 +1043,26 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					int value = readerInteger.reader.readIntegerSignedCopy(target, source, rIntDictionary);
+					int value = reader.readIntegerSignedCopy(target, source, rIntDictionary);
 					return (0 == value ? constAbsent: (value>0 ? value-1 : value));
 				} else {
 					//increment
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					return readerInteger.reader.readIntegerSignedIncrementOptional(target, source, rIntDictionary, constAbsent);
+					return reader.readIntegerSignedIncrementOptional(target, source, rIntDictionary, constAbsent);
 				}	
 			} else {
 				// default
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				int constDefault = rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK]==0?constAbsent:rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];
+				int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK]==0?constAbsent:rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 						
-				return readerInteger.reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
+				return reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
 			}		
 		}
 		
@@ -1029,21 +1076,21 @@ public class FASTReaderDispatch{
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
+					int target = token&MAX_INT_INSTANCE_MASK;
 					
 					//no need to set initValueFlags for field that can never be null
 					return reader.readIntegerSigned();
 				} else {
 					//delta
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					return readerInteger.reader.readIntegerSignedDelta(target, source, rIntDictionary);
+					return reader.readIntegerSignedDelta(target, source, rIntDictionary);
 				}	
 			} else {
 				//constant
 				//always return this required value.
-				return rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];
+				return rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -1052,22 +1099,22 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					return readerInteger.reader.readIntegerSignedCopy(target, source, rIntDictionary);
+					return reader.readIntegerSignedCopy(target, source, rIntDictionary);
 				} else {
 					//increment
-					int target = token&readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>0? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token&MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					return readerInteger.reader.readIntegerSignedIncrement(target, source, rIntDictionary);	
+					return reader.readIntegerSignedIncrement(target, source, rIntDictionary);	
 				}	
 			} else {
 				// default
-				int constDefault = rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];	
+				int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];	
 				
-				return readerInteger.reader.readIntegerSignedDefault(constDefault);
+				return reader.readIntegerSignedDefault(constDefault);
 			}		
 		}
 	}
@@ -1083,22 +1130,22 @@ public class FASTReaderDispatch{
 					assert(readFromIdx<0);
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					int value = readerInteger.reader.readIntegerUnsigned();
+					int value = reader.readIntegerUnsigned();
 					return value==0 ? constAbsent : value-1;
 				} else {
 					//delta
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));		
 					
-					return readerInteger.reader.readIntegerUnsignedDeltaOptional(target, source, rIntDictionary, constAbsent);
+					return reader.readIntegerUnsignedDeltaOptional(target, source, rIntDictionary, constAbsent);
 				}	
 			} else {
 				//constant
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				int constConst = rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];
+				int constConst = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 				
-				return readerInteger.reader.readIntegerUnsignedConstantOptional(constAbsent, constConst);
+				return reader.readIntegerUnsignedConstantOptional(constAbsent, constConst);
 			}
 			
 		} else {
@@ -1107,29 +1154,29 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					int value = readerInteger.reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
+					int value = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
 					
 					return (0 == value ? TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token)): value-1);
 				} else {
 					//increment
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 					
-					return readerInteger.reader.readIntegerUnsignedIncrementOptional(target, source, rIntDictionary, constAbsent);	
+					return reader.readIntegerUnsignedIncrementOptional(target, source, rIntDictionary, constAbsent);	
 				}	
 			} else {
 				// default
-				int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-				int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+				int target = token & MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 				int t = rIntDictionary[source];
 				int constDefault = t == 0 ? constAbsent : t-1; 
 				
-				return readerInteger.reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
+				return reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
 			}		
 		}
 	
@@ -1147,15 +1194,15 @@ public class FASTReaderDispatch{
 					return reader.readIntegerUnsigned();
 				} else {
 					//delta
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					return readerInteger.reader.readIntegerUnsignedDelta(target, source, rIntDictionary);
+					return reader.readIntegerUnsignedDelta(target, source, rIntDictionary);
 				}	
 			} else {
 				//constant
 				//always return this required value.
-				return rIntDictionary[token & readerInteger.MAX_INT_INSTANCE_MASK];
+				return rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 			}
 			
 		} else {
@@ -1164,24 +1211,24 @@ public class FASTReaderDispatch{
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 							
-					return readerInteger.reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
+					return reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
 				} else {
 					//increment
-					int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-					int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+					int target = token & MAX_INT_INSTANCE_MASK;
+					int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
-					return readerInteger.reader.readIntegerUnsignedIncrement(target, source, rIntDictionary);
+					return reader.readIntegerUnsignedIncrement(target, source, rIntDictionary);
 				}	
 			} else {
 				// default
-				int target = token & readerInteger.MAX_INT_INSTANCE_MASK;
-				int source = readFromIdx>=0 ? readFromIdx&readerInteger.MAX_INT_INSTANCE_MASK : target;
+				int target = token & MAX_INT_INSTANCE_MASK;
+				int source = readFromIdx>=0 ? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constDefault = rIntDictionary[source];
 				
-				return readerInteger.reader.readIntegerUnsignedDefault(constDefault);
+				return reader.readIntegerUnsignedDefault(constDefault);
 			}		
 		}
 	}
@@ -1285,10 +1332,9 @@ public class FASTReaderDispatch{
 	 * Returns true if there is no sequence in play or if the active sequence can be closed.
 	 * Once a sequence is closed the reader should move to the next point in the sequence. 
 	 * 
-	 * @param token
 	 * @return
 	 */
-	public boolean completeSequence(int token) {
+	public boolean completeSequence(int backvalue) {
 		
 		checkSequence = 0;//reset for next time
 		
@@ -1310,7 +1356,7 @@ public class FASTReaderDispatch{
 			jumpSequence= 0;
 		} else {
 			//do this sequence again so move pointer back
-			jumpSequence = (TokenBuilder.MAX_INSTANCE&token);
+			jumpSequence = backvalue;
 		}
 		return true;
 	}
@@ -1328,15 +1374,119 @@ public class FASTReaderDispatch{
 		
 	}
 
+	//TODO: C, Optional absent null is not implemented yet for Decimal type.
 	public int readDecimalExponent(int token) {
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return readerDecimal.readDecimalExponent(token, readFromIdx);
+			int result;
+			
+			//oppExp
+			if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+				//none, constant, delta
+				if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+					//none, delta
+					if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+						//none
+						//no need to set initValueFlags for field that can never be null
+						result = reader.readIntegerSigned();
+					} else {
+						//delta
+						int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+						
+						result = reader.readIntegerSignedDelta(target, source, expDictionary);
+					}	
+				} else {
+					//constant
+					//always return this required value.
+					result = expDictionary[token & DECIMAL_MAX_INT_INSTANCE_MASK];
+				}
+				
+			} else {
+				//copy, default, increment
+				if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+					//copy, increment
+					if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+						//copy
+						int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+						
+						result = reader.readIntegerSignedCopy(target, source, expDictionary);
+					} else {
+						//increment
+						int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+						
+						result = reader.readIntegerSignedIncrement(target, source, expDictionary);
+					}	
+				} else {
+					// default
+					int constDefault = expDictionary[token & DECIMAL_MAX_INT_INSTANCE_MASK];	
+					
+					result = reader.readIntegerSignedDefault(constDefault);
+				}		
+			}
+			return result;
 		} else {
-			return readerDecimal.readDecimalExponentOptional(token, readFromIdx);
+			int result;
+			//oppExp
+					if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+						//none, constant, delta
+						if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+							//none, delta
+							if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+								//none
+								int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readIntegerSignedOptional(constAbsent);
+							} else {
+								//delta
+								int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+								int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readIntegerSignedDeltaOptional(target, source, expDictionary, constAbsent);
+							}	
+						} else {
+							//constant
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							int constConst = expDictionary[token & DECIMAL_MAX_INT_INSTANCE_MASK];
+							
+							result = reader.readIntegerSignedConstantOptional(constAbsent, constConst);
+						}
+						
+					} else {
+						//copy, default, increment
+						if (0==(token&(2<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+							//copy, increment
+							if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+								//copy
+								int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+								int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+								
+								int value = reader.readIntegerSignedCopy(target, source, expDictionary);
+								result = (0 == value ? constAbsent: (value>0 ? value-1 : value));
+							} else {
+								//increment
+								int target = token&DECIMAL_MAX_INT_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_INT_INSTANCE_MASK : target;
+								int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readIntegerSignedIncrementOptional(target, source, expDictionary, constAbsent);
+							}	
+						} else {
+							// default
+							int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+							int constDefault = expDictionary[token & DECIMAL_MAX_INT_INSTANCE_MASK]==0?constAbsent:expDictionary[token & DECIMAL_MAX_INT_INSTANCE_MASK];
+									
+							result = reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
+						}		
+					}
+					return result;
 		}
 	}
 	
@@ -1348,9 +1498,113 @@ public class FASTReaderDispatch{
 		assert(0!=(token&(8<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-			return readerDecimal.readDecimalMantissa(token, readFromIdx);
+			long result;
+			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+				//none, constant, delta
+				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+					//none, delta
+					if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+						//none
+						int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+						
+						result = reader.readLongSigned(target, mantDictionary);
+					} else {
+						//delta
+						int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+						
+						
+						result = reader.readLongSignedDelta(target, source, mantDictionary);
+					}	
+				} else {
+					//constant
+					//always return this required value.
+					result = mantDictionary[token & DECIMAL_MAX_LONG_INSTANCE_MASK];
+				}
+				
+			} else {
+				//copy, default, increment
+				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+					//copy, increment
+					if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+						//copy
+						int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+						
+						result = reader.readLongSignedCopy(target, source, mantDictionary);
+					} else {
+						//increment
+						int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+						int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+						
+						
+						result = reader.readLongSignedIncrement(target, source, mantDictionary);
+					}	
+				} else {
+					// default
+					long constDefault = mantDictionary[token & DECIMAL_MAX_LONG_INSTANCE_MASK];
+					
+					result = reader.readLongSignedDefault(constDefault);
+				}		
+			}
+			return result;
 		} else {
-			return readerDecimal.readDecimalMantissaOptional(token, readFromIdx);
+			long result;
+			//oppMaint
+					if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+						//none, constant, delta
+						if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+							//none, delta
+							if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+								//none
+								long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readLongSignedOptional(constAbsent);
+							} else {
+								//delta
+								int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+								long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readLongSignedDeltaOptional(target, source, mantDictionary, constAbsent);
+							}	
+						} else {
+							//constant
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+							long constConst = mantDictionary[token & DECIMAL_MAX_LONG_INSTANCE_MASK];
+							
+							result = reader.readLongSignedConstantOptional(constAbsent, constConst);
+						}
+						
+					} else {
+						//copy, default, increment
+						if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+							//copy, increment
+							if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
+								//copy
+								int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+								long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+										
+								long value = reader.readLongSignedCopy(target, source, mantDictionary);
+								result = (0 == value ? constAbsent: value-1);
+							} else {
+								//increment
+								int target = token&DECIMAL_MAX_LONG_INSTANCE_MASK;
+								int source = readFromIdx>0? readFromIdx&DECIMAL_MAX_LONG_INSTANCE_MASK : target;
+								long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+								
+								result = reader.readLongSignedIncrementOptional(target, source, mantDictionary, constAbsent);
+							}	
+						} else {
+							// default
+							long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
+							long constDefault = mantDictionary[token & DECIMAL_MAX_LONG_INSTANCE_MASK]==0?constAbsent:mantDictionary[token & DECIMAL_MAX_LONG_INSTANCE_MASK];
+							
+							result = reader.readLongSignedDefaultOptional(constDefault, constAbsent);
+						}		
+					}
+					return result;
 		}
 	}
 
@@ -1390,22 +1644,32 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 					//System.err.println("none");
-					return readerText.readUTF8Optional(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					
+					return readerText.readUTF8Optional(idx);
 				} else {
 					//tail
 					//System.err.println("tail");
-					return readerText.readUTF8TailOptional(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readUTF8TailOptional(idx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					//System.err.println("const");
-					return readerText.readUTF8ConstantOptional(token,readFromIdx);
+					int constInit = (token & readerText.MAX_TEXT_INSTANCE_MASK)|FieldReaderText.INIT_VALUE_MASK;
+					int constValue = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readConstantOptional(constInit, constValue);
 				} else {
 					//delta
 					//System.err.println("delta");
-					return readerText.readUTF8DeltaOptional(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readUTF8DeltaOptional(idx);
 				}
 			}
 		} else {
@@ -1413,11 +1677,15 @@ public class FASTReaderDispatch{
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				//System.err.println("copy");
-				return readerText.readUTF8CopyOptional(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				return readerText.readUTF8CopyOptional(idx);
 			} else {
 				//default
 				//System.err.println("default");
-				return readerText.readUTF8DefaultOptional(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				return readerText.readUTF8DefaultOptional(idx);
 			}
 		}
 		
@@ -1431,31 +1699,41 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					return readerText.readASCII(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					
+					return readerText.readASCII(idx);
 				} else {
 					//tail
-					return readerText.readASCIITail(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readASCIITail(idx, reader.readIntegerUnsigned(), readFromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					return readerText.readASCIIConstant(token,readFromIdx);
+					//always return this required value.
+					return (token & readerText.MAX_TEXT_INSTANCE_MASK) | FieldReaderText.INIT_VALUE_MASK;
 				} else {
 					//delta
-					return readerText.readASCIIDelta(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readASCIIDelta(readFromIdx, idx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				return readerText.readASCIICopy(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				return readerText.readASCIICopy(idx);
 			} else {
 				//default
 				int target = readerText.MAX_TEXT_INSTANCE_MASK&token;
 				
-				return readerText.readASCIIDefault(target);
+				return reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|target) : readerText.readASCIIToHeap(target);
 			}
 		}
 	}
@@ -1469,22 +1747,30 @@ public class FASTReaderDispatch{
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
 				//	System.err.println("none");
-					return readerText.readUTF8(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					
+					return readerText.readUTF8(idx);
 				} else {
 					//tail
 				//	System.err.println("tail");
-					return readerText.readUTF8Tail(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readUTF8Tail(idx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 				//	System.err.println("const");
-					return readerText.readUTF8Constant(token,readFromIdx);
+					//always return this required value.
+					return (token & readerText.MAX_TEXT_INSTANCE_MASK) | FieldReaderText.INIT_VALUE_MASK;
 				} else {
 					//delta
 				//	System.err.println("delta read");
-					return readerText.readUTF8Delta(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readUTF8Delta(idx);
 				}
 			}
 		} else {
@@ -1492,11 +1778,15 @@ public class FASTReaderDispatch{
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
 				//System.err.println("copy");
-				return readerText.readUTF8Copy(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				return readerText.readUTF8Copy(idx);
 			} else {
 				//default
 				//System.err.println("default");
-				return readerText.readUTF8Default(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				return readerText.readUTF8Default(idx);
 			}
 		}
 		
@@ -1507,27 +1797,39 @@ public class FASTReaderDispatch{
 		if (0==(token&((4|2|1)<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 				//none
-				return readerText.readASCII(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+				
+				
+				return readerText.readASCII(idx);
 			} else {
 				//tail
-				return readerText.readASCIITailOptional(token,readFromIdx);
+				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+						
+				return readerText.readASCIITailOptional(idx);
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
-					return readerText.readASCIIDeltaOptional(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readASCIIDeltaOptional(readFromIdx, idx);
 				} else {
-					return readerText.readASCIIConstantOptional(token,readFromIdx);
+					int constInit = (token & readerText.MAX_TEXT_INSTANCE_MASK)|FieldReaderText.INIT_VALUE_MASK;
+					int constValue = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readConstantOptional(constInit, constValue);
 				}		
 			} else {
 				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
-					return readerText.readASCIICopyOptional(token,readFromIdx);
+					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
+					
+					return readerText.readASCIICopyOptional(idx);
 				} else {
 					//for ASCII we don't need special behavior for optional
 					int target = readerText.MAX_TEXT_INSTANCE_MASK&token;
 					//CODE:
 				//	System.err.println("readerText.readASCIIDefault("+target+")");
-					return readerText.readASCIIDefault(target);
+					return reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|target) : readerText.readASCIIToHeap(target);
 				}
 				
 			}

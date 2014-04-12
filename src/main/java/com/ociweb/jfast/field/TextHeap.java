@@ -948,4 +948,14 @@ public class TextHeap {
 		set(idx,initBuffer, startFrom, len); 
 		
 	}
+
+
+	public void setSingleCharText(char ch, int idx) {
+		//TODO: B, This implementation assumes that all text can always support length of 1
+		final int offset = idx<<2;
+		int targIndex = tat[offset]; //because we have zero length
+		
+		data[targIndex] = ch;
+		tat[offset+1]=1+targIndex;
+	}
 }
