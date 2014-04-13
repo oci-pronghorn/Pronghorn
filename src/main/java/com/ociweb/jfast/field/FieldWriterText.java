@@ -212,15 +212,21 @@ public class FieldWriterText {
 	public void writeASCIIDeltaOptional(int token, CharSequence value) {
 		int idx = token & INSTANCE_MASK;
 		
+		if (null==value) {
+			writer.writeIntegerSigned(0);
+			return;
+		}
+		
 		//count matching front or back chars
 		int headCount = heap.countHeadMatch(idx, value);
 		int tailCount = heap.countTailMatch(idx, value);
 		if (headCount>tailCount) {
 			int trimTail = heap.length(idx)-headCount;
-			writer.writeIntegerSigned(trimTail); 
-			writeASCIITail(idx, headCount, value, trimTail);
+			assert(trimTail>=0);
+			writer.writeIntegerSigned(trimTail+1);//must add one because this is optional 
+			writeASCIITail(idx, headCount, value, trimTail); 
 		} else {
-			writeASCIIHead(idx, tailCount, value);			
+			writeASCIIHead(idx, tailCount, value, 1);			
 		}
 	}
 
@@ -238,14 +244,14 @@ public class FieldWriterText {
 			writer.writeIntegerSigned(trimTail);
 			writeASCIITail(idx, headCount, value, trimTail);
 		} else {
-			writeASCIIHead(idx, tailCount, value);						
+			writeASCIIHead(idx, tailCount, value, 0);						
 		}
 	}
 	
-	private void writeASCIIHead(int idx, int tailCount, CharSequence value) {
+	private void writeASCIIHead(int idx, int tailCount, CharSequence value, int offset) {
 		
 		int trimHead = heap.length(idx)-tailCount;
-		writer.writeIntegerSigned(-trimHead );
+		writer.writeIntegerSigned(0==trimHead?offset:-trimHead );
 		
 		int sentLen = value.length()-tailCount;
 		writer.writeTextASCIIBefore(value, sentLen);
@@ -465,7 +471,7 @@ public class FieldWriterText {
 		int tailCount = heap.countTailMatch(idx, value, offset+length, length);
 		if (headCount>tailCount) {
 			int trimTail = heap.length(idx)-headCount; //head count is total that match from head.
-			writer.writeIntegerSigned(trimTail); //cut off these from tail
+			writer.writeIntegerSigned(trimTail+1); //cut off these from tail, also add 1 because this is optional
 			
 			int valueSend = length-headCount;
 			int valueStart = offset+headCount;
@@ -475,7 +481,7 @@ public class FieldWriterText {
 		} else {
 			//replace head, tail matches to tailCount
 			int trimHead = heap.length(idx)-tailCount;
-			writer.writeIntegerSigned(-trimHead);
+			writer.writeIntegerSigned(0==trimHead?1:-trimHead);
 			
 			int len = length - tailCount;
 			writer.writeTextASCII(value, offset, len);

@@ -98,7 +98,7 @@ public class TextHeap {
 			}	
 		}
 		
-		//TODO: C, confirm new constructed TextHeap matches reset.
+		//TODO: T, confirm new constructed TextHeap matches reset.
 		
 	}
 	
@@ -583,60 +583,39 @@ public class TextHeap {
 	//////////
 	//////////
 	
-	//get for ring buffer only
-	public int get(int idx, char[] target, int targetIdx, int targetMask) {
+	//for ring buffer only where the length was already known
+	public int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask) {
 		//Does not support init values
 		assert(idx>0);
 		
-		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int len = tat[offset+1]-pos;
+		final int offset = idx<<2;		
+		final int pos = tat[offset];
+		final int len = tat[offset+1]-pos;
 		
 		int tStart = targetIdx&targetMask;
 		if (1==len) {
 			//simplification because 1 char can not loop around ring buffer.
 			target[tStart] = data[pos];
 		} else {
-			int tStop = (targetIdx+len)&targetMask;
-			if(tStop>tStart) {
-				System.arraycopy(data, pos, target, tStart, len);
-			} else {
-				//done as two copies			
-				int firstLen = targetMask-tStart;
-				System.arraycopy(data, pos, target, tStart, firstLen);			
-				System.arraycopy(data, pos+firstLen, target, 0, len-firstLen);
-			}
+			copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart);
 		}
-		return len;
+		return targetIdx+len;
+	}
+
+
+	private void copyToRingBuffer(char[] target, final int targetIdx, final int targetMask, final int pos,
+			final int len, int tStart) {
+		int tStop = (targetIdx+len)&targetMask;
+		if(tStop>tStart) {
+			System.arraycopy(data, pos, target, tStart, len);
+		} else {
+			//done as two copies			
+			int firstLen = targetMask-tStart;
+			System.arraycopy(data, pos, target, tStart, firstLen);			
+			System.arraycopy(data, pos+firstLen, target, 0, len-firstLen);
+		}
 	}
 	
-	public static int get(int idx, char[] target, int targetIdx, int targetMask, int[] tat, char[] data) {
-		//Does not support init values
-		assert(idx>0);
-		
-		int offset = idx<<2;
-		
-		int pos = tat[offset];
-		int len = tat[offset+1]-pos;
-		
-		if (1==len) {
-			//simplification because 1 char can not loop around ring buffer.
-			target[targetIdx&targetMask] = data[pos];
-		} else {
-			int tStart = targetIdx&targetMask;
-			int tStop = (targetIdx+len)&targetMask;
-			if(tStop>tStart) {
-				System.arraycopy(data, pos, target, tStart, len);
-			} else {
-				//done as two copies			
-				int firstLen = targetMask-tStart;
-				System.arraycopy(data, pos, target, tStart, firstLen);			
-				System.arraycopy(data, pos+firstLen, target, 0, len-firstLen);
-			}
-		}
-		return len;
-	}
 	
 	public int get(int idx, char[] target, int targetIdx) {
 		if (idx<0) {
@@ -951,7 +930,7 @@ public class TextHeap {
 
 
 	public void setSingleCharText(char ch, int idx) {
-		//TODO: B, This implementation assumes that all text can always support length of 1
+		//TODO: A, This implementation assumes that all text can always support length of 1
 		final int offset = idx<<2;
 		int targIndex = tat[offset]; //because we have zero length
 		

@@ -83,7 +83,7 @@ public class TemplateCatalog {
 
 
 	public void setMessagePreambleSize(byte size) {
-		this.preambleSize = size;
+		this.preambleSize = size; //TODO: B, add check to ensuer multiple of 4 only!!!
 	}
 	
 	//Assumes that the tokens are already loaded and ready for use.

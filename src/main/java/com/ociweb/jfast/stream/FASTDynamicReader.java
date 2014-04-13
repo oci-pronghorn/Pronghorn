@@ -36,7 +36,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 	private final int[] fullScript;
 	
-	private final byte[] preambleData;
+	private final byte[] preamble;
 	private final byte preambleDataLength;
 	
 	private long messageCount = 0;
@@ -59,7 +59,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		this.catalog = catalog;
 		this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
 		this.preambleDataLength=catalog.getMessagePreambleSize();
-		this.preambleData = new byte[preambleDataLength];				
+		this.preamble = new byte[preambleDataLength];				
 		this.readerDispatch = dispatch;
 		this.reader = dispatch.reader;
 		this.fullScript = catalog.fullScript();
@@ -149,8 +149,16 @@ public class FASTDynamicReader implements FASTDataProvider {
 		///read prefix bytes if any (only used by some implementations)
 		if (preambleDataLength!=0) {
 			assert(readerDispatch.gatherReadData(readerDispatch.reader,"Preamble"));
-			reader.readByteData(preambleData, 0, preambleData.length);
-			ringBuffer.appendBytes(preambleData);
+			reader.readByteData(preamble, 0, preamble.length);
+			
+			int i = 0;
+			int s = preamble.length;
+			while (i<s) {				
+				ringBuffer.appendInt1(  ((0xFF&preamble[i++])<<24) |
+										((0xFF&preamble[i++])<<16) |
+										((0xFF&preamble[i++])<<8) |
+										((0xFF&preamble[i++])));
+			}
 			
 		};
 		///////////////////
@@ -165,7 +173,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 		ringBuffer.appendInt1(i);//write template id at the beginning of this message
 						
 		//set the cursor start and stop for this template				
-		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: C, pull in as lists once
+		readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); //TODO: X, pull in as lists once
 		readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
 						
 		//Worst case scenario is that this is full of decimals which each need 3.
@@ -202,7 +210,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 	
 
 	public byte[] prefix() {
-		return preambleData;
+		return preamble;
 	}
 	
 	public FASTRingBuffer ringBuffer() {

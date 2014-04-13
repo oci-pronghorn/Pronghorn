@@ -166,10 +166,10 @@ public class StreamingTextTest extends BaseStreamingTest {
 				int token = tokenLookup[f]; 
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
-					if (sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
+					if (testNullString(i, token)) {
 						fw.write(token);
 					} else {
-						if ((i&1)==0) {
+						if (testCharSequence(i)) {
 							fw.write(token, testConstSeq);
 						} else {
 							char[] array = testConst;
@@ -177,10 +177,10 @@ public class StreamingTextTest extends BaseStreamingTest {
 						}
 					}
 				} else {
-					if (sendNulls && ((f&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token)) {
+					if (testNullString(f, token)) {
 						fw.write(token);
 					} else {
-						if ((i&1)==0) {
+						if (testCharSequence(i)) {
 							fw.write(token, testData[f]);
 						} else {
 							char[] array = testDataChars[f];
@@ -201,12 +201,20 @@ public class StreamingTextTest extends BaseStreamingTest {
 		return duration;
 	}
 
+	private boolean testNullString(int i, int token) {
+		return sendNulls && ((i&NULL_SEND_MASK)==0) && TokenBuilder.isOptional(token);
+	}
+
+	private boolean testCharSequence(int i) {
+		return (i&1)==0;
+	}
+
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup,
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 300, 0, 4, 4, null,64);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 300, 0, 4, 4, null,64, 8, 7);
 		TextHeap textHeap = fr.textHeap();
 		
 		long start = System.nanoTime();

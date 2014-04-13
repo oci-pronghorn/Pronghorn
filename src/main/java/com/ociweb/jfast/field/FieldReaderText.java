@@ -139,12 +139,20 @@ public final class FieldReaderText {
 	}
 
 	public int readASCIIDeltaOptional(int readFromIdx, int idx) {
-		return readASCIIDelta(readFromIdx, idx);//TODO: C, ASCII need null logic here.
+		int optionalTrim = reader.readIntegerSigned();
+		if (0==optionalTrim) {
+			return FieldReaderText.INIT_VALUE_MASK|idx;
+		} else {		
+			if (optionalTrim>0) {
+				return readASCIITail(idx, optionalTrim-1, readFromIdx);
+			} else {
+				return readASCIIHead(idx, optionalTrim, readFromIdx);
+			}
+		}
 	}
 
 	public int readASCIIDelta(int readFromIdx, int idx) {
-		int trim = reader.readIntegerSigned();
-		
+		int trim = reader.readIntegerSigned();		
 		if (trim>=0) {
 			return readASCIITail(idx, trim, readFromIdx);
 		} else {
@@ -153,6 +161,9 @@ public final class FieldReaderText {
 	}
 
 	public int readASCIITail(int idx, int trim, int readFromIdx) {
+		
+		//TODO: B, if readFromIdx does not match idx must do different work.
+		
 		if (trim>0) {
 			heap.trimTail(idx, trim);
 		}

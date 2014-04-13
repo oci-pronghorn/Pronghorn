@@ -121,7 +121,7 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript(),
-                catalog.getMaxGroupDepth()); 
+                catalog.getMaxGroupDepth(), 8, 7); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
@@ -207,6 +207,8 @@ public class TemplateLoaderTest {
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
+		//TODO: X, look into core affinity 
+		
 		//TODO: B, Use generated class if found else use slower base class behavior.
 		//TODO: B, generator code should take TemplateCatalog to build class if needed.
 		
@@ -243,8 +245,13 @@ public class TemplateLoaderTest {
 					//this is a template message. 
 					int bufferIdx = 0;
 					if (preamble.length>0) {
-						queue.readBytes(bufferIdx, preamble);
-						bufferIdx+=preamble.length;
+						int i = 0;
+						int s = preamble.length;
+						while (i<s) {
+							queue.readInteger(bufferIdx);
+							i+=4;
+							bufferIdx++;
+						}				
 					}
 					
 					int templateId = queue.readInteger(bufferIdx);
@@ -430,7 +437,7 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript(),
-                catalog.getMaxGroupDepth()); 
+                catalog.getMaxGroupDepth(), 8, 7); 
 		FASTDynamicReader dynamicReader1 = new FASTDynamicReader(primitiveReader1, catalog, readerDispatch1);
 		FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 		

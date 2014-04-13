@@ -15,7 +15,7 @@ public class FieldReaderBytes {
 	private final ByteHeap heap;
 	private final int INSTANCE_MASK;
 	
-	//TODO: E, improvement reader/writer bytes/chars should never build this object when it is not in use.
+	//TODO: X, improvement reader/writer bytes/chars should never build this object when it is not in use.
 	public FieldReaderBytes(PrimitiveReader reader, ByteHeap byteDictionary) {
 		assert(null==byteDictionary || byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
 		assert(null==byteDictionary || TokenBuilder.isPowerOfTwo(byteDictionary.itemCount()));

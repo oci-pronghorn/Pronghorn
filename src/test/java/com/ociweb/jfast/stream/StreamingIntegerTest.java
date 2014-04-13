@@ -155,7 +155,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

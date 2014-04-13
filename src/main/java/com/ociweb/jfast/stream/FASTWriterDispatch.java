@@ -1098,9 +1098,27 @@ public final class FASTWriterDispatch {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
 					
-					queue.selectCharSequence(fieldPos);
-					//NOTE: Use CharSequence implementation today, direct ring buffer tomorrow.
-					write(token,queue.length()<0?null:queue);
+					///TODO: A, if ring buffer does not loop its a simple array usage!!
+					//if it does loop its only two arrays!
+					char[] buffer = queue.readRingCharBuffer(fieldPos);
+					int length = queue.readCharsLength(fieldPos);
+					if (length<=0) {
+						write(token);
+					} else {
+						int pos = queue.readRingCharPos(fieldPos);
+						int mask = queue.readRingCharMask();
+						int start = pos&mask;
+						int stop  = (pos+length)&mask;
+						if (stop>=start) {
+							write(token,buffer,start,length);
+						} else {
+						
+							
+							throw new UnsupportedOperationException();
+							//TODO: A, special sequence object here that can point to ring buffer just for this copy.
+							
+						}
+					}
 									
 				} else {
 					//011??
@@ -1112,11 +1130,11 @@ public final class FASTWriterDispatch {
 						if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
 							//01110 ByteArray
 							//queue.selectByteSequence(fieldPos);
-							//write(token,queue); TODO: C, copy the text implementation
+							//write(token,queue); TODO: B, copy the text implementation
 						} else {
 							//01111 ByteArrayOptional
 							//queue.selectByteSequence(fieldPos);
-							//write(token,queue); TODO: C, copy the text implementation
+							//write(token,queue); TODO: B, copy the text implementation
 						}
 					}
 				}
@@ -1275,7 +1293,7 @@ public final class FASTWriterDispatch {
 		
 		writer.openPMap(pmapMaxSize);
 		writer.writePMapBit((byte)1);
-		writer.closePMap();//TODO: B, this needs to be close but not sure this is the right location.
+		writer.closePMap();//TODO: A, this needs to be close but not sure this is the right location.
 		writer.writeIntegerUnsigned(templateId);
 
 	}

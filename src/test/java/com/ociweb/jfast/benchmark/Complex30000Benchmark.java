@@ -77,7 +77,7 @@ public class Complex30000Benchmark extends Benchmark {
 							                    catalog.getTextGap(),
 							                    catalog.getByteVectorGap(), 
 							                    catalog.fullScript(),
-							                    catalog.getMaxGroupDepth()); 
+							                    catalog.getMaxGroupDepth(), 8, 7); 
 
 			dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 			

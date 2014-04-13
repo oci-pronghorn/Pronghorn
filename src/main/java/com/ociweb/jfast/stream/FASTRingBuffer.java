@@ -19,7 +19,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
  * @author Nathan Tippy
  *
  */
-public final class FASTRingBuffer implements CharSequence {
+public final class FASTRingBuffer  {
 
 	final int[] buffer;
 	final int mask;
@@ -32,9 +32,6 @@ public final class FASTRingBuffer implements CharSequence {
 	public final TextHeap textHeap; 
 	final char[] rawConstHeap;
 	
-	int[] tat;
-	int[] initTat;
-	char[] data;
 	
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
@@ -42,17 +39,14 @@ public final class FASTRingBuffer implements CharSequence {
 	private int addPos = 0;
 	int remPos = 0;
 		
-	public FASTRingBuffer(byte bits, byte charBits, TextHeap heap) {
-		assert(bits>=1);
+	public FASTRingBuffer(byte primaryBits, byte charBits, TextHeap heap) {
+		assert(primaryBits>=1);
 		this.textHeap = heap;
 		
-		tat = null==textHeap?null:textHeap.tat;
-		initTat = null==textHeap?null:textHeap.initTat;
-		data = null==textHeap?null:textHeap.data;
-		
+	
 		this.rawConstHeap = null==textHeap?null:textHeap.rawInitAccess();
 		
-		this.maxSize = 1<<bits;
+		this.maxSize = 1<<primaryBits;
 		this.mask = maxSize-1;
 		this.buffer = new int[maxSize];
 			
@@ -84,14 +78,28 @@ public final class FASTRingBuffer implements CharSequence {
 		
 	}
 
+	//take ring buffer
+	//switch on the template id.
+	//do processing for id
+	//    * check fields and jump forward
+	//    * do work
 	
-	//TODO: B, model after java8 lambda behavior.  xxx.stream().filter(x).map(y).max() If objects can not escape or are reused this should be performant 
+	//   filter(filter(ringbuffer))   map(ringbufer)
+	//   ringBuffer.filter(rules).filter(rules).map(process)
+	// filter returns ring buffer moved forward?
+	
+	
+	
+	//TODO: A, Add Forgetful functor to ignore  messages OR sequence groups OR groups that do not need to be added to ring buffer.
+	//TODO: B, add functors in general to do custom work before ring buffer
+	//TODO: B, add functors in general to do custom work from ring buffer before encoding?
+	//TODO: A, model after java8 lambda behavior.  xxx.stream().filter(x).map(y).max() If objects can not escape or are reused this should be performant 
 	//filter() use predicate to took at template id or sequence and while roll forward to next or pass on current.
 	//         by avoid of write to ring buffer in first place majority of filters would give performance boost.
 	//map() 
 	//reduce()?  map.collect()
 	
-	/* Java8 code converting iterator into stream so TODO: B, add toIterator method
+	/* Java8 code converting iterator into stream so TODO: A, add toIterator method
 	 * <T> Stream<T> stream(Iterator<T> iterator) {
     Spliterator<T> spliterator
         = Spliterators.spliteratorUnknownSize(iterator, 0);
@@ -99,24 +107,17 @@ public final class FASTRingBuffer implements CharSequence {
 }
 	 */
 	
-//TODO: C, Add Forgetful functor to ignore  messages OR sequence groups OR groups that do not need to be added to ring buffer.
-//TODO: C, Add blocking consumer on the complete answer of preamble. (not sure this is first class)
-	
-	//TODO: B, add functors in general to do custom work before ring buffer
-	//TODO: B, add functors in general to do custom work from ring buffer before encoding?
+
+	//TODO: B, Add blocking consumer on the complete answer of preamble. (not sure this is first class)
+	//preamble needs to work like a bit in pmap we are blocked on. to know the size?
+	//part of write cache from primtiive allowing fixed size modifications before flush, Done as FASTOutput wrapper?
 	
     public final int availableCapacity() {
     	return maxSize-(addPos-remPos);
     }
     
 	
-	public void appendBytes(byte[] source) {
-		
-		int i = 0;
-		while (i<source.length) {
-			buffer[mask&addPos++] = source[i++];
-		}
-	}
+
 
 	
 	//Text RingBuffer encoding for two ints
@@ -202,16 +203,15 @@ public final class FASTRingBuffer implements CharSequence {
 	}
 
 	public int writeTextToRingBuffer(int heapId, int len) {
-		int p = addCharPos;
-		if (len>0) {
-			addCharPos+=len;
-			//end with function call for performance.
-			TextHeap.get(heapId, charBuffer, p, charMask,tat,data);
+		final int p = addCharPos;
+		if (len>0) {		
+			addCharPos = textHeap.copyToRingBuffer(heapId, charBuffer, p, charMask);
 		}
 		return p;
 	}
 
-	//TODO: B, Use static method to access fields by offset based on templateId.
+	//TODO: A, Use static method to access fields by offset based on templateId.
+	//TODO: A, At end of group check filter of that record and jump back if need to skip.
 
 	public void appendBytes(int idx, ByteHeap heap) {
 		
@@ -242,6 +242,8 @@ public final class FASTRingBuffer implements CharSequence {
 		System.err.println(label+" remPos:"+remPos+"  addPos:"+addPos);
 	}
 	
+	//TODO: A, Given templateId, and FieldId return offset for RingBuffer to get value, must keep in client code
+	
 	public int readInteger(int idx) {
 		return buffer[mask&(remPos+idx)];
 	}
@@ -259,15 +261,7 @@ public final class FASTRingBuffer implements CharSequence {
 		return buffer[mask&(remPos+idx+1)];
 	}
 
-	
-	public void readBytes(int idx, byte[] target) {
-		//TODO: X, Would it be better to store 4 bytes per int. this is not a compact form, check this later if we have performnce problems.
-		int i = 0;
-		while (i<target.length) {
-			target[i] = (byte)buffer[mask&(remPos+idx+i)];
-			i++;
-		}
-	}
+
 	
 	//this is for fast direct WRITE TO target
 	public void readChars(int idx, char[] target, int targetIdx) {
@@ -286,48 +280,20 @@ public final class FASTRingBuffer implements CharSequence {
 	//WARNING: consumer of these may need to loop around end of buffer !!
     //these are needed for fast direct READ FROM here
 	public  int readRingCharPos(int fieldPos) {
-		int ref1 = buffer[fieldPos];
+		int ref1 = buffer[mask&(remPos+fieldPos)];
 		//constant from heap or dynamic from char ringBuffer
 		return ref1<0 ? textHeap.initStartOffset(ref1) : ref1;
 	}
 
 	public char[] readRingCharBuffer(int fieldPos) {
 		//constant from heap or dynamic from char ringBuffer
-		return buffer[fieldPos]<0 ? this.rawConstHeap : this.charBuffer;	
+		return buffer[mask&(remPos+fieldPos)]<0 ? this.rawConstHeap : this.charBuffer;	
 	}
 	
 	public int readRingCharMask() {
 		return charMask;
 	}
 
-	int charSeqIdx;
-	
-	public void selectCharSequence(int idx) {
-		charSeqIdx = idx;
-	}
-	
-	@Override
-	public int length() {
-		//System.err.println("Pulling length value:"+buffer[mask&(remPos+charSeqIdx+1)]);
-		return buffer[mask&(remPos+charSeqIdx+1)];
-	}
-
-	@Override
-	public char charAt(int at) {
-		int ref1 = buffer[mask&(remPos+charSeqIdx)];
-		if (ref1<0) {
-			return textHeap.charAt(ref1,at);
-		} else {
-			return charBuffer[(ref1+at)&charMask];
-		}
-	}
-
-	//TODO: C, putting things in the ring buffer out of order may break the inner char ring buffer, MUST fix.
-	
-	@Override
-	public CharSequence subSequence(int start, int end) {
-		throw new UnsupportedOperationException();
-	}
 
 	public boolean hasContent() {
 		return addPos>remPos;

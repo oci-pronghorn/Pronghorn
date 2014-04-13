@@ -53,6 +53,8 @@ public final class FieldWriterInteger {
 		writer.writeIntegerUnsigned(value);
 	}
 	
+	//TODO: B, Refactor all Field writes to split logic between dispatch and primitive
+	
 	public void writeIntegerUnsignedCopy(int value, int token) {
 		int idx = token & INSTANCE_MASK;
 		

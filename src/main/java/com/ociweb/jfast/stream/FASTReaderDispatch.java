@@ -29,27 +29,22 @@ public class FASTReaderDispatch{
 	protected final int MAX_LONG_INSTANCE_MASK;
 	protected final long[] rLongDictionary;
 	protected final long[] rLongInit;
-	
+		
 	protected final int DECIMAL_MAX_INT_INSTANCE_MASK;
-	protected final int DECIMAL_MAX_LONG_INSTANCE_MASK;
-	
-	
 	protected final int[] expDictionary;
 	protected final int[] expInit;
+	
+	protected final int DECIMAL_MAX_LONG_INSTANCE_MASK;
 	protected final long[] mantDictionary;
 	protected final long[] mantInit;
-	
-	
-	protected  final FieldReaderText readerText;
-	protected  final TextHeap textHeap;
-	
+		
+	protected  final FieldReaderText readerText;	
 	protected  final FieldReaderBytes readerBytes;
 			
 	protected  final int nonTemplatePMapSize;
 	protected  final int[][] dictionaryMembers;
 	
-	protected  final DictionaryFactory dictionaryFactory;
-	
+	protected  final DictionaryFactory dictionaryFactory;	
 
 	protected  DispatchObserver observer;
 	
@@ -79,9 +74,9 @@ public class FASTReaderDispatch{
 
 	
 	public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, 
-			                   int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
-			                   int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
-			                   int maxNestedGroupDepth) {
+			                  int nonTemplatePMapSize, int[][] dictionaryMembers, int maxTextLen, 
+			                  int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
+			                  int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
 		this.reader = reader;
 		this.dictionaryFactory = dcr;
 		this.nonTemplatePMapSize = nonTemplatePMapSize;
@@ -126,14 +121,11 @@ public class FASTReaderDispatch{
 		this.DECIMAL_MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (expDictionary.length-1));		
 		this.DECIMAL_MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (mantDictionary.length-1));
 		
-		this.readerText = new FieldReaderText(reader,charDictionary);
-		this.textHeap = readerText.textHeap();
+		this.readerText = new FieldReaderText(reader, charDictionary);
 		
 		this.readerBytes = new FieldReaderBytes(reader,byteDictionary);
 		
-		this.queue = new FASTRingBuffer((byte)8, //TODO: A, Generate values in template loader
-						                (byte)7, 
-						                readerText.textHeap());
+		this.queue = new FASTRingBuffer((byte)primaryRingBits, (byte)textRingBits, readerText.textHeap());
 		
 	}
 	
@@ -202,7 +194,7 @@ public class FASTReaderDispatch{
 		
 //		
 		boolean codeGen = false;// true;//cursor!=9 && cursor!=1 && cursor!=30 && cursor!=0;
-		//TODO: B, once this code matches the methods used here take it out and move it to the TemplateLoader
+		//TODO: T, once this code matches the methods used here take it out and move it to the TemplateLoader
 		
 	//	int zz = cursor;
 		
@@ -247,7 +239,7 @@ public class FASTReaderDispatch{
 						//int for text					
 						
 						int heapIdx = dispatchReadByTokenForText(token);
-						int heapIdxLen = textHeap.length2(heapIdx);
+						int heapIdxLen = textHeap().length2(heapIdx);
 						queue.appendInt2(heapIdx<0 ? heapIdx : queue.writeTextToRingBuffer(heapIdx, heapIdxLen),heapIdxLen);//not used if null
 						
 					} else {
@@ -1374,7 +1366,7 @@ public class FASTReaderDispatch{
 		
 	}
 
-	//TODO: C, Optional absent null is not implemented yet for Decimal type.
+	//TODO: A, Optional absent null is not implemented yet for Decimal type.
 	public int readDecimalExponent(int token) {
 		assert(0==(token&(2<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 		assert(0!=(token&(4<<TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);

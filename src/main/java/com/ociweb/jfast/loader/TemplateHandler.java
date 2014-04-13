@@ -55,7 +55,7 @@ public class TemplateHandler extends DefaultHandler {
     
     int[][] dictionaryMap = new int[TokenBuilder.MAX_FIELD_ID_VALUE][];
     
-    //TODO: B, must detect two fieldId defined in different dictionaries when they appear in the same stop node block.
+    //TODO: T, must detect two fieldId defined in different dictionaries when they appear in the same stop node block.
     
     //every dictionary must be converted into an integer so we will use the index in a simple list.
     final List<String> dictionaryNames = new ArrayList<String>(128);
@@ -64,7 +64,7 @@ public class TemplateHandler extends DefaultHandler {
     
     
     //Name space for all the active templates if they do not define their own.
-    String templatesXMLns; //TODO: C, name space processing is not implemented yet.
+    String templatesXMLns; //TODO: B, name space processing is not implemented yet.
     
     //Templates never nest and only appear one after the other. Therefore 
     //these fields never need to be in a stack and the values put here by the
@@ -358,7 +358,7 @@ public class TemplateHandler extends DefaultHandler {
 		if ("template".equalsIgnoreCase(dictionaryName)) {
 			dictionaryName = SPECIAL_PREFIX+templateId;
 		} else if ("apptype".equalsIgnoreCase(dictionaryName)) {
-			int appType = -1;//TODO: C, implement application type in XML parse    			
+			int appType = -1;//TODO: B, implement application type in XML parse    			
 			dictionaryName = SPECIAL_PREFIX+appType;
 		}
 		int idx = dictionaryNames.indexOf(dictionaryName);

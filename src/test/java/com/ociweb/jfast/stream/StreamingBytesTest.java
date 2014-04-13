@@ -257,7 +257,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 									DictionaryFactory dcr) {
 		
 		pr.reset();
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 128, 4, 4, null,64);
+		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 128, 4, 4, null,64, 8, 7);
 		ByteHeap byteHeap = fr.byteHeap();
 		
 		int token = 0;

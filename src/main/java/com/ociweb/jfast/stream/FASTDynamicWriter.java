@@ -28,7 +28,6 @@ public class FASTDynamicWriter {
 		
 		this.preambleDataLength = catalog.getMessagePreambleSize();
 		this.preambleData = new byte[preambleDataLength];
-		//TODO: C, need to hold write of message for update of preamble before flush. (for some clients)
 	}
 
 	
@@ -47,9 +46,18 @@ public class FASTDynamicWriter {
 				
 
 				if (preambleDataLength!=0) {
-					ringBuffer.readBytes(idx, preambleData);
+					
+					int i = 0;
+					int s = preambleDataLength;
+					while (i<s) {
+						int d = ringBuffer.readInteger(idx);
+						preambleData[i++]=(byte)(0xFF&(d>>>24));
+						preambleData[i++]=(byte)(0xFF&(d>>>16));
+						preambleData[i++]=(byte)(0xFF&(d>>>8));
+						preambleData[i++]=(byte)(0xFF&d);	
+						idx++;
+					}
 					writerDispatch.dispatchPreable(preambleData);
-					idx+=preambleDataLength;
 				};
 								
 				//template processing (can these be nested?) 
