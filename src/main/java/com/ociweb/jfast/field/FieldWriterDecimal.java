@@ -19,19 +19,23 @@ public class FieldWriterDecimal {
 
 	public void writeDecimalNone(int token, int exponent, long mantissa) {
 		
-		writerDecimalExponent.writeIntegerSigned(exponent, token);
-		writerDecimalMantissa.writeLongSigned(mantissa, token);
+		int idx = token & writerDecimalExponent.INSTANCE_MASK;
+		
+		writerDecimalExponent.writer.writeIntegerSigned(writerDecimalExponent.dictionary[idx] = exponent);
+		int idx1 = token & writerDecimalMantissa.INSTANCE_MASK;
+		
+		writerDecimalMantissa.writer.writeLongSigned(writerDecimalMantissa.dictionary[idx1] = mantissa);
 		
 	}
 
 	public void reset(DictionaryFactory df) {
-		df.reset(writerDecimalExponent.lastValue,writerDecimalMantissa.lastValue);
+		df.reset(writerDecimalExponent.dictionary,writerDecimalMantissa.dictionary);
 	}	
 	public void copyExponent(int sourceToken, int targetToken) {
-		writerDecimalExponent.copy(sourceToken, targetToken);
+		writerDecimalExponent.dictionary[targetToken & writerDecimalExponent.INSTANCE_MASK] = writerDecimalExponent.dictionary[sourceToken & writerDecimalExponent.INSTANCE_MASK];
 	}
 	public void copyMantissa(int sourceToken, int targetToken) {
-		writerDecimalMantissa.copy(sourceToken, targetToken);
+		writerDecimalMantissa.dictionary[targetToken & writerDecimalMantissa.INSTANCE_MASK] = writerDecimalMantissa.dictionary[sourceToken & writerDecimalMantissa.INSTANCE_MASK];
 	}
 	
 	public void writeDecimalOptional(int token, int exponent, long mantissa) {
@@ -59,14 +63,18 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerDecimalMantissa.writeLongSigned(1+mantissa, token);
+					int idx = token & writerDecimalMantissa.INSTANCE_MASK;
+					
+					writerDecimalMantissa.writer.writeLongSigned(writerDecimalMantissa.dictionary[idx] = 1+mantissa);
 				} else {
 					//delta
 					writerDecimalMantissa.writeLongSignedDeltaOptional(mantissa, token);
 				}	
 			} else {
 				//constant
-				writerDecimalMantissa.writeLongSignedConstantOptional(mantissa, token);
+				assert(writerDecimalMantissa.dictionary[ token & writerDecimalMantissa.INSTANCE_MASK]==mantissa) : "Only the constant value from the template may be sent";
+				writerDecimalMantissa.writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -96,14 +104,20 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					writerDecimalExponent.writeIntegerSigned(exponent>=0?1+exponent:exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSigned(writerDecimalExponent.dictionary[idx] = exponent>=0?1+exponent:exponent);
 				} else {
 					//delta
-					writerDecimalExponent.writeIntegerSignedDeltaOptional(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedDeltaOptional(exponent,idx,writerDecimalExponent.dictionary);
 				}	
 			} else {
 				//constant
-				writerDecimalExponent.writeIntegerSignedConstantOptional(exponent, token);
+				assert(writerDecimalExponent.dictionary[ token & writerDecimalExponent.INSTANCE_MASK]==exponent) : "Only the constant value from the template may be sent";
+				writerDecimalExponent.writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -112,14 +126,21 @@ public class FieldWriterDecimal {
 				//copy, increment
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
-					writerDecimalExponent.writeIntegerSignedCopyOptional(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedCopyOptional(exponent, idx, writerDecimalExponent.dictionary);
 				} else {
 					//increment
-					writerDecimalExponent.writeIntegerSignedIncrementOptional(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedIncrementOptional(exponent, idx, writerDecimalExponent.dictionary);
 				}	
 			} else {
 				// default
-				writerDecimalExponent.writeIntegerSignedDefaultOptional(exponent, token);
+				int idx = token & writerDecimalExponent.INSTANCE_MASK;
+				int constDefault = writerDecimalExponent.dictionary[idx];
+				
+				writerDecimalExponent.writer.writeIntegerSignedDefaultOptional(exponent, idx, constDefault);
 			}		
 		}
 	}
@@ -141,14 +162,18 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerDecimalMantissa.writeLongSigned(mantissa, token);
+					int idx = token & writerDecimalMantissa.INSTANCE_MASK;
+					
+					writerDecimalMantissa.writer.writeLongSigned(writerDecimalMantissa.dictionary[idx] = mantissa);
 				} else {
 					//delta
 					writerDecimalMantissa.writeLongSignedDelta(mantissa, token);
 				}	
 			} else {
 				//constant
-				writerDecimalMantissa.writeLongSignedConstant(mantissa, token);
+				assert(writerDecimalMantissa.dictionary[ token & writerDecimalMantissa.INSTANCE_MASK]==mantissa) : "Only the constant value from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -178,14 +203,21 @@ public class FieldWriterDecimal {
 				//none, delta
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//none
-					writerDecimalExponent.writeIntegerSigned(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSigned(writerDecimalExponent.dictionary[idx] = exponent);
 				} else {
 					//delta
-					writerDecimalExponent.writeIntegerSignedDelta(exponent, token);
+					//Delta opp never uses PMAP
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedDelta(exponent,idx,writerDecimalExponent.dictionary);
 				}	
 			} else {
 				//constant
-				writerDecimalExponent.writeIntegerSignedConstant(exponent, token);
+				assert(writerDecimalExponent.dictionary[ token & writerDecimalExponent.INSTANCE_MASK]==exponent) : "Only the constant value "+writerDecimalExponent.dictionary[ token & writerDecimalExponent.INSTANCE_MASK]+" from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -194,14 +226,21 @@ public class FieldWriterDecimal {
 				//copy, increment
 				if (0==(token&(4<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 					//copy
-					writerDecimalExponent.writeIntegerSignedCopy(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedCopy(exponent, idx, writerDecimalExponent.dictionary);
 				} else {
 					//increment
-					writerDecimalExponent.writeIntegerSignedIncrement(exponent, token);
+					int idx = token & writerDecimalExponent.INSTANCE_MASK;
+					
+					writerDecimalExponent.writer.writeIntegerSignedIncrement(exponent, idx, writerDecimalExponent.dictionary);
 				}	
 			} else {
 				// default
-				writerDecimalExponent.writeIntegerSignedDefault(exponent, token);
+				int idx = token & writerDecimalExponent.INSTANCE_MASK;
+				int constDefault = writerDecimalExponent.dictionary[idx];
+				
+				writerDecimalExponent.writer.writeIntegerSignedDefault(exponent, idx, constDefault);
 			}		
 		}
 	}
@@ -213,7 +252,7 @@ public class FieldWriterDecimal {
 
 
 	public void reset(int idx) {
-		writerDecimalExponent.reset(idx);
-		writerDecimalMantissa.reset(idx);	
+		writerDecimalExponent.dictionary[idx] = writerDecimalExponent.init[idx];
+		writerDecimalMantissa.dictionary[idx] = writerDecimalMantissa.init[idx];	
 	}
 }

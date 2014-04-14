@@ -94,10 +94,6 @@ public final class FieldReaderText {
 		return targIndex;
 	}
 
-	public int readConstantOptional(int constInit, int constValue) {
-		return (reader.popPMapBit()!=0 ? constInit : constValue);
-	}
-	
 	public int readASCIIToHeap(int target) {
 		byte val;
 		int chr;
@@ -263,16 +259,6 @@ public final class FieldReaderText {
 		}
 		return idx;
 	}
-
-	public int readUTF8Default(int idx) {
-		if (reader.popPMapBit()==0) {
-			return idx|INIT_VALUE_MASK;//use constant
-		} else {
-			
-			return readUTF8(idx);
-		}
-	}
-	
 
 	public int readUTF8DefaultOptional(int idx) {
 		if (reader.popPMapBit()==0) {

@@ -1050,6 +1050,208 @@ public final class PrimitiveWriter {
 		buffer[limit++] = (byte)(0x80 |((c>>12) &0x3F));
 	}
 
+	////////////////////////////
+	////////////////////////////
+	
+	//TODO: B, Only call private methods from inside here.
+	public void writeIntegerUnsignedCopy(int value, int idx, int[] dictionary) {
 
+		if (value == dictionary[idx]) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(dictionary[idx] = value);
+		}
+	}
+	
+	public void writeIntegerUnsignedCopyOptional(int value, int idx, int[] dictionary) {
+
+		if (++value == dictionary[idx]) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(dictionary[idx] = value);
+		}
+	}
+	
+	public void writeIntegerUnsignedDefault(int value, int constDefault) {
+
+		if (value == constDefault) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(value);
+		}
+	}
+
+	public void writeIntegerUnsignedDefaultOptional(int value, int constDefault) {
+
+		if (++value == constDefault) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(value);
+		}
+	}
+	
+	public void writeIntegerUnsignedIncrement(int value, int idx, int[] dictionary) {
+				
+		int incVal;
+		if (value == (incVal = dictionary[idx]+1)) {
+			dictionary[idx] = incVal;
+			writePMapBit((byte)0);
+		} else {
+			dictionary[idx] = value;
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(value);
+		}
+	}
+	
+	public void writeIntegerUnsignedIncrementOptional(int value, int idx, int[] dictionary) {
+
+		if (0!=dictionary[idx] && value == dictionary[idx]++) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			int tmp = dictionary[idx] = 1+value;
+			writePMapBit((byte)1);
+			writeIntegerUnsigned(tmp);
+		}
+	}
+
+	
+
+	public void writeIntegerUnsignedDelta(int value, int idx, int[] dictionary) {
+		writeLongSigned(value - (long)dictionary[idx]);
+		dictionary[idx] = value;		
+	}
+	
+	public void writeIntegerUnsignedDeltaOptional(int value, int idx, int[] dictionary) {
+		long delta = value - (long)dictionary[idx];
+		writeLongSigned(delta>=0?1+delta:delta);
+		dictionary[idx] = value;	
+		
+	}
+	
+	public void writeIntegerSignedCopy(int value, int idx, int[] dictionary) {
+		if (value == dictionary[idx]) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(dictionary[idx] = value);
+		}
+	}
+	
+	public void writeIntegerSignedCopyOptional(int value, int idx, int[] dictionary) {
+
+		if (value>=0) {
+			value++;
+		}
+		
+		if (value == dictionary[idx]) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(dictionary[idx] = value);
+		}
+	}
+	
+	public void writeIntegerSignedDefault(int value, int idx, int constDefault) {
+		
+		if (value == constDefault) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(value);
+		}
+	}
+	
+	public void writeIntegerSignedDefaultOptional(int value, int idx, int constDefault) {
+		
+		if (value>=0) {
+			value++;//room for null
+		}		
+		if (value == constDefault) {//matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(value);
+		}
+	}
+	
+	
+	public void writeIntegerSignedIncrement(int value, int idx, int[] dictionary) {
+
+		dictionary[idx] = value;
+		if (value == (dictionary[idx]+1)) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(value);
+		}
+	}
+	
+
+	public void writeIntegerSignedIncrementOptional(int value, int idx, int[] dictionary) {
+
+		if (value>=0) {
+			value++;
+		}
+		int last = dictionary[idx];
+		dictionary[idx] = value;
+		if (0!=last && 	value == 1+last) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeIntegerSigned(value);
+		}			
+	}
+	
+	public void writeIntegerSignedDelta(int value, int idx, int[] dictionary) {
+		int last = dictionary[idx];
+		if (value>0 == last>0) {
+			writeIntegerSigned(value - last);
+			dictionary[idx] = value;		
+		} else {		
+			writeLongSigned(value - (long)last);
+			dictionary[idx] = value;		
+		}
+	}
+	
+	public void writeIntegerSignedDeltaOptional(int value, int idx, int[] dictionary) {
+		int last = dictionary[idx];
+		if (value>0 == last>0) {
+			int dif = value - last;
+			dictionary[idx] = value;		
+			writeIntegerSigned(dif>=0 ? 1+dif : dif);
+		} else {		
+			long dif = value - (long)last;
+			dictionary[idx] = value;		
+			writeLongSigned(dif>=0 ? 1+dif : dif);
+		}
+	}
+	
+	public void writeLongUnsignedCopy(long value, int idx, long[] dictionary) {
+
+		if (value == dictionary[idx]) {
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeLongUnsigned(dictionary[idx] = value);
+		}
+	}
+	
+	public void writeLongUnsignedCopyOptional(long value, int idx, long[] dictionary) {
+
+		value++;//zero is held for null
+		
+		if (value == dictionary[idx]) {//not null and matches
+			writePMapBit((byte)0);
+		} else {
+			writePMapBit((byte)1);
+			writeLongUnsigned(dictionary[idx] = value);
+		}
+	}
+	
+	
 	
 }

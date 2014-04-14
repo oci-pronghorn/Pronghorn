@@ -51,6 +51,8 @@ public final class FASTWriterDispatch {
 	int activeScriptCursor;
 	int activeScriptLimit;
 	final int[] fullScript;
+	
+    private RingCharSequence ringCharSequence = new RingCharSequence();
 		
 	public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, 
 			                   int maxCharSize, int maxBytesSize, int gapChars, int gapBytes,
@@ -160,14 +162,16 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerLong.writeLongSignedOptional(value, token);
+					writer.writeLongSignedOptional(value);
 				} else {
 					//delta
 					writerLong.writeLongSignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				writerLong.writeLongSignedConstantOptional(value, token);
+				assert(writerLong.dictionary[ token & writerLong.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -196,14 +200,18 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerLong.writeLongSigned(value, token);
+					int idx = token & writerLong.INSTANCE_MASK;
+					
+					writer.writeLongSigned(writerLong.dictionary[idx] = value);
 				} else {
 					//delta
 					writerLong.writeLongSignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				writerLong.writeLongSignedConstant(value, token);
+				assert(writerLong.dictionary[ token & writerLong.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -232,14 +240,16 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerLong.writeLongUnsignedOptional(value, token);
+					writer.writeLongUnsigned(value+1);
 				} else {
 					//delta
 					writerLong.writeLongUnsignedDeltaOptional(value, token);
 				}	
 			} else {
 				//constant
-				writerLong.writeLongUnsignedConstantOptional(value, token);
+				assert(writerLong.dictionary[ token & writerLong.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -267,14 +277,18 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerLong.writeLongUnsigned(value, token);
+					int idx = token & writerLong.INSTANCE_MASK;
+					
+					writer.writeLongUnsigned(writerLong.dictionary[idx] = value);
 				} else {
 					//delta
 					writerLong.writeLongUnsignedDelta(value, token);
 				}	
 			} else {
 				//constant
-				writerLong.writeLongUnsignedConstant(value, token);
+				assert(writerLong.dictionary[ token & writerLong.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -331,14 +345,21 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerInteger.writeIntegerSigned(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSigned(writerInteger.dictionary[idx] = value);
 				} else {
 					//delta
-					writerInteger.writeIntegerSignedDelta(value, token);
+					//Delta opp never uses PMAP
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedDelta(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerSignedConstant(value, token);
+				assert(writerInteger.dictionary[ token & writerInteger.INSTANCE_MASK]==value) : "Only the constant value "+writerInteger.dictionary[ token & writerInteger.INSTANCE_MASK]+" from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -347,14 +368,21 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerSignedCopy(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedCopy(value, idx, writerInteger.dictionary);
 				} else {
 					//increment
-					writerInteger.writeIntegerSignedIncrement(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedIncrement(value, idx, writerInteger.dictionary);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerSignedDefault(value, token);
+				int idx = token & writerInteger.INSTANCE_MASK;
+				int constDefault = writerInteger.dictionary[idx];
+				
+				writer.writeIntegerSignedDefault(value, idx, constDefault);
 			}		
 		}
 	}
@@ -367,14 +395,21 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerInteger.writeIntegerUnsigned(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerUnsigned(writerInteger.dictionary[idx] = value);
 				} else {
 					//delta
-					writerInteger.writeIntegerUnsignedDelta(value, token);
+					//Delta opp never uses PMAP
+					int idx = (token & writerInteger.INSTANCE_MASK);
+					
+					writer.writeIntegerUnsignedDelta(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerUnsignedConstant(value, token);
+				assert(writerInteger.dictionary[ token & writerInteger.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 		} else {
@@ -383,14 +418,20 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerUnsignedCopy(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					writer.writeIntegerUnsignedCopy(value,idx,writerInteger.dictionary);
 				} else {
 					//increment
-					writerInteger.writeIntegerUnsignedIncrement(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerUnsignedIncrement(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerUnsignedDefault(value, token);
+				int idx = token & writerInteger.INSTANCE_MASK;
+				int constDefault = writerInteger.dictionary[idx];
+				
+				writer.writeIntegerUnsignedDefault(value, constDefault);
 			}		
 		}
 	}
@@ -403,14 +444,18 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerInteger.writeIntegerSignedOptional(value, token);
+					writer.writeIntegerSignedOptional(value);
 				} else {
 					//delta
-					writerInteger.writeIntegerSignedDeltaOptional(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedDeltaOptional(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerSignedConstantOptional(value, token);
+				assert(writerInteger.dictionary[ token & writerInteger.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -419,14 +464,21 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerSignedCopyOptional(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedCopyOptional(value, idx, writerInteger.dictionary);
 				} else {
 					//increment
-					writerInteger.writeIntegerSignedIncrementOptional(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerSignedIncrementOptional(value, idx, writerInteger.dictionary);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerSignedDefaultOptional(value, token);
+				int idx = token & writerInteger.INSTANCE_MASK;
+				int constDefault = writerInteger.dictionary[idx];
+				
+				writer.writeIntegerSignedDefaultOptional(value, idx, constDefault);
 			}		
 		}
 	}
@@ -439,14 +491,19 @@ public final class FASTWriterDispatch {
 				//none, delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					writerInteger.writerIntegerUnsignedOptional(value, token);
+					writer.writeIntegerUnsigned(value+1);
 				} else {
 					//delta
-					writerInteger.writeIntegerUnsignedDeltaOptional(value, token);
+					//Delta opp never uses PMAP
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerUnsignedDeltaOptional(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				//constant
-				writerInteger.writeIntegerUnsignedConstantOptional(value, token);
+				assert(writerInteger.dictionary[ token & writerInteger.INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
+				writer.writePMapBit((byte)1);
+				//the writeNull will take care of the rest.
 			}
 			
 		} else {
@@ -455,14 +512,20 @@ public final class FASTWriterDispatch {
 				//copy, increment
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//copy
-					writerInteger.writeIntegerUnsignedCopyOptional(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					writer.writeIntegerUnsignedCopyOptional(value, idx, writerInteger.dictionary);
 				} else {
 					//increment
-					writerInteger.writeIntegerUnsignedIncrementOptional(value, token);
+					int idx = token & writerInteger.INSTANCE_MASK;
+					
+					writer.writeIntegerUnsignedIncrementOptional(value,idx,writerInteger.dictionary);
 				}	
 			} else {
 				// default
-				writerInteger.writeIntegerUnsignedDefaultOptional(value, token);
+				int idx = token & writerInteger.INSTANCE_MASK;
+				int constDefault = writerInteger.dictionary[idx];
+				
+				writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
 			}		
 		}
 	}
@@ -1059,8 +1122,8 @@ public final class FASTWriterDispatch {
 	
 	public void reset() {
 		
-		writerInteger.reset(dictionaryFactory);
-		writerLong.reset(dictionaryFactory);
+		dictionaryFactory.reset(writerInteger.dictionary);
+		dictionaryFactory.reset(writerLong.dictionary);
 		writerDecimal.reset(dictionaryFactory);
 		writerChar.reset(dictionaryFactory);
 		writerBytes.reset(dictionaryFactory);
@@ -1097,29 +1160,13 @@ public final class FASTWriterDispatch {
 			} else {
 				//01???
 				if (0==(token&(4<<TokenBuilder.SHIFT_TYPE))) {
-					
-					///TODO: A, if ring buffer does not loop its a simple array usage!!
-					//if it does loop its only two arrays!
 					char[] buffer = queue.readRingCharBuffer(fieldPos);
 					int length = queue.readCharsLength(fieldPos);
-					if (length<=0) {
+					if (length<0) {
 						write(token);
-					} else {
-						int pos = queue.readRingCharPos(fieldPos);
-						int mask = queue.readRingCharMask();
-						int start = pos&mask;
-						int stop  = (pos+length)&mask;
-						if (stop>=start) {
-							write(token,buffer,start,length);
-						} else {
-						
-							
-							throw new UnsupportedOperationException();
-							//TODO: A, special sequence object here that can point to ring buffer just for this copy.
-							
-						}
-					}
-									
+					} else {	
+					    write(token,charSequence(buffer,queue.readRingCharPos(fieldPos),queue.readRingCharMask(),length));
+					}									
 				} else {
 					//011??
 					if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
@@ -1205,12 +1252,12 @@ public final class FASTWriterDispatch {
 								if (0==(idx&4)) {
 									//integer
 									while (m<limit && (idx = members[m++])>=0) {
-										writerInteger.reset(idx);
+										writerInteger.dictionary[idx] = writerInteger.init[idx];
 									}
 								} else {
 									//long
 									while (m<limit && (idx = members[m++])>=0) {
-										writerLong.reset(idx);
+										writerLong.dictionary[idx] = writerLong.init[idx];
 									}
 								}
 							} else {
@@ -1246,6 +1293,10 @@ public final class FASTWriterDispatch {
 		return false;
 	}
 	
+	
+	private CharSequence charSequence(char[] buffer, int pos, int mask, int length) {
+		return ringCharSequence.set(buffer,pos,mask,length);
+	}
 
 	private boolean gatherWriteData(PrimitiveWriter writer, int token, int cursor, int fieldPos, FASTRingBuffer queue) {
 		

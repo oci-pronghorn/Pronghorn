@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public final class FieldWriterInteger {
@@ -11,10 +10,10 @@ public final class FieldWriterInteger {
 	
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
-	final int[] lastValue;
-	final int[] init;
-	private final PrimitiveWriter writer;
-	private final int INSTANCE_MASK;
+	public final int[] dictionary;
+	public final int[] init;
+	final PrimitiveWriter writer;
+	public final int INSTANCE_MASK;
 	
 	public FieldWriterInteger(PrimitiveWriter writer, int[] values, int[] init) {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
@@ -22,292 +21,31 @@ public final class FieldWriterInteger {
 		
 		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.writer = writer;
-		this.lastValue = values;
+		this.dictionary = values;
 		this.init = init;
 	}
 	
-	public void copy(int sourceToken, int targetToken) {
-		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
-	}
-	
-	public void flush() {
-		writer.flush();
-	}
 	
 	
-	/*
-	 * Method name convention to group the work 
-	 *  write <FIELD_TYPE><OPERATOR>
-	 *  
-	 *  example FIELD_TYPES 
-	 *  IntegerSigned
-	 *  IntegerUnsigned
-	 *  IntegerSingedOptional
-	 *  IntegerUnsignedOptional
-	 * 
-	 */
 	
-	public void writeIntegerUnsigned(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		writer.writeIntegerUnsigned(value);
-	}
-	
-	//TODO: B, Refactor all Field writes to split logic between dispatch and primitive
-	
-	public void writeIntegerUnsignedCopy(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (value == lastValue[idx]) {
-			writer.writePMapBit((byte)0);
-		} else {
-			//System.err.println(value+" != "+lastValue[idx]+" copy write copy ");
-			lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-		}
-	}
-	
-	public void writeIntegerUnsignedCopyOptional(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		//zero is reserved for null
-		if (++value == lastValue[idx]) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(lastValue[idx] = value);
-		}
-	}
-	
-
-	
-	public void writeIntegerUnsignedConstant(int value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		//nothing need be sent because constant does not use pmap and the template
-		//on the other receiver side will inject this value from the template
-	}
-	
-	public void writeIntegerUnsignedConstantOptional(int value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		writer.writePMapBit((byte)1);
-		//the writeNull will take care of the rest.
-	}
-	
-	
-	public void writeIntegerSignedConstant(int value, int token) {
-        assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value "+lastValue[ token & INSTANCE_MASK]+" from the template may be sent";
-		//nothing need be sent because constant does not use pmap and the template
-		//on the other receiver side will inject this value from the template
-	}
-	
-	public void writeIntegerSignedConstantOptional(int value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		writer.writePMapBit((byte)1);
-		//the writeNull will take care of the rest.
-	}
-	
-	public void writeIntegerUnsignedDefault(int value, int token) {
-		if (value == lastValue[token & INSTANCE_MASK]) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-		}
-	}
-
-	public void writeIntegerUnsignedDefaultOptional(int value, int token) {
-		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-		}
-	}
-
-	
-	public void writeIntegerUnsignedIncrement(int value, int token) {
-		int idx;
-		int incVal;
-		
-		if (value == (incVal = lastValue[idx = token & INSTANCE_MASK]+1)) {
-			lastValue[idx] = incVal;
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value);
-		}
-	}
-	
-
-	public void writeIntegerUnsignedIncrementOptional(int value, int token) {
-
-		int idx = token & INSTANCE_MASK;
-
-		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			int tmp = lastValue[idx] = 1+value;
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(tmp);
-		}
-	}
-	
-
-	
-
-	public void writeIntegerUnsignedDelta(int value, int token) {
-		//Delta opp never uses PMAP
-		int idx;		
-		long dif = value - (long)lastValue[idx = (token & INSTANCE_MASK)];
-		lastValue[idx] = value;		
-		writer.writeLongSigned(dif);
-	}
-	
-	public void writeIntegerUnsignedDeltaOptional(int value, int token) {
-		//Delta opp never uses PMAP
-		int idx;
-		long delta = value - (long)lastValue[idx = token & INSTANCE_MASK];
-		lastValue[idx] = value;	
-		//writer.writeLongSigned((delta+1)-(delta>>63));
-		writer.writeLongSigned(delta>=0?1+delta:delta);
-		
-	}
-	
-
-	////////////////
-	///////////////
-	////////////////
-	
-	public void writeIntegerSigned(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		writer.writeIntegerSigned(value);
-	}
-	
-	public void writeIntegerSignedCopy(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value == lastValue[idx]) {
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}
-	}
-	
-	public void writeIntegerSignedCopyOptional(int value, int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (value>=0) {
-			value++;
-		}
-		
-		if (value == lastValue[idx]) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			int tmp = lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(tmp);
-		}
-	}
-	
-
-	public void writeIntegerSignedDefault(int value, int token) {
-		if (value == lastValue[token & INSTANCE_MASK]) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}
-	}
-	
-	public void writeIntegerSignedDefaultOptional(int value, int token) {
-		if (value>=0) {
-			value++;//room for null
-		}		
-		if (value == lastValue[token & INSTANCE_MASK]) {//matches
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}
-	}
-	
-
-	
-	public void writeIntegerSignedIncrement(int value, int token) {
-		int idx;
-		
-		lastValue[idx = token & INSTANCE_MASK] = value;
-		if (value == (lastValue[idx]+1)) {
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}
-	}
-	
-
-	public void writeIntegerSignedIncrementOptional(int value, int token) {
-
-		int idx;
-
-		if (value>=0) {
-			value++;
-		}
-		int last = lastValue[idx = token & INSTANCE_MASK];
-		lastValue[idx] = value;
-		if (0!=last && 	value == 1+last) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerSigned(value);
-		}
-			
-	}
-
-
-	public void writeIntegerSignedDelta(int value, int token) {
-		//Delta opp never uses PMAP
-		int idx;
-		int last = lastValue[idx = token & INSTANCE_MASK];
-		if (value>0 == last>0) {
-			int dif = value - last;
-			lastValue[idx] = value;		
-			writer.writeIntegerSigned(dif);
-		} else {		
-			long dif = value - (long)last;
-			lastValue[idx] = value;		
-			writer.writeLongSigned(dif);
-		}
-	}
-	
-	public void writeIntegerSignedDeltaOptional(int value, int token) {
-
-		int idx;
-		int last = lastValue[idx = token & INSTANCE_MASK];
-		if (value>0 == last>0) {
-			int dif = value - last;
-			lastValue[idx] = value;		
-			writer.writeIntegerSigned(dif>=0 ? 1+dif : dif);
-		} else {		
-			long dif = value - (long)last;
-			lastValue[idx] = value;		
-			writer.writeLongSigned(dif>=0 ? 1+dif : dif);
-		}
-	}
-
 	public void writeNull(int token) {
+		int idx = token & INSTANCE_MASK;
 		
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 				//None and Delta (both do not use pmap)
-				writeClearNull(token);              //no pmap, yes change to last value
+				dictionary[idx] = 0;
+				writer.writeNull();              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
-				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+				
+				if (dictionary[idx]==0) { //stored value was null;
+					writer.writePMapBit((byte)0);
+				} else {
+					dictionary[idx] =0;
+					writer.writePMapBit((byte)1);
+					writer.writeNull();
+				}  //yes pmap, yes change to last value	
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -316,56 +54,16 @@ public final class FieldWriterInteger {
 				writer.writePMapBit((byte)0);       //pmap only
 			} else {	
 				//default
-				writePMapNull(token);  //yes pmap,  no change to last value
+				
+				if (dictionary[idx]==0) { //stored value was null;
+					writer.writePMapBit((byte)0);
+				} else {
+					writer.writePMapBit((byte)1);
+					writer.writeNull();
+				}  //yes pmap,  no change to last value
 			}	
 		}
 		
 	}
-	
-	private void writeClearNull(int token) {
-		lastValue[token & INSTANCE_MASK] = 0;
-		writer.writeNull();
-	}
-	//NOTE: while lastValue is still in the cache we must do the write back
-	//before calling the complex method on writer and loose the context.
-	//by doing this call last the stack frame can be abandoned rather than restored.
-	
-	private void writePMapAndClearNull(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] =0;
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
-	
-	
-	private void writePMapNull(int token) {
-		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
-
-	public void writeIntegerSignedOptional(int value, int token) {
-		writer.writeIntegerSignedOptional(value);
-	}
-
-	public void writerIntegerUnsignedOptional(int value, int token) {
-		writer.writeIntegerUnsigned(value+1);
-	}
-
-	public void reset(int idx) {
-		lastValue[idx] = init[idx];
-	}
-	
-	public void reset(DictionaryFactory df) {
-		df.reset(lastValue);
-	}	
 	
 }

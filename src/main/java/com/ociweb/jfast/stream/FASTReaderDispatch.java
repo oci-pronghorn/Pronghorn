@@ -1077,6 +1077,10 @@ public class FASTReaderDispatch{
 					int target = token&MAX_INT_INSTANCE_MASK;
 					int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 					
+					//get line number
+					//String linenumber = new Exception().getStackTrace()[0].getLineNumber();
+					//System.out.println("The line number is " + linenumber);
+					
 					return reader.readIntegerSignedDelta(target, source, rIntDictionary);
 				}	
 			} else {
@@ -1607,27 +1611,24 @@ public class FASTReaderDispatch{
 		if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {//compiler does all the work.
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii
-				//System.err.println("read ascii");
 				return readTextASCII(token);
 			} else {
 				//utf8
-				//System.err.println("read utf8");
 				return readTextUTF8(token);
 			}
 		} else {
 			if (0==(token&(2<<TokenBuilder.SHIFT_TYPE))) {
 				//ascii optional
-				//System.err.println("read ascii opp");
 				return readTextASCIIOptional(token);
 			} else {
 				//utf8 optional
-				//System.err.println("read utf8 opp");
 				return readTextUTF8Optional(token);
 			}
 		}
 	}
 
 	private int readTextUTF8Optional(int token) {
+		int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1635,55 +1636,39 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					//System.err.println("none");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					
-					return readerText.readUTF8Optional(idx);
+					return genReadUTF8NoneOptional(idx);
 				} else {
 					//tail
-					//System.err.println("tail");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readUTF8TailOptional(idx);
+					return genReadUTF8TailOptional(idx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-					//System.err.println("const");
 					int constInit = (token & readerText.MAX_TEXT_INSTANCE_MASK)|FieldReaderText.INIT_VALUE_MASK;
-					int constValue = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readConstantOptional(constInit, constValue);
+					int constValue = token & readerText.MAX_TEXT_INSTANCE_MASK;					
+					return genReadTextConstantOptional(constInit, constValue);
 				} else {
-					//delta
-					//System.err.println("delta");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readUTF8DeltaOptional(idx);
+					//delta					
+					return genReadUTF8DeltaOptional(idx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				//System.err.println("copy");
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				return readerText.readUTF8CopyOptional(idx);
+				return genReadUTF8CopyOptional(idx);
 			} else {
 				//default
-				//System.err.println("default");
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				return readerText.readUTF8DefaultOptional(idx);
+				return genReadUTF8DefaultOptional(idx);
 			}
-		}
-		
+		}		
 	}
+
+
 
 	private int readTextASCII(int token) {
+		int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1691,46 +1676,38 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					
-					return readerText.readASCII(idx);
+					return genReadASCIINone(idx);
 				} else {
-					//tail
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readASCIITail(idx, reader.readIntegerUnsigned(), readFromIdx);
+					//tail					
+					int fromIdx = readFromIdx;
+					return genReadASCIITail(idx, fromIdx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
 					//always return this required value.
-					return (token & readerText.MAX_TEXT_INSTANCE_MASK) | FieldReaderText.INIT_VALUE_MASK;
+					return genReadASCIIConstant(idx| FieldReaderText.INIT_VALUE_MASK);
 				} else {
 					//delta
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readASCIIDelta(readFromIdx, idx);
+					return genReadASCIIDelta(idx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
-				//copy
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				return readerText.readASCIICopy(idx);
+				//copy				
+				return genReadASCIICopy(idx);
 			} else {
 				//default
-				int target = readerText.MAX_TEXT_INSTANCE_MASK&token;
-				
-				return reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|target) : readerText.readASCIIToHeap(target);
+				return genReadASCIIDefault(idx);
 			}
 		}
 	}
+
 
 	private int readTextUTF8(int token) {
+		int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
 		
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 			//none constant delta tail 
@@ -1738,97 +1715,154 @@ public class FASTReaderDispatch{
 				//none tail
 				if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 					//none
-				//	System.err.println("none");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					
-					return readerText.readUTF8(idx);
+					return genReadUTF8None(idx);
 				} else {
 					//tail
-				//	System.err.println("tail");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readUTF8Tail(idx);
+					return genReadUTF8Tail(idx);
 				}
 			} else {
 				// constant delta
 				if (0==(token&(4<<TokenBuilder.SHIFT_OPER))) {
 					//constant
-				//	System.err.println("const");
-					//always return this required value.
-					return (token & readerText.MAX_TEXT_INSTANCE_MASK) | FieldReaderText.INIT_VALUE_MASK;
+					return genReadUTF8Constant(idx | FieldReaderText.INIT_VALUE_MASK);
 				} else {
 					//delta
-				//	System.err.println("delta read");
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readUTF8Delta(idx);
+					return genReadUTF8Delta(idx);
 				}
 			}
 		} else {
 			//copy default
 			if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {//compiler does all the work.
 				//copy
-				//System.err.println("copy");
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				return readerText.readUTF8Copy(idx);
+				return genReadUTF8Copy(idx);
 			} else {
 				//default
-				//System.err.println("default");
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				return readerText.readUTF8Default(idx);
+				return genReadUTF8Default(idx);
 			}
-		}
-		
+		}		
 	}
 
-	private int readTextASCIIOptional(int token) {
-		
+	private int readTextASCIIOptional(int token) {		
+		int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
 		if (0==(token&((4|2|1)<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(8<<TokenBuilder.SHIFT_OPER))) {
 				//none
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-				
-				
-				return readerText.readASCII(idx);
+				return genReadASCIINone(idx);
 			} else {
 				//tail
-				int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-						
-				return readerText.readASCIITailOptional(idx);
+				return genReadASCIITailOptional(idx);
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readASCIIDeltaOptional(readFromIdx, idx);
+					return genReadASCIIDeltaOptional(readFromIdx, idx);					
 				} else {
 					int constInit = (token & readerText.MAX_TEXT_INSTANCE_MASK)|FieldReaderText.INIT_VALUE_MASK;
 					int constValue = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readConstantOptional(constInit, constValue);
+					return genReadTextConstantOptional(constInit, constValue);
 				}		
 			} else {
 				if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
-					int idx = token & readerText.MAX_TEXT_INSTANCE_MASK;
-					
-					return readerText.readASCIICopyOptional(idx);
+					return genReadASCIICopyOptional(idx);
 				} else {
 					//for ASCII we don't need special behavior for optional
-					int target = readerText.MAX_TEXT_INSTANCE_MASK&token;
-					//CODE:
-				//	System.err.println("readerText.readASCIIDefault("+target+")");
-					return reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|target) : readerText.readASCIIToHeap(target);
-				}
-				
+					return genReadASCIIDefault(idx);
+				}				
 			}
-		}
-		
+		}		
 	}
 
+
+	//Use method names, here as an index for the code generator
+	//These private methods get in-lined so performance is not impacted.
+	//The Dispatch Generator will index this file and use the exact content of these methods.
+	//TODO: B, assembly will need to copy this file as a resource to be delivered.
+	
+	//text methods.
+	
+	private int genReadUTF8NoneOptional(int idx) {
+		return readerText.readUTF8Optional(idx);
+	}
+
+	private int genReadUTF8TailOptional(int idx) {
+		return readerText.readUTF8TailOptional(idx);
+	}
+
+	private int genReadUTF8DeltaOptional(int idx) {
+		return readerText.readUTF8DeltaOptional(idx);
+	}
+	
+	private int genReadUTF8CopyOptional(int idx) {
+		return readerText.readUTF8CopyOptional(idx);
+	}
+
+	private int genReadUTF8DefaultOptional(int idx) {
+		return readerText.readUTF8DefaultOptional(idx);
+	}
+	
+	private int genReadASCIITail(int idx, int fromIdx) {
+		return readerText.readASCIITail(idx, reader.readIntegerUnsigned(), fromIdx);
+	}
+	
+	private int genReadASCIIConstant(int constIdx) {
+		return constIdx;
+	}
+
+	private int genReadASCIIDelta(int idx) {
+		return readerText.readASCIIDelta(readFromIdx, idx);
+	}
+	
+	private int genReadASCIICopy(int idx) {
+		return readerText.readASCIICopy(idx);
+	}
+	
+	private int genReadUTF8None(int idx) {
+		return readerText.readUTF8(idx);
+	}
+
+	private int genReadUTF8Tail(int idx) {
+		return readerText.readUTF8Tail(idx);
+	}
+	
+	private int genReadUTF8Constant(int constIdx) {
+		return constIdx;
+	}
+
+	private int genReadUTF8Delta(int idx) {
+		return readerText.readUTF8Delta(idx);
+	}
+	
+	private int genReadUTF8Copy(int idx) {
+		return readerText.readUTF8Copy(idx);
+	}
+	
+	private int genReadUTF8Default(int idx) {
+		return reader.popPMapBit()==0 ? (idx|FieldReaderText.INIT_VALUE_MASK) : readerText.readUTF8(idx);
+	}
+	
+	private int genReadASCIINone(int idx) {
+		return readerText.readASCII(idx);
+	}
+	
+	private int genReadASCIITailOptional(int idx) {
+		return readerText.readASCIITailOptional(idx);
+	}
+
+	private int genReadASCIIDeltaOptional(int fromIdx, int idx) {
+		return readerText.readASCIIDeltaOptional(fromIdx, idx);
+	}
+	
+	private int genReadTextConstantOptional(int constInit, int constValue) {
+		return reader.popPMapBit()!=0 ? constInit : constValue;
+	}
+	
+	private int genReadASCIICopyOptional(int idx) {
+		return readerText.readASCIICopyOptional(idx);
+	}
+	
+	private int genReadASCIIDefault(int target) {
+		return reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|target) : readerText.readASCIIToHeap(target);
+	}
 
 
 }

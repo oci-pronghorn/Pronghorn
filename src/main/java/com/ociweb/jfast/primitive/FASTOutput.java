@@ -11,4 +11,10 @@ public interface FASTOutput {
 	
 	void init(DataTransfer dataTransfer);
 	
+	
+
+	//TODO: C, Add blocking FASTOutput consumer on the complete answer of preamble. 
+	//part of write cache from primtiive allowing fixed size modifications before flush, Done as FASTOutput wrapper?
+	
+	
 }

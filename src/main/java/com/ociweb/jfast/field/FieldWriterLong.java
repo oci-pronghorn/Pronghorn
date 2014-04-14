@@ -3,17 +3,16 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public final class FieldWriterLong {
 	
 	//for optional fields it is still in the optional format so 
 	//zero represents null for those fields.  
-	final long[]  lastValue;
-	final long[]  init;
-	private final int INSTANCE_MASK;
-	private final PrimitiveWriter writer;
+	public final long[]  dictionary;
+	public final long[]  init;
+	public final int INSTANCE_MASK;
+	final PrimitiveWriter writer;
 
 	public FieldWriterLong(PrimitiveWriter writer, long[] values, long[] init) {
 		assert(values.length<TokenBuilder.MAX_INSTANCE);
@@ -21,93 +20,35 @@ public final class FieldWriterLong {
 		
 		this.INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (values.length-1));
 		this.writer = writer;
-		this.lastValue = values;
+		this.dictionary = values;
 		this.init = init;
 	}
 	
-	public void reset(DictionaryFactory df) {
-		df.reset(lastValue);
-	}	
-	public void copy(int sourceToken, int targetToken) {
-		lastValue[targetToken & INSTANCE_MASK] = lastValue[sourceToken & INSTANCE_MASK];
-	}
 	
-	public void flush() {
-		writer.flush();
-	}
+	//TODO: B, Refactor all Field writes to split logic between dispatch and primitive
 	
-	/*
-	 * Method name convention to group the work 
-	 *  write <FIELD_TYPE><OPERATOR>
-	 *  
-	 *  example FIELD_TYPES 
-	 *  LongSigned
-	 *  LongUnsigned
-	 *  LongSingedOptional
-	 *  LongUnsignedOptional
-	 * 
-	 */
 	
-	public void writeLongUnsigned(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		writer.writeLongUnsigned(value);
-	}
 	
 	public void writeLongUnsignedCopy(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
-		if (value == lastValue[idx]) {
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(value);
-		}
+		writer.writeLongUnsignedCopy(value, idx, dictionary);
+		
 	}
 	
 	public void writeLongUnsignedCopyOptional(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
-		value++;//zero is held for null
+		writer.writeLongUnsignedCopyOptional(value, idx, dictionary);
 		
-		if (value == lastValue[idx]) {//not null and matches
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] = value;
-			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(value);
-		}
 	}
 	
 
-	public void writeLongUnsignedConstant(long value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		//nothing need be sent because constant does not use pmap and the template
-		//on the other receiver side will inject this value from the template
-	}
-	
-	public void writeLongUnsignedConstantOptional(long value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		writer.writePMapBit((byte)1);
-		//the writeNull will take care of the rest.
-	}
-	
-	
-	public void writeLongSignedConstant(long value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		//nothing need be sent because constant does not use pmap and the template
-		//on the other receiver side will inject this value from the template
-	}
-	
-	public void writeLongSignedConstantOptional(long value, int token) {
-		assert(lastValue[ token & INSTANCE_MASK]==value) : "Only the constant value from the template may be sent";
-		writer.writePMapBit((byte)1);
-		//the writeNull will take care of the rest.
-	}
-	
 	public void writeLongUnsignedDefault(long value, int token) {
-		if (value == lastValue[token & INSTANCE_MASK]) {
+		int idx = token & INSTANCE_MASK;
+		long constDefault = dictionary[idx];
+		
+		if (value == constDefault) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -116,8 +57,11 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongUnsignedDefaultOptional(long value, int token) {
+		int idx = token & INSTANCE_MASK;
+		long constDefault = dictionary[idx];
+		
 		//room for zero
-		if (++value == lastValue[token & INSTANCE_MASK]) {//not null and matches
+		if (++value == constDefault) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -126,14 +70,14 @@ public final class FieldWriterLong {
 	}
 		
 	public void writeLongUnsignedIncrement(long value, int token) {
-		int idx;
-		long incVal = lastValue[idx = token & INSTANCE_MASK]+1;
+		int idx = token & INSTANCE_MASK;
 		
+		long incVal = dictionary[idx]+1;
 		if (value == incVal) {
-			lastValue[idx] = incVal;
+			dictionary[idx] = incVal;
 			writer.writePMapBit((byte)0);
 		} else {
-			lastValue[idx] = value;
+			dictionary[idx] = value;
 			writer.writePMapBit((byte)1);
 			writer.writeLongUnsigned(value);
 		}
@@ -144,29 +88,28 @@ public final class FieldWriterLong {
 
 		int idx = token & INSTANCE_MASK;
 
-		if (0!=lastValue[idx] && value == lastValue[idx]++) {//not null and matches
+		if (0!=dictionary[idx] && value == dictionary[idx]++) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
-			long tmp = lastValue[idx] = 1+value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongUnsigned(tmp);
+			writer.writeLongUnsigned(dictionary[idx] = 1+value);
 		}
 	}
 
 	public void writeLongUnsignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		long tmp = value - lastValue[idx];
-		lastValue[idx] = value;		
-		//System.err.println("*** long-delta "+value);
-		writer.writeLongSigned(tmp);
+		
+		writer.writeLongSigned(value - dictionary[idx]);
+		dictionary[idx] = value;		
 	}
 	
 	public void writeLongUnsignedDeltaOptional(long value, int token) {
 		//Delta opp never uses PMAP
 		int idx = token & INSTANCE_MASK;
-		long delta = value - lastValue[idx];
-		lastValue[idx] = value;
+		
+		long delta = value - dictionary[idx];
+		dictionary[idx] = value;
 		//System.err.println("long-delta-optional "+value);
 		writer.writeLongSigned(delta>=0 ? 1+delta : delta);
 	}
@@ -175,21 +118,14 @@ public final class FieldWriterLong {
 	///////////////
 	////////////////
 	
-	public void writeLongSigned(long value, int token) {
-		int idx = token & INSTANCE_MASK;
-		lastValue[idx] = value;
-		writer.writeLongSigned(value);
-	}
-	
 	public void writeLongSignedCopy(long value, int token) {
 		int idx = token & INSTANCE_MASK;
 
-		if (value == lastValue[idx]) {
+		if (value == dictionary[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
-			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(value);
+			writer.writeLongSigned(dictionary[idx] = value);
 		}
 	}
 	
@@ -200,17 +136,19 @@ public final class FieldWriterLong {
 			value++;
 		}
 		
-		if (value == lastValue[idx]) {//not null and matches
+		if (value == dictionary[idx]) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
-			lastValue[idx] = value;
 			writer.writePMapBit((byte)1);
-			writer.writeLongSigned(value);
+			writer.writeLongSigned(dictionary[idx] = value);
 		}
 	}
 	
 	public void writeLongSignedDefault(long value, int token) {
-		if (value == lastValue[token & INSTANCE_MASK]) {
+		int idx = token & INSTANCE_MASK;
+		
+		
+		if (value == dictionary[idx]) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -219,10 +157,12 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedDefaultOptional(long value, int token) {
+		int idx = token & INSTANCE_MASK;
+		
 		if (value>=0) {
 			value++;//room for null
 		}
-		if (value == lastValue[token & INSTANCE_MASK]) {//matches
+		if (value == dictionary[idx]) {//matches
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -231,7 +171,9 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedDefaultOptional(int token) {
-		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
+		int idx = token & INSTANCE_MASK;
+		
+		if (dictionary[idx]==0) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -240,10 +182,10 @@ public final class FieldWriterLong {
 	}
 	
 	public void writeLongSignedIncrement(long value, int token) {
-		int idx;
+		int idx = token & INSTANCE_MASK;
 		
-		lastValue[idx = token & INSTANCE_MASK] = value;
-		if (value == (lastValue[idx]+1)) {
+		dictionary[idx] = value;
+		if (value == (dictionary[idx]+1)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -254,13 +196,14 @@ public final class FieldWriterLong {
 
 	public void writeLongSignedIncrementOptional(long value, int token) {
 
-		int idx;
+		int idx = token & INSTANCE_MASK;
 
+		
 		if (value>=0) {
 			value++;
 		}
-		long last = lastValue[idx = token & INSTANCE_MASK];
-		lastValue[idx] = value;
+		long last = dictionary[idx];
+		dictionary[idx] = value;
 		if (0!=last && value == 1+last) {//not null and matches
 			writer.writePMapBit((byte)0);
 		} else {
@@ -272,30 +215,40 @@ public final class FieldWriterLong {
 	
 	public void writeLongSignedDelta(long value, int token) {
 		//Delta opp never uses PMAP
-		int idx;
-		long tmp = value - lastValue[idx = token & INSTANCE_MASK];
-		lastValue[idx] = value;		
-		writer.writeLongSigned(tmp);
+		int idx = token & INSTANCE_MASK;
+		
+		writer.writeLongSigned(value - dictionary[idx]);
+		dictionary[idx] = value;		
 	}
 	
 	public void writeLongSignedDeltaOptional(long value, int token) {
 		//Delta opp never uses PMAP
-		int idx;
-		long delta = value - lastValue[idx = token & INSTANCE_MASK];
-		lastValue[idx] = value;	
+		int idx = token & INSTANCE_MASK;
+		
+		long delta = value - dictionary[idx];
 		writer.writeLongSigned(((delta+(delta>>>63))+1));
 		//writer.writeLongSigned(delta>=0 ? 1+delta : delta);
+		dictionary[idx] = value;	
 	}
 
 	public void writeNull(int token) {
+		int idx = token & INSTANCE_MASK;
 		
 		if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 				//None and Delta (both do not use pmap)
-				writeClearNull(token);              //no pmap, yes change to last value
+				dictionary[idx] = 0;
+				writer.writeNull();              //no pmap, yes change to last value
 			} else {
 				//Copy and Increment
-				writePMapAndClearNull(token);  //yes pmap, yes change to last value	
+				
+				if (dictionary[idx]==0) { //stored value was null;
+					writer.writePMapBit((byte)0);
+				} else {
+					dictionary[idx] =0;
+					writer.writePMapBit((byte)1);
+					writer.writeNull();
+				}  //yes pmap, yes change to last value	
 			}
 		} else {
 			if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -308,49 +261,19 @@ public final class FieldWriterLong {
 				}			
 			} else {	
 				//default
-				writePMapNull(token);  //yes pmap,  no change to last value
+				if (dictionary[token & INSTANCE_MASK]==0) { //stored value was null;
+					writer.writePMapBit((byte)0);
+				} else {
+					writer.writePMapBit((byte)1);
+					writer.writeNull();
+				}  //yes pmap,  no change to last value
 			}	
 		}
 		
 	}
 	
-	private void writeClearNull(int token) {
-		lastValue[token & INSTANCE_MASK] = 0;
-		writer.writeNull();
-	}
+	
+
 	
 	
-	private void writePMapAndClearNull(int token) {
-		int idx = token & INSTANCE_MASK;
-
-		if (lastValue[idx]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			lastValue[idx] =0;
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
-	
-	
-	private void writePMapNull(int token) {
-		if (lastValue[token & INSTANCE_MASK]==0) { //stored value was null;
-			writer.writePMapBit((byte)0);
-		} else {
-			writer.writePMapBit((byte)1);
-			writer.writeNull();
-		}
-	}
-
-	public void writeLongUnsignedOptional(long value, int token) {
-		writer.writeLongUnsigned(value+1);
-	}
-
-	public void writeLongSignedOptional(long value, int token) {
-		writer.writeLongSignedOptional(value);
-	}
-
-	public void reset(int idx) {
-		lastValue[idx] = init[idx];
-	}
 }

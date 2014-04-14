@@ -190,14 +190,16 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				fw.writeIntegerSignedCopyOptional(intTestData[j], token);
+				int idx = token & fw.INSTANCE_MASK;
+				
+				pw.writeIntegerSignedCopyOptional(intTestData[j], idx, fw.dictionary);
 			}
 			
 			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
-			fw.flush();
+			pw.flush();
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
@@ -249,14 +251,16 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				fw.writeIntegerSignedConstant(constantValue, token);
+				assert(fw.dictionary[ token & fw.INSTANCE_MASK]==constantValue) : "Only the constant value "+fw.dictionary[ token & fw.INSTANCE_MASK]+" from the template may be sent";
+				//nothing need be sent because constant does not use pmap and the template
+				//on the other receiver side will inject this value from the template
 			}
 			
 			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
-			fw.flush();
+			pw.flush();
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
@@ -301,14 +305,16 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				fw.writeIntegerSignedDeltaOptional(intTestData[j], token);
+				int idx = token & fw.INSTANCE_MASK;
+				
+				pw.writeIntegerSignedDeltaOptional(intTestData[j],idx,fw.dictionary);
 			}
 			
 			if (pmapSize>0) {
 				pw.closePMap();
 			}
 			
-			fw.flush();
+			pw.flush();
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));

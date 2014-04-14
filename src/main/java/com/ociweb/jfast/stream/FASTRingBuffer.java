@@ -32,6 +32,8 @@ public final class FASTRingBuffer  {
 	public final TextHeap textHeap; 
 	final char[] rawConstHeap;
 	
+	FASTFilter filter = FASTFilter.none;
+	
 	
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
@@ -77,53 +79,17 @@ public final class FASTRingBuffer  {
 		//provide offset to the beginning of this message.
 		
 	}
+	
+	
+	//TODO: A, add map method which can take data from one ring buffer and populate another.
 
-	//take ring buffer
-	//switch on the template id.
-	//do processing for id
-	//    * check fields and jump forward
-	//    * do work
-	
-	//   filter(filter(ringbuffer))   map(ringbufer)
-	//   ringBuffer.filter(rules).filter(rules).map(process)
-	// filter returns ring buffer moved forward?
-	
-	
-	
-	//TODO: A, Add Forgetful functor to ignore  messages OR sequence groups OR groups that do not need to be added to ring buffer.
-	//TODO: B, add functors in general to do custom work before ring buffer
-	//TODO: B, add functors in general to do custom work from ring buffer before encoding?
-	//TODO: A, model after java8 lambda behavior.  xxx.stream().filter(x).map(y).max() If objects can not escape or are reused this should be performant 
-	//filter() use predicate to took at template id or sequence and while roll forward to next or pass on current.
-	//         by avoid of write to ring buffer in first place majority of filters would give performance boost.
-	//map() 
-	//reduce()?  map.collect()
-	
-	/* Java8 code converting iterator into stream so TODO: A, add toIterator method
-	 * <T> Stream<T> stream(Iterator<T> iterator) {
-    Spliterator<T> spliterator
-        = Spliterators.spliteratorUnknownSize(iterator, 0);
-    return StreamSupport.stream(spliterator, false);
-}
-	 */
 	
 
-	//TODO: B, Add blocking consumer on the complete answer of preamble. (not sure this is first class)
-	//preamble needs to work like a bit in pmap we are blocked on. to know the size?
-	//part of write cache from primtiive allowing fixed size modifications before flush, Done as FASTOutput wrapper?
-	
     public final int availableCapacity() {
     	return maxSize-(addPos-remPos);
     }
     
-	
 
-
-	
-	//Text RingBuffer encoding for two ints
-	// pos  pos  char ring buffer, length and position
-	// neg  pos  heap constant index
-	// pos  neg  null
 	
 	public final int appendInt1(int value) {
 		buffer[mask&addPos++]=value;
@@ -201,6 +167,8 @@ public final class FASTRingBuffer  {
 		buffer[M&p++]=h;
 		addPos = p;
 	}
+	
+	//TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
 	public int writeTextToRingBuffer(int heapId, int len) {
 		final int p = addCharPos;
@@ -218,12 +186,38 @@ public final class FASTRingBuffer  {
 		throw new UnsupportedOperationException();//TODO: C,copy text solution once finished.
 		
 	}
-
-	//only called once the end of a group is reached and we want to allow the consumer to have access to the fields.
-	public void moveForward() {
-		//consumer is allowed to read up to addCount
-		addCount.lazySet(addPos); 
+	
+	//next sequence is ready for consumption.
+	public void unBlockSequence() {
+		//if filtered out the addPos will be rolled back to newGroupPos
+		byte f = filter.go(addCount.get(),this);//TODO: what if we need to split first sequence and message header.
+		if (f>0) {//consumer is allowed to read up to addCount
+			//normal 
+			addCount.lazySet(addPos); 			
+		} else if (f<0) {
+			//skip
+			addPos=addCount.get();
+		} //else hold
 	}
+	
+	//
+	public void unBlockMessage() {
+		//if filtered out the addPos will be rolled back to newGroupPos
+		byte f = filter.go(addCount.get(),this);//TODO: B, may call at end of message, can not change mind!
+		if (0==f) {
+			//do not hold use default instead
+			f = filter.defaultBehavior();
+		}
+		
+		if (f>0) {//consumer is allowed to read up to addCount
+			//normal 
+			addCount.lazySet(addPos); 			
+		} else {
+			//skip
+			addPos=addCount.get();
+		}
+	}
+	
 	
 	public void removeForward(int step) {
 		remPos = removeCount.get()+step;
@@ -236,10 +230,6 @@ public final class FASTRingBuffer  {
 		//System.err.println("resetup to "+addPos);
 		remPos = addPos;
 		removeCount.lazySet(addPos);
-	}
-
-	public void printPos(String label) {
-		System.err.println(label+" remPos:"+remPos+"  addPos:"+addPos);
 	}
 	
 	//TODO: A, Given templateId, and FieldId return offset for RingBuffer to get value, must keep in client code

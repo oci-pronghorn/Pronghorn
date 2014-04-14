@@ -132,8 +132,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 			lastCapacity -= neededSpaceOrTemplate;
 		}
 		
+		//TODO: B, Check support for group that may be optional
+		
+		//returns true for end of sequence or group
 		if (readerDispatch.dispatchReadByToken()) {
-			ringBuffer.moveForward();
+			ringBuffer.unBlockSequence();
 			if (readerDispatch.jumpSequence>=0) {
 			    return processSequence(readerDispatch.jumpSequence); 
 			}
@@ -185,7 +188,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 
 	private int finishTemplate() {
 		//reached the end of the script so close and prep for the next one
-		ringBuffer.moveForward();
+		ringBuffer.unBlockMessage();
 		neededSpaceOrTemplate = -1;
 		readerDispatch.reader.closePMap();
 		return 2;//finished reading full message

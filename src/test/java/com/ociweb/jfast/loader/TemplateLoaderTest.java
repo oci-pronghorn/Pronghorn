@@ -605,7 +605,7 @@ public class TemplateLoaderTest {
 		System.gc();
 		
 		int warmup = 20;//set much larger for profiler
-		int count = 512;
+		int count = 256;
 				
 		long wroteSize = 0;
 		int msgs = 0;
