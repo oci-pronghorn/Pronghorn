@@ -258,7 +258,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		
 		pr.reset();
 		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 128, 4, 4, null,64, 8, 7);
-		ByteHeap byteHeap = fr.byteHeap();
+		ByteHeap byteHeap = fr.readerBytes.byteHeap();
 		
 		int token = 0;
 		int prevToken = 0;

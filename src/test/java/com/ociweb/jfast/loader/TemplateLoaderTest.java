@@ -190,7 +190,16 @@ public class TemplateLoaderTest {
 		//New memory mapped solution. No need to cache because we warm up and OS already has it.
 		//FASTInputByteBuffer fastInput = buildInputForTestingByteBuffer(sourceDataFile);
 
+/*
+nate@Noah:~/github$ sudo vim /etc/sysctl.conf
+nate@Noah:~/github$ sysctl -p
+sysctl: permission denied on key 'vm.zone_reclaim_mode'
+nate@Noah:~/github$ sudo sysctl -p
+vm.zone_reclaim_mode = 0
+nate@Noah:~/github$ 
+
 		
+ */
 		int bufferSize = 4096;//do not change without testing, 4096 is ideal.
 		PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize,fastInput,(2+((Math.max(catalog.maxTemplatePMapSize(),catalog.maxNonTemplatePMapSize())+2)*catalog.getMaxGroupDepth())));
 		FASTReaderDispatch readerDispatch = new FASTReaderDispatchGenExample(
@@ -203,7 +212,7 @@ public class TemplateLoaderTest {
 									                catalog.getTextGap(),
 									                catalog.getByteVectorGap(),
 									                catalog.fullScript(),
-									                catalog.getMaxGroupDepth()); 
+									                catalog.getMaxGroupDepth(), 8, 7); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 		
@@ -453,7 +462,7 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript(),
-                catalog.getMaxGroupDepth()); 
+                catalog.getMaxGroupDepth(), 8, 7); 
 		FASTDynamicReader dynamicReader2 = new FASTDynamicReader(primitiveReader2, catalog, readerDispatch2);
 		FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 		
@@ -564,7 +573,7 @@ public class TemplateLoaderTest {
                 catalog.getTextGap(),
                 catalog.getByteVectorGap(),
                 catalog.fullScript(),
-                catalog.getMaxGroupDepth()); 
+                catalog.getMaxGroupDepth(), 8, 7); 
 		FASTDynamicReader dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
 		FASTRingBuffer queue = readerDispatch.ringBuffer();
 				

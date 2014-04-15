@@ -9,9 +9,9 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 
 	public FASTReaderDispatchGenExample(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
 			int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
-			int maxNestedGroupDepth) {
+			int maxNestedGroupDepth, int ringBits, int ringTextBits) {
 		super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
-				maxNestedGroupDepth, 8, 7);
+				maxNestedGroupDepth, ringBits, ringTextBits);
 	}
 
 
@@ -124,7 +124,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 		int xi2;
 		queue.appendInt8(reader.readIntegerUnsignedCopy(0x04, 0x04, rIntDictionary),
 				         reader.readIntegerUnsignedDefaultOptional(1 /*default or absent value */, constIntAbsent),
-		                 textIdRef(xi1 = readerText.readASCIICopy(0x04), xi2 = textHeap().length2(xi1)),
+		                 textIdRef(xi1 = readerText.readASCIICopy(0x04), xi2 = readerText.textHeap().length2(xi1)),
 		                 xi2,
 		                 (xi1 = reader.readIntegerUnsigned()) == 0 ? constIntAbsent : xi1 - 1,
 		                 9, //dictionary1[0x07],//constant?
@@ -137,10 +137,10 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 		int xi1;
 		int xi2; //TODO: X, Read next 4 bits in one byte and mask them off as needed here to minimize calls.
 		queue.appendInt7(//not used if null
-		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x07) : readerText.readASCIIToHeap(0x07), xi2 = textHeap().length2(xi1)),xi2,
-		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x08) : readerText.readASCIIToHeap(0x08), xi2 = textHeap().length2(xi1)),xi2,
+		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x07) : readerText.readASCIIToHeap(0x07), xi2 = readerText.textHeap().length2(xi1)),xi2,
+		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x08) : readerText.readASCIIToHeap(0x08), xi2 = readerText.textHeap().length2(xi1)),xi2,
 		                 reader.readIntegerUnsignedDefaultOptional(2147483647 ,constIntAbsent),
-		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x09) : readerText.readASCIIToHeap(0x09), xi2 = textHeap().length2(xi1)),xi2);//not used if null
+		                 textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x09) : readerText.readASCIIToHeap(0x09), xi2 = readerText.textHeap().length2(xi1)),xi2);//not used if null
 	}
 
 	private void case9a3() {
@@ -148,12 +148,12 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 		int xi2;
 		long xl1;
 		
-		queue.appendInt8(textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x05) : readerText.readASCIIToHeap(0x05), xi2 = textHeap().length2(xi1)),xi2,
+		queue.appendInt8(textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x05) : readerText.readASCIIToHeap(0x05), xi2 = readerText.textHeap().length2(xi1)),xi2,
 						reader.readIntegerSignedDefaultOptional(2147483647 /* default or absent value */,constIntAbsent),
 						(int) ((xl1 = reader.readLongSignedDeltaOptional(0x01, 0x01, mantDictionary, constLongAbsent)) >>> 32),
 						(int) (xl1 & 0xFFFFFFFF),
 						reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent),
-						textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x06) : readerText.readASCIIToHeap(0x06), xi2 = textHeap().length2(xi1)),xi2
+						textIdRef(xi1 = reader.popPMapBit()==0 ? (FieldReaderText.INIT_VALUE_MASK|0x06) : readerText.readASCIIToHeap(0x06), xi2 = readerText.textHeap().length2(xi1)),xi2
 						);
 	}
 
@@ -194,7 +194,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 
 		int xi1;
 		int xi2;
-		queue.appendInt2(textIdRef(xi1 = readerText.readASCIIToHeap(0x0d), xi2 = textHeap().length2(xi1)),xi2);//not used if null//normal read without constant, may need copy
+		queue.appendInt2(textIdRef(xi1 = readerText.readASCIIToHeap(0x0d), xi2 = readerText.textHeap().length2(xi1)),xi2);//not used if null//normal read without constant, may need copy
 	}
 
 	private void case30b() {

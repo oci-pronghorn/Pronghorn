@@ -83,7 +83,8 @@ public final class FASTRingBuffer  {
 	
 	//TODO: A, add map method which can take data from one ring buffer and populate another.
 
-	
+	//TODO: A, Promises/Futures/Listeners as possible better fit to stream processing?
+	//TODO: A, look at adding reduce method in addition to filter.
 
     public final int availableCapacity() {
     	return maxSize-(addPos-remPos);
@@ -189,6 +190,8 @@ public final class FASTRingBuffer  {
 	
 	//next sequence is ready for consumption.
 	public void unBlockSequence() {
+		//TODO: A, only filter on the message level. sequence will be slow and difficult because they are nested.
+		
 		//if filtered out the addPos will be rolled back to newGroupPos
 		byte f = filter.go(addCount.get(),this);//TODO: what if we need to split first sequence and message header.
 		if (f>0) {//consumer is allowed to read up to addCount
