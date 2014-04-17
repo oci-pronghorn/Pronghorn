@@ -38,7 +38,7 @@ public final class FASTRingBuffer  {
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
 	int addCharPos = 0;
-	private int addPos = 0;
+	int addPos = 0;
 	int remPos = 0;
 		
 	public FASTRingBuffer(byte primaryBits, byte charBits, TextHeap heap) {
@@ -90,7 +90,10 @@ public final class FASTRingBuffer  {
     	return maxSize-(addPos-remPos);
     }
     
-
+    public static int appendi(int[] buf, int pos, int mask, int value) {
+        buf[mask&pos]=value;
+        return pos+1;
+    }
 	
 	public final int appendInt1(int value) {
 		buffer[mask&addPos++]=value;

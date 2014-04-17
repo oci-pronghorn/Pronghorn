@@ -1,6 +1,7 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.FieldReaderText;
+import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -86,7 +87,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         mantDictionary[0] = mantInit[0];
         expDictionary[1] = expInit[1];
         mantDictionary[1] = mantInit[1];
-        readerText.heap.reset(4);
+        charDictionary.reset(4);
         rIntDictionary[4] = rIntInit[4];
         rIntDictionary[8] = rIntInit[8];
         rIntDictionary[9] = rIntInit[9];
@@ -127,7 +128,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                                                              * default or absent
                                                              * value
                                                              */, constIntAbsent),
-                textIdRef(xi1 = readerText.readASCIICopy(0x04), xi2 = readerText.textHeap().length2(xi1)), xi2,
+                textIdRef(xi1 = (reader.popPMapBit()!=0 ? FieldReaderText.readASCIIToHeap(0x04, charDictionary, reader): 0x04), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2,
                 (xi1 = reader.readIntegerUnsigned()) == 0 ? constIntAbsent : xi1 - 1,
                 9, // dictionary1[0x07],//constant?
                 reader.readIntegerUnsignedCopy(0x08, 0x08, rIntDictionary),
@@ -143,21 +144,33 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                  // needed here to minimize calls.
         queue.appendInt7(
                 // not used if null
-                textIdRef(
-                        xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x07) : readerText
-                                .readASCIIToHeap(0x07), xi2 = readerText.textHeap().length2(xi1)),
+                textIdRef( //TODO: A, If these bit says use constant then the charDictionary.length2 is NOT needed!!!
+                        xi1 = test1(reader, charDictionary), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue),
                 xi2,
                 textIdRef(
-                        xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x08) : readerText
-                                .readASCIIToHeap(0x08), xi2 = readerText.textHeap().length2(xi1)),
+                        xi1 = test2(reader, charDictionary), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue),
                 xi2,
                 reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent),
                 textIdRef(
-                        xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x09) : readerText
-                                .readASCIIToHeap(0x09), xi2 = readerText.textHeap().length2(xi1)), xi2);// not
+                        xi1 = test3(reader, charDictionary), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2);// not
                                                                                                         // used
                                                                                                         // if
                                                                                                         // null
+    }
+
+    public static int test3(PrimitiveReader primitiveReader, TextHeap textHeap) {
+        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x09) : FieldReaderText
+                .readASCIIToHeap(0x09, textHeap, primitiveReader);
+    }
+
+    public static int test2(PrimitiveReader primitiveReader, TextHeap textHeap) {
+        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x08) : FieldReaderText
+                .readASCIIToHeap(0x08, textHeap, primitiveReader);
+    }
+
+    public static int test1(PrimitiveReader primitiveReader, TextHeap textHeap) {
+        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x07) : FieldReaderText
+                .readASCIIToHeap(0x07, textHeap, primitiveReader);
     }
 
     private void case9a3() {
@@ -168,7 +181,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         queue.appendInt8(
                 textIdRef(
                         xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x05) : readerText
-                                .readASCIIToHeap(0x05), xi2 = readerText.textHeap().length2(xi1)),
+                                .readASCIIToHeap(0x05, charDictionary, reader), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue),
                 xi2,
                 reader.readIntegerSignedDefaultOptional(2147483647 /*
                                                                     * default or
@@ -180,7 +193,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                 reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent),
                 textIdRef(
                         xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x06) : readerText
-                                .readASCIIToHeap(0x06), xi2 = readerText.textHeap().length2(xi1)), xi2);
+                                .readASCIIToHeap(0x06, charDictionary, reader), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2);
     }
 
     private boolean case30() {
@@ -208,19 +221,29 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 
     }
 
+
+    
     private void case30a() {
         // write a NonNull constant, no need to check more because this can not
         // be null or dynamic.
-        queue.appendInt8(0x8000000a, 0x5,// ASCIIConstant 0xa02c000a
-                0x8000000b, 0x0,// ASCIIConstant(0xa02c000b
-                0x8000000c, 0x0, // /ASCIIConstant(0xa02c000c
-                reader.readIntegerUnsigned(), reader.readIntegerUnsigned());
+        int p = queue.addPos;
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000a);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x5);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000b);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x0);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000c);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x0);
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, reader.readIntegerUnsigned());	
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, reader.readIntegerUnsigned());
 
-        int xi1;
-        int xi2;
-        queue.appendInt2(textIdRef(xi1 = readerText.readASCIIToHeap(0x0d), xi2 = readerText.textHeap().length2(xi1)),
-                xi2);// not used if null//normal read without constant, may need
+        //Always dynamic so never constant! must generate in order to avoid that conditional.
+        int xi1 = readerText.readASCIIToHeap(0x0d, charDictionary, reader);
+        int xi2 = charDictionary.valueLength(xi1); //TODO A, for generated code may be const, var or switching between the two.
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, queue.writeTextToRingBuffer(xi1, xi2));
+        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, xi2);
+        // not used if null//normal read without constant, may need
                      // copy
+        queue.addPos = p;
     }
 
     private void case30b() {
@@ -236,8 +259,8 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                 rIntDictionary[0x15]);
     }
 
-    private int textIdRef(int heapId, int length) {
-        return heapId < 0 ? heapId : queue.writeTextToRingBuffer(heapId, length);
+    private static int textIdRef(int heapId, int length, FASTRingBuffer ringBuffer) {
+        return heapId < 0 ? heapId : ringBuffer.writeTextToRingBuffer(heapId, length);
     }
     
 }

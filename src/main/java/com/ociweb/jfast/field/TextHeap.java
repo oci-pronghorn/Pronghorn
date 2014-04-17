@@ -850,23 +850,11 @@ public class TextHeap {
 	}
 	
 	public int length(int idx) {
-		int result = length2(idx);
+		int result = (idx<0 ? initLength(idx) :  valueLength(idx));
 		return result < 0 ? 0 : result;
 	}
 
 
-	public int length2(int idx) {
-		int result;
-		if (idx<0) {
-			int offset = idx << 1; //this shift left also removes the top bit! sweet.
-			result = initTat[offset+1] - initTat[offset];
-		} else {
-			int offset = idx<<2;
-			result = tat[offset+1] - tat[offset];
-		}
-		return result;
-	}
-	
 	public int valueLength(int idx) {
 		int offset = idx<<2;
 		return tat[offset+1] - tat[offset];
