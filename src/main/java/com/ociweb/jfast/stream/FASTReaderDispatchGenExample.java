@@ -1,10 +1,10 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.field.FieldReaderText;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.field.StaticGlue;
 
 public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 
@@ -128,7 +128,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                                                              * default or absent
                                                              * value
                                                              */, constIntAbsent),
-                textIdRef(xi1 = (reader.popPMapBit()!=0 ? FieldReaderText.readASCIIToHeap(0x04, charDictionary, reader): 0x04), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2,
+                textIdRef(xi1 = (reader.popPMapBit()!=0 ? StaticGlue.readASCIIToHeap(0x04, charDictionary, reader): 0x04), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2,
                 (xi1 = reader.readIntegerUnsigned()) == 0 ? constIntAbsent : xi1 - 1,
                 9, // dictionary1[0x07],//constant?
                 reader.readIntegerUnsignedCopy(0x08, 0x08, rIntDictionary),
@@ -159,17 +159,17 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
     }
 
     public static int test3(PrimitiveReader primitiveReader, TextHeap textHeap) {
-        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x09) : FieldReaderText
+        return primitiveReader.popPMapBit() == 0 ? (StaticGlue.INIT_VALUE_MASK | 0x09) : StaticGlue
                 .readASCIIToHeap(0x09, textHeap, primitiveReader);
     }
 
     public static int test2(PrimitiveReader primitiveReader, TextHeap textHeap) {
-        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x08) : FieldReaderText
+        return primitiveReader.popPMapBit() == 0 ? (StaticGlue.INIT_VALUE_MASK | 0x08) : StaticGlue
                 .readASCIIToHeap(0x08, textHeap, primitiveReader);
     }
 
     public static int test1(PrimitiveReader primitiveReader, TextHeap textHeap) {
-        return primitiveReader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x07) : FieldReaderText
+        return primitiveReader.popPMapBit() == 0 ? (StaticGlue.INIT_VALUE_MASK | 0x07) : StaticGlue
                 .readASCIIToHeap(0x07, textHeap, primitiveReader);
     }
 
@@ -180,7 +180,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 
         queue.appendInt8(
                 textIdRef(
-                        xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x05) : readerText
+                        xi1 = reader.popPMapBit() == 0 ? (StaticGlue.INIT_VALUE_MASK | 0x05) : StaticGlue
                                 .readASCIIToHeap(0x05, charDictionary, reader), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue),
                 xi2,
                 reader.readIntegerSignedDefaultOptional(2147483647 /*
@@ -192,7 +192,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                 (int) (xl1 & 0xFFFFFFFF),
                 reader.readIntegerUnsignedDefaultOptional(2147483647, constIntAbsent),
                 textIdRef(
-                        xi1 = reader.popPMapBit() == 0 ? (FieldReaderText.INIT_VALUE_MASK | 0x06) : readerText
+                        xi1 = reader.popPMapBit() == 0 ? (StaticGlue.INIT_VALUE_MASK | 0x06) : StaticGlue
                                 .readASCIIToHeap(0x06, charDictionary, reader), xi2 = (xi1<0 ? charDictionary.initLength(xi1) :  charDictionary.valueLength(xi1)), queue), xi2);
     }
 
@@ -237,7 +237,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         p=FASTRingBuffer.appendi(bfr, p, bfrMsk, reader.readIntegerUnsigned());
 
         //Always dynamic so never constant! must generate in order to avoid that conditional.
-        int xi1 = readerText.readASCIIToHeap(0x0d, charDictionary, reader);
+        int xi1 = StaticGlue.readASCIIToHeap(0x0d, charDictionary, reader);
         int xi2 = charDictionary.valueLength(xi1); //TODO A, for generated code may be const, var or switching between the two.
         p=FASTRingBuffer.appendi(bfr, p, bfrMsk, queue.writeTextToRingBuffer(xi1, xi2));
         p=FASTRingBuffer.appendi(bfr, p, bfrMsk, xi2);

@@ -166,6 +166,8 @@ public class TemplateLoaderTest {
     @Test
     public void testDecodeComplex30000() {
 
+       // new SourceTemplates();
+        
         FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
         TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
 

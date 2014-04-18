@@ -13,7 +13,7 @@ public class FieldReaderBytes {
 	final byte NULL_STOP = (byte)0x80;
 	private final PrimitiveReader reader;
 	private final ByteHeap heap;
-	private final int INSTANCE_MASK;
+	public final int INSTANCE_MASK;
 	
 	//TODO: X, improvement reader/writer bytes/chars should never build this object when it is not in use.
 	public FieldReaderBytes(PrimitiveReader reader, ByteHeap byteDictionary) {
@@ -26,23 +26,17 @@ public class FieldReaderBytes {
 		this.heap = byteDictionary;
 	}
 
-	public int readBytes(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
-		int length = reader.readIntegerUnsigned();
+	public int readBytes2(int idx) {
+        int length = reader.readIntegerUnsigned();
 		reader.readByteData(heap.rawAccess(), 
 							heap.allocate(idx, length),
 				            length);
 		return idx;
-	}
+    }
 
 
-	public int readBytesTail(int token, int readFromIdx) {
-		
-		//return readBytesCopy(token);
-		
-		int idx = token & INSTANCE_MASK;
-				
-		int trim = reader.readIntegerUnsigned();
+	public int readBytesTail2(int idx) {
+        int trim = reader.readIntegerUnsigned();
 		int length = reader.readIntegerUnsigned(); 
 		
 		//append to tail	
@@ -50,24 +44,10 @@ public class FieldReaderBytes {
 		reader.readByteData(heap.rawAccess(), targetOffset, length);
 				
 		return idx;
-	}
+    }
 	
-	public void reset() {
-		if (null!=heap) {
-			heap.reset();
-		}
-	}
-
-	
-	public int readBytesConstant(int token, int readFromIdx) {
-		//always return this required value
-		return token & INSTANCE_MASK;
-	}
-
-	public int readBytesDelta(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
-		
-		int trim = reader.readIntegerSigned();
+	public int readBytesDelta2(int idx) {
+        int trim = reader.readIntegerSigned();
 		int utfLength = reader.readIntegerUnsigned();
 		if (trim>=0) {
 			//append to tail
@@ -78,23 +58,20 @@ public class FieldReaderBytes {
 		}
 		
 		return idx;
-	}
+    }
 
-	public int readBytesCopy(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
-		if (reader.popPMapBit()!=0) {
+	public int readBytesCopy2(int idx) {
+        if (reader.popPMapBit()!=0) {
 			int length = reader.readIntegerUnsigned();
 			reader.readByteData(heap.rawAccess(), 
 								heap.allocate(idx, length),
 					            length);
 		}
 		return idx;
-	}
+    }
 
-	public int readBytesDefault(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (reader.popPMapBit()==0) {
+	public int readBytesDefault2(int idx) {
+        if (reader.popPMapBit()==0) {
 			//System.err.println("z");
 			return idx|INIT_VALUE_MASK;//use constant
 		} else {
@@ -110,16 +87,15 @@ public class FieldReaderBytes {
 						
 			return idx;
 		}
-	}
+    }
 
-	public int readBytesOptional(int token, int readFromIdx) {
-		int idx = token & INSTANCE_MASK;
-		int length = reader.readIntegerUnsigned()-1;
+	public int readBytesOptional2(int idx) {
+        int length = reader.readIntegerUnsigned()-1;
 		reader.readByteData(heap.rawAccess(), 
 							heap.allocate(idx, length),
 				            length);
 		return idx;
-	}
+    }
 
 	public int readBytesTailOptional(int token, int readFromIdx) {
 		int idx = token & INSTANCE_MASK;

@@ -119,21 +119,25 @@ public class StreamingBytesTest extends BaseStreamingTest {
 		
 		//read value back
 		int id;
-		id = byteReader.readBytesTail(token,-1);
+        int idx = token & byteReader.INSTANCE_MASK;
+		id = byteReader.readBytesTail2(idx);
+		assertTrue(dictionaryReader.equals(id, value, offset, length));
+        int idx1 = token & byteReader.INSTANCE_MASK;
+
+		id = byteReader.readBytesDelta2(idx1);
 		assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-		id = byteReader.readBytesDelta(token,-1);
-		assertTrue(dictionaryReader.equals(id, value, offset, length));
-
-		id = byteReader.readBytesConstant(token,-1);
+		id = token & byteReader.INSTANCE_MASK;
 		assertTrue(dictionaryReader.equals(id, value, offset, length));
 		
 		reader.openPMap(1);
+        int idx2 = token & byteReader.INSTANCE_MASK;
 		
-			id = byteReader.readBytesCopy(token,-1);
+			id = byteReader.readBytesCopy2(idx2);
 			assertTrue(dictionaryReader.equals(id, value, offset, length));
+            int idx3 = token & byteReader.INSTANCE_MASK;
 			
-			id = byteReader.readBytesDefault(token,-1);
+			id = byteReader.readBytesDefault2(idx3);
 			assertTrue(dictionaryReader.equals(id, value, offset, length));
 			
 		reader.closePMap();
