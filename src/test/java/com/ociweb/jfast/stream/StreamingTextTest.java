@@ -226,25 +226,26 @@ public class StreamingTextTest extends BaseStreamingTest {
 		int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 		
 		fr.openGroup(groupToken, maxMPapBytes);
+		StringBuilder builder = new StringBuilder();
 		
 		while (--i>=0) {
 			int f = fields;
 			
 			while (--f>=0) {
 				
-				int token = tokenLookup[f]; 	
+				int token = tokenLookup[f];
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 					if (sendNulls && (i&NULL_SEND_MASK)==0 && TokenBuilder.isOptional(token)) {
 
-						int textIdx = fr.readText(tokenLookup[f]);		
+						int textIdx = fr.readText(tokenLookup[f]);
 						if (!textHeap.isNull(textIdx)) {
 							assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 									     true, textHeap.isNull(textIdx));
-						}	
+						}
 						
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
+							int textIdx = fr.readText(tokenLookup[f]);
 							
 							char[] tdc = testConst;
 
@@ -253,7 +254,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 										     testConst,
 										     textHeap.get(textIdx,new StringBuilder()).toString());
-							}						
+							}
 							
 						} catch (Exception e) {
 							e.printStackTrace();
@@ -271,11 +272,12 @@ public class StreamingTextTest extends BaseStreamingTest {
 						}	
 					} else { 
 						try {
-							int textIdx = fr.readText(tokenLookup[f]);						
-							
+							int textIdx = fr.readText(tokenLookup[f]);
 							char[] tdc = testDataChars[f];
+							
 							if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
 								
+							    builder.setLength(0);
 								assertEquals("Error:"+TokenBuilder.tokenToString(tokenLookup[f]),
 										     testData[f],
 										     textHeap.get(textIdx,new StringBuilder()).toString());

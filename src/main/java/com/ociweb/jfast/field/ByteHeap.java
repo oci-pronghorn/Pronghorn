@@ -732,14 +732,28 @@ public class ByteHeap {
 	public int length(int idx) {
 		int result;
 		if (idx<0) {
-			int offset = idx << 1; //this shift left also removes the top bit! sweet.
-			result = initTat[offset+1] - initTat[offset];
+			result = initLength(idx);
 		} else {
-			int offset = idx<<2;
-			result = tat[offset+1] - tat[offset];
+			result = valueLength(idx);
 		}
 		return result < 0 ? 0 : result;
 	}
+
+
+    public int valueLength(int idx) {
+        int result;
+        int offset = idx<<2;
+        result = tat[offset+1] - tat[offset];
+        return result;
+    }
+
+
+    public int initLength(int idx) {
+        int result;
+        int offset = idx << 1; //this shift left also removes the top bit! sweet.
+        result = initTat[offset+1] - initTat[offset];
+        return result;
+    }
 
 	public void copy(int sourceIdx, int targetIdx) {
 		int len;
@@ -806,4 +820,37 @@ public class ByteHeap {
 		
 		return len;
 	}
+	
+    public int copyToRingBuffer(int idx, byte[] target, final int targetIdx, final int targetMask) {
+        // Does not support init values
+        assert (idx > 0);
+
+        final int offset = idx << 2;
+        final int pos = tat[offset];
+        final int len = tat[offset + 1] - pos;
+
+        int tStart = targetIdx & targetMask;
+        if (1 == len) {
+            // simplification because 1 char can not loop around ring buffer.
+            target[tStart] = data[pos];
+        } else {
+            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart);
+        }
+        return targetIdx + len;
+    }
+
+    private void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
+            final int len, int tStart) {
+        int tStop = (targetIdx + len) & targetMask;
+        if (tStop > tStart) {
+            System.arraycopy(data, pos, target, tStart, len);
+        } else {
+            // done as two copies
+            int firstLen = targetMask - tStart;
+            System.arraycopy(data, pos, target, tStart, firstLen);
+            System.arraycopy(data, pos + firstLen, target, 0, len - firstLen);
+        }
+    }
+	
+	
 }

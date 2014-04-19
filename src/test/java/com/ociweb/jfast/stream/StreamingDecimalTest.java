@@ -103,13 +103,52 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
-						fw.write(token, testExpConst, testMantConst); 
+						assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
+                        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                        
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                            fw.writerDecimal.writeExponent(token, testExpConst);
+                            fw.writerDecimal.writeMantissa(token, testMantConst);
+                        } else {
+                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==testExpConst) {
+                            	fw.writerDecimal.writerDecimalExponent.writeNull(token);
+                            } else {
+                            	fw.writerDecimal.writeExponentOptional(token, testExpConst);
+                            }
+                            
+                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==testMantConst) {
+                            	fw.writerDecimal.writerDecimalMantissa.writeNull(token);
+                            } else {
+                            	fw.writerDecimal.writeMantissaOptional(token, testMantConst);
+                            }
+                        } 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
-						fw.write(token, 1, testData[f]); 
+						long mantissa = testData[f];
+                        assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
+                        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                        
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                            fw.writerDecimal.writeExponent(token, 1);
+                            fw.writerDecimal.writeMantissa(token, mantissa);
+                        } else {
+                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==1) {
+                            	fw.writerDecimal.writerDecimalExponent.writeNull(token);
+                            } else {
+                            	fw.writerDecimal.writeExponentOptional(token, 1);
+                            }
+                            
+                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
+                            	fw.writerDecimal.writerDecimalMantissa.writeNull(token);
+                            } else {
+                            	fw.writerDecimal.writeMantissaOptional(token, mantissa);
+                            }
+                        } 
 					}
 				}			
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize);				

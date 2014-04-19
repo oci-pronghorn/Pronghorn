@@ -26,16 +26,16 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
     public boolean dispatchReadByToken() {
         switch (activeScriptCursor) {
             case 0:
-                assert (gatherReadData(reader, 0));
+                assert (gatherReadData(reader, activeScriptCursor));
                 return case0();
             case 1:
-                assert (gatherReadData(reader, 1));
+                assert (gatherReadData(reader, activeScriptCursor));
                 return case1();
             case 9:
-                assert (gatherReadData(reader, 9));
+                assert (gatherReadData(reader, activeScriptCursor));
                 return case9();
-            case 30:
-                assert (gatherReadData(reader, 30));
+            case 32://30:
+                assert (gatherReadData(reader, activeScriptCursor));
                 return case30();
             default:
                 assert (false) : "Unsupported Template";
@@ -47,7 +47,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         int length = case1a();
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            activeScriptCursor = 31;// 9+22;
+            activeScriptCursor = 31;
             return false;
         }
         sequenceCountStack[++sequenceCountStackHead] = length;
@@ -105,10 +105,10 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         case9a3();
         case9a4();
 
-        closeGroup(0xc0dc0014);
-        activeScriptCursor = 29;
-        assert (gatherReadData(reader, 29));
-        return checkSequence != 0 && completeSequence(0x014);
+        closeGroup(0xc0dc0016); //14
+        activeScriptCursor = 29+2; // +1 +1
+        assert (gatherReadData(reader, activeScriptCursor));
+        return checkSequence != 0 && completeSequence(0x16);//0x014);
     }
 
     private void case9a2() {
@@ -203,7 +203,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         int length2 = queue.appendInt1(reader.readIntegerUnsigned());// readIntegerUnsigned(0xd00c0011));
         if (length2 == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            activeScriptCursor = 46;// 36+10;
+            activeScriptCursor = 46+2;// 36+10;  +2
             return false;
         } else {
             sequenceCountStack[++sequenceCountStackHead] = length2;
@@ -216,7 +216,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         case30b();
 
         closeGroup(0xc0dc0008);
-        activeScriptCursor = 45;
+        activeScriptCursor = 45+2;  // +2
         return checkSequence != 0 && completeSequence(0x008);
 
     }
@@ -227,20 +227,20 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         // write a NonNull constant, no need to check more because this can not
         // be null or dynamic.
         int p = queue.addPos;
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000a);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x5);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000b);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x0);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x8000000c);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, 0x0);
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, reader.readIntegerUnsigned());	
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, reader.readIntegerUnsigned());
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000a);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x5);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000b);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x0);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000c);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x0);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, reader.readIntegerUnsigned());	
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, reader.readIntegerUnsigned());
 
         //Always dynamic so never constant! must generate in order to avoid that conditional.
         int xi1 = StaticGlue.readASCIIToHeap(0x0d, charDictionary, reader);
         int xi2 = charDictionary.valueLength(xi1); //TODO A, for generated code may be const, var or switching between the two.
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, queue.writeTextToRingBuffer(xi1, xi2));
-        p=FASTRingBuffer.appendi(bfr, p, bfrMsk, xi2);
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, queue.writeTextToRingBuffer(xi1, xi2));
+        FASTRingBuffer.appendi(bfr, p++, bfrMsk, xi2);
         // not used if null//normal read without constant, may need
                      // copy
         queue.addPos = p;

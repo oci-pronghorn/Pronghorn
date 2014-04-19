@@ -55,10 +55,10 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(431, catalogByteArray.length);
+            assertEquals(445, catalogByteArray.length);
 
             script = catalog.fullScript();
-            assertEquals(46, script.length);
+            assertEquals(48, script.length);
             assertEquals(TypeMask.TextASCII, TokenBuilder.extractType(script[0]));// First
                                                                                   // Token
 
@@ -198,7 +198,7 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderDispatch readerDispatch = new FASTReaderDispatch(          // GenExample(
+        FASTReaderDispatch readerDispatch = new FASTReaderDispatch( //GenExample(
                 primitiveReader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
@@ -212,8 +212,8 @@ public class TemplateLoaderTest {
         // TODO: B, generator code should take TemplateCatalog to build class if
         // needed.
 
-        int warmup = 20;
-        int count = 1024;
+        int warmup = 32;
+        int count = 512;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
         byte[] preamble = new byte[catalog.preambleSize];
@@ -489,7 +489,8 @@ public class TemplateLoaderTest {
 
         int errCount = 0;
         int i = 0;
-        while (dynamicReader1.hasMore() != 0 && dynamicReader2.hasMore() != 0) {
+        while (dynamicReader1.hasMore() != 0 &&
+               dynamicReader2.hasMore() != 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
                 int int1 = queue1.readInteger(1);

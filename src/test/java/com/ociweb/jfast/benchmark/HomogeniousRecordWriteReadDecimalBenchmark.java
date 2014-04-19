@@ -14,6 +14,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
@@ -312,7 +313,27 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = longTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token, 1, longTestData[j]);
+				long mantissa = longTestData[j];
+                assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
+                assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                
+                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                    staticWriter.writerDecimal.writeExponent(token, 1);
+                    staticWriter.writerDecimal.writeMantissa(token, mantissa);
+                } else {
+                    if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==1) {
+                    	staticWriter.writerDecimal.writerDecimalExponent.writeNull(token);
+                    } else {
+                    	staticWriter.writerDecimal.writeExponentOptional(token, 1);
+                    }
+                    
+                    if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
+                    	staticWriter.writerDecimal.writerDecimalMantissa.writeNull(token);
+                    } else {
+                    	staticWriter.writerDecimal.writeMantissaOptional(token, mantissa);
+                    }
+                }
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

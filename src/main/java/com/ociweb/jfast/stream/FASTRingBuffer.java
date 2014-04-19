@@ -1,5 +1,6 @@
 package com.ociweb.jfast.stream;
 
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.ByteHeap;
@@ -27,20 +28,26 @@ public final class FASTRingBuffer  {
 	final char[] charBuffer;
 	public final TextHeap textHeap; 
 	final char[] rawConstHeap;
+	int addCharPos = 0;
+
+	final int maxByteSize;
+	final int byteMask;
+	final ByteHeap byteHeap;
+	final byte[] byteBuffer;
+    int addBytePos = 0;
 	
 	FASTFilter filter = FASTFilter.none;
 	
 	
 	final AtomicInteger removeCount = new AtomicInteger();
 	final AtomicInteger addCount = new AtomicInteger();
-	int addCharPos = 0;
 	int addPos = 0;
 	int remPos = 0;
 		
-	public FASTRingBuffer(byte primaryBits, byte charBits, TextHeap heap) {
+	public FASTRingBuffer(byte primaryBits, byte charBits, TextHeap textHeap, ByteHeap byteHeap) {
 		assert(primaryBits>=1);
-		this.textHeap = heap;
-		
+		this.textHeap = textHeap;
+		this.byteHeap = byteHeap;
 	
 		this.rawConstHeap = null==textHeap?null:textHeap.rawInitAccess();
 		
@@ -51,6 +58,10 @@ public final class FASTRingBuffer  {
 		this.maxCharSize = 1<<charBits;
 		this.charMask = maxCharSize-1;
 		this.charBuffer = new char[maxCharSize];
+		
+		this.maxByteSize = maxCharSize;//TODO: add value for max bits size
+		this.byteMask = maxByteSize-1;
+		this.byteBuffer = new byte[maxByteSize];
 	}
 	
 	/**
@@ -86,11 +97,23 @@ public final class FASTRingBuffer  {
     	return maxSize-(addPos-remPos);
     }
     
-    public static int appendi(int[] buf, int pos, int mask, int value) {
+    public static void appendi(int[] buf, int pos, int mask, int value) {
         buf[mask&pos]=value;
-        return pos+1;
+    }
+    
+    public static int peek(int[] buf, int pos, int mask) {
+        return buf[mask&pos];
+    }
+    
+    public static long peekLong(int[] buf, int pos, int mask) {
+        return (((long)buf[mask&pos])<<32) | (((long)buf[mask&(pos+1)])&0xFFFFFFFFl);
+
     }
 	
+    //TODO: add mappers to go from one buffer to the next
+    //TODO: add consumer/Iterator to go from ring buffer to Object stream
+    //TODO: Map templates to methods for RMI of void methods(eg. one direction).
+    
 	public final int appendInt1(int value) {
 		buffer[mask&addPos++]=value;
 		return value;
@@ -178,14 +201,17 @@ public final class FASTRingBuffer  {
 		return p;
 	}
 
+	   public int writeBytesToRingBuffer(int heapId, int len) {
+	        final int p = addBytePos;
+	        if (len>0) {        
+	            addBytePos = byteHeap.copyToRingBuffer(heapId, byteBuffer, p, byteMask);
+	        }
+	        return p;
+	    }
+	   
 	//TODO: A, Use static method to access fields by offset based on templateId.
 	//TODO: A, At end of group check filter of that record and jump back if need to skip.
 
-	public void appendBytes(int idx, ByteHeap heap) {
-		
-		throw new UnsupportedOperationException();//TODO: C,copy text solution once finished.
-		
-	}
 	
 	//next sequence is ready for consumption.
 	public void unBlockSequence() {
@@ -279,11 +305,26 @@ public final class FASTRingBuffer  {
 
 	public char[] readRingCharBuffer(int fieldPos) {
 		//constant from heap or dynamic from char ringBuffer
-		return buffer[mask&(remPos+fieldPos)]<0 ? this.rawConstHeap : this.charBuffer;	
+		return buffer[mask&(remPos+fieldPos)]<0 ? this.rawConstHeap : this.charBuffer;	//TODO: A, Mask against constHeap may cause bug!!
 	}
 	
 	public int readRingCharMask() {
 		return charMask;
+	}
+	
+	public Appendable get(int pos, Appendable target) {
+	    char[] buffer = readRingCharBuffer(pos);
+	    int i = readCharsLength(pos);
+	    try {
+    	    while (--i<=0) {
+                    target.append(buffer[mask&pos++]);
+    	    }
+	    } catch (IOException e) {
+	        // TODO Auto-generated catch block
+	        e.printStackTrace();
+	    }
+	    
+	    return target;
 	}
 
 

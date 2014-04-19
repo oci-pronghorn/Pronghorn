@@ -21,8 +21,8 @@ public class TemplateCatalog {
 	final int maxPMapDepth;
 	final int maxFieldId;
 	
-	final int[] templateStartIdx; //TODO: X, these two arrays can be shortened!
-	final int[] templateLimitIdx;
+	public final int[] templateStartIdx; //TODO: X, these two arrays can be shortened!
+	public final int[] templateLimitIdx;
 	
 	final int[] scriptTokens;
 	final int[] scriptFieldIds;
@@ -40,10 +40,10 @@ public class TemplateCatalog {
 	public static final int END_OF_SEQ_ENTRY = 0x01;
 	public static final int END_OF_MESSAGE = 0x02;
 	
-	public int getTemplateStartIdx(int templateId) {
+	public int getTemplateStartIdx(int templateId) {//TODO: inline
 		return templateStartIdx[templateId];
 	}
-	public int getTemplateLimitIdx(int templateId) {
+	public int getTemplateLimitIdx(int templateId) {//TODO: inline
 		return templateLimitIdx[templateId];
 	}
 	

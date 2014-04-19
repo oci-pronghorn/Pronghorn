@@ -9,8 +9,8 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterDecimal {
 
-	private final FieldWriterInteger writerDecimalExponent;
-	private final FieldWriterLong writerDecimalMantissa;
+	public final FieldWriterInteger writerDecimalExponent;
+	public final FieldWriterLong writerDecimalMantissa;
 	
 	public FieldWriterDecimal(PrimitiveWriter writer, int[] exponentValues, int[] exponentInit, long[] mantissaValues, long[] mantissaInit) {
 		writerDecimalExponent = new FieldWriterInteger(writer, exponentValues, exponentInit);
@@ -38,23 +38,7 @@ public class FieldWriterDecimal {
 		writerDecimalMantissa.dictionary[targetToken & writerDecimalMantissa.INSTANCE_MASK] = writerDecimalMantissa.dictionary[sourceToken & writerDecimalMantissa.INSTANCE_MASK];
 	}
 	
-	public void writeDecimalOptional(int token, int exponent, long mantissa) {
-		
-		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
-			writerDecimalExponent.writeNull(token);
-		} else {
-			writeExponentOptional(token, exponent);
-		}
-		
-		if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-			writerDecimalMantissa.writeNull(token);
-		} else {
-			writeMantissaOptional(token, mantissa);
-		}		
-	}
-
-
-	private void writeMantissaOptional(int token, long mantissa) {
+	public void writeMantissaOptional(int token, long mantissa) {
 		
 		//oppMaint
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -96,7 +80,7 @@ public class FieldWriterDecimal {
 	}
 
 
-	private void writeExponentOptional(int token, int exponent) {
+	public void writeExponentOptional(int token, int exponent) {
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 			//none, constant, delta
@@ -145,16 +129,7 @@ public class FieldWriterDecimal {
 		}
 	}
 
-	//remove two opp arguments!
-	public void writeDecimal(int token, int exponent, long mantissa) {
-		
-		writeExponent(token, exponent);
-		writeMantissa(token, mantissa);
-			
-	}
-
-
-	private void writeMantissa(int token, long mantissa) {
+	public void writeMantissa(int token, long mantissa) {
 		//oppMaint
 		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
 			//none, constant, delta
@@ -195,7 +170,7 @@ public class FieldWriterDecimal {
 	}
 
 
-	private void writeExponent(int token, int exponent) {
+	public void writeExponent(int token, int exponent) {
 		//oppExp
 		if (0==(token&(1<<(TokenBuilder.SHIFT_OPER+TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
 			//none, constant, delta
