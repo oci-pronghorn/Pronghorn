@@ -169,31 +169,40 @@ public final class PrimitiveReader {
     // //
     // called at the start of each group unless group knows it has no pmap
     public final void openPMap(final int pmapMaxSize) {
+        if (position >= limit) {
+            fetch(1);
+        }
         // push the old index for resume
         invPmapStack[invPmapStackDepth - 1] = (byte) pmapIdx;
 
         int k = invPmapStackDepth -= (pmapMaxSize + 2);
-        if (position >= limit) {
-            fetch(1);
-        }
         bitBlock = buffer[position];
-        if (limit - position > pmapMaxSize) {
-            do {
-                // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
-            } while ((invPmapStack[k++] = buffer[position++]) >= 0);
-        } else {
-            // must use slow path because we are near the end of the buffer.
-            do {
-                if (position >= limit) {
-                    fetch(1);
-                }
-                // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
-            } while ((invPmapStack[k++] = buffer[position++]) >= 0);
-        }
+        k = walkPMapLength(pmapMaxSize, k);
         invPmapStack[k] = (byte) (3 + pmapMaxSize + (invPmapStackDepth - k));
 
         // set next bit to read
         pmapIdx = 6;
+    }
+
+    private int walkPMapLength(final int pmapMaxSize, int k) {
+        if (limit - position > pmapMaxSize) {
+            do {
+            } while ((invPmapStack[k++] = buffer[position++]) >= 0);
+        } else {
+            k = openPMapSlow(k);
+        }
+        return k;
+    }
+
+    private int openPMapSlow(int k) {
+        // must use slow path because we are near the end of the buffer.
+        do {
+            if (position >= limit) {
+                fetch(1);
+            }
+            // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
+        } while ((invPmapStack[k++] = buffer[position++]) >= 0);
+        return k;
     }
 
     // called at every field to determine operation

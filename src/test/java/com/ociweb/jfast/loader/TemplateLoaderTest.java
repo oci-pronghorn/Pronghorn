@@ -36,6 +36,7 @@ import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
+import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterDispatch;
 
@@ -162,6 +163,84 @@ public class TemplateLoaderTest {
         }
 
     }
+    
+    
+    @Test
+    public void testCodeGenerator() {
+      // new SourceTemplates();
+        
+        FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+
+        // values which need to be set client side and are not in the template.
+        catalog.setMessagePreambleSize((byte) 4);
+        catalog.setMaxByteVectorLength(0, 0);// byte vectors are unused
+        catalog.setMaxTextLength(14, 8);
+
+        // connect to file
+        URL sourceData = getClass().getResource("/performance/complex30000.dat");
+        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+
+        // this is much faster because we no longer need to jump out to OS.
+        FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
+
+        // New memory mapped solution. No need to cache because we warm up and
+        // OS already has it.
+        // FASTInputByteBuffer fastInput =
+        // buildInputForTestingByteBuffer(sourceDataFile);
+
+        /*
+         * nate@Noah:~/github$ sudo vim /etc/sysctl.conf nate@Noah:~/github$
+         * sysctl -p sysctl: permission denied on key 'vm.zone_reclaim_mode'
+         * nate@Noah:~/github$ sudo sysctl -p vm.zone_reclaim_mode = 0
+         * nate@Noah:~/github$
+         */
+        int bufferSize = 4096;// do not change without testing, 4096 is ideal.
+        PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
+                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
+        FASTReaderDispatchGenerator readerDispatch = 
+                new FASTReaderDispatchGenerator(
+                primitiveReader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
+                catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
+                catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
+        
+        int[] fullScript = catalog.fullScript();
+        System.err.println("full catalog script contains:"+fullScript.length);
+        
+        int[] startCursor = catalog.templateStartIdx;
+        int[] limitCursor = catalog.templateLimitIdx;
+        int i = 0;
+        while (i<startCursor.length) {
+            int cursor = startCursor[i];
+            int limit = limitCursor[i++];
+            
+            if (0==cursor && 0==limit) {
+                continue;//skip this one it was not at an entry point
+            }
+            System.err.println("Building template "+(i-1)+" from "+cursor+" to "+limit);
+            
+            readerDispatch.startScriptBlock(cursor);
+            readerDispatch.setScriptBlock(cursor, limit);
+
+            readerDispatch.dispatchReadByToken();
+            String block = readerDispatch.getScriptBlock();
+            System.err.println();
+            System.err.println(block);
+            
+            for(int seqStart:readerDispatch.getSequenceStarts()) {
+                readerDispatch.startScriptBlock(seqStart);
+                readerDispatch.setScriptBlock(seqStart, limit); //TODO: limit or start of next sequence.
+                readerDispatch.dispatchReadByToken();
+                block = readerDispatch.getScriptBlock();
+                System.err.println();
+                System.err.println(block);
+                
+            }
+                
+           
+        }
+        
+    }
 
     @Test
     public void testDecodeComplex30000() {
@@ -198,7 +277,12 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader primitiveReader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderDispatch readerDispatch = new FASTReaderDispatch( //GenExample(
+        FASTReaderDispatch readerDispatch = 
+                //new FASTReaderDispatch( 
+                new FASTReaderDispatchGenExample(
+                        
+                //new FASTReaderDispatchGenerator(       
+                        
                 primitiveReader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);

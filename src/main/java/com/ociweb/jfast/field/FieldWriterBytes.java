@@ -370,10 +370,4 @@ public class FieldWriterBytes {
 			writer.writeByteArrayData(value,offset,length);
 		}
 	}
-
-	public void reset(int idx) {
-		if (null!=heap) {
-			heap.setNull(idx);
-		}
-	}
 }

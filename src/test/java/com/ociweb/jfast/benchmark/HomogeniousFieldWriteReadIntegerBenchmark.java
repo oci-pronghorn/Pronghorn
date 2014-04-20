@@ -8,7 +8,6 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
-import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -74,8 +73,10 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	static final long[] longTestData = new long[] {0,0,1,1,2,2,2000,2002,10000,10001};
 	
-	static final FieldWriterInteger fw = new FieldWriterInteger(pw,dcr.integerDictionary(),dcr.integerDictionary());
-	
+	static final int[] wIntDictionary = dcr.integerDictionary();
+	static final int[] wIntInit = dcr.integerDictionary();
+	static final int wIntInstanceMask =  Math.min(TokenBuilder.MAX_INSTANCE, (wIntDictionary.length - 1));
+		
 	static final int[] rIntDictionary = dcr.integerDictionary();
 	static final int[] rIntInit = dcr.integerDictionary();
 	static final int MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length-1));
@@ -190,9 +191,9 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				int idx = token & fw.INSTANCE_MASK;
+				int idx = token & wIntInstanceMask;
 				
-				pw.writeIntegerSignedCopyOptional(intTestData[j], idx, fw.dictionary);
+				pw.writeIntegerSignedCopyOptional(intTestData[j], idx, wIntDictionary);
 			}
 			
 			if (pmapSize>0) {
@@ -251,7 +252,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				assert(fw.dictionary[ token & fw.INSTANCE_MASK]==constantValue) : "Only the constant value "+fw.dictionary[ token & fw.INSTANCE_MASK]+" from the template may be sent";
+				assert(wIntDictionary[ token & wIntInstanceMask]==constantValue) : "Only the constant value "+wIntDictionary[ token & wIntInstanceMask]+" from the template may be sent";
 				//nothing need be sent because constant does not use pmap and the template
 				//on the other receiver side will inject this value from the template
 			}
@@ -305,9 +306,9 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
-				int idx = token & fw.INSTANCE_MASK;
+				int idx = token & wIntInstanceMask;
 				
-				pw.writeIntegerSignedDeltaOptional(intTestData[j],idx,fw.dictionary);
+				pw.writeIntegerSignedDeltaOptional(intTestData[j],idx,wIntDictionary);
 			}
 			
 			if (pmapSize>0) {

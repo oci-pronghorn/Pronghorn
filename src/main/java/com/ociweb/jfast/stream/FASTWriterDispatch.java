@@ -5,12 +5,13 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldWriterBytes;
-import com.ociweb.jfast.field.FieldWriterText;
-import com.ociweb.jfast.field.FieldWriterDecimal;
-import com.ociweb.jfast.field.FieldWriterInteger;
 import com.ociweb.jfast.field.FieldWriterLong;
+import com.ociweb.jfast.field.FieldWriterText;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
+import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -25,12 +26,21 @@ public final class FASTWriterDispatch {
 
     private final PrimitiveWriter writer;
 
-    private final FieldWriterInteger writerInteger;
     private final FieldWriterLong writerLong;
-    public final FieldWriterDecimal writerDecimal;
     private final FieldWriterText writerChar;
     private final FieldWriterBytes writerBytes;
 
+    public final int[] exponentValues;
+    public final int[] exponentInit;
+    public final long[] mantissaValues;
+    public final long[] mantissaInit;
+    public final int mantissaMask;
+    public final int exponentMask;
+    
+    private final int[] intValues;
+    private final int[] intInit;
+    private final int intInstanceMask;
+    
     final int nonTemplatePMapSize;
 
     private int readFromIdx = -1;
@@ -47,6 +57,9 @@ public final class FASTWriterDispatch {
     int activeScriptCursor;
     int activeScriptLimit;
     final int[] fullScript;
+    
+    private TextHeap charDictionary;
+    private ByteHeap byteDictionary;
 
     private RingCharSequence ringCharSequence = new RingCharSequence();
 
@@ -61,13 +74,27 @@ public final class FASTWriterDispatch {
 
         this.sequenceCountStack = new int[maxNestedGroupDepth];
 
-        this.writerInteger = new FieldWriterInteger(writer, dcr.integerDictionary(), dcr.integerDictionary());
+        this.intValues = dcr.integerDictionary();
+        this.intInit = dcr.integerDictionary();
+        assert (intValues.length < TokenBuilder.MAX_INSTANCE);
+        assert (TokenBuilder.isPowerOfTwo(intValues.length));        
+        this.intInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (intValues.length - 1));
+        
         this.writerLong = new FieldWriterLong(writer, dcr.longDictionary(), dcr.longDictionary());
-        //
-        this.writerDecimal = new FieldWriterDecimal(writer, dcr.decimalExponentDictionary(),
-                dcr.decimalExponentDictionary(), dcr.decimalMantissaDictionary(), dcr.decimalMantissaDictionary());
-        this.writerChar = new FieldWriterText(writer, dcr.charDictionary(maxCharSize, gapChars));
-        this.writerBytes = new FieldWriterBytes(writer, dcr.byteDictionary(maxBytesSize, gapBytes));
+
+        this.exponentInit = dcr.decimalExponentDictionary();
+        this.exponentValues = dcr.decimalExponentDictionary();
+        this.mantissaInit = dcr.decimalMantissaDictionary();
+        this.mantissaValues = dcr.decimalMantissaDictionary();
+        this.mantissaMask= Math.min(TokenBuilder.MAX_INSTANCE, (mantissaValues.length - 1));
+        this.exponentMask= Math.min(TokenBuilder.MAX_INSTANCE, (exponentValues.length - 1));
+        
+        
+        this.charDictionary = dcr.charDictionary(maxCharSize, gapChars);
+        this.byteDictionary = dcr.byteDictionary(maxBytesSize, gapBytes);
+
+        this.writerChar = new FieldWriterText(writer, charDictionary);
+        this.writerBytes = new FieldWriterBytes(writer, byteDictionary);
 
         this.templateStack = new int[maxTemplates];
         this.queue = queue;
@@ -95,10 +122,14 @@ public final class FASTWriterDispatch {
             // int long
             if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                 // int
-                writerInteger.writeNull(token);
+                int idx = token & intInstanceMask;
+                
+                StaticGlue.writeNull2(token, writer, intValues, idx);
             } else {
                 // long
-                writerLong.writeNull(token);
+                int idx = token & writerLong.INSTANCE_MASK;
+                
+                StaticGlue.writeNull2(token, idx, writer, writerLong.dictionary);
             }
         } else {
             // text decimal bytes
@@ -109,7 +140,23 @@ public final class FASTWriterDispatch {
                 // decimal bytes
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                     // decimal
-                    writerDecimal.writeNull(token);
+                    int idx = token & exponentMask;
+                    
+                    StaticGlue.writeNull2(token, writer,exponentValues, idx); // TODO:
+                                                                                                 // A,
+                                                                                                 // must
+                                                                                                 // implement
+                                                                                                 // null
+                                                                                                 // for
+                                                                                                 // decimals,
+                                                                                                 // this
+                                                                                                 // is
+                                                                                                 // not
+                                                                                                 // done
+                                                                                                 // yet
+                    int idx1 = token & mantissaMask;
+                    
+                    StaticGlue.writeNull2(token, idx1, writer, mantissaValues);
                 } else {
                     // byte
                     writerBytes.writeNull(token);
@@ -159,7 +206,12 @@ public final class FASTWriterDispatch {
                     writer.writeLongSignedOptional(value);
                 } else {
                     // delta
-                    writerLong.writeLongSignedDeltaOptional(value, token);
+                    // Delta opp never uses PMAP
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    long delta = value - writerLong.dictionary[idx];
+                    writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // constant
@@ -174,14 +226,31 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    writerLong.writeLongSignedCopyOptional(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    if (value >= 0) {
+                        value++;
+                    }
+                    writer.writeLongSignedCopy2(value, idx, writerLong.dictionary);
                 } else {
                     // increment
-                    writerLong.writeLongSignedIncrementOptional(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    if (value >= 0) {
+                        value++;
+                    }
+                    writer.writeLongSignedIncrementOptional2(value, writerLong.dictionary[idx]);
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // default
-                writerLong.writeLongSignedDefaultOptional(value, token);
+                int idx = token & writerLong.INSTANCE_MASK;
+                long constDefault = writerLong.dictionary[idx];
+                
+                if (value >= 0) {
+                    value++;// room for null
+                }
+                writer.writeLongSignedDefault2(value, constDefault);
             }
         }
     }
@@ -199,7 +268,11 @@ public final class FASTWriterDispatch {
                     writer.writeLongSigned(writerLong.dictionary[idx] = value);
                 } else {
                     // delta
-                    writerLong.writeLongSignedDelta(value, token);
+                    // Delta opp never uses PMAP
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongSigned(value - writerLong.dictionary[idx]);
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // constant
@@ -216,14 +289,23 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    writerLong.writeLongSignedCopy(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongSignedCopy2(value, idx, writerLong.dictionary);
                 } else {
                     // increment
-                    writerLong.writeLongSignedIncrement(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    
+                    writer.writeLongSignedIncrement2(value,  writerLong.dictionary[idx]);
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // default
-                writerLong.writeLongSignedDefault(value, token);
+                int idx = token & writerLong.INSTANCE_MASK;
+                long constDefault = writerLong.dictionary[idx];
+                
+                writer.writeLongSignedDefault2(value, constDefault);
             }
         }
 
@@ -239,7 +321,12 @@ public final class FASTWriterDispatch {
                     writer.writeLongUnsigned(value + 1);
                 } else {
                     // delta
-                    writerLong.writeLongUnsignedDeltaOptional(value, token);
+                    //Delta opp never uses PMAP
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    long delta = value - writerLong.dictionary[idx];
+                    writer.writeLongSigned(delta>=0 ? 1+delta : delta);
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // constant
@@ -254,14 +341,21 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    writerLong.writeLongUnsignedCopyOptional(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongUnsignedCopyOptional(value, idx, writerLong.dictionary);
                 } else {
                     // increment
-                    writerLong.writeLongUnsignedIncrementOptional(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongUnsignedIncrementOptional2(value, idx, writerLong.dictionary);
                 }
             } else {
                 // default
-                writerLong.writeLongUnsignedDefaultOptional(value, token);
+                int idx = token & writerLong.INSTANCE_MASK;
+                long constDefault = writerLong.dictionary[idx];
+                
+                writer.writneLongUnsignedDefaultOptional2(value, constDefault);
             }
         }
     }
@@ -278,7 +372,11 @@ public final class FASTWriterDispatch {
                     writer.writeLongUnsigned(writerLong.dictionary[idx] = value);
                 } else {
                     // delta
-                    writerLong.writeLongUnsignedDelta(value, token);
+                    //Delta opp never uses PMAP
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongSigned(value - writerLong.dictionary[idx]);
+                    writerLong.dictionary[idx] = value;
                 }
             } else {
                 // constant
@@ -295,14 +393,21 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    writerLong.writeLongUnsignedCopy(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongUnsignedCopy(value, idx, writerLong.dictionary);
                 } else {
                     // increment
-                    writerLong.writeLongUnsignedIncrement(value, token);
+                    int idx = token & writerLong.INSTANCE_MASK;
+                    
+                    writer.writeLongUnsignedIncrement2(value, idx, writerLong.dictionary);
                 }
             } else {
                 // default
-                writerLong.writeLongUnsignedDefault(value, token);
+                int idx = token & writerLong.INSTANCE_MASK;
+                long constDefault = writerLong.dictionary[idx];
+                
+                writer.writeLongUnsignedDefault2(value, constDefault);
             }
         }
     }
@@ -343,20 +448,20 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSigned(writerInteger.dictionary[idx] = value);
+                    writer.writeIntegerSigned(intValues[idx] = value);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedDelta(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedDelta(value, idx, intValues);
                 }
             } else {
                 // constant
-                assert (writerInteger.dictionary[token & writerInteger.INSTANCE_MASK] == value) : "Only the constant value "
-                        + writerInteger.dictionary[token & writerInteger.INSTANCE_MASK]
+                assert (intValues[token & intInstanceMask] == value) : "Only the constant value "
+                        + intValues[token & intInstanceMask]
                         + " from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
@@ -370,19 +475,19 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedCopy(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedCopy(value, idx, intValues);
                 } else {
                     // increment
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedIncrement(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedIncrement(value, idx, intValues);
                 }
             } else {
                 // default
-                int idx = token & writerInteger.INSTANCE_MASK;
-                int constDefault = writerInteger.dictionary[idx];
+                int idx = token & intInstanceMask;
+                int constDefault = intValues[idx];
 
                 writer.writeIntegerSignedDefault(value, idx, constDefault);
             }
@@ -397,19 +502,19 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerUnsigned(writerInteger.dictionary[idx] = value);
+                    writer.writeIntegerUnsigned(intValues[idx] = value);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = (token & writerInteger.INSTANCE_MASK);
+                    int idx = (token & intInstanceMask);
 
-                    writer.writeIntegerUnsignedDelta(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerUnsignedDelta(value, idx, intValues);
                 }
             } else {
                 // constant
-                assert (writerInteger.dictionary[token & writerInteger.INSTANCE_MASK] == value) : "Only the constant value from the template may be sent";
+                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
                 // on the other receiver side will inject this value from the
@@ -422,18 +527,18 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & writerInteger.INSTANCE_MASK;
-                    writer.writeIntegerUnsignedCopy(value, idx, writerInteger.dictionary);
+                    int idx = token & intInstanceMask;
+                    writer.writeIntegerUnsignedCopy(value, idx, intValues);
                 } else {
                     // increment
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerUnsignedIncrement(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerUnsignedIncrement(value, idx, intValues);
                 }
             } else {
                 // default
-                int idx = token & writerInteger.INSTANCE_MASK;
-                int constDefault = writerInteger.dictionary[idx];
+                int idx = token & intInstanceMask;
+                int constDefault = intValues[idx];
 
                 writer.writeIntegerUnsignedDefault(value, constDefault);
             }
@@ -451,13 +556,13 @@ public final class FASTWriterDispatch {
                     writer.writeIntegerSignedOptional(value);
                 } else {
                     // delta
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedDeltaOptional(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedDeltaOptional(value, idx, intValues);
                 }
             } else {
                 // constant
-                assert (writerInteger.dictionary[token & writerInteger.INSTANCE_MASK] == value) : "Only the constant value from the template may be sent";
+                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
                 writer.writePMapBit((byte) 1);
                 // the writeNull will take care of the rest.
             }
@@ -468,19 +573,19 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedCopyOptional(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedCopyOptional(value, idx, intValues);
                 } else {
                     // increment
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerSignedIncrementOptional(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerSignedIncrementOptional(value, idx, intValues);
                 }
             } else {
                 // default
-                int idx = token & writerInteger.INSTANCE_MASK;
-                int constDefault = writerInteger.dictionary[idx];
+                int idx = token & intInstanceMask;
+                int constDefault = intValues[idx];
 
                 writer.writeIntegerSignedDefaultOptional(value, idx, constDefault);
             }
@@ -499,13 +604,13 @@ public final class FASTWriterDispatch {
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerUnsignedDeltaOptional(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerUnsignedDeltaOptional(value, idx, intValues);
                 }
             } else {
                 // constant
-                assert (writerInteger.dictionary[token & writerInteger.INSTANCE_MASK] == value) : "Only the constant value from the template may be sent";
+                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
                 writer.writePMapBit((byte) 1);
                 // the writeNull will take care of the rest.
             }
@@ -516,18 +621,18 @@ public final class FASTWriterDispatch {
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & writerInteger.INSTANCE_MASK;
-                    writer.writeIntegerUnsignedCopyOptional(value, idx, writerInteger.dictionary);
+                    int idx = token & intInstanceMask;
+                    writer.writeIntegerUnsignedCopyOptional(value, idx, intValues);
                 } else {
                     // increment
-                    int idx = token & writerInteger.INSTANCE_MASK;
+                    int idx = token & intInstanceMask;
 
-                    writer.writeIntegerUnsignedIncrementOptional(value, idx, writerInteger.dictionary);
+                    writer.writeIntegerUnsignedIncrementOptional(value, idx, intValues);
                 }
             } else {
                 // default
-                int idx = token & writerInteger.INSTANCE_MASK;
-                int constDefault = writerInteger.dictionary[idx];
+                int idx = token & intInstanceMask;
+                int constDefault = intValues[idx];
 
                 writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
             }
@@ -1147,10 +1252,10 @@ public final class FASTWriterDispatch {
 
     public void reset() {
 
-        dictionaryFactory.reset(writerInteger.dictionary);
+        dictionaryFactory.reset(intValues);
         dictionaryFactory.reset(writerLong.dictionary);
-        writerDecimal.reset(dictionaryFactory);
-        writerChar.reset(dictionaryFactory);
+        dictionaryFactory.reset(exponentValues, mantissaValues);
+        dictionaryFactory.reset(charDictionary);
         writerBytes.reset(dictionaryFactory);
         templateStackHead = 0;
         sequenceCountStackHead = 0;
@@ -1204,26 +1309,30 @@ public final class FASTWriterDispatch {
                         
                         
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            writerDecimal.writeExponent(token, exponent);
+                            writeExponent(token, exponent);
                             
                             //NOTE: moving forward one to get second token for decimals
                             token = fullScript[++activeScriptCursor];
                             
-                            writerDecimal.writeMantissa(token, mantissa);
+                            writeMantissa(token, mantissa);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
-                            	writerDecimal.writerDecimalExponent.writeNull(token);
+                            	int idx = token & exponentMask;
+                                
+                                StaticGlue.writeNull2(token, writer, exponentValues, idx);
                             } else {
-                            	writerDecimal.writeExponentOptional(token, exponent);
+                            	writeExponentOptional(token, exponent);
                             }
                             
                             //NOTE: moving forward one to get second token for decimals
                             token = fullScript[++activeScriptCursor];
                             
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-                            	writerDecimal.writerDecimalMantissa.writeNull(token);
+                            	int idx = token & mantissaMask;
+                                
+                                StaticGlue.writeNull2(token, idx, writer, mantissaValues);
                             } else {
-                            	writerDecimal.writeMantissaOptional(token, mantissa);
+                            	writeMantissaOptional(token, mantissa);
                             }
                         }
                     } else {
@@ -1315,7 +1424,7 @@ public final class FASTWriterDispatch {
                                 if (0 == (idx & 4)) {
                                     // integer
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        writerInteger.dictionary[idx] = writerInteger.init[idx];
+                                        intValues[idx] = intInit[idx];
                                     }
                                 } else {
                                     // long
@@ -1327,18 +1436,23 @@ public final class FASTWriterDispatch {
                                 if (0 == (idx & 4)) {
                                     // text
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        writerChar.reset(idx);
+                                        if (null!=charDictionary) {
+                                            charDictionary.reset(idx);
+                                        }
                                     }
                                 } else {
                                     if (0 == (idx & 2)) {
                                         // decimal
                                         while (m < limit && (idx = members[m++]) >= 0) {
-                                            writerDecimal.reset(idx);
+                                            exponentValues[idx] = exponentInit[idx];
+                                            mantissaValues[idx] = mantissaInit[idx];
                                         }
                                     } else {
                                         // bytes
                                         while (m < limit && (idx = members[m++]) >= 0) {
-                                            writerBytes.reset(idx);
+                                            if (null!=byteDictionary) {
+                                                byteDictionary.setNull(idx);
+                                            }
                                         }
                                     }
                                 }
@@ -1406,6 +1520,229 @@ public final class FASTWriterDispatch {
                            // is the right location.
         writer.writeIntegerUnsigned(templateId);
 
+    }
+
+    public void writeMantissaOptional(int token, long mantissa) {
+    
+        // oppMaint
+        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // none, delta
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    int idx = token & mantissaMask;
+    
+                    writer.writeLongSigned(mantissaValues[idx] = 1 + mantissa);
+                } else {
+                    // delta
+                    // Delta opp never uses PMAP
+                    int idx = token & mantissaMask;
+    
+                    long delta = mantissa - mantissaValues[idx];
+                    writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
+                    mantissaValues[idx] = mantissa;
+                }
+            } else {
+                // constant
+                assert (mantissaValues[token & mantissaMask] == mantissa) : "Only the constant value from the template may be sent";
+                writer.writePMapBit((byte) 1);
+                // the writeNull will take care of the rest.
+            }
+    
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // copy, increment
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy
+                    int idx = token & mantissaMask;
+    
+                    if (mantissa >= 0) {
+                        mantissa++;
+                    }
+                    writer.writeLongSignedCopy2(mantissa, idx, mantissaValues);
+                } else {
+                    // increment
+                    int idx = token & mantissaMask;
+    
+                    if (mantissa >= 0) {
+                        mantissa++;
+                    }
+                    writer.writeLongSignedIncrementOptional2(mantissa,
+                            mantissaValues[idx]);
+                    mantissaValues[idx] = mantissa;
+                }
+            } else {
+                // default
+                int idx = token & mantissaMask;
+                long constDefault = mantissaValues[idx];
+    
+                if (mantissa >= 0) {
+                    mantissa++;// room for null
+                }
+                writer.writeLongSignedDefault2(mantissa, constDefault);
+            }
+        }
+    }
+
+    public void writeExponentOptional(int token, int exponent) {
+        // oppExp
+        if (0 == (token & (1 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+            // none, constant, delta
+            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                // none, delta
+                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                    // none
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSigned(exponentValues[idx] = exponent >= 0 ? 1 + exponent
+                            : exponent);
+                } else {
+                    // delta
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedDeltaOptional(exponent, idx, exponentValues);
+                }
+            } else {
+                // constant
+                assert (exponentValues[token & exponentMask] == exponent) : "Only the constant value from the template may be sent";
+                writer.writePMapBit((byte) 1);
+                // the writeNull will take care of the rest.
+            }
+    
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                // copy, increment
+                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                    // copy
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedCopyOptional(exponent, idx, exponentValues);
+                } else {
+                    // increment
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedIncrementOptional(exponent, idx, exponentValues);
+                }
+            } else {
+                // default
+                int idx = token & exponentMask;
+                int constDefault = exponentValues[idx];
+    
+                writer.writeIntegerSignedDefaultOptional(exponent, idx, constDefault);
+            }
+        }
+    }
+
+    public void writeMantissa(int token, long mantissa) {
+        // oppMaint
+        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // none, delta
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    int idx = token & mantissaMask;
+    
+                    writer.writeLongSigned(mantissaValues[idx] = mantissa);
+                } else {
+                    // delta
+                    // Delta opp never uses PMAP
+                    int idx = token & mantissaMask;
+    
+                    writer.writeLongSigned(mantissa - mantissaValues[idx]);
+                    mantissaValues[idx] = mantissa;
+                }
+            } else {
+                // constant
+                assert (mantissaValues[token & mantissaMask] == mantissa) : "Only the constant value from the template may be sent";
+                // nothing need be sent because constant does not use pmap and
+                // the template
+                // on the other receiver side will inject this value from the
+                // template
+            }
+    
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // copy, increment
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy
+                    int idx = token & mantissaMask;
+    
+                    writer.writeLongSignedCopy2(mantissa, idx, mantissaValues);
+                } else {
+                    // increment
+                    int idx = token & mantissaMask;
+    
+                    writer.writeLongSignedIncrement2(mantissa,
+                            mantissaValues[idx]);
+                    mantissaValues[idx] = mantissa;
+                }
+            } else {
+                // default
+                int idx = token & mantissaMask;
+                long constDefault = mantissaValues[idx];
+    
+                writer.writeLongSignedDefault2(mantissa, constDefault);
+            }
+        }
+    }
+
+    public void writeExponent(int token, int exponent) {
+        // oppExp
+        if (0 == (token & (1 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+            // none, constant, delta
+            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                // none, delta
+                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                    // none
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSigned(exponentValues[idx] = exponent);
+                } else {
+                    // delta
+                    // Delta opp never uses PMAP
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedDelta(exponent, idx, exponentValues);
+                }
+            } else {
+                // constant
+                assert (exponentValues[token & exponentMask] == exponent) : "Only the constant value "
+                        + exponentValues[token & exponentMask]
+                        + " from the template may be sent";
+                // nothing need be sent because constant does not use pmap and
+                // the template
+                // on the other receiver side will inject this value from the
+                // template
+            }
+    
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                // copy, increment
+                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
+                    // copy
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedCopy(exponent, idx, exponentValues);
+                } else {
+                    // increment
+                    int idx = token & exponentMask;
+    
+                    writer.writeIntegerSignedIncrement(exponent, idx, exponentValues);
+                }
+            } else {
+                // default
+                int idx = token & exponentMask;
+                int constDefault = exponentValues[idx];
+    
+                writer.writeIntegerSignedDefault(exponent, idx, constDefault);
+            }
+        }
     }
 
 }

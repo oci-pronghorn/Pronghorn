@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -319,19 +320,23 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                 
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    staticWriter.writerDecimal.writeExponent(token, 1);
-                    staticWriter.writerDecimal.writeMantissa(token, mantissa);
+                    staticWriter.writeExponent(token, 1);
+                    staticWriter.writeMantissa(token, mantissa);
                 } else {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==1) {
-                    	staticWriter.writerDecimal.writerDecimalExponent.writeNull(token);
+                    	int idx = token & staticWriter.exponentMask;
+                        
+                        StaticGlue.writeNull2(token, pw, staticWriter.exponentValues, idx);
                     } else {
-                    	staticWriter.writerDecimal.writeExponentOptional(token, 1);
+                    	staticWriter.writeExponentOptional(token, 1);
                     }
                     
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-                    	staticWriter.writerDecimal.writerDecimalMantissa.writeNull(token);
+                    	int idx = token & staticWriter.mantissaMask;
+                        
+                        StaticGlue.writeNull2(token, idx, pw, staticWriter.mantissaValues);
                     } else {
-                    	staticWriter.writerDecimal.writeMantissaOptional(token, mantissa);
+                    	staticWriter.writeMantissaOptional(token, mantissa);
                     }
                 }
 			}

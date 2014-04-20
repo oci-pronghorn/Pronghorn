@@ -118,7 +118,7 @@ public class ByteHeap {
 		tat[offset+1] = tat[offset];
 	}
 	
-	void setNull(int idx) {
+	public void setNull(int idx) {
 		int offset = idx<<2;
 		tat[offset+1] = tat[offset]-1;
 	}
