@@ -374,7 +374,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= j;//doing more nothing.
 			}
-			staticReader.closeGroup(groupToken);
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken,idx);
 		}
 		return result;
 	}
@@ -413,7 +414,8 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= staticReader.readLong(token);
 			}
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		return result;
 	}

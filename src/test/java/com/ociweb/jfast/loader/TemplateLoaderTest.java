@@ -15,7 +15,9 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -207,6 +209,8 @@ public class TemplateLoaderTest {
         int[] fullScript = catalog.fullScript();
         System.err.println("full catalog script contains:"+fullScript.length);
         
+        Set<Integer> doneScripts = new HashSet<Integer>();
+        
         int[] startCursor = catalog.templateStartIdx;
         int[] limitCursor = catalog.templateLimitIdx;
         int i = 0;
@@ -217,9 +221,9 @@ public class TemplateLoaderTest {
             if (0==cursor && 0==limit) {
                 continue;//skip this one it was not at an entry point
             }
-            System.err.println("Building template "+(i-1)+" from "+cursor+" to "+limit);
             
-            readerDispatch.startScriptBlock(cursor);
+            doneScripts.add(cursor);
+            readerDispatch.startScriptBlock(cursor,i-1);
             readerDispatch.setScriptBlock(cursor, limit);
 
             readerDispatch.dispatchReadByToken();
@@ -228,12 +232,15 @@ public class TemplateLoaderTest {
             System.err.println(block);
             
             for(int seqStart:readerDispatch.getSequenceStarts()) {
-                readerDispatch.startScriptBlock(seqStart);
-                readerDispatch.setScriptBlock(seqStart, limit); //TODO: limit or start of next sequence.
-                readerDispatch.dispatchReadByToken();
-                block = readerDispatch.getScriptBlock();
-                System.err.println();
-                System.err.println(block);
+                if (!doneScripts.contains(seqStart)) {
+                    doneScripts.add(seqStart);
+                    readerDispatch.startScriptBlock(seqStart,i-1);
+                    readerDispatch.setScriptBlock(seqStart, limit); //TODO: limit or start of next sequence.
+                    readerDispatch.dispatchReadByToken();
+                    block = readerDispatch.getScriptBlock();
+                    System.err.println();
+                    System.err.println(block);
+                }
                 
             }
                 
@@ -297,7 +304,7 @@ public class TemplateLoaderTest {
         // needed.
 
         int warmup = 32;
-        int count = 512;
+        int count = 1024;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
         byte[] preamble = new byte[catalog.preambleSize];

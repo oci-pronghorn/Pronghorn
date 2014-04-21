@@ -30,506 +30,578 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         //000001
         //001001
         //100000
-//        int c = activeScriptCursor;
-//        if (0 == (c & 1)) {
-//            //0 or 32
-//            if (0==c) {
-//                return top0();
-//            } else {
-//                return top32();
-//            }
-//            
-//        } else {
-//            //1 or 9
-//            if (1==c) {
-//                return top1();
-//            } else {
-//                return top9();
-//            }
-//            
-//            
-//        }
-        
-        
-        switch (activeScriptCursor) {
-            case 0:
-            return top0();
-            case 1:
-            return top1();
-            case 9:     
-            return top9();
-
-            case 32://30:
-            return top32();
-            default:
-                assert (false) : "Unsupported Template";
+        int c = activeScriptCursor; //TODO: must build tree builder for code generation.
+        if (0 == (c & 1)) {
+            //0 or 32
+            if (0==c) {
+                case0();
+                activeScriptCursor = 1; //jumping to end of 0
                 return false;
-        }
-    }
-
-    private boolean top0() {
-        assert (gatherReadData(reader, activeScriptCursor));
-        case0();
-        activeScriptCursor = 1; //jumping to end of 0
-        return false;
-    }
-
-    private boolean top1() {
-        assert (gatherReadData(reader, activeScriptCursor));
-        case1();
-        int length = rIntDictionary[0x3/*target*/];
-        if (length == 0) {
-            // jumping over sequence (forward) it was skipped (rare case)
-            activeScriptCursor = 31; //Jumping to END of 1?
-            return false;
-        }
-        sequenceCountStack[++sequenceCountStackHead] = length;
-        return top9();
-    }
-
-    private boolean top9() {
-        assert (gatherReadData(reader, 9));
-        
-        case9(); //mantDictionary inserted in place of long dictionary
-        
-        //TODO: generated code will not have this?
-        checkSequence = (0xc0dc0016 & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)); //14
-        activeScriptCursor = 29+2; // +1 +1 //jumping to end of 1
-        assert (gatherReadData(reader, activeScriptCursor));
-        return checkSequence != 0 && completeSequence(0x16);//0x014);
-    }
-
-    private boolean top32() {
-        assert (gatherReadData(reader, activeScriptCursor));
-        case32();
-        
-        int length2 = rIntDictionary[0x11/*target*/];//queue.appendInt1(reader.readIntegerUnsigned());// readIntegerUnsigned(0xd00c0011));
-        if (length2 == 0) {
-            // jumping over sequence (forward) it was skipped (rare case)
-            activeScriptCursor = 46+2;// 36+10;  +2
-            return false;
+            } else {
+                case32();
+                
+                int length = rIntDictionary[0x11/*target*/];
+                if (length == 0) {
+                    // jumping over sequence (forward) it was skipped (rare case)
+                    activeScriptCursor = 47;
+                } else {
+                    sequenceCountStack[++sequenceCountStackHead] = length;
+                }
+                
+                doSequence = false;
+                
+                case39();
+                
+                activeScriptCursor = 47;
+                return doSequence;
+            }
+            
         } else {
-            sequenceCountStack[++sequenceCountStackHead] = length2;
+            //1 or 9
+            if (1==c) {
+                case1();
+                int length = rIntDictionary[0x3/*target*/];
+
+                
+                if (length == 0) {
+                    // jumping over sequence (forward) it was skipped (rare case)
+                    activeScriptCursor = 31; //Jumping to END of 1?
+                } else {
+                    sequenceCountStack[++sequenceCountStackHead] = length;
+                }
+                
+                //TODO: in generated code if length is zero must jump out and skip over the next block.
+                
+                doSequence = false;//must always set first.
+                
+                case9(); //mantDictionary inserted in place of long dictionary
+                activeScriptCursor = 31; // +1 +1 //jumping to end of 1
+                return doSequence;
+            } else {
+                doSequence = false;//must always set first.
+                
+                case9(); //mantDictionary inserted in place of long dictionary
+                activeScriptCursor = 31;//jumping to end of 1
+                return doSequence;
+            }
+            
+            
         }
         
-       //   case39();
-         
-        reader.openPMap(nonTemplatePMapSize);
-        queue.appendInt2(0x8000000e, 0x0); // ASCIIConstant(0xa02c000e
-        case30b();
-        closeGroup(0xc0dc0008);
+        //TODO: urgent must not replace mantDictionary
         
         
-        
-        
-        activeScriptCursor = 45+2;  // +2
-        return checkSequence != 0 && completeSequence(0x008);
-    }
-    
-    private void case0() {
-        int p = queue.addPos;
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x80000000/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x2/*constLen*/);
-        
-        queue.addPos=p;
+//        
+//        switch (activeScriptCursor) {
+//            case 0:
+//            return top0();
+//            case 1:
+//            return top1();
+//            case 9:     
+//            return top9();
+//
+//            case 32://30:
+//            return top32();
+//            default:
+//                assert (false) : "Unsupported Template";
+//                return false;
+//        }
     }
 
-    private void case1() {
-        int p = queue.addPos;
-    //genReadDictionaryDecimalReset(idx)
+    
+
+    
+    
+    
+    //NOTE:everything generated after this point.
+    
+    private void case1() {     // for message 1
+        assert (gatherReadData(reader, activeScriptCursor));
+        m0001_001();
+        m0001_002();
+        m0001_003();
+        m0001_004();
+        m0001_005();
+        m0001_006();
+        m0001_007();
+        m0001_008();
+        m0001_009();
+        m0001_00a();
+        m0001_00b();
+        m0001_00c();
+        m0001_00d();
+        m0001_00e();
+        m0001_00f();
+        m0001_010();
+    }
+    private void m0001_001() {
+            //genReadDictionaryDecimalReset(idx)
             expDictionary[0x0/*idx*/] = expInit[0x0/*idx*/];
             mantDictionary[0x0/*idx*/] = mantInit[0x0/*idx*/];
         
-    //genReadDictionaryDecimalReset(idx)
+    };
+    private void m0001_002() {
+            //genReadDictionaryDecimalReset(idx)
             expDictionary[0x1/*idx*/] = expInit[0x1/*idx*/];
             mantDictionary[0x1/*idx*/] = mantInit[0x1/*idx*/];
         
-    //genReadDictionaryTextReset(idx)
+    };
+    private void m0001_003() {
+            //genReadDictionaryTextReset(idx)
             charDictionary.reset(0x4/*idx*/);
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_004() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0x4/*idx*/] = rIntInit[0x4/*idx*/];
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_005() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0x8/*idx*/] = rIntInit[0x8/*idx*/];
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_006() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0x9/*idx*/] = rIntInit[0x9/*idx*/];
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_007() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0xa/*idx*/] = rIntInit[0xa/*idx*/];
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_008() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0xb/*idx*/] = rIntInit[0xb/*idx*/];
         
-    //genReadDictionaryIntegerReset(idx)
+    };
+    private void m0001_009() {
+            //genReadDictionaryIntegerReset(idx)
             rIntDictionary[0xc/*idx*/] = rIntInit[0xc/*idx*/];
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x80000001/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x3/*constLen*/);
+    };
+    private void m0001_00a() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x80000001/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x3/*constLen*/);
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x80000002/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x1/*constLen*/);
+    };
+    private void m0001_00b() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x80000002/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x1/*constLen*/);
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x80000003/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0xd/*constLen*/);
+    };
+    private void m0001_00c() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x80000003/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0xd/*constLen*/);
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x0/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0001_00d() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x0/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x1/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0001_00e() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x1/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x2/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0001_00f() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x2/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x3/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0001_010() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x3/*target*/] = reader.readIntegerUnsigned());
         
-        queue.addPos=p;
+    };
+
+
+    private void case9() {     // for message 1
+        assert (gatherReadData(reader, activeScriptCursor));
+        m0001_011();
+        m0001_012();
+        m0001_013();
+        m0001_014();
+        m0001_015();
+        m0001_016();
+        m0001_017();
+        m0001_018();
+        m0001_019();
+        m0001_01a();
+        m0001_01b();
+        m0001_01c();
+        m0001_01d();
+        m0001_01e();
+        m0001_01f();
+        m0001_020();
+        m0001_021();
+        m0001_022();
+        m0001_023();
+        m0001_024();
+        m0001_025();
+        m0001_026();
+        m0001_027();
+        m0001_028();
     }
-    
+    private void m0001_011() {
+            //genReadGroupPMapOpen()
+            reader.openPMap(nonTemplatePMapSize);
+        
+    };
+    private void m0001_012() {
+            //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedCopy(0x4/*target*/, 0x4/*source*/, rIntDictionary));
+        
+    };
+    private void m0001_013() {
+            //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDefaultOptional(0x1/*constDefault*/, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_014() {
+            //genReadASCIICopy(idx)
+            {
+            if (reader.popPMapBit()!=0) {
+                StaticGlue.readASCIIToHeap(0x4/*idx*/, charDictionary, reader);
+            }
+            int len = charDictionary.valueLength(0x4/*idx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x4/*idx*/, len));
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_015() {
+            //genReadIntegerUnsignedOptional(constAbsent)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.staticReadIntegerUnsignedOptional(0x7fffffff/*constAbsent*/, reader));
+        
+    };
+    private void m0001_016() {
+            //genReadIntegerUnsignedConstant(constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x9/*constDefault*/);
+        
+    };
+    private void m0001_017() {
+            //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedCopy(0x8/*target*/, 0x8/*source*/, rIntDictionary));
+        
+    };
+    private void m0001_018() {
+            //genReadIntegerUnsignedIncrement(target, source, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedIncrement(0x9/*target*/, 0x9/*source*/, rIntDictionary));
+        
+    };
+    private void m0001_019() {
+            //genReadIntegerSignedDefault(constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerSignedDefault(0x0/*constDefault*/));
+        
+    };
+    private void m0001_01a() {
+            //genReadLongSignedDelta(idx, source, rLongDictionary)
+            {
+            long tmpLng=reader.readLongSignedDelta(0x0/*idx*/, 0x0/*source*/, mantDictionary);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng >>> 32)); 
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
+            }
+        
+    };
+    private void m0001_01b() {
+            //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedCopy(0xa/*target*/, 0xa/*source*/, rIntDictionary));
+        
+    };
+    private void m0001_01c() {
+            //genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerSignedDeltaOptional(0xb/*target*/, 0xb/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_01d() {
+            //genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDeltaOptional(0xc/*target*/, 0xc/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_01e() {
+            //genReadASCIIDefault(idx, defLen)
+            if (0 == reader.popPMapBit()) {
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.INIT_VALUE_MASK | 0x5/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x1/*defLen*/);
+            } else {
+                StaticGlue.readASCIIToHeap(0x5/*idx*/, charDictionary, reader);
+                int len = charDictionary.valueLength(0x5/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x5/*idx*/, len));
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_01f() {
+            //genReadIntegerSignedDefaultOptional(constAbsent, constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerSignedDefaultOptional(0x7fffffff/*constDefault*/, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_020() {
+            //genReadLongSignedDeltaOptional(idx, source, constAbsent, rLongDictionary)
+            {
+            long tmpLng=reader.readLongSignedDeltaOptional(0x1/*idx*/, 0x1/*source*/, mantDictionary, 0x7fffffffffffffffL/*constAbsent*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng >>> 32)); 
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
+            }
+        
+    };
+    private void m0001_021() {
+            //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDefaultOptional(0x7fffffff/*constDefault*/, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_022() {
+            //genReadASCIIDefault(idx, defLen)
+            if (0 == reader.popPMapBit()) {
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.INIT_VALUE_MASK | 0x6/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x1/*defLen*/);
+            } else {
+                StaticGlue.readASCIIToHeap(0x6/*idx*/, charDictionary, reader);
+                int len = charDictionary.valueLength(0x6/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x6/*idx*/, len));
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_023() {
+            //genReadASCIIDefault(idx, defLen)
+            if (0 == reader.popPMapBit()) {
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.INIT_VALUE_MASK | 0x7/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x3/*defLen*/);
+            } else {
+                StaticGlue.readASCIIToHeap(0x7/*idx*/, charDictionary, reader);
+                int len = charDictionary.valueLength(0x7/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x7/*idx*/, len));
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_024() {
+            //genReadASCIIDefault(idx, defLen)
+            if (0 == reader.popPMapBit()) {
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.INIT_VALUE_MASK | 0x8/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x1/*defLen*/);
+            } else {
+                StaticGlue.readASCIIToHeap(0x8/*idx*/, charDictionary, reader);
+                int len = charDictionary.valueLength(0x8/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x8/*idx*/, len));
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_025() {
+            //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDefaultOptional(0x7fffffff/*constDefault*/, 0x7fffffff/*constAbsent*/));
+        
+    };
+    private void m0001_026() {
+            //genReadASCIIDefault(idx, defLen)
+            if (0 == reader.popPMapBit()) {
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, StaticGlue.INIT_VALUE_MASK | 0x9/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0xd/*defLen*/);
+            } else {
+                StaticGlue.readASCIIToHeap(0x9/*idx*/, charDictionary, reader);
+                int len = charDictionary.valueLength(0x9/*idx*/);
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0x9/*idx*/, len));
+                FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
+            }
+        
+    };
+    private void m0001_027() {
+            //genReadGroupClose()
+            reader.closePMap();
+        
+    };
+    private void m0001_028() {
+            //genReadSequenceClose(backvalue)
+            if (sequenceCountStackHead <= 0) {
+                // no sequence to worry about or not the right time
+                doSequence = false;
+            } else {
+            
+                // each sequence will need to repeat the pmap but we only need to push
+                // and pop the stack when the sequence is first encountered.
+                // if count is zero we can pop it off but not until then.
+            
+                if (--sequenceCountStack[sequenceCountStackHead] < 1) {
+                    // this group is a sequence so pop it off the stack.
+                    --sequenceCountStackHead;
+                    // finished this sequence so leave pointer where it is
+                    jumpSequence = 0;
+                } else {
+                    // do this sequence again so move pointer back
+                    jumpSequence = 0x16/*backvalue*/;
+                }
+                doSequence = true;
+            }
+        
+    };
 
-    //TODO: what if generator adds private methods for every group field!!
-    
-    private void case9() {
-        int p = queue.addPos;
-        int[] bfr2 = bfr;
-        int bfrMsk2 = bfrMsk;
-        PrimitiveReader reader2 = reader; //this change did not help
-        
-        
-        
-        
-    test1(reader2);
-        
-    p = test2(p, bfr2, bfrMsk2, reader2);
-        
-    p = test3(p, bfr2, bfrMsk2, reader2);
-        
-    p = test4(p, bfr2, bfrMsk2, reader2);
-        
-    p = test5(p, bfr2, bfrMsk2, reader2);
-        
-    p = test6(p, bfr2, bfrMsk2);
-        
-    p = test7(p, bfr2, bfrMsk2, reader2);
-        
-    p = test8(p, bfr2, bfrMsk2, reader2);
-        
-    p = test9(p, bfr2, bfrMsk2, reader2);
-        
-    p = test10(p, bfr2, bfrMsk2, reader2);
-        
-    p = test11(p, bfr2, bfrMsk2, reader2);
-        
-    p = test12(p, bfr2, bfrMsk2, reader2);
-        
-    p = test13(p, bfr2, bfrMsk2, reader2);
-        
-    p = test14(p, bfr2, bfrMsk2, reader2);
-        
-    p = test15(p, bfr2, bfrMsk2, reader2);
-        
-    p = test16(p, bfr2, bfrMsk2, reader2);
-        
-    p = test17(p, bfr2, bfrMsk2, reader2);
-        
-    p = test21(p, bfr2, bfrMsk2, reader2);
-        
-    p = test22(p, bfr2, bfrMsk2, reader2);
-        
-    p = test23(p, bfr2, bfrMsk2, reader2);
-        
-    p = test17(p, bfr2, bfrMsk2, reader2);
-        
-    p = test24(p, bfr2, bfrMsk2, reader2);
-        
-    //genReadGroupClose()
-            reader2.closePMap();
-        
-        queue.addPos=p;
+
+    private void case32() {     // for message 2
+        assert (gatherReadData(reader, activeScriptCursor));
+        m0002_029();
+        m0002_02a();
+        m0002_02b();
+        m0002_02c();
+        m0002_02d();
+        m0002_02e();
+        m0002_02f();
     }
-    
-    //each field as a method helps the most
-    //Duration:13030981ns  2.3022826MM/s  6.157738nspB  1299mbps  In:2116196 Out:113510784 pct 0.018643128 Messages:30001 Groups:90001
-    //Duration:12868159ns  2.3314135MM/s  6.080797nspB  1315mbps  In:2116196 Out:113510784 pct 0.018643128 Messages:30001 Groups:90001
-    //Duration:12813111ns  2.3414297MM/s  6.054785nspB  1321mbps  In:2116196 Out:113510784 pct 0.018643128 Messages:30001 Groups:90001
-    //Duration:12765445ns  2.3501728MM/s  6.0322604nspB  1326mbps  In:2116196 Out:113510784 pct 0.018643128 Messages:30001 Groups:90001
-
-    private int test24(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIIDefault(idx, defLen)
-        if (0 == reader2.popPMapBit()) {
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.INIT_VALUE_MASK | 0x9/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0xd/*defLen*/);
-        } else {
-            StaticGlue.readASCIIToHeap(0x9/*idx*/, charDictionary, reader2);
-            int len = charDictionary.valueLength(0x9/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x9/*idx*/, len));
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test23(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIIDefault(idx, defLen)
-        if (0 == reader2.popPMapBit()) {
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.INIT_VALUE_MASK | 0x8/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0x1/*defLen*/);
-        } else {
-            StaticGlue.readASCIIToHeap(0x8/*idx*/, charDictionary, reader2);
-            int len = charDictionary.valueLength(0x8/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x8/*idx*/, len));
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test22(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIIDefault(idx, defLen)
-        if (0 == reader2.popPMapBit()) {
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.INIT_VALUE_MASK | 0x7/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0x3/*defLen*/);
-        } else {
-            StaticGlue.readASCIIToHeap(0x7/*idx*/, charDictionary, reader2);
-            int len = charDictionary.valueLength(0x7/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x7/*idx*/, len));
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test21(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIIDefault(idx, defLen)
-        if (0 == reader2.popPMapBit()) {
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.INIT_VALUE_MASK | 0x6/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0x1/*defLen*/);
-        } else {
-            StaticGlue.readASCIIToHeap(0x6/*idx*/, charDictionary, reader2);
-            int len = charDictionary.valueLength(0x6/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x6/*idx*/, len));
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test17(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedDefaultOptional(0x7fffffff/*constDefault*/, 0x7fffffff/*constAbsent*/));
-        return p;
-    }
-
-    private int test16(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadLongSignedDeltaOptional(idx, source, constAbsent, rLongDictionary)
-        {
-        long tmpLng=reader2.readLongSignedDeltaOptional(0x1/*idx*/, 0x1/*source*/, mantDictionary, 0x7fffffffffffffffL/*constAbsent*/);
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, (int) (tmpLng >>> 32)); 
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, (int) (tmpLng & 0xFFFFFFFF));
-        }
-        return p;
-    }
-
-    private int test15(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerSignedDefaultOptional(constAbsent, constDefault)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerSignedDefaultOptional(0x7fffffff/*constDefault*/, 0x7fffffff/*constAbsent*/));
-        return p;
-    }
-
-    private int test14(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIIDefault(idx, defLen)
-        if (0 == reader2.popPMapBit()) {
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.INIT_VALUE_MASK | 0x5/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0x1/*defLen*/);
-        } else {
-            StaticGlue.readASCIIToHeap(0x5/*idx*/, charDictionary, reader2);
-            int len = charDictionary.valueLength(0x5/*idx*/);
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x5/*idx*/, len));
-            FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test13(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedDeltaOptional(0xc/*target*/, 0xc/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/));
-        return p;
-    }
-
-    private int test12(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerSignedDeltaOptional(0xb/*target*/, 0xb/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/));
-        return p;
-    }
-
-    private int test11(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedCopy(0xa/*target*/, 0xa/*source*/, rIntDictionary));
-        return p;
-    }
-
-    private int test10(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadLongSignedDelta(idx, source, rLongDictionary)
-        {
-        long tmpLng=reader2.readLongSignedDelta(0x0/*idx*/, 0x0/*source*/, mantDictionary);
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, (int) (tmpLng >>> 32)); 
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, (int) (tmpLng & 0xFFFFFFFF));
-        }
-        return p;
-    }
-
-    private int test9(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerSignedDefault(constDefault)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerSignedDefault(0x0/*constDefault*/));
-        return p;
-    }
-
-    private int test8(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedIncrement(target, source, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedIncrement(0x9/*target*/, 0x9/*source*/, rIntDictionary));
-        return p;
-    }
-
-    private int test7(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedCopy(0x8/*target*/, 0x8/*source*/, rIntDictionary));
-        return p;
-    }
-
-    private int test6(int p, int[] bfr2, int bfrMsk2) {
-        //genReadIntegerUnsignedConstant(constDefault)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, 0x9/*constDefault*/);
-        return p;
-    }
-
-    private int test5(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedOptional(constAbsent)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, StaticGlue.staticReadIntegerUnsignedOptional(0x7fffffff/*constAbsent*/, reader2));
-        return p;
-    }
-
-    private int test4(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadASCIICopy(idx)
-        {
-        if (reader2.popPMapBit()!=0) {
-            StaticGlue.readASCIIToHeap(0x4/*idx*/, charDictionary, reader2);
-        }
-        int len = charDictionary.valueLength(0x4/*idx*/);
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, queue.writeTextToRingBuffer(0x4/*idx*/, len));
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, len);
-        }
-        return p;
-    }
-
-    private int test3(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedDefaultOptional(0x1/*constDefault*/, 0x7fffffff/*constAbsent*/));
-        return p;
-    }
-
-    private int test2(int p, int[] bfr2, int bfrMsk2, PrimitiveReader reader2) {
-        //genReadIntegerUnsignedCopy(target, source, rIntDictionary)
-        FASTRingBuffer.appendi(bfr2, p++, bfrMsk2, reader2.readIntegerUnsignedCopy(0x4/*target*/, 0x4/*source*/, rIntDictionary));
-        return p;
-    }
-
-    private void test1(PrimitiveReader reader2) {
-        //genReadGroupPMapOpen()
-        reader2.openPMap(nonTemplatePMapSize);
-    }
-
-
-    private void case32() {
-        int p = queue.addPos;
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000a/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x5/*constLen*/);
+    private void m0002_029() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x8000000a/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x5/*constLen*/);
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000b/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x0/*constLen*/);
+    };
+    private void m0002_02a() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x8000000b/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x0/*constLen*/);
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000c/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x0/*constLen*/);
+    };
+    private void m0002_02b() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x8000000c/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x0/*constLen*/);
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0xf/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0002_02c() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0xf/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x10/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0002_02d() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x10/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadASCIINone(idx)
+    };
+    private void m0002_02e() {
+            //genReadASCIINone(idx)
             {
             StaticGlue.readASCIIToHeap(0xd/*idx*/, charDictionary, reader);
             int len = charDictionary.valueLength(0xd/*idx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, queue.writeTextToRingBuffer(0xd/*idx*/, len));
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, len);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, queue.writeTextToRingBuffer(0xd/*idx*/, len));
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, len);
             }
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x11/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0002_02f() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x11/*target*/] = reader.readIntegerUnsigned());
         
-        queue.addPos=p;
-    }
+    };
 
-    private void case30b() {
-        long xl1;
-        queue.appendInt8((int) ((xl1 = reader.readLongUnsignedOptional(constLongAbsent)) >>> 32),
-                (int) (xl1 & 0xFFFFFFFF), reader.readIntegerUnsignedDefaultOptional(1/*
-                                                                                      * default
-                                                                                      * or
-                                                                                      * optional
-                                                                                      */, constIntAbsent),
-                (int) ((xl1 = reader.readLongUnsigned(0x01, rLongDictionary)) >>> 32), (int) (xl1 & 0xFFFFFFFF),
-                reader.readIntegerUnsignedDefault(1/* default value */), reader.readIntegerUnsigned(),
-                rIntDictionary[0x15]);
-    }
 
-    private void case39() {
-        int p = queue.addPos;
-    //genReadGroupPMapOpen()
+    private void case39() {     // for message 2
+        assert (gatherReadData(reader, activeScriptCursor));
+        m0002_030();
+        m0002_031();
+        m0002_032();
+        m0002_033();
+        m0002_034();
+        m0002_035();
+        m0002_036();
+        m0002_037();
+        m0002_038();
+        m0002_039();
+    }
+    private void m0002_030() {
+            //genReadGroupPMapOpen()
             reader.openPMap(nonTemplatePMapSize);
         
-    //genReadTextConstant(constIdx, constLen)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x8000000e/*constIdx*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x0/*constLen*/);
+    };
+    private void m0002_031() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x8000000e/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x0/*constLen*/);
         
-    //genReadLongUnsignedOptional(constAbsent)
+    };
+    private void m0002_032() {
+            //genReadLongUnsignedOptional(constAbsent)
             {
             long tmpLng=reader.readLongUnsignedOptional(0x7fffffffffffffffL/*constAbsent*/);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, (int) (tmpLng >>> 32)); 
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng >>> 32)); 
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
             }
         
-    //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, reader.readIntegerUnsignedDefaultOptional(0x1/*constDefault*/, 0x7fffffff/*constAbsent*/));
+    };
+    private void m0002_033() {
+            //genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDefaultOptional(0x1/*constDefault*/, 0x7fffffff/*constAbsent*/));
         
-    //genReadLongUnsignedNone(idx, rLongDictionary)
+    };
+    private void m0002_034() {
+            //genReadLongUnsignedNone(idx, rLongDictionary)
             {
             long tmpLng=reader.readLongUnsigned(0x1/*idx*/, rLongDictionary);
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, (int) (tmpLng >>> 32)); 
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng >>> 32)); 
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, (int) (tmpLng & 0xFFFFFFFF));
             }
         
-    //genReadIntegerUnsignedDefault(constDefault)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, reader.readIntegerUnsignedDefault(0x1/*constDefault*/));
+    };
+    private void m0002_035() {
+            //genReadIntegerUnsignedDefault(constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, reader.readIntegerUnsignedDefault(0x1/*constDefault*/));
         
-    //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, rIntDictionary[0x14/*target*/] = reader.readIntegerUnsigned());
+    };
+    private void m0002_036() {
+            //genReadIntegerUnsigned(target)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x14/*target*/] = reader.readIntegerUnsigned());
         
-    //genReadIntegerUnsignedConstant(constDefault)
-            FASTRingBuffer.appendi(bfr, p++, bfrMsk, 0x9/*constDefault*/);
+    };
+    private void m0002_037() {
+            //genReadIntegerUnsignedConstant(constDefault)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x9/*constDefault*/);
         
-    //genReadGroupClose()
+    };
+    private void m0002_038() {
+            //genReadGroupClose()
             reader.closePMap();
         
-        queue.addPos=p;
+    };
+    private void m0002_039() {
+            //genReadSequenceClose(backvalue)
+            if (sequenceCountStackHead <= 0) {
+                // no sequence to worry about or not the right time
+                doSequence = false;
+            } else {
+            
+                // each sequence will need to repeat the pmap but we only need to push
+                // and pop the stack when the sequence is first encountered.
+                // if count is zero we can pop it off but not until then.
+            
+                if (--sequenceCountStack[sequenceCountStackHead] < 1) {
+                    // this group is a sequence so pop it off the stack.
+                    --sequenceCountStackHead;
+                    // finished this sequence so leave pointer where it is
+                    jumpSequence = 0;
+                } else {
+                    // do this sequence again so move pointer back
+                    jumpSequence = 0x8/*backvalue*/;
+                }
+                doSequence = true;
+            }
+        
+    };
+
+
+    private void case0() {     // for message 99
+        assert (gatherReadData(reader, activeScriptCursor));
+        m0099_03a();
     }
-    
+    private void m0099_03a() {
+            //genReadTextConstant(constIdx, constLen)
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x80000000/*constIdx*/);
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, 0x2/*constLen*/);
+        
+    };
 
     
 }

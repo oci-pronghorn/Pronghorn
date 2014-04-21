@@ -408,4 +408,43 @@ public class StaticGlue {
         }
     }
 
+    public static void writeNullText(int token, int idx, PrimitiveWriter primitiveWriter, TextHeap textHeap) {
+        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                // None and Delta and Tail
+                primitiveWriter.writeNull();
+                textHeap.setNull(idx); // no pmap, yes change to last value
+            } else {
+                // Copy and Increment
+                
+                if (textHeap.isNull(idx)) { // stored value was null;
+                    primitiveWriter.writePMapBit((byte) 0);
+                } else {
+                    primitiveWriter.writePMapBit((byte) 1);
+                    primitiveWriter.writeNull();
+                    textHeap.setNull(idx);
+                } // yes pmap, yes change to last
+                                              // value
+            }
+        } else {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                    // const
+                    primitiveWriter.writeNull(); // no pmap, no change to last value
+                } else {
+                    // const optional
+                    primitiveWriter.writePMapBit((byte) 0); // pmap only
+                }
+            } else {
+                // default
+                if (textHeap.isNull(idx)) { // stored value was null;
+                    primitiveWriter.writePMapBit((byte) 0);
+                } else {
+                    primitiveWriter.writePMapBit((byte) 1);
+                    primitiveWriter.writeNull();
+                } // yes pmap, no change to last value
+            }
+        }
+    }
+
 }

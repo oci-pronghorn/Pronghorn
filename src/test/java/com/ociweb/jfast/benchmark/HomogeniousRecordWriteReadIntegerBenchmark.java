@@ -608,7 +608,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= j;//pr.readIntegerUnsigned();////j;//doing more nothing.
 			}
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		return result;
 	}
@@ -649,7 +650,8 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= staticReader.readInt(token);
 			}
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		return result;
 	}

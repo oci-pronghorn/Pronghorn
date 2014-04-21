@@ -3,14 +3,13 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterText {
 
     private final TextHeap heap;
     private final PrimitiveWriter writer;
-    private final int INSTANCE_MASK;
+    public final int INSTANCE_MASK;
     private static final int INIT_VALUE_MASK = 0x80000000;
 
     public FieldWriterText(PrimitiveWriter writer, TextHeap charDictionary) {
@@ -117,6 +116,8 @@ public class FieldWriterText {
 
     public void writeUTF8Tail(int token, CharSequence value) {
         int idx = token & INSTANCE_MASK;
+        
+        
         int headCount = heap.countHeadMatch(idx, value);
         int trimTail = heap.length(idx) - headCount;
         writer.writeIntegerUnsigned(trimTail);
@@ -364,13 +365,14 @@ public class FieldWriterText {
 
     private void writeUTF8Tail(int idx, int headCount, char[] value, int offset, int length, final int optional) {
         int trimTail = heap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail + optional);
-
         int valueSend = length - headCount;
         int startAfter = offset + headCount;
+        heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        
+        writer.writeIntegerUnsigned(trimTail + optional);
         writer.writeIntegerUnsigned(valueSend);
         writer.writeTextUTF(value, startAfter, valueSend);
-        heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        
     }
 
     public void writeUTF8Copy(int token, char[] value, int offset, int length) {
@@ -552,71 +554,6 @@ public class FieldWriterText {
         }
     }
 
-    public void writeASCIIDefaultOptional(int token, char[] value, int offset, int length) {
-        int idx = token & INSTANCE_MASK;
-
-        if (heap.equals(idx | INIT_VALUE_MASK, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
-        } else {
-            writer.writePMapBit((byte) 1);
-            writer.writeTextASCII(value, offset, length);
-        }
-    }
-
-    private void writeClearNull(int token) {
-        writer.writeNull();
-        heap.setNull(token & INSTANCE_MASK);
-    }
-
-    private void writePMapNull(int token) {
-        if (heap.isNull(token & INSTANCE_MASK)) { // stored value was null;
-            writer.writePMapBit((byte) 0);
-        } else {
-            writer.writePMapBit((byte) 1);
-            writer.writeNull();
-        }
-    }
-
-    private void writePMapAndClearNull(int token) {
-        int idx = token & INSTANCE_MASK;
-
-        if (heap.isNull(idx)) { // stored value was null;
-            writer.writePMapBit((byte) 0);
-        } else {
-            writer.writePMapBit((byte) 1);
-            writer.writeNull();
-            heap.setNull(idx);
-        }
-    }
-
-    public void writeNull(int token) {
-
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta and Tail
-                writeClearNull(token); // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-                writePMapAndClearNull(token); // yes pmap, yes change to last
-                                              // value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    // const
-                    writer.writeNull(); // no pmap, no change to last value
-                } else {
-                    // const optional
-                    writer.writePMapBit((byte) 0); // pmap only
-                }
-            } else {
-                // default
-                writePMapNull(token); // yes pmap, no change to last value
-            }
-        }
-
-    }
-
     public void writeUTF8Optional(char[] value, int offset, int length) {
         writer.writeIntegerUnsigned(length + 1);
         writer.writeTextUTF(value, offset, length);
@@ -635,26 +572,6 @@ public class FieldWriterText {
     public void writeUTF8(CharSequence value) {
         writer.writeIntegerUnsigned(value.length());
         writer.writeTextUTF(value);
-    }
-
-    public void writeASCII(CharSequence value) {
-        writer.writeTextASCII(value);
-    }
-
-    public void writeASCIITextOptional(char[] value, int offset, int length) {
-        writer.writeTextASCII(value, offset, length);
-    }
-
-    public void writeASCIITextOptional(CharSequence value) {
-        if (null == value) {
-            writer.writeNull();
-        } else {
-            writer.writeTextASCII(value);
-        }
-    }
-
-    public void writeASCIIText(int token, char[] value, int offset, int length) {
-        writer.writeTextASCII(value, offset, length);
     }
 
 }

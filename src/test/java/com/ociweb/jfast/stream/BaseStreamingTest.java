@@ -145,8 +145,9 @@ public abstract class BaseStreamingTest {
 
 	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
 		if (--g<0) {
-			//close group
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			//close group 
+		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {

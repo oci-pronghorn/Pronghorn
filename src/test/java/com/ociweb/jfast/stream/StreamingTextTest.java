@@ -296,7 +296,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0 ) {
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		long duration = System.nanoTime() - start;
 		return duration;

@@ -19,8 +19,15 @@ public class SourceTemplates {
     }
     
     private String templateSource() {
-        URL sourceData = getClass().getResource("/FASTReaderDispatch.java");
-        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+        
+        //TODO: how will this file get shipped? when developing must run like this to get fast refactor loop.
+        
+ //       URL sourceData = getClass().getResource("/FASTReaderDispatch.java");
+  //      File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+        
+        //TODO: point into sources.zip file?
+        File sourceDataFile = new File("/home/nate/SpiderOak Hive/kepler/jFAST/src/main/java/com/ociweb/jfast/stream/FASTReaderDispatch.java");
+        
         
         String templateSource = "";
         

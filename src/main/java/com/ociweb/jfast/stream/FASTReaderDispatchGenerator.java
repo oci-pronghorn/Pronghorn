@@ -1,8 +1,6 @@
 package com.ociweb.jfast.stream;
 
-import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,8 +11,13 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
 
     SourceTemplates templates;
-    StringBuilder builder;
-    String blockTail = "    queue.addPos=p;\n}\n";
+    
+    StringBuilder fieldBuilder;
+    StringBuilder caseBuilder;
+    String fieldPrefix;
+    int fieldCount;
+    
+    String caseTail = "}\n";
     Set<Integer> sequenceStarts = new HashSet<Integer>();
     
     public FASTReaderDispatchGenerator(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
@@ -25,25 +28,32 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
                 maxNestedGroupDepth, primaryRingBits, textRingBits);
         
         templates = new SourceTemplates();
-        builder = new StringBuilder();
+        fieldBuilder = new StringBuilder();
+        caseBuilder = new StringBuilder();
+        fieldCount = 0;
     }
     
     //This generator allows for refactoring of the NAME of these methods and the code generation will remain intact.
     
     public String getScriptBlock() {
-        return builder.toString()+blockTail;
+        return caseBuilder.toString()+caseTail+fieldBuilder.toString();
     }
     
-    public void startScriptBlock(int scriptPos) {
-        builder.setLength(0);
+    public void startScriptBlock(int scriptPos, int templateId) {
+        fieldBuilder.setLength(0);
+        caseBuilder.setLength(0);
         
-        builder.append("private void case").append(scriptPos).append("() {\n");
+        //each field method will start with the templateId for easy debugging later.
+        fieldPrefix = Integer.toString(templateId);
+        while (fieldPrefix.length()<4) {
+            fieldPrefix = "0"+fieldPrefix;
+        }
         
-        builder.append("    int p = queue.addPos;\n");
+        caseBuilder.append("private void case").append(scriptPos).append("() {     // for message ").append(templateId).append("\n");
+        //add debug code
+        caseBuilder.append("    assert (gatherReadData(reader, activeScriptCursor));\n");
         
-        //TODO: how can we remove these when not needed in short blocks?
-        builder.append("    int[] bfr2 = bfr;\n");
-        builder.append("    int bfrMsk2 = bfrMsk;\n");
+        fieldPrefix = "m"+fieldPrefix;
     }
     
     public Set<Integer> getSequenceStarts() {
@@ -54,7 +64,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         
         String methodNameKey = "void "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
         String[] params = templates.params(methodNameKey);
-        String comment = "//"+trace[0].getMethodName()+(Arrays.toString(params).replace('[','(').replace(']', ')'))+"\n";
+        String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(params).replace('[','(').replace(']', ')'))+"\n";
         
         assert(params.length<values.length): "Bad params for "+methodNameKey;
         
@@ -74,21 +84,32 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
             template = template.replace(params[i],strData+"/*"+params[i]+"*/");
         }
         //replace ring buffer position increment
-        template = template.replace("bfrMsk","bfrMsk2");
-        template = template.replace("bfr","bfr2");
-        template = template.replace("spclPosInc()", "p++")+"\n";
+        template = template.replace("spclPosInc()", "queue.addPos++")+"\n";
         
-        builder.append(comment).append(template);
+        fieldCount++;
+        String field = Integer.toHexString(fieldCount);
+        while (field.length()<3) {
+            field = "0"+field;
+        }
+        field = fieldPrefix+"_"+field;
+        
+        fieldBuilder.append("private void ").append(field).append("() {\n").append(comment).append(template).append("};\n");
+        
+        caseBuilder.append("    ").append(field).append("();\n");
         
     }
+    
+//    @Override
+//    protected int sequenceJump(int length, int cursor) {
+//        sequenceStarts.add(cursor+1);
+//        //force sequence to NOT be take so we can generate the block for the sequence specifically
+//        return super.sequenceJump(0, cursor);
+//    }
     
     @Override
-    protected int sequenceJump(int length, int cursor) {
-        sequenceStarts.add(cursor+1);
-        //force sequence to NOT be take so we can generate the block for the sequence specifically
-        return super.sequenceJump(0, cursor);
+    protected void genReadSequenceClose(int backvalue) {
+        generator(new Exception().getStackTrace(),backvalue);
     }
-    
     
     @Override
     protected void genReadGroupPMapOpen() {
@@ -98,6 +119,39 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     @Override
     protected void genReadGroupClose() {
         generator(new Exception().getStackTrace());
+    }
+    
+    
+    // length methods
+    
+    @Override
+    protected void genReadLengthDefault(int constDefault,  int jumpToTarget) {
+        generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
+    }
+
+    @Override
+    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+    }
+
+    @Override
+    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+    }
+
+    @Override
+    protected void genReadLengthConstant(int constDefault, int jumpToTarget) {
+        generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
+    }
+
+    @Override
+    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+    }
+
+    @Override
+    protected void genReadLength(int target,  int jumpToTarget) {
+        generator(new Exception().getStackTrace(),target, jumpToTarget);
     }
     
     // int methods

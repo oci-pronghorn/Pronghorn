@@ -59,7 +59,7 @@ public class FASTReaderDispatch {
     protected final int[] sequenceCountStack;
 
     int sequenceCountStackHead = -1;
-    int checkSequence;
+    boolean doSequence; //NOTE: return value from closeGroup
     int jumpSequence; // Only needs to be set when returning true.
 
     protected final TextHeap charDictionary;
@@ -190,13 +190,12 @@ public class FASTReaderDispatch {
     public boolean dispatchReadByToken() {
 
         // move everything needed in this tight loop to the stack
-        int cursor = activeScriptCursor;
         int limit = activeScriptLimit;
 
         do {
-            int token = fullScript[cursor];
+            int token = fullScript[activeScriptCursor];
 
-            assert (gatherReadData(reader, cursor));
+            assert (gatherReadData(reader, activeScriptCursor));
 
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
@@ -221,7 +220,7 @@ public class FASTReaderDispatch {
                             
                             //TODO A, Pass the optional bit flag on to Mantissa for var bit optionals
                             
-                            token = fullScript[++cursor]; //pull second token
+                            token = fullScript[++activeScriptCursor]; //pull second token
                             readDecimalMantissa(token);
                         } else {
                             dispatchFieldBytes(token);
@@ -243,7 +242,9 @@ public class FASTReaderDispatch {
                                 genReadGroupPMapOpen();
                             }
                         } else {
-                            return readGroupClose(token, cursor); // TODO: B,
+                            int idx = TokenBuilder.MAX_INSTANCE & token;
+                            closeGroup(token,idx);
+                            return doSequence;//checkSequence && completeSequence(idx); // TODO: B,
                                                                   // this is in
                                                                   // a very poor
                                                                   // place for
@@ -257,11 +258,8 @@ public class FASTReaderDispatch {
                         // checking
                         // Only happens once before a node sequence so push it
                         // on the count stack
-                        readIntegerUnsigned(token);
-                        int length = FASTRingBuffer.peek(bfr, queue.addPos-1, bfrMsk);
-                        // int oldCursor = cursor;
-                        cursor = sequenceJump(length, cursor);
-                        // System.err.println("jumpDif:"+(cursor-oldCursor));
+                        readLength(token,activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1);
+
                     }
                 } else {
                     // 11???
@@ -278,11 +276,14 @@ public class FASTReaderDispatch {
                     }
                 }
             }
-        } while (++cursor < limit);
-        activeScriptCursor = cursor;
+        } while (++activeScriptCursor < limit);
         return false;
     }
 
+    //TODO: generator must track previous read from for text etc
+    //TODO: generator must track if previous is not used then do not write to dictionary.
+    
+    
     private void dispatchFieldBytes(int token) {
         
         // 0111?
@@ -308,13 +309,6 @@ public class FASTReaderDispatch {
 
     private void readDictionaryFromField(int token) {
         readFromIdx = TokenBuilder.MAX_INSTANCE & token;
-    }
-
-    private boolean readGroupClose(int token, int cursor) {
-        closeGroup(token);
-        // System.err.println("delta "+(cursor-activeScriptCursor));
-        activeScriptCursor = cursor;
-        return checkSequence != 0 && completeSequence((TokenBuilder.MAX_INSTANCE & token));
     }
 
     public void setDispatchObserver(DispatchObserver observer) {
@@ -957,6 +951,56 @@ public class FASTReaderDispatch {
         }
     }
 
+    private void readLength(int token, int jumpToTarget) {
+
+        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // none, delta
+                int target = token & MAX_INT_INSTANCE_MASK;
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    genReadLength(target, jumpToTarget);
+                } else {
+                    // delta
+                    int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
+                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary);
+                }
+            } else {
+                // constant
+                // always return this required value.
+                int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
+                genReadLengthConstant(constDefault, jumpToTarget);
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                // copy, increment
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy
+                    int target = token & MAX_INT_INSTANCE_MASK;
+                    int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
+
+                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary);
+                } else {
+                    // increment
+                    int target = token & MAX_INT_INSTANCE_MASK;
+                    int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
+
+                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary);
+                }
+            } else {
+                // default
+                int target = token & MAX_INT_INSTANCE_MASK;
+                int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
+                int constDefault = rIntDictionary[source];
+
+                genReadLengthDefault(constDefault, jumpToTarget);
+            }
+        }
+    }
+    
     public int readBytes(int token) {
 
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -1088,40 +1132,7 @@ public class FASTReaderDispatch {
         }
     }
 
-    /**
-     * Returns true if there is no sequence in play or if the active sequence
-     * can be closed. Once a sequence is closed the reader should move to the
-     * next point in the sequence.
-     * 
-     * @return
-     */
-    public boolean completeSequence(int backvalue) {
-
-        checkSequence = 0;// reset for next time
-
-        if (sequenceCountStackHead <= 0) {
-            // no sequence to worry about or not the right time
-            return false;
-        }
-
-        // each sequence will need to repeat the pmap but we only need to push
-        // and pop the stack when the sequence is first encountered.
-        // if count is zero we can pop it off but not until then.
-
-        if (--sequenceCountStack[sequenceCountStackHead] < 1) {
-            // this group is a sequence so pop it off the stack.
-            // System.err.println("finished seq");
-            --sequenceCountStackHead;
-            // finished this sequence so leave pointer where it is
-            jumpSequence = 0;
-        } else {
-            // do this sequence again so move pointer back
-            jumpSequence = backvalue;
-        }
-        return true;
-    }
-
-    public void closeGroup(int token) {
+    public void closeGroup(int token, int backvalue) {
 
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
@@ -1130,9 +1141,15 @@ public class FASTReaderDispatch {
             genReadGroupClose();
         }
 
-        checkSequence = (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER));
-
+        //token driven logic so nothing will need to be generated for this false case
+        if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
+            genReadSequenceClose(backvalue);
+        } else {
+            doSequence = false;
+        }
+        
     }
+
 
     
     public int readDecimalExponent(int token) {
@@ -1378,6 +1395,30 @@ public class FASTReaderDispatch {
     
     // ////////////////////////////////////////////////////////////
 
+
+    protected void genReadSequenceClose(int backvalue) {
+        if (sequenceCountStackHead <= 0) {
+            // no sequence to worry about or not the right time
+            doSequence = false;
+        } else {
+        
+            // each sequence will need to repeat the pmap but we only need to push
+            // and pop the stack when the sequence is first encountered.
+            // if count is zero we can pop it off but not until then.
+        
+            if (--sequenceCountStack[sequenceCountStackHead] < 1) {
+                // this group is a sequence so pop it off the stack.
+                --sequenceCountStackHead;
+                // finished this sequence so leave pointer where it is
+                jumpSequence = 0;
+            } else {
+                // do this sequence again so move pointer back
+                jumpSequence = backvalue;
+            }
+            doSequence = true;
+        }
+    }
+    
     protected void genReadGroupPMapOpen() {
         reader.openPMap(nonTemplatePMapSize);
     }
@@ -1386,6 +1427,86 @@ public class FASTReaderDispatch {
         reader.closePMap();
     }
     
+    
+    //length methods
+    protected void genReadLengthDefault(int constDefault,  int jumpToTarget) {
+        
+        int length;
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedDefault(constDefault));
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+       }
+    }
+
+    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        int length;
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedIncrement(target, source, rIntDictionary));
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+       }
+    }
+
+    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        int length;
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedCopy(target, source, rIntDictionary));
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+       }
+    }
+
+    protected void genReadLengthConstant(int constDefault,  int jumpToTarget) {
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, constDefault);
+        if (constDefault == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = constDefault;
+       }
+    }
+
+    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+        int length;
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedDelta(target, source, rIntDictionary));
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+       }
+    }
+
+    protected void genReadLength(int target,  int jumpToTarget) {
+        int length;
+        FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, rIntDictionary[target] = length = reader.readIntegerUnsigned());
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = jumpToTarget;
+            
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+       }
+    }
+
     // int methods
 
     protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault) {

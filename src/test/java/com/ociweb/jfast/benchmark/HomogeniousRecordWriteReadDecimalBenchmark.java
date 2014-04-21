@@ -290,7 +290,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 			while (--j>=0) {
 				result |= j;//doing more nothing.
 			}
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		return result;
 	}
@@ -355,7 +356,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 				staticReader.readDecimalExponent(token);
 				result |= staticReader.readDecimalMantissa(token);
 			}
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
 		}
 		return result;
 	}
