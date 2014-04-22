@@ -1429,81 +1429,88 @@ public class FASTReaderDispatch {
     
     
     //length methods
-    protected void genReadLengthDefault(int constDefault,  int jumpToTarget) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget) {
         
         int length;
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedDefault(constDefault));
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = length;
+            return false;
        }
     }
 
-    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    //TODO: C, once this all works find a better way to inline it with only 1 conditional.
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         int length;
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedIncrement(target, source, rIntDictionary));
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = length;
+            return false;
        }
     }
 
-    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         int length;
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedCopy(target, source, rIntDictionary));
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = length;
+            return false;
        }
     }
 
-    protected void genReadLengthConstant(int constDefault,  int jumpToTarget) {
+    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget) {
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, constDefault);
         if (constDefault == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = constDefault;
+            return false;
        }
     }
 
-    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         int length;
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, length = reader.readIntegerUnsignedDelta(target, source, rIntDictionary));
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = length;
+            return false;
        }
     }
 
-    protected void genReadLength(int target,  int jumpToTarget) {
+    protected boolean genReadLength(int target,  int jumpToTarget) {
         int length;
         FASTRingBuffer.appendi(bfr, spclPosInc(), bfrMsk, rIntDictionary[target] = length = reader.readIntegerUnsigned());
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
-            
+            return true;
         } else {
             // jumpSequence = 0;
             sequenceCountStack[++sequenceCountStackHead] = length;
+            return false;
        }
     }
 

@@ -38,19 +38,20 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
                 activeScriptCursor = 1; //jumping to end of 0
                 return false;
             } else {
-                case32();
-                
-                int length = rIntDictionary[0x11/*target*/];
-                if (length == 0) {
-                    // jumping over sequence (forward) it was skipped (rare case)
-                    activeScriptCursor = 47;
-                } else {
-                    sequenceCountStack[++sequenceCountStackHead] = length;
-                }
-                
                 doSequence = false;
-                
-                case39();
+                //TODO: remove mantDictionary next and pull up each member to param here so they are on the stack.
+                case32();
+//                
+//                int length = rIntDictionary[0x11/*target*/];
+//                if (length == 0) {
+//                    // jumping over sequence (forward) it was skipped (rare case)
+//                    activeScriptCursor = 47;
+//                } else {
+//                    sequenceCountStack[++sequenceCountStackHead] = length;
+//                }
+//                
+//                
+//                case39();
                 
                 activeScriptCursor = 47;
                 return doSequence;
@@ -443,8 +444,28 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         
     };
 
-
     private void case32() {     // for message 2
+        temp101();
+        int length;
+        FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x11/*target*/] = length = reader.readIntegerUnsigned());
+        if (length == 0) {
+            // jumping over sequence (forward) it was skipped (rare case)
+            activeScriptCursor = 0x2f/*jumpToTarget*/;
+            return;// true;
+        } else {
+            // jumpSequence = 0;
+            sequenceCountStack[++sequenceCountStackHead] = length;
+           // return false;
+       }
+     temp100();
+    }
+
+
+
+
+
+
+    private void temp101() {
         assert (gatherReadData(reader, activeScriptCursor));
         m0002_029();
         m0002_02a();
@@ -452,7 +473,25 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         m0002_02c();
         m0002_02d();
         m0002_02e();
-        m0002_02f();
+    }
+
+
+
+
+
+
+    private void temp100() {
+        //   if (m0002_02f()) {return;};
+            m0002_030();
+            m0002_031();
+            m0002_032();
+            m0002_033();
+            m0002_034();
+            m0002_035();
+            m0002_036();
+            m0002_037();
+            m0002_038();
+            m0002_039();
     }
     private void m0002_029() {
             //genReadTextConstant(constIdx, constLen)
@@ -492,26 +531,21 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
             }
         
     };
-    private void m0002_02f() {
-            //genReadIntegerUnsigned(target)
-            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x11/*target*/] = reader.readIntegerUnsigned());
+    private boolean m0002_02f() {
+            //genReadLength(target, jumpToTarget)
+            int length;
+            FASTRingBuffer.appendi(bfr, queue.addPos++, bfrMsk, rIntDictionary[0x11/*target*/] = length = reader.readIntegerUnsigned());
+            if (length == 0) {
+                // jumping over sequence (forward) it was skipped (rare case)
+                activeScriptCursor = 0x2f/*jumpToTarget*/;
+                return true;
+            } else {
+                // jumpSequence = 0;
+                sequenceCountStack[++sequenceCountStackHead] = length;
+                return false;
+           }
         
     };
-
-
-    private void case39() {     // for message 2
-        assert (gatherReadData(reader, activeScriptCursor));
-        m0002_030();
-        m0002_031();
-        m0002_032();
-        m0002_033();
-        m0002_034();
-        m0002_035();
-        m0002_036();
-        m0002_037();
-        m0002_038();
-        m0002_039();
-    }
     private void m0002_030() {
             //genReadGroupPMapOpen()
             reader.openPMap(nonTemplatePMapSize);
@@ -590,6 +624,9 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
             }
         
     };
+
+
+    
 
 
     private void case0() {     // for message 99

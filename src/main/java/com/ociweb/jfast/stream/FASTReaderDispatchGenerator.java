@@ -62,7 +62,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     
     private void generator(StackTraceElement[] trace, long ... values) {
         
-        String methodNameKey = "void "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
+        String methodNameKey = " "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
         String[] params = templates.params(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(params).replace('[','(').replace(']', ')'))+"\n";
         
@@ -93,9 +93,15 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         }
         field = fieldPrefix+"_"+field;
         
-        fieldBuilder.append("private void ").append(field).append("() {\n").append(comment).append(template).append("};\n");
+        if (methodNameKey.contains("Length")) {
+            fieldBuilder.append("private boolean ");
+            caseBuilder.append("    if (").append(field).append("()) {return;};\n");
+        } else {
+            fieldBuilder.append("private void ");
+            caseBuilder.append("    ").append(field).append("();\n");
+        }
+        fieldBuilder.append(field).append("() {\n").append(comment).append(template).append("};\n");
         
-        caseBuilder.append("    ").append(field).append("();\n");
         
     }
     
@@ -125,33 +131,39 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     // length methods
     
     @Override
-    protected void genReadLengthDefault(int constDefault,  int jumpToTarget) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget) {
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
+        return true;
     }
 
     @Override
-    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+        return true;
     }
 
     @Override
-    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+        return true;
     }
 
     @Override
-    protected void genReadLengthConstant(int constDefault, int jumpToTarget) {
+    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget) {
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
+        return true;
     }
 
     @Override
-    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary) {
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
+        return true;
     }
 
     @Override
-    protected void genReadLength(int target,  int jumpToTarget) {
+    protected boolean genReadLength(int target,  int jumpToTarget) {
         generator(new Exception().getStackTrace(),target, jumpToTarget);
+        return true;
     }
     
     // int methods
