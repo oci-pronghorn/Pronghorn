@@ -558,11 +558,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     }
     
     @Override
-    protected void genReadDictionaryDecimalReset(int idx) {
-        generator(new Exception().getStackTrace(),idx);
-    }
-    
-    @Override
     protected void genReadDictionaryTextReset(int idx) {
         generator(new Exception().getStackTrace(),idx);
     }

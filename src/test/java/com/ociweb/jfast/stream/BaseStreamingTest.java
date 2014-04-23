@@ -188,7 +188,7 @@ public abstract class BaseStreamingTest {
 
 	    		DictionaryFactory dcr = new DictionaryFactory();
 	    
-	    		dcr.setTypeCounts(fields, fields, charFields, fields, byteFields);
+	    		dcr.setTypeCounts(fields, fields, charFields, byteFields);
 	    		
 				long maxOverhead;
 				long totalOverhead;
@@ -262,7 +262,7 @@ public abstract class BaseStreamingTest {
 				
 		DictionaryFactory dcr = new DictionaryFactory();
 	    
-		dcr.setTypeCounts(fields, fields, charFields, fields, byteFields);
+		dcr.setTypeCounts(fields, fields, charFields, byteFields);
 		
 		        long byteCount=0;
 		

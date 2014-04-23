@@ -29,14 +29,6 @@ public class FASTReaderDispatch {
     protected final long[] rLongDictionary;
     protected final long[] rLongInit;
 
-    protected final int DECIMAL_MAX_INT_INSTANCE_MASK;
-    protected final int[] expDictionary;
-    protected final int[] expInit;
-
-    protected final int DECIMAL_MAX_LONG_INSTANCE_MASK;
-    protected final long[] mantDictionary;
-    protected final long[] mantInit;
-
     protected final int MAX_TEXT_INSTANCE_MASK;
     protected final FieldReaderBytes readerBytes;
 
@@ -105,22 +97,6 @@ public class FASTReaderDispatch {
 
         this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
 
-        this.expDictionary = dcr.decimalExponentDictionary();
-        this.expInit = dcr.decimalExponentDictionary();
-        this.mantDictionary = dcr.decimalMantissaDictionary();
-        this.mantInit = dcr.decimalMantissaDictionary();
-
-        assert (expDictionary.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(expDictionary.length));
-        assert (expDictionary.length == expInit.length);
-
-        assert (mantDictionary.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(mantDictionary.length));
-        assert (mantDictionary.length == mantInit.length);
-
-        this.DECIMAL_MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (expDictionary.length - 1));
-        this.DECIMAL_MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (mantDictionary.length - 1));
-
         assert(null==charDictionary || charDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
         assert(null==charDictionary || TokenBuilder.isPowerOfTwo(charDictionary.itemCount()));
         this.MAX_TEXT_INSTANCE_MASK = (null==charDictionary)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (charDictionary.itemCount()-1));
@@ -142,7 +118,6 @@ public class FASTReaderDispatch {
         // clear all previous values to un-set
         dictionaryFactory.reset(rIntDictionary);
         dictionaryFactory.reset(rLongDictionary);
-        dictionaryFactory.reset(expDictionary, mantDictionary);
         if (null != charDictionary) {
             charDictionary.reset();
         }
@@ -385,10 +360,7 @@ public class FASTReaderDispatch {
                 } else {
                     if (0 == (idx & 2)) {
                         // decimal
-                        // System.err.println("decimal");
-                        while (m < limit && (idx = members[m++]) >= 0) {
-                            genReadDictionaryDecimalReset(idx);
-                        }
+                        throw new UnsupportedOperationException("Implemented as int and long reset");
                     } else {
                         // bytes
                         while (m < limit && (idx = members[m++]) >= 0) {
@@ -1171,10 +1143,10 @@ public class FASTReaderDispatch {
         
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
             // 00010 IntegerSigned
-            readIntegerSigned(expoToken, expDictionary, DECIMAL_MAX_INT_INSTANCE_MASK);
+            readIntegerSigned(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK);
         } else {
             // 00011 IntegerSignedOptional
-            readIntegerSignedOptional(expoToken, expDictionary, DECIMAL_MAX_INT_INSTANCE_MASK);
+            readIntegerSignedOptional(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK);
         }
         //NOTE: for testing we need to check what was written
         return FASTRingBuffer.peek(bfr, queue.addPos-1, bfrMsk);
@@ -1187,10 +1159,10 @@ public class FASTReaderDispatch {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // not optional
-            readLongSigned(token, mantDictionary, DECIMAL_MAX_LONG_INSTANCE_MASK);
+            readLongSigned(token, rLongDictionary, MAX_LONG_INSTANCE_MASK);
         } else {
             // optional
-            readLongSignedOptional(token, mantDictionary, DECIMAL_MAX_LONG_INSTANCE_MASK);
+            readLongSignedOptional(token, rLongDictionary, MAX_LONG_INSTANCE_MASK);
         }
         
         //NOTE: for testing we need to check what was written
@@ -2081,11 +2053,6 @@ public class FASTReaderDispatch {
 
     protected void genReadDictionaryBytesReset(int idx) {
         readerBytes.reset(idx);
-    }
-
-    protected void genReadDictionaryDecimalReset(int idx) {
-        expDictionary[idx] = expInit[idx];
-        mantDictionary[idx] = mantInit[idx];
     }
 
     protected void genReadDictionaryTextReset(int idx) {

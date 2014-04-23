@@ -105,17 +105,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             fw.writeMantissa(token, testMantConst);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
-                                int idx = token & fw.exponentMask;
+                                int idx = token & fw.intInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, pw, fw.exponentValues, idx);
+                                StaticGlue.writeNull2(token, pw, fw.intValues, idx);
                             } else {
                                 fw.writeExponentOptional(token, testExpConst);
                             }
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
-                                int idx = token & fw.mantissaMask;
+                                int idx = token & fw.longInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, idx, pw, fw.mantissaValues);
+                                StaticGlue.writeNull2(token, idx, pw, fw.longValues);
                             } else {
                                 fw.writeMantissaOptional(token, testMantConst);
                             }
@@ -135,17 +135,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             fw.writeMantissa(token, mantissa);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
-                                int idx = token & fw.exponentMask;
+                                int idx = token & fw.intInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, pw, fw.exponentValues, idx);
+                                StaticGlue.writeNull2(token, pw, fw.intValues, idx);
                             } else {
                                 fw.writeExponentOptional(token, 1);
                             }
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
-                                int idx = token & fw.mantissaMask;
+                                int idx = token & fw.longInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, idx, pw, fw.mantissaValues);
+                                StaticGlue.writeNull2(token, idx, pw, fw.longValues);
                             } else {
                                 fw.writeMantissaOptional(token, mantissa);
                             }

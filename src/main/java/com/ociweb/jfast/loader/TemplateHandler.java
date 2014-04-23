@@ -37,7 +37,7 @@ public class TemplateHandler extends DefaultHandler {
 
     DictionaryFactory defaultConstValues = new DictionaryFactory();
 
-    List<List<Integer>> members = new ArrayList<List<Integer>>();
+    List<List<Integer>> resetList = new ArrayList<List<Integer>>();
 
     // post processing for catalog
     int[][] tokenIdxMembers;
@@ -117,7 +117,6 @@ public class TemplateHandler extends DefaultHandler {
     AtomicInteger tokenBuilderLongCount = new AtomicInteger(0);
     AtomicInteger tokenBuilderTextCount = new AtomicInteger(0);
     AtomicInteger tokenBuilderByteCount = new AtomicInteger(0);
-    AtomicInteger tokenBuilderDecimalCount = new AtomicInteger(0);
 
     // groups can be nested and need a stack, this includes sequence and
     // template.
@@ -507,7 +506,8 @@ public class TemplateHandler extends DefaultHandler {
             //TODO: convert this into TWO tokens so the same dictionary can be shared.
             //help forward fetching, simplify code generation, re-use existing work.
             
-            int token = buildToken(tokenBuilderDecimalCount);
+            int tokenExponent = buildToken(tokenBuilderIntCount);
+            int tokenMantisssa = buildToken(tokenBuilderLongCount);
 
             int optionalExponentOffset = 0;
             if (fieldExponentOperator == OperatorMask.Field_Default) {
@@ -520,7 +520,7 @@ public class TemplateHandler extends DefaultHandler {
             // only set if the value was given
             if (null != fieldExponentOperatorValue && !fieldExponentOperatorValue.isEmpty()) {
                 int tmp = Integer.parseInt(fieldExponentOperatorValue);
-                defaultConstValues.addInitDecimalExponent(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
+                defaultConstValues.addInitInteger(tokenExponent & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
                         : optionalExponentOffset + tmp);// +1 for optional not
                                                         // applied to negative
                                                         // values.
@@ -541,7 +541,7 @@ public class TemplateHandler extends DefaultHandler {
             // only set if the value was given
             if (null != fieldMantissaOperatorValue && !fieldMantissaOperatorValue.isEmpty()) {
                 long tmp = Long.parseLong(fieldMantissaOperatorValue);
-                defaultConstValues.addInitDecimalMantissa(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
+                defaultConstValues.addInitLong(tokenMantisssa & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp
                         : optionalMantissaOffset + tmp);// +1 for optional not
                                                         // applied to negative
                                                         // values.
@@ -551,10 +551,10 @@ public class TemplateHandler extends DefaultHandler {
 
             fieldMantissaOperatorValue = null;
 
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptTokens[catalogTemplateScriptIdx] = tokenExponent;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
             //TODO: A, Second token for decimal value
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
             fieldPMapInc = 1;// set back to 1 we are leaving decimal processing
@@ -691,13 +691,19 @@ public class TemplateHandler extends DefaultHandler {
             int tokCount = count.getAndIncrement();
             newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount,
                     TokenBuilder.MASK_ABSENT_DEFAULT);
-            saveMember(activeDictionary, fieldType, tokCount, fieldOperator);
+            
+            //must do decimal resets as either int or long
+            int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType : 
+                             (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
+            
+            saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
             fieldTokensUnique++;
+            
             dictionaryMap[fieldId] = dTokens = newDTokens;
 
         } else {
             token = dTokens[activeDictionary];
-            if (0 != token) {
+            if (0 != token && fieldType!= TypeMask.Decimal && fieldType!=TypeMask.DecimalOptional) { ///TODO: hack for now but need to clean up for decimals.
                 if (fieldType != TokenBuilder.extractType(token) || fieldOperator != TokenBuilder.extractType(token)) {
                     throw new SAXException("Field id can not be redefined within the same dictionary.");
                 }
@@ -705,7 +711,12 @@ public class TemplateHandler extends DefaultHandler {
                 int tokCount = count.getAndIncrement();
                 dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount,
                         TokenBuilder.MASK_ABSENT_DEFAULT);
-                saveMember(activeDictionary, fieldType, tokCount, fieldOperator);
+                
+                //must do decimal resets as either int or long
+                int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType : 
+                                 (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
+                
+                saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
                 fieldTokensUnique++;
             }
         }
@@ -713,7 +724,7 @@ public class TemplateHandler extends DefaultHandler {
         return token;
     }
 
-    private void saveMember(int activeDictionary, int fieldType, int tokCount, int fieldOperator) {
+    private void saveResetListMembers(int activeDictionary, int fieldType, int tokCount, int fieldOperator) {
 
         if (TypeMask.GroupLength == fieldType) {
             return;// these are not needed for reset because it is part of the
@@ -721,12 +732,13 @@ public class TemplateHandler extends DefaultHandler {
         }
 
         // these never update the dictionary so they should never do a reset.
-        if (OperatorMask.Field_None == fieldOperator || OperatorMask.Field_Constant == fieldOperator
-                || OperatorMask.Field_Default == fieldOperator) {
+        if (OperatorMask.Field_None == fieldOperator ||
+            OperatorMask.Field_Constant == fieldOperator || 
+            OperatorMask.Field_Default == fieldOperator) {
             // System.err.println("skipped "+TypeMask.toString(fieldType));
             return;
         }
-
+        
         // only need to group by major type.
         int d = activeDictionary << TokenBuilder.BITS_TYPE;
 
@@ -738,14 +750,14 @@ public class TemplateHandler extends DefaultHandler {
 
         int listId = d | fieldType;
 
-        while (members.size() <= listId) {
-            members.add(new ArrayList<Integer>());
+        while (resetList.size() <= listId) {
+            resetList.add(new ArrayList<Integer>());
         }
 
         // these are ever increasing in value, the order makes a difference in
         // performance at run time.
-        assert (members.get(listId).size() == 0 || members.get(listId).get(members.get(listId).size() - 1).intValue() < tokCount);
-        members.get(listId).add(tokCount);
+        assert (resetList.get(listId).size() == 0 || resetList.get(listId).get(resetList.get(listId).size() - 1).intValue() < tokCount);
+        resetList.get(listId).add(tokCount);
     }
 
     private void buildDictionaryMemberLists() {
@@ -759,15 +771,15 @@ public class TemplateHandler extends DefaultHandler {
         tokenIdxMembers = new int[dictionaryCount][TokenBuilder.MAX_FIELD_ID_VALUE];
         tokenIdxMemberHeads = new int[dictionaryCount];
 
-        int j = members.size();
+        int j = resetList.size();
         while (--j >= 0) {
-            if (!members.get(j).isEmpty()) {
+            if (!resetList.get(j).isEmpty()) {
                 int d = j >>> TokenBuilder.BITS_TYPE;
                 int t = j & TokenBuilder.MASK_TYPE;
                 int stopInt = 0xFFFF0000 | t;
                 tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = stopInt;
                 // System.err.println("stopInt:"+stopInt+" "+Integer.toBinaryString(stopInt)+" "+TypeMask.toString(t));
-                for (Integer i : members.get(j)) {
+                for (Integer i : resetList.get(j)) {
                     tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i;
                 }
             }
@@ -788,9 +800,10 @@ public class TemplateHandler extends DefaultHandler {
         // this enables fast startup/recovery times that do not produce garbage.
 
         defaultConstValues
-                .setTypeCounts(tokenBuilderIntCount.intValue(), tokenBuilderLongCount.intValue(),
-                        tokenBuilderTextCount.intValue(), tokenBuilderDecimalCount.intValue(),
-                        tokenBuilderByteCount.intValue());
+                .setTypeCounts(tokenBuilderIntCount.intValue(), 
+                               tokenBuilderLongCount.intValue(),
+                               tokenBuilderTextCount.intValue(),
+                               tokenBuilderByteCount.intValue());
 
         // write catalog data.
         TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,

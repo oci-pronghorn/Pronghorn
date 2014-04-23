@@ -58,7 +58,7 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(445, catalogByteArray.length);
+            assertEquals(444, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);

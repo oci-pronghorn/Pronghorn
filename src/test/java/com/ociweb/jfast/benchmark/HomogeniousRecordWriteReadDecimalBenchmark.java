@@ -67,7 +67,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 	
 	static final DictionaryFactory dcr = new DictionaryFactory();
 	static {
-		dcr.setTypeCounts(fields,fields,fields,fields,fields);
+		dcr.setTypeCounts(fields,fields,fields,fields);
 	}
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 	
@@ -325,17 +325,17 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     staticWriter.writeMantissa(token, mantissa);
                 } else {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==1) {
-                    	int idx = token & staticWriter.exponentMask;
+                    	int idx = token & staticWriter.intInstanceMask;
                         
-                        StaticGlue.writeNull2(token, pw, staticWriter.exponentValues, idx);
+                        StaticGlue.writeNull2(token, pw, staticWriter.intValues, idx);
                     } else {
                     	staticWriter.writeExponentOptional(token, 1);
                     }
                     
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-                    	int idx = token & staticWriter.mantissaMask;
+                    	int idx = token & staticWriter.longInstanceMask;
                         
-                        StaticGlue.writeNull2(token, idx, pw, staticWriter.mantissaValues);
+                        StaticGlue.writeNull2(token, idx, pw, staticWriter.longValues);
                     } else {
                     	staticWriter.writeMantissaOptional(token, mantissa);
                     }
