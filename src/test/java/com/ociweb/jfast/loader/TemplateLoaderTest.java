@@ -243,8 +243,6 @@ public class TemplateLoaderTest {
                 }
                 
             }
-                
-           
         }
         
     }

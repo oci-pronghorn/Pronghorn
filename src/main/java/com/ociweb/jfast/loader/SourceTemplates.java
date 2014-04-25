@@ -87,5 +87,20 @@ public class SourceTemplates {
         return para;
     }
     
+    public String[] defs(String methodName) {
+        int idx = source.indexOf(methodName);
+        //start from idx and find the first (
+        int start = source.indexOf('(', idx)+1;
+        int stop = source.indexOf(')',start);
+        String[] para = source.substring(start, stop).split(",");
+        //extractType
+        int i = para.length;
+        while (--i>=0) {
+            para[i] = para[i].trim();
+            //////exactly the same as the params() method except for removing this line.
+        }
+        return para;
+    }
+    
     
 }
