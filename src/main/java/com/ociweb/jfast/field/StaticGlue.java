@@ -46,7 +46,7 @@ public class StaticGlue {
                 : (xi1 > 0 ? xi1 - 1 : xi1));
     }
 
-    public static void readASCIIToHeapNone(int idx, byte val, TextHeap textHeap, PrimitiveReader primitiveReader) {
+    public static int readASCIIToHeapNone(int idx, byte val, TextHeap textHeap, PrimitiveReader primitiveReader) {
         // 0x80 is a null string.
         // 0x00, 0x80 is zero length string
         if (0 == val) {
@@ -56,10 +56,11 @@ public class StaticGlue {
             val = primitiveReader.readTextASCIIByte(); // < .1%
             // at least do a validation because we already have what we need
             assert ((val & 0xFF) == 0x80);
+            return 0;//length
         } else {
             // happens rarely when it equals 0x80
             textHeap.setNull(idx);
-
+            return -1;//length
         }
     }
 
@@ -113,20 +114,22 @@ public class StaticGlue {
                                                                               // bits
                                                                               // have
                                                                               // data
-            readASCIIToHeapValue(val, chr, idx, textHeap, primitiveReader);
+            return readASCIIToHeapValue(val, chr, idx, textHeap, primitiveReader);            
         } else {
-            readASCIIToHeapNone(idx, val, textHeap, primitiveReader);
+            return readASCIIToHeapNone(idx, val, textHeap, primitiveReader);
         }
-        return idx;
+        
     }
 
-    public static void readASCIIToHeapValue(byte val, int chr, int idx, TextHeap textHeap,
+    public static int readASCIIToHeapValue(byte val, int chr, int idx, TextHeap textHeap,
             PrimitiveReader primitiveReader) {
 
         if (val < 0) {
             textHeap.setSingleCharText((char) chr, idx);
+            return 1;
         } else {
             readASCIIToHeapValueLong(val, idx, textHeap, primitiveReader);
+            return textHeap.valueLength(idx);
         }
     }
 

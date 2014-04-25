@@ -83,6 +83,10 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
             
             template = template.replace(params[i],strData+"/*"+params[i]+"*/");
         }
+        
+        //TODO: B, generator needs to in-line the very short methods
+        //TODO: B, generator needs to extract local copies of values.
+        
         //replace ring buffer position increment
         template = template.replace("spclPosInc()", "queue.addPos++")+"\n";
         
@@ -102,7 +106,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         }
         fieldBuilder.append(field).append("() {\n").append(comment).append(template).append("};\n");
         
-        
+        //TODO: A, how is the read from supported, existing generator must get the from index value when in the script. not built into char/bytes yet.
     }
     
 //    @Override
@@ -536,17 +540,17 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     }
     
     @Override
-    protected void genReadBytesTail(int idx) {
+    protected void genReadBytesTail(int idx, int[] rbB) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNone(int idx) {
+    protected void genReadBytesNone(int idx, int[] rbB) {
         generator(new Exception().getStackTrace(),idx);
     }
 

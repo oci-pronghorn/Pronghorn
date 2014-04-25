@@ -255,7 +255,7 @@ public class TemplateLoaderTest {
        // new SourceTemplates();
         
         FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(256,templateCatalogInput,4)); //TODO: defaults 2048 and 32 may not be optimal.
 
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);
@@ -304,7 +304,7 @@ public class TemplateLoaderTest {
         // needed.
 
         int warmup = 32;
-        int count = 1024;
+        int count = 512;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
         byte[] preamble = new byte[catalog.preambleSize];
@@ -883,7 +883,7 @@ public class TemplateLoaderTest {
         File fileSource = new File(source.getFile().replace("%20", " "));
         try {
             TemplateLoader.buildCatalog(catalogBuffer, fileSource);
-        } catch (ParserConfigurationException | SAXException | IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

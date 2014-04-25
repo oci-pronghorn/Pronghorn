@@ -96,7 +96,7 @@ public class Complex30000Benchmark extends Benchmark {
 		File fileSource = new File(source.getFile());
 		try {			
 			TemplateLoader.buildCatalog(catalogBuffer, fileSource);
-		} catch (ParserConfigurationException | SAXException | IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		

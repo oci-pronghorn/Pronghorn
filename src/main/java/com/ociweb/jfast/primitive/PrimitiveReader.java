@@ -177,17 +177,22 @@ public final class PrimitiveReader {
 
         int k = invPmapStackDepth -= (pmapMaxSize + 2);
         bitBlock = buffer[position];
-        k = walkPMapLength(pmapMaxSize, k);
+        //TODO: A, this is a constant for many templates and can be injected? still its a copy!.
+        k = walkPMapLength(pmapMaxSize, k, invPmapStack);
         invPmapStack[k] = (byte) (3 + pmapMaxSize + (invPmapStackDepth - k));
 
         // set next bit to read
         pmapIdx = 6;
     }
 
-    private int walkPMapLength(final int pmapMaxSize, int k) {
+    private int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack) {
         if (limit - position > pmapMaxSize) {
-            do {
-            } while ((invPmapStack[k++] = buffer[position++]) >= 0);
+            if ((pmapStack[k++] = buffer[position++]) >= 0) {
+                if ((pmapStack[k++] = buffer[position++]) >= 0) {
+                    do {
+                    } while ((pmapStack[k++] = buffer[position++]) >= 0);
+                }
+            }
         } else {
             k = openPMapSlow(k);
         }
@@ -554,7 +559,7 @@ public final class PrimitiveReader {
     }
 
     // keep calling while byte is >=0
-    public byte readTextASCIIByte() {
+    public final byte readTextASCIIByte() {
         if (position >= limit) {
             fetch(1); // CAUTION: may change value of position
         }
@@ -1027,7 +1032,7 @@ public final class PrimitiveReader {
         target[targetIdx] = (char) ((result << 6) | (source[position++] & 0x3F));
     }
 
-    public boolean isEOF() {
+    public final boolean isEOF() {
         if (limit != position) {
             return false;
         }

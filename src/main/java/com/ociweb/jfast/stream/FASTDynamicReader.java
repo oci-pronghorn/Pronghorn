@@ -33,8 +33,6 @@ public class FASTDynamicReader implements FASTDataProvider {
 
     private final TemplateCatalog catalog;
 
-    private final int[] fullScript;
-
     private final byte[] preamble;
     private final byte preambleDataLength;
 
@@ -62,7 +60,6 @@ public class FASTDynamicReader implements FASTDataProvider {
         this.preamble = new byte[preambleDataLength];
         this.readerDispatch = dispatch;
         this.reader = dispatch.reader;
-        this.fullScript = catalog.fullScript();
         this.ringBuffer = dispatch.ringBuffer();
         this.lastCapacity = ringBuffer.availableCapacity();
 
@@ -109,41 +106,53 @@ public class FASTDynamicReader implements FASTDataProvider {
     // TODO: X, needs optimization, has more takes up too much time in profiler,
     // must allow for inline of hasMore!
     // TODO: B, Check support for group that may be optional
-
     public int hasMore() {
         // start new script or detect that the end of the data has been reached
+        FASTRingBuffer rb = ringBuffer;
         if (neededSpaceOrTemplate < 0) {
+            
             // checking EOF first before checking for blocked queue
-            if (reader.isEOF()) {
+            if (reader.isEOF()) { //replaced with 30001==messageCount and found this method is NOT expensive
+                //System.err.println(messageCount);
                 return 0;
             }
             // must have room to store the new template
             int req = preambleDataLength + 1;
-            if ((lastCapacity < req) && ((lastCapacity = ringBuffer.availableCapacity()) < req)) {
+            if ((lastCapacity < req) && ((lastCapacity = rb.maxSize-(rb.addPos-rb.remPos)) < req)) {
                 return 0x80000000;
             }
-            hasMoreNextMessage(req);
+            neededSpaceOrTemplate=hasMoreNextMessage(req);
         }
-
+        
+        
         if (neededSpaceOrTemplate > 0) {
             if ((lastCapacity < neededSpaceOrTemplate)
-                    && ((lastCapacity = ringBuffer.availableCapacity()) < neededSpaceOrTemplate)) {
+                    && ((lastCapacity = rb.maxSize-(rb.addPos-rb.remPos)) < neededSpaceOrTemplate)) {
                 return 0x80000000;
             }
             lastCapacity -= neededSpaceOrTemplate;
         }
-
+        
         // returns true for end of sequence or group
-        if (readerDispatch.dispatchReadByToken()) {
-            ringBuffer.unBlockSequence();
+        return hasMoreEnd(readerDispatch,rb);
+    }
+    
+    //some ways of calling methods.
+    //super.method
+    //static method
+    //private method
+
+    private final int hasMoreEnd(FASTReaderDispatch readerDispatch, FASTRingBuffer rb) {
+        if (readerDispatch.dispatchReadByToken()) {//vtable lookup here
+            rb.unBlockSequence();//expensive call change to static?
             if (readerDispatch.jumpSequence >= 0) {
-                return processSequence(readerDispatch.jumpSequence);
+                return processSequence(readerDispatch);
             }
         }
         return finishTemplate();
     }
 
-    private void hasMoreNextMessage(int req) {
+    private int hasMoreNextMessage(int req) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
@@ -189,16 +198,10 @@ public class FASTDynamicReader implements FASTDataProvider {
         // but for easy math we will use 4, will require a little more empty
         // space in buffer
         // however we will not need a lookup table
-        neededSpaceOrTemplate = (readerDispatch.activeScriptLimit - readerDispatch.activeScriptCursor) << 2;
-        assert (neededSpaceOrTemplate > 0) : "Script must have positive value";// zero
-                                                                               // is
-                                                                               // used
-                                                                               // for
-                                                                               // unknown
-                                                                               // template
+        return (readerDispatch.activeScriptLimit - readerDispatch.activeScriptCursor) << 2;
     }
 
-    private int finishTemplate() {
+    private final int finishTemplate() {
         // reached the end of the script so close and prep for the next one
         ringBuffer.unBlockMessage();
         neededSpaceOrTemplate = -1;
@@ -206,7 +209,8 @@ public class FASTDynamicReader implements FASTDataProvider {
         return 2;// finished reading full message
     }
 
-    private int processSequence(int i) {
+    private final int processSequence(FASTReaderDispatch readerDispatch) {
+        int i = readerDispatch.jumpSequence;
         if (i > 0) { // jumping (backward) to do this sequence again.
             neededSpaceOrTemplate = 1 + (i << 2);
             readerDispatch.activeScriptCursor -= i;
