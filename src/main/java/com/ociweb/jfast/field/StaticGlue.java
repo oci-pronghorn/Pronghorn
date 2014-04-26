@@ -6,46 +6,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class StaticGlue {
 
-    public static int staticReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent,
-            PrimitiveReader primitiveReader, int[] rIntDictionary) {
-        int xi1;
-        return (0 == (xi1 = primitiveReader.readIntegerUnsignedCopy(target, source, rIntDictionary)) ? constAbsent
-                : xi1 - 1);
-    }
-
-    public static int staticReadIntegerUnsignedOptional(int constAbsent, PrimitiveReader primitiveReader) {
-        int xi1;
-        return 0 == (xi1 = primitiveReader.readIntegerUnsigned()) ? constAbsent : xi1 - 1;
-    }
-
-    public static int staticReadASCIICopyOptional(int idx, PrimitiveReader primitiveReader, TextHeap textHeap) {
-        if (primitiveReader.popPMapBit() != 0) {
-            StaticGlue.readASCIICopyOptional2(idx, textHeap, primitiveReader);
-        }
-        return idx;
-    }
-
-    public static long staticReadLongSignedCopyOptional(int target, int source, long constAbsent,
-            PrimitiveReader primitiveReader, long[] rLongDictionary) {
-        long xl1;
-        return (0 == (xl1 = primitiveReader.readLongSignedCopy(target, source, rLongDictionary)) ? constAbsent
-                : xl1 - 1);
-    }
-
-    public static long staticReadLongUnsignedCopyOptional(int target, int source, long constAbsent,
-            PrimitiveReader primitiveReader, long[] rLongDictionary) {
-        long xl1;
-        return (0 == (xl1 = primitiveReader.readLongUnsignedCopy(target, source, rLongDictionary)) ? constAbsent
-                : xl1 - 1);
-    }
-
-    public static int staticReadIntegerSignedCopyOptional(int target, int source, int constAbsent,
-            PrimitiveReader primitiveReader, int[] rIntDictionary) {
-        int xi1;
-        return (0 == (xi1 = primitiveReader.readIntegerSignedCopy(target, source, rIntDictionary)) ? constAbsent
-                : (xi1 > 0 ? xi1 - 1 : xi1));
-    }
-
     public static int readASCIIToHeapNone(int idx, byte val, TextHeap textHeap, PrimitiveReader primitiveReader) {
         // 0x80 is a null string.
         // 0x00, 0x80 is zero length string
@@ -104,21 +64,6 @@ public class StaticGlue {
             }
         } while (len < 0);
         return targIndex;
-    }
-
-    public static int readASCIIToHeap(final int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
-        byte val;
-        int chr;
-        if (0 != (chr = 0x7F & (val = primitiveReader.readTextASCIIByte()))) {// low
-                                                                              // 7
-                                                                              // bits
-                                                                              // have
-                                                                              // data
-            return readASCIIToHeapValue(val, chr, idx, textHeap, primitiveReader);            
-        } else {
-            return readASCIIToHeapNone(idx, val, textHeap, primitiveReader);
-        }
-        
     }
 
     public static int readASCIIToHeapValue(byte val, int chr, int idx, TextHeap textHeap,
@@ -289,12 +234,6 @@ public class StaticGlue {
         return idx;
     }
 
-    public static int readUTF8s(int idx, int offset, TextHeap textHeap, PrimitiveReader primitiveReader) {
-        int length = primitiveReader.readIntegerUnsigned() - offset;
-        primitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length);
-        return idx;
-    }
-    
     public static int readUTF8DeltaOptional(final int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
         int trim = primitiveReader.readIntegerSigned();
         if (0 == trim) {

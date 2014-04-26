@@ -215,7 +215,7 @@ public final class PrimitiveReader {
         return popPMapBit(pmapIdx, bitBlock);
     }
 
-    private byte popPMapBit(byte tmp, byte bb) {
+    private byte popPMapBit(byte tmp, byte bb) {//Invoked 100's of millions of times, must be tight.
         if (tmp > 0 || (tmp == 0 && bb < 0)) {
             // Frequent, 6 out of every 7 plus the last bit block
             pmapIdx = (byte) (tmp - 1); // TODO: Z, What if caller keeps the
@@ -254,7 +254,7 @@ public final class PrimitiveReader {
         return readLongSignedPrivate();
     }
 
-    private long readLongSignedPrivate() {
+    private long readLongSignedPrivate() {//Invoked 100's of millions of times, must be tight.
         if (limit - position <= 10) {
             return readLongSignedSlow();
         }
@@ -381,7 +381,7 @@ public final class PrimitiveReader {
         return readIntegerUnsignedPrivate();
     }
 
-    private int readIntegerUnsignedPrivate() {
+    private int readIntegerUnsignedPrivate() {//Invoked 100's of millions of times, must be tight.
         if (limit - position >= 5) {// not near end so go fast.
             byte v;
             return ((v = buffer[position++]) < 0) ? (v & 0x7F) : readIntegerUnsignedLarger(v);
@@ -1062,23 +1062,6 @@ public final class PrimitiveReader {
                 : (dictionary[target] = readIntegerUnsignedPrivate()));
     }
 
-    public final int readIntegerUnsignedDelta(int target, int source, int[] dictionary) {
-        // Delta opp never uses PMAP
-        return (dictionary[target] = (int) (dictionary[source] + readLongSignedPrivate()));
-    }
-
-    public final int readIntegerUnsignedDeltaOptional(int target, int source, int[] dictionary, int constAbsent) {
-        // Delta opp never uses PMAP
-        long value = readLongSignedPrivate();
-        if (0 == value) {
-            dictionary[target] = 0;// set to absent
-            return constAbsent;
-        } else {
-            return dictionary[target] = (int) (dictionary[source] + (value > 0 ? value - 1 : value));
-
-        }
-    }
-
     public final int readIntegerUnsignedDefault(int constDefault) {
         return (popPMapBit(pmapIdx, bitBlock) == 0 ? constDefault : readIntegerUnsignedPrivate());
     }
@@ -1171,32 +1154,9 @@ public final class PrimitiveReader {
 
     // For the Long values
 
-    public final long readLongUnsigned(int target, long[] dictionary) {
-        // no need to set initValueFlags for field that can never be null
-        return dictionary[target] = readLongUnsignedPrivate();
-    }
-
-    public final long readLongUnsignedOptional(long constAbsent) {
-        long value = readLongUnsignedPrivate();
-        return value == 0 ? constAbsent : value - 1;
-    }
-
-    public final long readLongSignedConstantOptional(long constAbsent, long constConst) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constAbsent : constConst);
-    }
-
-    public final long readLongUnsignedConstantOptional(long constAbsent, long constConst) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constAbsent : constConst);
-    }
-
     public final long readLongUnsignedCopy(int target, int source, long[] dictionary) {
         return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
                 : (dictionary[target] = readLongUnsignedPrivate()));
-    }
-
-    public final long readLongUnsignedDelta(int target, int source, long[] dictionary) {
-        // Delta opp never uses PMAP
-        return (dictionary[target] = (dictionary[source] + readLongSignedPrivate()));
     }
 
     public final long readLongUnsignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
@@ -1244,24 +1204,9 @@ public final class PrimitiveReader {
         }
     }
 
-    public final long readLongSigned(int target, long[] dictionary) {
-        // no need to set initValueFlags for field that can never be null
-        return dictionary[target] = readLongSignedPrivate();
-    }
-
-    public final long readLongSignedOptional(long constAbsent) {
-        long value = readLongSignedPrivate();
-        return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
-    }
-
     public final long readLongSignedCopy(int target, int source, long[] dictionary) {
         return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
                 : (dictionary[target] = readLongSignedPrivate()));
-    }
-
-    public final long readLongSignedDelta(int target, int source, long[] dictionary) {
-        // Delta opp never uses PMAP
-        return (dictionary[target] = (dictionary[source] + readLongSignedPrivate()));
     }
 
     public final long readLongSignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
@@ -1315,7 +1260,7 @@ public final class PrimitiveReader {
     public final int openMessage(int pmapMaxSize) {
         openPMap(pmapMaxSize);
         // return template id or unknown
-        return (0 != popPMapBit()) ? readIntegerUnsigned() : -1;// template Id
+        return (0 != popPMapBit(pmapIdx, bitBlock)) ? readIntegerUnsignedPrivate() : -1;// template Id
 
     }
 

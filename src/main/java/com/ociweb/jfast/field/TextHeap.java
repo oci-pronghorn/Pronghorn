@@ -131,7 +131,8 @@ public class TextHeap {
         return data;
     }
 
-    int allocate(int idx, int sourceLen) {
+    //TODO: not sure exposing this is a great idea.
+    public int allocate(int idx, int sourceLen) {
 
         int offset = idx << 2;
 
@@ -573,7 +574,7 @@ public class TextHeap {
     // ////////
 
     // for ring buffer only where the length was already known
-    public int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask) {
+    public int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask) {//Invoked 100's of millions of times, must be tight.
         // Does not support init values
         assert (idx > 0);
 

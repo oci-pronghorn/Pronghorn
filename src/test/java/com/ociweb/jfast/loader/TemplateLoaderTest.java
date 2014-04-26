@@ -245,6 +245,21 @@ public class TemplateLoaderTest {
             }
         }
         
+        //Generate top level entry code.
+        
+        int j = 0;
+        int[] doneValues = new int[doneScripts.size()];
+        String[] doneCode = new String[doneScripts.size()];
+        for(Integer d:doneScripts) {
+            doneCode[j] = "case"+d+"();\n";
+            doneValues[j++] = d;
+        }
+        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
+        StringBuilder builder = new StringBuilder();
+        builder.append("public boolean dispatchReadByToken() {\n");
+        bsg.generate(builder, doneValues, doneCode);
+        builder.append("}\n");
+        System.err.println(builder.toString());
     }
 
     @Test

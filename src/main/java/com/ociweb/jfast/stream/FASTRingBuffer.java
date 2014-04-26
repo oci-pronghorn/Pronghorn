@@ -98,10 +98,6 @@ public final class FASTRingBuffer {
         return maxSize - (addPos - remPos);
     }
 
-    public static void appendi(int[] buf, int pos, int mask, int value) {
-        buf[mask & pos] = value;
-    }
-
     public static int peek(int[] buf, int pos, int mask) {
         return buf[mask & pos];
     }
@@ -125,7 +121,7 @@ public final class FASTRingBuffer {
     // TODO: Z, add map toIterator method for consuming ring buffer by java8
     // streams.
 
-    public int writeTextToRingBuffer(int heapId, int len) {
+    public int writeTextToRingBuffer(int heapId, int len) {//Invoked 100's of millions of times, must be tight.
         final int p = addCharPos;
         if (len > 0) {
             addCharPos = textHeap.copyToRingBuffer(heapId, charBuffer, p, charMask);
