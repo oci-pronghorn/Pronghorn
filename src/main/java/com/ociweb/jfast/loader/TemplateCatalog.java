@@ -43,14 +43,6 @@ public class TemplateCatalog {
     public static final int END_OF_SEQ_ENTRY = 0x01;
     public static final int END_OF_MESSAGE = 0x02;
 
-    public int getTemplateStartIdx(int templateId) {// TODO: inline
-        return templateStartIdx[templateId];
-    }
-
-    public int getTemplateLimitIdx(int templateId) {// TODO: inline
-        return templateLimitIdx[templateId];
-    }
-
     public TemplateCatalog(PrimitiveReader reader) {
 
         int templatePow = reader.readIntegerUnsigned();

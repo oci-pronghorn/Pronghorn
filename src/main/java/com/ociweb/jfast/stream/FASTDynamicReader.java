@@ -121,7 +121,7 @@ public class FASTDynamicReader implements FASTDataProvider {
             if ((lastCapacity < req) && ((lastCapacity = rb.maxSize-(rb.addPos-rb.remPos)) < req)) {
                 return 0x80000000;
             }
-            neededSpaceOrTemplate=hasMoreNextMessage(req);
+            neededSpaceOrTemplate=hasMoreNextMessage(req, catalog, readerDispatch);
         }
         
         
@@ -152,7 +152,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         return finishTemplate();
     }
 
-    private int hasMoreNextMessage(int req) {
+    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderDispatch readerDispatch) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
@@ -164,13 +164,11 @@ public class FASTDynamicReader implements FASTDataProvider {
             int i = 0;
             int s = preamble.length;
             while (i < s) {// TODO A, convert this to use ByteArray ring buffer
-                           // support?
                 ringBuffer.appendInt1(((0xFF & preamble[i++]) << 24) | ((0xFF & preamble[i++]) << 16)
                         | ((0xFF & preamble[i++]) << 8) | ((0xFF & preamble[i++])));
             }
 
-        }
-        ;
+        };
         // /////////////////
 
         // open message (special type of group)
@@ -184,14 +182,8 @@ public class FASTDynamicReader implements FASTDataProvider {
                                  // message
 
         // set the cursor start and stop for this template
-        readerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(i); // TODO:
-                                                                            // X,
-                                                                            // pull
-                                                                            // in
-                                                                            // as
-                                                                            // lists
-                                                                            // once
-        readerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(i);
+        readerDispatch.activeScriptCursor = catalog.templateStartIdx[i];
+        readerDispatch.activeScriptLimit = catalog.templateLimitIdx[i];
 
         // Worst case scenario is that this is full of decimals which each need
         // 3.

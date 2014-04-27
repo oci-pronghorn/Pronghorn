@@ -31,6 +31,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class Complex30000Benchmark extends Benchmark {
 
@@ -160,7 +161,7 @@ public class Complex30000Benchmark extends Benchmark {
 		int flag;
 		while (0!=(flag=dynamicReader.hasMore())) {
 			if (0!=(flag&0x02)) {
-				result|=queue.readInteger(0);//must do some real work or hot-spot may delete this loop.
+				result|=FASTRingBufferReader.readInt(queue, 0);//must do some real work or hot-spot may delete this loop.
 				queue.dump(); //must dump values in buffer or we will hang when reading.
 			}
 		}

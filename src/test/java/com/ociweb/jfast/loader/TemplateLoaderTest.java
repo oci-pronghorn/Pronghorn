@@ -15,7 +15,6 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -40,6 +39,7 @@ import com.ociweb.jfast.stream.FASTReaderDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterDispatch;
 
 public class TemplateLoaderTest {
@@ -138,7 +138,7 @@ public class TemplateLoaderTest {
             int flag;
             while (0 != (flag = dynamicReader.hasMore())) {
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
-                    result |= queue.readInteger(0);// must do some real work or
+                    result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                    // hot-spot may delete this
                                                    // loop.
                     queue.dump(); // must dump values in buffer or we will hang
@@ -206,65 +206,15 @@ public class TemplateLoaderTest {
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
         
-        int[] fullScript = catalog.fullScript();
-        System.err.println("full catalog script contains:"+fullScript.length);
         
-        Set<Integer> doneScripts = new HashSet<Integer>();
+        StringBuilder builder = readerDispatch.generateFullClass(catalog);
         
-        int[] startCursor = catalog.templateStartIdx;
-        int[] limitCursor = catalog.templateLimitIdx;
-        int i = 0;
-        while (i<startCursor.length) {
-            int cursor = startCursor[i];
-            int limit = limitCursor[i++];
-            
-            if (0==cursor && 0==limit) {
-                continue;//skip this one it was not at an entry point
-            }
-            
-            doneScripts.add(cursor);
-            readerDispatch.startScriptBlock(cursor,i-1);
-            readerDispatch.setScriptBlock(cursor, limit);
-
-            readerDispatch.dispatchReadByToken();
-            String block = readerDispatch.getScriptBlock();
-            System.err.println();
-            System.err.println(block);
-            
-            for(int seqStart:readerDispatch.getSequenceStarts()) {
-                if (!doneScripts.contains(seqStart)) {
-                    doneScripts.add(seqStart);
-                    readerDispatch.startScriptBlock(seqStart,i-1);
-                    readerDispatch.setScriptBlock(seqStart, limit); //TODO: limit or start of next sequence.
-                    readerDispatch.dispatchReadByToken();
-                    block = readerDispatch.getScriptBlock();
-                    System.err.println();
-                    System.err.println(block);
-                }
-                
-            }
-        }
-        
-        //Generate top level entry code.
-        
-        int j = 0;
-        int[] doneValues = new int[doneScripts.size()];
-        String[] doneCode = new String[doneScripts.size()];
-        for(Integer d:doneScripts) {
-            doneCode[j] = "case"+d+"();\n";
-            doneValues[j++] = d;
-        }
-        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        StringBuilder builder = new StringBuilder();
-        builder.append("public boolean dispatchReadByToken() {\n");
-        bsg.generate(builder, doneValues, doneCode);
-        builder.append("}\n");
         System.err.println(builder.toString());
     }
 
     @Test
     public void testDecodeComplex30000() {
-
+        Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
        // new SourceTemplates();
         
         FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
@@ -301,7 +251,6 @@ public class TemplateLoaderTest {
                 //new FASTReaderDispatch( 
                 new FASTReaderDispatchGenExample(
                         
-                //new FASTReaderDispatchGenerator(       
                         
                 primitiveReader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
@@ -312,11 +261,8 @@ public class TemplateLoaderTest {
         // TODO: X, look into core affinity
 
         // TODO: B, Use generated class if found else use slower base class
-        // behavior.
-        // TODO: B, generator code should take TemplateCatalog to build class if
-        // needed.
 
-        int warmup = 32;
+        int warmup = 128;
         int count = 512;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
@@ -356,25 +302,25 @@ public class TemplateLoaderTest {
                         int i = 0;
                         int s = preamble.length;
                         while (i < s) {
-                            queue.readInteger(bufferIdx);
+                            FASTRingBufferReader.readInt(queue, bufferIdx);
                             i += 4;
                             bufferIdx++;
                         }
                     }
 
-                    int templateId = queue.readInteger(bufferIdx);
+                    int templateId = FASTRingBufferReader.readInt(queue, bufferIdx);
                     bufferIdx += 1;// point to first field
                     assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
 
-                    int i = catalog.getTemplateStartIdx(templateId);
-                    int limit = catalog.getTemplateLimitIdx(templateId);
+                    int i = catalog.templateStartIdx[templateId];
+                    int limit = catalog.templateLimitIdx[templateId];
                     // System.err.println("new templateId "+templateId);
                     while (i < limit) {
                         int token = fullScript[i++];
                         // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 
                         if (isText(token)) {
-                            queuedBytes += (4 * queue.readCharsLength(bufferIdx));
+                            queuedBytes += (4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
                         }
 
                         // find the next index after this token.
@@ -406,7 +352,7 @@ public class TemplateLoaderTest {
             int flag;
             while (0 != (flag = dynamicReader.hasMore())) {
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
-                    result |= queue.readInteger(0);// must do some real work or
+                    result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                    // hot-spot may delete this
                                                    // loop.
                 } else if (flag < 0) {// negative flag indicates queue is backed
@@ -417,7 +363,6 @@ public class TemplateLoaderTest {
             }
 
             double duration = System.nanoTime() - start;
-            Thread.yield();
             if ((0x7F & iter) == 0) {
                 int ns = (int) duration;
                 float mmsgPerSec = (msgs * (float) 1000l / ns);
@@ -428,8 +373,6 @@ public class TemplateLoaderTest {
                         + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
                         + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs + " Groups:" + grps); // Phrases/Clauses
                 // Helps let us kill off the job.
-                Thread.yield();
-                System.gc();
             }
 
             // //////
@@ -597,8 +540,8 @@ public class TemplateLoaderTest {
                dynamicReader2.hasMore() != 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
-                int int1 = queue1.readInteger(1);
-                int int2 = queue2.readInteger(1);
+                int int1 = FASTRingBufferReader.readInt(queue1, 1);
+                int int2 = FASTRingBufferReader.readInt(queue2, 1);
 
                 if (int1 != int2) {
                     errCount++;
@@ -658,7 +601,7 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader primitiveReader = new PrimitiveReader(fastInput);
-        FASTReaderDispatch readerDispatch = new FASTReaderDispatchGenExample(primitiveReader,
+        FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader,
                 catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
@@ -710,7 +653,6 @@ public class TemplateLoaderTest {
             grps = 0;
             int flags = 0; // same id needed for writer construction
             while (0 != (flags = dynamicReader.hasMore())) {
-                Thread.yield();
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }

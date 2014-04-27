@@ -49,7 +49,7 @@ public class FASTDynamicWriter {
                     int i = 0;
                     int s = preambleDataLength;
                     while (i < s) {
-                        int d = ringBuffer.readInteger(idx);
+                        int d = FASTRingBufferReader.readInt(ringBuffer, idx);
                         preambleData[i++] = (byte) (0xFF & (d >>> 24));
                         preambleData[i++] = (byte) (0xFF & (d >>> 16));
                         preambleData[i++] = (byte) (0xFF & (d >>> 8));
@@ -61,14 +61,14 @@ public class FASTDynamicWriter {
                 ;
 
                 // template processing (can these be nested?)
-                int templateId = ringBuffer.readInteger(idx);
+                int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
                 idx++;
 
                 writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId);
 
                 // tokens - reading
-                writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx(templateId);
-                writerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx(templateId);
+                writerDispatch.activeScriptCursor = catalog.templateStartIdx[templateId];
+                writerDispatch.activeScriptLimit = catalog.templateLimitIdx[templateId];
 
                 if (0 == writerDispatch.activeScriptLimit && 0 == writerDispatch.activeScriptCursor) {
                     throw new FASTException("Unknown template:" + templateId);

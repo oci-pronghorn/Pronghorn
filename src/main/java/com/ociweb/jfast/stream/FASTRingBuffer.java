@@ -3,6 +3,7 @@ package com.ociweb.jfast.stream;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 
@@ -16,6 +17,12 @@ import com.ociweb.jfast.field.TextHeap;
  * 
  * @author Nathan Tippy
  * 
+ * 
+ * Storage:
+ *  int - 1 slot
+ *  long - 2 slots, high then low 
+ *  text - 2 slots, index then length  (if index is negative use constant array)
+ * 
  */
 public final class FASTRingBuffer {
 
@@ -27,15 +34,15 @@ public final class FASTRingBuffer {
     final int maxCharSize;
     final int charMask;
     final char[] charBuffer;
-    public final TextHeap textHeap;
-    final char[] rawConstHeap;
     int addCharPos = 0;
 
     final int maxByteSize;
     final int byteMask;
-    final ByteHeap byteHeap;
     final byte[] byteBuffer;
     int addBytePos = 0;
+    
+    final char[] constBuffer; //defined externally and never changes
+    final byte[] constByteBuffer;
 
     FASTFilter filter = FASTFilter.none;
 
@@ -44,13 +51,12 @@ public final class FASTRingBuffer {
     public int addPos = 0;
     public int remPos = 0;
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, TextHeap textHeap, ByteHeap byteHeap) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, char[] constBuffer, byte[] constByteBuffer) {
         assert (primaryBits >= 1);
-        this.textHeap = textHeap;
-        this.byteHeap = byteHeap;
 
-        this.rawConstHeap = null == textHeap ? null : textHeap.rawInitAccess();
-
+        this.constBuffer = constBuffer; //TODO: rename
+        this.constByteBuffer = constByteBuffer;
+        
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
         this.buffer = new int[maxSize];
@@ -121,7 +127,7 @@ public final class FASTRingBuffer {
     // TODO: Z, add map toIterator method for consuming ring buffer by java8
     // streams.
 
-    public int writeTextToRingBuffer(int heapId, int len) {//Invoked 100's of millions of times, must be tight.
+    public int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         final int p = addCharPos;
         if (len > 0) {
             addCharPos = textHeap.copyToRingBuffer(heapId, charBuffer, p, charMask);
@@ -129,7 +135,7 @@ public final class FASTRingBuffer {
         return p;
     }
 
-    public int writeBytesToRingBuffer(int heapId, int len) {
+    public int writeBytesToRingBuffer(int heapId, int len, ByteHeap byteHeap) {
         final int p = addBytePos;
         if (len > 0) {
             addBytePos = byteHeap.copyToRingBuffer(heapId, byteBuffer, p, byteMask);
@@ -144,13 +150,10 @@ public final class FASTRingBuffer {
 
     // next sequence is ready for consumption.
     public final void unBlockSequence() {
-        // TODO: A, only filter on the message level. sequence will be slow and
-        // difficult because they are nested.
+        // TODO: A, only filter on the message level. sequence will be  difficult because they are nested.
 
         // if filtered out the addPos will be rolled back to newGroupPos
-        byte f = filter.go(addCount.get(), this);// TODO: what if we need to
-                                                 // split first sequence and
-                                                 // message header.
+        byte f = filter.go(addCount.get(), this);
         
         if (f > 0) {// consumer is allowed to read up to addCount
             // normal
@@ -197,24 +200,8 @@ public final class FASTRingBuffer {
     // TODO: A, Given templateId, and FieldId return offset for RingBuffer to
     // get value, must keep in client code
 
-    public int readInteger(int idx) {
-        return buffer[mask & (remPos + idx)];
-    }
-
-    public long readLong(int idx) {
-
-        int i = remPos + idx;
-        return (((long) buffer[mask & i]) << 32) | (((long) buffer[mask & (i + 1)]) & 0xFFFFFFFFl);
-
-    }
-
-    public int readCharsLength(int idx) {
-        // second int is always the length
-        return buffer[mask & (remPos + idx + 1)];
-    }
-
     // this is for fast direct WRITE TO target
-    public void readChars(int idx, char[] target, int targetIdx) {
+    public void readChars(int idx, char[] target, int targetIdx, TextHeap textHeap) {
         int ref1 = buffer[mask & (remPos + idx)];
         if (ref1 < 0) {
             textHeap.get(ref1, target, targetIdx);
@@ -230,41 +217,21 @@ public final class FASTRingBuffer {
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
     public int readRingCharPos(int fieldPos) {
-        int ref1 = buffer[mask & (remPos + fieldPos)];
         // constant from heap or dynamic from char ringBuffer
-        return ref1 < 0 ? textHeap.initStartOffset(ref1) : ref1;
+        int ref1 = buffer[mask & (remPos + fieldPos)];
+        return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
     }
 
     public char[] readRingCharBuffer(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
-        return buffer[mask & (remPos + fieldPos)] < 0 ? this.rawConstHeap : this.charBuffer; // TODO:
-                                                                                             // A,
-                                                                                             // Mask
-                                                                                             // against
-                                                                                             // constHeap
-                                                                                             // may
-                                                                                             // cause
-                                                                                             // bug!!
+        return buffer[mask & (remPos + fieldPos)] < 0 ? constBuffer : this.charBuffer;
     }
 
     public int readRingCharMask() {
         return charMask;
     }
 
-    public Appendable get(int pos, Appendable target) {
-        char[] buffer = readRingCharBuffer(pos);
-        int i = readCharsLength(pos);
-        try {
-            while (--i <= 0) {
-                target.append(buffer[mask & pos++]);
-            }
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
 
-        return target;
-    }
 
     public boolean hasContent() {
         return addPos > remPos;

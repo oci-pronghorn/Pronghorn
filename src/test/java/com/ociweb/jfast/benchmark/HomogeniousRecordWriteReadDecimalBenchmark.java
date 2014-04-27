@@ -11,7 +11,6 @@ import org.junit.Test;
 
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -327,7 +326,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==1) {
                     	int idx = token & staticWriter.intInstanceMask;
                         
-                        StaticGlue.writeNull2(token, pw, staticWriter.intValues, idx);
+                        FASTWriterDispatch.writeNullInt(token, pw, staticWriter.intValues, idx);
                     } else {
                     	staticWriter.writeExponentOptional(token, 1);
                     }
@@ -335,7 +334,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                     	int idx = token & staticWriter.longInstanceMask;
                         
-                        StaticGlue.writeNull2(token, idx, pw, staticWriter.longValues);
+                        FASTWriterDispatch.writeNullLong(token, idx, pw, staticWriter.longValues);
                     } else {
                     	staticWriter.writeMantissaOptional(token, mantissa);
                     }

@@ -10,10 +10,10 @@ public class BalancedSwitchGenerator {
     final int bits = 32;
     int[] counts = new int[bits];
     
-    public Appendable generate(Appendable target, int[] values, String[] code) {
+    public Appendable generate(String tab, Appendable target, int[] values, String[] code) {
         if (values.length>1) {
             try {
-                split("",target,values, code);
+                split(tab,target,values, code);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -24,8 +24,8 @@ public class BalancedSwitchGenerator {
     private void split(String tab, Appendable target, int[] values, String[] code) throws IOException {
 
         if (values.length==1) {
-            target.append(tab).append(code[0]).append("\n");
             target.append(tab).append("assert(").append(Integer.toString(values[0])).append("==").append(varName).append(") : \"found value of \"+").append(varName).append(";\n");
+            target.append(tab).append(code[0]);//.append("\n");
             return;
         }
 
@@ -47,7 +47,7 @@ public class BalancedSwitchGenerator {
         assert(splitValues[1].length>0) : "Split bit "+splitBit+"  "+Arrays.toString(splitValues[0]);
         
         //TODO: if division only pulls off one item and this is the biggest split possible then we should reconsider the strategy for the rest.
-        //      in this case using a binary split on > < pivot point may work better.
+        //      go back and check with more than 1 bit in mask and continue until a good split is found.
         
         int maskBit = 1<<splitBit;
 

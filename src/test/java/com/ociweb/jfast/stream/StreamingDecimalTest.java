@@ -9,7 +9,6 @@ import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -107,7 +106,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, pw, fw.intValues, idx);
+                                FASTWriterDispatch.writeNullInt(token, pw, fw.intValues, idx);
                             } else {
                                 fw.writeExponentOptional(token, testExpConst);
                             }
@@ -115,7 +114,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, idx, pw, fw.longValues);
+                                FASTWriterDispatch.writeNullLong(token, idx, pw, fw.longValues);
                             } else {
                                 fw.writeMantissaOptional(token, testMantConst);
                             }
@@ -137,7 +136,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, pw, fw.intValues, idx);
+                                FASTWriterDispatch.writeNullInt(token, pw, fw.intValues, idx);
                             } else {
                                 fw.writeExponentOptional(token, 1);
                             }
@@ -145,7 +144,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                StaticGlue.writeNull2(token, idx, pw, fw.longValues);
+                                FASTWriterDispatch.writeNullLong(token, idx, pw, fw.longValues);
                             } else {
                                 fw.writeMantissaOptional(token, mantissa);
                             }

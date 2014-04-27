@@ -66,6 +66,7 @@ public class FASTReaderDispatch {
     protected final FASTRingBuffer rbRingBuffer;
     protected final int rbMask;
     protected final int[] rbB;
+    public static final int INIT_VALUE_MASK = 0x80000000;
 
     public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
@@ -104,7 +105,11 @@ public class FASTReaderDispatch {
 
         this.readerBytes = new FieldReaderBytes(reader, byteHeap);
 
-        this.rbRingBuffer = new FASTRingBuffer((byte) primaryRingBits, (byte) textRingBits, textHeap, byteHeap);
+        this.rbRingBuffer = new FASTRingBuffer((byte) primaryRingBits,
+                                               (byte) textRingBits, 
+                                                null==textHeap? null : textHeap.rawInitAccess(),
+                                                null==byteHeap? null : byteHeap.rawInitAccess()
+                                                );
         rbMask = rbRingBuffer.mask;
         rbB = rbRingBuffer.buffer;
         
@@ -129,10 +134,7 @@ public class FASTReaderDispatch {
 
     }
 
-    public void setScriptBlock(int cursor, int limit) {
-        activeScriptCursor = cursor;
-        activeScriptLimit = limit;
-    }
+
     
     // long totalReadFields = 0;
 
@@ -220,11 +222,7 @@ public class FASTReaderDispatch {
                         } else {
                             int idx = TokenBuilder.MAX_INSTANCE & token;
                             closeGroup(token,idx);
-                            return doSequence;//checkSequence && completeSequence(idx); // TODO: B,
-                                                                  // this is in
-                                                                  // a very poor
-                                                                  // place for
-                                                                  // optimization.
+                            return doSequence;
                         }
 
                     } else {
@@ -478,21 +476,21 @@ public class FASTReaderDispatch {
                     // none
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongSignedNoneOptional(constAbsent, rbB, rbMask, reader);
+                    genReadLongSignedNoneOptional(constAbsent, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongSignedDeltaOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedDeltaOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
                 long constConst = rLongDictionary[token & instanceMask];
 
-                genReadLongSignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader);
+                genReadLongSignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader, rbRingBuffer);
             }
 
         } else {
@@ -505,14 +503,14 @@ public class FASTReaderDispatch {
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongSignedCopyOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedCopyOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongSignedIncrementOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedIncrementOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
@@ -520,7 +518,7 @@ public class FASTReaderDispatch {
                 long constDefault = rLongDictionary[token & instanceMask] == 0 ? constAbsent
                         : rLongDictionary[token & instanceMask];
 
-                genReadLongSignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader);
+                genReadLongSignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
 
@@ -536,19 +534,19 @@ public class FASTReaderDispatch {
                     // none
                     int target = token & instanceMask;
 
-                    genReadLongSignedNone(target, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedNone(target, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
-                    genReadLongSignedDelta(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedDelta(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 // always return this required value.
                 long constDefault = rLongDictionary[token & instanceMask];
-                genReadLongSignedConstant(constDefault, rbB, rbMask);
+                genReadLongSignedConstant(constDefault, rbB, rbMask, rbRingBuffer);
             }
 
         } else {
@@ -560,19 +558,19 @@ public class FASTReaderDispatch {
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
-                    genReadLongSignedCopy(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedCopy(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
-                    genReadLongSignedIncrement(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongSignedIncrement(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
                 long constDefault = rLongDictionary[token & instanceMask];
 
-                genReadLongSignedDefault(constDefault, rbB, rbMask, reader);
+                genReadLongSignedDefault(constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
     }
@@ -587,21 +585,21 @@ public class FASTReaderDispatch {
                     // none
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongUnsignedOptional(constAbsent, rbB, rbMask, reader);
+                    genReadLongUnsignedOptional(constAbsent, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongUnsignedDeltaOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedDeltaOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
                 long constConst = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
-                genReadLongUnsignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader);
+                genReadLongUnsignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader, rbRingBuffer);
             }
 
         } else {
@@ -614,14 +612,14 @@ public class FASTReaderDispatch {
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongUnsignedCopyOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedCopyOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
                     long constAbsent = TokenBuilder.absentValue64(TokenBuilder.extractAbsent(token));
 
-                    genReadLongUnsignedIncrementOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedIncrementOptional(target, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
@@ -629,7 +627,7 @@ public class FASTReaderDispatch {
                 long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK] == 0 ? constAbsent
                         : rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
-                genReadLongUnsignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader);
+                genReadLongUnsignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
 
@@ -645,19 +643,19 @@ public class FASTReaderDispatch {
                     // none
                     int target = token & MAX_LONG_INSTANCE_MASK;
 
-                    genReadLongUnsignedNone(target, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedNone(target, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
 
-                    genReadLongUnsignedDelta(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedDelta(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 // always return this required value.
                 long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
-                genReadLongConstant(constDefault, rbB, rbMask);
+                genReadLongConstant(constDefault, rbB, rbMask, rbRingBuffer);
             }
 
         } else {
@@ -669,19 +667,19 @@ public class FASTReaderDispatch {
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
 
-                    genReadLongUnsignedCopy(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedCopy(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
 
-                    genReadLongUnsignedIncrement(target, source, rLongDictionary, rbB, rbMask, reader);
+                    genReadLongUnsignedIncrement(target, source, rLongDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
                 long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
-                genReadLongUnsignedDefault(constDefault, rbB, rbMask, reader);
+                genReadLongUnsignedDefault(constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
 
@@ -719,21 +717,21 @@ public class FASTReaderDispatch {
                     // none
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerSignedOptional(constAbsent, rbB, rbMask, reader);
+                    genReadIntegerSignedOptional(constAbsent, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
                 int constConst = rIntDictionary[token & instanceMask];
 
-                genReadIntegerSignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader);
+                genReadIntegerSignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader, rbRingBuffer);
             }
 
         } else {
@@ -746,14 +744,14 @@ public class FASTReaderDispatch {
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerSignedCopyOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedCopyOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerSignedIncrementOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedIncrementOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
@@ -761,7 +759,7 @@ public class FASTReaderDispatch {
                 int constDefault = rIntDictionary[token & instanceMask] == 0 ? constAbsent
                         : rIntDictionary[token & instanceMask];
 
-                genReadIntegerSignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader);
+                genReadIntegerSignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
 
@@ -776,18 +774,18 @@ public class FASTReaderDispatch {
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                     int target = token & instanceMask;
-                    genReadIntegerSignedNone(target, rbB, rbMask, reader, rIntDictionary);
+                    genReadIntegerSignedNone(target, rbB, rbMask, reader, rIntDictionary, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    genReadIntegerSignedDelta(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedDelta(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & instanceMask];
-                genReadIntegerConstant(constDefault, rbB, rbMask);
+                genReadIntegerConstant(constDefault, rbB, rbMask, rbRingBuffer);
             }
 
         } else {
@@ -798,17 +796,17 @@ public class FASTReaderDispatch {
                     // copy
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    genReadIntegerSignedCopy(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedCopy(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    genReadIntegerSignedIncrement(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerSignedIncrement(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
                 int constDefault = rIntDictionary[token & instanceMask];
-                genReadIntegerSignedDefault(constDefault, rbB, rbMask, reader);
+                genReadIntegerSignedDefault(constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
     }
@@ -824,21 +822,21 @@ public class FASTReaderDispatch {
                     assert (readFromIdx < 0);
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerUnsignedOptional(constAbsent, rbB, rbMask, reader);
+                    genReadIntegerUnsignedOptional(constAbsent, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
                 int constConst = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 
-                genReadIntegerUnsignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader);
+                genReadIntegerUnsignedConstantOptional(constAbsent, constConst, rbB, rbMask, reader, rbRingBuffer);
             }
 
         } else {
@@ -851,14 +849,14 @@ public class FASTReaderDispatch {
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerUnsignedCopyOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedCopyOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                     int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 
-                    genReadIntegerUnsignedIncrementOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedIncrementOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
@@ -868,7 +866,7 @@ public class FASTReaderDispatch {
                 int t = rIntDictionary[source];
                 int constDefault = t == 0 ? constAbsent : t - 1;
 
-                genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader);
+                genReadIntegerUnsignedDefaultOptional(constAbsent, constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
 
@@ -883,17 +881,17 @@ public class FASTReaderDispatch {
                 int target = token & MAX_INT_INSTANCE_MASK;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadIntegerUnsigned(target, rbB, rbMask, reader, rIntDictionary);
+                    genReadIntegerUnsigned(target, rbB, rbMask, reader, rIntDictionary, rbRingBuffer);
                 } else {
                     // delta
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    genReadIntegerUnsignedDelta(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedDelta(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
-                genReadIntegerUnsignedConstant(constDefault, rbB, rbMask);
+                genReadIntegerUnsignedConstant(constDefault, rbB, rbMask, rbRingBuffer);
             }
 
         } else {
@@ -905,13 +903,13 @@ public class FASTReaderDispatch {
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadIntegerUnsignedCopy(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedCopy(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadIntegerUnsignedIncrement(target, source, rIntDictionary, rbB, rbMask, reader);
+                    genReadIntegerUnsignedIncrement(target, source, rIntDictionary, rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 // default
@@ -919,7 +917,7 @@ public class FASTReaderDispatch {
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                 int constDefault = rIntDictionary[source];
 
-                genReadIntegerUnsignedDefault(constDefault, rbB, rbMask, reader);
+                genReadIntegerUnsignedDefault(constDefault, rbB, rbMask, reader, rbRingBuffer);
             }
         }
     }
@@ -933,17 +931,17 @@ public class FASTReaderDispatch {
                 int target = token & MAX_INT_INSTANCE_MASK;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadLength(target, jumpToTarget, rbB);
+                    genReadLength(target, jumpToTarget, rbB, rbMask, rbRingBuffer, rIntDictionary, reader);
                 } else {
                     // delta
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary, rbB);
+                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
-                genReadLengthConstant(constDefault, jumpToTarget, rbB);
+                genReadLengthConstant(constDefault, jumpToTarget, rbB, rbMask, rbRingBuffer);
             }
 
         } else {
@@ -955,13 +953,13 @@ public class FASTReaderDispatch {
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary, rbB);
+                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary, rbB);
+                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
                 }
             } else {
                 // default
@@ -969,7 +967,7 @@ public class FASTReaderDispatch {
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                 int constDefault = rIntDictionary[source];
 
-                genReadLengthDefault(constDefault, jumpToTarget, rbB);
+                genReadLengthDefault(constDefault, jumpToTarget, rbB, reader, rbMask, rbRingBuffer);
             }
         }
     }
@@ -1018,7 +1016,7 @@ public class FASTReaderDispatch {
                     // constant
                     int id =  token & readerBytes.INSTANCE_MASK;
                     int idLength = byteHeap.length(id);
-                    genReadBytesConstant(id, idLength, rbB, rbMask);
+                    genReadBytesConstant(id, idLength, rbB, rbMask, rbRingBuffer);
                 } else {
                     // delta
                     int idx = token & readerBytes.INSTANCE_MASK;
@@ -1026,17 +1024,19 @@ public class FASTReaderDispatch {
                 }
             }
         } else {
+            int idx = token & readerBytes.INSTANCE_MASK;
             // copy default
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                int idx = token & readerBytes.INSTANCE_MASK;
                 genReadBytesCopy(idx, 0, rbB, rbMask, byteHeap, reader, readerBytes, rbRingBuffer);
             } else {
                 // default
-                int id =  token & readerBytes.INSTANCE_MASK;
-                int idLength = byteHeap.length(id);
-                genReadBytesDefault(id,idLength, 0, rbB, rbMask, byteHeap, reader, readerBytes, rbRingBuffer);
+                int initId = FASTReaderDispatch.INIT_VALUE_MASK | idx;
+                int idLength = byteHeap.length(initId);
+                int initIdx = byteHeap.initStartOffset(initId);
+                
+                genReadBytesDefault(idx,initIdx, idLength, 0, rbB, rbMask, byteHeap, reader, readerBytes, rbRingBuffer);
             }
         }
     }
@@ -1047,33 +1047,32 @@ public class FASTReaderDispatch {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
+            int idx = token & readerBytes.INSTANCE_MASK;
             // none constant delta tail
             if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int idx = token & readerBytes.INSTANCE_MASK;
                     genReadBytesNoneOptional(idx, rbB, rbMask, byteHeap, readerBytes, rbRingBuffer);
                 } else {
                     // tail
-                    int idx = token & readerBytes.INSTANCE_MASK;
                     genReadBytesTailOptional(idx, rbB, rbMask, byteHeap, readerBytes, rbRingBuffer);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constInit =    (token & readerBytes.INSTANCE_MASK) | StaticGlue.INIT_VALUE_MASK;
-                    int constInitLen = byteHeap.length(constInit);
+                    int constId =    idx | FASTReaderDispatch.INIT_VALUE_MASK;
+                    int constInitLen = byteHeap.length(constId);
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderDispatch.INIT_VALUE_MASK;
                     
-                    int constValue =    token & readerBytes.INSTANCE_MASK;
+                    int constValue =    idx;
                     int constValueLen = byteHeap.length(constValue);
                     
-                    genReadBytesConstantOptional(constInit, constInitLen, constValue, constValueLen, rbB, rbMask, reader);
+                    genReadBytesConstantOptional(constInit, constInitLen, constValue, constValueLen, rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
-                    int idx = token & readerBytes.INSTANCE_MASK;
                     genReadBytesDeltaOptional(idx, rbB, rbMask, byteHeap, readerBytes, rbRingBuffer);
                 }
             }
@@ -1087,8 +1086,12 @@ public class FASTReaderDispatch {
             } else {
                 // default
                 int constValue =    token & readerBytes.INSTANCE_MASK;
-                int constValueLen = byteHeap.length(constValue);
-                genReadBytesDefault(constValue,constValueLen,1, rbB, rbMask, byteHeap, reader, readerBytes, rbRingBuffer);
+                int initId = FASTReaderDispatch.INIT_VALUE_MASK | constValue;
+                
+                int constValueLen = byteHeap.length(initId);
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderDispatch.INIT_VALUE_MASK;
+                
+                genReadBytesDefault(constValue,initIdx, constValueLen,1, rbB, rbMask, byteHeap, reader, readerBytes, rbRingBuffer);
             }
         }
     }
@@ -1220,9 +1223,11 @@ public class FASTReaderDispatch {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constInit = (token & MAX_TEXT_INSTANCE_MASK) | StaticGlue.INIT_VALUE_MASK;
-                    int constValue = token & MAX_TEXT_INSTANCE_MASK;
-                    genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constInit), textHeap.initLength(constValue), rbB, rbMask, reader);
+                    int constId = (idx) | FASTReaderDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderDispatch.INIT_VALUE_MASK;
+                    
+                    int constValue = idx;
+                    genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constId), textHeap.initLength(constValue), rbB, rbMask, reader, rbRingBuffer);
                 } else {
                     // delta
                     genReadUTF8DeltaOptional(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
@@ -1236,7 +1241,10 @@ public class FASTReaderDispatch {
                 genReadUTF8Copy(idx,1, rbB, rbMask, reader, textHeap, rbRingBuffer);
             } else {
                 // default
-                genReadUTF8Default(idx, textHeap.initLength(StaticGlue.INIT_VALUE_MASK|idx), 1, rbB, rbMask, textHeap, reader, rbRingBuffer);
+                int initId = FASTReaderDispatch.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderDispatch.INIT_VALUE_MASK;
+                
+                genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 1, rbB, rbMask, textHeap, reader, rbRingBuffer);
             }
         }
     }
@@ -1262,8 +1270,10 @@ public class FASTReaderDispatch {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constIdx = idx | StaticGlue.INIT_VALUE_MASK;
-                    genReadTextConstant(constIdx, textHeap.initLength(constIdx), rbB, rbMask); //always fixed length
+                    int constId = idx | FASTReaderDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderDispatch.INIT_VALUE_MASK;
+                    
+                    genReadTextConstant(constInit, textHeap.initLength(constId), rbB, rbMask, rbRingBuffer); //always fixed length
                 } else {
                     // delta
                     genReadASCIIDelta(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);//always dynamic
@@ -1277,7 +1287,9 @@ public class FASTReaderDispatch {
                 genReadASCIICopy(idx, rbB, rbMask, reader, textHeap, rbRingBuffer); //always dynamic
             } else {
                 // default
-                genReadASCIIDefault(idx, textHeap.initLength(StaticGlue.INIT_VALUE_MASK|idx), rbB, rbMask, reader, textHeap, rbRingBuffer); //dynamic or constant
+                int initId = FASTReaderDispatch.INIT_VALUE_MASK|idx;
+                int initIdx = textHeap.initStartOffset(initId) |FASTReaderDispatch.INIT_VALUE_MASK;
+                genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbB, rbMask, reader, textHeap, rbRingBuffer); //dynamic or constant
             }
         }
     }
@@ -1302,8 +1314,10 @@ public class FASTReaderDispatch {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constIdx = idx | StaticGlue.INIT_VALUE_MASK;
-                    genReadTextConstant(constIdx, textHeap.initLength(constIdx), rbB, rbMask);
+                    int constId = idx | FASTReaderDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderDispatch.INIT_VALUE_MASK;
+                    
+                    genReadTextConstant(constInit, textHeap.initLength(constId), rbB, rbMask, rbRingBuffer);
                 } else {
                     // delta
                     genReadUTF8Delta(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
@@ -1317,7 +1331,10 @@ public class FASTReaderDispatch {
                 genReadUTF8Copy(idx,0, rbB, rbMask, reader, textHeap, rbRingBuffer);
             } else {
                 // default
-                genReadUTF8Default(idx, textHeap.initLength(StaticGlue.INIT_VALUE_MASK|idx), 0, rbB, rbMask, textHeap, reader, rbRingBuffer);
+                int initId = FASTReaderDispatch.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderDispatch.INIT_VALUE_MASK;
+                
+                genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 0, rbB, rbMask, textHeap, reader, rbRingBuffer);
             }
         }
     }
@@ -1337,16 +1354,20 @@ public class FASTReaderDispatch {
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     genReadASCIIDeltaOptional(readFromIdx, idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
                 } else {
-                    int constInit = (token & MAX_TEXT_INSTANCE_MASK) | StaticGlue.INIT_VALUE_MASK;
-                    int constValue = token & MAX_TEXT_INSTANCE_MASK;
-                    genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constInit), textHeap.initLength(constValue), rbB, rbMask, reader);
+                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | FASTReaderDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderDispatch.INIT_VALUE_MASK;
+                    
+                    int constValue = token & MAX_TEXT_INSTANCE_MASK; //TODO: A, is this real? how do we know where to copy from ?
+                    genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constId), textHeap.initLength(constValue), rbB, rbMask, reader, rbRingBuffer);
                 }
             } else {
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     genReadASCIICopyOptional(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
                 } else {
                     // for ASCII we don't need special behavior for optional
-                    genReadASCIIDefault(idx, textHeap.initLength(StaticGlue.INIT_VALUE_MASK|idx), rbB, rbMask, reader, textHeap, rbRingBuffer);
+                    int initId = FASTReaderDispatch.INIT_VALUE_MASK|idx;
+                    int initIdx = textHeap.initStartOffset(initId) |FASTReaderDispatch.INIT_VALUE_MASK;
+                    genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbB, rbMask, reader, textHeap, rbRingBuffer);
                 }
             }
         }
@@ -1355,11 +1376,6 @@ public class FASTReaderDispatch {
     //////////////////////////////////
     //Code above this point is copied for generator
     //////////////////////////////////
-    
-    protected int spclPosInc() { //generated code has its own instance of this.
-        return rbRingBuffer.addPos++;
-    }
-
     
     // ////////////////////////////////////////////////////////////
     // DO NOT REMOVE/MODIFY CONSTANT
@@ -1402,11 +1418,11 @@ public class FASTReaderDispatch {
     
     
     //length methods
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer) {
         
         int length;
         int value = length = reader.readIntegerUnsignedDefault(constDefault);
-        rbB[rbMask & spclPosInc()] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1419,10 +1435,10 @@ public class FASTReaderDispatch {
     }
 
     //TODO: C, once this all works find a better way to inline it with only 1 conditional.
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB) {
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length;
         int value = length = reader.readIntegerUnsignedIncrement(target, source, rIntDictionary);
-        rbB[rbMask & spclPosInc()] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1434,10 +1450,10 @@ public class FASTReaderDispatch {
        }
     }
 
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length;
         int value = length = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
-        rbB[rbMask & spclPosInc()] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1449,8 +1465,8 @@ public class FASTReaderDispatch {
        }
     }
 
-    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget, int[] rbB) {
-        rbB[rbMask & spclPosInc()] = constDefault;
+    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
         if (constDefault == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1462,10 +1478,10 @@ public class FASTReaderDispatch {
        }
     }
 
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length;
         int value = length = (rIntDictionary[target] = (int) (rIntDictionary[source] + reader.readLongSigned()));
-        rbB[rbMask & spclPosInc()] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1477,10 +1493,10 @@ public class FASTReaderDispatch {
        }
     }
 
-    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB) {
+    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader) {
         int length;
         int value = rIntDictionary[target] = length = reader.readIntegerUnsigned();
-        rbB[rbMask & spclPosInc()] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             activeScriptCursor = jumpToTarget;
@@ -1502,24 +1518,24 @@ public class FASTReaderDispatch {
     
     // int methods
 
-    protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
+    protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
     }
 
-    protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedIncrementOptional(target, source, rIntDictionary, constAbsent);
+    protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedIncrementOptional(target, source, rIntDictionary, constAbsent);
     }
 
-    protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int xi1;
-        rbB[rbMask & spclPosInc()] = (0 == (xi1 = reader.readIntegerUnsignedCopy(target, source, rIntDictionary)) ? constAbsent : xi1 - 1);
+        rbB[rbMask & rbRingBuffer.addPos++] = (0 == (xi1 = reader.readIntegerUnsignedCopy(target, source, rIntDictionary)) ? constAbsent : xi1 - 1);
     }
 
-    protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedConstantOptional(constAbsent, constConst);
+    protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedConstantOptional(constAbsent, constConst);
     }
 
-    protected void genReadIntegerUnsignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadIntegerUnsignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         // Delta opp never uses PMAP
         long value = reader.readLongSigned();
         int result;
@@ -1530,281 +1546,287 @@ public class FASTReaderDispatch {
             result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
         
         }
-        rbB[rbMask & spclPosInc()] = result;
+        rbB[rbMask & rbRingBuffer.addPos++] = result;
     }
 
-    protected void genReadIntegerUnsignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadIntegerUnsignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int xi1;
-        rbB[rbMask & spclPosInc()] = 0 == (xi1 = reader.readIntegerUnsigned()) ? constAbsent : xi1 - 1;
+        rbB[rbMask & rbRingBuffer.addPos++] = 0 == (xi1 = reader.readIntegerUnsigned()) ? constAbsent : xi1 - 1;
     }
 
-    protected void genReadIntegerUnsignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedDefault(constDefault);
+    protected void genReadIntegerUnsignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedDefault(constDefault);
     }
 
-    protected void genReadIntegerUnsignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedIncrement(target, source, rIntDictionary);
+    protected void genReadIntegerUnsignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedIncrement(target, source, rIntDictionary);
     }
 
-    protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
+    protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
     }
 
-    protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask) {
-        rbB[rbMask & spclPosInc()] = constDefault;
+    protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
     }
 
-    protected void genReadIntegerUnsignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = (rIntDictionary[target] = (int) (rIntDictionary[source] + reader.readLongSigned()));
+    protected void genReadIntegerUnsignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = (int) (rIntDictionary[source] + reader.readLongSigned()));
     }
 
-    protected void genReadIntegerUnsigned(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary) {
-        rbB[rbMask & spclPosInc()] = rIntDictionary[target] = reader.readIntegerUnsigned();
+    protected void genReadIntegerUnsigned(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = reader.readIntegerUnsigned();
     }
 
-    protected void genReadIntegerSignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedDefault(constDefault);
+    protected void genReadIntegerSignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedDefault(constDefault);
     }
 
-    protected void genReadIntegerSignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedIncrement(target, source, rIntDictionary);
+    protected void genReadIntegerSignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedIncrement(target, source, rIntDictionary);
     }
 
-    protected void genReadIntegerSignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedCopy(target, source, rIntDictionary);
+    protected void genReadIntegerSignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedCopy(target, source, rIntDictionary);
     }
 
-    protected void genReadIntegerConstant(int constDefault, int[] rbB, int rbMask) {
-        rbB[rbMask & spclPosInc()] = constDefault;
+    protected void genReadIntegerConstant(int constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
     }
 
-    protected void genReadIntegerSignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedDelta(target, source, rIntDictionary);
+    protected void genReadIntegerSignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedDelta(target, source, rIntDictionary);
     }
 
-    protected void genReadIntegerSignedNone(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary) {
-        rbB[rbMask & spclPosInc()] = rIntDictionary[target] = reader.readIntegerSigned();
+    protected void genReadIntegerSignedNone(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = reader.readIntegerSigned();
     }
 
-    protected void genReadIntegerSignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
+    protected void genReadIntegerSignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedDefaultOptional(constDefault, constAbsent);
     }
 
-    protected void genReadIntegerSignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedIncrementOptional(target, source, rIntDictionary, constAbsent);
+    protected void genReadIntegerSignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedIncrementOptional(target, source, rIntDictionary, constAbsent);
     }
 
-    protected void genReadIntegerSignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadIntegerSignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int xi1;
-        rbB[rbMask & spclPosInc()] = (0 == (xi1 = reader.readIntegerSignedCopy(target, source, rIntDictionary)) ? constAbsent : (xi1 > 0 ? xi1 - 1 : xi1));
+        rbB[rbMask & rbRingBuffer.addPos++] = (0 == (xi1 = reader.readIntegerSignedCopy(target, source, rIntDictionary)) ? constAbsent : (xi1 > 0 ? xi1 - 1 : xi1));
     }
 
-    protected void genReadIntegerSignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedConstantOptional(constAbsent, constConst);
+    protected void genReadIntegerSignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedConstantOptional(constAbsent, constConst);
     }
 
-    protected void genReadIntegerSignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent);
+    protected void genReadIntegerSignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent);
     }
 
-    protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader) {
-        rbB[rbMask & spclPosInc()] = reader.readIntegerSignedOptional(constAbsent);
+    protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerSignedOptional(constAbsent);
     }
 
     // long methods
 
-    protected void genReadLongUnsignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedDefault(constDefault);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedIncrement(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedIncrement(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedIncrement(idx, source, rLongDictionary);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedCopy(idx, source, rLongDictionary);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongConstant(long constDefault, int[] rbB, int rbMask) {
+    protected void genReadLongConstant(long constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
         long tmpLng=constDefault;
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedDelta(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedDelta(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=(rLongDictionary[idx] = (rLongDictionary[source] + reader.readLongSigned()));
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedNone(int idx, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedNone(int idx, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=rLongDictionary[idx] = reader.readLongUnsigned();
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedDefaultOptional(constDefault, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedIncrementOptional(idx, source, rLongDictionary, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long xl1;
         long tmpLng=(0 == (xl1 = reader.readLongUnsignedCopy(idx, source, rLongDictionary)) ? constAbsent : xl1 - 1);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
             //TODO:rewrite so long values are pre shifted and masked for these constants.
         long tmpLng=(reader.popPMapBit() == 0 ? constAbsent : constConst);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedDeltaOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedDeltaOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongUnsignedDeltaOptional(idx, source, rLongDictionary, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongUnsignedOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongUnsignedOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long value = reader.readLongUnsigned();
         long tmpLng=value == 0 ? constAbsent : value - 1;
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongSignedDefault(constDefault);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedIncrement(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedIncrement(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongSignedIncrement(idx, source, rLongDictionary);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongSignedCopy(idx, source, rLongDictionary);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedConstant(long constDefault, int[] rbB, int rbMask) {
+    protected void genReadLongSignedConstant(long constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
         long tmpLng=constDefault;
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedDelta(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedDelta(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=(rLongDictionary[idx] = (rLongDictionary[source] + reader.readLongSigned()));
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedNone(int idx, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedNone(int idx, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=rLongDictionary[idx] = reader.readLongSigned();
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongSignedDefaultOptional(constDefault, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) { //TODO: anything at the end is ignored and can be injected values.
+    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { //TODO: anything at the end is ignored and can be injected values.
         long tmpLng=reader.readLongSignedIncrementOptional(idx, source, rLongDictionary, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long xl1;
         long tmpLng=(0 == (xl1 = reader.readLongSignedCopy(idx, source, rLongDictionary)) ? constAbsent : xl1 - 1);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
             //TODO: A, if long const and default values are sent as int tuples then the shift mask logic can be skipped!!!
         long tmpLng=(reader.popPMapBit() == 0 ? constAbsent : constConst);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedDeltaOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedDeltaOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=reader.readLongSignedDeltaOptional(idx, source, rLongDictionary, constAbsent);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long value = reader.readLongSigned();
         long tmpLng=value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & spclPosInc()] = (int) (tmpLng & 0xFFFFFFFF);
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
     // text methods.
 
     
     protected void genReadUTF8None(int idx, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int length = reader.readIntegerUnsigned() - optOff;
-        reader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length);
+        StaticGlue.allocateAndCopyUTF8(idx, textHeap, reader, reader.readIntegerUnsigned() - optOff);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadUTF8TailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readUTF8TailOptional(idx, textHeap, reader);
+        int trim = reader.readIntegerUnsigned();
+        if (trim == 0) {
+            textHeap.setNull(idx);
+        } else {
+            int utfLength = reader.readIntegerUnsigned();
+            int t = trim - 1;
+            StaticGlue.allocateSpaceUT8Copy2(idx, textHeap, reader, utfLength, t);
+        }
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadUTF8DeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readUTF8DeltaOptional(idx, textHeap, reader);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadUTF8Delta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readUTF8Delta(idx, textHeap, reader);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadASCIITail(int idx, int fromIdx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readASCIITail(idx, reader.readIntegerUnsigned(), fromIdx, textHeap, reader);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask) {
-        rbB[rbMask & spclPosInc()] = constIdx;
-        rbB[rbMask & spclPosInc()] = constLen;
+    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = constIdx;
+        rbB[rbMask & rbRingBuffer.addPos++] = constLen;
     }
 
     protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -1815,8 +1837,8 @@ public class FASTReaderDispatch {
             StaticGlue.readASCIIHead(idx, trim, readFromIdx, textHeap, reader);
         }
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadASCIICopy(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
@@ -1832,38 +1854,39 @@ public class FASTReaderDispatch {
         } else {
             len = textHeap.valueLength(idx);
         }
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readUTF8Tail(idx, textHeap, reader);
+        int trim = reader.readIntegerSigned();
+        int utfLength = reader.readIntegerUnsigned();
+        
+        StaticGlue.allocateSpaceUT8Copy2(idx, textHeap, reader, utfLength, trim);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
 
     protected void genReadUTF8Copy(int idx, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
         if (reader.popPMapBit() != 0) {
-            int length = reader.readIntegerUnsigned() - optOff;
-            reader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length);
+            StaticGlue.allocateAndCopyUTF8(idx, textHeap, reader, reader.readIntegerUnsigned() - optOff);
         }
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadUTF8Default(int idx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8Default(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         if (0 == reader.popPMapBit()) {
-            rbB[rbMask & spclPosInc()] = StaticGlue.INIT_VALUE_MASK | idx;
-            rbB[rbMask & spclPosInc()] = defLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
+            rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
-            int length = reader.readIntegerUnsigned() - optOff;
-            reader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length);
+            StaticGlue.allocateAndCopyUTF8(idx, textHeap, reader, reader.readIntegerUnsigned() - optOff);
             int len = textHeap.valueLength(idx);
-            rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-            rbB[rbMask & spclPosInc()] = len;
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = len;
         }
     }
 
@@ -1875,52 +1898,58 @@ public class FASTReaderDispatch {
         } else {
             tmp=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
         }
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, tmp);
-        rbB[rbMask & spclPosInc()] = tmp;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, tmp, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = tmp;
     }
 
     protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readASCIITailOptional(idx, textHeap, reader);
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadASCIIDeltaOptional(int fromIdx, int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         //TODO: B, extract the constant length from here.
         int optionalTrim = reader.readIntegerSigned();
         int tempId = (0 == optionalTrim ? 
-                         StaticGlue.INIT_VALUE_MASK | idx : 
+                         textHeap.initStartOffset( FASTReaderDispatch.INIT_VALUE_MASK | idx) |FASTReaderDispatch.INIT_VALUE_MASK : 
                          StaticGlue.readASCIIDeltaOptional2(fromIdx, idx,
         optionalTrim, textHeap, reader));
         int len = textHeap.valueLength(tempId);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(tempId, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(tempId, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         if (0 != reader.popPMapBit() ) {
-            rbB[rbMask & spclPosInc()] = constInit;
-            rbB[rbMask & spclPosInc()] = constInitLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = constInit;
+            rbB[rbMask & rbRingBuffer.addPos++] = constInitLen;
         } else {
-            rbB[rbMask & spclPosInc()] = constValue;
-            rbB[rbMask & spclPosInc()] = constValueLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = constValue;
+            rbB[rbMask & rbRingBuffer.addPos++] = constValueLen;
         }
     }
 
     protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         if (reader.popPMapBit() != 0) {
-                StaticGlue.readASCIICopyOptional2(idx, textHeap, reader);
+                byte val = reader.readTextASCIIByte();
+                if (0 != (val & 0x7F)) { // real data, this is the most common case;
+                    textHeap.setZeroLength(idx);
+                    StaticGlue.fastHeapAppend(idx, val, textHeap, reader);
+                } else {
+                    StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
+                }
         }
         int len = textHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadASCIIDefault(int idx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
         if (0 == reader.popPMapBit()) {
-            rbB[rbMask & spclPosInc()] = StaticGlue.INIT_VALUE_MASK | idx;
-            rbB[rbMask & spclPosInc()] = defLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
+            rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
             byte val;
             int tmp;
@@ -1929,39 +1958,39 @@ public class FASTReaderDispatch {
             } else {
                 tmp=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
             }
-            rbB[rbMask & spclPosInc()] = rbRingBuffer.writeTextToRingBuffer(idx, tmp);
-            rbB[rbMask & spclPosInc()] = tmp;
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, tmp, textHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = tmp;
         }
     }
     
     //byte methods
     
-    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask) {
-        rbB[rbMask & spclPosInc()] = constIdx;
-        rbB[rbMask & spclPosInc()] = constLen;
+    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+        rbB[rbMask & rbRingBuffer.addPos++] = constIdx;
+        rbB[rbMask & rbRingBuffer.addPos++] = constLen;
     }
 
-    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader) {
+    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         
         if (0 != reader.popPMapBit() ) {
-            rbB[rbMask & spclPosInc()] = constInit;
-            rbB[rbMask & spclPosInc()] = constInitLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = constInit;
+            rbB[rbMask & rbRingBuffer.addPos++] = constInitLen;
         } else {
-            rbB[rbMask & spclPosInc()] = constValue;
-            rbB[rbMask & spclPosInc()] = constValueLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = constValue;
+            rbB[rbMask & rbRingBuffer.addPos++] = constValueLen;
         }
     }
 
-    protected void genReadBytesDefault(int idx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         
         if (0 == reader.popPMapBit()) {
-            rbB[rbMask & spclPosInc()] = StaticGlue.INIT_VALUE_MASK | idx;
-            rbB[rbMask & spclPosInc()] = defLen;
+            rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
+            rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
             readerBytes.readBytesData(idx, optOff);
             int len = byteHeap.valueLength(idx);
-            rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-            rbB[rbMask & spclPosInc()] = len;
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = len;
         }
     }
 
@@ -1970,53 +1999,53 @@ public class FASTReaderDispatch {
             readerBytes.readBytesData(idx,optOff);
         }
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesDeltaOptional2(idx);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesTailOptional2(idx);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
 
     }
 
     protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesDelta2(idx);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     
     protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesTail2(idx);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     
     protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesData(idx, 1);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         readerBytes.readBytesData(idx,0);
         int len = byteHeap.valueLength(idx);
-        rbB[rbMask & spclPosInc()] = rbRingBuffer.writeBytesToRingBuffer(idx, len);
-        rbB[rbMask & spclPosInc()] = len;
+        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeBytesToRingBuffer(idx, len, byteHeap);
+        rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     // dictionary reset

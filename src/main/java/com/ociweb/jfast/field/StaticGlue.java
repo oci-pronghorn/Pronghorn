@@ -2,7 +2,6 @@ package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class StaticGlue {
 
@@ -197,17 +196,6 @@ public class StaticGlue {
         return idx;
     }
 
-    public static void readASCIICopyOptional2(int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
-        byte val = primitiveReader.readTextASCIIByte();
-        if (0 != (val & 0x7F)) {
-            // real data, this is the most common case;
-            textHeap.setZeroLength(idx);
-            fastHeapAppend(idx, val, textHeap, primitiveReader);
-        } else {
-            readASCIIToHeapNone(idx, val, textHeap, primitiveReader);
-        }
-    }
-
     public static int readUTF8Delta(final int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
         int trim = primitiveReader.readIntegerSigned();
         int utfLength = primitiveReader.readIntegerUnsigned();
@@ -221,16 +209,6 @@ public class StaticGlue {
                     utfLength);
         }
 
-        return idx;
-    }
-
-    public static int readUTF8Tail(final int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
-        int trim = primitiveReader.readIntegerSigned();
-        int utfLength = primitiveReader.readIntegerUnsigned();
-
-        // append to tail
-        int targetOffset = textHeap.makeSpaceForAppend(idx, trim, utfLength);
-        primitiveReader.readTextUTF8(textHeap.rawAccess(), targetOffset, utfLength);
         return idx;
     }
 
@@ -258,135 +236,16 @@ public class StaticGlue {
         return idx;
     }
 
-    public static int readUTF8TailOptional(int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
-        int trim = primitiveReader.readIntegerUnsigned();
-        if (trim == 0) {
-            textHeap.setNull(idx);
-            return idx;
-        }
-        int utfLength = primitiveReader.readIntegerUnsigned(); // subtract for
-                                                               // optional
-        primitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim - 1, utfLength),
-                utfLength);
-        return idx;
-    }
-
-
-
     public final static byte NULL_STOP = (byte) 0x80;
-    public static final int INIT_VALUE_MASK = 0x80000000;
-    public static void writeNull2(int token, PrimitiveWriter primitiveWriter, int[] dictionary, int idx) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta (both do not use pmap)
-                dictionary[idx] = 0;
-                primitiveWriter.writeNull(); // no pmap, yes change to last
-                                             // value
-            } else {
-                // Copy and Increment
+
+    //These methods are here for package access to the needed methods.
     
-                if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    dictionary[idx] = 0;
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                } // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                // const optional
-                primitiveWriter.writePMapBit((byte) 0); // pmap only
-            } else {
-                // default
-    
-                if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                } // yes pmap, no change to last value
-            }
-        }
+    public static void allocateAndCopyUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int length) {
+        reader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length);
     }
 
-    public static void writeNull2(int token, int idx, PrimitiveWriter primitiveWriter, long[] dictionary) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta (both do not use pmap)
-                dictionary[idx] = 0;
-                primitiveWriter.writeNull(); // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-    
-                if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    dictionary[idx] = 0;
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                } // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    // const
-                    primitiveWriter.writeNull(); // no pmap, no change to last value
-                } else {
-                    // const optional
-                    primitiveWriter.writePMapBit((byte) 0); // pmap only
-                }
-            } else {
-                // default
-                if (dictionary[idx] == 0) { // stored value
-                                                              // was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                } // primitiveWriter pmap, no change to last value
-            }
-        }
-    }
-
-    public static void writeNullText(int token, int idx, PrimitiveWriter primitiveWriter, TextHeap textHeap) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta and Tail
-                primitiveWriter.writeNull();
-                textHeap.setNull(idx); // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-                
-                if (textHeap.isNull(idx)) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                    textHeap.setNull(idx);
-                } // yes pmap, yes change to last
-                                              // value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    // const
-                    primitiveWriter.writeNull(); // no pmap, no change to last value
-                } else {
-                    // const optional
-                    primitiveWriter.writePMapBit((byte) 0); // pmap only
-                }
-            } else {
-                // default
-                if (textHeap.isNull(idx)) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
-                } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
-                } // yes pmap, no change to last value
-            }
-        }
+    public static void allocateSpaceUT8Copy2(int idx, TextHeap textHeap, PrimitiveReader reader, int utfLength, int t) {
+        reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength);
     }
 
 }

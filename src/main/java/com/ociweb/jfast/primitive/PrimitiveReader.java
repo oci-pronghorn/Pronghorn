@@ -215,26 +215,22 @@ public final class PrimitiveReader {
         return popPMapBit(pmapIdx, bitBlock);
     }
 
-    private byte popPMapBit(byte tmp, byte bb) {//Invoked 100's of millions of times, must be tight.
-        if (tmp > 0 || (tmp == 0 && bb < 0)) {
+    private byte popPMapBit(byte pidx, byte bb) {//Invoked 100's of millions of times, must be tight.
+        if (pidx > 0 || (pidx == 0 && bb < 0)) {
             // Frequent, 6 out of every 7 plus the last bit block
-            pmapIdx = (byte) (tmp - 1); // TODO: Z, What if caller keeps the
-                                        // pmapIdx instead of keeping state
-                                        // here?
-            return (byte) (1 & (bb >>> tmp));
+            pmapIdx = (byte) (pidx - 1);
+            return (byte) (1 & (bb >>> pidx));
         } else {
-            return (tmp >= 0 ? popPMapBitLow(tmp, bb) : 0);
+            return (pidx >= 0 ? popPMapBitLow(bb) : 0); //detect next byte or continue with zeros.
         }
     }
 
-    private byte popPMapBitLow(byte tmp, byte bb) {
+    private byte popPMapBitLow(byte bb) {
         // SOMETIMES one of 7 we need to move up to the next byte
         // System.err.println(invPmapStackDepth);
-        // The order of these lines should not be changed without profile
         pmapIdx = 6;
-        bb = (byte) (1 & bb);
-        bitBlock = invPmapStack[++invPmapStackDepth];
-        return bb;
+        bitBlock = invPmapStack[++invPmapStackDepth]; //TODO: Set both bytes togheter? may speed up
+        return (byte) (1 & bb);
     }
 
     // called at the end of each group

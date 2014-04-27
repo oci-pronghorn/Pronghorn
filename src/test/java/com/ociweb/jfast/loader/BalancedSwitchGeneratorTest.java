@@ -15,7 +15,7 @@ public class BalancedSwitchGeneratorTest {
         StringBuilder target = new StringBuilder();
         
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        bsg.generate(target, values, code);
+        bsg.generate("",target, values, code);
         
         String str = target.toString();
         assertTrue(str,str.contains("if ((x&0x40)==0) {"));
@@ -36,7 +36,7 @@ public class BalancedSwitchGeneratorTest {
         StringBuilder target = new StringBuilder();
         
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        bsg.generate(target, values, code);
+        bsg.generate("",target, values, code);
         
         String str = target.toString();
         //System.err.println(str);

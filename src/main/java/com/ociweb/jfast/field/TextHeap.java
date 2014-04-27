@@ -123,16 +123,15 @@ public class TextHeap {
         return tat[offset + 1] == tat[offset] - 1;
     }
 
-    public char[] rawInitAccess() {
+   public char[] rawInitAccess() { //TODO: should not be public 
         return initBuffer;
     }
 
-    public char[] rawAccess() { // TODO: should not be public
+    char[] rawAccess() {
         return data;
     }
 
-    //TODO: not sure exposing this is a great idea.
-    public int allocate(int idx, int sourceLen) {
+    int allocate(int idx, int sourceLen) {
 
         int offset = idx << 2;
 
@@ -169,7 +168,7 @@ public class TextHeap {
         return target < 0 ? 0 : target;
     }
 
-    void set(int idx, char[] source, int startFrom, int copyLength) {
+    public void set(int idx, char[] source, int startFrom, int copyLength) {
         int offset = idx << 2;
 
         totalContent += (copyLength - (tat[offset + 1] - tat[offset]));
@@ -180,7 +179,7 @@ public class TextHeap {
         System.arraycopy(source, startFrom, data, target, copyLength);
     }
 
-    void set(int idx, CharSequence source, int startFrom, int copyLength) {
+    public void set(int idx, CharSequence source, int startFrom, int copyLength) {
         assert (startFrom <= source.length());
         assert (copyLength - startFrom <= source.length());
         assert (startFrom >= 0);
@@ -380,7 +379,7 @@ public class TextHeap {
 
     }
 
-    void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
+    public void appendTail(int idx, int trimTail, int startFrom, CharSequence value) {
         // if not room make room checking after first because thats where we
         // want to copy the tail.
         int targetPos = makeSpaceForAppend(idx, trimTail, value.length() - startFrom);
@@ -394,7 +393,7 @@ public class TextHeap {
     // append chars on to the end of the text after applying trim
     // may need to move existing text or following texts
     // if there is no room after moving everything throws
-    void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
+    public void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
         // if not room make room checking after first because thats where we
         // want to copy the tail.
         System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
@@ -416,7 +415,7 @@ public class TextHeap {
         return nextLimit;
     }
 
-    public void trimTail(int idx, int trim) { // TODO: should not be public
+    void trimTail(int idx, int trim) {
         tat[(idx << 2) + 1] -= trim;
     }
 
@@ -432,7 +431,7 @@ public class TextHeap {
 
     }
 
-    int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
+   int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
         int textLen = (sourceLen - trimTail);
 
         int offset = idx << 2;
@@ -464,8 +463,7 @@ public class TextHeap {
         }
     }
 
-    public void makeSpaceForAppend(int offset, int textLen) { // TODO: shoud not
-                                                              // be public
+    void makeSpaceForAppend(int offset, int textLen) { 
 
         int floor = offset - 3 >= 0 ? tat[offset - 3] : 0;
         int need = tat[offset + 1] + textLen - tat[offset];
@@ -483,7 +481,7 @@ public class TextHeap {
     // append chars on to the front of the text after applying trim
     // may need to move existing text or previous texts
     // if there is no room after moving everything throws
-    void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
+    public void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
     }
 
