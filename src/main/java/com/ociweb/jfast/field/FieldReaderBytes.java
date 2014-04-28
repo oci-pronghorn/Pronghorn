@@ -54,7 +54,7 @@ public class FieldReaderBytes {
     }
 
     public int readBytesDefault2(int idx) {
-        if (reader.popPMapBit() == 0) {
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
             // System.err.println("z");
             return idx | INIT_VALUE_MASK;// use constant
         } else {

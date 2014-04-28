@@ -18,6 +18,17 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
 
+
+
+    //TODO: must reduce size of large methods as well.
+    // TODO: B, this code generation must take place when loading the catalog
+    // binary file. So catalog file can be the same cross languages.
+    // TODO: B, copy other dispatch and use it for code generation, if possible
+    // build generator that makes use of its own source as template.
+    // TODO, A, May be better to just pass ring buffer and pull members as needed instead of pushing/poping all.
+    // TODO, A, bytecodes are less if each private m method can be static.
+    // TODO, A, skip method call and put code in place if 1 or 2 lines.
+    
     private static final String GROUP_METHOD_NAME = "grp";
 
     SourceTemplates templates;

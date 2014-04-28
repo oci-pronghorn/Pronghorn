@@ -119,7 +119,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
         reader.openPMap(1);
         int idx2 = token & byteReader.INSTANCE_MASK;
-        if (reader.popPMapBit() != 0) {
+        if (PrimitiveReader.popPMapBit(reader) != 0) {
             byteReader.readBytesData(idx2, 0);
         }
 

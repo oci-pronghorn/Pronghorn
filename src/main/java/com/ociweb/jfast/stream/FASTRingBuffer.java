@@ -115,17 +115,13 @@ public final class FASTRingBuffer {
 
     // TODO: add mappers to go from one buffer to the next
     // TODO: add consumer/Iterator to go from ring buffer to Object stream
-    // TODO: Map templates to methods for RMI of void methods(eg. one
-    // direction).
+    // TODO: Map templates to methods for RMI of void methods(eg. one direction).
+    // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
     public final int appendInt1(int value) {
         buffer[mask & addPos++] = value;
         return value;
     }
-
-
-    // TODO: Z, add map toIterator method for consuming ring buffer by java8
-    // streams.
 
     public int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         final int p = addCharPos;

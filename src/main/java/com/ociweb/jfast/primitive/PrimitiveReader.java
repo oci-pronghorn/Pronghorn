@@ -210,26 +210,24 @@ public final class PrimitiveReader {
         return k;
     }
 
-    // called at every field to determine operation
-    public final byte popPMapBit() {
-        return popPMapBit(pmapIdx, bitBlock);
-    }
-
-    private byte popPMapBit(byte pidx, byte bb) {//Invoked 100's of millions of times, must be tight.
-        if (pidx > 0 || (pidx == 0 && bb < 0)) {
+    //TODO: X, by changing to static calls the vtable lookup will go away and it will be "more like" the eventual Julia code we want to produce.
+    
+    public static byte popPMapBit(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+        byte pidx = reader.pmapIdx; 
+        if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0)) {
             // Frequent, 6 out of every 7 plus the last bit block
-            pmapIdx = (byte) (pidx - 1);
-            return (byte) (1 & (bb >>> pidx));
+            reader.pmapIdx = (byte) (pidx - 1);
+            return (byte) (1 & (reader.bitBlock >>> pidx));
         } else {
-            return (pidx >= 0 ? popPMapBitLow(bb) : 0); //detect next byte or continue with zeros.
+            return (pidx >= 0 ? popPMapBitLow(reader.bitBlock, reader) : 0); //detect next byte or continue with zeros.
         }
     }
 
-    private byte popPMapBitLow(byte bb) {
+    private static byte popPMapBitLow(byte bb, PrimitiveReader reader) {
         // SOMETIMES one of 7 we need to move up to the next byte
         // System.err.println(invPmapStackDepth);
-        pmapIdx = 6;
-        bitBlock = invPmapStack[++invPmapStackDepth]; //TODO: Set both bytes togheter? may speed up
+        reader.pmapIdx = 6;
+        reader.bitBlock = reader.invPmapStack[++reader.invPmapStackDepth]; //TODO: Set both bytes togheter? may speed up
         return (byte) (1 & bb);
     }
 
@@ -374,15 +372,15 @@ public final class PrimitiveReader {
 
     public final int readIntegerUnsigned() {
 
-        return readIntegerUnsignedPrivate();
+        return readIntegerUnsignedPrivate(this);
     }
 
-    private int readIntegerUnsignedPrivate() {//Invoked 100's of millions of times, must be tight.
-        if (limit - position >= 5) {// not near end so go fast.
+    private static int readIntegerUnsignedPrivate(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+        if (reader.limit - reader.position >= 5) {// not near end so go fast.
             byte v;
-            return ((v = buffer[position++]) < 0) ? (v & 0x7F) : readIntegerUnsignedLarger(v);
+            return ((v = reader.buffer[reader.position++]) < 0) ? (v & 0x7F) : reader.readIntegerUnsignedLarger(v);
         } else {
-            return readIntegerUnsignedSlow();
+            return reader.readIntegerUnsignedSlow();
         }
     }
 
@@ -1041,45 +1039,45 @@ public final class PrimitiveReader {
     // ///////////////////////////////
 
     public final int readIntegerUnsignedOptional(int constAbsent) {
-        int value = readIntegerUnsignedPrivate();
+        int value = readIntegerUnsignedPrivate(this);
         return value == 0 ? constAbsent : value - 1;
     }
 
     public final int readIntegerSignedConstantOptional(int constAbsent, int constConst) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constAbsent : constConst);
+        return (popPMapBit(this) == 0 ? constAbsent : constConst);
     }
 
     public final int readIntegerUnsignedConstantOptional(int constAbsent, int constConst) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constAbsent : constConst);
+        return (popPMapBit(this) == 0 ? constAbsent : constConst);
     }
 
-    public final int readIntegerUnsignedCopy(int target, int source, int[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
-                : (dictionary[target] = readIntegerUnsignedPrivate()));
+    public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? dictionary[source]
+                : (dictionary[target] = readIntegerUnsignedPrivate(reader)));
     }
 
     public final int readIntegerUnsignedDefault(int constDefault) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constDefault : readIntegerUnsignedPrivate());
+        return (popPMapBit(this) == 0 ? constDefault : readIntegerUnsignedPrivate(this));
     }
 
-    public final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent) {
+    public static final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent, PrimitiveReader reader) {
         int value;
-        return (popPMapBit(pmapIdx, bitBlock) == 0) ? constDefault
-                : (value = readIntegerUnsignedPrivate()) == 0 ? constAbsent : value - 1;
+        return (popPMapBit(reader) == 0) ? constDefault
+                : (value = readIntegerUnsignedPrivate(reader)) == 0 ? constAbsent : value - 1;
     }
 
     public final int readIntegerUnsignedIncrement(int target, int source, int[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readIntegerUnsignedPrivate()));
+        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
+                : (dictionary[target] = readIntegerUnsignedPrivate(this)));
     }
 
     public final int readIntegerUnsignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
 
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             int value;
-            if ((value = readIntegerUnsignedPrivate()) == 0) {
+            if ((value = readIntegerUnsignedPrivate(this)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
@@ -1094,7 +1092,7 @@ public final class PrimitiveReader {
     }
 
     public final int readIntegerSignedCopy(int target, int source, int[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
+        return (popPMapBit(this) == 0 ? dictionary[source]
                 : (dictionary[target] = readIntegerSignedPrivate()));
     }
 
@@ -1116,11 +1114,11 @@ public final class PrimitiveReader {
     }
 
     public final int readIntegerSignedDefault(int constDefault) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constDefault : readIntegerSignedPrivate());
+        return (popPMapBit(this) == 0 ? constDefault : readIntegerSignedPrivate());
     }
 
     public final int readIntegerSignedDefaultOptional(int constDefault, int constAbsent) {
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return constDefault;
         } else {
             int value = readIntegerSignedPrivate();
@@ -1129,13 +1127,13 @@ public final class PrimitiveReader {
     }
 
     public final int readIntegerSignedIncrement(int target, int source, int[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? (dictionary[target] = dictionary[source] + 1)
+        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readIntegerSignedPrivate()));
     }
 
     public final int readIntegerSignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
 
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             int value;
@@ -1151,7 +1149,7 @@ public final class PrimitiveReader {
     // For the Long values
 
     public final long readLongUnsignedCopy(int target, int source, long[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
+        return (popPMapBit(this) == 0 ? dictionary[source]
                 : (dictionary[target] = readLongUnsignedPrivate()));
     }
 
@@ -1168,11 +1166,11 @@ public final class PrimitiveReader {
     }
 
     public final long readLongUnsignedDefault(long constDefault) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constDefault : readLongUnsignedPrivate());
+        return (popPMapBit(this) == 0 ? constDefault : readLongUnsignedPrivate());
     }
 
     public final long readLongUnsignedDefaultOptional(long constDefault, long constAbsent) {
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return constDefault;
         } else {
             long value = readLongUnsignedPrivate();
@@ -1181,13 +1179,13 @@ public final class PrimitiveReader {
     }
 
     public final long readLongUnsignedIncrement(int target, int source, long[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? (dictionary[target] = dictionary[source] + 1)
+        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readLongUnsignedPrivate()));
     }
 
     public final long readLongUnsignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
 
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             long value;
@@ -1201,7 +1199,7 @@ public final class PrimitiveReader {
     }
 
     public final long readLongSignedCopy(int target, int source, long[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? dictionary[source]
+        return (popPMapBit(this) == 0 ? dictionary[source]
                 : (dictionary[target] = readLongSignedPrivate()));
     }
 
@@ -1218,11 +1216,11 @@ public final class PrimitiveReader {
     }
 
     public final long readLongSignedDefault(long constDefault) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? constDefault : readLongSignedPrivate());
+        return (popPMapBit(this) == 0 ? constDefault : readLongSignedPrivate());
     }
 
     public final long readLongSignedDefaultOptional(long constDefault, long constAbsent) {
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return constDefault;
         } else {
             long value = readLongSignedPrivate();
@@ -1231,13 +1229,13 @@ public final class PrimitiveReader {
     }
 
     public final long readLongSignedIncrement(int target, int source, long[] dictionary) {
-        return (popPMapBit(pmapIdx, bitBlock) == 0 ? (dictionary[target] = dictionary[source] + 1)
+        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readLongSignedPrivate()));
     }
 
     public final long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
 
-        if (popPMapBit(pmapIdx, bitBlock) == 0) {
+        if (popPMapBit(this) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             long value;
@@ -1256,7 +1254,7 @@ public final class PrimitiveReader {
     public final int openMessage(int pmapMaxSize) {
         openPMap(pmapMaxSize);
         // return template id or unknown
-        return (0 != popPMapBit(pmapIdx, bitBlock)) ? readIntegerUnsignedPrivate() : -1;// template Id
+        return (0 != popPMapBit(this)) ? readIntegerUnsignedPrivate(this) : -1;// template Id
 
     }
 

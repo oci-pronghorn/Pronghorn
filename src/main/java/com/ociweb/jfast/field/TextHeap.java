@@ -431,6 +431,7 @@ public class TextHeap {
 
     }
 
+    //Must remain package protected and never public
    int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
         int textLen = (sourceLen - trimTail);
 
@@ -485,7 +486,7 @@ public class TextHeap {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
     }
 
-    void appendHead(int idx, int trimHead, CharSequence value, int limit) {
+    public void appendHead(int idx, int trimHead, CharSequence value, int limit) {
         int i = limit;
         int newStart = makeSpaceForPrepend(idx, trimHead, i);
 
@@ -502,6 +503,7 @@ public class TextHeap {
         data[makeSpaceForPrepend(idx, 0, 1)] = value;
     }
 
+  //Must remain package protected and never public
     int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
         int textLength = sourceLen - trimHead;
         if (textLength < 0) {

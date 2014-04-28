@@ -6,11 +6,11 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.field.StaticGlue;
 
 //May drop interface if this causes a performance problem from virtual table
 public class FASTReaderDispatch {
@@ -1452,7 +1452,7 @@ public class FASTReaderDispatch {
 
     protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length;
-        int value = length = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
+        int value = length = reader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
@@ -1519,7 +1519,7 @@ public class FASTReaderDispatch {
     // int methods
 
     protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent);
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent, reader);
     }
 
     protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -1528,7 +1528,7 @@ public class FASTReaderDispatch {
 
     protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int xi1;
-        rbB[rbMask & rbRingBuffer.addPos++] = (0 == (xi1 = reader.readIntegerUnsignedCopy(target, source, rIntDictionary)) ? constAbsent : xi1 - 1);
+        rbB[rbMask & rbRingBuffer.addPos++] = (0 == (xi1 = reader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader)) ? constAbsent : xi1 - 1);
     }
 
     protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -1563,7 +1563,7 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedCopy(target, source, rIntDictionary);
+        rbB[rbMask & rbRingBuffer.addPos++] = reader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
     }
 
     protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
@@ -1685,8 +1685,8 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-            //TODO:rewrite so long values are pre shifted and masked for these constants.
-        long tmpLng=(reader.popPMapBit() == 0 ? constAbsent : constConst);
+            //TODO: X, rewrite so long values are pre shifted and masked for these constants.
+        long tmpLng=(PrimitiveReader.popPMapBit(reader) == 0 ? constAbsent : constConst);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
@@ -1761,7 +1761,7 @@ public class FASTReaderDispatch {
 
     protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
             //TODO: A, if long const and default values are sent as int tuples then the shift mask logic can be skipped!!!
-        long tmpLng=(reader.popPMapBit() == 0 ? constAbsent : constConst);
+        long tmpLng=(PrimitiveReader.popPMapBit(reader) == 0 ? constAbsent : constConst);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
@@ -1796,7 +1796,7 @@ public class FASTReaderDispatch {
         } else {
             int utfLength = reader.readIntegerUnsigned();
             int t = trim - 1;
-            StaticGlue.allocateSpaceUT8Copy2(idx, textHeap, reader, utfLength, t);
+            StaticGlue.allocateAndAppendUTF8(idx, textHeap, reader, utfLength, t);
         }
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
@@ -1804,21 +1804,26 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadUTF8DeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readUTF8DeltaOptional(idx, textHeap, reader);
+        int trim = reader.readIntegerSigned();
+        if (0 == trim) {
+            textHeap.setNull(idx);
+        } else {
+            StaticGlue.allocateAndDeltaUTF8(idx, textHeap, reader, trim>0?trim-1:trim);
+        }
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadUTF8Delta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readUTF8Delta(idx, textHeap, reader);
+        StaticGlue.allocateAndDeltaUTF8(idx, textHeap, reader, reader.readIntegerSigned());
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadASCIITail(int idx, int fromIdx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readASCIITail(idx, reader.readIntegerUnsigned(), fromIdx, textHeap, reader);
+        StaticGlue.readASCIITail(idx, textHeap, reader, reader.readIntegerUnsigned());
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
@@ -1832,7 +1837,7 @@ public class FASTReaderDispatch {
     protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int trim = reader.readIntegerSigned();
         if (trim >=0) {
-            StaticGlue.readASCIITail(idx, trim, readFromIdx, textHeap, reader); 
+            StaticGlue.readASCIITail(idx, textHeap, reader, trim); 
         } else {
             StaticGlue.readASCIIHead(idx, trim, readFromIdx, textHeap, reader);
         }
@@ -1843,7 +1848,7 @@ public class FASTReaderDispatch {
 
     protected void genReadASCIICopy(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
          int len;
-        if (reader.popPMapBit()!=0) {
+        if (PrimitiveReader.popPMapBit(reader)!=0) {
             byte val;
             int tmp;
             if (0 != (tmp = 0x7F & (val = reader.readTextASCIIByte()))) {
@@ -1857,12 +1862,29 @@ public class FASTReaderDispatch {
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
+    
+    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        int len;
+       if (PrimitiveReader.popPMapBit(reader)!=0) {
+           byte val;
+           int tmp;
+           if (0 != (tmp = 0x7F & (val = reader.readTextASCIIByte()))) {
+               len=StaticGlue.readASCIIToHeapValue(val, tmp, idx, textHeap, reader);
+           } else {
+               len=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
+           }
+       } else {
+           len = textHeap.valueLength(idx);
+       }
+       rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+       rbB[rbMask & rbRingBuffer.addPos++] = len;
+    }
 
     protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int trim = reader.readIntegerSigned();
         int utfLength = reader.readIntegerUnsigned();
         
-        StaticGlue.allocateSpaceUT8Copy2(idx, textHeap, reader, utfLength, trim);
+        StaticGlue.allocateAndAppendUTF8(idx, textHeap, reader, utfLength, trim);
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
@@ -1870,7 +1892,7 @@ public class FASTReaderDispatch {
 
 
     protected void genReadUTF8Copy(int idx, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
-        if (reader.popPMapBit() != 0) {
+        if (PrimitiveReader.popPMapBit(reader) != 0) {
             StaticGlue.allocateAndCopyUTF8(idx, textHeap, reader, reader.readIntegerUnsigned() - optOff);
         }
         int len = textHeap.valueLength(idx);
@@ -1879,7 +1901,7 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadUTF8Default(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        if (0 == reader.popPMapBit()) {
+        if (0 == PrimitiveReader.popPMapBit(reader)) {
             rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
             rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
@@ -1903,7 +1925,12 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.readASCIITailOptional(idx, textHeap, reader);
+        int tail = reader.readIntegerUnsigned();
+        if (0 == tail) {
+            textHeap.setNull(idx);
+        } else {
+           StaticGlue.readASCIITail(idx, textHeap, reader, tail-1);
+        }
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
@@ -1914,15 +1941,15 @@ public class FASTReaderDispatch {
         int optionalTrim = reader.readIntegerSigned();
         int tempId = (0 == optionalTrim ? 
                          textHeap.initStartOffset( FASTReaderDispatch.INIT_VALUE_MASK | idx) |FASTReaderDispatch.INIT_VALUE_MASK : 
-                         StaticGlue.readASCIIDeltaOptional2(fromIdx, idx,
-        optionalTrim, textHeap, reader));
+                         (optionalTrim > 0 ? StaticGlue.readASCIITail(idx, textHeap, reader, optionalTrim - 1) :
+                                             StaticGlue.readASCIIHead(idx, optionalTrim, fromIdx, textHeap, reader)));
         int len = textHeap.valueLength(tempId);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(tempId, len, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        if (0 != reader.popPMapBit() ) {
+        if (0 != PrimitiveReader.popPMapBit(reader) ) {
             rbB[rbMask & rbRingBuffer.addPos++] = constInit;
             rbB[rbMask & rbRingBuffer.addPos++] = constInitLen;
         } else {
@@ -1931,23 +1958,10 @@ public class FASTReaderDispatch {
         }
     }
 
-    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        if (reader.popPMapBit() != 0) {
-                byte val = reader.readTextASCIIByte();
-                if (0 != (val & 0x7F)) { // real data, this is the most common case;
-                    textHeap.setZeroLength(idx);
-                    StaticGlue.fastHeapAppend(idx, val, textHeap, reader);
-                } else {
-                    StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
-                }
-        }
-        int len = textHeap.valueLength(idx);
-        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
-        rbB[rbMask & rbRingBuffer.addPos++] = len;
-    }
+
 
     protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
-        if (0 == reader.popPMapBit()) {
+        if (0 == PrimitiveReader.popPMapBit(reader)) {
             rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
             rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
@@ -1972,7 +1986,7 @@ public class FASTReaderDispatch {
 
     protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         
-        if (0 != reader.popPMapBit() ) {
+        if (0 != PrimitiveReader.popPMapBit(reader) ) {
             rbB[rbMask & rbRingBuffer.addPos++] = constInit;
             rbB[rbMask & rbRingBuffer.addPos++] = constInitLen;
         } else {
@@ -1983,7 +1997,7 @@ public class FASTReaderDispatch {
 
     protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
         
-        if (0 == reader.popPMapBit()) {
+        if (0 == PrimitiveReader.popPMapBit(reader)) {
             rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
             rbB[rbMask & rbRingBuffer.addPos++] = defLen;
         } else {
@@ -1995,7 +2009,7 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
-        if (reader.popPMapBit() != 0) {
+        if (PrimitiveReader.popPMapBit(reader) != 0) {
             readerBytes.readBytesData(idx,optOff);
         }
         int len = byteHeap.valueLength(idx);

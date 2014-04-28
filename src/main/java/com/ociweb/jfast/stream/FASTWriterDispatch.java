@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.FieldWriterBytes;
-import com.ociweb.jfast.field.FieldWriterText;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -23,8 +22,6 @@ public final class FASTWriterDispatch {
     private final int[] templateStack;
 
     private final PrimitiveWriter writer;
-
-    private final FieldWriterText writerChar;
     private final FieldWriterBytes writerBytes;
 
     public final int[] intValues;
@@ -56,6 +53,8 @@ public final class FASTWriterDispatch {
     private ByteHeap byteHeap;
 
     private RingCharSequence ringCharSequence = new RingCharSequence();
+    public static final int INIT_VALUE_MASK = 0x80000000;
+    public final int TEXT_INSTANCE_MASK;
 
     public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
             int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue, int nonTemplatePMapSize,
@@ -83,7 +82,7 @@ public final class FASTWriterDispatch {
         this.textHeap = dcr.charDictionary(maxCharSize, gapChars);
         this.byteHeap = dcr.byteDictionary(maxBytesSize, gapBytes);
 
-        this.writerChar = new FieldWriterText(writer, textHeap);
+        this.TEXT_INSTANCE_MASK = null == textHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount() - 1));
         this.writerBytes = new FieldWriterBytes(writer, byteHeap);
 
         this.templateStack = new int[maxTemplates];
@@ -124,7 +123,7 @@ public final class FASTWriterDispatch {
             // text decimal bytes
             if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                 // text
-                int idx = token & writerChar.INSTANCE_MASK;
+                int idx = token & TEXT_INSTANCE_MASK;
                 
                 FASTWriterDispatch.writeNullText(token, idx, writer, textHeap);
             } else {
@@ -836,19 +835,23 @@ public final class FASTWriterDispatch {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteUTFTextNoneOptional(value);
+                    genWriteUTFTextNoneOptional(value, writer);
                 } else {
                     // tail
-                    genWriteUTFTextTailOptional(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteUTFTextTailOptional(value, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteUTFTextConstantOptional(token);
+                    genWriteUTFTextConstantOptional(writer);
                 } else {
                     // delta
-                    genWriteUTFTextDeltaOptional(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteUTFTextDeltaOptional(value, idx, writer, textHeap);
                 }
             }
         } else {
@@ -856,10 +859,14 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteUTFTextCopyOptional(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteUTFTextCopyOptional(value, idx, writer, textHeap);
             } else {
                 // default
-                genWriteUTFTextDefaultOptional(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteUTFTextDefaultOptional(value, idx, writer, textHeap);
             }
         }
     }
@@ -876,19 +883,24 @@ public final class FASTWriterDispatch {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteUTFTextNone(value);
+                    genWriteUTFTextNone(value, writer);
                 } else {
                     // tail
-                    genWriteUTFTextTail(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    
+                    genWriteUTFTextTail(value, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteUTFTextConstant(token);
+                    
                 } else {
                     // delta
-                    genWriteUTFTextDelta(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteUTFTextDelta(value, idx, writer, textHeap);
                 }
             }
         } else {
@@ -896,10 +908,14 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteUTFTextCopy(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                // System.err.println("AA");
+                genWriteUTFTextCopy(value, idx, writer, textHeap);
             } else {
                 // default
-                genWriteUTFTextDefault(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteUTFTextDefault(value, idx, writer, textHeap);
             }
         }
 
@@ -920,15 +936,17 @@ public final class FASTWriterDispatch {
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "
                             + TokenBuilder.tokenToString(token);
                     if (null == value) {
-                        genWriteNull();
+                        genWriteNull(writer);
                     } else {
-                        genWriteTextNone(value);
+                        genWriteTextNone(value, writer);
                     }
                 } else {
                     // tail
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    genWriteTextTailOptional(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextTailOptional(value, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -941,7 +959,9 @@ public final class FASTWriterDispatch {
                     // delta
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    genWriteTextDeltaOptional(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextDeltaOptional(value, idx, writer, textHeap);
 
                 }
             }
@@ -952,13 +972,17 @@ public final class FASTWriterDispatch {
                 // copy
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "
                         + TokenBuilder.tokenToString(token);
-                genWriteTextCopyOptional(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextCopyOptional(value, idx, writer, textHeap);
 
             } else {
                 // default
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "
                         + TokenBuilder.tokenToString(token);
-                genWriteTextDefaultOptional(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextDefaultOptional(value, idx, writer, textHeap);
 
             }
         }
@@ -976,19 +1000,23 @@ public final class FASTWriterDispatch {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNone(value);
+                    genWriteTextNone(value, writer);
                 } else {
                     // tail
-                    genWriteTextTail(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextTail(value, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextConstant2(token);
+                    
                 } else {
                     // delta
-                    genWriteTextDelta(token, value);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextDelta(value, idx, writer, textHeap);
                 }
             }
         } else {
@@ -996,10 +1024,14 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopy(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextCopy(value, idx, writer, textHeap);
             } else {
                 // default
-                genWriteTextDefault(token, value);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextDefault(value, idx, writer, textHeap);
             }
         }
 
@@ -1052,10 +1084,12 @@ public final class FASTWriterDispatch {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextUTFConstantOptional(token);
+                    genWriteTextUTFConstantOptional(token, writer);
                 } else {
                     // delta
-                    genWriteTextUTFDeltaOptional(token, value, offset, length);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextUTFDeltaOptional(value, offset, length, idx, writer, textHeap);
                 }
             }
         } else {
@@ -1063,10 +1097,14 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextUTFCopyOptional(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextUTFCopyOptional(value, offset, length, idx, writer, textHeap);
             } else {
                 // default
-                genWriteTextUTFDefaultOptional(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextUTFDefaultOptional(value, offset, length, idx, writer, textHeap);
             }
         }
 
@@ -1734,18 +1772,16 @@ public final class FASTWriterDispatch {
         }
     }
     
-    private void genWriteUTFTextDefaultOptional(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
+    protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            if (writerChar.heap.isNull(idx | FieldWriterText.INIT_VALUE_MASK)) {
+            if (textHeap.isNull(idx | FASTWriterDispatch.INIT_VALUE_MASK)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
                 writer.writeNull();
             }
         } else {
-            if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value)) {
+            if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
@@ -1755,40 +1791,60 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteUTFTextCopyOptional(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx, value)) {
+    protected void genWriteUTFTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx, value)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             writer.writeIntegerUnsigned(value.length() + 1);
             writer.writeTextUTF(value);
-            writerChar.heap.set(idx, value, 0, value.length());
+            textHeap.set(idx, value, 0, value.length());
         }
     }
 
-    private void genWriteUTFTextDeltaOptional(int token, CharSequence value) {
-        writerChar.writeUTF8DeltaOptional(token, value);
+    protected void genWriteUTFTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        // count matching front or back chars
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int tailCount = textHeap.countTailMatch(idx, value);
+        if (headCount > tailCount) {
+            int trimTail = textHeap.length(idx) - headCount; //+1 for optional
+            writer.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail);
+            int length = (value.length() - headCount);
+            writer.writeIntegerUnsigned(length);
+            writer.writeTextUTFAfter(headCount, value);
+            textHeap.appendTail(idx, trimTail, headCount, value);
+        } else {
+            // replace head, tail matches to tailCount
+            int trimHead = textHeap.length(idx) - tailCount;
+            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
+            int valueSend = value.length() - tailCount;
+            writer.writeIntegerUnsigned(valueSend);
+            writer.writeTextUTFBefore(value, valueSend);
+            textHeap.appendHead(idx, trimHead, value, valueSend);
+        }
+    }
+    
+    protected void genWriteUTFTextConstantOptional(PrimitiveWriter writer) {
+        writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteUTFTextConstantOptional(int token) {
-        writerChar.writeUTF8ConstantOptional(token);
+    protected void genWriteUTFTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int trimTail = textHeap.length(idx) - headCount;
+        writer.writeIntegerUnsigned(trimTail + 1);// plus 1 for optional
+        int length = (value.length() - headCount);
+        writer.writeIntegerUnsigned(length);
+        writer.writeTextUTFAfter(headCount, value);
+        textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
-    private void genWriteUTFTextTailOptional(int token, CharSequence value) {
-        writerChar.writeUTF8TailOptional(token, value);
-    }
-
-    private void genWriteUTFTextNoneOptional(CharSequence value) {
+    protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(value.length() + 1);
         writer.writeTextUTF(value);
     }
     
-    private void genWriteUTFTextDefault(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value)) {
+    protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -1797,47 +1853,63 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteUTFTextCopy(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        // System.err.println("AA");
-        if (writerChar.heap.equals(idx, value)) {
+    protected void genWriteUTFTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx, value)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             writer.writeIntegerUnsigned(value.length());
             writer.writeTextUTF(value);
-            writerChar.heap.set(idx, value, 0, value.length());
+            textHeap.set(idx, value, 0, value.length());
         }
     }
 
-    private void genWriteUTFTextDelta(int token, CharSequence value) {
-        writerChar.writeUTF8Delta(token, value);
+    protected void genWriteUTFTextDelta(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        // count matching front or back chars
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int tailCount = textHeap.countTailMatch(idx, value);
+        if (headCount > tailCount) {
+            int trimTail = textHeap.length(idx) - headCount;
+            writer.writeIntegerSigned(trimTail);
+            writer.writeIntegerUnsigned(value.length() - headCount);
+            writer.writeTextUTFAfter(headCount, value);
+            textHeap.appendTail(idx, trimTail, headCount, value);
+        } else {
+            // replace head, tail matches to tailCount
+            int trimHead = textHeap.length(idx) - tailCount;
+            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
+            int valueSend = value.length() - tailCount;
+            writer.writeIntegerUnsigned(valueSend);
+            writer.writeTextUTFBefore(value, valueSend);
+            textHeap.appendHead(idx, trimHead, value, valueSend);
+        }
     }
 
-    private void genWriteUTFTextConstant(int token) {
+    protected void genWriteUTFTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int trimTail = textHeap.length(idx) - headCount;
+        writer.writeIntegerUnsigned(trimTail);
+        int length = (value.length() - headCount);
+        writer.writeIntegerUnsigned(length);
+        writer.writeTextUTFAfter(headCount, value);
+        textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
-    private void genWriteUTFTextTail(int token, CharSequence value) {
-        writerChar.writeUTF8Tail(token, value);
-    }
-
-    private void genWriteUTFTextNone(CharSequence value) {
+    protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(value.length());
         writer.writeTextUTF(value);
     }
 
-    private void genWriteTextDefaultOptional(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
+    protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            if (writerChar.heap.isNull(idx | FieldWriterText.INIT_VALUE_MASK)) {
+            if (textHeap.isNull(idx | FASTWriterDispatch.INIT_VALUE_MASK)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
                 writer.writeNull();
             }
         } else {
-            if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value)) {
+            if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
@@ -1846,53 +1918,64 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextCopyOptional(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
+    protected void genWriteTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            if (writerChar.heap.isNull(idx)) {
+            if (textHeap.isNull(idx)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
                 writer.writeNull();
             }
         } else {
-            if (writerChar.heap.equals(idx, value)) {
+            if (textHeap.equals(idx, value)) {
                 writer.writePMapBit((byte) 0);
             } else {
                 writer.writePMapBit((byte) 1);
                 writer.writeTextASCII(value);
-                writerChar.heap.set(idx, value, 0, value.length());
+                textHeap.set(idx, value, 0, value.length());
             }
         }
     }
 
-    private void genWriteTextDeltaOptional(int token, CharSequence value) {
-        writerChar.writeASCIIDeltaOptional(token, value);
+    protected void genWriteTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (null == value) {
+            writer.writeIntegerSigned(0);
+        } else {
+            // count matching front or back chars
+            int headCount = textHeap.countHeadMatch(idx, value);
+            int tailCount = textHeap.countTailMatch(idx, value);
+            if (headCount > tailCount) {
+                int trimTail = textHeap.length(idx) - headCount;
+                assert (trimTail >= 0);
+                writer.writeIntegerSigned(trimTail + 1);// must add one because this
+                                                        // is optional
+                writer.writeTextASCIIAfter(headCount, value);
+                textHeap.appendTail(idx, trimTail, headCount, value);
+            } else {
+                int trimHead = textHeap.length(idx) - tailCount;
+                writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
+                
+                int sentLen = value.length() - tailCount;
+                writer.writeTextASCIIBefore(value, sentLen);
+                textHeap.appendHead(idx, trimHead, value, sentLen);
+            }
+        }
     }
 
-    private void genWriteTextTailOptional(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        int headCount = writerChar.heap.countHeadMatch(idx, value);
-        int trimTail = writerChar.heap.length(idx) - headCount;
-        
+    protected void genWriteTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int trimTail = textHeap.length(idx) - headCount;
         writer.writeIntegerUnsigned(trimTail + 1);
-        writeASCIITail(idx, headCount, value, trimTail);
-    }
-
-    private void writeASCIITail(int idx, int headCount, CharSequence value, int trimTail) {
         writer.writeTextASCIIAfter(headCount, value);
         textHeap.appendTail(idx, trimTail, headCount, value);
     }
-    
-    private void genWriteNull() {
+
+    protected void genWriteNull(PrimitiveWriter writer) {
         writer.writeNull();
     }
     
-    private void genWriteTextDefault(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value)) {
+    protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -1900,42 +1983,53 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextCopy(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx, value)) {
+    protected void genWriteTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx, value)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             // System.err.println("char seq length:"+value.length());
             writer.writeTextASCII(value);
-            writerChar.heap.set(idx, value, 0, value.length());
+            textHeap.set(idx, value, 0, value.length());
         }
     }
 
-    private void genWriteTextDelta(int token, CharSequence value) {
-        writerChar.writeASCIIDelta(token, value);
+    protected void genWriteTextDelta(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        // count matching front or back chars
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int tailCount = textHeap.countTailMatch(idx, value);
+        if (headCount > tailCount) {
+            int trimTail = textHeap.length(idx) - headCount;
+            if (trimTail < 0) {
+                throw new UnsupportedOperationException(trimTail + "");
+            }
+            writer.writeIntegerSigned(trimTail);
+            writer.writeTextASCIIAfter(headCount, value);
+            textHeap.appendTail(idx, trimTail, headCount, value);
+        } else {
+            int trimHead = textHeap.length(idx) - tailCount;
+            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
+            
+            int sentLen = value.length() - tailCount;
+            writer.writeTextASCIIBefore(value, sentLen);
+            textHeap.appendHead(idx, trimHead, value, sentLen);
+        }
     }
-
-    private void genWriteTextConstant2(int token) {
-    }
-
-    private void genWriteTextTail(int token, CharSequence value) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        int headCount = writerChar.heap.countHeadMatch(idx, value);
-        int trimTail = writerChar.heap.length(idx) - headCount;
+    
+    protected void genWriteTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        int headCount = textHeap.countHeadMatch(idx, value);
+        int trimTail = textHeap.length(idx) - headCount;
         writer.writeIntegerUnsigned(trimTail);
-        writeASCIITail(idx, headCount, value, trimTail);
+        writer.writeTextASCIIAfter(headCount, value);
+        textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
-    private void genWriteTextNone(CharSequence value) {
+    protected void genWriteTextNone(CharSequence value, PrimitiveWriter writer) {
         writer.writeTextASCII(value);
     }
     
-    private void genWriteTextUTFDefaultOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value, offset, length)) {
+    protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -1944,39 +2038,56 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextUTFCopyOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
-        if (writerChar.heap.equals(idx, value, offset, length)) {
+    protected void genWriteTextUTFCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             writer.writeIntegerUnsigned(length + 1);
             writer.writeTextUTF(value, offset, length);
-            writerChar.heap.set(idx, value, offset, length);
+            textHeap.set(idx, value, offset, length);
         }
     }
 
-    private void genWriteTextUTFDeltaOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        
+    protected void genWriteTextUTFDeltaOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int tailCount = writerChar.heap.countTailMatch(idx, value, offset + length, length);
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
         if (headCount > tailCount) {
-            writeUTF8Tail(idx, headCount, value, offset, length, 1);
+            int trimTail = textHeap.length(idx) - headCount;
+            int valueSend = length - headCount;
+            int startAfter = offset + headCount;
+            textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+            writer.writeIntegerUnsigned(trimTail + 1);
+            writer.writeIntegerUnsigned(valueSend);
+            writer.writeTextUTF(value, startAfter, valueSend);
         } else {
-            writeUTF8Head(idx, tailCount, value, offset, length, 1);
+            // replace head, tail matches to tailCount
+            int trimHead = textHeap.length(idx) - tailCount;
+            writer.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead);
+            int len = length - tailCount;
+            writer.writeIntegerUnsigned(len);
+            writer.writeTextUTF(value, offset, len);
+            textHeap.appendHead(idx, trimHead, value, offset, len);
         }
     }
 
-    private void genWriteTextUTFConstantOptional(int token) {
-        writerChar.writeUTF8ConstantOptional(token);
+    protected void genWriteTextUTFConstantOptional(int token, PrimitiveWriter writer) {
+        writer.writePMapBit((byte) 1);
     }
 
     private void genWriteTextUTFTailOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        writeUTF8Tail(idx, writerChar.heap.countHeadMatch(idx, value, offset, length), value, offset, length, 1);
+        int idx = token & TEXT_INSTANCE_MASK;
+        
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int trimTail = textHeap.length(idx) - headCount;
+        int valueSend = length - headCount;
+        int startAfter = offset + headCount;
+        textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        
+        writer.writeIntegerUnsigned(trimTail + 1);
+        writer.writeIntegerUnsigned(valueSend);
+        writer.writeTextUTF(value, startAfter, valueSend);
     }
 
     private void genWriteTextUTFNoneOptional(char[] value, int offset, int length) {
@@ -1985,9 +2096,9 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextUTFDefault(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value, offset, length)) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -1997,28 +2108,43 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextUTFCopy(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx, value, offset, length)) {
+        if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTF(value, offset, length);
-            writerChar.heap.set(idx, value, offset, length);
+            textHeap.set(idx, value, offset, length);
         }
     }
 
     private void genWriteTextUTFDelta(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int tailCount = writerChar.heap.countTailMatch(idx, value, offset + length, length);
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
         if (headCount > tailCount) {
-            writeUTF8Tail(idx, headCount, value, offset + headCount, length, 0);
+            int trimTail = textHeap.length(idx) - headCount;
+            int valueSend = length - headCount;
+            int startAfter = offset + headCount + headCount;
+            textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+            
+            writer.writeIntegerUnsigned(trimTail + 0);
+            writer.writeIntegerUnsigned(valueSend);
+            writer.writeTextUTF(value, startAfter, valueSend);
         } else {
-            writeUTF8Head(idx, tailCount, value, offset, length, 0);
+            // replace head, tail matches to tailCount
+            int trimHead = textHeap.length(idx) - tailCount;
+            writer.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead);
+            
+            int len = length - tailCount;
+            writer.writeIntegerUnsigned(len);
+            writer.writeTextUTF(value, offset, len);
+            
+            textHeap.appendHead(idx, trimHead, value, offset, len);
         }
     }
 
@@ -2026,35 +2152,18 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextUTFTail(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        writeUTF8Tail(idx, writerChar.heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
-    }
-
-    
-    private void writeUTF8Tail(int idx, int headCount, char[] value, int offset, int length, final int optional) {
+        int idx = token & TEXT_INSTANCE_MASK;
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount;
         int valueSend = length - headCount;
         int startAfter = offset + headCount;
         textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         
-        writer.writeIntegerUnsigned(trimTail + optional);
+        writer.writeIntegerUnsigned(trimTail + 0);
         writer.writeIntegerUnsigned(valueSend);
         writer.writeTextUTF(value, startAfter, valueSend);
-        
     }
 
-    private void writeUTF8Head(int idx, int tailCount, char[] value, int offset, int length, int opt) {
-
-        // replace head, tail matches to tailCount
-        int trimHead = textHeap.length(idx) - tailCount;
-        writer.writeIntegerSigned(trimHead == 0 ? opt : -trimHead);
-
-        int len = length - tailCount;
-        writer.writeIntegerUnsigned(len);
-        writer.writeTextUTF(value, offset, len);
-
-        textHeap.appendHead(idx, trimHead, value, offset, len);
-    }
     
     private void genWriteTextUTFNone(char[] value, int offset, int length) {
         writer.writeIntegerUnsigned(length);
@@ -2062,9 +2171,9 @@ public final class FASTWriterDispatch {
     }
     
     private void genWriteTextDefaultOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value, offset, length)) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -2073,25 +2182,25 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextCopyOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx, value, offset, length)) {
+        if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
             writer.writeTextASCII(value, offset, length);
-            writerChar.heap.set(idx, value, offset, length);
+            textHeap.set(idx, value, offset, length);
         }
     }
 
     private void genWriteTextDeltaOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int tailCount = writerChar.heap.countTailMatch(idx, value, offset + length, length);
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
         if (headCount > tailCount) {
-            int trimTail = writerChar.heap.length(idx) - headCount; // head count is total
+            int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
             writer.writeIntegerSigned(trimTail + 1); // cut off these from tail,
@@ -2101,11 +2210,12 @@ public final class FASTWriterDispatch {
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
         
-            writeASCIITail(idx, trimTail, value, valueStart, valueSend);
+            writer.writeTextASCII(value, valueStart, valueSend);
+            textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
         
         } else {
             // replace head, tail matches to tailCount
-            int trimHead = writerChar.heap.length(idx) - tailCount;
+            int trimHead = textHeap.length(idx) - tailCount;
             writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
         
             int len = length - tailCount;
@@ -2115,20 +2225,15 @@ public final class FASTWriterDispatch {
         }
     }
     
-    private void writeASCIITail(int idx, int trimTail, char[] value, int valueStart, int valueSend) {
-        writer.writeTextASCII(value, valueStart, valueSend);
-        textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
-    }
-
     private void genWriteTextConstantOptional(int token) {
         writer.writePMapBit((byte) 1);
         // the writeNull will take care of the rest.
     }
 
     private void genWriteTextTailOptional(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int trimTail = writerChar.heap.length(idx) - headCount; // head count is total that
+        int idx = token & TEXT_INSTANCE_MASK;
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int trimTail = textHeap.length(idx) - headCount; // head count is total that
                                                      // match from head.
         
         writer.writeIntegerUnsigned(trimTail + 1); // cut off these from tail
@@ -2136,7 +2241,8 @@ public final class FASTWriterDispatch {
         int valueSend = length - headCount;
         int valueStart = offset + headCount;
         
-        writeASCIITail(idx, trimTail, value, valueStart, valueSend);
+        writer.writeTextASCII(value, valueStart, valueSend);
+        textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
     private void genWriteTextNoneOptional(char[] value, int offset, int length) {
@@ -2144,9 +2250,9 @@ public final class FASTWriterDispatch {
     }
     
     private void genWriteTextDefault(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx | FieldWriterText.INIT_VALUE_MASK, value, offset, length)) {
+        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -2155,9 +2261,9 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextCopy(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
-        if (writerChar.heap.equals(idx, value, offset, length)) {
+        if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -2167,13 +2273,13 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextDelta(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
+        int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int tailCount = writerChar.heap.countTailMatch(idx, value, offset + length, length);
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
         if (headCount > tailCount) {
-            int trimTail = writerChar.heap.length(idx) - headCount; // head count is total
+            int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
             writer.writeIntegerSigned(trimTail); // cut off these from tail
@@ -2181,17 +2287,18 @@ public final class FASTWriterDispatch {
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
         
-            writeASCIITail(idx, trimTail, value, valueStart, valueSend);
+            writer.writeTextASCII(value, valueStart, valueSend);
+            textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
         
         } else {
             // replace head, tail matches to tailCount
-            int trimHead = writerChar.heap.length(idx) - tailCount;
+            int trimHead = textHeap.length(idx) - tailCount;
             writer.writeIntegerUnsigned(-trimHead);
         
             int len = length - tailCount;
             writer.writeTextASCII(value, offset, len);
         
-            writerChar.heap.appendHead(idx, trimHead, value, offset, len);
+            textHeap.appendHead(idx, trimHead, value, offset, len);
         }
     }
 
@@ -2199,16 +2306,17 @@ public final class FASTWriterDispatch {
     }
 
     private void genWriteTextTail(int token, char[] value, int offset, int length) {
-        int idx = token & writerChar.INSTANCE_MASK;
-        int headCount = writerChar.heap.countHeadMatch(idx, value, offset, length);
-        int trimTail = writerChar.heap.length(idx) - headCount; // head count is total that
+        int idx = token & TEXT_INSTANCE_MASK;
+        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
+        int trimTail = textHeap.length(idx) - headCount; // head count is total that
                                                      // match from head.
         writer.writeIntegerUnsigned(trimTail); // cut off these from tail
         
         int valueSend = length - headCount;
         int valueStart = offset + headCount;
         
-        writeASCIITail(idx, trimTail, value, valueStart, valueSend);
+        writer.writeTextASCII(value, valueStart, valueSend);
+        textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
     private void genWriteTextNone(char[] value, int offset, int length) {
