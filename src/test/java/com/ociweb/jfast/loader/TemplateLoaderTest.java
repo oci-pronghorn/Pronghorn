@@ -263,7 +263,7 @@ public class TemplateLoaderTest {
         // TODO: B, Use generated class if found else use slower base class
 
         int warmup = 128;
-        int count = 512;
+        int count = 2048;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
         byte[] preamble = new byte[catalog.preambleSize];

@@ -574,26 +574,26 @@ public class TextHeap {
     // ////////
 
     // for ring buffer only where the length was already known
-    public int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask) {//Invoked 100's of millions of times, must be tight.
+    public static int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         // Does not support init values
         assert (idx > 0);
 
         final int offset = idx << 2;
-        final int pos = tat[offset];
-        final int len = tat[offset + 1] - pos;
+        final int pos = textHeap.tat[offset];
+        final int len = textHeap.tat[offset + 1] - pos;
 
         int tStart = targetIdx & targetMask;
         if (1 == len) {
             // simplification because 1 char can not loop around ring buffer.
-            target[tStart] = data[pos];
+            target[tStart] = textHeap.data[pos];
         } else {
-            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart);
+            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart, textHeap.data);
         }
         return targetIdx + len;
     }
 
-    private void copyToRingBuffer(char[] target, final int targetIdx, final int targetMask, final int pos,
-            final int len, int tStart) {
+    private static void copyToRingBuffer(char[] target, final int targetIdx, final int targetMask, final int pos,
+            final int len, int tStart, char[] data) {
         int tStop = (targetIdx + len) & targetMask;
         if (tStop > tStart) {
             System.arraycopy(data, pos, target, tStart, len);

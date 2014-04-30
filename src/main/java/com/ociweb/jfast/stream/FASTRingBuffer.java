@@ -44,6 +44,7 @@ public final class FASTRingBuffer {
     final char[] constBuffer; //defined externally and never changes
     final byte[] constByteBuffer;
 
+    //TODO: A, Filter is a mistake instead we need Ring buffers per messages and a drop message one as well. Then it is all hardcoded per instance setup. need hash for those options.
     FASTFilter filter = FASTFilter.none;
 
     final AtomicInteger removeCount = new AtomicInteger();
@@ -126,7 +127,7 @@ public final class FASTRingBuffer {
     public int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         final int p = addCharPos;
         if (len > 0) {
-            addCharPos = textHeap.copyToRingBuffer(heapId, charBuffer, p, charMask);
+            addCharPos = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
         }
         return p;
     }

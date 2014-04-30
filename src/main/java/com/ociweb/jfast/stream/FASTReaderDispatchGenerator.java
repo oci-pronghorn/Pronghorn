@@ -72,14 +72,14 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         doneScriptsParas.add(paraVals);
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private void ")
+        signatureLine.append("private int ") //TODO: would like to make this static but it may call non statics
                      .append(GROUP_METHOD_NAME)
                      .append(scriptPos)
                      .append("(")
                      .append(paraDefs)
                      .append(") {\n");
         
-        caseBuilder.append("    activeScriptCursor=").append(activeScriptCursor).append(";\n");
+        caseBuilder.append("    return ").append(activeScriptCursor).append(";\n");
         
         return signatureLine.toString()+caseBuilder.toString()+caseTail+fieldBuilder.toString();
     }
@@ -98,9 +98,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
             fieldPrefix = "0"+fieldPrefix;
         }
         
-        
-        //add debug code
-        caseBuilder.append("    assert (gatherReadData(reader, activeScriptCursor));\n");
         
         fieldPrefix = "m"+fieldPrefix;
     }
@@ -157,15 +154,23 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         field = fieldPrefix+"_"+field;
         
         if (methodNameKey.contains("Length")) {
-            fieldBuilder.append("private boolean ");
-            caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return;};\n");
+            fieldBuilder.append("private boolean "); //TODO: X, would like to make this static but not sure how.
+            caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
         } else {
-            fieldBuilder.append("private void ");
+            if (hasMemberRefs(template)) {
+                fieldBuilder.append("private void ");//TODO X, continue to redce the member refs
+            } else {
+                fieldBuilder.append("private static void ");
+            }
             caseBuilder.append("    ").append(field).append("(").append(fieldParaValues).append(");\n");
         }
         fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
         //TODO: A, how is the read from supported, existing generator must get the from index value when in the script. not built into char/bytes yet.
+    }
+
+    private boolean hasMemberRefs(String template) {
+        return template.contains("sequenceCountStackHead") || template.contains("activeScriptCursor");
     }
 
     private void generateParameters(String[] params, String[] defs, StringBuilder fieldParaValues,
@@ -257,7 +262,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         int[] doneValues = new int[doneScripts.size()];
         String[] doneCode = new String[doneScripts.size()];
         for(Integer d:doneScripts) {
-            doneCode[j] = GROUP_METHOD_NAME+d+"("+doneScriptsParas.get(j)+");\n";
+            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\ractiveScriptCursor="+GROUP_METHOD_NAME+d+"("+doneScriptsParas.get(j)+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();

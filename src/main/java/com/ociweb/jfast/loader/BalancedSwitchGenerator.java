@@ -25,7 +25,7 @@ public class BalancedSwitchGenerator {
 
         if (values.length==1) {
             target.append(tab).append("assert(").append(Integer.toString(values[0])).append("==").append(varName).append(") : \"found value of \"+").append(varName).append(";\n");
-            target.append(tab).append(code[0]);//.append("\n");
+            target.append(tab).append(code[0].replace("\n\r", "\n"+tab));
             return;
         }
 
