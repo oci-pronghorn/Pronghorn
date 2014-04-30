@@ -177,7 +177,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void acceptLongSignedOptional(int token, long value) {
+    public void acceptLongSignedOptional(int token, long value) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -229,7 +229,7 @@ public final class FASTWriterDispatch {
 
 
 
-    private void acceptLongSigned(int token, long value) {
+    public void acceptLongSigned(int token, long value) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -414,7 +414,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void acceptIntegerSigned(int token, int value) {
+    public void acceptIntegerSigned(int token, int value) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -520,7 +520,7 @@ public final class FASTWriterDispatch {
     }
 
 
-    private void acceptIntegerSignedOptional(int token, int value) {
+    public void acceptIntegerSignedOptional(int token, int value) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1074,11 +1074,13 @@ public final class FASTWriterDispatch {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextUTFNoneOptional(value, offset, length);
+                    genWriteTextUTFNoneOptional(value, offset, length, writer);
 
                 } else {
                     // tail
-                    genWriteTextUTFTailOptional(token, value, offset, length);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextUTFTailOptional(value, offset, length, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1121,20 +1123,24 @@ public final class FASTWriterDispatch {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextUTFNone(value, offset, length);
+                    genWriteTextUTFNone(value, offset, length, writer);
 
                 } else {
                     // tail
-                    genWriteTextUTFTail(token, value, offset, length);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextUTFTail(value, offset, length, idx, writer, textHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextUTFConstant(token);
+                    
                 } else {
                     // delta
-                    genWriteTextUTFDelta(token, value, offset, length);
+                    int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    genWriteTextUTFDelta(value, offset, length, idx, writer, textHeap);
                 }
             }
         } else {
@@ -1142,10 +1148,15 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextUTFCopy(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextUTFCopy(value, offset, length, idx, writer, textHeap);
             } else {
                 // default
-                genWriteTextUTFDefault(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                int constId = idx | FASTWriterDispatch.INIT_VALUE_MASK;
+                
+                genWriteTextUTFDefault(value, offset, length, constId, writer, textHeap);
             }
         }
 
@@ -1181,10 +1192,16 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopyOptional(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                genWriteTextCopyOptional(value, offset, length, idx, writer, textHeap);
             } else {
                 // default
-                genWriteTextDefaultOptional(token, value, offset, length);
+                int idx = token & TEXT_INSTANCE_MASK;
+                
+                int constId = idx | FASTWriterDispatch.INIT_VALUE_MASK;
+                
+                genWriteTextDefaultOptional(value, offset, length, constId, writer, textHeap);
             }
         }
 
@@ -1341,23 +1358,34 @@ public final class FASTWriterDispatch {
                         
                         
                         int exponent = FASTRingBufferReader.readInt(queue, fieldPos);
-                        long mantissa = FASTRingBufferReader.readLong(queue, fieldPos + 1);//TODO: A, writer must break these into two
+                        long mantissa = FASTRingBufferReader.readLong(queue, fieldPos + 1);
                         
+                        int expoToken = token&
+                                ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
+                                        (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
+                                        (TokenBuilder.MAX_INSTANCE));
+                        expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
+                        expoToken |= 0x80000000;
                         
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            writeExponent(token, exponent);
+                            
+                            
+                            acceptIntegerSigned(expoToken, exponent);
                             
                             //NOTE: moving forward one to get second token for decimals
                             token = fullScript[++activeScriptCursor];
                             
-                            writeMantissa(token, mantissa);
+                            acceptLongSigned(token, mantissa);
                         } else {
+                            
+                            
+                            
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
-                            	int idx = token & intInstanceMask; 
+                            	int idx = expoToken & intInstanceMask; 
                                 
-                                FASTWriterDispatch.writeNullInt(token, writer, intValues, idx); //needed for decimal.
+                                FASTWriterDispatch.writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
                             } else {
-                            	writeExponentOptional(token, exponent);
+                            	acceptIntegerSignedOptional(expoToken, exponent);
                             }
                             
                             //NOTE: moving forward one to get second token for decimals
@@ -1368,7 +1396,7 @@ public final class FASTWriterDispatch {
                                 
                                 FASTWriterDispatch.writeNullLong(token, idx, writer, longValues); 
                             } else {
-                            	writeMantissaOptional(token, mantissa);
+                            	acceptLongSignedOptional(token, mantissa);
                             }
                         }
                     } else {
@@ -1460,12 +1488,12 @@ public final class FASTWriterDispatch {
                                 if (0 == (idx & 4)) {
                                     // integer
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        intValues[idx] = intInit[idx];
+                                        genWriteDictionaryIntegerReset(idx);
                                     }
                                 } else {
                                     // long
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        longValues[idx] = longInit[idx];
+                                        genWriteDictionaryLongReset(idx);
                                     }
                                 }
                             } else {
@@ -1473,7 +1501,7 @@ public final class FASTWriterDispatch {
                                     // text
                                     while (m < limit && (idx = members[m++]) >= 0) {
                                         if (null!=textHeap) {
-                                            textHeap.reset(idx);
+                                            genWriteDictionaryTextReset(idx);
                                         }
                                     }
                                 } else {
@@ -1484,7 +1512,7 @@ public final class FASTWriterDispatch {
                                         // bytes
                                         while (m < limit && (idx = members[m++]) >= 0) {
                                             if (null!=byteHeap) {
-                                                byteHeap.setNull(idx);
+                                                genWriteDictionaryBytesReset(idx);
                                             }
                                         }
                                     }
@@ -1502,6 +1530,8 @@ public final class FASTWriterDispatch {
         }
         return false;
     }
+
+
 
     private boolean gatherWriteData(PrimitiveWriter writer, int token, int cursor, int fieldPos, FASTRingBuffer queue) {
 
@@ -1551,226 +1581,6 @@ public final class FASTWriterDispatch {
 
     }
 
-    public void writeMantissaOptional(int token, long mantissa) {
-    
-        // oppMaint
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-            // none, constant, delta
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                // none, delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    int idx = token & longInstanceMask;
-    
-                    writer.writeLongSigned(longValues[idx] = 1 + mantissa);
-                } else {
-                    // delta
-                    // Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
-    
-                    long delta = mantissa - longValues[idx];
-                    writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
-                    longValues[idx] = mantissa;
-                }
-            } else {
-                // constant
-                assert (longValues[token & longInstanceMask] == mantissa) : "Only the constant value from the template may be sent";
-                writer.writePMapBit((byte) 1);
-                // the writeNull will take care of the rest.
-            }
-    
-        } else {
-            // copy, default, increment
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                // copy, increment
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // copy
-                    int idx = token & longInstanceMask;
-    
-                    if (mantissa >= 0) {
-                        mantissa++;
-                    }
-                    writer.writeLongSignedCopy2(mantissa, idx, longValues);
-                } else {
-                    // increment
-                    int idx = token & longInstanceMask;
-    
-                    if (mantissa >= 0) {
-                        mantissa++;
-                    }
-                    writer.writeLongSignedIncrementOptional2(mantissa,
-                            longValues[idx]);
-                    longValues[idx] = mantissa;
-                }
-            } else {
-                // default
-                int idx = token & longInstanceMask;
-                long constDefault = longValues[idx];
-    
-                if (mantissa >= 0) {
-                    mantissa++;// room for null
-                }
-                genWriteLongSignedDefault(mantissa, constDefault);
-            }
-        }
-    }
-
-    public void writeExponentOptional(int token, int exponent) {
-        // oppExp
-        if (0 == (token & (1 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-            // none, constant, delta
-            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                // none, delta
-                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                    // none
-                    int idx = token & intInstanceMask; 
-    
-                    writer.writeIntegerSigned(intValues[idx] = exponent >= 0 ? 1 + exponent
-                            : exponent);
-                } else {
-                    // delta
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSignedDeltaOptional(exponent, idx, intValues);
-                }
-            } else {
-                // constant
-                assert (intValues[token & intInstanceMask] == exponent) : "Only the constant value from the template may be sent";
-                writer.writePMapBit((byte) 1);
-                // the writeNull will take care of the rest.
-            }
-    
-        } else {
-            // copy, default, increment
-            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                // copy, increment
-                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                    // copy
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSignedCopyOptional(exponent, idx, intValues);
-                } else {
-                    // increment
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSignedIncrementOptional(exponent, idx, intValues);
-                }
-            } else {
-                // default
-                int idx = token & intInstanceMask;
-                int constDefault = intValues[idx];
-    
-                writer.writeIntegerSignedDefaultOptional(exponent, idx, constDefault);
-            }
-        }
-    }
-
-    public void writeMantissa(int token, long mantissa) {
-        // oppMaint
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-            // none, constant, delta
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                // none, delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    int idx = token & longInstanceMask; 
-    
-                    genWriteLongSignedNone(mantissa, idx);
-                } else {
-                    // delta
-                    // Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
-    
-                    writer.writeLongSigned(mantissa - longValues[idx]);
-                    longValues[idx] = mantissa;
-                }
-            } else {
-                // constant
-                assert (longValues[token & longInstanceMask] == mantissa) : "Only the constant value from the template may be sent";
-                // nothing need be sent because constant does not use pmap and
-                // the template
-                // on the other receiver side will inject this value from the
-                // template
-            }
-    
-        } else {
-            // copy, default, increment
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                // copy, increment
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // copy
-                    int idx = token & longInstanceMask;
-    
-                    writer.writeLongSignedCopy2(mantissa, idx, longValues);
-                } else {
-                    // increment
-                    int idx = token & longInstanceMask;
-    
-                    genWriteLongSignedIncrement(mantissa, idx);
-                }
-            } else {
-                // default
-                int idx = token & longInstanceMask;
-                long constDefault = longValues[idx];
-    
-                genWriteLongSignedDefault(mantissa, constDefault);
-            }
-        }
-    }
-
-    public void writeExponent(int token, int exponent) {
-        // oppExp
-        if (0 == (token & (1 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-            // none, constant, delta
-            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                // none, delta
-                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                    // none
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSigned(intValues[idx] = exponent);
-                } else {
-                    // delta
-                    // Delta opp never uses PMAP
-                    int idx = token & intInstanceMask;
-    
-                    genWriteIntegerSignedDelta(exponent, idx);
-                }
-            } else {
-                // constant
-                assert (intValues[token & intInstanceMask] == exponent) : "Only the constant value "
-                        + intValues[token & intInstanceMask]
-                        + " from the template may be sent";
-                // nothing need be sent because constant does not use pmap and
-                // the template
-                // on the other receiver side will inject this value from the
-                // template
-            }
-    
-        } else {
-            // copy, default, increment
-            if (0 == (token & (2 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                // copy, increment
-                if (0 == (token & (4 << (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX)))) {
-                    // copy
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSignedCopy(exponent, idx, intValues);
-                } else {
-                    // increment
-                    int idx = token & intInstanceMask;
-    
-                    writer.writeIntegerSignedIncrement(exponent, idx, intValues);
-                }
-            } else {
-                // default
-                int idx = token & intInstanceMask;
-                int constDefault = intValues[idx];
-    
-                writer.writeIntegerSignedDefault(exponent, idx, constDefault);
-            }
-        }
-    }
     
     protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
@@ -2076,9 +1886,7 @@ public final class FASTWriterDispatch {
         writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteTextUTFTailOptional(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
+    protected void genWriteTextUTFTailOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount;
         int valueSend = length - headCount;
@@ -2090,15 +1898,13 @@ public final class FASTWriterDispatch {
         writer.writeTextUTF(value, startAfter, valueSend);
     }
 
-    private void genWriteTextUTFNoneOptional(char[] value, int offset, int length) {
+    protected void genWriteTextUTFNoneOptional(char[] value, int offset, int length, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(length + 1);
         writer.writeTextUTF(value, offset, length);
     }
 
-    private void genWriteTextUTFDefault(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
+    protected void genWriteTextUTFDefault(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(constId, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -2107,9 +1913,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextUTFCopy(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
+    protected void genWriteTextUTFCopy(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
@@ -2120,9 +1924,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextUTFDelta(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
+    protected void genWriteTextUTFDelta(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
@@ -2148,11 +1950,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextUTFConstant(int token) {
-    }
-
-    private void genWriteTextUTFTail(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
+    protected void genWriteTextUTFTail(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount;
         int valueSend = length - headCount;
@@ -2165,15 +1963,13 @@ public final class FASTWriterDispatch {
     }
 
     
-    private void genWriteTextUTFNone(char[] value, int offset, int length) {
+    protected void genWriteTextUTFNone(char[] value, int offset, int length, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(length);
         writer.writeTextUTF(value, offset, length);
     }
     
-    private void genWriteTextDefaultOptional(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
+    protected void genWriteTextDefaultOptional(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
+        if (textHeap.equals(constId, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
             writer.writePMapBit((byte) 1);
@@ -2181,9 +1977,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextCopyOptional(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
+    protected void genWriteTextCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
             writer.writePMapBit((byte) 0);
         } else {
@@ -2715,5 +2509,21 @@ public final class FASTWriterDispatch {
                 } // yes pmap, no change to last value
             }
         }
+    }
+    
+    protected void genWriteDictionaryBytesReset(int idx) {
+        byteHeap.setNull(idx);
+    }
+
+    protected void genWriteDictionaryTextReset(int idx) {
+        textHeap.reset(idx);
+    }
+
+    protected void genWriteDictionaryLongReset(int idx) {
+        longValues[idx] = longInit[idx];
+    }
+
+    protected void genWriteDictionaryIntegerReset(int idx) {
+        intValues[idx] = intInit[idx];
     }
 }

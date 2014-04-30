@@ -100,15 +100,15 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            fw.writeExponent(token, testExpConst);
-                            fw.writeMantissa(token, testMantConst);
+                            fw.acceptIntegerSigned(token, testExpConst);
+                            fw.acceptLongSigned(token, testMantConst);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
                                 int idx = token & fw.intInstanceMask;
                                 
                                 FASTWriterDispatch.writeNullInt(token, pw, fw.intValues, idx);
                             } else {
-                                fw.writeExponentOptional(token, testExpConst);
+                                fw.acceptIntegerSignedOptional(token, testExpConst);
                             }
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
@@ -116,7 +116,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                                 
                                 FASTWriterDispatch.writeNullLong(token, idx, pw, fw.longValues);
                             } else {
-                                fw.writeMantissaOptional(token, testMantConst);
+                                fw.acceptLongSignedOptional(token, testMantConst);
                             }
                         }
                     }
@@ -130,15 +130,15 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            fw.writeExponent(token, 1);
-                            fw.writeMantissa(token, mantissa);
+                            fw.acceptIntegerSigned(token, 1);
+                            fw.acceptLongSigned(token, mantissa);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                                 int idx = token & fw.intInstanceMask;
                                 
                                 FASTWriterDispatch.writeNullInt(token, pw, fw.intValues, idx);
                             } else {
-                                fw.writeExponentOptional(token, 1);
+                                fw.acceptIntegerSignedOptional(token, 1);
                             }
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
@@ -146,7 +146,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                                 
                                 FASTWriterDispatch.writeNullLong(token, idx, pw, fw.longValues);
                             } else {
-                                fw.writeMantissaOptional(token, mantissa);
+                                fw.acceptLongSignedOptional(token, mantissa);
                             }
                         }
                     }

@@ -284,15 +284,15 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    staticWriter.writeExponent(token, 1);
-                    staticWriter.writeMantissa(token, mantissa);
+                    staticWriter.acceptIntegerSigned(token, 1);
+                    staticWriter.acceptLongSigned(token, mantissa);
                 } else {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                         int idx = token & staticWriter.intInstanceMask;
 
                         FASTWriterDispatch.writeNullInt(token, pw, staticWriter.intValues, idx);
                     } else {
-                        staticWriter.writeExponentOptional(token, 1);
+                        staticWriter.acceptIntegerSignedOptional(token, 1);
                     }
 
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
@@ -300,7 +300,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
                         FASTWriterDispatch.writeNullLong(token, idx, pw, staticWriter.longValues);
                     } else {
-                        staticWriter.writeMantissaOptional(token, mantissa);
+                        staticWriter.acceptLongSignedOptional(token, mantissa);
                     }
                 }
             }
