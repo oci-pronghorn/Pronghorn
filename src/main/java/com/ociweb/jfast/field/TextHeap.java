@@ -123,7 +123,7 @@ public class TextHeap {
         return tat[offset + 1] == tat[offset] - 1;
     }
 
-   public char[] rawInitAccess() { //TODO: should not be public 
+   public char[] rawInitAccess() { //TODO: C, should not be public 
         return initBuffer;
     }
 

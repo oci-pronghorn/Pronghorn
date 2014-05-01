@@ -67,7 +67,7 @@ public class FASTRingBufferReader {//TODO: build another reader that does auto c
     
     private static Appendable readTextConst(FASTRingBuffer ring, int len, Appendable target, int pos) {
         try {
-            char[] buffer = ring.constBuffer;
+            char[] buffer = ring.constTextBuffer;
             while (--len >= 0) {
                 target.append(buffer[pos++]);
             }
@@ -101,7 +101,7 @@ public class FASTRingBufferReader {//TODO: build another reader that does auto c
     }
     
     private static void readTextConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
-            char[] buffer = ring.constBuffer;
+            char[] buffer = ring.constTextBuffer;
             while (--len >= 0) {
                 target[targetIdx++]=buffer[pos++];
             };
@@ -126,7 +126,7 @@ public class FASTRingBufferReader {//TODO: build another reader that does auto c
     }
     
     private static void readTextConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int targetMask, int pos) {
-            char[] buffer = ring.constBuffer;
+            char[] buffer = ring.constTextBuffer;
             while (--len >= 0) {
                 target[targetMask & targetIdx++]=buffer[pos++];
             };
@@ -155,7 +155,7 @@ public class FASTRingBufferReader {//TODO: build another reader that does auto c
     }
     
     private static boolean eqTextConst(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
-            char[] buffer = ring.constBuffer;
+            char[] buffer = ring.constTextBuffer;
             int i = 0;
             while (--len >= 0) {
                 if (seq.charAt(i++)!=buffer[pos++]) {

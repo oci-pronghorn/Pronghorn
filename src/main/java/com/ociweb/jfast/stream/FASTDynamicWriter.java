@@ -56,7 +56,7 @@ public class FASTDynamicWriter {
                         preambleData[i++] = (byte) (0xFF & d);
                         idx++;
                     }
-                    writerDispatch.dispatchPreable(preambleData);
+                    writerDispatch.writePreamble(preambleData);
                 }
                 ;
 

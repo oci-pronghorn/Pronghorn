@@ -41,7 +41,7 @@ public final class FASTRingBuffer {
     final byte[] byteBuffer;
     int addBytePos = 0;
     
-    final char[] constBuffer; //defined externally and never changes
+    final char[] constTextBuffer; //defined externally and never changes
     final byte[] constByteBuffer;
 
     //TODO: A, Filter is a mistake instead we need Ring buffers per messages and a drop message one as well. Then it is all hardcoded per instance setup. need hash for those options.
@@ -52,10 +52,10 @@ public final class FASTRingBuffer {
     public int addPos = 0;
     public int remPos = 0;
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, char[] constBuffer, byte[] constByteBuffer) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, char[] constTextBuffer, byte[] constByteBuffer) {
         assert (primaryBits >= 1);
 
-        this.constBuffer = constBuffer; //TODO: rename
+        this.constTextBuffer = constTextBuffer;
         this.constByteBuffer = constByteBuffer;
         
         this.maxSize = 1 << primaryBits;
@@ -221,7 +221,7 @@ public final class FASTRingBuffer {
 
     public char[] readRingCharBuffer(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
-        return buffer[mask & (remPos + fieldPos)] < 0 ? constBuffer : this.charBuffer;
+        return buffer[mask & (remPos + fieldPos)] < 0 ? constTextBuffer : this.charBuffer;
     }
 
     public int readRingCharMask() {

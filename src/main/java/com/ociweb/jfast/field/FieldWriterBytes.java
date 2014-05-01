@@ -10,10 +10,10 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FieldWriterBytes {
 
-	private final ByteHeap heap;
+	private final ByteHeap byteHeap;
 	private final PrimitiveWriter writer;
-	private final int INSTANCE_MASK;
-	private static final int INIT_VALUE_MASK = 0x80000000;
+	public final int INSTANCE_MASK;
+	public static final int INIT_VALUE_MASK = 0x80000000;
 	
 	public FieldWriterBytes(PrimitiveWriter writer, ByteHeap byteDictionary) {
 		assert(null==byteDictionary || byteDictionary.itemCount()<TokenBuilder.MAX_INSTANCE);
@@ -21,25 +21,25 @@ public class FieldWriterBytes {
 		
 		this.INSTANCE_MASK = null==byteDictionary? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteDictionary.itemCount()-1));
 		
-		this.heap = byteDictionary;
+		this.byteHeap = byteDictionary;
 		this.writer = writer;
 	}
 	
 	public void reset(DictionaryFactory df) {
-		df.reset(heap);
+		df.reset(byteHeap);
 	}	
 	public void copy(int sourceToken, int targetToken) {
 		//replace string at target with string found in source.
-		heap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
+		byteHeap.copy(sourceToken & INSTANCE_MASK, targetToken & INSTANCE_MASK);
 	}
 
 	private void writeClearNull(int token) {
 		writer.writeNull();
-		heap.setNull(token & INSTANCE_MASK);
+		byteHeap.setNull(token & INSTANCE_MASK);
 	}
 	
 	private void writePMapNull(int token) {
-		if (heap.isNull(token & INSTANCE_MASK)) { //stored value was null;
+		if (byteHeap.isNull(token & INSTANCE_MASK)) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -50,12 +50,12 @@ public class FieldWriterBytes {
 	private void writePMapAndClearNull(int token) {
 		int idx = token & INSTANCE_MASK;
 
-		if (heap.isNull(idx)) { //stored value was null;
+		if (byteHeap.isNull(idx)) { //stored value was null;
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeNull();
-			heap.setNull(idx);
+			byteHeap.setNull(idx);
 		}
 	}
 	
@@ -90,7 +90,7 @@ public class FieldWriterBytes {
 		
 		int idx = token & INSTANCE_MASK;
 				
-		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 0);
+		writeBytesTail(idx, byteHeap.countHeadMatch(idx, value), value, 0);
 		value.position(value.limit());//skip over the data just like we wrote it.
 		
 	}
@@ -100,13 +100,13 @@ public class FieldWriterBytes {
 		
 		int idx = token & INSTANCE_MASK;
 		
-		writeBytesTail(idx, heap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
+		writeBytesTail(idx, byteHeap.countHeadMatch(idx, value, offset, length), value, offset, length, 0);
 
 	}
 
 	public void writeBytesTailOptional(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
-		writeBytesTail(idx, heap.countHeadMatch(idx, value), value, 1);
+		writeBytesTail(idx, byteHeap.countHeadMatch(idx, value), value, 1);
 		value.position(value.limit());//skip over the data just like we wrote it.
 	}
 
@@ -114,8 +114,8 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		//count matching front or back chars
-		int headCount = heap.countHeadMatch(idx, value);
-		int tailCount = heap.countTailMatch(idx, value);
+		int headCount = byteHeap.countHeadMatch(idx, value);
+		int tailCount = byteHeap.countTailMatch(idx, value);
 		if (headCount>tailCount) {
 			writeBytesTail(idx, headCount, value, 0); //does not modify position
 		} else {
@@ -124,31 +124,17 @@ public class FieldWriterBytes {
 		value.position(value.limit());//skip over the data just like we wrote it.
 	}
 
-	public void writeBytesDeltaOptional(int token, ByteBuffer value) {
-		int idx = token & INSTANCE_MASK;
-		
-		//count matching front or back chars
-		int headCount = heap.countHeadMatch(idx, value);
-		int tailCount = heap.countTailMatch(idx, value);
-		if (headCount>tailCount) {
-			writeBytesTail(idx, headCount, value, 1); //does not modify position
-		} else {
-			writeBytesHead(idx, tailCount, value, 1); //does not modify position
-		}
-		value.position(value.limit());//skip over the data just like we wrote it.
-	}
-
 	private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
 		
 		//replace head, tail matches to tailCount
-		int trimHead = heap.length(idx)-tailCount;
+		int trimHead = byteHeap.length(idx)-tailCount;
 		writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
 		
 		int len = value.remaining() - tailCount;
 		int offset = value.position();
 		writer.writeIntegerUnsigned(len);
 		writer.writeByteArrayData(value, offset, len);
-		heap.appendHead(idx, trimHead, value, offset, len);
+		byteHeap.appendHead(idx, trimHead, value, offset, len);
 	}
 	
 	
@@ -156,7 +142,7 @@ public class FieldWriterBytes {
 		
 	
 		
-		int trimTail = heap.length(idx)-headCount;
+		int trimTail = byteHeap.length(idx)-headCount;
 		if (trimTail<0) {
 			throw new ArrayIndexOutOfBoundsException();
 		}
@@ -167,7 +153,7 @@ public class FieldWriterBytes {
 				
 		writer.writeIntegerUnsigned(valueSend);
 		//System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+		byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
 		
 	}
@@ -176,13 +162,13 @@ public class FieldWriterBytes {
 	public void writeBytesCopy(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		//System.err.println("AA");
-		if (heap.equals(idx, value)) {
+		if (byteHeap.equals(idx, value)) {
 			writer.writePMapBit((byte)0);
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(value.remaining());
-			heap.set(idx, value);//position is NOT modified
+			byteHeap.set(idx, value);//position is NOT modified
 			writer.writeByteArrayData(value); //this moves the position in value
 		}
 	}
@@ -190,7 +176,7 @@ public class FieldWriterBytes {
 	public void writeBytesDefault(int token, ByteBuffer value) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
+		if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
 			writer.writePMapBit((byte)0);
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
@@ -215,39 +201,6 @@ public class FieldWriterBytes {
 		//on the other receiver side will inject this value from the template
 	}
 	
-	public void writeBytesCopyOptional(int token, ByteBuffer value) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx, value)) {
-			writer.writePMapBit((byte)0);
-			value.position(value.limit());//skip over the data just like we wrote it.
-		} 
-		else {
-			writer.writePMapBit((byte)1);
-			writer.writeIntegerUnsigned(value.remaining()+1);
-			heap.set(idx, value);//position is NOT modified
-			writer.writeByteArrayData(value); //this moves the position in value
-		}
-	}
-
-	public void writeBytesDefaultOptional(int token, ByteBuffer value) {
-		int idx = token & INSTANCE_MASK;
-		
-		if (heap.equals(idx|INIT_VALUE_MASK, value)) {
-			writer.writePMapBit((byte)0); 
-			value.position(value.limit());//skip over the data just like we wrote it.
-		} else {
-			writer.writePMapBit((byte)1);
-			int len = value.remaining();
-			if (len<0) {
-				len = 0;
-			}
-			writer.writeIntegerUnsigned(len+1);
-			writer.writeByteArrayData(value);
-		}
-	}
-
-
 	public void writeBytesConstantOptional(int token) {
 		writer.writePMapBit((byte)1);
 		//the writeNull will take care of the rest.
@@ -260,12 +213,12 @@ public class FieldWriterBytes {
 
 	public void writeBytesTailOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
-		int headCount = heap.countHeadMatch(idx, value, offset, length);
+		int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
 		writeBytesTail(idx, headCount, value, offset, length, 1);
 	}
 	
 	private void writeBytesTail(int idx, int headCount, byte[] value, int offset, int length, final int optional) {
-		int trimTail = heap.length(idx)-headCount;
+		int trimTail = byteHeap.length(idx)-headCount;
 		writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail);
 		
 		int valueSend = length-headCount;
@@ -273,15 +226,15 @@ public class FieldWriterBytes {
 		
 		writer.writeIntegerUnsigned(valueSend);
 		writer.writeByteArrayData(value, startAfter, valueSend);
-		heap.appendTail(idx, trimTail, value, startAfter, valueSend);
+		byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
 	}
 
 	public void writeBytesDeltaOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
 		//count matching front or back chars
-		int headCount = heap.countHeadMatch(idx, value, offset, length);
-		int tailCount = heap.countTailMatch(idx, value, offset+length, length);
+		int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
+		int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
 		if (headCount>tailCount) {
 			writeBytesTail(idx, headCount, value, offset, length, 1);
 		} else {
@@ -292,33 +245,33 @@ public class FieldWriterBytes {
 	private void writeBytesHead(int idx, int tailCount, byte[] value, int offset, int length, int opt) {
 		
 		//replace head, tail matches to tailCount
-		int trimHead = heap.length(idx)-tailCount;
+		int trimHead = byteHeap.length(idx)-tailCount;
 		writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
 		
 		int len = length - tailCount;
 		writer.writeIntegerUnsigned(len);
 		writer.writeByteArrayData(value, offset, len);
 		
-		heap.appendHead(idx, trimHead, value, offset, len);
+		byteHeap.appendHead(idx, trimHead, value, offset, len);
 	}
 	
 	public void writeBytesCopyOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (byteHeap.equals(idx, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(length+1);
 			writer.writeByteArrayData(value,offset,length);
-			heap.set(idx, value, offset, length);
+			byteHeap.set(idx, value, offset, length);
 		}
 	}
 
 	public void writeBytesDefaultOptional(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
+		if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);
@@ -336,8 +289,8 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		//count matching front or back chars
-		int headCount = heap.countHeadMatch(idx, value, offset, length);
-		int tailCount = heap.countTailMatch(idx, value, offset+length, length);
+		int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
+		int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
 		if (headCount>tailCount) {
 			writeBytesTail(idx, headCount, value, offset+headCount, length, 0);
 		} else {
@@ -348,21 +301,21 @@ public class FieldWriterBytes {
 	public void writeBytesCopy(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx, value, offset, length)) {
+		if (byteHeap.equals(idx, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		}
 		else {
 			writer.writePMapBit((byte)1);
 			writer.writeIntegerUnsigned(length);
 			writer.writeByteArrayData(value,offset,length);
-			heap.set(idx, value, offset, length);
+			byteHeap.set(idx, value, offset, length);
 		}
 	}
 
 	public void writeBytesDefault(int token, byte[] value, int offset, int length) {
 		int idx = token & INSTANCE_MASK;
 		
-		if (heap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
+		if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
 			writer.writePMapBit((byte)0);
 		} else {
 			writer.writePMapBit((byte)1);

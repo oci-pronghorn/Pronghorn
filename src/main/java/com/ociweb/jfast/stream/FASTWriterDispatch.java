@@ -16,7 +16,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTWriterDispatch {
+public final class FASTWriterDispatch { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
 
     private int templateStackHead = 0;
     private final int[] templateStack;
@@ -177,6 +177,7 @@ public final class FASTWriterDispatch {
         }
     }
 
+    //TODO: C, should not be public
     public void acceptLongSignedOptional(int token, long value) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -184,7 +185,7 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongSignedOptional(value);
+                    genWriteLongSignedOptional(value, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
@@ -192,13 +193,13 @@ public final class FASTWriterDispatch {
                     
                     long delta = value - longValues[idx];
                     
-                    genWriteLongSignedDeltaOptional(value, idx, delta);
+                    genWriteLongSignedDeltaOptional(value, idx, delta, writer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
                 
-                genWriteLongSignedConstantOptional();
+                genWriteLongSignedConstantOptional(writer);
                 // the writeNull will take care of the rest.
             }
 
@@ -210,19 +211,19 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongSignedCopyOptional(value, idx);
+                    genWriteLongSignedCopyOptional(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongSignedIncrementOptional(value, idx);
+                    genWriteLongSignedIncrementOptional(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefaultOptional(value, constDefault);
+                genWriteLongSignedDefaultOptional(value, constDefault, writer);
             }
         }
     }
@@ -239,13 +240,13 @@ public final class FASTWriterDispatch {
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongSignedNone(value, idx);
+                    genWriteLongSignedNone(value, idx, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongSignedDelta(value, idx);
+                    genWriteLongSignedDelta(value, idx, writer);
                 }
             } else {
                 // constant
@@ -264,20 +265,20 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongSignedCopy(value, idx);
+                    genWriteLongSignedCopy(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & longInstanceMask;
                     
                     
-                    genWriteLongSignedIncrement(value, idx);
+                    genWriteLongSignedIncrement(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefault(value, constDefault);
+                genWriteLongSignedDefault(value, constDefault, writer);
             }
         }
 
@@ -292,18 +293,18 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongUnsignedNoneOptional(value);
+                    genWriteLongUnsignedNoneOptional(value, writer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedDeltaOptional(value, idx);
+                    genWriteLongUnsignedDeltaOptional(value, idx, writer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteLongUnsignedConstantOptional();
+                genWriteLongUnsignedConstantOptional(writer);
                 // the writeNull will take care of the rest.
             }
 
@@ -315,19 +316,19 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedCopyOptional(value, idx);
+                    genWriteLongUnsignedCopyOptional(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedIncrementOptional(value, idx);
+                    genWriteLongUnsignedIncrementOptional(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefaultOptional(value, constDefault);
+                genWriteLongUnsignedDefaultOptional(value, constDefault, writer);
             }
         }
     }
@@ -343,13 +344,13 @@ public final class FASTWriterDispatch {
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongUnsignedNone(value, idx);
+                    genWriteLongUnsignedNone(value, idx, writer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedDelta(value, idx);
+                    genWriteLongUnsignedDelta(value, idx, writer);
                 }
             } else {
                 // constant
@@ -368,19 +369,19 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedCopy(value, idx);
+                    genWriteLongUnsignedCopy(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & longInstanceMask;
                     
-                    genWriteLongUnsignedIncrement(value, idx);
+                    genWriteLongUnsignedIncrement(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefault(value, constDefault);
+                genWriteLongUnsignedDefault(value, constDefault, writer);
             }
         }
     }
@@ -424,13 +425,13 @@ public final class FASTWriterDispatch {
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(value, idx);
+                    genWriteIntegerSignedNone(value, idx, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedDelta(value, idx);
+                    genWriteIntegerSignedDelta(value, idx, writer);
                 }
             } else {
                 // constant
@@ -451,19 +452,19 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedCopy(value, idx);
+                    genWriteIntegerSignedCopy(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedIncrement(value, idx);
+                    genWriteIntegerSignedIncrement(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefault(value, idx, constDefault);
+                genWriteIntegerSignedDefault(value, idx, constDefault, writer);
             }
         }
     }
@@ -479,13 +480,13 @@ public final class FASTWriterDispatch {
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerUnsignedNone(value, idx);
+                    genWriteIntegerUnsignedNone(value, idx, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int idx = (token & intInstanceMask);
 
-                    genWriteIntegerUnsignedDelta(value, idx);
+                    genWriteIntegerUnsignedDelta(value, idx, writer);
                 }
             } else {
                 // constant
@@ -503,18 +504,18 @@ public final class FASTWriterDispatch {
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
                     int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedCopy(value, idx);
+                    genWriteIntegerUnsignedCopy(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedIncrement(value, idx);
+                    genWriteIntegerUnsignedIncrement(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefault(value, constDefault);
+                genWriteIntegerUnsignedDefault(value, constDefault, writer);
             }
         }
     }
@@ -528,17 +529,17 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerSignedNoneOptional(value);
+                    genWriteIntegerSignedNoneOptional(value, writer);
                 } else {
                     // delta
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedDeltaOptional(value, idx);
+                    genWriteIntegerSignedDeltaOptional(value, idx, writer);
                 }
             } else {
                 // constant
                 assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteIntegerSignedConstantOptional();
+                genWriteIntegerSignedConstantOptional(writer);
                 // the writeNull will take care of the rest.
             }
 
@@ -550,19 +551,19 @@ public final class FASTWriterDispatch {
                     // copy
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedCopyOptional(value, idx);
+                    genWriteIntegerSignedCopyOptional(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedIncrementOptional(value, idx);
+                    genWriteIntegerSignedIncrementOptional(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefaultOptional(value, idx, constDefault);
+                genWriteIntegerSignedDefaultOptional(value, idx, constDefault, writer);
             }
         }
     }
@@ -576,18 +577,18 @@ public final class FASTWriterDispatch {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerUnsignedNoneOptional(value);
+                    genWriteIntegerUnsignedNoneOptional(value, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerUnsignedDeltaOptional(value, idx);
+                    genWriteIntegerUnsignedDeltaOptional(value, idx, writer);
                 }
             } else {
                 // constant
                 assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteIntegerUnsignedConstantOptional();
+                genWriteIntegerUnsignedConstantOptional(writer);
                 // the writeNull will take care of the rest.
             }
 
@@ -598,19 +599,19 @@ public final class FASTWriterDispatch {
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
                     int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedCopyOptional(value, idx);
+                    genWriteIntegerUnsignedCopyOptional(value, idx, writer);
                 } else {
                     // increment
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerUnsignedIncrementOptional(value, idx);
+                    genWriteIntegerUnsignedIncrementOptional(value, idx, writer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefaultOptional(value, constDefault);
+                genWriteIntegerUnsignedDefaultOptional(value, constDefault, writer);
             }
         }
     }
@@ -1175,7 +1176,7 @@ public final class FASTWriterDispatch {
                     genWriteTextNoneOptional(value, offset, length);
                 } else {
                     // tail
-                    genWriteTextTailOptional(token, value, offset, length);
+                    genWriteTextTailOptional2(token, value, offset, length);
                 }
             } else {
                 // constant delta
@@ -1184,7 +1185,7 @@ public final class FASTWriterDispatch {
                     genWriteTextConstantOptional(token);
                 } else {
                     // delta
-                    genWriteTextDeltaOptional(token, value, offset, length);
+                    genWriteTextDeltaOptional2(token, value, offset, length);
                 }
             }
         } else {
@@ -1222,16 +1223,16 @@ public final class FASTWriterDispatch {
                     genWriteTextNone(value, offset, length);
                 } else {
                     // tail
-                    genWriteTextTail(token, value, offset, length);
+                    genWriteTextTail2(token, value, offset, length);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextConstant(token);
+                    
                 } else {
                     // delta
-                    genWriteTextDelta(token, value, offset, length);
+                    genWriteTextDelta2(token, value, offset, length);
                 }
             }
         } else {
@@ -1239,10 +1240,10 @@ public final class FASTWriterDispatch {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopy(token, value, offset, length);
+                genWriteTextCopy2(token, value, offset, length);
             } else {
                 // default
-                genWriteTextDefault(token, value, offset, length);
+                genWriteTextDefault2(token, value, offset, length);
             }
         }
     }
@@ -1255,7 +1256,7 @@ public final class FASTWriterDispatch {
         assert (0 == (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-            writer.openPMap(pmapSize);
+            genWriteOpenGroup(pmapSize, writer);
         }
 
     }
@@ -1266,10 +1267,10 @@ public final class FASTWriterDispatch {
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         if (pmapSize > 0) {
-            writer.openPMap(pmapSize);
+            genWriteOpenTemplatePMap(templateId, pmapSize, writer);
+        } else {
+            genWriteOpenTemplate(templateId);
         }
-        // done here for safety to ensure it is always done at group open.
-        pushTemplate(templateId);
     }
 
     // must happen just before Group so the Group in question must always have
@@ -1292,15 +1293,18 @@ public final class FASTWriterDispatch {
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-            writer.closePMap();
+            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
+                genWriteCloseTemplatePMap(writer);
+            } else {
+                genWriteClosePMap(writer);
+            }
+        } else {
+            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
+                genWriteCloseTemplate();
+            }
         }
-
-        if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
-            // must always pop because open will always push
-            templateStackHead--;
-        }
-
     }
+
 
     public void flush() {
         writer.flush();
@@ -1378,7 +1382,7 @@ public final class FASTWriterDispatch {
                             acceptLongSigned(token, mantissa);
                         } else {
                             
-                            
+                            //TODO: need null decimal implementation.
                             
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
                             	int idx = expoToken & intInstanceMask; 
@@ -1567,20 +1571,31 @@ public final class FASTWriterDispatch {
         return true;
     }
 
-    public void dispatchPreable(byte[] preambleData) {
-        writer.writeByteArrayData(preambleData, 0, preambleData.length);
-    }
-
     public void openMessage(int pmapMaxSize, int templateId) {
 
+        genWriteOpenMessage(pmapMaxSize, templateId, writer);
+
+    }
+
+
+    public void writePreamble(byte[] preambleData) {
+        genWritePreamble(preambleData, writer);
+    }
+    
+    ///////////////////////
+    
+    
+    protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
         writer.openPMap(pmapMaxSize);
         writer.writePMapBit((byte) 1);
         writer.closePMap();// TODO: A, this needs to be close but not sure this
-                           // is the right location.
+        // is the right location.
         writer.writeIntegerUnsigned(templateId);
-
     }
 
+    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer) {
+        writer.writeByteArrayData(preambleData, 0, preambleData.length);
+    }
     
     protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
@@ -1987,7 +2002,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextDeltaOptional(int token, char[] value, int offset, int length) {
+    private void genWriteTextDeltaOptional2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
@@ -2024,7 +2039,7 @@ public final class FASTWriterDispatch {
         // the writeNull will take care of the rest.
     }
 
-    private void genWriteTextTailOptional(int token, char[] value, int offset, int length) {
+    private void genWriteTextTailOptional2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
@@ -2043,7 +2058,7 @@ public final class FASTWriterDispatch {
         writer.writeTextASCII(value, offset, length);
     }
     
-    private void genWriteTextDefault(int token, char[] value, int offset, int length) {
+    private void genWriteTextDefault2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
@@ -2054,7 +2069,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextCopy(int token, char[] value, int offset, int length) {
+    private void genWriteTextCopy2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx, value, offset, length)) {
@@ -2066,7 +2081,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextDelta(int token, char[] value, int offset, int length) {
+    private void genWriteTextDelta2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
@@ -2096,10 +2111,7 @@ public final class FASTWriterDispatch {
         }
     }
 
-    private void genWriteTextConstant(int token) {
-    }
-
-    private void genWriteTextTail(int token, char[] value, int offset, int length) {
+    private void genWriteTextTail2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
@@ -2118,15 +2130,84 @@ public final class FASTWriterDispatch {
     }
     
     private void genWriterBytesDefaultOptional(int token, ByteBuffer value) {
-        writerBytes.writeBytesDefaultOptional(token, value);
+        int idx = token & writerBytes.INSTANCE_MASK;
+        
+        if (byteHeap.equals(idx|FieldWriterBytes.INIT_VALUE_MASK, value)) {
+        	writer.writePMapBit((byte)0); 
+        	value.position(value.limit());//skip over the data just like we wrote it.
+        } else {
+        	writer.writePMapBit((byte)1);
+        	int len = value.remaining();
+        	if (len<0) {
+        		len = 0;
+        	}
+        	writer.writeIntegerUnsigned(len+1);
+        	writer.writeByteArrayData(value);
+        }
     }
 
     private void genWriterBytesCopyOptional(int token, ByteBuffer value) {
-        writerBytes.writeBytesCopyOptional(token, value);
+        int idx = token & writerBytes.INSTANCE_MASK;
+        
+        if (byteHeap.equals(idx, value)) {
+        	writer.writePMapBit((byte)0);
+        	value.position(value.limit());//skip over the data just like we wrote it.
+        } 
+        else {
+        	writer.writePMapBit((byte)1);
+        	writer.writeIntegerUnsigned(value.remaining()+1);
+        	byteHeap.set(idx, value);//position is NOT modified
+        	writer.writeByteArrayData(value); //this moves the position in value
+        }
     }
 
     private void genWriterBytesDeltaOptional(int token, ByteBuffer value) {
-        writerBytes.writeBytesDeltaOptional(token, value);
+        int idx = token & writerBytes.INSTANCE_MASK;
+        
+        //count matching front or back chars
+        int headCount = byteHeap.countHeadMatch(idx, value);
+        int tailCount = byteHeap.countTailMatch(idx, value);
+        if (headCount>tailCount) {
+        	writeBytesTail(idx, headCount, value, 1); //does not modify position
+        } else {
+        	writeBytesHead(idx, tailCount, value, 1); //does not modify position
+        }
+        value.position(value.limit());//skip over the data just like we wrote it.
+    }
+    
+    //TODO: will be static
+    private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
+        
+    
+        
+        int trimTail = byteHeap.length(idx)-headCount;
+        if (trimTail<0) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
+        
+        int valueSend = value.remaining()-headCount;
+        int startAfter = value.position()+headCount;
+                
+        writer.writeIntegerUnsigned(valueSend);
+        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
+        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        writer.writeByteArrayData(value, startAfter, valueSend);
+        
+    }
+    
+    //TODO: will be static
+    private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
+        
+        //replace head, tail matches to tailCount
+        int trimHead = byteHeap.length(idx)-tailCount;
+        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
+        
+        int len = value.remaining() - tailCount;
+        int offset = value.position();
+        writer.writeIntegerUnsigned(len);
+        writer.writeByteArrayData(value, offset, len);
+        byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
 
     private void genWriterBytesTailOptional(int token, ByteBuffer value) {
@@ -2209,184 +2290,184 @@ public final class FASTWriterDispatch {
         writerBytes.writeBytesOptional(value, offset, length);
     }
     
-    private void genWriteIntegerSignedDefault(int value, int idx, int constDefault) {
+    private void genWriteIntegerSignedDefault(int value, int idx, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerSignedDefault(value, idx, constDefault);
     }
 
-    private void genWriteIntegerSignedIncrement(int value, int idx) {
+    private void genWriteIntegerSignedIncrement(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedIncrement(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedCopy(int value, int idx) {
+    private void genWriteIntegerSignedCopy(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedCopy(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedDelta(int value, int idx) {
+    private void genWriteIntegerSignedDelta(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedDelta(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedNone(int value, int idx) {
+    private void genWriteIntegerSignedNone(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSigned(intValues[idx] = value);
     }
     
-    private void genWriteIntegerUnsignedDefault(int value, int constDefault) {
+    private void genWriteIntegerUnsignedDefault(int value, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDefault(value, constDefault);
     }
 
-    private void genWriteIntegerUnsignedIncrement(int value, int idx) {
+    private void genWriteIntegerUnsignedIncrement(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedIncrement(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedCopy(int value, int idx) {
+    private void genWriteIntegerUnsignedCopy(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedCopy(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedDelta(int value, int idx) {
+    private void genWriteIntegerUnsignedDelta(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDelta(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedNone(int value, int idx) {
+    private void genWriteIntegerUnsignedNone(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(intValues[idx] = value);
     }
 
-    private void genWriteIntegerSignedDefaultOptional(int value, int idx, int constDefault) {
+    private void genWriteIntegerSignedDefaultOptional(int value, int idx, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerSignedDefaultOptional(value, idx, constDefault);
     }
 
-    private void genWriteIntegerSignedIncrementOptional(int value, int idx) {
+    private void genWriteIntegerSignedIncrementOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedIncrementOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedCopyOptional(int value, int idx) {
+    private void genWriteIntegerSignedCopyOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedCopyOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedConstantOptional() {
+    private void genWriteIntegerSignedConstantOptional(PrimitiveWriter writer) {
         writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteIntegerSignedDeltaOptional(int value, int idx) {
+    private void genWriteIntegerSignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerSignedDeltaOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerSignedNoneOptional(int value) {
+    private void genWriteIntegerSignedNoneOptional(int value, PrimitiveWriter writer) {
         writer.writeIntegerSignedOptional(value);
     }
 
-    private void genWriteIntegerUnsignedCopyOptional(int value, int idx) {
+    private void genWriteIntegerUnsignedCopyOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedCopyOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedDefaultOptional(int value, int constDefault) {
+    private void genWriteIntegerUnsignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
     }
 
-    private void genWriteIntegerUnsignedIncrementOptional(int value, int idx) {
+    private void genWriteIntegerUnsignedIncrementOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedIncrementOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedConstantOptional() {
+    private void genWriteIntegerUnsignedConstantOptional(PrimitiveWriter writer) {
         writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteIntegerUnsignedDeltaOptional(int value, int idx) {
+    private void genWriteIntegerUnsignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDeltaOptional(value, idx, intValues);
     }
 
-    private void genWriteIntegerUnsignedNoneOptional(int value) {
+    private void genWriteIntegerUnsignedNoneOptional(int value, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(value + 1);
     }
 
-    private void genWriteLongUnsignedDefault(long value, long constDefault) {
+    private void genWriteLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
         writer.writeLongUnsignedDefault2(value, constDefault);
     }
 
-    private void genWriteLongUnsignedIncrement(long value, int idx) {
+    private void genWriteLongUnsignedIncrement(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongUnsignedIncrement2(value, idx, longValues);
     }
 
-    private void genWriteLongUnsignedCopy(long value, int idx) {
+    private void genWriteLongUnsignedCopy(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongUnsignedCopy(value, idx, longValues);
     }
 
-    private void genWriteLongUnsignedDelta(long value, int idx) {
+    private void genWriteLongUnsignedDelta(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSigned(value - longValues[idx]);
         longValues[idx] = value;
     }
 
-    private void genWriteLongUnsignedNone(long value, int idx) {
+    private void genWriteLongUnsignedNone(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongUnsigned(longValues[idx] = value);
     }
     
-    private void genWriteLongUnsignedDefaultOptional(long value, long constDefault) {
+    private void genWriteLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
         writer.writneLongUnsignedDefaultOptional2(value, constDefault);
     }
 
-    private void genWriteLongUnsignedIncrementOptional(long value, int idx) {
+    private void genWriteLongUnsignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongUnsignedIncrementOptional2(value, idx, longValues);
     }
 
-    private void genWriteLongUnsignedCopyOptional(long value, int idx) {
+    private void genWriteLongUnsignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongUnsignedCopyOptional(value, idx, longValues);
     }
 
-    private void genWriteLongUnsignedConstantOptional() {
+    private void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
         writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteLongUnsignedNoneOptional(long value) {
+    private void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
         writer.writeLongUnsigned(value + 1);
     }
 
-    private void genWriteLongUnsignedDeltaOptional(long value, int idx) {
+    private void genWriteLongUnsignedDeltaOptional(long value, int idx, PrimitiveWriter writer) {
         long delta = value - longValues[idx];
         writer.writeLongSigned(delta>=0 ? 1+delta : delta);
         longValues[idx] = value;
     }
     
-    private void genWriteLongSignedDefault(long value, long constDefault) {
+    private void genWriteLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
         writer.writeLongSignedDefault2(value, constDefault);
     }
 
-    private void genWriteLongSignedIncrement(long value, int idx) {
+    private void genWriteLongSignedIncrement(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSignedIncrement2(value,  longValues[idx]);
         longValues[idx] = value;
     }
 
-    private void genWriteLongSignedCopy(long value, int idx) {
+    private void genWriteLongSignedCopy(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSignedCopy2(value, idx, longValues);
     }
 
-    private void genWriteLongSignedNone(long value, int idx) {
+    private void genWriteLongSignedNone(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSigned(longValues[idx] = value);
     }
 
-    private void genWriteLongSignedDelta(long value, int idx) {
+    private void genWriteLongSignedDelta(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSigned(value - longValues[idx]);
         longValues[idx] = value;
     }
     
-    private void genWriteLongSignedOptional(long value) {
+    private void genWriteLongSignedOptional(long value, PrimitiveWriter writer) {
         writer.writeLongSignedOptional(value);
     }
 
-    private void genWriteLongSignedDeltaOptional(long value, int idx, long delta) {
+    private void genWriteLongSignedDeltaOptional(long value, int idx, long delta, PrimitiveWriter writer) {
         writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
         longValues[idx] = value;
     }
 
-    private void genWriteLongSignedConstantOptional() {
+    private void genWriteLongSignedConstantOptional(PrimitiveWriter writer) {
         writer.writePMapBit((byte) 1);
     }
 
-    private void genWriteLongSignedCopyOptional(long value, int idx) {
+    private void genWriteLongSignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
         writer.writeLongSignedCopy2(value, idx, longValues);
     }
 
-    private void genWriteLongSignedIncrementOptional(long value, int idx) {
+    private void genWriteLongSignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
@@ -2394,7 +2475,7 @@ public final class FASTWriterDispatch {
         longValues[idx] = value;
     }
 
-    private void genWriteLongSignedDefaultOptional(long value, long constDefault) {
+    private void genWriteLongSignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;// room for null
         }
@@ -2525,5 +2606,35 @@ public final class FASTWriterDispatch {
 
     protected void genWriteDictionaryIntegerReset(int idx) {
         intValues[idx] = intInit[idx];
+    }
+    
+    protected void genWriteClosePMap(PrimitiveWriter writer) {
+        writer.closePMap();
+    }
+
+    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer) {
+        writer.closePMap();
+        // must always pop because open will always push
+        templateStackHead--;
+    }
+
+    protected void genWriteCloseTemplate() {
+        // must always pop because open will always push
+        templateStackHead--;
+    }
+    
+    protected void genWriteOpenTemplate(int templateId) {
+        // done here for safety to ensure it is always done at group open.
+        pushTemplate(templateId);
+    }
+
+    protected void genWriteOpenTemplatePMap(int templateId, int pmapSize, PrimitiveWriter writer) {
+        writer.openPMap(pmapSize);
+        // done here for safety to ensure it is always done at group open.
+        pushTemplate(templateId);
+    }
+    
+    protected void genWriteOpenGroup(int pmapSize, PrimitiveWriter writer) {
+        writer.openPMap(pmapSize);
     }
 }

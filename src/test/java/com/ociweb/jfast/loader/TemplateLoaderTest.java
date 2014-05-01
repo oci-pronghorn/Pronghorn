@@ -7,8 +7,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -21,6 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -44,6 +47,56 @@ import com.ociweb.jfast.stream.FASTWriterDispatch;
 
 public class TemplateLoaderTest {
 
+    //TODO: move this to a dedicated code generator test, also post notice that it produces an artifact for delivery.
+    @BeforeClass
+    public static void setupTemplateResource() {
+        try {
+            
+            File classFile = new File(FASTReaderDispatch.class.getResource(FASTReaderDispatch.class.getSimpleName() + ".class").toURI());
+            String srcPath = classFile.getPath().replaceFirst("target.classes", "src/main/java").replace(".class",".java");
+            File sourceFile = new File(srcPath);
+            if (sourceFile.exists()) { //found source file so update resources
+                String destinationString = srcPath.replaceFirst("java.com.ociweb.jfast.stream", "resources");
+                File destFile = new File(destinationString);
+                
+                //File copy
+                FileChannel source = null;
+                FileChannel destination = null;
+                try {
+                    try {
+                        source = new FileInputStream(sourceFile).getChannel();
+                        destination = new FileOutputStream(destFile).getChannel();
+                        destination.transferFrom(source, 0, source.size());
+                    } finally {
+                        if (source != null) {
+                            source.close();
+                        }
+                        if (destination != null) {
+                            destination.close();
+                        }
+                    }
+                } catch (FileNotFoundException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+
+                System.err.println("copied from " + srcPath + " to " + destinationString);
+                //TODO: A, note call ONLY in before class for generator test. Cant deploy without passing test which must copy the data.
+                
+                
+            }
+            
+            
+        } catch (URISyntaxException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+    }
+    
+    
     @Test
     public void buildRawCatalog() {
 
@@ -218,7 +271,7 @@ public class TemplateLoaderTest {
        // new SourceTemplates();
         
         FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(256,templateCatalogInput,4)); //TODO: defaults 2048 and 32 may not be optimal.
+        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(256,templateCatalogInput,4)); //TODO: X, defaults 2048 and 32 may not be optimal.
 
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);

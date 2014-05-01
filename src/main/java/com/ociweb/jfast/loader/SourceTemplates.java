@@ -4,30 +4,31 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.channels.FileChannel;
 
 import com.ociweb.jfast.stream.FASTReaderDispatch;
 
 public class SourceTemplates {
 
-    String source;
-    
-    public SourceTemplates(){
-        source = templateSource();
-        //System.err.println(source);
+    String templateText;
+
+    private String getSource() {
+        if (null==templateText) {
+            templateText = templateSource();
+        }
+        return templateText;
     }
     
     private String templateSource() {
         
-        //TODO: how will this file get shipped? when developing must run like this to get fast refactor loop.
-        
- //       URL sourceData = getClass().getResource("/FASTReaderDispatch.java");
-  //      File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
-        
-        //TODO: point into sources.zip file?
-        File sourceDataFile = new File("/home/nate/SpiderOak Hive/kepler/jFAST/src/main/java/com/ociweb/jfast/stream/FASTReaderDispatch.java");
-        
+         URL sourceData = getClass().getResource("/FASTReaderDispatch.java");
+         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+        //File sourceDataFile = new File("/home/nate/SpiderOak Hive/kepler/jFAST/src/main/java/com/ociweb/jfast/stream/FASTReaderDispatch.java");
+                
         
         String templateSource = "";
         
@@ -48,20 +49,20 @@ public class SourceTemplates {
     }
     
     public String template(String methodName) {
-        int idx = source.indexOf(methodName);
+        int idx = getSource().indexOf(methodName);
         //start from idx and find the first {
-        int start = source.indexOf('{', idx)+1;
-        while (source.charAt(start)=='\n' || source.charAt(start)=='\r') {
+        int start = getSource().indexOf('{', idx)+1;
+        while (getSource().charAt(start)=='\n' || getSource().charAt(start)=='\r') {
             start++;
         }
         //find matching }
         int depth = 1;
         int pos = start;
         while (depth>0) {
-            if (source.charAt(pos)=='{') {
+            if (getSource().charAt(pos)=='{') {
                 depth++;
             }
-            if (source.charAt(pos)=='}') {
+            if (getSource().charAt(pos)=='}') {
                 depth--;
             }
             pos++;
@@ -69,15 +70,15 @@ public class SourceTemplates {
         //pos is now right after closing } and we want to be before
         int stop = pos-1;
         //
-        return source.substring(start,stop);
+        return getSource().substring(start,stop);
     }
     
     public String[] params(String methodName) {
-        int idx = source.indexOf(methodName);
+        int idx = getSource().indexOf(methodName);
         //start from idx and find the first (
-        int start = source.indexOf('(', idx)+1;
-        int stop = source.indexOf(')',start);
-        String[] para = source.substring(start, stop).split(",");
+        int start = getSource().indexOf('(', idx)+1;
+        int stop = getSource().indexOf(')',start);
+        String[] para = getSource().substring(start, stop).split(",");
         //extractType
         int i = para.length;
         while (--i>=0) {
@@ -88,11 +89,11 @@ public class SourceTemplates {
     }
     
     public String[] defs(String methodName) {
-        int idx = source.indexOf(methodName);
+        int idx = getSource().indexOf(methodName);
         //start from idx and find the first (
-        int start = source.indexOf('(', idx)+1;
-        int stop = source.indexOf(')',start);
-        String[] para = source.substring(start, stop).split(",");
+        int start = getSource().indexOf('(', idx)+1;
+        int stop = getSource().indexOf(')',start);
+        String[] para = getSource().substring(start, stop).split(",");
         //extractType
         int i = para.length;
         while (--i>=0) {

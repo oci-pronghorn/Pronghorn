@@ -127,7 +127,7 @@ public class ByteHeap {
         return initTat[idx << 1];
     }
     
-    public byte[] rawInitAccess() { //TODO: should not be public 
+    public byte[] rawInitAccess() { //TODO: C, should not be public 
         return initBuffer;
     }
 
@@ -183,7 +183,8 @@ public class ByteHeap {
         System.arraycopy(source, startFrom, data, target, copyLength);
     }
 
-    void set(int idx, ByteBuffer source) {
+    //TODO: C, should not be public 
+    public void set(int idx, ByteBuffer source) {
         int offset = idx << 2;
 
         int copyLength = source.remaining();
@@ -388,7 +389,8 @@ public class ByteHeap {
         System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
     }
 
-    void appendTail(int idx, int trimTail, ByteBuffer source, int sourceIdx, int sourceLen) {
+    //TODO: C, should not be public.
+    public void appendTail(int idx, int trimTail, ByteBuffer source, int sourceIdx, int sourceLen) {
         // if not room make room checking after first because thats where we
         // want to copy the tail.
         int targetIdx = makeSpaceForAppend(idx, trimTail, sourceLen);
@@ -484,7 +486,8 @@ public class ByteHeap {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
     }
 
-    void appendHead(int idx, int trimHead, ByteBuffer source, int sourceIdx, int sourceLen) {
+    //TODO: C, should  not be public
+    public void appendHead(int idx, int trimHead, ByteBuffer source, int sourceIdx, int sourceLen) {
         int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
 
         int i = sourceLen;

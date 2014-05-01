@@ -254,8 +254,7 @@ public class FASTReaderDispatch {
         return false;
     }
 
-    //TODO: generator must track previous read from for text etc
-    //TODO: generator must track if previous is not used then do not write to dictionary.
+    //TODO: B, generator must track previous read from for text etc and  generator must track if previous is not used then do not write to dictionary.
     
     
     private void dispatchFieldBytes(int token) {
@@ -1514,7 +1513,7 @@ public class FASTReaderDispatch {
     //TODO: B, set the default template for the case when it is undefined in catalog.
     //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
     //TODO: D, perhaps frame support is related to buffer size in primtive write so the right number of bits can be set.
-    
+    //TODO: X, Add undecoded field option so caller can deal with the subtraction of optinals.
     
     // int methods
 

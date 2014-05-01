@@ -227,7 +227,7 @@ public final class PrimitiveReader {
         // SOMETIMES one of 7 we need to move up to the next byte
         // System.err.println(invPmapStackDepth);
         reader.pmapIdx = 6;
-        reader.bitBlock = reader.invPmapStack[++reader.invPmapStackDepth]; //TODO: Set both bytes togheter? may speed up
+        reader.bitBlock = reader.invPmapStack[++reader.invPmapStackDepth]; //TODO: X, Set both bytes togheter? may speed up
         return (byte) (1 & bb);
     }
 

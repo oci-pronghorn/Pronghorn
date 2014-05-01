@@ -502,9 +502,6 @@ public class TemplateHandler extends DefaultHandler {
             } else {
                 fieldOperator |= (fieldOperator << TokenBuilder.SHIFT_OPER_DECIMAL_EX);
             }
-
-            //TODO: convert this into TWO tokens so the same dictionary can be shared.
-            //help forward fetching, simplify code generation, re-use existing work.
             
             int tokenExponent = buildToken(tokenBuilderIntCount);
             int tokenMantisssa = buildToken(tokenBuilderLongCount);
