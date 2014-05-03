@@ -29,8 +29,8 @@ public class FieldReaderBytes {
     }
 
     public int readBytesTail2(int idx) {
-        int trim = reader.readIntegerUnsigned();
-        int length = reader.readIntegerUnsigned();
+        int trim = reader.readIntegerUnsigned(reader);
+        int length = reader.readIntegerUnsigned(reader);
 
         // append to tail
         int targetOffset = heap.makeSpaceForAppend(idx, trim, length);
@@ -40,8 +40,8 @@ public class FieldReaderBytes {
     }
 
     public int readBytesDelta2(int idx) {
-        int trim = reader.readIntegerSigned();
-        int utfLength = reader.readIntegerUnsigned();
+        int trim = reader.readIntegerSigned(reader);
+        int utfLength = reader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
             reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
@@ -63,21 +63,21 @@ public class FieldReaderBytes {
     }
 
     public int readBytesData(int idx, int optOff) {
-        int length = reader.readIntegerUnsigned() - optOff;
+        int length = reader.readIntegerUnsigned(reader) - optOff;
         reader.readByteData(heap.rawAccess(), heap.allocate(idx, length), length);
 
         return idx;
     }
 
     public int readBytesTailOptional2(int idx) {
-        int trim = reader.readIntegerUnsigned();
+        int trim = reader.readIntegerUnsigned(reader);
         if (trim == 0) {
             heap.setNull(idx);
             return idx;
         }
         trim--;
 
-        int utfLength = reader.readIntegerUnsigned();
+        int utfLength = reader.readIntegerUnsigned(reader);
 
         // append to tail
         reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
@@ -86,7 +86,7 @@ public class FieldReaderBytes {
     }
 
     public int readBytesDeltaOptional2(final int idx) {
-        int trim = reader.readIntegerSigned();
+        int trim = reader.readIntegerSigned(reader);
         if (0 == trim) {
             heap.setNull(idx);
             return idx;
@@ -95,7 +95,7 @@ public class FieldReaderBytes {
             trim--;// subtract for optional
         }
 
-        int utfLength = reader.readIntegerUnsigned();
+        int utfLength = reader.readIntegerUnsigned(reader);
 
         if (trim >= 0) {
             // append to tail

@@ -350,11 +350,11 @@ public class ReaderWriterPrimitiveTest {
 	}
 
 
-	private final void speedReadTest(PrimitiveReader pr) {
-		pr.openPMap(10);
-		pr.readLongUnsigned();
-		pr.readLongSigned();
-		pr.closePMap();
+	private final void speedReadTest(PrimitiveReader reader) {
+	    reader.openPMap(10, reader);
+	    reader.readLongUnsigned(reader);
+	    reader.readLongSigned(reader);
+	    reader.closePMap(reader);
 	}
 
 
@@ -398,7 +398,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		i = 0;
 		while (i<nullLoops) {
-			assertEquals(0,pr.readIntegerUnsigned());
+			assertEquals(0,pr.readIntegerUnsigned(pr));
 			i++;
 		}
 		
@@ -431,7 +431,7 @@ public class ReaderWriterPrimitiveTest {
 			start = System.nanoTime();
 			j = tp;
 			while (--j>=0) {
-				pr.readIntegerUnsigned();					
+				pr.readIntegerUnsigned(pr);					
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.totalWritten());
 		}
@@ -484,29 +484,29 @@ public class ReaderWriterPrimitiveTest {
 		buffer.flip();
 		
 		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
-		final PrimitiveReader pr = new PrimitiveReader(capacity, input, 10);
+		final PrimitiveReader reader = new PrimitiveReader(capacity, input, 10);
 		
 		i = 0;
 		while (i<unsignedLongData.length) {
-			assertEquals(unsignedLongData[i], pr.readLongUnsigned());
-			assertEquals(unsignedLongData[i], pr.readLongSigned());
-			assertEquals(-unsignedLongData[i], pr.readLongSigned());
+			assertEquals(unsignedLongData[i], reader.readLongUnsigned(reader));
+			assertEquals(unsignedLongData[i], reader.readLongSigned(reader));
+			assertEquals(-unsignedLongData[i], reader.readLongSigned(reader));
 			
-			assertEquals(unsignedLongData[i], pr.readLongSigned()-1);
+			assertEquals(unsignedLongData[i], reader.readLongSigned(reader)-1);
 			if (0!=unsignedLongData[i]) {
-				assertEquals(-unsignedLongData[i], pr.readLongSigned());
+				assertEquals(-unsignedLongData[i], reader.readLongSigned(reader));
 			}
 			i++;
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
-			assertEquals(unsignedIntData[i], pr.readIntegerSigned());
-			assertEquals(-unsignedIntData[i], pr.readIntegerSigned());
-			assertEquals(unsignedIntData[i], pr.readIntegerUnsigned());
+			assertEquals(unsignedIntData[i], reader.readIntegerSigned(reader));
+			assertEquals(-unsignedIntData[i], reader.readIntegerSigned(reader));
+			assertEquals(unsignedIntData[i], reader.readIntegerUnsigned(reader));
 			
-			assertEquals(unsignedIntData[i], pr.readIntegerSigned()-1);
+			assertEquals(unsignedIntData[i], reader.readIntegerSigned(reader)-1);
 			if (0!=unsignedIntData[i]) {
-				assertEquals(-unsignedIntData[i], pr.readIntegerSigned());
+				assertEquals(-unsignedIntData[i], reader.readIntegerSigned(reader));
 			}
 			i++;
 		}
@@ -538,7 +538,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readLongUnsigned();
+					reader.readLongUnsigned(reader);
 					i++;
 				}
 			}
@@ -571,7 +571,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readLongSigned();
+					reader.readLongSigned(reader);
 					i++;
 				}
 			}
@@ -604,7 +604,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					pr.readLongSigned();
+					reader.readLongSigned(reader);
 					i++;
 				}
 			}
@@ -621,7 +621,7 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
-			pr.reset();
+			reader.reset();
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
@@ -634,14 +634,14 @@ public class ReaderWriterPrimitiveTest {
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			
 			buffer.flip();
-			pr.reset();
+			reader.reset();
 			
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readIntegerUnsigned();
+					reader.readIntegerUnsigned(reader);
 					j++;
 				}
 			}
@@ -669,13 +669,13 @@ public class ReaderWriterPrimitiveTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
-			pr.reset();
+			reader.reset();
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readIntegerSigned();
+					reader.readIntegerSigned(reader);
 					j++;
 				}
 			}
@@ -703,13 +703,13 @@ public class ReaderWriterPrimitiveTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
-			pr.reset();
+			reader.reset();
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readIntegerSigned();
+					reader.readIntegerSigned(reader);
 					j++;
 				}
 			}
@@ -738,13 +738,13 @@ public class ReaderWriterPrimitiveTest {
 			pw.flush();
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
-			pr.reset();
+			reader.reset();
 			start = System.nanoTime();
 			 p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					pr.readSkipByStop();
+					reader.readSkipByStop();
 					j++;
 				}
 			}
@@ -860,14 +860,14 @@ public class ReaderWriterPrimitiveTest {
 		assertEquals(pw.totalWritten(),byteArray.length);
 		
 		FASTInputByteArray input = new FASTInputByteArray(byteArray);
-		final PrimitiveReader pr = new PrimitiveReader(input);
+		final PrimitiveReader reader = new PrimitiveReader(input);
 		
 		i = 0;
 		StringBuilder builder = new StringBuilder();
 		while (i<stringData.length) {
 			builder.setLength(0);
-			int charCount = pr.readIntegerUnsigned();
-			pr.readTextUTF8(charCount, builder);
+			int charCount = reader.readIntegerUnsigned(reader);
+			reader.readTextUTF8(charCount, builder);
 			assertEquals(stringData[i++],builder.toString());
 		}
 		
@@ -910,8 +910,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					int charCount = pr.readIntegerUnsigned();
-					pr.readTextUTF8(target, 0, charCount);
+					int charCount = reader.readIntegerUnsigned(reader);
+					reader.readTextUTF8(target, 0, charCount);
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
@@ -921,7 +921,7 @@ public class ReaderWriterPrimitiveTest {
 		///////////////////////////////////
 		//////////////////////////////////
 		input.reset();
-		pr.reset();
+		reader.reset();
 		pw.reset();
 		
 		writeDuration = Float.MAX_VALUE;
@@ -957,8 +957,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					int charCount = pr.readIntegerUnsigned();
-					pr.readSkipByLengthUTF(charCount);
+					int charCount = reader.readIntegerUnsigned(reader);
+					reader.readSkipByLengthUTF(charCount);
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());

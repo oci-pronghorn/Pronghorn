@@ -112,7 +112,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         if (neededSpaceOrTemplate < 0) {
             
             // checking EOF first before checking for blocked queue
-            if (reader.isEOF()) { //replaced with 30001==messageCount and found this method is NOT expensive
+            if (reader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
                 //System.err.println(messageCount);
                 return 0;
             }
@@ -170,9 +170,8 @@ public class FASTDynamicReader implements FASTDataProvider {
 
         };
         // /////////////////
-
         // open message (special type of group)
-        int templateId = reader.openMessage(maxTemplatePMapSize);
+        int templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);
         if (templateId >= 0) {
             messageCount++;
         }
@@ -197,7 +196,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         // reached the end of the script so close and prep for the next one
         ringBuffer.unBlockMessage();
         neededSpaceOrTemplate = -1;
-        readerDispatch.reader.closePMap();
+        PrimitiveReader.closePMap(reader);
         return 2;// finished reading full message
     }
 
@@ -211,7 +210,7 @@ public class FASTDynamicReader implements FASTDataProvider {
             // finished sequence, no need to jump
             if (++readerDispatch.activeScriptCursor == readerDispatch.activeScriptLimit) {
                 neededSpaceOrTemplate = -1;
-                readerDispatch.reader.closePMap();
+                PrimitiveReader.closePMap(reader);
                 return 3;// finished reading full message and the sequence
             }
             return 1;// has sequence group to read

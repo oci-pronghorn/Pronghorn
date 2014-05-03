@@ -117,7 +117,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         id = token & byteReader.INSTANCE_MASK;
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-        reader.openPMap(1);
+        reader.openPMap(1, reader);
         int idx2 = token & byteReader.INSTANCE_MASK;
         if (PrimitiveReader.popPMapBit(reader) != 0) {
             byteReader.readBytesData(idx2, 0);
@@ -130,7 +130,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         id = byteReader.readBytesDefault2(idx3);
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-        reader.closePMap();
+        reader.closePMap(reader);
 
     }
 

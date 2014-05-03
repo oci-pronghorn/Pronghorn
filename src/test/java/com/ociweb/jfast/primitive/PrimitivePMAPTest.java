@@ -266,7 +266,7 @@ public class PrimitivePMAPTest {
 		
 		int maxPMapSize = testData.length; //in bytes
 		//open this pmap
-		pr.openPMap(maxPMapSize);
+		pr.openPMap(maxPMapSize, pr);
 		
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
@@ -288,7 +288,7 @@ public class PrimitivePMAPTest {
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		//close
-		pr.closePMap();
+		pr.closePMap(pr);
 		
 	}
 	
@@ -306,14 +306,14 @@ public class PrimitivePMAPTest {
 		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
-		pr.openPMap(2);
+		pr.openPMap(2, pr);
 		
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		//stop at this point to load another pmap and read it all before continuing
-			pr.openPMap(2);
+			pr.openPMap(2, pr);
 			//first byte of second pmap
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
@@ -335,7 +335,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			//resume with first pmap
-			pr.closePMap();
+			pr.closePMap(pr);
 		///
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
@@ -349,7 +349,7 @@ public class PrimitivePMAPTest {
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		//close
-		pr.closePMap();
+		pr.closePMap(pr);
 		
 	}
 	
@@ -372,14 +372,14 @@ public class PrimitivePMAPTest {
 		PrimitiveReader pr = new PrimitiveReader(input);
 		
 		//open this pmap
-		pr.openPMap(2);
+		pr.openPMap(2, pr);
 		
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		//stop at this point to load another pmap and read it all before continuing
-			pr.openPMap(2);
+			pr.openPMap(2, pr);
 			//first byte of second pmap
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
@@ -389,7 +389,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			// stop here and load the third pmap
-			pr.openPMap(2);
+			pr.openPMap(2, pr);
 				assertEquals(0,PrimitiveReader.popPMapBit(pr));
 				assertEquals(1,PrimitiveReader.popPMapBit(pr));
 				assertEquals(1,PrimitiveReader.popPMapBit(pr));
@@ -406,7 +406,7 @@ public class PrimitivePMAPTest {
 				assertEquals(0,PrimitiveReader.popPMapBit(pr));
 				assertEquals(0,PrimitiveReader.popPMapBit(pr));
 				
-			pr.closePMap();
+			pr.closePMap(pr);
 			//second byte of second pmap
 			assertEquals(1,PrimitiveReader.popPMapBit(pr));
 			assertEquals(1,PrimitiveReader.popPMapBit(pr));
@@ -420,7 +420,7 @@ public class PrimitivePMAPTest {
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			assertEquals(0,PrimitiveReader.popPMapBit(pr));
 			//resume with first pmap
-			pr.closePMap();
+			pr.closePMap(pr);
 		///
 		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
@@ -434,7 +434,7 @@ public class PrimitivePMAPTest {
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		assertEquals(1,PrimitiveReader.popPMapBit(pr));
 		//close
-		pr.closePMap();
+		pr.closePMap(pr);
 		
 	}
 	
@@ -607,7 +607,7 @@ public class PrimitivePMAPTest {
 	    		
 			    while (--i>=0) {
 				    	byte[] pmapData = testPmaps[i];
-				    	pr.openPMap(maxWrittenBytes);
+				    	pr.openPMap(maxWrittenBytes, pr);
 				    	
 				    	int j = pmapData.length;
 				    	if (j==0) {
@@ -641,7 +641,7 @@ public class PrimitivePMAPTest {
 					    		assertEquals(0,PrimitiveReader.popPMapBit(pr));
 					    	}				    	
 				    	}
-				    	pr.closePMap();
+				    	pr.closePMap(pr);
 			    }
 			    
 	    	} finally {
@@ -668,29 +668,29 @@ public class PrimitivePMAPTest {
 	}
 
 	private int readPmapTest2(int pmaps, int maxWrittenBytes, byte[][] testPmaps, long readOverhead, ByteBuffer buffer,
-			PrimitiveReader pr, boolean printResults) {
+			PrimitiveReader reader, boolean printResults) {
 		int i = pmaps;
 		int result = 0;
 
 		long start = System.nanoTime();
 	    while (--i>=0) {
-		    	pr.openPMap(maxWrittenBytes);
+		    	reader.openPMap(maxWrittenBytes, reader);
 		    	
 		    	int j = testPmaps[i].length;
 		    	while (--j>=0) {
 		    		//8 of these will force 1 at least 1 byte change per pass
-		    		result |=PrimitiveReader.popPMapBit(pr);
-		    		result |=PrimitiveReader.popPMapBit(pr);
-		    		result |=PrimitiveReader.popPMapBit(pr);
-		    		result |=PrimitiveReader.popPMapBit(pr);		    		
-		    		result |=PrimitiveReader.popPMapBit(pr);
-		    		result |=PrimitiveReader.popPMapBit(pr);
-		    		result |=PrimitiveReader.popPMapBit(pr);
+		    		result |=PrimitiveReader.popPMapBit(reader);
+		    		result |=PrimitiveReader.popPMapBit(reader);
+		    		result |=PrimitiveReader.popPMapBit(reader);
+		    		result |=PrimitiveReader.popPMapBit(reader);		    		
+		    		result |=PrimitiveReader.popPMapBit(reader);
+		    		result |=PrimitiveReader.popPMapBit(reader);
+		    		result |=PrimitiveReader.popPMapBit(reader);
 		    		
-		    		result |=PrimitiveReader.popPMapBit(pr);
+		    		result |=PrimitiveReader.popPMapBit(reader);
 		    	}	
 		    	
-		    	pr.closePMap();
+		    	reader.closePMap(reader);
 	    }
 	    if (printResults) {
 	    	printReadResults(readOverhead, buffer, System.nanoTime()-start);

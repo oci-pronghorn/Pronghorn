@@ -91,54 +91,54 @@ public class DictionaryFactory {
 
     public DictionaryFactory(PrimitiveReader reader) {
 
-        this.integerCount = reader.readIntegerUnsigned();
-        this.longCount = reader.readIntegerUnsigned();
-        this.charCount = reader.readIntegerUnsigned();
-        this.bytesCount = reader.readIntegerUnsigned();
+        this.integerCount = reader.readIntegerUnsigned(reader);
+        this.longCount = reader.readIntegerUnsigned(reader);
+        this.charCount = reader.readIntegerUnsigned(reader);
+        this.bytesCount = reader.readIntegerUnsigned(reader);
 
-        this.integerInitCount = reader.readIntegerUnsigned();
+        this.integerInitCount = reader.readIntegerUnsigned(reader);
         this.integerInitIndex = new int[integerInitCount];
         this.integerInitValue = new int[integerInitCount];
         int c = integerInitCount;
         while (--c >= 0) {
-            integerInitIndex[c] = reader.readIntegerUnsigned();
-            integerInitValue[c] = reader.readIntegerSigned();
+            integerInitIndex[c] = reader.readIntegerUnsigned(reader);
+            integerInitValue[c] = reader.readIntegerSigned(reader);
         }
 
-        this.longInitCount = reader.readIntegerUnsigned();
+        this.longInitCount = reader.readIntegerUnsigned(reader);
         this.longInitIndex = new int[longInitCount];
         this.longInitValue = new long[longInitCount];
         c = longInitCount;
         while (--c >= 0) {
-            longInitIndex[c] = reader.readIntegerUnsigned();
-            longInitValue[c] = reader.readLongSigned();
+            longInitIndex[c] = reader.readIntegerUnsigned(reader);
+            longInitValue[c] = reader.readLongSigned(reader);
         }
 
-        this.charInitCount = reader.readIntegerUnsigned();
+        this.charInitCount = reader.readIntegerUnsigned(reader);
         this.charInitIndex = new int[charInitCount];
         this.charInitValue = new char[charInitCount][];
         c = charInitCount;
         while (--c >= 0) {
-            charInitIndex[c] = reader.readIntegerUnsigned();
-            int len = reader.readIntegerUnsigned();
+            charInitIndex[c] = reader.readIntegerUnsigned(reader);
+            int len = reader.readIntegerUnsigned(reader);
             char[] value = new char[len];
             reader.readTextUTF8(value, 0, len);
             charInitValue[c] = value;
         }
-        this.charInitTotalLength = reader.readIntegerUnsigned();
+        this.charInitTotalLength = reader.readIntegerUnsigned(reader);
 
-        this.byteInitCount = reader.readIntegerUnsigned();
+        this.byteInitCount = reader.readIntegerUnsigned(reader);
         this.byteInitIndex = new int[byteInitCount];
         this.byteInitValue = new byte[byteInitCount][];
         c = byteInitCount;
         while (--c >= 0) {
-            byteInitIndex[c] = reader.readIntegerUnsigned();
-            int len = reader.readIntegerUnsigned();
+            byteInitIndex[c] = reader.readIntegerUnsigned(reader);
+            int len = reader.readIntegerUnsigned(reader);
             byte[] value = new byte[len];
             reader.readByteData(value, 0, len);
             byteInitValue[c] = value;
         }
-        byteInitTotalLength = reader.readIntegerUnsigned();
+        byteInitTotalLength = reader.readIntegerUnsigned(reader);
 
     }
 

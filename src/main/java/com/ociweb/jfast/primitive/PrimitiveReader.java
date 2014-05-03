@@ -74,16 +74,16 @@ public final class PrimitiveReader {
     }
 
     public final void fetch() {
-        fetch(0);
+        fetch(0, this);
     }
 
     // Will not return until the need is met because the parser has
     // determined that we can not continue until this data is provided.
     // this call may however read in more than the need because its ready
     // and convenient to reduce future calls.
-    private void fetch(int need) {
+    private static void fetch(int need, PrimitiveReader reader) {
         int count = 0;
-        need = fetchAvail(need);
+        need = fetchAvail(need, reader);
         while (need > 0) { // TODO: C, if orignial need was zero should also
                            // compact?
             if (0 == count++) {
@@ -104,47 +104,47 @@ public final class PrimitiveReader {
                 }
             }
 
-            need = fetchAvail(need);
+            need = fetchAvail(need, reader);
         }
 
     }
 
-    private int fetchAvail(int need) {
-        if (position >= limit) {
-            position = limit = 0;
+    private static int fetchAvail(int need, PrimitiveReader reader) {
+        if (reader.position >= reader.limit) {
+            reader.position = reader.limit = 0;
         }
-        int remainingSpace = buffer.length - limit;
+        int remainingSpace = reader.buffer.length - reader.limit;
         if (need <= remainingSpace) {
             // fill remaining space if possible to reduce fetch later
 
-            int filled = input.fill(limit, remainingSpace);
+            int filled = reader.input.fill(reader.limit, remainingSpace);
 
             //
-            totalReader += filled;
-            limit += filled;
+            reader.totalReader += filled;
+            reader.limit += filled;
             //
             return need - filled;
         } else {
-            return noRoomOnFetch(need);
+            return noRoomOnFetch(need, reader);
         }
     }
 
-    private int noRoomOnFetch(int need) {
+    private static int noRoomOnFetch(int need, PrimitiveReader reader) {
         // not enough room at end of buffer for the need
-        int populated = limit - position;
+        int populated = reader.limit - reader.position;
         int reqiredSize = need + populated;
 
-        assert (buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
+        assert (reader.buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
                 + " bytes";
 
-        System.arraycopy(buffer, position, buffer, 0, populated);
+        System.arraycopy(reader.buffer, reader.position, reader.buffer, 0, populated);
         // fill and return
 
-        int filled = input.fill(populated, buffer.length - populated);
+        int filled = reader.input.fill(populated, reader.buffer.length - populated);
 
-        position = 0;
-        totalReader += filled;
-        limit = populated + filled;
+        reader.position = 0;
+        reader.totalReader += filled;
+        reader.limit = populated + filled;
 
         return need - filled;
 
@@ -153,7 +153,7 @@ public final class PrimitiveReader {
     public final void readByteData(byte[] target, int offset, int length) {
         // ensure all the bytes are in the buffer before calling visitor
         if (limit - position < length) {
-            fetch(length);
+            fetch(length, this);
         }
         System.arraycopy(buffer, position, target, offset, length);
         position += length;
@@ -168,45 +168,45 @@ public final class PrimitiveReader {
     // I pmapIdx of last stack frame
     // //
     // called at the start of each group unless group knows it has no pmap
-    public final void openPMap(final int pmapMaxSize) {
-        if (position >= limit) {
-            fetch(1);
+    public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
         }
         // push the old index for resume
-        invPmapStack[invPmapStackDepth - 1] = (byte) pmapIdx;
+        reader.invPmapStack[reader.invPmapStackDepth - 1] = (byte) reader.pmapIdx;
 
-        int k = invPmapStackDepth -= (pmapMaxSize + 2);
-        bitBlock = buffer[position];
+        int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
+        reader.bitBlock = reader.buffer[reader.position];
         //TODO: A, this is a constant for many templates and can be injected? still its a copy!.
-        k = walkPMapLength(pmapMaxSize, k, invPmapStack);
-        invPmapStack[k] = (byte) (3 + pmapMaxSize + (invPmapStackDepth - k));
+        k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader);
+        reader.invPmapStack[k] = (byte) (3 + pmapMaxSize + (reader.invPmapStackDepth - k));
 
         // set next bit to read
-        pmapIdx = 6;
+        reader.pmapIdx = 6;
     }
 
-    private int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack) {
-        if (limit - position > pmapMaxSize) {
-            if ((pmapStack[k++] = buffer[position++]) >= 0) {
-                if ((pmapStack[k++] = buffer[position++]) >= 0) {
+    private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader) {
+        if (reader.limit - reader.position > pmapMaxSize) {
+            if ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0) {
+                if ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0) {
                     do {
-                    } while ((pmapStack[k++] = buffer[position++]) >= 0);
+                    } while ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0);
                 }
             }
         } else {
-            k = openPMapSlow(k);
+            k = openPMapSlow(k,reader);
         }
         return k;
     }
 
-    private int openPMapSlow(int k) {
+    private static int openPMapSlow(int k, PrimitiveReader reader) {
         // must use slow path because we are near the end of the buffer.
         do {
-            if (position >= limit) {
-                fetch(1);
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
             // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
-        } while ((invPmapStack[k++] = buffer[position++]) >= 0);
+        } while ((reader.invPmapStack[k++] = reader.buffer[reader.position++]) >= 0);
         return k;
     }
 
@@ -232,11 +232,11 @@ public final class PrimitiveReader {
     }
 
     // called at the end of each group
-    public final void closePMap() {
+    public static final void closePMap(PrimitiveReader reader) {
         // assert(bitBlock<0);
-        assert (invPmapStack[invPmapStackDepth + 1] >= 0);
-        bitBlock = invPmapStack[invPmapStackDepth += (invPmapStack[invPmapStackDepth + 1])];
-        pmapIdx = invPmapStack[invPmapStackDepth - 1];
+        assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
+        reader.bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
+        reader.pmapIdx = reader.invPmapStack[reader.invPmapStackDepth - 1];
 
     }
 
@@ -244,54 +244,54 @@ public final class PrimitiveReader {
     // ///////////////////////////////////
     // ///////////////////////////////////
 
-    public final long readLongSigned() {
-        return readLongSignedPrivate();
+    public static final long readLongSigned(PrimitiveReader reader) {
+        return readLongSignedPrivate(reader);
     }
 
-    private long readLongSignedPrivate() {//Invoked 100's of millions of times, must be tight.
-        if (limit - position <= 10) {
-            return readLongSignedSlow();
+    private static long readLongSignedPrivate(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+        if (reader.limit - reader.position <= 10) {
+            return readLongSignedSlow(reader);
         }
 
-        long v = buffer[position++];
+        long v = reader.buffer[reader.position++];
         long accumulator = ((v & 0x40) == 0) ? 0l : 0xFFFFFFFFFFFFFF80l;
 
         while (v >= 0) {
             accumulator = (accumulator | v) << 7;
-            v = buffer[position++];
+            v = reader.buffer[reader.position++];
         }
 
         return accumulator | (v & 0x7Fl);
     }
 
-    private long readLongSignedSlow() {
+    private static long readLongSignedSlow(PrimitiveReader reader) {
         // slow path
-        if (position >= limit) {
-            fetch(1);
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
         }
-        int v = buffer[position++];
+        int v = reader.buffer[reader.position++];
         long accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFFFFFFFFFF80l;
 
         while (v >= 0) { // (v & 0x80)==0) {
-            if (position >= limit) {
-                fetch(1);
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
             accumulator = (accumulator | v) << 7;
-            v = buffer[position++];
+            v = reader.buffer[reader.position++];
         }
         return accumulator | (v & 0x7F);
     }
 
-    public final long readLongUnsigned() {
-        return readLongUnsignedPrivate();
+    public static final long readLongUnsigned(PrimitiveReader reader) {
+        return readLongUnsignedPrivate(reader);
     }
 
-    private long readLongUnsignedPrivate() {
-        if (position > limit - 10) {
-            if (position >= limit) {
-                fetch(1);
+    private static long readLongUnsignedPrivate(PrimitiveReader reader) {
+        if (reader.position > reader.limit - 10) {
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
-            byte v = buffer[position++];
+            byte v = reader.buffer[reader.position++];
             long accumulator;
             if (v >= 0) { // (v & 0x80)==0) {
                 accumulator = v << 7;
@@ -299,25 +299,25 @@ public final class PrimitiveReader {
                 return (v & 0x7F);
             }
 
-            if (position >= limit) {
-                fetch(1);
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
-            v = buffer[position++];
+            v = reader.buffer[reader.position++];
 
             while (v >= 0) { // (v & 0x80)==0) {
                 accumulator = (accumulator | v) << 7;
 
-                if (position >= limit) {
-                    fetch(1);
+                if (reader.position >= reader.limit) {
+                    fetch(1, reader);
                 }
-                v = buffer[position++];
+                v = reader.buffer[reader.position++];
 
             }
             return accumulator | (v & 0x7F);
         }
-        byte[] buf = buffer;
+        byte[] buf = reader.buffer;
 
-        byte v = buf[position++];
+        byte v = buf[reader.position++];
         long accumulator;
         if (v >= 0) {// (v & 0x80)==0) {
             accumulator = v << 7;
@@ -325,83 +325,83 @@ public final class PrimitiveReader {
             return (v & 0x7F);
         }
 
-        v = buf[position++];
+        v = buf[reader.position++];
         while (v >= 0) {// (v & 0x80)==0) {
             accumulator = (accumulator | v) << 7;
-            v = buf[position++];
+            v = buf[reader.position++];
         }
         return accumulator | (v & 0x7F);
     }
 
-    public final int readIntegerSigned() {
-        return readIntegerSignedPrivate();
+    public static final int readIntegerSigned(PrimitiveReader reader) {
+        return readIntegerSignedPrivate(reader);
     }
 
-    private int readIntegerSignedPrivate() {
-        if (limit - position <= 5) {
-            return readIntegerSignedSlow();
+    private static int readIntegerSignedPrivate(PrimitiveReader reader) {
+        if (reader.limit - reader.position <= 5) {
+            return readIntegerSignedSlow(reader);
         }
-        int p = position;
-        byte v = buffer[p++];
+        int p = reader.position;
+        byte v = reader.buffer[p++];
         int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;
 
         while (v >= 0) { // (v & 0x80)==0) {
             accumulator = (accumulator | v) << 7;
-            v = buffer[p++];
+            v = reader.buffer[p++];
         }
-        position = p;
+        reader.position = p;
         return accumulator | (v & 0x7F);
     }
 
-    private int readIntegerSignedSlow() {
-        if (position >= limit) {
-            fetch(1);
+    private static int readIntegerSignedSlow(PrimitiveReader reader) {
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
         }
-        byte v = buffer[position++];
+        byte v = reader.buffer[reader.position++];
         int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;
 
         while (v >= 0) { // (v & 0x80)==0) {
-            if (position >= limit) {
-                fetch(1);
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
             accumulator = (accumulator | v) << 7;
-            v = buffer[position++];
+            v = reader.buffer[reader.position++];
         }
         return accumulator | (v & 0x7F);
     }
 
-    public final int readIntegerUnsigned() {
+    public static final int readIntegerUnsigned(PrimitiveReader reader) {
 
-        return readIntegerUnsignedPrivate(this);
+        return readIntegerUnsignedPrivate(reader);
     }
 
     private static int readIntegerUnsignedPrivate(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
         if (reader.limit - reader.position >= 5) {// not near end so go fast.
             byte v;
-            return ((v = reader.buffer[reader.position++]) < 0) ? (v & 0x7F) : reader.readIntegerUnsignedLarger(v);
+            return ((v = reader.buffer[reader.position++]) < 0) ? (v & 0x7F) : readIntegerUnsignedLarger(v, reader);
         } else {
-            return reader.readIntegerUnsignedSlow();
+            return readIntegerUnsignedSlow(reader);
         }
     }
 
-    private int readIntegerUnsignedLarger(byte t) {
-        byte v = buffer[position++];
+    private static int readIntegerUnsignedLarger(byte t, PrimitiveReader reader) {
+        byte v = reader.buffer[reader.position++];
         if (v < 0) {
             return (t << 7) | (v & 0x7F);
         } else {
             int accumulator = ((t << 7) | v) << 7;
-            while ((v = buffer[position++]) >= 0) {
+            while ((v = reader.buffer[reader.position++]) >= 0) {
                 accumulator = (accumulator | v) << 7;
             }
             return accumulator | (v & 0x7F);
         }
     }
 
-    private int readIntegerUnsignedSlow() {
-        if (position >= limit) {
-            fetch(1);
+    private static int readIntegerUnsignedSlow(PrimitiveReader reader) {
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
         }
-        byte v = buffer[position++];
+        byte v = reader.buffer[reader.position++];
         int accumulator;
         if (v >= 0) { // (v & 0x80)==0) {
             accumulator = v << 7;
@@ -409,24 +409,24 @@ public final class PrimitiveReader {
             return (v & 0x7F);
         }
 
-        if (position >= limit) {
-            fetch(1);
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
         }
-        v = buffer[position++];
+        v = reader.buffer[reader.position++];
 
         while (v >= 0) { // (v & 0x80)==0) {
             accumulator = (accumulator | v) << 7;
-            if (position >= limit) {
-                fetch(1);
+            if (reader.position >= reader.limit) {
+                fetch(1, reader);
             }
-            v = buffer[position++];
+            v = reader.buffer[reader.position++];
         }
         return accumulator | (v & 0x7F);
     }
 
     public Appendable readTextASCII(Appendable target) {
         if (limit - position < 2) {
-            fetch(2);
+            fetch(2, this);
         }
 
         byte v = buffer[position];
@@ -451,7 +451,7 @@ public final class PrimitiveReader {
                 }
                 position++;
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
             }
             try {
@@ -473,7 +473,7 @@ public final class PrimitiveReader {
         // not know that we need them.
 
         if (limit - position < 2) {
-            fetch(2);
+            fetch(2, this);
         }
 
         byte v = buffer[position];
@@ -495,7 +495,7 @@ public final class PrimitiveReader {
             while (buffer[position] >= 0 && --countDown >= 0) {
                 target[idx++] = (char) (buffer[position++]);
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
             }
             if (--countDown >= 0) {
@@ -532,7 +532,7 @@ public final class PrimitiveReader {
 
     private int readAsciiText2Slow(char[] target, int targetOffset, int countDown) {
         if (limit - position < 2) {
-            fetch(2);
+            fetch(2, this);
         }
 
         // must use count because the base of position will be in motion.
@@ -541,7 +541,7 @@ public final class PrimitiveReader {
         while (buffer[position] >= 0 && --countDown >= 0) {
             target[idx++] = (char) (buffer[position++]);
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
         }
         if (--countDown >= 0) {
@@ -555,7 +555,7 @@ public final class PrimitiveReader {
     // keep calling while byte is >=0
     public final byte readTextASCIIByte() {
         if (position >= limit) {
-            fetch(1); // CAUTION: may change value of position
+            fetch(1, this); // CAUTION: may change value of position
         }
         return buffer[position++];
     }
@@ -564,7 +564,7 @@ public final class PrimitiveReader {
 
         while (--charCount >= 0) {
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             byte b = buffer[position++];
             if (b >= 0) {
@@ -583,18 +583,18 @@ public final class PrimitiveReader {
 
     public final void readSkipByStop() {
         if (position >= limit) {
-            fetch(1);
+            fetch(1, this);
         }
         while (buffer[position++] >= 0) {
             if (position >= limit) {
-                fetch(1);
+                fetch(1, this);
             }
         }
     }
 
     public final void readSkipByLengthByt(int len) {
         if (limit - position < len) {
-            fetch(len);
+            fetch(len, this);
         }
         position += len;
     }
@@ -605,7 +605,7 @@ public final class PrimitiveReader {
         // no validation at all because we are not building a string.
         while (--len >= 0) {
             if (position >= limit) {
-                fetch(1);
+                fetch(1, this);
             }
             byte b = buffer[position++];
             if (b < 0) {
@@ -619,30 +619,30 @@ public final class PrimitiveReader {
                             if (0 != (b & 0x04)) {
                                 // longer pattern than 5 bytes
                                 if (position >= limit) {
-                                    fetch(5);
+                                    fetch(5, this);
                                 }
                                 position += 5;
                             } else {
                                 if (position >= limit) {
-                                    fetch(4);
+                                    fetch(4, this);
                                 }
                                 position += 4;
                             }
                         } else {
                             if (position >= limit) {
-                                fetch(3);
+                                fetch(3, this);
                             }
                             position += 3;
                         }
                     } else {
                         if (position >= limit) {
-                            fetch(2);
+                            fetch(2, this);
                         }
                         position += 2;
                     }
                 } else {
                     if (position >= limit) {
-                        fetch(1);
+                        fetch(1, this);
                     }
                     position++;
                 }
@@ -668,7 +668,7 @@ public final class PrimitiveReader {
         } else {
             while (--charCount >= 0) {
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
                 if ((b = buffer[position++]) >= 0) {
                     // code point 7
@@ -693,7 +693,7 @@ public final class PrimitiveReader {
                     throw new FASTException(e);
                 }
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
                 ++position;
                 return;
@@ -739,7 +739,7 @@ public final class PrimitiveReader {
                                 throw new FASTException(e);
                             }
                             if (limit - position < 5) {
-                                fetch(5);
+                                fetch(5, this);
                             }
                             position += 5;
                             return;
@@ -754,13 +754,13 @@ public final class PrimitiveReader {
                                 throw new FASTException(e);
                             }
                             if (limit - position < 5) {
-                                fetch(5);
+                                fetch(5, this);
                             }
                             position += 5;
                             return;
                         }
                         if (position >= limit) {
-                            fetch(1); // CAUTION: may change value of position
+                            fetch(1, this); // CAUTION: may change value of position
                         }
                         result = (result << 6) | (source[position++] & 0x3F);
                     }
@@ -772,13 +772,13 @@ public final class PrimitiveReader {
                             throw new FASTException(e);
                         }
                         if (limit - position < 4) {
-                            fetch(4);
+                            fetch(4, this);
                         }
                         position += 4;
                         return;
                     }
                     if (position >= limit) {
-                        fetch(1); // CAUTION: may change value of position
+                        fetch(1, this); // CAUTION: may change value of position
                     }
                     result = (result << 6) | (source[position++] & 0x3F);
                 }
@@ -790,13 +790,13 @@ public final class PrimitiveReader {
                         throw new FASTException(e);
                     }
                     if (limit - position < 3) {
-                        fetch(3);
+                        fetch(3, this);
                     }
                     position += 3;
                     return;
                 }
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
                 result = (result << 6) | (source[position++] & 0x3F);
             }
@@ -807,13 +807,13 @@ public final class PrimitiveReader {
                     throw new FASTException(e);
                 }
                 if (limit - position < 2) {
-                    fetch(2);
+                    fetch(2, this);
                 }
                 position += 2;
                 return;
             }
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             result = (result << 6) | (source[position++] & 0x3F);
         }
@@ -824,14 +824,14 @@ public final class PrimitiveReader {
                 throw new FASTException(e);
             }
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             position += 1;
             return;
         }
         try {
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             target.append((char) ((result << 6) | (source[position++] & 0x3F)));
         } catch (IOException e) {
@@ -849,7 +849,7 @@ public final class PrimitiveReader {
             if ((b & 0x40) == 0) {
                 target[targetIdx] = 0xFFFD; // Bad data replacement char
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
                 ++position;
                 return;
@@ -878,7 +878,7 @@ public final class PrimitiveReader {
                             target[targetIdx] = 0xFFFD; // Bad data replacement
                                                         // char
                             if (limit - position < 5) {
-                                fetch(5);
+                                fetch(5, this);
                             }
                             position += 5;
                             return;
@@ -888,65 +888,65 @@ public final class PrimitiveReader {
                             target[targetIdx] = 0xFFFD; // Bad data replacement
                                                         // char
                             if (limit - position < 5) {
-                                fetch(5);
+                                fetch(5, this);
                             }
                             position += 5;
                             return;
                         }
                         if (position >= limit) {
-                            fetch(1); // CAUTION: may change value of position
+                            fetch(1, this); // CAUTION: may change value of position
                         }
                         result = (result << 6) | (source[position++] & 0x3F);
                     }
                     if ((source[position] & 0xC0) != 0x80) {
                         target[targetIdx] = 0xFFFD; // Bad data replacement char
                         if (limit - position < 4) {
-                            fetch(4);
+                            fetch(4, this);
                         }
                         position += 4;
                         return;
                     }
                     if (position >= limit) {
-                        fetch(1); // CAUTION: may change value of position
+                        fetch(1, this); // CAUTION: may change value of position
                     }
                     result = (result << 6) | (source[position++] & 0x3F);
                 }
                 if ((source[position] & 0xC0) != 0x80) {
                     target[targetIdx] = 0xFFFD; // Bad data replacement char
                     if (limit - position < 3) {
-                        fetch(3);
+                        fetch(3, this);
                     }
                     position += 3;
                     return;
                 }
                 if (position >= limit) {
-                    fetch(1); // CAUTION: may change value of position
+                    fetch(1, this); // CAUTION: may change value of position
                 }
                 result = (result << 6) | (source[position++] & 0x3F);
             }
             if ((source[position] & 0xC0) != 0x80) {
                 target[targetIdx] = 0xFFFD; // Bad data replacement char
                 if (limit - position < 2) {
-                    fetch(2);
+                    fetch(2, this);
                 }
                 position += 2;
                 return;
             }
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             result = (result << 6) | (source[position++] & 0x3F);
         }
         if ((source[position] & 0xC0) != 0x80) {
             target[targetIdx] = 0xFFFD; // Bad data replacement char
             if (position >= limit) {
-                fetch(1); // CAUTION: may change value of position
+                fetch(1, this); // CAUTION: may change value of position
             }
             position += 1;
             return;
         }
         if (position >= limit) {
-            fetch(1); // CAUTION: may change value of position
+            fetch(1, this); // CAUTION: may change value of position
         }
         target[targetIdx] = (char) ((result << 6) | (source[position++] & 0x3F));
     }
@@ -1026,29 +1026,29 @@ public final class PrimitiveReader {
         target[targetIdx] = (char) ((result << 6) | (source[position++] & 0x3F));
     }
 
-    public final boolean isEOF() {
-        if (limit != position) {
+    public static final boolean isEOF(PrimitiveReader reader) {
+        if (reader.limit != reader.position) {
             return false;
         }
-        fetch(0);
-        return limit != position ? false : input.isEOF();
+        fetch(0, reader);
+        return reader.limit != reader.position ? false : reader.input.isEOF();
     }
 
     // ///////////////////////////////
     // Dictionary specific operations
     // ///////////////////////////////
 
-    public final int readIntegerUnsignedOptional(int constAbsent) {
-        int value = readIntegerUnsignedPrivate(this);
+    public static final int readIntegerUnsignedOptional(int constAbsent, PrimitiveReader reader) {
+        int value = readIntegerUnsignedPrivate(reader);
         return value == 0 ? constAbsent : value - 1;
     }
 
-    public final int readIntegerSignedConstantOptional(int constAbsent, int constConst) {
-        return (popPMapBit(this) == 0 ? constAbsent : constConst);
+    public static final int readIntegerSignedConstantOptional(int constAbsent, int constConst, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constAbsent : constConst);
     }
 
-    public final int readIntegerUnsignedConstantOptional(int constAbsent, int constConst) {
-        return (popPMapBit(this) == 0 ? constAbsent : constConst);
+    public static final int readIntegerUnsignedConstantOptional(int constAbsent, int constConst, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constAbsent : constConst);
     }
 
     public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
@@ -1056,8 +1056,8 @@ public final class PrimitiveReader {
                 : (dictionary[target] = readIntegerUnsignedPrivate(reader)));
     }
 
-    public final int readIntegerUnsignedDefault(int constDefault) {
-        return (popPMapBit(this) == 0 ? constDefault : readIntegerUnsignedPrivate(this));
+    public static final int readIntegerUnsignedDefault(int constDefault, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constDefault : readIntegerUnsignedPrivate(reader));
     }
 
     public static final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent, PrimitiveReader reader) {
@@ -1066,18 +1066,18 @@ public final class PrimitiveReader {
                 : (value = readIntegerUnsignedPrivate(reader)) == 0 ? constAbsent : value - 1;
     }
 
-    public final int readIntegerUnsignedIncrement(int target, int source, int[] dictionary) {
-        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readIntegerUnsignedPrivate(this)));
+    public static final int readIntegerUnsignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
+                : (dictionary[target] = readIntegerUnsignedPrivate(reader)));
     }
 
-    public final int readIntegerUnsignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
+    public static final int readIntegerUnsignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent, PrimitiveReader reader) {
 
-        if (popPMapBit(this) == 0) {
+        if (popPMapBit(reader) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             int value;
-            if ((value = readIntegerUnsignedPrivate(this)) == 0) {
+            if ((value = readIntegerUnsignedPrivate(reader)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
@@ -1086,24 +1086,24 @@ public final class PrimitiveReader {
         }
     }
 
-    public final int readIntegerSignedOptional(int constAbsent) {
-        int value = readIntegerSignedPrivate();
+    public static final int readIntegerSignedOptional(int constAbsent, PrimitiveReader reader) {
+        int value = readIntegerSignedPrivate(reader);
         return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
     }
 
-    public final int readIntegerSignedCopy(int target, int source, int[] dictionary) {
-        return (popPMapBit(this) == 0 ? dictionary[source]
-                : (dictionary[target] = readIntegerSignedPrivate()));
+    public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? dictionary[source]
+                : (dictionary[target] = readIntegerSignedPrivate(reader)));
     }
 
-    public final int readIntegerSignedDelta(int target, int source, int[] dictionary) {
+    public static final int readIntegerSignedDelta(int target, int source, int[] dictionary, PrimitiveReader reader) {
         // Delta opp never uses PMAP
-        return (dictionary[target] = (int) (dictionary[source] + readLongSignedPrivate()));
+        return (dictionary[target] = (int) (dictionary[source] + readLongSignedPrivate(reader)));
     }
 
-    public final int readIntegerSignedDeltaOptional(int target, int source, int[] dictionary, int constAbsent) {
+    public static final int readIntegerSignedDeltaOptional(int target, int source, int[] dictionary, int constAbsent, PrimitiveReader reader) {
         // Delta opp never uses PMAP
-        long value = readLongSignedPrivate();
+        long value = readLongSignedPrivate(reader);
         if (0 == value) {
             dictionary[target] = 0;// set to absent
             return constAbsent;
@@ -1113,31 +1113,31 @@ public final class PrimitiveReader {
         }
     }
 
-    public final int readIntegerSignedDefault(int constDefault) {
-        return (popPMapBit(this) == 0 ? constDefault : readIntegerSignedPrivate());
+    public static final int readIntegerSignedDefault(int constDefault, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constDefault : readIntegerSignedPrivate(reader));
     }
 
-    public final int readIntegerSignedDefaultOptional(int constDefault, int constAbsent) {
-        if (popPMapBit(this) == 0) {
+    public static final int readIntegerSignedDefaultOptional(int constDefault, int constAbsent, PrimitiveReader reader) {
+        if (popPMapBit(reader) == 0) {
             return constDefault;
         } else {
-            int value = readIntegerSignedPrivate();
+            int value = readIntegerSignedPrivate(reader);
             return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
         }
     }
 
-    public final int readIntegerSignedIncrement(int target, int source, int[] dictionary) {
-        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readIntegerSignedPrivate()));
+    public static final int readIntegerSignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
+                : (dictionary[target] = readIntegerSignedPrivate(reader)));
     }
 
-    public final int readIntegerSignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent) {
+    public static final int readIntegerSignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent, PrimitiveReader reader) {
 
-        if (popPMapBit(this) == 0) {
+        if (popPMapBit(reader) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             int value;
-            if ((value = readIntegerSignedPrivate()) == 0) {
+            if ((value = readIntegerSignedPrivate(reader)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
@@ -1148,14 +1148,14 @@ public final class PrimitiveReader {
 
     // For the Long values
 
-    public final long readLongUnsignedCopy(int target, int source, long[] dictionary) {
-        return (popPMapBit(this) == 0 ? dictionary[source]
-                : (dictionary[target] = readLongUnsignedPrivate()));
+    public static final long readLongUnsignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? dictionary[source]
+                : (dictionary[target] = readLongUnsignedPrivate(reader)));
     }
 
-    public final long readLongUnsignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
+    public static final long readLongUnsignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
         // Delta opp never uses PMAP
-        long value = readLongSignedPrivate();
+        long value = readLongSignedPrivate(reader);
         if (0 == value) {
             dictionary[target] = 0;// set to absent
             return constAbsent;
@@ -1165,31 +1165,31 @@ public final class PrimitiveReader {
         }
     }
 
-    public final long readLongUnsignedDefault(long constDefault) {
-        return (popPMapBit(this) == 0 ? constDefault : readLongUnsignedPrivate());
+    public static final long readLongUnsignedDefault(long constDefault, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constDefault : readLongUnsignedPrivate(reader));
     }
 
-    public final long readLongUnsignedDefaultOptional(long constDefault, long constAbsent) {
-        if (popPMapBit(this) == 0) {
+    public static final long readLongUnsignedDefaultOptional(long constDefault, long constAbsent, PrimitiveReader reader) {
+        if (popPMapBit(reader) == 0) {
             return constDefault;
         } else {
-            long value = readLongUnsignedPrivate();
+            long value = readLongUnsignedPrivate(reader);
             return value == 0 ? constAbsent : value - 1;
         }
     }
 
-    public final long readLongUnsignedIncrement(int target, int source, long[] dictionary) {
-        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readLongUnsignedPrivate()));
+    public static final long readLongUnsignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
+                : (dictionary[target] = readLongUnsignedPrivate(reader)));
     }
 
-    public final long readLongUnsignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
+    public static final long readLongUnsignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
 
-        if (popPMapBit(this) == 0) {
+        if (popPMapBit(reader) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             long value;
-            if ((value = readLongUnsignedPrivate()) == 0) {
+            if ((value = readLongUnsignedPrivate(reader)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
@@ -1198,14 +1198,14 @@ public final class PrimitiveReader {
         }
     }
 
-    public final long readLongSignedCopy(int target, int source, long[] dictionary) {
-        return (popPMapBit(this) == 0 ? dictionary[source]
-                : (dictionary[target] = readLongSignedPrivate()));
+    public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? dictionary[source]
+                : (dictionary[target] = readLongSignedPrivate(reader)));
     }
 
-    public final long readLongSignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent) {
+    public static final long readLongSignedDeltaOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
         // Delta opp never uses PMAP
-        long value = readLongSignedPrivate();
+        long value = readLongSignedPrivate(reader);
         if (0 == value) {
             dictionary[target] = 0;// set to absent
             return constAbsent;
@@ -1215,31 +1215,31 @@ public final class PrimitiveReader {
         }
     }
 
-    public final long readLongSignedDefault(long constDefault) {
-        return (popPMapBit(this) == 0 ? constDefault : readLongSignedPrivate());
+    public static final long readLongSignedDefault(long constDefault, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? constDefault : readLongSignedPrivate(reader));
     }
 
-    public final long readLongSignedDefaultOptional(long constDefault, long constAbsent) {
-        if (popPMapBit(this) == 0) {
+    public static final long readLongSignedDefaultOptional(long constDefault, long constAbsent, PrimitiveReader reader) {
+        if (popPMapBit(reader) == 0) {
             return constDefault;
         } else {
-            long value = readLongSignedPrivate();
+            long value = readLongSignedPrivate(reader);
             return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
         }
     }
 
-    public final long readLongSignedIncrement(int target, int source, long[] dictionary) {
-        return (popPMapBit(this) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readLongSignedPrivate()));
+    public static final long readLongSignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
+                : (dictionary[target] = readLongSignedPrivate(reader)));
     }
 
-    public final long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent) {
+    public static final long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
 
-        if (popPMapBit(this) == 0) {
+        if (popPMapBit(reader) == 0) {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             long value;
-            if ((value = readLongSignedPrivate()) == 0) {
+            if ((value = readLongSignedPrivate(reader)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
@@ -1251,10 +1251,10 @@ public final class PrimitiveReader {
     // //////////////
     // /////////
 
-    public final int openMessage(int pmapMaxSize) {
-        openPMap(pmapMaxSize);
+    public static final int openMessage(int pmapMaxSize, PrimitiveReader reader) {
+        openPMap(pmapMaxSize, reader);
         // return template id or unknown
-        return (0 != popPMapBit(this)) ? readIntegerUnsignedPrivate(this) : -1;// template Id
+        return (0 != popPMapBit(reader)) ? readIntegerUnsignedPrivate(reader) : -1;// template Id
 
     }
 

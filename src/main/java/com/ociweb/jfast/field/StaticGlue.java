@@ -160,15 +160,15 @@ public class StaticGlue {
     //These methods are here for package access to the needed methods.
     ///////////////////
     
-    public static void allocateAndDeltaUTF8(final int idx, TextHeap textHeap, PrimitiveReader primitiveReader, int trim) {
-        int utfLength = primitiveReader.readIntegerUnsigned();
+    public static void allocateAndDeltaUTF8(final int idx, TextHeap textHeap, PrimitiveReader reader, int trim) {
+        int utfLength = reader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            primitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength),
+            reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength),
                     utfLength);
         } else {
             // append to head
-            primitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForPrepend(idx, -trim, utfLength),
+            reader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForPrepend(idx, -trim, utfLength),
                     utfLength);
         }
     }
