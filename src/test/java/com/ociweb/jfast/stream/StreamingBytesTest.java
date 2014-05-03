@@ -44,7 +44,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     PrimitiveWriter pw;
 
     FASTInputByteArray input;
-    PrimitiveReader pr;
+    PrimitiveReader reader;
 
     @AfterClass
     public static void cleanup() {
@@ -99,7 +99,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         writer.flush();
 
         FASTInput input = new FASTInputByteArray(buffer);
-        PrimitiveReader reader = new PrimitiveReader(input);
+        PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
 
         ByteHeap dictionaryReader = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
         FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
@@ -117,7 +117,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         id = token & byteReader.INSTANCE_MASK;
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-        reader.openPMap(1, reader);
+        PrimitiveReader.openPMap(1, reader);
         int idx2 = token & byteReader.INSTANCE_MASK;
         if (PrimitiveReader.popPMapBit(reader) != 0) {
             byteReader.readBytesData(idx2, 0);
@@ -130,7 +130,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         id = byteReader.readBytesDefault2(idx3);
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-        reader.closePMap(reader);
+        PrimitiveReader.closePMap(reader);
 
     }
 
@@ -250,8 +250,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        pr.reset();
-        FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
+        PrimitiveReader.reset(reader);
+        FASTReaderDispatch fr = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
         ByteHeap byteHeap = fr.readerBytes.byteHeap();
 
         int token = 0;
@@ -280,7 +280,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                         int idx = fr.readBytes(tokenLookup[f]);
                         if (!byteHeap.isNull(idx)) {
-                            assertEquals("Error:" + TokenBuilder.tokenToString(token), true, byteHeap.isNull(idx));
+                            assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, byteHeap.isNull(idx));
                         }
 
                     } else {
@@ -303,7 +303,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                         int idx = fr.readBytes(tokenLookup[f]);
                         if (!byteHeap.isNull(idx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
-                                    + byteHeap.length(idx), true, byteHeap.isNull(idx));
+                                    + byteHeap.length(idx), Boolean.TRUE, byteHeap.isNull(idx));
                         }
 
                     } else {
@@ -371,17 +371,17 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     protected long totalRead() {
-        return pr.totalRead();
+        return PrimitiveReader.totalRead(reader);
     }
 
     protected void resetInputReader() {
         input.reset();
-        pr.reset();
+        PrimitiveReader.reset(reader);
     }
 
     protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
         input = new FASTInputByteArray(writtenData, writtenBytes);
-        pr = new PrimitiveReader(writtenData.length, input, maxGroupCount);
+        reader = new PrimitiveReader(writtenData.length, input, maxGroupCount);
     }
 
 }

@@ -93,11 +93,11 @@ public class ReaderWriterKryoTest {
 		
 		pw.flush();
 		
-		Input pr = new Input(buffer);
+		Input inp = new Input(buffer);
 		
 		i = 0;
 		while (i<nullLoops) {
-			assertEquals(0,pr.readVarInt(true));
+			assertEquals(0,inp.readVarInt(true));
 			i++;
 		}
 		
@@ -124,12 +124,12 @@ public class ReaderWriterKryoTest {
 			pw.flush();  
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)pw.total());
 	
-			pr.setPosition(0);
+			inp.setPosition(0);
 			
 			start = System.nanoTime();
 			j = tp;
 			while (--j>=0) {
-				pr.readVarInt(true);					
+				inp.readVarInt(true);					
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)pw.total());
 		}

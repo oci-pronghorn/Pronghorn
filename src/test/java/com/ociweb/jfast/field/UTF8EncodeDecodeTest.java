@@ -96,9 +96,9 @@ public class UTF8EncodeDecodeTest {
 		
 		char[] target = new char[unicodeTestString.length()];
 		
-		PrimitiveReader pr = new PrimitiveReader(new FASTInputByteArray(paddedData));
-		pr.fetch();//required to preload the data to make it call the faster side of the implementation.
-		pr.readTextUTF8(target, 0, unicodeTestString.length());
+		PrimitiveReader reader = new PrimitiveReader(2048, new FASTInputByteArray(paddedData), 32);
+		PrimitiveReader.fetch(reader);//required to preload the data to make it call the faster side of the implementation.
+		PrimitiveReader.readTextUTF8(target, 0, unicodeTestString.length(), reader);
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
@@ -109,9 +109,9 @@ public class UTF8EncodeDecodeTest {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		char[] target = new char[unicodeTestString.length()];
 		
-		PrimitiveReader pr = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
-		pr.fetch();
-		pr.readTextUTF8(target, 0, unicodeTestString.length());
+		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
+		PrimitiveReader.fetch(reader);
+		PrimitiveReader.readTextUTF8(target, 0, unicodeTestString.length(), reader);
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
@@ -129,9 +129,9 @@ public class UTF8EncodeDecodeTest {
 			System.arraycopy(data, 0, paddedData, copies*data.length, data.length);
 		}
 		
-		PrimitiveReader pr = new PrimitiveReader(new FASTInputByteArray(paddedData));
-		pr.fetch();
-		String target = pr.readTextUTF8(unicodeTestString.length(), new StringBuilder()).toString();
+		PrimitiveReader reader = new PrimitiveReader(2048, new FASTInputByteArray(paddedData), 32);
+		PrimitiveReader.fetch(reader);
+		String target = PrimitiveReader.readTextUTF8(unicodeTestString.length(), new StringBuilder(), reader).toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	
 		
@@ -141,9 +141,9 @@ public class UTF8EncodeDecodeTest {
 	public void testUTF8DecoderAppendableTightBuffer() {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		
-		PrimitiveReader pr = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
-		pr.fetch();
-		String target = pr.readTextUTF8(unicodeTestString.length(), new StringBuilder()).toString();
+		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
+		PrimitiveReader.fetch(reader);
+		String target = PrimitiveReader.readTextUTF8(unicodeTestString.length(), new StringBuilder(), reader).toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	
 		

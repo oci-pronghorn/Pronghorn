@@ -206,13 +206,13 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
 
 			input.reset(); //for testing reset bytes back to the beginning.
-			reader.reset();//for testing clear any data found in reader 
+			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fr.reset(dcr); //reset message to clear the previous values
 			
 			if (pmapSize>0) {
-					reader.openPMap(pmapSize, reader);
+					PrimitiveReader.openPMap(pmapSize, reader);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
@@ -221,11 +221,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 				
-				int value = reader.readIntegerSignedCopy(target, source, rIntDictionary, reader);
+				int value = PrimitiveReader.readIntegerSignedCopy(target, source, rIntDictionary, reader);
 				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
 			}
 			if (pmapSize>0) {
-				reader.closePMap(reader);
+				PrimitiveReader.closePMap(reader);
 			}
 		}
 		return result;
@@ -267,20 +267,20 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
 
 			input.reset(); //for testing reset bytes back to the beginning.
-			reader.reset();//for testing clear any data found in reader 
+			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fr.reset(dcr); //reset message to clear the previous values
 			
 			if (pmapSize>0) {
-					reader.openPMap(pmapSize, reader);
+					PrimitiveReader.openPMap(pmapSize, reader);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 			}
 			if (pmapSize>0) {
-				reader.closePMap(reader);
+				PrimitiveReader.closePMap(reader);
 			}
 		}
 		return result;
@@ -321,13 +321,13 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
 
 			input.reset(); //for testing reset bytes back to the beginning.
-			reader.reset();//for testing clear any data found in reader 
+			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fr.reset(dcr); //reset message to clear the previous values
 			
 			if (pmapSize>0) {
-					reader.openPMap(pmapSize, reader);
+					PrimitiveReader.openPMap(pmapSize, reader);
 			}
 			j = intTestData.length;
 			while (--j>=0) {
@@ -335,10 +335,10 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int target = token&MAX_INT_INSTANCE_MASK;
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				result |= reader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent, reader);
+				result |= PrimitiveReader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent, reader);
 			}
 			if (pmapSize>0) {
-				reader.closePMap(reader);
+				PrimitiveReader.closePMap(reader);
 			}
 		}
 		return result;

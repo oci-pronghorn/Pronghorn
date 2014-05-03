@@ -1,9 +1,7 @@
 package com.ociweb.jfast.stream;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 

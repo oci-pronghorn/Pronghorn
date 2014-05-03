@@ -13,7 +13,6 @@ import com.ociweb.jfast.loader.BalancedSwitchGenerator;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.SourceTemplates;
 import com.ociweb.jfast.loader.TemplateCatalog;
-import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FASTReaderDispatchGenerator extends FASTReaderDispatch {

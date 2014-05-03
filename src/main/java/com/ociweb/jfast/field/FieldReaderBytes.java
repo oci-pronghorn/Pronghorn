@@ -3,8 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FieldReaderBytes {
@@ -29,25 +27,25 @@ public class FieldReaderBytes {
     }
 
     public int readBytesTail2(int idx) {
-        int trim = reader.readIntegerUnsigned(reader);
-        int length = reader.readIntegerUnsigned(reader);
+        int trim = PrimitiveReader.readIntegerUnsigned(reader);
+        int length = PrimitiveReader.readIntegerUnsigned(reader);
 
         // append to tail
         int targetOffset = heap.makeSpaceForAppend(idx, trim, length);
-        reader.readByteData(heap.rawAccess(), targetOffset, length);
+        PrimitiveReader.readByteData(heap.rawAccess(), targetOffset, length, reader);
 
         return idx;
     }
 
     public int readBytesDelta2(int idx) {
-        int trim = reader.readIntegerSigned(reader);
-        int utfLength = reader.readIntegerUnsigned(reader);
+        int trim = PrimitiveReader.readIntegerSigned(reader);
+        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+            PrimitiveReader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength, reader);
         } else {
             // append to head
-            reader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+            PrimitiveReader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength, reader);
         }
 
         return idx;
@@ -63,30 +61,30 @@ public class FieldReaderBytes {
     }
 
     public int readBytesData(int idx, int optOff) {
-        int length = reader.readIntegerUnsigned(reader) - optOff;
-        reader.readByteData(heap.rawAccess(), heap.allocate(idx, length), length);
+        int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
+        PrimitiveReader.readByteData(heap.rawAccess(), heap.allocate(idx, length), length, reader);
 
         return idx;
     }
 
     public int readBytesTailOptional2(int idx) {
-        int trim = reader.readIntegerUnsigned(reader);
+        int trim = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim == 0) {
             heap.setNull(idx);
             return idx;
         }
         trim--;
 
-        int utfLength = reader.readIntegerUnsigned(reader);
+        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
 
         // append to tail
-        reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+        PrimitiveReader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength, reader);
 
         return idx;
     }
 
     public int readBytesDeltaOptional2(final int idx) {
-        int trim = reader.readIntegerSigned(reader);
+        int trim = PrimitiveReader.readIntegerSigned(reader);
         if (0 == trim) {
             heap.setNull(idx);
             return idx;
@@ -95,14 +93,14 @@ public class FieldReaderBytes {
             trim--;// subtract for optional
         }
 
-        int utfLength = reader.readIntegerUnsigned(reader);
+        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
 
         if (trim >= 0) {
             // append to tail
-            reader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength);
+            PrimitiveReader.readByteData(heap.rawAccess(), heap.makeSpaceForAppend(idx, trim, utfLength), utfLength, reader);
         } else {
             // append to head
-            reader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength);
+            PrimitiveReader.readByteData(heap.rawAccess(), heap.makeSpaceForPrepend(idx, -trim, utfLength), utfLength, reader);
         }
 
         return idx;

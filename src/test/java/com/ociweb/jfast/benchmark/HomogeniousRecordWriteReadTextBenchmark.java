@@ -70,13 +70,13 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
 	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
-	static final PrimitiveReader pr = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
+	static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
 	
 		
 	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
-	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 24, 0, 4, 4, null,64, 8, 7);
+	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 24, 0, 4, 4, null,64, 8, 7);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -383,7 +383,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.
-			pr.reset();//for testing clear any data found in reader 
+			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
 			staticReader.reset(); //reset message to clear the previous values
 			
@@ -422,7 +422,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			staticWriter.flush();
 
 			input.reset(); //for testing reset bytes back to the beginning.
-			pr.reset();//for testing clear any data found in reader 
+			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticReader.reset(); //reset message to clear the previous values

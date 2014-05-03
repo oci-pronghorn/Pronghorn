@@ -45,29 +45,29 @@ public class TemplateCatalog {
 
     public TemplateCatalog(PrimitiveReader reader) {
 
-        int templatePow = reader.readIntegerUnsigned(reader);
+        int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
         assert (templatePow < 32) : "Corrupt catalog file";
         templateStartIdx = new int[1 << templatePow];
         templateLimitIdx = new int[1 << templatePow];
 
-        int fullScriptLength = reader.readIntegerUnsigned(reader);
+        int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
         scriptTokens = new int[fullScriptLength];
         scriptFieldIds = new int[fullScriptLength];
-        templatesInCatalog = reader.readIntegerUnsigned(reader);
+        templatesInCatalog = PrimitiveReader.readIntegerUnsigned(reader);
 
         loadTemplateScripts(reader);
 
-        int dictionaryCount = reader.readIntegerUnsigned(reader);
+        int dictionaryCount = PrimitiveReader.readIntegerUnsigned(reader);
         dictionaryMembers = new int[dictionaryCount][];
 
         loadDictionaryMembers(reader);
 
-        maxFieldId = reader.readIntegerUnsigned(reader);
+        maxFieldId = PrimitiveReader.readIntegerUnsigned(reader);
         // it is assumed that template PMaps are smaller or larger than the
         // other PMaps so these are kept separate
-        maxTemplatePMapSize = reader.readIntegerUnsigned(reader);
-        maxNonTemplatePMapSize = reader.readIntegerUnsigned(reader);
-        maxPMapDepth = reader.readIntegerUnsigned(reader);
+        maxTemplatePMapSize = PrimitiveReader.readIntegerUnsigned(reader);
+        maxNonTemplatePMapSize = PrimitiveReader.readIntegerUnsigned(reader);
+        maxPMapDepth = PrimitiveReader.readIntegerUnsigned(reader);
 
         // System.err.println("PMaps sizes templates:"+maxTemplatePMapSize+" nonTemplates:"+maxNonTemplatePMapSize+" both should be very small for best peformance.");
 
@@ -86,17 +86,17 @@ public class TemplateCatalog {
         int i = templatesInCatalog;
         while (--i >= 0) {
             // look up for script index given the templateId
-            int templateId = reader.readIntegerUnsigned(reader);
-            templateStartIdx[templateId] = reader.readIntegerUnsigned(reader);
-            templateLimitIdx[templateId] = reader.readIntegerUnsigned(reader);
+            int templateId = PrimitiveReader.readIntegerUnsigned(reader);
+            templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            templateLimitIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
             // System.err.println("templateId "+templateId);
         }
         // System.err.println("total:"+templatesInCatalog);
 
         i = scriptTokens.length;
         while (--i >= 0) {
-            scriptTokens[i] = reader.readIntegerSigned(reader);
-            scriptFieldIds[i] = reader.readIntegerUnsigned(reader);
+            scriptTokens[i] = PrimitiveReader.readIntegerSigned(reader);
+            scriptFieldIds[i] = PrimitiveReader.readIntegerUnsigned(reader);
         }
 
         // System.err.println("script tokens/fields "+scriptTokens.length);//46
@@ -156,11 +156,11 @@ public class TemplateCatalog {
         int dictionaryCount = dictionaryMembers.length;
         int d = dictionaryCount;
         while (--d >= 0) {
-            int h = reader.readIntegerUnsigned(reader);// length of reset script (eg
+            int h = PrimitiveReader.readIntegerUnsigned(reader);// length of reset script (eg
                                                  // member list)
             int[] members = new int[h];
             while (--h >= 0) {
-                members[h] = reader.readIntegerSigned(reader);
+                members[h] = PrimitiveReader.readIntegerSigned(reader);
             }
             dictionaryMembers[d] = members;
         }

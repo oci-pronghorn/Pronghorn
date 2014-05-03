@@ -112,7 +112,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         if (neededSpaceOrTemplate < 0) {
             
             // checking EOF first before checking for blocked queue
-            if (reader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
+            if (PrimitiveReader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
                 //System.err.println(messageCount);
                 return 0;
             }
@@ -159,7 +159,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         // /read prefix bytes if any (only used by some implementations)
         if (preambleDataLength != 0) {
             assert (readerDispatch.gatherReadData(readerDispatch.reader, "Preamble"));
-            reader.readByteData(preamble, 0, preamble.length);
+            PrimitiveReader.readByteData(preamble, 0, preamble.length, reader);
 
             int i = 0;
             int s = preamble.length;

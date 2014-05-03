@@ -36,7 +36,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     PrimitiveWriter pw;
 
     FASTInputByteArray input;
-    PrimitiveReader pr;
+    PrimitiveReader reader;
 
     // NO PMAP
     // NONE, DELTA, and CONSTANT(non-optional)
@@ -170,7 +170,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         // if (null==fr) {
-        fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
+        fr = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
         // } else {
         // //pr.reset();
         // fr.reset();
@@ -273,17 +273,17 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     }
 
     protected long totalRead() {
-        return pr.totalRead();
+        return PrimitiveReader.totalRead(reader);
     }
 
     protected void resetInputReader() {
         input.reset();
-        pr.reset();
+        PrimitiveReader.reset(reader);
     }
 
     protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
         input = new FASTInputByteArray(writtenData, writtenBytes);
-        pr = new PrimitiveReader(4096, input, maxGroupCount * 10);
+        reader = new PrimitiveReader(4096, input, maxGroupCount * 10);
     }
 
 }

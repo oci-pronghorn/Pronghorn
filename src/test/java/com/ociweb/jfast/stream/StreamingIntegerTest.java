@@ -31,7 +31,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	PrimitiveWriter pw;
 	
 	FASTInputByteArray input;
-	PrimitiveReader pr;
+	PrimitiveReader reader;
 
 	int MASK = 0xF;
 	
@@ -155,7 +155,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTReaderDispatch fr = new FASTReaderDispatch(pr, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
+		FASTReaderDispatch fr = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -232,17 +232,17 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 
 
 	protected long totalRead() {
-		return pr.totalRead();
+		return PrimitiveReader.totalRead(reader);
 	}
 	
 	protected void resetInputReader() {
 		input.reset();
-		pr.reset();
+		PrimitiveReader.reset(reader);
 	}
 
 	protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
 		input = new FASTInputByteArray(writtenData,writtenBytes);
-		pr = new PrimitiveReader(4096, input, maxGroupCount*10);
+		reader = new PrimitiveReader(4096, input, maxGroupCount*10);
 	}
 
 	

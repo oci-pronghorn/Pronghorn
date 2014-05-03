@@ -12,15 +12,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
-import javax.xml.parsers.ParserConfigurationException;
-
 import org.openfast.Message;
 import org.openfast.MessageInputStream;
 import org.openfast.impl.CmeMessageBlockReader;
 import org.openfast.template.MessageTemplate;
 import org.openfast.template.loader.MessageTemplateLoader;
 import org.openfast.template.loader.XMLMessageTemplateLoader;
-import org.xml.sax.SAXException;
 
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.loader.TemplateCatalog;
@@ -36,7 +33,7 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 public class Complex30000Benchmark extends Benchmark {
 
 	FASTInputByteArray fastInput;
-	PrimitiveReader primitiveReader;
+	PrimitiveReader reader;
 	FASTDynamicReader dynamicReader;
 	FASTRingBuffer queue;
 	TemplateCatalog catalog;
@@ -44,7 +41,7 @@ public class Complex30000Benchmark extends Benchmark {
 	
 	public Complex30000Benchmark() {
 		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-		catalog = new TemplateCatalog(new PrimitiveReader(templateCatalogInput));
+		catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
 		
 		byte prefixSize = 4;
 		catalog.setMessagePreambleSize(prefixSize);	
@@ -68,8 +65,8 @@ public class Complex30000Benchmark extends Benchmark {
 			assertEquals(testData.length,readBytes);
 			
 			fastInput = new FASTInputByteArray(testData);
-			primitiveReader = new PrimitiveReader(fastInput);
-			FASTReaderDispatch readerDispatch = new FASTReaderDispatch(primitiveReader, 
+			reader = new PrimitiveReader(2048, fastInput, 32);
+			FASTReaderDispatch readerDispatch = new FASTReaderDispatch(reader, 
 							                    catalog.dictionaryFactory(), 
 							                    3, 
 							                    catalog.dictionaryMembers(), 
@@ -80,7 +77,7 @@ public class Complex30000Benchmark extends Benchmark {
 							                    catalog.fullScript(),
 							                    catalog.getMaxGroupDepth(), 8, 7); 
 
-			dynamicReader = new FASTDynamicReader(primitiveReader, catalog, readerDispatch);
+			dynamicReader = new FASTDynamicReader(reader, catalog, readerDispatch);
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -150,7 +147,7 @@ public class Complex30000Benchmark extends Benchmark {
 			//reset the data to run the test again.
 			////////
 			fastInput.reset();
-			primitiveReader.reset();
+			PrimitiveReader.reset(reader);
 			dynamicReader.reset(true);
 			
 		}
@@ -179,7 +176,7 @@ public class Complex30000Benchmark extends Benchmark {
 				fastCore(dynamicReader, result, queue);
 				
 				fastInput.reset();
-				primitiveReader.reset();
+				PrimitiveReader.reset(reader);
 				dynamicReader.reset(false);
 				
 			}
