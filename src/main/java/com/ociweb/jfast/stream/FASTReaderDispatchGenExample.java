@@ -7,7 +7,7 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-//TODO B, Generate header imports from FASTReaderDispach, and build public constructor from same arguments.
+//TODO: B, Generate header imports from FASTReaderDispach, and build public constructor from same arguments.
 
 public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
 

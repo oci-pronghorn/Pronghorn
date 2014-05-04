@@ -66,13 +66,13 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
     static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 
-    static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+    static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
     static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount * 10);
 
     static final int[] intTestData = new int[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
     static final long[] longTestData = new long[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
 
-    static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3,
+    static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3,
             new int[0][0], null, 64);
     static final FASTReaderDispatch staticReader = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,
             64, 8, 7);
@@ -227,7 +227,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         int pmapSize = 0;
         for (int i = 0; i < reps; i++) {
             output.reset(); // reset output to start of byte buffer
-            pw.reset(); // clear any values found in writer
+            writer.reset(writer); // clear any values found in writer
 
             // Not a normal part of read/write record and will slow down test
             // (would be needed per template)
@@ -265,7 +265,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         long result = 0;
         for (int i = 0; i < reps; i++) {
             output.reset(); // reset output to start of byte buffer
-            pw.reset(); // clear any values found in writer
+            writer.reset(writer); // clear any values found in writer
 
             // Not a normal part of read/write record and will slow down test
             // (would be needed per template)
@@ -290,7 +290,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                         int idx = token & staticWriter.intInstanceMask;
 
-                        FASTWriterDispatch.writeNullInt(token, pw, staticWriter.intValues, idx);
+                        FASTWriterDispatch.writeNullInt(token, writer, staticWriter.intValues, idx);
                     } else {
                         staticWriter.acceptIntegerSignedOptional(token, 1);
                     }
@@ -298,7 +298,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                         int idx = token & staticWriter.longInstanceMask;
 
-                        FASTWriterDispatch.writeNullLong(token, idx, pw, staticWriter.longValues);
+                        FASTWriterDispatch.writeNullLong(token, idx, writer, staticWriter.longValues);
                     } else {
                         staticWriter.acceptLongSignedOptional(token, mantissa);
                     }

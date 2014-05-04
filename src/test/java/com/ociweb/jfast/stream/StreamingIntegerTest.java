@@ -28,7 +28,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	boolean sendNulls        = true;
 		
 	FASTOutputByteArray output;
-	PrimitiveWriter pw;
+	PrimitiveWriter writer;
 	
 	FASTInputByteArray input;
 	PrimitiveReader reader;
@@ -107,7 +107,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
+		FASTWriterDispatch fw = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
 		
 		long start = System.nanoTime();
 		assert(operationIters>3) : "must allow operations to have 3 data points but only had "+operationIters;
@@ -217,17 +217,17 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	}
 
 	public long totalWritten() {
-		return pw.totalWritten();
+		return writer.totalWritten(writer);
 	}
 	
 	protected void resetOutputWriter() {
 		output.reset();
-		pw.reset();
+		writer.reset(writer);
 	}
 
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		pw = new PrimitiveWriter(4096, output, maxGroupCount, false);
+		writer = new PrimitiveWriter(4096, output, maxGroupCount, false);
 	}
 
 

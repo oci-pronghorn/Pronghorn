@@ -65,10 +65,6 @@ public final class PrimitiveWriter {
     private int nextBlockOffset = -1; // position to begin copy data from
     private int pendingPosition = 0; // new position after the read
 
-    public PrimitiveWriter(FASTOutput output) {
-        this(4096, output, 128, false);
-    }
-
     public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 
         // NOTE: POS_POS_MASK can be shortened to only match the length of
@@ -95,60 +91,60 @@ public final class PrimitiveWriter {
         output.init(new DataTransfer(this));
     }
 
-    public void reset() {
-        this.position = 0;
-        this.limit = 0;
-        this.safetyStackDepth = 0;
-        this.pMapIdxWorking = 7;
-        this.pMapByteAccum = 0;
-        this.flushSkipsIdxLimit = 0;
-        this.flushSkipsIdxPos = 0;
+    public static void reset(PrimitiveWriter writer) {
+        writer.position = 0;
+        writer.limit = 0;
+        writer.safetyStackDepth = 0;
+        writer.pMapIdxWorking = 7;
+        writer.pMapByteAccum = 0;
+        writer.flushSkipsIdxLimit = 0;
+        writer.flushSkipsIdxPos = 0;
 
-        this.totalWritten = 0;
+        writer.totalWritten = 0;
 
     }
 
-    public long totalWritten() {
-        return totalWritten;
+    public static long totalWritten(PrimitiveWriter writer) {
+        return writer.totalWritten;
     }
 
-    public int nextBlockSize() {
+    public static int nextBlockSize(PrimitiveWriter writer) {
         // return block size if the block is available
-        if (nextBlockSize > 0 || position == limit) {
-            assert (nextBlockSize != 0 || position == limit) : "nextBlockSize must be zero of position is at limit";
-            return nextBlockSize;
+        if (writer.nextBlockSize > 0 || writer.position == writer.limit) {
+            assert (writer.nextBlockSize != 0 || writer.position == writer.limit) : "nextBlockSize must be zero of position is at limit";
+            return writer.nextBlockSize;
         }
         // block was not available so build it
         // This check greatly helps None/Delta operations which do not use pmap.
-        if (flushSkipsIdxPos == flushSkipsIdxLimit) {
+        if (writer.flushSkipsIdxPos == writer.flushSkipsIdxLimit) {
             // all the data we have lines up with the end of the skip limit
             // nothing to skip so flush the full block
-            int avail = computeFlushToIndex() - (nextBlockOffset = position);
-            pendingPosition = position + (nextBlockSize = (avail >= BLOCK_SIZE) ? BLOCK_SIZE : avail);
+            int avail = computeFlushToIndex(writer) - (writer.nextBlockOffset = writer.position);
+            writer.pendingPosition = writer.position + (writer.nextBlockSize = (avail >= BLOCK_SIZE) ? BLOCK_SIZE : avail);
         } else {
-            buildNextBlockWithSkips();
+            buildNextBlockWithSkips(writer);
         }
-        return nextBlockSize;
+        return writer.nextBlockSize;
     }
 
     // TODO: X, investigate moving first block to the rest first.
-    private void buildNextBlockWithSkips() {
-        int sourceOffset = position;
-        int targetOffset = position;
+    private static void buildNextBlockWithSkips(PrimitiveWriter writer) {
+        int sourceOffset = writer.position;
+        int targetOffset = writer.position;
         int reqLength = BLOCK_SIZE;
 
         // do not change this value after this point we are committed to this
         // location.
-        nextBlockOffset = targetOffset;
+        writer.nextBlockOffset = targetOffset;
 
-        int localFlushSkipsIdxPos = flushSkipsIdxPos;
+        int localFlushSkipsIdxPos = writer.flushSkipsIdxPos;
 
-        int sourceStop = flushSkips[localFlushSkipsIdxPos];
+        int sourceStop = writer.flushSkips[localFlushSkipsIdxPos];
 
         // invariant for the loop
-        int temp = flushSkipsSize - 2;
-        final int localLastValid = (flushSkipsIdxLimit < temp) ? flushSkipsIdxLimit : temp;
-        final int endOfData = limit;
+        int temp = writer.flushSkipsSize - 2;
+        final int localLastValid = (writer.flushSkipsIdxLimit < temp) ? writer.flushSkipsIdxLimit : temp;
+        final int endOfData = writer.limit;
         final int finalStop = targetOffset + reqLength;
 
         int flushRequest = sourceStop - sourceOffset;
@@ -165,93 +161,93 @@ public final class PrimitiveWriter {
 
             // keep accumulating
             if (targetOffset != sourceOffset) {
-                System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
+                System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
             // stop becomes start so we can build a contiguous block
             targetOffset = targetStop;
             //
-            sourceOffset = flushSkips[++localFlushSkipsIdxPos]; // new position
+            sourceOffset = writer.flushSkips[++localFlushSkipsIdxPos]; // new position
                                                                 // in second
                                                                 // part of flush
                                                                 // skips
             // sourceStop is beginning of new skip.
             targetStop = targetOffset
-                    + (flushRequest = (sourceStop = flushSkips[++localFlushSkipsIdxPos]) - sourceOffset);
+                    + (flushRequest = (sourceStop = writer.flushSkips[++localFlushSkipsIdxPos]) - sourceOffset);
 
         }
 
         reqLength = finalStop - targetOffset; // remaining bytes required
-        flushSkipsIdxPos = localFlushSkipsIdxPos; // write back the local
+        writer.flushSkipsIdxPos = localFlushSkipsIdxPos; // write back the local
                                                   // changes
 
-        finishBuildingBlock(endOfData, sourceOffset, targetOffset, reqLength);
+        finishBuildingBlock(endOfData, sourceOffset, targetOffset, reqLength, writer);
     }
 
-    private void finishBuildingBlock(final int endOfData, int sourceOffset, int targetOffset, int reqLength) {
+    private static void finishBuildingBlock(final int endOfData, int sourceOffset, int targetOffset, int reqLength, PrimitiveWriter writer) {
         int flushRequest = endOfData - sourceOffset;
         if (flushRequest >= reqLength) {
-            finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength);
+            finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength, writer);
         } else {
             // not enough data to fill full block, we are out of data to push.
 
             // reset to zero to save space if possible
-            if (flushSkipsIdxPos == flushSkipsIdxLimit) {
-                flushSkipsIdxPos = flushSkipsIdxLimit = 0;
+            if (writer.flushSkipsIdxPos == writer.flushSkipsIdxLimit) {
+                writer.flushSkipsIdxPos = writer.flushSkipsIdxLimit = 0;
             }
             // keep accumulating
             if (sourceOffset != targetOffset) {
-                System.arraycopy(buffer, sourceOffset, buffer, targetOffset, flushRequest);
+                System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
-            nextBlockSize = BLOCK_SIZE - (reqLength - flushRequest);
-            pendingPosition = sourceOffset + flushRequest;
+            writer.nextBlockSize = BLOCK_SIZE - (reqLength - flushRequest);
+            writer.pendingPosition = sourceOffset + flushRequest;
         }
     }
 
-    private void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength) {
+    private static void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength, PrimitiveWriter writer) {
         // more to flush than we need
         if (sourceOffset != targetOffset) {
-            System.arraycopy(buffer, sourceOffset, buffer, targetOffset, reqLength);
+            System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, reqLength);
         }
-        nextBlockSize = BLOCK_SIZE;
-        pendingPosition = sourceOffset + reqLength;
+        writer.nextBlockSize = BLOCK_SIZE;
+        writer.pendingPosition = sourceOffset + reqLength;
     }
 
-    public int nextOffset() {
-        if (nextBlockSize <= 0) {
+    public static int nextOffset(PrimitiveWriter writer) {
+        if (writer.nextBlockSize <= 0) {
             throw new FASTException();
         }
-        int nextOffset = nextBlockOffset;
+        int nextOffset = writer.nextBlockOffset;
 
-        totalWritten += nextBlockSize;
+        writer.totalWritten += writer.nextBlockSize;
 
-        position = pendingPosition;
-        nextBlockSize = -1;
-        nextBlockOffset = -1;
-        pendingPosition = 0;
+        writer.position = writer.pendingPosition;
+        writer.nextBlockSize = -1;
+        writer.nextBlockOffset = -1;
+        writer.pendingPosition = 0;
 
-        if (0 == safetyStackDepth && 0 == flushSkipsIdxLimit && position == limit) {
-            position = limit = 0;
+        if (0 == writer.safetyStackDepth && 0 == writer.flushSkipsIdxLimit && writer.position == writer.limit) {
+            writer.position = writer.limit = 0;
         }
 
         return nextOffset;
     }
 
-    public final int bytesReadyToWrite() {
-        return limit - position;
+    public static final int bytesReadyToWrite(PrimitiveWriter writer) {
+        return writer.limit - writer.position;
     }
 
-    public final void flush() { // flush all
-        output.flush();
+    public static final void flush(PrimitiveWriter writer) { // flush all
+        writer.output.flush();
     }
 
-    protected int computeFlushToIndex() {
-        if (safetyStackDepth > 0) {// TODO: T, this never happens according to
+    protected static int computeFlushToIndex(PrimitiveWriter writer) {
+        if (writer.safetyStackDepth > 0) {// TODO: T, this never happens according to
                                    // coverage test?
             // only need to check first entry on stack the rest are larger
             // values
             // NOTE: using safetyStackPosPos here may not be the best performant
             // idea.
-            int safetyLimit = (((int) safetyStackPosPos[0]) & POS_POS_MASK) - 1;// still
+            int safetyLimit = (((int) writer.safetyStackPosPos[0]) & POS_POS_MASK) - 1;// still
                                                                                 // modifying
                                                                                 // this
                                                                                 // position
@@ -261,9 +257,9 @@ public final class PrimitiveWriter {
                                                                                 // ready
                                                                                 // to
                                                                                 // go.
-            return (safetyLimit < limit ? safetyLimit : limit);
+            return (safetyLimit < writer.limit ? safetyLimit : writer.limit);
         } else {
-            return limit;
+            return writer.limit;
         }
     }
 
@@ -311,9 +307,9 @@ public final class PrimitiveWriter {
     public final void writeLongSignedOptional(long value) {
 
         if (value >= 0) {
-            writeLongSignedPos(value + 1);
+            writeLongSignedPos(value + 1, this);
         } else {
-            writeLongSignedNeg(value);
+            writeLongSignedNeg(value, this);
         }
 
     }
@@ -321,206 +317,206 @@ public final class PrimitiveWriter {
     public final void writeLongSigned(long value) {
 
         if (value >= 0) {
-            writeLongSignedPos(value);
+            writeLongSignedPos(value, this);
         } else {
-            writeLongSignedNeg(value);
+            writeLongSignedNeg(value, this);
         }
 
     }
 
-    private final void writeLongSignedNeg(long value) {
+    private static final void writeLongSignedNeg(long value, PrimitiveWriter writer) {
         // using absolute value avoids tricky word length issues
         long absv = -value;
 
         if (absv <= 0x0000000000000040l) {
             if (absv < 0) { // Must be most neg long because it will remain
                             // negative.
-                writeLongSignedMostNegative();
+                writeLongSignedMostNegative(writer);
                 return;
             }
 
-            if (buffer.length - limit < 1) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 1) {
+                writer.output.flush();
             }
         } else {
             if (absv <= 0x0000000000002000l) {
-                if (buffer.length - limit < 2) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 2) {
+                    writer.output.flush();
                 }
             } else {
 
                 if (absv <= 0x0000000000100000l) {
-                    if (buffer.length - limit < 3) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 3) {
+                        writer.output.flush();
                     }
                 } else {
 
                     if (absv <= 0x0000000008000000l) {
-                        if (buffer.length - limit < 4) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 4) {
+                            writer.output.flush();
                         }
                     } else {
                         if (absv <= 0x0000000400000000l) {
 
-                            if (buffer.length - limit < 5) {
-                                output.flush();
+                            if (writer.buffer.length - writer.limit < 5) {
+                                writer.output.flush();
                             }
                         } else {
-                            writeLongSignedNegSlow(absv, value);
+                            writeLongSignedNegSlow(absv, value, writer);
                             return;
                         }
-                        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
+                        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
                     }
-                    buffer[limit++] = (byte) (((value >> 21) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 14) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 7) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
 
     }
 
-    private void writeLongSignedMostNegative() {
-        if (limit > buffer.length - 10) {
-            output.flush();
+    private static void writeLongSignedMostNegative(PrimitiveWriter writer) {
+        if (writer.limit > writer.buffer.length - 10) {
+            writer.output.flush();
         }
         // encode the most negative possible number
-        buffer[limit++] = (byte) (0x7F); // 8... .... .... ....
-        buffer[limit++] = (byte) (0x00); // 7F.. .... .... ....
-        buffer[limit++] = (byte) (0x00); // . FE .... .... ....
-        buffer[limit++] = (byte) (0x00); // ...1 FC.. .... ....
-        buffer[limit++] = (byte) (0x00); // .... .3F8 .... ....
-        buffer[limit++] = (byte) (0x00); // .... ...7 F... ....
-        buffer[limit++] = (byte) (0x00); // .... .... .FE. ....
-        buffer[limit++] = (byte) (0x00); // .... .... ...1 FC..
-        buffer[limit++] = (byte) (0x00); // .... .... .... 3F8.
-        buffer[limit++] = (byte) (0x80); // .... .... .... ..7f
+        writer.buffer[writer.limit++] = (byte) (0x7F); // 8... .... .... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // 7F.. .... .... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // . FE .... .... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // ...1 FC.. .... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // .... .3F8 .... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // .... ...7 F... ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // .... .... .FE. ....
+        writer.buffer[writer.limit++] = (byte) (0x00); // .... .... ...1 FC..
+        writer.buffer[writer.limit++] = (byte) (0x00); // .... .... .... 3F8.
+        writer.buffer[writer.limit++] = (byte) (0x80); // .... .... .... ..7f
     }
 
-    private final void writeLongSignedNegSlow(long absv, long value) {
+    private static final void writeLongSignedNegSlow(long absv, long value, PrimitiveWriter writer) {
         if (absv <= 0x0000020000000000l) {
-            if (buffer.length - limit < 6) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 6) {
+                writer.output.flush();
             }
         } else {
-            writeLongSignedNegSlow2(absv, value);
+            writeLongSignedNegSlow2(absv, value, writer);
         }
 
         // used by all
-        buffer[limit++] = (byte) (((value >> 35) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 21) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 14) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 7) & 0x7F));
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value >> 35) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
     }
 
-    private void writeLongSignedNegSlow2(long absv, long value) {
+    private static void writeLongSignedNegSlow2(long absv, long value, PrimitiveWriter write) {
         if (absv <= 0x0001000000000000l) {
-            if (buffer.length - limit < 7) {
-                output.flush();
+            if (write.buffer.length - write.limit < 7) {
+                write.output.flush();
             }
         } else {
             if (absv <= 0x0080000000000000l) {
-                if (buffer.length - limit < 8) {
-                    output.flush();
+                if (write.buffer.length - write.limit < 8) {
+                    write.output.flush();
                 }
             } else {
-                if (buffer.length - limit < 9) {
-                    output.flush();
+                if (write.buffer.length - write.limit < 9) {
+                    write.output.flush();
                 }
-                buffer[limit++] = (byte) (((value >> 56) & 0x7F));
+                write.buffer[write.limit++] = (byte) (((value >> 56) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 49) & 0x7F));
+            write.buffer[write.limit++] = (byte) (((value >> 49) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value >> 42) & 0x7F));
+        write.buffer[write.limit++] = (byte) (((value >> 42) & 0x7F));
     }
 
-    private final void writeLongSignedPos(long value) {
+    private static final void writeLongSignedPos(long value, PrimitiveWriter writer) {
 
         if (value < 0x0000000000000040l) {
-            if (buffer.length - limit < 1) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 1) {
+                writer.output.flush();
             }
         } else {
             if (value < 0x0000000000002000l) {
-                if (buffer.length - limit < 2) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 2) {
+                    writer.output.flush();
                 }
             } else {
 
                 if (value < 0x0000000000100000l) {
-                    if (buffer.length - limit < 3) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 3) {
+                        writer.output.flush();
                     }
                 } else {
 
                     if (value < 0x0000000008000000l) {
-                        if (buffer.length - limit < 4) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 4) {
+                            writer.output.flush();
                         }
                     } else {
                         if (value < 0x0000000400000000l) {
 
-                            if (buffer.length - limit < 5) {
-                                output.flush();
+                            if (writer.buffer.length - writer.limit < 5) {
+                                writer.output.flush();
                             }
                         } else {
-                            writeLongSignedPosSlow(value);
+                            writeLongSignedPosSlow(value, writer);
                             return;
                         }
-                        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
+                        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
                     }
-                    buffer[limit++] = (byte) (((value >> 21) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 14) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 7) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
     }
 
-    private final void writeLongSignedPosSlow(long value) {
+    private static final void writeLongSignedPosSlow(long value, PrimitiveWriter writer) {
         if (value < 0x0000020000000000l) {
-            if (buffer.length - limit < 6) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 6) {
+                writer.output.flush();
             }
         } else {
             if (value < 0x0001000000000000l) {
-                if (buffer.length - limit < 7) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 7) {
+                    writer.output.flush();
                 }
             } else {
                 if (value < 0x0080000000000000l) {
-                    if (buffer.length - limit < 8) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 8) {
+                        writer.output.flush();
                     }
                 } else {
                     if (value < 0x4000000000000000l) {
-                        if (buffer.length - limit < 9) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 9) {
+                            writer.output.flush();
                         }
                     } else {
-                        if (buffer.length - limit < 10) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 10) {
+                            writer.output.flush();
                         }
-                        buffer[limit++] = (byte) (((value >> 63) & 0x7F));
+                        writer.buffer[writer.limit++] = (byte) (((value >> 63) & 0x7F));
                     }
-                    buffer[limit++] = (byte) (((value >> 56) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 56) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 49) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 49) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 42) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 42) & 0x7F));
         }
 
         // used by all
-        buffer[limit++] = (byte) (((value >> 35) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 21) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 14) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 7) & 0x7F));
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value >> 35) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
     }
 
     public final void writeLongUnsigned(long value) {
@@ -552,7 +548,7 @@ public final class PrimitiveWriter {
                                 output.flush();
                             }
                         } else {
-                            writeLongUnsignedSlow(value);
+                            writeLongUnsignedSlow(value, this);
                             return;
                         }
                         buffer[limit++] = (byte) (((value >> 28) & 0x7F));
@@ -566,162 +562,162 @@ public final class PrimitiveWriter {
         buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
     }
 
-    private final void writeLongUnsignedSlow(long value) {
+    private static final void writeLongUnsignedSlow(long value, PrimitiveWriter writer) {
         if (value < 0x0000040000000000l) {
-            if (buffer.length - limit < 6) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 6) {
+                writer.output.flush();
             }
         } else {
-            writeLongUnsignedSlow2(value);
+            writeLongUnsignedSlow2(value, writer);
         }
 
         // used by all
-        buffer[limit++] = (byte) (((value >> 35) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 21) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 14) & 0x7F));
-        buffer[limit++] = (byte) (((value >> 7) & 0x7F));
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value >> 35) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
 
     }
 
-    private void writeLongUnsignedSlow2(long value) {
+    private static void writeLongUnsignedSlow2(long value, PrimitiveWriter writer) {
         if (value < 0x0002000000000000l) {
-            if (buffer.length - limit < 7) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 7) {
+                writer.output.flush();
             }
         } else {
             if (value < 0x0100000000000000l) {
-                if (buffer.length - limit < 8) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 8) {
+                    writer.output.flush();
                 }
             } else {
                 if (value < 0x8000000000000000l) {
-                    if (buffer.length - limit < 9) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 9) {
+                        writer.output.flush();
                     }
                 } else {
-                    if (buffer.length - limit < 10) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 10) {
+                        writer.output.flush();
                     }
-                    buffer[limit++] = (byte) (((value >> 63) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 63) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 56) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 56) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 49) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 49) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value >> 42) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 42) & 0x7F));
     }
 
     public final void writeIntegerSignedOptional(int value) {
         if (value >= 0) {
-            writeIntegerSignedPos(value + 1);
+            writeIntegerSignedPos(value + 1, this);
         } else {
-            writeIntegerSignedNeg(value);
+            writeIntegerSignedNeg(value, this);
         }
     }
 
     public final void writeIntegerSigned(int value) {
         if (value >= 0) {
-            writeIntegerSignedPos(value);
+            writeIntegerSignedPos(value, this);
         } else {
-            writeIntegerSignedNeg(value);
+            writeIntegerSignedNeg(value, this);
         }
     }
 
-    private void writeIntegerSignedNeg(int value) {
+    private static void writeIntegerSignedNeg(int value, PrimitiveWriter writer) {
         // using absolute value avoids tricky word length issues
         int absv = -value;
 
         if (absv <= 0x00000040) {
             if (absv < 0) {// Integer.MIN_VALUE is the same neg value after -
                            // operator
-                writeIntegerSignedMostNegative();
+                writeIntegerSignedMostNegative(writer);
                 return;
             }
 
-            if (buffer.length - limit < 1) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 1) {
+                writer.output.flush();
             }
         } else {
             if (absv <= 0x00002000) {
-                if (buffer.length - limit < 2) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 2) {
+                    writer.output.flush();
                 }
             } else {
                 if (absv <= 0x00100000) {
-                    if (buffer.length - limit < 3) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 3) {
+                        writer.output.flush();
                     }
                 } else {
                     if (absv <= 0x08000000) {
-                        if (buffer.length - limit < 4) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 4) {
+                            writer.output.flush();
                         }
                     } else {
-                        if (buffer.length - limit < 5) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 5) {
+                            writer.output.flush();
                         }
-                        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
+                        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
                     }
-                    buffer[limit++] = (byte) (((value >> 21) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 14) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 7) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
 
     }
 
-    private void writeIntegerSignedMostNegative() {
-        if (limit > buffer.length - 5) {
-            output.flush();
+    private static void writeIntegerSignedMostNegative(PrimitiveWriter writer) {
+        if (writer.limit > writer.buffer.length - 5) {
+            writer.output.flush();
         }
         // encode the most negative possible number
         // top stop bit remains zero but the next top bit is 1
-        buffer[limit++] = (byte) (0x40);
-        buffer[limit++] = (byte) (0x00);
-        buffer[limit++] = (byte) (0x00);
-        buffer[limit++] = (byte) (0x00);
-        buffer[limit++] = (byte) (0x80);
+        writer.buffer[writer.limit++] = (byte) (0x40);
+        writer.buffer[writer.limit++] = (byte) (0x00);
+        writer.buffer[writer.limit++] = (byte) (0x00);
+        writer.buffer[writer.limit++] = (byte) (0x00);
+        writer.buffer[writer.limit++] = (byte) (0x80);
         return;
     }
 
-    private void writeIntegerSignedPos(int value) {
+    private static void writeIntegerSignedPos(int value, PrimitiveWriter writer) {
 
         if (value < 0x00000040) {
-            if (buffer.length - limit < 1) {
-                output.flush();
+            if (writer.buffer.length - writer.limit < 1) {
+                writer.output.flush();
             }
         } else {
             if (value < 0x00002000) {
-                if (buffer.length - limit < 2) {
-                    output.flush();
+                if (writer.buffer.length - writer.limit < 2) {
+                    writer.output.flush();
                 }
             } else {
                 if (value < 0x00100000) {
-                    if (buffer.length - limit < 3) {
-                        output.flush();
+                    if (writer.buffer.length - writer.limit < 3) {
+                        writer.output.flush();
                     }
                 } else {
                     if (value < 0x08000000) {
-                        if (buffer.length - limit < 4) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 4) {
+                            writer.output.flush();
                         }
                     } else {
-                        if (buffer.length - limit < 5) {
-                            output.flush();
+                        if (writer.buffer.length - writer.limit < 5) {
+                            writer.output.flush();
                         }
-                        buffer[limit++] = (byte) (((value >> 28) & 0x7F));
+                        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
                     }
-                    buffer[limit++] = (byte) (((value >> 21) & 0x7F));
+                    writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
                 }
-                buffer[limit++] = (byte) (((value >> 14) & 0x7F));
+                writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
             }
-            buffer[limit++] = (byte) (((value >> 7) & 0x7F));
+            writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
         }
-        buffer[limit++] = (byte) (((value & 0x7F) | 0x80));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
     }
 
     public final void writeIntegerUnsigned(int value) {
@@ -886,18 +882,18 @@ public final class PrimitiveWriter {
 
     // called by ever field that needs to set a bit either 1 or 0
     // must be fast because it is frequently called.
-    public final void writePMapBit(byte bit) {
+    public static final void writePMapBit(byte bit, PrimitiveWriter writer) {
 
-        if (0 == --pMapIdxWorking) {
+        if (0 == --writer.pMapIdxWorking) {
             // TODO: X, note we only corrupt the buffer cache line once every 7
             // bits but it must be less! what if we cached the buffer writes?
-            assert (safetyStackDepth > 0) : "PMap must be open before write of bits.";
-            int idx = (int) (POS_POS_MASK & safetyStackPosPos[safetyStackDepth - 1]++);
+            assert (writer.safetyStackDepth > 0) : "PMap must be open before write of bits.";
+            int idx = (int) (POS_POS_MASK & writer.safetyStackPosPos[writer.safetyStackDepth - 1]++);
 
             // save this byte and if it was not a zero save that fact as well
             // //NOTE: pos pos will not rollover so can inc
-            if (0 != (buffer[idx] = (byte) (bit == 0 ? pMapByteAccum : (pMapByteAccum | bit)))) {
-                long stackFrame = safetyStackPosPos[safetyStackDepth - 1];
+            if (0 != (writer.buffer[idx] = (byte) (bit == 0 ? writer.pMapByteAccum : (writer.pMapByteAccum | bit)))) {
+                long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
                 // set the last known non zero bit so we can avoid scanning for
                 // it.
                 int lastPopulatedIdx = (int) (POS_POS_MASK & stackFrame);// one
@@ -911,16 +907,16 @@ public final class PrimitiveWriter {
                                                                          // range
                 // writing the pmap bit is the ideal place to detect overflow of
                 // the bits based on expectations.
-                assert (lastPopulatedIdx < flushSkips[(int) (stackFrame >> 32) + 1]) : "Too many bits in PMAP.";
-                flushSkips[(int) (stackFrame >> 32)] = lastPopulatedIdx;
+                assert (lastPopulatedIdx < writer.flushSkips[(int) (stackFrame >> 32) + 1]) : "Too many bits in PMAP.";
+                writer.flushSkips[(int) (stackFrame >> 32)] = lastPopulatedIdx;
             }
 
-            pMapIdxWorking = 7;
-            pMapByteAccum = 0;
+            writer.pMapIdxWorking = 7;
+            writer.pMapByteAccum = 0;
 
         } else {
             if (bit != 0) {
-                pMapByteAccum |= (bit << pMapIdxWorking);
+                writer.pMapByteAccum |= (bit << writer.pMapIdxWorking);
             }
         }
     }
@@ -1102,9 +1098,9 @@ public final class PrimitiveWriter {
     public void writeIntegerUnsignedCopy(int value, int idx, int[] dictionary) {
 
         if (value == dictionary[idx]) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(dictionary[idx] = value);
         }
     }
@@ -1112,9 +1108,9 @@ public final class PrimitiveWriter {
     public void writeIntegerUnsignedCopyOptional(int value, int idx, int[] dictionary) {
 
         if (++value == dictionary[idx]) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(dictionary[idx] = value);
         }
     }
@@ -1122,9 +1118,9 @@ public final class PrimitiveWriter {
     public void writeIntegerUnsignedDefault(int value, int constDefault) {
 
         if (value == constDefault) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(value);
         }
     }
@@ -1132,9 +1128,9 @@ public final class PrimitiveWriter {
     public void writeIntegerUnsignedDefaultOptional(int value, int constDefault) {
 
         if (++value == constDefault) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(value);
         }
     }
@@ -1144,10 +1140,10 @@ public final class PrimitiveWriter {
         int incVal;
         if (value == (incVal = dictionary[idx] + 1)) {
             dictionary[idx] = incVal;
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
             dictionary[idx] = value;
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(value);
         }
     }
@@ -1156,10 +1152,10 @@ public final class PrimitiveWriter {
 
         if (0 != dictionary[idx] && value == dictionary[idx]++) {// not null and
                                                                  // matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
             int tmp = dictionary[idx] = 1 + value;
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerUnsigned(tmp);
         }
     }
@@ -1178,46 +1174,37 @@ public final class PrimitiveWriter {
 
     public void writeIntegerSignedCopy(int value, int idx, int[] dictionary) {
         if (value == dictionary[idx]) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(dictionary[idx] = value);
         }
     }
 
     public void writeIntegerSignedCopyOptional(int value, int idx, int[] dictionary) {
-
-        if (value >= 0) {
-            value++;
-        }
-
         if (value == dictionary[idx]) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(dictionary[idx] = value);
         }
     }
 
-    public void writeIntegerSignedDefault(int value, int idx, int constDefault) {
+    public void writeIntegerSignedDefault(int value, int constDefault) {
 
         if (value == constDefault) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(value);
         }
     }
 
-    public void writeIntegerSignedDefaultOptional(int value, int idx, int constDefault) {
-
-        if (value >= 0) {
-            value++;// room for null
-        }
+    public void writeIntegerSignedDefaultOptional(int value, int constDefault) {
         if (value == constDefault) {// matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(value);
         }
     }
@@ -1226,24 +1213,18 @@ public final class PrimitiveWriter {
 
         dictionary[idx] = value;
         if (value == (dictionary[idx] + 1)) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(value);
         }
     }
 
-    public void writeIntegerSignedIncrementOptional(int value, int idx, int[] dictionary) {
-
-        if (value >= 0) {
-            value++;
-        }
-        int last = dictionary[idx];
-        dictionary[idx] = value;
+    public void writeIntegerSignedIncrementOptional(int value, int last) {
         if (0 != last && value == 1 + last) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeIntegerSigned(value);
         }
     }
@@ -1275,98 +1256,95 @@ public final class PrimitiveWriter {
     public void writeLongUnsignedCopy(long value, int idx, long[] dictionary) {
 
         if (value == dictionary[idx]) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(dictionary[idx] = value);
         }
     }
 
     public void writeLongUnsignedCopyOptional(long value, int idx, long[] dictionary) {
-
-        value++;// zero is held for null
-
         if (value == dictionary[idx]) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(dictionary[idx] = value);
         }
     }
 
-    public void writeLongUnsignedDefault2(long value, long constDefault) {
+    public void writeLongUnsignedDefault(long value, long constDefault) {
         if (value == constDefault) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(value);
         }
     }
 
-    public void writneLongUnsignedDefaultOptional2(long value, long constDefault) {
+    public void writneLongUnsignedDefaultOptional(long value, long constDefault) {
         // room for zero
         if (++value == constDefault) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(value);
         }
     }
 
-    public void writeLongUnsignedIncrement2(long value, int idx, long[] dictionary) {
+    public void writeLongUnsignedIncrement(long value, int idx, long[] dictionary) {
         long incVal = dictionary[idx] + 1;
         if (value == incVal) {
             dictionary[idx] = incVal;
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
             dictionary[idx] = value;
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(value);
         }
     }
 
-    public void writeLongUnsignedIncrementOptional2(long value, int idx, long[] dictionary) {
+    public void writeLongUnsignedIncrementOptional(long value, int idx, long[] dictionary) {
         if (0 != dictionary[idx] && value == dictionary[idx]++) {// not null and
                                                                  // matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongUnsigned(dictionary[idx] = 1 + value);
         }
     }
 
-    public void writeLongSignedCopy2(long value, int idx, long[] dictionary) {
+    public void writeLongSignedCopy(long value, int idx, long[] dictionary) {
         if (value == dictionary[idx]) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongSigned(dictionary[idx] = value);
         }
     }
 
-    public void writeLongSignedDefault2(long value, long constDefault) {
+    public void writeLongSignedDefault(long value, long constDefault) {
         if (value == constDefault) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongSigned(value);
         }
     }
 
-    public void writeLongSignedIncrement2(long value, long last) {
+    public void writeLongSignedIncrement(long value, long last) {
         if (value == (1 + last)) {
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongSigned(value);
         }
     }
 
-    public void writeLongSignedIncrementOptional2(long value, long last) {
+    public void writeLongSignedIncrementOptional(long value, long last) {
         if (0 != last && value == (1 + last)) {// not null and matches
-            writePMapBit((byte) 0);
+            writePMapBit((byte) 0, this);
         } else {
-            writePMapBit((byte) 1);
+            writePMapBit((byte) 1, this);
             writeLongSigned(value);
         }
     }

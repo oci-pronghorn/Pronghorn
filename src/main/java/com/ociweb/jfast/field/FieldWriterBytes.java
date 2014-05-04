@@ -40,9 +40,9 @@ public class FieldWriterBytes {
 	
 	private void writePMapNull(int token) {
 		if (byteHeap.isNull(token & INSTANCE_MASK)) { //stored value was null;
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeNull();
 		}
 	}
@@ -51,9 +51,9 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 
 		if (byteHeap.isNull(idx)) { //stored value was null;
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeNull();
 			byteHeap.setNull(idx);
 		}
@@ -76,7 +76,7 @@ public class FieldWriterBytes {
 					writer.writeNull();                 //no pmap,  no change to last value  
 				} else {
 					//const optional
-					writer.writePMapBit((byte)0);       //pmap only
+					writer.writePMapBit((byte)0, writer);       //pmap only
 				}			
 			} else {	
 				//default
@@ -163,10 +163,10 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		//System.err.println("AA");
 		if (byteHeap.equals(idx, value)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(value.remaining());
 			byteHeap.set(idx, value);//position is NOT modified
 			writer.writeByteArrayData(value); //this moves the position in value
@@ -177,10 +177,10 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 			value.position(value.limit());//skip over the data just like we wrote it.
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(value.remaining());
 			writer.writeByteArrayData(value); //this moves the position in value
 		}
@@ -202,7 +202,7 @@ public class FieldWriterBytes {
 	}
 	
 	public void writeBytesConstantOptional(int token) {
-		writer.writePMapBit((byte)1);
+		writer.writePMapBit((byte)1, writer);
 		//the writeNull will take care of the rest.
 	}
 	
@@ -259,9 +259,9 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (byteHeap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(length+1);
 			writer.writeByteArrayData(value,offset,length);
 			byteHeap.set(idx, value, offset, length);
@@ -272,9 +272,9 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(length+1);
 			writer.writeByteArrayData(value,offset,length);
 		}
@@ -302,10 +302,10 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (byteHeap.equals(idx, value, offset, length)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		}
 		else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(length);
 			writer.writeByteArrayData(value,offset,length);
 			byteHeap.set(idx, value, offset, length);
@@ -316,9 +316,9 @@ public class FieldWriterBytes {
 		int idx = token & INSTANCE_MASK;
 		
 		if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-			writer.writePMapBit((byte)0);
+			writer.writePMapBit((byte)0, writer);
 		} else {
-			writer.writePMapBit((byte)1);
+			writer.writePMapBit((byte)1, writer);
 			writer.writeIntegerUnsigned(length);
 			writer.writeByteArrayData(value,offset,length);
 		}

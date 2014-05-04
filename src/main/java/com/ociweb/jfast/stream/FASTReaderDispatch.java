@@ -195,7 +195,7 @@ public class FASTReaderDispatch {
                             // 0110? Decimal and DecimalOptional
                             readDecimalExponent(token);
                             
-                            //TODO A, Pass the optional bit flag on to Mantissa for var bit optionals
+                            //TODO: A, Pass the optional bit flag on to Mantissa for var bit optionals
                             
                             token = fullScript[++activeScriptCursor]; //pull second token
                             readDecimalMantissa(token);
@@ -1508,7 +1508,7 @@ public class FASTReaderDispatch {
     
     //TODO: A, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
     //TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
-    //TODO: A, for code generation is it better to have shared block? or independent blocks?
+    //TODO: B, Modify code generator to share called function whenever possible, faster inline and smaller footprint
     //TODO: B, set the default template for the case when it is undefined in catalog.
     //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
     //TODO: D, perhaps frame support is related to buffer size in primtive write so the right number of bits can be set.
@@ -1744,7 +1744,7 @@ public class FASTReaderDispatch {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { //TODO: anything at the end is ignored and can be injected values.
+    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { //TODO: B, Document, anything at the end is ignored and can be injected values.
         long tmpLng=PrimitiveReader.readLongSignedIncrementOptional(idx, source, rLongDictionary, constAbsent, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
@@ -1758,7 +1758,7 @@ public class FASTReaderDispatch {
     }
 
     protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-            //TODO: A, if long const and default values are sent as int tuples then the shift mask logic can be skipped!!!
+            //TODO: B, Performance of reader,  if long const and default values are sent as int tuples then the shift mask logic can be skipped!!!
         long tmpLng=(PrimitiveReader.popPMapBit(reader) == 0 ? constAbsent : constConst);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);

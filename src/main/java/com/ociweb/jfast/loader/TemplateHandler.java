@@ -128,7 +128,7 @@ public class TemplateHandler extends DefaultHandler {
     int maxGroupTokenStackDepth;
 
     public TemplateHandler(FASTOutput output) {
-        writer = new PrimitiveWriter(output);
+        writer = new PrimitiveWriter(4096, output, 128, false);
 
         dictionaryNames.add(globalDictionaryName);
         activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
@@ -697,7 +697,7 @@ public class TemplateHandler extends DefaultHandler {
 
         } else {
             token = dTokens[activeDictionary];
-            if (0 != token && fieldType!= TypeMask.Decimal && fieldType!=TypeMask.DecimalOptional) { ///TODO: hack for now but need to clean up for decimals.
+            if (0 != token && fieldType!= TypeMask.Decimal && fieldType!=TypeMask.DecimalOptional) { ///TODO: B, hack for now but need to clean up for decimals.
                 if (fieldType != TokenBuilder.extractType(token) || fieldOperator != TokenBuilder.extractType(token)) {
                     throw new SAXException("Field id can not be redefined within the same dictionary.");
                 }
@@ -809,7 +809,7 @@ public class TemplateHandler extends DefaultHandler {
                 );
 
         // close stream.
-        writer.flush();
+        writer.flush(writer);
         // System.err.println("wrote:"+writer.totalWritten());
 
     }

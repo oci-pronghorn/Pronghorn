@@ -34,9 +34,9 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputByteArray(myData));
-		pw.writeTextUTF(unicodeTestString);
-		pw.flush();
+		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
+		writer.writeTextUTF(unicodeTestString);
+		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -47,9 +47,9 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter pw = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
-		pw.writeTextUTF(unicodeTestString);
-		pw.flush();
+		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
+		writer.writeTextUTF(unicodeTestString);
+		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -60,10 +60,10 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter pw = new PrimitiveWriter(new FASTOutputByteArray(myData));
+		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
 		char[] temp = unicodeTestString.toCharArray();
-		pw.writeTextUTF(temp,0,temp.length);
-		pw.flush();
+		writer.writeTextUTF(temp,0,temp.length);
+		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -74,10 +74,10 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter pw = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
+		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
 		char[] temp = unicodeTestString.toCharArray();
-		pw.writeTextUTF(temp,0,temp.length);
-		pw.flush();
+		writer.writeTextUTF(temp,0,temp.length);
+		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}

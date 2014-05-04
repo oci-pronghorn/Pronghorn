@@ -19,14 +19,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
 
 
 
-    //TODO: must reduce size of large methods as well.
+    //TODO: B, must reduce size of large methods as well.
     // TODO: B, this code generation must take place when loading the catalog
     // binary file. So catalog file can be the same cross languages.
     // TODO: B, copy other dispatch and use it for code generation, if possible
     // build generator that makes use of its own source as template.
-    // TODO, A, May be better to just pass ring buffer and pull members as needed instead of pushing/poping all.
-    // TODO, A, bytecodes are less if each private m method can be static.
-    // TODO, A, skip method call and put code in place if 1 or 2 lines.
     
     private static final String GROUP_METHOD_NAME = "grp";
 
@@ -71,7 +68,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         doneScriptsParas.add(paraVals);
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private int ") //TODO: would like to make this static but it may call non statics
+        signatureLine.append("private int ") //TODO: C, would like to make this static but it may call non statics
                      .append(GROUP_METHOD_NAME)
                      .append(scriptPos)
                      .append("(")
@@ -157,7 +154,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
             caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
         } else {
             if (hasMemberRefs(template)) {
-                fieldBuilder.append("private void ");//TODO X, continue to redce the member refs
+                fieldBuilder.append("private void ");//TODO: X, continue to redce the member refs
             } else {
                 fieldBuilder.append("private static void ");
             }
@@ -165,7 +162,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         }
         fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
-        //TODO: A, how is the read from supported, existing generator must get the from index value when in the script. not built into char/bytes yet.
+        //TODO: A, pass previous readFrom Idx into every gen method and ensure support.
     }
 
     private boolean hasMemberRefs(String template) {
@@ -250,7 +247,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         
         StringBuilder builder = generateEntryDispatchMethod(doneScripts,doneScriptsParas);
         
-        //TODO: wrap with class signature
+        //TODO: A, wrap with class signature
         
         return builder;
     }

@@ -41,7 +41,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     final byte[][] testDataBytes = buildTestDataBytes(testData);
 
     FASTOutputByteArray output;
-    PrimitiveWriter pw;
+    PrimitiveWriter writer;
 
     FASTInputByteArray input;
     PrimitiveReader reader;
@@ -74,7 +74,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
         byte[] buffer = new byte[2048];
         FASTOutput output = new FASTOutputByteArray(buffer);
-        PrimitiveWriter writer = new PrimitiveWriter(output);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
 
         int singleSize = 14;
         int singleGapSize = 8;
@@ -96,7 +96,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         byteWriter.writeBytesCopy(token, value, offset, length);
         byteWriter.writeBytesDefault(token, value, offset, length);
         writer.closePMap();
-        writer.flush();
+        writer.flush(writer);
 
         FASTInput input = new FASTInputByteArray(buffer);
         PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -182,7 +182,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterDispatch fw = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterDispatch fw = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -357,17 +357,17 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     public long totalWritten() {
-        return pw.totalWritten();
+        return writer.totalWritten(writer);
     }
 
     protected void resetOutputWriter() {
         output.reset();
-        pw.reset();
+        writer.reset(writer);
     }
 
     protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
         output = new FASTOutputByteArray(writeBuffer);
-        pw = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
+        writer = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
     }
 
     protected long totalRead() {

@@ -16,7 +16,7 @@ public class SourceTemplates {
 
     String templateText;
 
-    private String getSource() {
+    public String getRawSource() {
         if (null==templateText) {
             templateText = templateSource();
         }
@@ -49,20 +49,20 @@ public class SourceTemplates {
     }
     
     public String template(String methodName) {
-        int idx = getSource().indexOf(methodName);
+        int idx = getRawSource().indexOf(methodName);
         //start from idx and find the first {
-        int start = getSource().indexOf('{', idx)+1;
-        while (getSource().charAt(start)=='\n' || getSource().charAt(start)=='\r') {
+        int start = getRawSource().indexOf('{', idx)+1;
+        while (getRawSource().charAt(start)=='\n' || getRawSource().charAt(start)=='\r') {
             start++;
         }
         //find matching }
         int depth = 1;
         int pos = start;
         while (depth>0) {
-            if (getSource().charAt(pos)=='{') {
+            if (getRawSource().charAt(pos)=='{') {
                 depth++;
             }
-            if (getSource().charAt(pos)=='}') {
+            if (getRawSource().charAt(pos)=='}') {
                 depth--;
             }
             pos++;
@@ -70,15 +70,15 @@ public class SourceTemplates {
         //pos is now right after closing } and we want to be before
         int stop = pos-1;
         //
-        return getSource().substring(start,stop);
+        return getRawSource().substring(start,stop);
     }
     
     public String[] params(String methodName) {
-        int idx = getSource().indexOf(methodName);
+        int idx = getRawSource().indexOf(methodName);
         //start from idx and find the first (
-        int start = getSource().indexOf('(', idx)+1;
-        int stop = getSource().indexOf(')',start);
-        String[] para = getSource().substring(start, stop).split(",");
+        int start = getRawSource().indexOf('(', idx)+1;
+        int stop = getRawSource().indexOf(')',start);
+        String[] para = getRawSource().substring(start, stop).split(",");
         //extractType
         int i = para.length;
         while (--i>=0) {
@@ -89,11 +89,11 @@ public class SourceTemplates {
     }
     
     public String[] defs(String methodName) {
-        int idx = getSource().indexOf(methodName);
+        int idx = getRawSource().indexOf(methodName);
         //start from idx and find the first (
-        int start = getSource().indexOf('(', idx)+1;
-        int stop = getSource().indexOf(')',start);
-        String[] para = getSource().substring(start, stop).split(",");
+        int start = getRawSource().indexOf('(', idx)+1;
+        int stop = getRawSource().indexOf(')',start);
+        String[] para = getRawSource().substring(start, stop).split(",");
         //extractType
         int i = para.length;
         while (--i>=0) {

@@ -67,7 +67,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
-	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
 	static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
@@ -138,11 +138,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
     public void testSize() {
     	int rep = 20;
     	timeStaticIntegerSignedConstantWR(rep);
-    	System.out.println("SignedConst "+(pw.totalWritten()/(float)(intTestData.length)));
+    	System.out.println("SignedConst "+(writer.totalWritten(writer)/(float)(intTestData.length)));
     	timeStaticIntegerSignedCopyOptionalWR(rep);
-    	System.out.println("SignedCopyOptional "+(pw.totalWritten()/(float)(intTestData.length)));
+    	System.out.println("SignedCopyOptional "+(writer.totalWritten(writer)/(float)(intTestData.length)));
     	timeStaticIntegerSignedDeltaOptionalWR(rep);
-    	System.out.println("SignedDeltaOptional "+(pw.totalWritten()/(float)(intTestData.length)));
+    	System.out.println("SignedDeltaOptional "+(writer.totalWritten(writer)/(float)(intTestData.length)));
     	
     }
 	
@@ -175,7 +175,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fw.reset(dcr); //reset message to clear out old values;
@@ -186,21 +186,26 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				pw.openPMap(pmapSize);
+				writer.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
 				int idx = token & wIntInstanceMask;
+                int value = intTestData[j];
 				
-				pw.writeIntegerSignedCopyOptional(intTestData[j], idx, wIntDictionary);
+				if (value >= 0) {
+                    value++;
+                }
+                
+                writer.writeIntegerSignedCopyOptional(value, idx, wIntDictionary);
 			}
 			
 			if (pmapSize>0) {
-				pw.closePMap();
+				writer.closePMap();
 			}
 			
-			pw.flush();
+			writer.flush(writer);
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
@@ -236,7 +241,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		int constantValue = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fw.reset(dcr); //reset message to clear out old values;
@@ -247,7 +252,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				pw.openPMap(pmapSize);
+				writer.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
@@ -258,10 +263,10 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			
 			if (pmapSize>0) {
-				pw.closePMap();
+				writer.closePMap();
 			}
 			
-			pw.flush();
+			writer.flush(writer);
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
@@ -290,7 +295,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fw.reset(dcr); //reset message to clear out old values;
@@ -301,21 +306,21 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				pw.openPMap(pmapSize);
+				writer.openPMap(pmapSize);
 			}
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
 				int idx = token & wIntInstanceMask;
 				
-				pw.writeIntegerSignedDeltaOptional(intTestData[j],idx,wIntDictionary);
+				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx,wIntDictionary);
 			}
 			
 			if (pmapSize>0) {
-				pw.closePMap();
+				writer.closePMap();
 			}
 			
-			pw.flush();
+			writer.flush(writer);
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));

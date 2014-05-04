@@ -163,7 +163,7 @@ public class FASTDynamicReader implements FASTDataProvider {
 
             int i = 0;
             int s = preamble.length;
-            while (i < s) {// TODO B, convert this to use ByteArray ring buffer
+            while (i < s) {// TODO: B, convert this to use ByteArray ring buffer
                 ringBuffer.appendInt1(((0xFF & preamble[i++]) << 24) | ((0xFF & preamble[i++]) << 16)
                         | ((0xFF & preamble[i++]) << 8) | ((0xFF & preamble[i++])));
             }

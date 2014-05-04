@@ -69,7 +69,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
-	static final PrimitiveWriter pw = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
 	static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};
@@ -77,7 +77,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(pw, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
+	static final FASTWriterDispatch staticWriter = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
 	static final FASTReaderDispatch staticReader = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -173,7 +173,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		timeStaticIntegerUnsignedNoneW(rep);
 		
 		//total byte for one pass times the reps
-		long totalWritten = rep*this.pw.totalWritten();
+		long totalWritten = rep*this.writer.totalWritten(writer);
 		
 		float bytesPerValue = totalWritten/(float)(rep*intTestData.length);
 		
@@ -187,7 +187,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		timeStaticIntegerSignedCopyOptionalW(rep);
 		
 		//total byte for one pass times the reps
-		long totalWritten = rep*this.pw.totalWritten();
+		long totalWritten = rep*this.writer.totalWritten(writer);
 		
 		float bytesPerValue = totalWritten/(float)(rep*intTestData.length);
 		
@@ -576,7 +576,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -614,7 +614,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -655,7 +655,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			pw.reset(); //clear any values found in writer
+			writer.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;

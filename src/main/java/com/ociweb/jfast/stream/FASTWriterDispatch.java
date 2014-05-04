@@ -1278,9 +1278,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     private void pushTemplate(int templateId) {
         int top = templateStack[templateStackHead];
         if (top == templateId) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(templateId);
             top = templateId;
         }
@@ -1307,7 +1307,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
 
     public void flush() {
-        writer.flush();
+        writer.flush(writer);
     }
 
     public void reset() {
@@ -1382,7 +1382,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
                             acceptLongSigned(token, mantissa);
                         } else {
                             
-                            //TODO: need null decimal implementation.
+                            //TODO: A, need null decimal implementation.
                             
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
                             	int idx = expoToken & intInstanceMask; 
@@ -1561,7 +1561,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
             // TotalWritten is updated each time the pump pulls more bytes to
             // write.
 
-            long absPos = writer.totalWritten() + writer.bytesReadyToWrite();
+            long absPos = writer.totalWritten(writer) + writer.bytesReadyToWrite(writer);
             // TODO: Z, this position is never right because it is changed by
             // the pmap length which gets trimmed.
 
@@ -1587,7 +1587,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     
     protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
         writer.openPMap(pmapMaxSize);
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
         writer.closePMap();// TODO: A, this needs to be close but not sure this
         // is the right location.
         writer.writeIntegerUnsigned(templateId);
@@ -1600,16 +1600,16 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(idx | FASTWriterDispatch.INIT_VALUE_MASK)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
             if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeIntegerUnsigned(value.length() + 1);
                 writer.writeTextUTF(value);
             }
@@ -1618,9 +1618,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
     protected void genWriteUTFTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(value.length() + 1);
             writer.writeTextUTF(value);
             textHeap.set(idx, value, 0, value.length());
@@ -1650,7 +1650,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
     
     protected void genWriteUTFTextConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     protected void genWriteUTFTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -1670,9 +1670,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     
     protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(value.length());
             writer.writeTextUTF(value);
         }
@@ -1680,9 +1680,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
     protected void genWriteUTFTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(value.length());
             writer.writeTextUTF(value);
             textHeap.set(idx, value, 0, value.length());
@@ -1728,16 +1728,16 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(idx | FASTWriterDispatch.INIT_VALUE_MASK)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
             if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeTextASCII(value);
             }
         }
@@ -1746,16 +1746,16 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     protected void genWriteTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(idx)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
             if (textHeap.equals(idx, value)) {
-                writer.writePMapBit((byte) 0);
+                writer.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1);
+                writer.writePMapBit((byte) 1, writer);
                 writer.writeTextASCII(value);
                 textHeap.set(idx, value, 0, value.length());
             }
@@ -1801,18 +1801,18 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     
     protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value);
         }
     }
 
     protected void genWriteTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             // System.err.println("char seq length:"+value.length());
             writer.writeTextASCII(value);
             textHeap.set(idx, value, 0, value.length());
@@ -1855,9 +1855,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     
     protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length + 1);
             writer.writeTextUTF(value, offset, length);
         }
@@ -1865,9 +1865,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
     protected void genWriteTextUTFCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length + 1);
             writer.writeTextUTF(value, offset, length);
             textHeap.set(idx, value, offset, length);
@@ -1898,7 +1898,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
 
     protected void genWriteTextUTFConstantOptional(int token, PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     protected void genWriteTextUTFTailOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -1920,9 +1920,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
     protected void genWriteTextUTFDefault(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTF(value, offset, length);
         }
@@ -1930,9 +1930,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
 
     protected void genWriteTextUTFCopy(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTF(value, offset, length);
             textHeap.set(idx, value, offset, length);
@@ -1985,18 +1985,18 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     
     protected void genWriteTextDefaultOptional(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
         }
     }
 
     protected void genWriteTextCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
             textHeap.set(idx, value, offset, length);
         }
@@ -2035,7 +2035,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
     
     private void genWriteTextConstantOptional(int token) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
         // the writeNull will take care of the rest.
     }
 
@@ -2062,9 +2062,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx | FASTWriterDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
         }
     }
@@ -2073,9 +2073,9 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0);
+            writer.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1);
+            writer.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
             textHeap.set(idx, value, offset, length);
         }
@@ -2133,10 +2133,10 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         int idx = token & writerBytes.INSTANCE_MASK;
         
         if (byteHeap.equals(idx|FieldWriterBytes.INIT_VALUE_MASK, value)) {
-        	writer.writePMapBit((byte)0); 
+        	writer.writePMapBit((byte)0, writer); 
         	value.position(value.limit());//skip over the data just like we wrote it.
         } else {
-        	writer.writePMapBit((byte)1);
+        	writer.writePMapBit((byte)1, writer);
         	int len = value.remaining();
         	if (len<0) {
         		len = 0;
@@ -2150,11 +2150,11 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         int idx = token & writerBytes.INSTANCE_MASK;
         
         if (byteHeap.equals(idx, value)) {
-        	writer.writePMapBit((byte)0);
+        	writer.writePMapBit((byte)0, writer);
         	value.position(value.limit());//skip over the data just like we wrote it.
         } 
         else {
-        	writer.writePMapBit((byte)1);
+        	writer.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(value.remaining()+1);
         	byteHeap.set(idx, value);//position is NOT modified
         	writer.writeByteArrayData(value); //this moves the position in value
@@ -2175,7 +2175,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         value.position(value.limit());//skip over the data just like we wrote it.
     }
     
-    //TODO: will be static
+    //TODO: B, will be static
     private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
         
     
@@ -2196,7 +2196,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         
     }
     
-    //TODO: will be static
+    //TODO: B,  will be static
     private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
         
         //replace head, tail matches to tailCount
@@ -2291,7 +2291,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
     
     private void genWriteIntegerSignedDefault(int value, int idx, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDefault(value, idx, constDefault);
+        writer.writeIntegerSignedDefault(value, constDefault);
     }
 
     private void genWriteIntegerSignedIncrement(int value, int idx, PrimitiveWriter writer) {
@@ -2331,19 +2331,31 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
 
     private void genWriteIntegerSignedDefaultOptional(int value, int idx, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDefaultOptional(value, idx, constDefault);
+        if (value >= 0) {
+            value++;// room for null
+        }
+        writer.writeIntegerSignedDefaultOptional(value, constDefault);
     }
 
     private void genWriteIntegerSignedIncrementOptional(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSignedIncrementOptional(value, idx, intValues);
+        if (value >= 0) {
+            value++;
+        }
+        int last = intValues[idx];
+        intValues[idx] = value;
+        writer.writeIntegerSignedIncrementOptional(value, last);
     }
 
     private void genWriteIntegerSignedCopyOptional(int value, int idx, PrimitiveWriter writer) {
+        if (value >= 0) {
+            value++;
+        }
+        
         writer.writeIntegerSignedCopyOptional(value, idx, intValues);
     }
 
     private void genWriteIntegerSignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     private void genWriteIntegerSignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
@@ -2367,7 +2379,7 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
 
     private void genWriteIntegerUnsignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     private void genWriteIntegerUnsignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
@@ -2379,11 +2391,11 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
 
     private void genWriteLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongUnsignedDefault2(value, constDefault);
+        writer.writeLongUnsignedDefault(value, constDefault);
     }
 
     private void genWriteLongUnsignedIncrement(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrement2(value, idx, longValues);
+        writer.writeLongUnsignedIncrement(value, idx, longValues);
     }
 
     private void genWriteLongUnsignedCopy(long value, int idx, PrimitiveWriter writer) {
@@ -2400,19 +2412,21 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
     
     private void genWriteLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writneLongUnsignedDefaultOptional2(value, constDefault);
+        writer.writneLongUnsignedDefaultOptional(value, constDefault);
     }
 
     private void genWriteLongUnsignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrementOptional2(value, idx, longValues);
+        writer.writeLongUnsignedIncrementOptional(value, idx, longValues);
     }
 
     private void genWriteLongUnsignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
+        value++;// zero is held for null
+        
         writer.writeLongUnsignedCopyOptional(value, idx, longValues);
     }
 
     private void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     private void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
@@ -2426,16 +2440,16 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
     
     private void genWriteLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongSignedDefault2(value, constDefault);
+        writer.writeLongSignedDefault(value, constDefault);
     }
 
     private void genWriteLongSignedIncrement(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSignedIncrement2(value,  longValues[idx]);
+        writer.writeLongSignedIncrement(value,  longValues[idx]);
         longValues[idx] = value;
     }
 
     private void genWriteLongSignedCopy(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSignedCopy2(value, idx, longValues);
+        writer.writeLongSignedCopy(value, idx, longValues);
     }
 
     private void genWriteLongSignedNone(long value, int idx, PrimitiveWriter writer) {
@@ -2457,21 +2471,21 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
     }
 
     private void genWriteLongSignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1);
+        writer.writePMapBit((byte) 1, writer);
     }
 
     private void genWriteLongSignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedCopy2(value, idx, longValues);
+        writer.writeLongSignedCopy(value, idx, longValues);
     }
 
     private void genWriteLongSignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedIncrementOptional2(value, longValues[idx]);
+        writer.writeLongSignedIncrementOptional(value, longValues[idx]);
         longValues[idx] = value;
     }
 
@@ -2479,99 +2493,99 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         if (value >= 0) {
             value++;// room for null
         }
-        writer.writeLongSignedDefault2(value, constDefault);
+        writer.writeLongSignedDefault(value, constDefault);
     }
 
-    public static void writeNullInt(int token, PrimitiveWriter primitiveWriter, int[] dictionary, int idx) {
-        //TODO: must have genWrite methods for these.
+    public static void writeNullInt(int token, PrimitiveWriter writer, int[] dictionary, int idx) {
+        //TODO: A, must have genWrite methods for these.
         
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta (both do not use pmap)
                 dictionary[idx] = 0;
-                primitiveWriter.writeNull(); // no pmap, yes change to last
+                writer.writeNull(); // no pmap, yes change to last
                                              // value
             } else {
                 // Copy and Increment
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
                     dictionary[idx] = 0;
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                 } // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
                 // const optional
-                primitiveWriter.writePMapBit((byte) 0); // pmap only
+                writer.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                 } // yes pmap, no change to last value
             }
         }
     }
 
-    public static void writeNullLong(int token, int idx, PrimitiveWriter primitiveWriter, long[] dictionary) {
-      //TODO: must have genWrite methods for these.
+    public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
+      //TODO: A, must have genWrite methods for these.
         
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta (both do not use pmap)
                 dictionary[idx] = 0;
-                primitiveWriter.writeNull(); // no pmap, yes change to last value
+                writer.writeNull(); // no pmap, yes change to last value
             } else {
                 // Copy and Increment
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
                     dictionary[idx] = 0;
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                 } // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                     assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                    primitiveWriter.writePMapBit((byte) 0); // pmap only
+                    writer.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
                 if (dictionary[idx] == 0) { // stored value
                                                               // was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                 } // primitiveWriter pmap, no change to last value
             }
         }
     }
 
-    public static void writeNullText(int token, int idx, PrimitiveWriter primitiveWriter, TextHeap textHeap) {
-      //TODO: must have genWrite methods for these.
+    public static void writeNullText(int token, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+      //TODO: A, must have genWrite methods for these.
         
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta and Tail
-                primitiveWriter.writeNull();
+                writer.writeNull();
                 textHeap.setNull(idx); // no pmap, yes change to last value
             } else {
                 // Copy and Increment
                 
                 if (textHeap.isNull(idx)) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                     textHeap.setNull(idx);
                 } // yes pmap, yes change to last
                                               // value
@@ -2579,14 +2593,14 @@ public final class FASTWriterDispatch { //TODO: B, should this extend a class wi
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                primitiveWriter.writePMapBit((byte) 0); // pmap only
+                writer.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
                 if (textHeap.isNull(idx)) { // stored value was null;
-                    primitiveWriter.writePMapBit((byte) 0);
+                    writer.writePMapBit((byte) 0, writer);
                 } else {
-                    primitiveWriter.writePMapBit((byte) 1);
-                    primitiveWriter.writeNull();
+                    writer.writePMapBit((byte) 1, writer);
+                    writer.writeNull();
                 } // yes pmap, no change to last value
             }
         }

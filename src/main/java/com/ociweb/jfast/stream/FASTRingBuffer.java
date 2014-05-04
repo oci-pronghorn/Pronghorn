@@ -64,7 +64,7 @@ public final class FASTRingBuffer {
         this.charMask = maxCharSize - 1;
         this.charBuffer = new char[maxCharSize];
 
-        this.maxByteSize = maxCharSize;// TODO: add value for max bits size
+        this.maxByteSize = maxCharSize;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
     }
@@ -112,9 +112,9 @@ public final class FASTRingBuffer {
 
     }
 
-    // TODO: add mappers to go from one buffer to the next
-    // TODO: add consumer/Iterator to go from ring buffer to Object stream
-    // TODO: Map templates to methods for RMI of void methods(eg. one direction).
+    // TODO: D, add mappers to go from one buffer to the next
+    // TODO: Z, add consumer/Iterator to go from ring buffer to Object stream
+    // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
     public final int appendInt1(int value) {
@@ -138,14 +138,13 @@ public final class FASTRingBuffer {
         return p;
     }
 
-    // TODO: A, Use static method to access fields by offset based on
-    // templateId.
-    // TODO: A, At end of group check filter of that record and jump back if
-    // need to skip.
+    // TODO: A, Generate list of FieldId static offsets for use by static reader based on templateId.
 
     // next sequence is ready for consumption.
     public final void unBlockSequence() {
-        // TODO: A, only filter on the message level. sequence will be  difficult because they are nested.
+        // TODO: A, only filter on the message level. sequence will be  difficult because they are nested. Not sure we want to keep this feature?
+        
+        //TODO: A, build multi target ring buffers per message and null ring buffer to drop messages.
 
         // if filtered out the addPos will be rolled back to newGroupPos
         byte f = filter.go(addCount.get(), this);
