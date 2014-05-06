@@ -1191,7 +1191,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
                 } else {
                     // tail
                     int fromIdx = readFromIdx;
-                    genReadASCIITail(idx, fromIdx, rbB, rbMask, textHeap, reader, rbRingBuffer);//always dynamic
+                    genReadASCIITail(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);//always dynamic
                 }
             } else {
                 // constant delta

@@ -612,8 +612,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
     }
     
     @Override
-    protected void genReadASCIITail(int idx, int fromIdx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        generator(new Exception().getStackTrace(),idx,fromIdx);
+    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),idx);
     }
     
     @Override

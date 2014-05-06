@@ -14,7 +14,7 @@ public class FASTReaderDispatchGenExample extends FASTReaderScriptPlayerDispatch
                 fullScript, maxNestedGroupDepth, ringBits, ringTextBits);
     }
 
-    private int grp1(TextHeap textHeap, long[] rLongDictionary, long[] rLongInit, int[] rIntDictionary, int[] rIntInit, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    private int grp1(final TextHeap textHeap, final long[] rLongDictionary, final long[] rLongInit, final int[] rIntDictionary, final int[] rIntInit, final int[] rbB, final int rbMask, final FASTRingBuffer rbRingBuffer, final PrimitiveReader reader) {
         m0001_001(textHeap);
         m0001_002(rLongDictionary,rLongInit);
         m0001_003(rLongDictionary,rLongInit);

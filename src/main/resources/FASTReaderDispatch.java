@@ -478,7 +478,7 @@ public class FASTReaderDispatch {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
-
+ //TODO: C, test if using ringBuffer reference instead of rbMask is better?
     protected void genReadLongSignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=PrimitiveReader.readLongSignedCopy(idx, source, rLongDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
@@ -593,7 +593,7 @@ public class FASTReaderDispatch {
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
-    protected void genReadASCIITail(int idx, int fromIdx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readASCIITail(idx, textHeap, reader, PrimitiveReader.readIntegerUnsigned(reader));
         int len = textHeap.valueLength(idx);
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);

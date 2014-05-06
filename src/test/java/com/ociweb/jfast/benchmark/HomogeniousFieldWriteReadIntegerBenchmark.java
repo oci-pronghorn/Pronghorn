@@ -198,7 +198,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
                     value++;
                 }
                 
-                writer.writeIntegerSignedCopyOptional(value, idx, wIntDictionary);
+                writer.writeIntegerSignedCopyOptional(value, idx, idx, wIntDictionary);
 			}
 			
 			if (pmapSize>0) {
@@ -313,7 +313,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {						
 				int idx = token & wIntInstanceMask;
 				
-				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx,wIntDictionary);
+				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx, idx, wIntDictionary);
 			}
 			
 			if (pmapSize>0) {

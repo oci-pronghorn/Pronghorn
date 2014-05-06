@@ -1143,7 +1143,7 @@ public final class PrimitiveReader {
         }
     }
 
-    //TODO B, can duplicate this to make a more effecient version when source==target
+    //TODO: B, can duplicate this to make a more effecient version when source==target
     public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
         return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readLongSignedPrivate(reader));
     }

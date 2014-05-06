@@ -33,7 +33,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     final int nonTemplatePMapSize;
 
-    private int readFromIdx = -1; //TODO: A, Add WiterDispatch support for reading values from previous dictionary location.
+    private int readFromIdx = -1;
 
     private final DictionaryFactory dictionaryFactory;
     private final FASTRingBuffer queue;
@@ -188,11 +188,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
+                    int target = (token & longInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    long delta = value - longValues[idx];
-                    
-                    genWriteLongSignedDeltaOptional(value, idx, delta, writer);
+                    genWriteLongSignedDeltaOptional(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -206,16 +205,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // copy, increment
+                int target = (token & longInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongSignedCopyOptional(value, idx, writer);
+                    genWriteLongSignedCopyOptional(value, target, source, writer, longValues);
                 } else {
                     // increment
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongSignedIncrementOptional(value, idx, writer);
+                    genWriteLongSignedIncrementOptional(value, target, source, writer, longValues);
                 }
             } else {
                 // default
@@ -243,9 +240,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
+                    int target = (token & longInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDelta(value, idx, writer);
+                    genWriteLongSignedDelta(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -260,17 +258,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // copy, increment
+                int target = (token & longInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongSignedCopy(value, idx, writer);
+                    genWriteLongSignedCopy(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & longInstanceMask;
-                    
-                    
-                    genWriteLongSignedIncrement(value, idx, writer);
+                    genWriteLongSignedIncrement(value, target, source, writer);
                 }
             } else {
                 // default
@@ -296,9 +291,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     //Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongUnsignedDeltaOptional(value, idx, writer);
+                    int target = (token & longInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
+                    genWriteLongUnsignedDeltaOptional(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -310,17 +305,16 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                
                 // copy, increment
+                int target = (token & longInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongUnsignedCopyOptional(value, idx, writer);
+                    genWriteLongUnsignedCopyOptional(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongUnsignedIncrementOptional(value, idx, writer);
+                    genWriteLongUnsignedIncrementOptional(value, target, source, writer);
                 }
             } else {
                 // default
@@ -347,9 +341,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     //Delta opp never uses PMAP
-                    int idx = token & longInstanceMask;
+                    int target = (token & longInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongUnsignedDelta(value, idx, writer);
+                    genWriteLongUnsignedDelta(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -364,16 +359,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // copy, increment
+                int target = (token & longInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongUnsignedCopy(value, idx, writer);
+                    genWriteLongUnsignedCopy(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & longInstanceMask;
-                    
-                    genWriteLongUnsignedIncrement(value, idx, writer);
+                    genWriteLongUnsignedIncrement(value, target, source, writer);
                 }
             } else {
                 // default
@@ -428,9 +421,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedDelta(value, idx, writer);
+                    int target = (token & intInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
+                    genWriteIntegerSignedDelta(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -446,24 +439,22 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = (token & intInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedCopy(value, idx, writer);
+                    genWriteIntegerSignedCopy(value, target, source, writer, intValues);
                 } else {
                     // increment
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedIncrement(value, idx, writer);
+                    genWriteIntegerSignedIncrement(value, target, source, writer, intValues);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefault(value, idx, constDefault, writer);
+                genWriteIntegerSignedDefault(value, constDefault, writer);
             }
         }
     }
@@ -483,9 +474,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = (token & intInstanceMask);
-
-                    genWriteIntegerUnsignedDelta(value, idx, writer);
+                    int target = (token & intInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
+                    genWriteIntegerUnsignedDelta(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -499,15 +490,15 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = (token & intInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedCopy(value, idx, writer);
+                    genWriteIntegerUnsignedCopy(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedIncrement(value, idx, writer);
+                    genWriteIntegerUnsignedIncrement(value, target, source, writer);
                 }
             } else {
                 // default
@@ -530,10 +521,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                     // none
                     genWriteIntegerSignedNoneOptional(value, writer);
                 } else {
-                    // delta
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedDeltaOptional(value, idx, writer);
+                    int target = (token & intInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
+                    genWriteIntegerSignedDeltaOptional(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -545,24 +535,22 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = (token & intInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedCopyOptional(value, idx, writer);
+                    genWriteIntegerSignedCopyOptional(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerSignedIncrementOptional(value, idx, writer);
+                    genWriteIntegerSignedIncrementOptional(value, target, source, writer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefaultOptional(value, idx, constDefault, writer);
+                genWriteIntegerSignedDefaultOptional(value, constDefault, writer);
             }
         }
     }
@@ -580,9 +568,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerUnsignedDeltaOptional(value, idx, writer);
+                    int target = (token & intInstanceMask);
+                    int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
+                    genWriteIntegerUnsignedDeltaOptional(value, target, source, writer);
                 }
             } else {
                 // constant
@@ -595,15 +583,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // copy, increment
+                int target = (token & intInstanceMask);
+                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int idx = token & intInstanceMask;
-                    genWriteIntegerUnsignedCopyOptional(value, idx, writer);
+                    genWriteIntegerUnsignedCopyOptional(value, target, source, writer);
                 } else {
                     // increment
-                    int idx = token & intInstanceMask;
-
-                    genWriteIntegerUnsignedIncrementOptional(value, idx, writer);
+                    genWriteIntegerUnsignedIncrementOptional(value, target, source, writer);
                 }
             } else {
                 // default
@@ -621,6 +608,13 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+        
+        if (readFromIdx>=0) {
+            int source = token & instanceBytesMask;
+            int target = readFromIdx & instanceBytesMask;
+            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
+            readFromIdx = -1; //reset for next field where it might be used.
+        }
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             acceptByteArray(token, value, offset, length);
@@ -647,7 +641,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteBytesConstantOptional(token);
+                    genWriteBytesConstantOptional();
                 } else {
                     // delta
                     genWriteBytesDeltaOptional(token, value, offset, length);
@@ -685,7 +679,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteBytesConstant(token);
+                    
                 } else {
                     // delta
                     genWriteBytesDelta(token, value, offset, length);
@@ -715,6 +709,13 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
+        if (readFromIdx>=0) {
+            int source = token & instanceBytesMask;
+            int target = readFromIdx & instanceBytesMask;
+            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
+            readFromIdx = -1; //reset for next field where it might be used.
+        }
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             acceptByteBuffer(token, buffer);
@@ -740,7 +741,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    genWriteBytesConstantOptional(token);
+                    genWriteBytesConstantOptional();
                 } else {
                     // delta
                     genWriterBytesDeltaOptional(token, value);
@@ -779,7 +780,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteBytesConstant2(token);
+                    
                 } else {
                     // delta
                     genWriteBytesDelta(token, value);
@@ -805,6 +806,13 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
+        if (readFromIdx>=0) {
+            int source = token & TEXT_INSTANCE_MASK;
+            int target = readFromIdx & TEXT_INSTANCE_MASK;
+            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
+            readFromIdx = -1; //reset for next field where it might be used.
+        }
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -954,7 +962,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                     // constant
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    genWriteTextConstantOptional(token);
+                    genWriteTextConstantOptional();
                 } else {
                     // delta
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "
@@ -1043,6 +1051,13 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+        
+        if (readFromIdx>=0) {
+            int source = token & TEXT_INSTANCE_MASK;
+            int target = readFromIdx & TEXT_INSTANCE_MASK;
+            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
+            readFromIdx = -1; //reset for next field where it might be used.
+        }
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
@@ -1086,7 +1101,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextUTFConstantOptional(token, writer);
+                    genWriteTextUTFConstantOptional(writer);
                 } else {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
@@ -1181,7 +1196,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextConstantOptional(token);
+                    genWriteTextConstantOptional();
                 } else {
                     // delta
                     genWriteTextDeltaOptional2(token, value, offset, length);
@@ -1583,6 +1598,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     ///////////////////////
     
+    protected void genWriteCopyText(int source, int target, TextHeap textHeap) {
+        textHeap.copy(source,target);
+    }
+
+    protected void genWriteCopyBytes(int source, int target, ByteHeap byteHeap) {
+        byteHeap.copy(source,target);
+    }
+    
     
     protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
         writer.openPMap(pmapMaxSize);
@@ -1669,9 +1692,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(value.length());
             writer.writeTextUTF(value);
         }
@@ -1679,9 +1702,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
     protected void genWriteUTFTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(value.length());
             writer.writeTextUTF(value);
             textHeap.set(idx, value, 0, value.length());
@@ -1727,16 +1750,16 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK)) {
-                writer.writePMapBit((byte) 0, writer);
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
             if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
-                writer.writePMapBit((byte) 0, writer);
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeTextASCII(value);
             }
         }
@@ -1745,16 +1768,16 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     protected void genWriteTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(idx)) {
-                writer.writePMapBit((byte) 0, writer);
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
             if (textHeap.equals(idx, value)) {
-                writer.writePMapBit((byte) 0, writer);
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
-                writer.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeTextASCII(value);
                 textHeap.set(idx, value, 0, value.length());
             }
@@ -1800,18 +1823,18 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value);
         }
     }
 
     protected void genWriteTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             // System.err.println("char seq length:"+value.length());
             writer.writeTextASCII(value);
             textHeap.set(idx, value, 0, value.length());
@@ -1854,9 +1877,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length + 1);
             writer.writeTextUTF(value, offset, length);
         }
@@ -1864,9 +1887,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
     protected void genWriteTextUTFCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length + 1);
             writer.writeTextUTF(value, offset, length);
             textHeap.set(idx, value, offset, length);
@@ -1896,8 +1919,8 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         }
     }
 
-    protected void genWriteTextUTFConstantOptional(int token, PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1, writer);
+    protected void genWriteTextUTFConstantOptional(PrimitiveWriter writer) {
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
     protected void genWriteTextUTFTailOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -1919,9 +1942,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
     protected void genWriteTextUTFDefault(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTF(value, offset, length);
         }
@@ -1929,9 +1952,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
     protected void genWriteTextUTFCopy(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTF(value, offset, length);
             textHeap.set(idx, value, offset, length);
@@ -1984,18 +2007,18 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     protected void genWriteTextDefaultOptional(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
         }
     }
 
     protected void genWriteTextCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
             textHeap.set(idx, value, offset, length);
         }
@@ -2033,8 +2056,8 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         }
     }
     
-    private void genWriteTextConstantOptional(int token) {
-        writer.writePMapBit((byte) 1, writer);
+    private void genWriteTextConstantOptional() {
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
         // the writeNull will take care of the rest.
     }
 
@@ -2061,9 +2084,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
         }
     }
@@ -2072,9 +2095,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx, value, offset, length)) {
-            writer.writePMapBit((byte) 0, writer);
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
-            writer.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeTextASCII(value, offset, length);
             textHeap.set(idx, value, offset, length);
         }
@@ -2132,10 +2155,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
-        	writer.writePMapBit((byte)0, writer); 
+        	PrimitiveWriter.writePMapBit((byte)0, writer); 
         	value.position(value.limit());//skip over the data just like we wrote it.
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	int len = value.remaining();
         	if (len<0) {
         		len = 0;
@@ -2149,11 +2172,11 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx, value)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         	value.position(value.limit());//skip over the data just like we wrote it.
         } 
         else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(value.remaining()+1);
         	byteHeap.set(idx, value);//position is NOT modified
         	writer.writeByteArrayData(value); //this moves the position in value
@@ -2209,6 +2232,11 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
 
+
+    //TODO: A, Add gen copy methods and insert them before teh gen write/read calls.
+    
+    
+    
     private void genWriterBytesTailOptional(int token, ByteBuffer value) {
         int idx = token & instanceBytesMask;
         int headCount = byteHeap.countHeadMatch(idx, value);
@@ -2237,10 +2265,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         	value.position(value.limit());//skip over the data just like we wrote it.
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(value.remaining());
         	writer.writeByteArrayData(value); //this moves the position in value
         }
@@ -2250,10 +2278,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         //System.err.println("AA");
         if (byteHeap.equals(idx, value)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         	value.position(value.limit());//skip over the data just like we wrote it.
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(value.remaining());
         	byteHeap.set(idx, value);//position is NOT modified
         	writer.writeByteArrayData(value); //this moves the position in value
@@ -2294,9 +2322,6 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    private void genWriteBytesConstant2(int token) {
-    }
-
     private void genWriteBytesTail(int token, ByteBuffer value) {
         int idx = token & instanceBytesMask;
         int headCount = byteHeap.countHeadMatch(idx, value);
@@ -2326,9 +2351,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(length);
         	writer.writeByteArrayData(value,offset,length);
         }
@@ -2338,10 +2363,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         }
         else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(length);
         	writer.writeByteArrayData(value,offset,length);
         	byteHeap.set(idx, value, offset, length);
@@ -2359,9 +2384,6 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
         	writeBytesHead(idx, tailCount, value, offset, length, 0);
         }
-    }
-
-    private void genWriteBytesConstant(int token) {
     }
 
     private void genWriteBytesTail(int token, byte[] value, int offset, int length) {
@@ -2413,9 +2435,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(length+1);
         	writer.writeByteArrayData(value,offset,length);
         }
@@ -2425,9 +2447,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+        	PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
-        	writer.writePMapBit((byte)1, writer);
+        	PrimitiveWriter.writePMapBit((byte)1, writer);
         	writer.writeIntegerUnsigned(length+1);
         	writer.writeByteArrayData(value,offset,length);
         	byteHeap.set(idx, value, offset, length);
@@ -2463,8 +2485,8 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         }
     }
 
-    private void genWriteBytesConstantOptional(int token) {
-        writer.writePMapBit((byte)1, writer);
+    private void genWriteBytesConstantOptional() {
+        PrimitiveWriter.writePMapBit((byte)1, writer);
         //the writeNull will take care of the rest.
     }
 
@@ -2487,20 +2509,20 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         writer.writeByteArrayData(value,offset,length);
     }
     
-    private void genWriteIntegerSignedDefault(int value, int idx, int constDefault, PrimitiveWriter writer) {
+    private void genWriteIntegerSignedDefault(int value, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerSignedDefault(value, constDefault);
     }
 
-    private void genWriteIntegerSignedIncrement(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSignedIncrement(value, idx, intValues);
+    private void genWriteIntegerSignedIncrement(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
+        writer.writeIntegerSignedIncrement(value, target, source, intValues);
     }
 
-    private void genWriteIntegerSignedCopy(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSignedCopy(value, idx, intValues);
+    private void genWriteIntegerSignedCopy(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
+        writer.writeIntegerSignedCopy(value, target, source, intValues);
     }
 
-    private void genWriteIntegerSignedDelta(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDelta(value, idx, intValues);
+    private void genWriteIntegerSignedDelta(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerSignedDelta(value, target, source, intValues);
     }
 
     private void genWriteIntegerSignedNone(int value, int idx, PrimitiveWriter writer) {
@@ -2511,76 +2533,76 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         writer.writeIntegerUnsignedDefault(value, constDefault);
     }
 
-    private void genWriteIntegerUnsignedIncrement(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedIncrement(value, idx, intValues);
+    private void genWriteIntegerUnsignedIncrement(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedIncrement(value, target, source, intValues);
     }
 
-    private void genWriteIntegerUnsignedCopy(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedCopy(value, idx, intValues);
+    private void genWriteIntegerUnsignedCopy(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedCopy(value, target, source, intValues);
     }
 
-    private void genWriteIntegerUnsignedDelta(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDelta(value, idx, intValues);
+    private void genWriteIntegerUnsignedDelta(int value, int idx, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedDelta(value, idx, source, intValues);
     }
 
     private void genWriteIntegerUnsignedNone(int value, int idx, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(intValues[idx] = value);
     }
 
-    private void genWriteIntegerSignedDefaultOptional(int value, int idx, int constDefault, PrimitiveWriter writer) {
+    private void genWriteIntegerSignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;// room for null
         }
         writer.writeIntegerSignedDefaultOptional(value, constDefault);
     }
 
-    private void genWriteIntegerSignedIncrementOptional(int value, int idx, PrimitiveWriter writer) {
+    private void genWriteIntegerSignedIncrementOptional(int value, int target, int source, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
-        int last = intValues[idx];
-        intValues[idx] = value;
+        int last = intValues[source];
+        intValues[target] = value;
         writer.writeIntegerSignedIncrementOptional(value, last);
     }
 
-    private void genWriteIntegerSignedCopyOptional(int value, int idx, PrimitiveWriter writer) {
+    private void genWriteIntegerSignedCopyOptional(int value, int idx, int source, PrimitiveWriter writer) {
         if (value >= 0) {
             value++;
         }
         
-        writer.writeIntegerSignedCopyOptional(value, idx, intValues);
+        writer.writeIntegerSignedCopyOptional(value, idx, source, intValues);
     }
 
     private void genWriteIntegerSignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
-    private void genWriteIntegerSignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDeltaOptional(value, idx, intValues);
+    private void genWriteIntegerSignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
     }
 
     private void genWriteIntegerSignedNoneOptional(int value, PrimitiveWriter writer) {
         writer.writeIntegerSignedOptional(value);
     }
 
-    private void genWriteIntegerUnsignedCopyOptional(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedCopyOptional(value, idx, intValues);
+    private void genWriteIntegerUnsignedCopyOptional(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
     }
 
     private void genWriteIntegerUnsignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
     }
 
-    private void genWriteIntegerUnsignedIncrementOptional(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedIncrementOptional(value, idx, intValues);
+    private void genWriteIntegerUnsignedIncrementOptional(int value, int idx, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedIncrementOptional(value, idx, source, intValues);
     }
 
     private void genWriteIntegerUnsignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
-    private void genWriteIntegerUnsignedDeltaOptional(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDeltaOptional(value, idx, intValues);
+    private void genWriteIntegerUnsignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer) {
+        writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
     }
 
     private void genWriteIntegerUnsignedNoneOptional(int value, PrimitiveWriter writer) {
@@ -2591,17 +2613,17 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         writer.writeLongUnsignedDefault(value, constDefault);
     }
 
-    private void genWriteLongUnsignedIncrement(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrement(value, idx, longValues);
+    private void genWriteLongUnsignedIncrement(long value, int target, int source, PrimitiveWriter writer) {
+        writer.writeLongUnsignedIncrement(value, target, source, longValues);
     }
 
-    private void genWriteLongUnsignedCopy(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsignedCopy(value, idx, longValues);
+    private void genWriteLongUnsignedCopy(long value, int target, int source, PrimitiveWriter writer) {
+        writer.writeLongUnsignedCopy(value, target, source, longValues);
     }
 
-    private void genWriteLongUnsignedDelta(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSigned(value - longValues[idx]);
-        longValues[idx] = value;
+    private void genWriteLongUnsignedDelta(long value, int target, int source, PrimitiveWriter writer) {
+        writer.writeLongSigned(value - longValues[source]);
+        longValues[target] = value;
     }
 
     private void genWriteLongUnsignedNone(long value, int idx, PrimitiveWriter writer) {
@@ -2612,80 +2634,80 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         writer.writneLongUnsignedDefaultOptional(value, constDefault);
     }
 
-    private void genWriteLongUnsignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrementOptional(value, idx, longValues);
+    private void genWriteLongUnsignedIncrementOptional(long value, int idx, int source, PrimitiveWriter writer) {
+        writer.writeLongUnsignedIncrementOptional(value, idx, source, longValues);
     }
 
-    private void genWriteLongUnsignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
+    private void genWriteLongUnsignedCopyOptional(long value, int idx, int source, PrimitiveWriter writer) {
         value++;// zero is held for null
         
-        writer.writeLongUnsignedCopyOptional(value, idx, longValues);
+        writer.writeLongUnsignedCopyOptional(value, idx, source, longValues);
     }
 
     private void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
     private void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
         writer.writeLongUnsigned(value + 1);
     }
 
-    private void genWriteLongUnsignedDeltaOptional(long value, int idx, PrimitiveWriter writer) {
-        long delta = value - longValues[idx];
+    private void genWriteLongUnsignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer) {
+        long delta = value - longValues[source];
         writer.writeLongSigned(delta>=0 ? 1+delta : delta);
-        longValues[idx] = value;
+        longValues[target] = value;
     }
     
     private void genWriteLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
         writer.writeLongSignedDefault(value, constDefault);
     }
 
-    private void genWriteLongSignedIncrement(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSignedIncrement(value,  longValues[idx]);
-        longValues[idx] = value;
+    private void genWriteLongSignedIncrement(long value, int target, int source, PrimitiveWriter writer) {
+        writer.writeLongSignedIncrement(value,  longValues[source]);
+        longValues[target] = value;
     }
 
-    private void genWriteLongSignedCopy(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSignedCopy(value, idx, longValues);
+    private void genWriteLongSignedCopy(long value, int idx, int source, PrimitiveWriter writer) {
+        writer.writeLongSignedCopy(value, idx, source, longValues);
     }
 
     private void genWriteLongSignedNone(long value, int idx, PrimitiveWriter writer) {
         writer.writeLongSigned(longValues[idx] = value);
     }
 
-    private void genWriteLongSignedDelta(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSigned(value - longValues[idx]);
-        longValues[idx] = value;
+    private void genWriteLongSignedDelta(long value, int target, int source, PrimitiveWriter writer) {
+        writer.writeLongSigned(value - longValues[source]);
+        longValues[target] = value;
     }
     
     private void genWriteLongSignedOptional(long value, PrimitiveWriter writer) {
         writer.writeLongSignedOptional(value);
     }
 
-    private void genWriteLongSignedDeltaOptional(long value, int idx, long delta, PrimitiveWriter writer) {
+    private void genWriteLongSignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer) {
+        long delta = value - longValues[source];
         writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
-        longValues[idx] = value;
+        longValues[target] = value;
     }
 
     private void genWriteLongSignedConstantOptional(PrimitiveWriter writer) {
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
     
-    //TODO: A, Add gen copy methods and insert them before teh gen write/read calls.
 
-    private void genWriteLongSignedCopyOptional(long value, int idx, PrimitiveWriter writer) {
+    private void genWriteLongSignedCopyOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedCopy(value, idx, longValues);
+        writer.writeLongSignedCopy(value, target, source, longValues);
     }
 
-    private void genWriteLongSignedIncrementOptional(long value, int idx, PrimitiveWriter writer) {
+    private void genWriteLongSignedIncrementOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedIncrementOptional(value, longValues[idx]);
-        longValues[idx] = value;
+        writer.writeLongSignedIncrementOptional(value, longValues[source]);
+        longValues[target] = value;
     }
 
     private void genWriteLongSignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
@@ -2708,10 +2730,10 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // Copy and Increment
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
                     dictionary[idx] = 0;
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                 } // yes pmap, yes change to last value
             }
@@ -2719,14 +2741,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
                 // const optional
-                writer.writePMapBit((byte) 0, writer); // pmap only
+                PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                 } // yes pmap, no change to last value
             }
@@ -2745,24 +2767,24 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // Copy and Increment
     
                 if (dictionary[idx] == 0) { // stored value was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
                     dictionary[idx] = 0;
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                 } // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                     assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                    writer.writePMapBit((byte) 0, writer); // pmap only
+                    PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
                 if (dictionary[idx] == 0) { // stored value
                                                               // was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                 } // primitiveWriter pmap, no change to last value
             }
@@ -2781,9 +2803,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // Copy and Increment
                 
                 if (textHeap.isNull(idx)) { // stored value was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                     textHeap.setNull(idx);
                 } // yes pmap, yes change to last
@@ -2792,13 +2814,13 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                writer.writePMapBit((byte) 0, writer); // pmap only
+                PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
             } else {
                 // default
                 if (textHeap.isNull(idx)) { // stored value was null;
-                    writer.writePMapBit((byte) 0, writer);
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
-                    writer.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
                     writer.writeNull();
                 } // yes pmap, no change to last value
             }
@@ -2863,9 +2885,9 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     			int idx = token & instanceMask;
                 
                 if (byteHeap.isNull(idx)) { //stored value was null;
-                	writer.writePMapBit((byte)0, writer);
+                	PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
-                	writer.writePMapBit((byte)1, writer);
+                	PrimitiveWriter.writePMapBit((byte)1, writer);
                 	writer.writeNull();
                 	byteHeap.setNull(idx);
                 }  //yes pmap, yes change to last value	
@@ -2877,14 +2899,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     				writer.writeNull();                 //no pmap,  no change to last value  
     			} else {
     				//const optional
-    				writer.writePMapBit((byte)0, writer);       //pmap only
+    				PrimitiveWriter.writePMapBit((byte)0, writer);       //pmap only
     			}			
     		} else {	
     			//default
     			if (byteHeap.isNull(token & instanceMask)) { //stored value was null;
-                	writer.writePMapBit((byte)0, writer);
+                	PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
-                	writer.writePMapBit((byte)1, writer);
+                	PrimitiveWriter.writePMapBit((byte)1, writer);
                 	writer.writeNull();
                 }  //yes pmap,  no change to last value
     		}	
