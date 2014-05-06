@@ -143,7 +143,7 @@ public abstract class BaseStreamingTest {
 			
 			}
 
-	protected int groupManagementRead(int fieldsPerGroup, FASTReaderDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
+	protected int groupManagementRead(int fieldsPerGroup, FASTReaderScriptPlayerDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group 
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
@@ -160,7 +160,7 @@ public abstract class BaseStreamingTest {
 		return g;
 	}
 
-	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterDispatch fw, int i, int g,
+	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterScriptPlayerDispatch fw, int i, int g,
 			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group

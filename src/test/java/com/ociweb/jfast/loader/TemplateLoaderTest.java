@@ -29,12 +29,12 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
-import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
-import com.ociweb.jfast.stream.FASTWriterDispatch;
+import com.ociweb.jfast.stream.FASTWriterScriptPlayerDispatch;
 
 public class TemplateLoaderTest {
 
@@ -115,11 +115,11 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderDispatch readerDispatch = new FASTReaderDispatch(reader, catalog.dictionaryFactory(), 3,
+        FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader, catalog.dictionaryFactory(), 3,
                 catalog.dictionaryMembers(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8,
                 7);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(reader, catalog, readerDispatch);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         System.gc();
@@ -199,7 +199,7 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderDispatch readerDispatch = 
+        FASTReaderScriptPlayerDispatch readerDispatch = 
                 //new FASTReaderDispatch( 
                 new FASTReaderDispatchGenExample(
                         
@@ -207,7 +207,7 @@ public class TemplateLoaderTest {
                 reader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(reader, catalog, readerDispatch);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         // TODO: X, look into core affinity
@@ -438,11 +438,11 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
-        FASTReaderDispatch readerDispatch = new FASTReaderDispatch(reader,
+        FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader,
                 catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(reader, catalog, readerDispatch);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
@@ -454,7 +454,7 @@ public class TemplateLoaderTest {
         int maxGroupCount = 3;// NOTE: may need to be VERY large if minimize
                               // latency is turned off!!
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-        FASTWriterDispatch writerDispatch = new FASTWriterDispatch(writer, catalog.dictionaryFactory(),
+        FASTWriterScriptPlayerDispatch writerDispatch = new FASTWriterScriptPlayerDispatch(writer, catalog.dictionaryFactory(),
                 catalog.templatesCount(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(), catalog.getByteVectorGap(), queue, catalog.maxNonTemplatePMapSize(),
                 catalog.dictionaryMembers(), catalog.fullScript(), catalog.getMaxGroupDepth());

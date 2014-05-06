@@ -19,6 +19,8 @@ import com.ociweb.jfast.error.FASTException;
  */
 public class TextHeap {
 
+    //TODO: B, Modify to a set of static methods with no member methods, do the same in  byteHeap.
+    
     private int totalContent = 0; // total chars consumed by current text.
     private int totalWorkspace = 0; // working space around each text.
 
@@ -127,6 +129,7 @@ public class TextHeap {
         return initBuffer;
     }
 
+   //TODO: B, Remove raw access.
     char[] rawAccess() {
         return data;
     }
@@ -861,7 +864,7 @@ public class TextHeap {
         return initTat[offset + 1] - initTat[offset];
     }
 
-    void copy(int sourceIdx, int targetIdx) {
+    public void copy(int sourceIdx, int targetIdx) {
         int len;
         int startFrom;
         char[] buffer;

@@ -79,8 +79,7 @@ public class StaticGlue {
     }
 
 
-    public static int readASCIIHead(final int idx, int trim, int readFromIdx, TextHeap textHeap,
-            PrimitiveReader reader) {
+    public static int readASCIIHead(final int idx, int trim, TextHeap textHeap, PrimitiveReader reader) {
         
         
         if (trim < 0) {

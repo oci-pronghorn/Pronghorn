@@ -29,7 +29,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
  */
 public class FASTDynamicReader implements FASTDataProvider {
 
-    private final FASTReaderDispatch readerDispatch;
+    private final FASTReaderScriptPlayerDispatch readerDispatch;
 
     private final TemplateCatalog catalog;
 
@@ -53,7 +53,7 @@ public class FASTDynamicReader implements FASTDataProvider {
     // read groups field ids and build repeating lists of tokens.
 
     // only look up the most recent value read and return it to the caller.
-    public FASTDynamicReader(PrimitiveReader reader, TemplateCatalog catalog, FASTReaderDispatch dispatch) {
+    public FASTDynamicReader(TemplateCatalog catalog, FASTReaderScriptPlayerDispatch dispatch) {
         this.catalog = catalog;
         this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
         this.preambleDataLength = catalog.getMessagePreambleSize();
@@ -142,7 +142,7 @@ public class FASTDynamicReader implements FASTDataProvider {
     //static method
     //private method
 
-    private final int hasMoreEnd(FASTReaderDispatch readerDispatch, FASTRingBuffer rb) {
+    private final int hasMoreEnd(FASTReaderScriptPlayerDispatch readerDispatch, FASTRingBuffer rb) {
         if (readerDispatch.dispatchReadByToken()) {//vtable lookup here
             rb.unBlockSequence();//expensive call change to static?
             if (readerDispatch.jumpSequence >= 0) {
@@ -152,7 +152,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         return finishTemplate();
     }
 
-    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderDispatch readerDispatch) {
+    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderScriptPlayerDispatch readerDispatch) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
@@ -200,7 +200,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         return 2;// finished reading full message
     }
 
-    private final int processSequence(FASTReaderDispatch readerDispatch) {
+    private final int processSequence(FASTReaderScriptPlayerDispatch readerDispatch) {
         int i = readerDispatch.jumpSequence;
         if (i > 0) { // jumping (backward) to do this sequence again.
             neededSpaceOrTemplate = 1 + (i << 2);

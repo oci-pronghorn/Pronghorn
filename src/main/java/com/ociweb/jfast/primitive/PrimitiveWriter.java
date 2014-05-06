@@ -1094,7 +1094,7 @@ public final class PrimitiveWriter {
     // //////////////////////////
     // //////////////////////////
 
-    // TODO: B, Only call private methods from inside here.
+    // TODO: A, Copy, Increment and Delta writes need to have source field as well as target. for Int/Long Signed/Unsigned Normal/Optional
     public void writeIntegerUnsignedCopy(int value, int idx, int[] dictionary) {
 
         if (value == dictionary[idx]) {

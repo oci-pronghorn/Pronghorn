@@ -14,8 +14,6 @@ import org.junit.Test;
 import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.FieldReaderBytes;
-import com.ociweb.jfast.field.FieldWriterBytes;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -45,6 +43,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     FASTInputByteArray input;
     PrimitiveReader reader;
+
+    public static final int INIT_VALUE_MASK = 0x80000000;
 
     @AfterClass
     public static void cleanup() {
@@ -81,20 +81,20 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int fixedTextItemCount = 16; // must be power of two
 
         ByteHeap dictionaryWriter = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
-        FieldWriterBytes byteWriter = new FieldWriterBytes(writer, dictionaryWriter);
 
         int token = TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_Tail, 0,
                 TokenBuilder.MASK_ABSENT_DEFAULT);
         byte[] value = new byte[] { 1, 2, 3 };
         int offset = 0;
         int length = value.length;
-        byteWriter.writeBytesTail(token, value, offset, length);
-        byteWriter.writeBytesDelta(token, value, offset, length);
-        byteWriter.writeBytesConstant(token);
+        int instanceMask = null==dictionaryWriter? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (dictionaryWriter.itemCount()-1));
+        writeBytesTail(writer, dictionaryWriter, instanceMask, token, value, offset, length);
+        writeBytesDelta(writer, dictionaryWriter, instanceMask, token, value, offset, length);
+        writeBytesConstant();
 
         writer.openPMap(1);
-        byteWriter.writeBytesCopy(token, value, offset, length);
-        byteWriter.writeBytesDefault(token, value, offset, length);
+        writeBytesCopy(writer, dictionaryWriter, instanceMask, token, value, offset, length);
+        writeBytesDefault(writer, dictionaryWriter, instanceMask, token, value, offset, length);
         writer.closePMap();
         writer.flush(writer);
 
@@ -102,36 +102,154 @@ public class StreamingBytesTest extends BaseStreamingTest {
         PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
 
         ByteHeap dictionaryReader = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
-        FieldReaderBytes byteReader = new FieldReaderBytes(reader, dictionaryReader);
+        int byteInstanceMask = null == dictionaryReader ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,
+        dictionaryReader.itemCount() - 1);
 
         // read value back
         int id;
-        int idx = token & byteReader.INSTANCE_MASK;
-        id = byteReader.readBytesTail2(idx);
+        int idx = token & byteInstanceMask;
+        id = readBytesTail(idx, reader, dictionaryReader);
         assertTrue(dictionaryReader.equals(id, value, offset, length));
-        int idx1 = token & byteReader.INSTANCE_MASK;
+        int idx1 = token & byteInstanceMask;
 
-        id = byteReader.readBytesDelta2(idx1);
+        id = readBytesDelta(idx1, reader, dictionaryReader);
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
-        id = token & byteReader.INSTANCE_MASK;
+        id = token & byteInstanceMask;
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
         PrimitiveReader.openPMap(1, reader);
-        int idx2 = token & byteReader.INSTANCE_MASK;
+        int idx2 = token & byteInstanceMask;
         if (PrimitiveReader.popPMapBit(reader) != 0) {
-            byteReader.readBytesData(idx2, 0);
+            int length1 = PrimitiveReader.readIntegerUnsigned(reader) - 0;
+            PrimitiveReader.readByteData(dictionaryReader.rawAccess(), dictionaryReader.allocate(idx2, length1), length1, reader);
         }
 
         id = idx2;
         assertTrue(dictionaryReader.equals(id, value, offset, length));
-        int idx3 = token & byteReader.INSTANCE_MASK;
+        int idx3 = token & byteInstanceMask;
 
-        id = byteReader.readBytesDefault2(idx3);
+        id = readBytesDefault(idx3, reader, dictionaryReader);
         assertTrue(dictionaryReader.equals(id, value, offset, length));
 
         PrimitiveReader.closePMap(reader);
 
+    }
+
+    private int readBytesTail(int idx, PrimitiveReader reader, ByteHeap byteHeap) {
+        int id;
+        int trim = PrimitiveReader.readIntegerUnsigned(reader);
+        int length = PrimitiveReader.readIntegerUnsigned(reader);
+        
+        // append to tail
+        int targetOffset = byteHeap.makeSpaceForAppend(idx, trim, length);
+        PrimitiveReader.readByteData(byteHeap.rawAccess(), targetOffset, length, reader);
+        id = idx;
+        return id;
+    }
+
+    
+    private int readBytesDefault(int idx3, PrimitiveReader reader, ByteHeap byteHeap) {
+        int id;
+        int result;
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            // System.err.println("z");
+            result = idx3 | INIT_VALUE_MASK;// use constant
+        } else {
+            int length = PrimitiveReader.readIntegerUnsigned(reader) - 0;
+            PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.allocate(idx3, length), length, reader);
+            result = idx3;
+        }
+        id = result;
+        return id;
+    }
+
+    private int readBytesDelta(int idx1, PrimitiveReader reader, ByteHeap byteHeap) {
+        int id;
+        int trim = PrimitiveReader.readIntegerSigned(reader);
+        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
+        if (trim >= 0) {
+            // append to tail
+            PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForAppend(idx1, trim, utfLength), utfLength, reader);
+        } else {
+            // append to head
+            PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.makeSpaceForPrepend(idx1, -trim, utfLength), utfLength, reader);
+        }
+        id = idx1;
+        return id;
+    }
+
+    private void writeBytesDefault(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+        int idx = token & instanceMask;
+        
+        if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
+        	writer.writePMapBit((byte)0, writer);
+        } else {
+        	writer.writePMapBit((byte)1, writer);
+        	writer.writeIntegerUnsigned(length);
+        	writer.writeByteArrayData(value,offset,length);
+        }
+    }
+
+    private void writeBytesCopy(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+        int idx = token & instanceMask;
+        
+        if (byteHeap.equals(idx, value, offset, length)) {
+        	writer.writePMapBit((byte)0, writer);
+        }
+        else {
+        	writer.writePMapBit((byte)1, writer);
+        	writer.writeIntegerUnsigned(length);
+        	writer.writeByteArrayData(value,offset,length);
+        	byteHeap.set(idx, value, offset, length);
+        }
+    }
+
+    private void writeBytesConstant() {
+    }
+
+    private void writeBytesDelta(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+        int idx = token & instanceMask;
+        
+        //count matching front or back chars
+        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
+        int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
+        if (headCount>tailCount) {
+        	int trimTail = byteHeap.length(idx)-headCount;
+            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
+            
+            int valueSend = length-headCount;
+            int startAfter = offset+headCount+headCount;
+            
+            writer.writeIntegerUnsigned(valueSend);
+            writer.writeByteArrayData(value, startAfter, valueSend);
+            byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        } else {
+        	//replace head, tail matches to tailCount
+            int trimHead = byteHeap.length(idx)-tailCount;
+            writer.writeIntegerSigned(trimHead==0? 0: -trimHead); 
+            
+            int len = length - tailCount;
+            writer.writeIntegerUnsigned(len);
+            writer.writeByteArrayData(value, offset, len);
+            
+            byteHeap.appendHead(idx, trimHead, value, offset, len);
+        }
+    }
+
+    private void writeBytesTail(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+        int idx = token & instanceMask;
+        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
+        
+        int trimTail = byteHeap.length(idx)-headCount;
+        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
+        
+        int valueSend = length-headCount;
+        int startAfter = offset+headCount;
+        
+        writer.writeIntegerUnsigned(valueSend);
+        writer.writeByteArrayData(value, startAfter, valueSend);
+        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
 
     private void byteTester(int[] types, int[] operators, String label) {
@@ -182,7 +300,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterDispatch fw = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterScriptPlayerDispatch fw = new FASTWriterScriptPlayerDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -247,12 +365,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     @Override
-    protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
-            int[] tokenLookup, DictionaryFactory dcr) {
+    protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderDispatch fr = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
-        ByteHeap byteHeap = fr.readerBytes.byteHeap();
+        FASTReaderScriptPlayerDispatch fr = new FASTReaderScriptPlayerDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
+        ByteHeap byteHeap = fr.byteHeap;
 
         int token = 0;
         int prevToken = 0;

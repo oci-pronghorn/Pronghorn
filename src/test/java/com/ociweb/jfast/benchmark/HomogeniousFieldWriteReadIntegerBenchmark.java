@@ -340,7 +340,16 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int target = token&MAX_INT_INSTANCE_MASK;
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
-				result |= PrimitiveReader.readIntegerSignedDeltaOptional(target, source, rIntDictionary, constAbsent, reader);
+                // Delta opp never uses PMAP
+                long value = PrimitiveReader.readLongSignedPrivate(reader);
+                int result1;
+                if (0 == value) {
+                    rIntDictionary[target] = 0;// set to absent
+                    result1 = constAbsent;
+                } else {
+                    result1 = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
+                }
+				result |= result1;
 			}
 			if (pmapSize>0) {
 				PrimitiveReader.closePMap(reader);

@@ -26,7 +26,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.FASTDynamicReader;
-import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
@@ -66,7 +66,7 @@ public class Complex30000Benchmark extends Benchmark {
 			
 			fastInput = new FASTInputByteArray(testData);
 			reader = new PrimitiveReader(2048, fastInput, 32);
-			FASTReaderDispatch readerDispatch = new FASTReaderDispatch(reader, 
+			FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader, 
 							                    catalog.dictionaryFactory(), 
 							                    3, 
 							                    catalog.dictionaryMembers(), 
@@ -77,7 +77,7 @@ public class Complex30000Benchmark extends Benchmark {
 							                    catalog.fullScript(),
 							                    catalog.getMaxGroupDepth(), 8, 7); 
 
-			dynamicReader = new FASTDynamicReader(reader, catalog, readerDispatch);
+			dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

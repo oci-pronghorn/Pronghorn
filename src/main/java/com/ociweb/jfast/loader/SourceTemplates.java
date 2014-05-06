@@ -10,7 +10,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 
-import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 
 public class SourceTemplates {
 
@@ -45,7 +45,7 @@ public class SourceTemplates {
             e.printStackTrace();
         }
         
-        return templateSource.substring(templateSource.indexOf(FASTReaderDispatch.START_HERE));
+        return templateSource;
     }
     
     public String template(String methodName) {
@@ -71,6 +71,21 @@ public class SourceTemplates {
         int stop = pos-1;
         //
         return getRawSource().substring(start,stop);
+    }
+    
+    public String imports() { //TODO: A, pull in imports
+        
+        //the includes before this.
+        //public class FASTReaderDispatch
+        return "";
+    }
+    
+    public String constructor() { //TODO: pull in constructor.
+        
+        //find this.
+        //public FASTReaderDispatch(
+        
+        return "";
     }
     
     public String[] params(String methodName) {

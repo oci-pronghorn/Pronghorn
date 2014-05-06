@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 
 import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.FieldReaderBytes;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.BalancedSwitchGenerator;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -15,7 +14,7 @@ import com.ociweb.jfast.loader.SourceTemplates;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
+public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch {
 
 
 
@@ -24,6 +23,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     // binary file. So catalog file can be the same cross languages.
     // TODO: B, copy other dispatch and use it for code generation, if possible
     // build generator that makes use of its own source as template.
+    // TODO: C, code does not support final in signatures, this would be nice to have
     
     private static final String GROUP_METHOD_NAME = "grp";
 
@@ -162,7 +162,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         }
         fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
-        //TODO: A, pass previous readFrom Idx into every gen method and ensure support.
+        
     }
 
     private boolean hasMemberRefs(String template) {
@@ -330,6 +330,18 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target, jumpToTarget);
         return true;
+    }
+    
+    // copy methods
+    
+    @Override
+    protected void genReadCopyText(int source, int target, TextHeap textHeap) {
+        generator(new Exception().getStackTrace(),source,target);
+    }
+
+    @Override
+    protected void genReadCopyBytes(int source, int target, ByteHeap byteHeap) {
+        generator(new Exception().getStackTrace(),source,target);
     }
     
     // int methods
@@ -645,8 +657,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     }
     
     @Override
-    protected void genReadASCIIDeltaOptional(int fromIdx, int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        generator(new Exception().getStackTrace(),fromIdx,idx);
+    protected void genReadASCIIDeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
@@ -677,49 +689,49 @@ public class FASTReaderDispatchGenerator extends FASTReaderDispatch {
     }
     
     @Override
-    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,defIdx, defLen,optOff);
     }
     
     @Override
-    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,optOff);
     }
     
     @Override
-    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FieldReaderBytes readerBytes, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
 
     // dictionary reset
     
     @Override
-    protected void genReadDictionaryBytesReset(int idx, FieldReaderBytes readerBytes) {
+    protected void genReadDictionaryBytesReset(int idx, ByteHeap byteHeap) {
         generator(new Exception().getStackTrace(),idx);
     }
     

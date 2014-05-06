@@ -72,7 +72,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterDispatch fw = new FASTWriterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterScriptPlayerDispatch fw = new FASTWriterScriptPlayerDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         if (operationIters < 3) {
@@ -106,7 +106,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                FASTWriterDispatch.writeNullInt(token, writer, fw.intValues, idx);
+                                FASTWriterScriptPlayerDispatch.writeNullInt(token, writer, fw.intValues, idx);
                             } else {
                                 fw.acceptIntegerSignedOptional(token, testExpConst);
                             }
@@ -114,7 +114,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                FASTWriterDispatch.writeNullLong(token, idx, writer, fw.longValues);
+                                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, testMantConst);
                             }
@@ -136,7 +136,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                FASTWriterDispatch.writeNullInt(token, writer, fw.intValues, idx);
+                                FASTWriterScriptPlayerDispatch.writeNullInt(token, writer, fw.intValues, idx);
                             } else {
                                 fw.acceptIntegerSignedOptional(token, 1);
                             }
@@ -144,7 +144,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                FASTWriterDispatch.writeNullLong(token, idx, writer, fw.longValues);
+                                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, mantissa);
                             }
@@ -163,14 +163,14 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         return System.nanoTime() - start;
     }
 
-    FASTReaderDispatch fr;
+    FASTReaderScriptPlayerDispatch fr;
 
     @Override
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
         // if (null==fr) {
-        fr = new FASTReaderDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
+        fr = new FASTReaderScriptPlayerDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
         // } else {
         // //pr.reset();
         // fr.reset();
@@ -215,7 +215,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         return duration;
     }
 
-    private void readDecimalOthers(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token) {
+    private void readDecimalOthers(int[] tokenLookup, FASTReaderScriptPlayerDispatch fr, long none, int f, int token) {
         if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
             int exp = fr.readDecimalExponent(tokenLookup[f]);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
@@ -235,7 +235,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
     }
 
-    private void readDecimalConstant(int[] tokenLookup, FASTReaderDispatch fr, long none, int f, int token, int i) {
+    private void readDecimalConstant(int[] tokenLookup, FASTReaderScriptPlayerDispatch fr, long none, int f, int token, int i) {
         if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
             int exp = fr.readDecimalExponent(tokenLookup[f]);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {

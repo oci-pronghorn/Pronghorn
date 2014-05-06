@@ -1,15 +1,11 @@
 package com.ociweb.jfast.stream;
-import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.FieldReaderBytes;
-import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 //TODO: B, Generate header imports from FASTReaderDispach, and build public constructor from same arguments.
 
-public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
+public class FASTReaderDispatchGenExample extends FASTReaderScriptPlayerDispatch {
 
     public FASTReaderDispatchGenExample(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
@@ -211,7 +207,16 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         };
     private static void m0001_01e(int[] rIntDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer)
-            rbB[rbMask & rbRingBuffer.addPos++] = PrimitiveReader.readIntegerSignedDeltaOptional(0xc/*target*/, 0xc/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/, reader);
+            // Delta opp never uses PMAP
+            long value = PrimitiveReader.readLongSignedPrivate(reader);
+            int result;
+            if (0 == value) {
+                rIntDictionary[0xc/*target*/] = 0;// set to absent
+                result = 0x7fffffff/*constAbsent*/;
+            } else {
+                result = rIntDictionary[0xc/*target*/] = (int) (rIntDictionary[0xc/*source*/] + (value > 0 ? value - 1 : value));
+            }
+            rbB[rbMask & rbRingBuffer.addPos++] = result;
         };
     private static void m0001_01f(int[] rIntDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer)
@@ -250,7 +255,15 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         };
     private static void m0001_022(long[] rLongDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadLongSignedDeltaOptional(idx, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer)
-            long tmpLng=PrimitiveReader.readLongSignedDeltaOptional(0x1/*idx*/, 0x1/*source*/, rLongDictionary, 0x7fffffffffffffffL/*constAbsent*/, reader);
+            // Delta opp never uses PMAP
+            long value = PrimitiveReader.readLongSignedPrivate(reader);
+            long tmpLng;
+            if (0 == value) {
+                rLongDictionary[0x1/*idx*/] = 0;// set to absent
+                tmpLng = 0x7fffffffffffffffL/*constAbsent*/;
+            } else {
+                tmpLng = rLongDictionary[0x1/*idx*/] = (rLongDictionary[0x1/*source*/] + (value > 0 ? value - 1 : value));
+            }
             rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
             rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
         };
@@ -448,7 +461,16 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         };
     private static void m0001_036(int[] rIntDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer)
-            rbB[rbMask & rbRingBuffer.addPos++] = PrimitiveReader.readIntegerSignedDeltaOptional(0xc/*target*/, 0xc/*source*/, rIntDictionary, 0x7fffffff/*constAbsent*/, reader);
+            // Delta opp never uses PMAP
+            long value = PrimitiveReader.readLongSignedPrivate(reader);
+            int result;
+            if (0 == value) {
+                rIntDictionary[0xc/*target*/] = 0;// set to absent
+                result = 0x7fffffff/*constAbsent*/;
+            } else {
+                result = rIntDictionary[0xc/*target*/] = (int) (rIntDictionary[0xc/*source*/] + (value > 0 ? value - 1 : value));
+            }
+            rbB[rbMask & rbRingBuffer.addPos++] = result;
         };
     private static void m0001_037(int[] rIntDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, rbB, rbMask, reader, rbRingBuffer)
@@ -487,7 +509,15 @@ public class FASTReaderDispatchGenExample extends FASTReaderDispatch {
         };
     private static void m0001_03a(long[] rLongDictionary,int[] rbB,int rbMask,PrimitiveReader reader,FASTRingBuffer rbRingBuffer) {
             //genReadLongSignedDeltaOptional(idx, source, constAbsent, rLongDictionary, rbB, rbMask, reader, rbRingBuffer)
-            long tmpLng=PrimitiveReader.readLongSignedDeltaOptional(0x1/*idx*/, 0x1/*source*/, rLongDictionary, 0x7fffffffffffffffL/*constAbsent*/, reader);
+            // Delta opp never uses PMAP
+            long value = PrimitiveReader.readLongSignedPrivate(reader);
+            long tmpLng;
+            if (0 == value) {
+                rLongDictionary[0x1/*idx*/] = 0;// set to absent
+                tmpLng = 0x7fffffffffffffffL/*constAbsent*/;
+            } else {
+                tmpLng = rLongDictionary[0x1/*idx*/] = (rLongDictionary[0x1/*source*/] + (value > 0 ? value - 1 : value));
+            }
             rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
             rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
         };

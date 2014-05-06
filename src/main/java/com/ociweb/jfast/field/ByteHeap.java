@@ -131,11 +131,13 @@ public class ByteHeap {
         return initBuffer;
     }
 
-    byte[] rawAccess() {
+    //TODO: C, should not be public
+    public byte[] rawAccess() {
         return data;
     }
 
-    int allocate(int idx, int sourceLen) {
+    //TODO: C, should not be public
+    public int allocate(int idx, int sourceLen) {
 
         int offset = idx << 2;
 
@@ -172,7 +174,8 @@ public class ByteHeap {
         return target < 0 ? 0 : target;
     }
 
-    void set(int idx, byte[] source, int startFrom, int copyLength) {
+  //TODO: C, should not be public 
+    public void set(int idx, byte[] source, int startFrom, int copyLength) {
         int offset = idx << 2;
 
         totalContent += (copyLength - (tat[offset + 1] - tat[offset]));
@@ -383,7 +386,8 @@ public class ByteHeap {
     // append bytes on to the end of the text after applying trim
     // may need to move existing text or following texts
     // if there is no room after moving everything throws
-    void appendTail(int idx, int trimTail, byte[] source, int sourceIdx, int sourceLen) {
+  //TODO: C, should not be public
+    public void appendTail(int idx, int trimTail, byte[] source, int sourceIdx, int sourceLen) {
         // if not room make room checking after first because thats where we
         // want to copy the tail.
         System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
@@ -433,7 +437,8 @@ public class ByteHeap {
 
     }
 
-    int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
+    //TODO: C, should not be public
+    public int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
         int textLen = (sourceLen - trimTail);
 
         int offset = idx << 2;
@@ -482,7 +487,8 @@ public class ByteHeap {
     // append bytes on to the front of the text after applying trim
     // may need to move existing text or previous texts
     // if there is no room after moving everything throws
-    void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen) {
+  //TODO: C, should not be public
+    public void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen) {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
     }
 
@@ -503,7 +509,8 @@ public class ByteHeap {
         data[makeSpaceForPrepend(idx, 0, 1)] = value;
     }
 
-    int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
+    //TODO: C, should not be public
+    public int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
         int textLength = sourceLen - trimHead;
         if (textLength < 0) {
             textLength = 0;

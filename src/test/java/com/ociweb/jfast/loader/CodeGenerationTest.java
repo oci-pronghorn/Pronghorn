@@ -22,6 +22,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -38,7 +39,7 @@ public class CodeGenerationTest {
     public static void setupTemplateResource() {
         System.out.println("**********************************************************************");
         try {
-            File classFile = new File(FASTReaderDispatch.class.getResource(FASTReaderDispatch.class.getSimpleName() + ".class").toURI());
+            File classFile = new File(FASTReaderScriptPlayerDispatch.class.getResource(FASTReaderDispatch.class.getSimpleName() + ".class").toURI());
             String srcPath = classFile.getPath().replaceFirst("target.classes", "src/main/java").replace(".class",".java");
             File sourceFile = new File(srcPath);
             if (sourceFile.exists()) { //found source file so update resources
@@ -159,20 +160,20 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
-        FASTReaderDispatch readerDispatch1 = new FASTReaderDispatch(primitiveReader1, catalog.dictionaryFactory(),
+        FASTReaderScriptPlayerDispatch readerDispatch1 = new FASTReaderScriptPlayerDispatch(primitiveReader1, catalog.dictionaryFactory(),
                 catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(), catalog.getMaxTextLength(),
                 catalog.getMaxByteVectorLength(), catalog.getTextGap(), catalog.getByteVectorGap(),
                 catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
-        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(primitiveReader1, catalog, readerDispatch1);
+        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(catalog, readerDispatch1);
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 32);
-        FASTReaderDispatch readerDispatch2 = new FASTReaderDispatchGenExample(reader,
+        FASTReaderScriptPlayerDispatch readerDispatch2 = new FASTReaderDispatchGenExample(reader,
                 catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
-        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(reader, catalog, readerDispatch2);
+        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(catalog, readerDispatch2);
         FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 
         // final Map<Long,String> reads1 = new HashMap<Long,String>();
