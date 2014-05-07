@@ -8,7 +8,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
+public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates  {
 
 
 
@@ -26,20 +26,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
         return rbRingBuffer;
     }
 
-    public void reset() {
 
-        // clear all previous values to un-set
-        dictionaryFactory.reset(rIntDictionary);
-        dictionaryFactory.reset(rLongDictionary);
-        if (null != textHeap) {
-            textHeap.reset();
-        }
-        if (null!=byteHeap) {
-            byteHeap.reset();
-        }
-        sequenceCountStackHead = -1;
-
-    }
 
 
     
@@ -211,48 +198,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
         readFromIdx = TokenBuilder.MAX_INSTANCE & token;
     }
 
-    public void setDispatchObserver(DispatchObserver observer) {
-        this.observer = observer;
-    }
 
-    protected boolean gatherReadData(PrimitiveReader reader, int cursor) {
-
-        int token = fullScript[cursor];
-
-        if (null != observer) {
-            String value = "";
-            // totalRead is bytes loaded from stream.
-
-            long absPos = PrimitiveReader.totalRead(reader) - PrimitiveReader.bytesReadyToParse(reader);
-            observer.tokenItem(absPos, token, cursor, value);
-        }
-
-        return true;
-    }
-
-    protected boolean gatherReadData(PrimitiveReader reader, int cursor, String value) {
-
-        int token = fullScript[cursor];
-
-        if (null != observer) {
-            // totalRead is bytes loaded from stream.
-
-            long absPos = PrimitiveReader.totalRead(reader) - PrimitiveReader.bytesReadyToParse(reader);
-            observer.tokenItem(absPos, token, cursor, value);
-        }
-
-        return true;
-    }
-
-    protected boolean gatherReadData(PrimitiveReader reader, String msg) {
-
-        if (null != observer) {
-            long absPos = PrimitiveReader.totalRead(reader) - PrimitiveReader.bytesReadyToParse(reader);
-            observer.tokenItem(absPos, -1, activeScriptCursor, msg);
-        }
-
-        return true;
-    }
 
     private void readDictionaryReset2(int[] members) {
 
@@ -857,17 +803,17 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
                 int target = token & MAX_INT_INSTANCE_MASK;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadLength(target, jumpToTarget, rbB, rbMask, rbRingBuffer, rIntDictionary, reader);
+                    genReadLength(target, jumpToTarget, rbB, rbMask, rbRingBuffer, rIntDictionary, reader, this);
                 } else {
                     // delta
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
+                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader, this);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
-                genReadLengthConstant(constDefault, jumpToTarget, rbB, rbMask, rbRingBuffer);
+                genReadLengthConstant(constDefault, jumpToTarget, rbB, rbMask, rbRingBuffer, this);
             }
 
         } else {
@@ -879,13 +825,13 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
+                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader, this);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader);
+                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary, rbB, rbMask, rbRingBuffer, reader, this);
                 }
             } else {
                 // default
@@ -893,7 +839,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                 int constDefault = rIntDictionary[source];
 
-                genReadLengthDefault(constDefault, jumpToTarget, rbB, reader, rbMask, rbRingBuffer);
+                genReadLengthDefault(constDefault, jumpToTarget, rbB, reader, rbMask, rbRingBuffer, this);
             }
         }
     }
@@ -1046,7 +992,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatch  {
 
         //token driven logic so nothing will need to be generated for this false case
         if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
-            genReadSequenceClose(backvalue);
+            genReadSequenceClose(backvalue, this);
         } else {
             doSequence = false;
         }

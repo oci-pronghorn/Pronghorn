@@ -21,7 +21,8 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
-import com.ociweb.jfast.stream.FASTReaderDispatch;
+import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
+import com.ociweb.jfast.stream.FASTReaderDispatchBase;
 import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
@@ -39,7 +40,7 @@ public class CodeGenerationTest {
     public static void setupTemplateResource() {
         System.out.println("**********************************************************************");
         try {
-            File classFile = new File(FASTReaderScriptPlayerDispatch.class.getResource(FASTReaderDispatch.class.getSimpleName() + ".class").toURI());
+            File classFile = new File(FASTReaderScriptPlayerDispatch.class.getResource(FASTReaderDispatchTemplates.class.getSimpleName() + ".class").toURI());
             String srcPath = classFile.getPath().replaceFirst("target.classes", "src/main/java").replace(".class",".java");
             File sourceFile = new File(srcPath);
             if (sourceFile.exists()) { //found source file so update resources
@@ -169,7 +170,7 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 32);
-        FASTReaderScriptPlayerDispatch readerDispatch2 = new FASTReaderDispatchGenExample(reader,
+        FASTReaderDispatchBase readerDispatch2 = new FASTReaderDispatchGenExample(reader,
                 catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);

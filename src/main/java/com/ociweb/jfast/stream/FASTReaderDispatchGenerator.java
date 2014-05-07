@@ -1,10 +1,19 @@
 package com.ociweb.jfast.stream;
 
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
@@ -24,6 +33,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
     // TODO: B, copy other dispatch and use it for code generation, if possible
     // build generator that makes use of its own source as template.
     // TODO: C, code does not support final in signatures, this would be nice to have
+    //TODO: A, must gather code and based on complexity group into functions to reduce total calls.
+    
+    
+    
+    
     
     private static final String GROUP_METHOD_NAME = "grp";
 
@@ -102,6 +116,26 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         return sequenceStarts;
     }
     
+    private int complexity(CharSequence seq) {
+        int complexity = 0;
+        int i = seq.length();
+        while (--i>=0) {
+            char c = seq.charAt(i);
+            if ('.'==c || //deref 
+                '['==c || //array ref
+                '+'==c || //add
+                '-'==c || //subtract
+                '*'==c || //multiply
+                '&'==c || //and
+                '|'==c || //or
+                '?'==c ) { //ternary 
+                complexity++;
+            }
+        }
+        return complexity;
+    }
+    
+    
     private void generator(StackTraceElement[] trace, long ... values) {
         
         String methodNameKey = " "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
@@ -113,6 +147,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         
         //replace variables with constants
         String template = templates.template(methodNameKey);
+        
+        //TODO: A, sum total complexity and write full method when it reaches 18
+        //int complexity = complexity(template);
+        //System.err.println("///////////////complexity "+complexity);
+        
         long[] data = values;
         int i = data.length;
         while (--i>=0) {
@@ -153,20 +192,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
             fieldBuilder.append("private boolean "); //TODO: X, would like to make this static but not sure how.
             caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
         } else {
-            if (hasMemberRefs(template)) {
-                fieldBuilder.append("private void ");//TODO: X, continue to redce the member refs
-            } else {
-                fieldBuilder.append("private static void ");
-            }
+            fieldBuilder.append("private static void ");
             caseBuilder.append("    ").append(field).append("(").append(fieldParaValues).append(");\n");
         }
         fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
         
-    }
-
-    private boolean hasMemberRefs(String template) {
-        return template.contains("sequenceCountStackHead") || template.contains("activeScriptCursor");
     }
 
     private void generateParameters(String[] params, String[] defs, StringBuilder fieldParaValues,
@@ -191,7 +222,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         //////////
     }
     
-    public void generateAllGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas) {
+    public void generateAllGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, StringBuilder builder) {
         
         //A Group may be a full message or sequence item or group.
         
@@ -212,8 +243,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
             
             block = generateSingleGroupMethod(i, cursor, limit, doneScriptsParas);
             
-            System.err.println();
-            System.err.println(block);
+            builder.append("\n");
+            builder.append(block);
             
             //do additional case methods if needed.
             
@@ -223,8 +254,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
                     
                     block = generateSingleGroupMethod(i, seqStart, limit, doneScriptsParas);
                     
-                    System.err.println();
-                    System.err.println(block);
+                    builder.append("\n");
+                    builder.append(block);
                 }
                 
             }
@@ -237,22 +268,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         dispatchReadByToken();
         return getSingleGroupMethod(doneScriptsParas);
     }
-
-    public StringBuilder generateFullClass(TemplateCatalog catalog) {
-        List<Integer> doneScripts = new ArrayList<Integer>();
-        List<String> doneScriptsParas = new ArrayList<String>();
-        
-        
-        generateAllGroupMethods(catalog,doneScripts,doneScriptsParas);
-        
-        StringBuilder builder = generateEntryDispatchMethod(doneScripts,doneScriptsParas);
-        
-        //TODO: A, wrap with class signature
-        
-        return builder;
-    }
-
-    private StringBuilder generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas) {
+    
+    private StringBuilder generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, StringBuilder builder) {
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int[] doneValues = new int[doneScripts.size()];
@@ -262,7 +279,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        StringBuilder builder = new StringBuilder();
         builder.append("public boolean dispatchReadByToken() {\n");
         builder.append("    doSequence = false;\n");
         builder.append("    int x = activeScriptCursor;\n");
@@ -271,9 +287,64 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         builder.append("}\n");
         return builder;
     }
+
+    public StringBuilder generateFullClass(TemplateCatalog catalog) {
+        List<Integer> doneScripts = new ArrayList<Integer>();
+        List<String> doneScriptsParas = new ArrayList<String>();
+        StringBuilder builder = new StringBuilder();
+        
+        builder.append("package com.ociweb.jfast.stream;\n");
+        builder.append("\n");
+        builder.append(templates.imports());
+        builder.append("\n");
+        builder.append("public class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {");
+        builder.append("\n");
+        builder.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample"));
+        builder.append("\n");
+        generateAllGroupMethods(catalog,doneScripts,doneScriptsParas,builder);
+        
+        generateEntryDispatchMethod(doneScripts,doneScriptsParas,builder).append('}');
+        return builder;
+    }
+    
+    //TODO: A, Write the soruce to a known folder?
+    //TODO: A, Compile from source to another known folder?
+    //TODO: A, Use known folder to load class and use?
+    
+    
+    public void compile(Iterable<? extends File> javaFiles) {
+        
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if (null!=compiler) {
+
+            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+            StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+            
+            Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(javaFiles);
+
+            List<String> optionList = new ArrayList<String>();
+            optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path")));
+            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnits);
+            if (task.call()) {
+                
+                //success
+                //use class loader to pull this up.
+                
+            } else {
+                //did not compile due to error
+                
+            }
+            
+            
+        } else {
+            //unable to compile, no compiler
+        }
+        
+        
+    }
     
     @Override
-    protected void genReadSequenceClose(int backvalue) {
+    protected void genReadSequenceClose(int backvalue, FASTReaderDispatchBase dispatch) {
         generator(new Exception().getStackTrace(),backvalue);
     }
     
@@ -291,42 +362,42 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
     // length methods
     
     @Override
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader) {
+    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target, jumpToTarget);
         return true;

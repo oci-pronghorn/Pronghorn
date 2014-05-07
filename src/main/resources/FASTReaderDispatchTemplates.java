@@ -6,22 +6,16 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public abstract class FASTReaderDispatch extends FASTReaderDispatchBase {
+public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase {
 
 
-    public FASTReaderDispatch(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
+    public FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
         super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
                 maxNestedGroupDepth, primaryRingBits, textRingBits);
     }
 
-    // ////////////////////////////////////////////////////////////
-    // DO NOT REMOVE/MODIFY CONSTANT
-    public static final String START_HERE = "Code Generator Scripts Start Here";
-
-    
-    // ////////////////////////////////////////////////////////////
     
     protected void genReadCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);

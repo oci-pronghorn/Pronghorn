@@ -92,12 +92,12 @@ public final class FASTRingBuffer {
 
     }
 
-    // TODO: A, add map method which can take data from one ring buffer and
+    // TODO: C, add map method which can take data from one ring buffer and
     // populate another.
 
-    // TODO: A, Promises/Futures/Listeners as possible better fit to stream
+    // TODO: C, Promises/Futures/Listeners as possible better fit to stream
     // processing?
-    // TODO: A, look at adding reduce method in addition to filter.
+    // TODO: C, look at adding reduce method in addition to filter.
 
     public final int availableCapacity() {
         return maxSize - (addPos - remPos);

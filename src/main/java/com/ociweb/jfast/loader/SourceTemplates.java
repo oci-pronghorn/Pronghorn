@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 
+import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 
 public class SourceTemplates {
@@ -25,7 +26,7 @@ public class SourceTemplates {
     
     private String templateSource() {
         
-         URL sourceData = getClass().getResource("/FASTReaderDispatch.java");
+         URL sourceData = getClass().getResource("/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java");
          File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
         //File sourceDataFile = new File("/home/nate/SpiderOak Hive/kepler/jFAST/src/main/java/com/ociweb/jfast/stream/FASTReaderDispatch.java");
                 
@@ -73,19 +74,16 @@ public class SourceTemplates {
         return getRawSource().substring(start,stop);
     }
     
-    public String imports() { //TODO: A, pull in imports
-        
-        //the includes before this.
-        //public class FASTReaderDispatch
-        return "";
+    public String imports() {
+        String source = getRawSource();
+        return source.substring(source.indexOf("import"), 
+                                source.indexOf("public abstract class "+FASTReaderDispatchTemplates.class.getSimpleName()));
     }
     
-    public String constructor() { //TODO: pull in constructor.
-        
-        //find this.
-        //public FASTReaderDispatch(
-        
-        return "";
+    public String constructor() {
+        String source = getRawSource();
+        int startIdx = source.indexOf("public "+FASTReaderDispatchTemplates.class.getSimpleName());
+        return source.substring(startIdx,source.indexOf('}',startIdx)+1);
     }
     
     public String[] params(String methodName) {

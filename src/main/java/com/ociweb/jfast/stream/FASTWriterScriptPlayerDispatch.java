@@ -2232,11 +2232,6 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
 
-
-    //TODO: A, Add gen copy methods and insert them before teh gen write/read calls.
-    
-    
-    
     private void genWriterBytesTailOptional(int token, ByteBuffer value) {
         int idx = token & instanceBytesMask;
         int headCount = byteHeap.countHeadMatch(idx, value);

@@ -29,6 +29,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
+import com.ociweb.jfast.stream.FASTReaderDispatchBase;
 import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
@@ -199,7 +200,7 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderScriptPlayerDispatch readerDispatch = 
+        FASTReaderDispatchBase readerDispatch = 
                 //new FASTReaderDispatch( 
                 new FASTReaderDispatchGenExample(
                         
