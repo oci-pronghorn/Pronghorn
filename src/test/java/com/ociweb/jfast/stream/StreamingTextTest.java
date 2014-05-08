@@ -205,7 +205,7 @@ public class StreamingTextTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderScriptPlayerDispatch fr = new FASTReaderScriptPlayerDispatch(reader, dcr, 3, new int[0][0], 300, 0, 4, 4, null, 64, 8, 7);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 300, 0, 4, 4, null, 64, 8, 7);
         TextHeap textHeap = fr.textHeap;
 
         long start = System.nanoTime();

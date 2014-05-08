@@ -1,6 +1,8 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.generator;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -9,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -22,8 +25,12 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.SourceTemplates;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.stream.FASTReaderDispatchBase;
+import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
-public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch {
+public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
 
 
@@ -82,7 +89,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         doneScriptsParas.add(paraVals);
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private int ") //TODO: C, would like to make this static but it may call non statics
+        signatureLine.append("private static int ")
                      .append(GROUP_METHOD_NAME)
                      .append(scriptPos)
                      .append("(")
@@ -189,7 +196,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         field = fieldPrefix+"_"+field;
         
         if (methodNameKey.contains("Length")) {
-            fieldBuilder.append("private boolean "); //TODO: X, would like to make this static but not sure how.
+            fieldBuilder.append("private static boolean ");
             caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
         } else {
             fieldBuilder.append("private static void ");
@@ -222,7 +229,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         //////////
     }
     
-    public void generateAllGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, StringBuilder builder) {
+    public void generateAllGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
         
         //A Group may be a full message or sequence item or group.
         
@@ -269,7 +276,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
         return getSingleGroupMethod(doneScriptsParas);
     }
     
-    private StringBuilder generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, StringBuilder builder) {
+    private void generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int[] doneValues = new int[doneScripts.size()];
@@ -279,32 +286,72 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public boolean dispatchReadByToken() {\n");
+        builder.append("public final boolean dispatchReadByToken() {\n");
         builder.append("    doSequence = false;\n");
         builder.append("    int x = activeScriptCursor;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
         builder.append("    return doSequence;\n");
         builder.append("}\n");
-        return builder;
+
     }
 
-    public StringBuilder generateFullClass(TemplateCatalog catalog) {
+    public void generateFullReaderSource(TemplateCatalog catalog, Appendable target) throws IOException {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
-        StringBuilder builder = new StringBuilder();
         
-        builder.append("package com.ociweb.jfast.stream;\n");
-        builder.append("\n");
-        builder.append(templates.imports());
-        builder.append("\n");
-        builder.append("public class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {");
-        builder.append("\n");
-        builder.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample"));
-        builder.append("\n");
-        generateAllGroupMethods(catalog,doneScripts,doneScriptsParas,builder);
+        target.append("package com.ociweb.jfast.stream;\n");
+        target.append("\n");
+        target.append(templates.imports());
+        target.append("\n");
+        target.append("public final class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {");
+        target.append("\n");
+        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample"));
+        target.append("\n");
+        generateAllGroupMethods(catalog,doneScripts,doneScriptsParas,target);
         
-        generateEntryDispatchMethod(doneScripts,doneScriptsParas,builder).append('}');
-        return builder;
+        generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
+        target.append('}');
+
+    }
+    
+    public void createWriteSourceClassFiles(TemplateCatalog catalog) {
+                
+        try {
+            
+            File tempDir = new File(System.getProperty("java.io.tmpdir"));//TODO: need unique directory for this install/catalog.
+            String rootName = "FASTReaderDispatchGenExample"; //TODO: pull out as constant.
+            //TODO: must create full path to this file.
+            
+            File path = new File(tempDir,"com");
+            path = new File(path,"ociweb");
+            path = new File(path,"jfast");
+            path = new File(path,"stream");
+            path.mkdirs();
+            
+            
+            File sourceTarget = new File(path,rootName+".java");
+            
+            
+            //write source file
+            FileWriter writer = new FileWriter(sourceTarget);
+            generateFullReaderSource(catalog,writer);
+            writer.close();
+            
+            //write class file
+            List<File> toCompile = new ArrayList<File>();
+            toCompile.add(sourceTarget);
+            compile(toCompile);
+            
+            System.err.println(sourceTarget);
+            
+            
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        
+        
+        
     }
     
     //TODO: A, Write the soruce to a known folder?
@@ -327,17 +374,25 @@ public class FASTReaderDispatchGenerator extends FASTReaderScriptPlayerDispatch 
             JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnits);
             if (task.call()) {
                 
+                System.out.println("success");
                 //success
+                
                 //use class loader to pull this up.
                 
             } else {
                 //did not compile due to error
+                System.err.println("error in compile  ");
+                
+                for (Diagnostic<? extends JavaFileObject> x:      diagnostics.getDiagnostics()) {
+                    System.err.println(x);
+                }
                 
             }
             
             
         } else {
             //unable to compile, no compiler
+            System.err.println("no compiler");
         }
         
         

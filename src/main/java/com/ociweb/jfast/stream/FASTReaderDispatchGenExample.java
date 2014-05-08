@@ -7,7 +7,7 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 
-public class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {
+public final class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {
 public FASTReaderDispatchGenExample(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
@@ -15,7 +15,7 @@ public FASTReaderDispatchGenExample(PrimitiveReader reader, DictionaryFactory dc
                 maxNestedGroupDepth, primaryRingBits, textRingBits);
     }
 
-private int grp1(TextHeap textHeap, long[] rLongDictionary, long[] rLongInit, int[] rIntDictionary, int[] rIntInit, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
+private static int grp1(TextHeap textHeap, long[] rLongDictionary, long[] rLongInit, int[] rIntDictionary, int[] rIntInit, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
     m0001_001(textHeap);
     m0001_002(rLongDictionary,rLongInit);
     m0001_003(rLongDictionary,rLongInit);
@@ -131,7 +131,7 @@ private static void m0001_011(int[] rbB,int rbMask,PrimitiveReader reader,int[] 
         //genReadIntegerUnsigned(target, rbB, rbMask, reader, rIntDictionary, rbRingBuffer)
         rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[0x2/*target*/] = PrimitiveReader.readIntegerUnsigned(reader);
     };
-private boolean m0001_012(int[] rbB,int rbMask,FASTRingBuffer rbRingBuffer,int[] rIntDictionary,PrimitiveReader reader,FASTReaderDispatchBase dispatch) {
+private static boolean m0001_012(int[] rbB,int rbMask,FASTRingBuffer rbRingBuffer,int[] rIntDictionary,PrimitiveReader reader,FASTReaderDispatchBase dispatch) {
         //genReadLength(target, jumpToTarget, rbB, rbMask, rbRingBuffer, rIntDictionary, reader, dispatch)
         int length;
         int value = rIntDictionary[0x3/*target*/] = length = PrimitiveReader.readIntegerUnsigned(reader);
@@ -372,7 +372,7 @@ private static void m0001_02a(FASTReaderDispatchBase dispatch) {
         }
     };
 
-private int grp9(PrimitiveReader reader, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, TextHeap textHeap, long[] rLongDictionary, FASTReaderDispatchBase dispatch) {
+private static int grp9(PrimitiveReader reader, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, TextHeap textHeap, long[] rLongDictionary, FASTReaderDispatchBase dispatch) {
     m0001_02b(reader);
     m0001_02c(rIntDictionary,rbB,rbMask,reader,rbRingBuffer);
     m0001_02d(rbB,rbMask,reader,rbRingBuffer);
@@ -625,7 +625,7 @@ private static void m0001_042(FASTReaderDispatchBase dispatch) {
         }
     };
 
-private int grp32(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, int[] rIntDictionary, TextHeap textHeap, FASTReaderDispatchBase dispatch, long[] rLongDictionary) {
+private static int grp32(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, int[] rIntDictionary, TextHeap textHeap, FASTReaderDispatchBase dispatch, long[] rLongDictionary) {
     m0002_043(rbB,rbMask,rbRingBuffer);
     m0002_044(rbB,rbMask,rbRingBuffer);
     m0002_045(rbB,rbMask,rbRingBuffer);
@@ -680,7 +680,7 @@ private static void m0002_048(int[] rbB,int rbMask,PrimitiveReader reader,TextHe
         rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(0xd/*idx*/, tmp, textHeap);
         rbB[rbMask & rbRingBuffer.addPos++] = tmp;
     };
-private boolean m0002_049(int[] rbB,int rbMask,FASTRingBuffer rbRingBuffer,int[] rIntDictionary,PrimitiveReader reader,FASTReaderDispatchBase dispatch) {
+private static boolean m0002_049(int[] rbB,int rbMask,FASTRingBuffer rbRingBuffer,int[] rIntDictionary,PrimitiveReader reader,FASTReaderDispatchBase dispatch) {
         //genReadLength(target, jumpToTarget, rbB, rbMask, rbRingBuffer, rIntDictionary, reader, dispatch)
         int length;
         int value = rIntDictionary[0x13/*target*/] = length = PrimitiveReader.readIntegerUnsigned(reader);
@@ -761,7 +761,7 @@ private static void m0002_053(FASTReaderDispatchBase dispatch) {
         }
     };
 
-private int grp39(PrimitiveReader reader, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTReaderDispatchBase dispatch) {
+private static int grp39(PrimitiveReader reader, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTReaderDispatchBase dispatch) {
     m0002_054(reader);
     m0002_055(rbB,rbMask,rbRingBuffer);
     m0002_056(rbB,rbMask,reader,rbRingBuffer);
@@ -840,7 +840,7 @@ private static void m0002_05d(FASTReaderDispatchBase dispatch) {
         }
     };
 
-private int grp0(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+private static int grp0(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
     m0099_05e(rbB,rbMask,rbRingBuffer);
     return 1;
 }
@@ -849,33 +849,34 @@ private static void m0099_05e(int[] rbB,int rbMask,FASTRingBuffer rbRingBuffer) 
         rbB[rbMask & rbRingBuffer.addPos++] = 0x80000000/*constIdx*/;
         rbB[rbMask & rbRingBuffer.addPos++] = 0x2/*constLen*/;
     };
-public boolean dispatchReadByToken() {
+    
+public final boolean dispatchReadByToken() {
     doSequence = false;
     int x = activeScriptCursor;
     if ((x&0x20)==0) {
         if ((x&0x8)==0) {
             if ((x&0x1)==0) {
-                assert(0==x) : "found value of "+x;
-                assert (gatherReadData(reader, activeScriptCursor));
+             //   assert(0==x) : "found value of "+x;
+             //   assert (gatherReadData(reader, activeScriptCursor));
                 activeScriptCursor=grp0(rbB, rbMask, rbRingBuffer);
             } else {
-                assert(1==x) : "found value of "+x;
-                assert (gatherReadData(reader, activeScriptCursor));
+           //     assert(1==x) : "found value of "+x;
+            //    assert (gatherReadData(reader, activeScriptCursor));
                 activeScriptCursor=grp1(textHeap, rLongDictionary, rLongInit, rIntDictionary, rIntInit, rbB, rbMask, rbRingBuffer, reader, dispatch);
             }
         } else {
-            assert(9==x) : "found value of "+x;
-            assert (gatherReadData(reader, activeScriptCursor));
+           /// assert(9==x) : "found value of "+x;
+          //  assert (gatherReadData(reader, activeScriptCursor));
             activeScriptCursor=grp9(reader, rIntDictionary, rbB, rbMask, rbRingBuffer, textHeap, rLongDictionary, dispatch);
         }
     } else {
         if ((x&0x1)==0) {
-            assert(32==x) : "found value of "+x;
-            assert (gatherReadData(reader, activeScriptCursor));
+          //  assert(32==x) : "found value of "+x;
+          //  assert (gatherReadData(reader, activeScriptCursor));
             activeScriptCursor=grp32(rbB, rbMask, rbRingBuffer, reader, rIntDictionary, textHeap, dispatch, rLongDictionary);
         } else {
-            assert(39==x) : "found value of "+x;
-            assert (gatherReadData(reader, activeScriptCursor));
+         //   assert(39==x) : "found value of "+x;
+         //   assert (gatherReadData(reader, activeScriptCursor));
             activeScriptCursor=grp39(reader, rbB, rbMask, rbRingBuffer, rLongDictionary, rIntDictionary, dispatch);
         }
     }

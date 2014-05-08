@@ -11,7 +11,7 @@ import java.net.URL;
 import java.nio.channels.FileChannel;
 
 import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
-import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
 public class SourceTemplates {
 

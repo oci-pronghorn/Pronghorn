@@ -143,7 +143,7 @@ public abstract class BaseStreamingTest {
 			
 			}
 
-	protected int groupManagementRead(int fieldsPerGroup, FASTReaderScriptPlayerDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
+	protected int groupManagementRead(int fieldsPerGroup, FASTReaderInterpreterDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group 
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;

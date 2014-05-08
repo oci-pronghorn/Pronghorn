@@ -8,14 +8,14 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates  {
+public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  {
 
 
 
     private int readFromIdx = -1;
 
 
-    public FASTReaderScriptPlayerDispatch(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
+    public FASTReaderInterpreterDispatch(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
         super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
@@ -904,7 +904,7 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 genReadBytesCopy(idx, 0, rbB, rbMask, byteHeap, reader, rbRingBuffer);
             } else {
                 // default
-                int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK | idx;
+                int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK | idx;
                 int idLength = byteHeap.length(initId);
                 int initIdx = byteHeap.initStartOffset(initId);
                 
@@ -935,9 +935,9 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId =    idx | FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constId =    idx | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     int constInitLen = byteHeap.length(constId);
-                    int constInit = textHeap.initStartOffset(constId)| FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
                     int constValue =    idx;
                     int constValueLen = byteHeap.length(constValue);
@@ -958,10 +958,10 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
             } else {
                 // default
                 int constValue =    token & byteInstanceMask;
-                int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK | constValue;
+                int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK | constValue;
                 
                 int constValueLen = byteHeap.length(initId);
-                int initIdx = textHeap.initStartOffset(initId)|FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                 
                 genReadBytesDefault(constValue,initIdx, constValueLen,1, rbB, rbMask, byteHeap, reader, rbRingBuffer);
             }
@@ -1096,8 +1096,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = (idx) | FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constId = (idx) | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
                     int constValue = idx;
                     genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constId), textHeap.initLength(constValue), rbB, rbMask, reader, rbRingBuffer);
@@ -1114,8 +1114,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 genReadUTF8Copy(idx,1, rbB, rbMask, reader, textHeap, rbRingBuffer);
             } else {
                 // default
-                int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK | idx;
-                int initIdx = textHeap.initStartOffset(initId)|FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                 
                 genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 1, rbB, rbMask, textHeap, reader, rbRingBuffer);
             }
@@ -1143,8 +1143,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = idx | FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constId = idx | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
                     genReadTextConstant(constInit, textHeap.initLength(constId), rbB, rbMask, rbRingBuffer); //always fixed length
                 } else {
@@ -1160,8 +1160,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 genReadASCIICopy(idx, rbB, rbMask, reader, textHeap, rbRingBuffer); //always dynamic
             } else {
                 // default
-                int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK|idx;
-                int initIdx = textHeap.initStartOffset(initId) |FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK|idx;
+                int initIdx = textHeap.initStartOffset(initId) |FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                 genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbB, rbMask, reader, textHeap, rbRingBuffer); //dynamic or constant
             }
         }
@@ -1187,8 +1187,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = idx | FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constId = idx | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
                     genReadTextConstant(constInit, textHeap.initLength(constId), rbB, rbMask, rbRingBuffer);
                 } else {
@@ -1204,8 +1204,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 genReadUTF8Copy(idx,0, rbB, rbMask, reader, textHeap, rbRingBuffer);
             } else {
                 // default
-                int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK | idx;
-                int initIdx = textHeap.initStartOffset(initId)|FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                 
                 genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 0, rbB, rbMask, textHeap, reader, rbRingBuffer);
             }
@@ -1227,8 +1227,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     genReadASCIIDeltaOptional(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
                 } else {
-                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
                     //TODO: redo text to avoid copy and have usage counter in text heap.
                     int constValue = token & MAX_TEXT_INSTANCE_MASK; //TODO: A, is this real? how do we know where to copy from ?
@@ -1239,8 +1239,8 @@ public class FASTReaderScriptPlayerDispatch extends FASTReaderDispatchTemplates 
                     genReadASCIICopyOptional(idx, rbB, rbMask, textHeap, reader, rbRingBuffer);
                 } else {
                     // for ASCII we don't need special behavior for optional
-                    int initId = FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK|idx;
-                    int initIdx = textHeap.initStartOffset(initId) |FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK;
+                    int initId = FASTReaderInterpreterDispatch.INIT_VALUE_MASK|idx;
+                    int initIdx = textHeap.initStartOffset(initId) |FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbB, rbMask, reader, textHeap, rbRingBuffer);
                 }
             }

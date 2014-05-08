@@ -16,6 +16,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -23,9 +24,8 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.stream.FASTReaderDispatchBase;
-import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
-import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
@@ -40,7 +40,7 @@ public class CodeGenerationTest {
     public static void setupTemplateResource() {
         System.out.println("**********************************************************************");
         try {
-            File classFile = new File(FASTReaderScriptPlayerDispatch.class.getResource(FASTReaderDispatchTemplates.class.getSimpleName() + ".class").toURI());
+            File classFile = new File(FASTReaderInterpreterDispatch.class.getResource(FASTReaderDispatchTemplates.class.getSimpleName() + ".class").toURI());
             String srcPath = classFile.getPath().replaceFirst("target.classes", "src/main/java").replace(".class",".java");
             File sourceFile = new File(srcPath);
             if (sourceFile.exists()) { //found source file so update resources
@@ -133,8 +133,14 @@ public class CodeGenerationTest {
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
         
-        
-        StringBuilder builder = readerDispatch.generateFullClass(catalog);
+        StringBuilder builder = new StringBuilder();
+        try {
+            readerDispatch.generateFullReaderSource(catalog, builder);
+            
+            readerDispatch.createWriteSourceClassFiles(catalog);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         
         System.err.println(builder.toString());
     }
@@ -161,7 +167,7 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
-        FASTReaderScriptPlayerDispatch readerDispatch1 = new FASTReaderScriptPlayerDispatch(primitiveReader1, catalog.dictionaryFactory(),
+        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(primitiveReader1, catalog.dictionaryFactory(),
                 catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(), catalog.getMaxTextLength(),
                 catalog.getMaxByteVectorLength(), catalog.getTextGap(), catalog.getByteVectorGap(),
                 catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);

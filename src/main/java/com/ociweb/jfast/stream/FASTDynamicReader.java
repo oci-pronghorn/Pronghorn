@@ -138,6 +138,11 @@ public class FASTDynamicReader implements FASTDataProvider {
     }
 
     private final int hasMoreEnd(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb) {
+        //TODO: A, full static helps.
+        
+        //This static ref does not seem to help at all.
+        //return FASTReaderDispatchGenExample.dispatchReadByToken(readerDispatch) ? sequence(readerDispatch, rb) : finishTemplate();
+        //
         return readerDispatch.dispatchReadByToken() ? sequence(readerDispatch, rb) : finishTemplate();
     }
 

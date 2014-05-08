@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -30,9 +31,8 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatchBase;
-import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
-import com.ociweb.jfast.stream.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterScriptPlayerDispatch;
@@ -116,7 +116,7 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader, catalog.dictionaryFactory(), 3,
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog.dictionaryFactory(), 3,
                 catalog.dictionaryMembers(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8,
                 7);
@@ -439,7 +439,7 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
-        FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader,
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader,
                 catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);

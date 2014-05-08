@@ -606,7 +606,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         //TODO: B, extract the constant length from here.
         int optionalTrim = PrimitiveReader.readIntegerSigned(reader);
         int tempId = (0 == optionalTrim ? 
-                         textHeap.initStartOffset( FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK | idx) |FASTReaderScriptPlayerDispatch.INIT_VALUE_MASK : 
+                         textHeap.initStartOffset( FASTReaderInterpreterDispatch.INIT_VALUE_MASK | idx) |FASTReaderInterpreterDispatch.INIT_VALUE_MASK : 
                          (optionalTrim > 0 ? StaticGlue.readASCIITail(idx, textHeap, reader, optionalTrim - 1) :
                                              StaticGlue.readASCIIHead(idx, optionalTrim, textHeap, reader)));
         int len = textHeap.valueLength(tempId);

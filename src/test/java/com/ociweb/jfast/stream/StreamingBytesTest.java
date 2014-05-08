@@ -368,7 +368,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderScriptPlayerDispatch fr = new FASTReaderScriptPlayerDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
         ByteHeap byteHeap = fr.byteHeap;
 
         int token = 0;

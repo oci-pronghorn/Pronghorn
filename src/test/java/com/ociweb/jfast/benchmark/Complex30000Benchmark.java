@@ -26,7 +26,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.FASTDynamicReader;
-import com.ociweb.jfast.stream.FASTReaderScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
@@ -66,7 +66,7 @@ public class Complex30000Benchmark extends Benchmark {
 			
 			fastInput = new FASTInputByteArray(testData);
 			reader = new PrimitiveReader(2048, fastInput, 32);
-			FASTReaderScriptPlayerDispatch readerDispatch = new FASTReaderScriptPlayerDispatch(reader, 
+			FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, 
 							                    catalog.dictionaryFactory(), 
 							                    3, 
 							                    catalog.dictionaryMembers(), 
