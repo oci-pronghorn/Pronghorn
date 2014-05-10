@@ -32,208 +32,202 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class Complex30000Benchmark extends Benchmark {
 
-	FASTInputByteArray fastInput;
-	PrimitiveReader reader;
-	FASTDynamicReader dynamicReader;
-	FASTRingBuffer queue;
-	TemplateCatalog catalog;
-	byte[] testData;
-	
-	public Complex30000Benchmark() {
-		catalog = new TemplateCatalog(new PrimitiveReader(buildRawCatalogData(),0));
-		
-		byte prefixSize = 4;
-		catalog.setMessagePreambleSize(prefixSize);	
-		
-		int maxByteVector = 0;
-		catalog.setMaxByteVectorLength(maxByteVector, 0);
-				
-		int maxTextLength = 14;
-		catalog.setMaxTextLength(maxTextLength, 8);
-		
-		//connect to file		
-		URL sourceData = getClass().getResource("/performance/complex30000.dat");
-		File fileSource = new File(sourceData.getFile());
-			
-		try {
-			//do not want to time file access so copy file to memory
-			testData = new byte[(int) fileSource.length()];
-			FileInputStream inputStream = new FileInputStream(fileSource);
-			int readBytes = inputStream.read(testData);
-			inputStream.close();
-			assertEquals(testData.length,readBytes);
-			
-			fastInput = new FASTInputByteArray(testData);
-			reader = new PrimitiveReader(2048, fastInput, 32);
-			FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
+    FASTInputByteArray fastInput;
+    PrimitiveReader reader;
+    FASTDynamicReader dynamicReader;
+    FASTRingBuffer queue;
+    TemplateCatalog catalog;
+    byte[] testData;
 
-			dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private byte[] buildRawCatalogData() {
-		URL source = getClass().getResource("/performance/example.xml");
-			
-		
-		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
-		File fileSource = new File(source.getFile());
-		try {			
-			TemplateLoader.buildCatalog(catalogBuffer, fileSource);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		assertTrue("Catalog must be built.",catalogBuffer.size()>0);
-		
-		byte[] catalogByteArray = catalogBuffer.toByteArray();
-		return catalogByteArray;
-	}
-	
-	public static void main(String[] args) {
-		System.err.println("loading...");
-		Complex30000Benchmark obj = new Complex30000Benchmark();
-		System.err.println("testing...");
-		obj.testDecodeComplex30000Two();
-		
-		System.gc();
-		long start = System.nanoTime();
-		obj.fastCore(obj.dynamicReader, 1, obj.queue);	
-		long duration = System.nanoTime()-start;
-		System.err.println("duration:"+duration);
-		
-//		//obj.openFastTest();
-//		long startx = System.nanoTime();
-//		int count = 300;
-//		obj.timeDecodeComplex30000(count);
-//		long durationx = (System.nanoTime()-startx)/count;
-//    	System.err.println("done "+durationx+"ns");
-				
-		
-	}
-		
-	public void testDecodeComplex30000Two() {	
-				
-		int count = 5;
-		int result = 0;
-		
-		FASTRingBuffer queue = dynamicReader.ringBuffer();
-		
-		int iter = count;
-		while (--iter>=0) {
+    public Complex30000Benchmark() {
+        catalog = new TemplateCatalog(new PrimitiveReader(buildRawCatalogData(), 0));
 
-			double start = System.nanoTime();
-			result = fastCore(dynamicReader, result, queue);
-			double duration = System.nanoTime()-start;
-						
-			int ns = (int)(duration);					
-			System.err.println("Duration:"+ns+"ns "); //Phrases/Clauses
-			
-			////////
-			//reset the data to run the test again.
-			////////
-			fastInput.reset();
-			PrimitiveReader.reset(reader);
-			dynamicReader.reset(true);
-			
-		}
-		
-	}
+        byte prefixSize = 4;
+        catalog.setMessagePreambleSize(prefixSize);
 
-	private int fastCore(FASTDynamicReader dynamicReader, int result, FASTRingBuffer queue) {
-		int flag;
-		while (0!=(flag=dynamicReader.hasMore())) {
-			if (0!=(flag&0x02)) {
-				result|=FASTRingBufferReader.readInt(queue, 0);//must do some real work or hot-spot may delete this loop.
-				queue.dump(); //must dump values in buffer or we will hang when reading.
-			}
-		}
-		return result;
-	}
-	
-	
-	public int timeDecodeComplex30000(int reps) {
+        int maxByteVector = 0;
+        catalog.setMaxByteVectorLength(maxByteVector, 0);
 
-			
-		
-		    int result = 0;
-			while (--reps>=0) {
+        int maxTextLength = 14;
+        catalog.setMaxTextLength(maxTextLength, 8);
 
-				fastCore(dynamicReader, result, queue);
-				
-				fastInput.reset();
-				PrimitiveReader.reset(reader);
-				dynamicReader.reset(false);
-				
-			}
-			return result;
-	}
-	
-//	public int timeDecodeComplex30000ResetOverhead(int reps) {
-//
-//		FASTRingBuffer queue = dynamicReader.ringBuffer();
-//	
-//	    int result = 0;
-//		while (--reps>=0) {
-//	
-//			
-//			fastInput.reset();
-//			primitiveReader.reset();
-//			dynamicReader.reset();
-//			
-//		}
-//		return result;
-//}
-	
-	
-	public void openFastTest() {
-		try {
-			MessageTemplateLoader loader = new XMLMessageTemplateLoader();
-			URL source = getClass().getResource("/performance/example.xml");
-			InputStream aStream = new FileInputStream(new File(source.getFile()));
-			MessageTemplate[] templates = loader.load(aStream);
-			//System.err.println("templates count "+templates.length);
-			//System.err.println(templates[0].getId());
-						
-		
-			source = getClass().getResource("/performance/complex30000.dat");
-			File fileSource = new File(source.getFile());
-			//do not want to time file access so copy file to memory
-			byte[] fileData = new byte[(int) fileSource.length()];
-			FileInputStream inputStream = new FileInputStream(fileSource);
-			int readBytes = inputStream.read(fileData);
-			inputStream.close();
-			assertEquals(fileData.length,readBytes);
-			
-		
-			///
-			///
-			InputStream fastEncodedStream = new ByteArrayInputStream(fileData);
-						
-			MessageInputStream messageIn = new MessageInputStream(fastEncodedStream);
+        // connect to file
+        URL sourceData = getClass().getResource("/performance/complex30000.dat");
+        File fileSource = new File(sourceData.getFile());
 
-			//must add support for the 4 byte preamble
-			messageIn.setBlockReader(new CmeMessageBlockReader());
-			
-			messageIn.setTemplateRegistry(loader.getTemplateRegistry());
-					
-			
-			Message msg;
-			while (null!=(msg = messageIn.readMessage() )) {
-				//System.err.println(msg.getFieldCount());
-			}
-			
-			
-			
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
+        try {
+            // do not want to time file access so copy file to memory
+            testData = new byte[(int) fileSource.length()];
+            FileInputStream inputStream = new FileInputStream(fileSource);
+            int readBytes = inputStream.read(testData);
+            inputStream.close();
+            assertEquals(testData.length, readBytes);
+
+            fastInput = new FASTInputByteArray(testData);
+            reader = new PrimitiveReader(2048, fastInput, 32);
+            FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
+
+            dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private byte[] buildRawCatalogData() {
+        URL source = getClass().getResource("/performance/example.xml");
+        File fileSource = new File(source.getFile());
+
+        ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
+        try {
+            TemplateLoader.buildCatalog(catalogBuffer, fileSource);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertTrue("Catalog must be built.", catalogBuffer.size() > 0);
+
+        byte[] catalogByteArray = catalogBuffer.toByteArray();
+        return catalogByteArray;
+    }
+
+    public static void main(String[] args) {
+        System.err.println("loading...");
+        Complex30000Benchmark obj = new Complex30000Benchmark();
+        System.err.println("testing...");
+        obj.testDecodeComplex30000Two();
+
+        System.gc();
+        long start = System.nanoTime();
+        obj.fastCore(obj.dynamicReader, 1, obj.queue);
+        long duration = System.nanoTime() - start;
+        System.err.println("duration:" + duration);
+
+        // //obj.openFastTest();
+        // long startx = System.nanoTime();
+        // int count = 300;
+        // obj.timeDecodeComplex30000(count);
+        // long durationx = (System.nanoTime()-startx)/count;
+        // System.err.println("done "+durationx+"ns");
+
+    }
+
+    public void testDecodeComplex30000Two() {
+
+        int count = 5;
+        int result = 0;
+
+        FASTRingBuffer queue = dynamicReader.ringBuffer();
+
+        int iter = count;
+        while (--iter >= 0) {
+
+            double start = System.nanoTime();
+            result = fastCore(dynamicReader, result, queue);
+            double duration = System.nanoTime() - start;
+
+            int ns = (int) (duration);
+            System.err.println("Duration:" + ns + "ns "); // Phrases/Clauses
+
+            // //////
+            // reset the data to run the test again.
+            // //////
+            fastInput.reset();
+            PrimitiveReader.reset(reader);
+            dynamicReader.reset(true);
+
+        }
+
+    }
+
+    private int fastCore(FASTDynamicReader dynamicReader, int result, FASTRingBuffer queue) {
+        int flag;
+        while (0 != (flag = dynamicReader.hasMore())) {
+            if (0 != (flag & 0x02)) {
+                result |= FASTRingBufferReader.readInt(queue, 0);// must do some
+                                                                 // real work or
+                                                                 // hot-spot may
+                                                                 // delete this
+                                                                 // loop.
+                queue.dump(); // must dump values in buffer or we will hang when
+                              // reading.
+            }
+        }
+        return result;
+    }
+
+    public int timeDecodeComplex30000(int reps) {
+
+        int result = 0;
+        while (--reps >= 0) {
+
+            fastCore(dynamicReader, result, queue);
+
+            fastInput.reset();
+            PrimitiveReader.reset(reader);
+            dynamicReader.reset(false);
+
+        }
+        return result;
+    }
+
+    // public int timeDecodeComplex30000ResetOverhead(int reps) {
+    //
+    // FASTRingBuffer queue = dynamicReader.ringBuffer();
+    //
+    // int result = 0;
+    // while (--reps>=0) {
+    //
+    //
+    // fastInput.reset();
+    // primitiveReader.reset();
+    // dynamicReader.reset();
+    //
+    // }
+    // return result;
+    // }
+
+    public void openFastTest() {
+        try {
+            MessageTemplateLoader loader = new XMLMessageTemplateLoader();
+            URL source = getClass().getResource("/performance/example.xml");
+            InputStream aStream = new FileInputStream(new File(source.getFile()));
+            MessageTemplate[] templates = loader.load(aStream);
+            // System.err.println("templates count "+templates.length);
+            // System.err.println(templates[0].getId());
+
+            source = getClass().getResource("/performance/complex30000.dat");
+            File fileSource = new File(source.getFile());
+            // do not want to time file access so copy file to memory
+            byte[] fileData = new byte[(int) fileSource.length()];
+            FileInputStream inputStream = new FileInputStream(fileSource);
+            int readBytes = inputStream.read(fileData);
+            inputStream.close();
+            assertEquals(fileData.length, readBytes);
+
+            // /
+            // /
+            InputStream fastEncodedStream = new ByteArrayInputStream(fileData);
+
+            MessageInputStream messageIn = new MessageInputStream(fastEncodedStream);
+
+            // must add support for the 4 byte preamble
+            messageIn.setBlockReader(new CmeMessageBlockReader());
+
+            messageIn.setTemplateRegistry(loader.getTemplateRegistry());
+
+            Message msg;
+            while (null != (msg = messageIn.readMessage())) {
+                // System.err.println(msg.getFieldCount());
+            }
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

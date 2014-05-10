@@ -5,6 +5,7 @@ package com.ociweb.jfast.loader;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.xml.sax.Attributes;
@@ -547,7 +548,7 @@ public class TemplateHandler extends DefaultHandler {
 
             catalogScriptTokens[catalogTemplateScriptIdx] = tokenExponent;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
-            //TODO: A, Second token for decimal value
+           
             catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
@@ -783,7 +784,9 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     public void postProcessing() {
-
+        Properties properties = new Properties();
+        properties.setProperty("something.else", "hello world");
+        
         // System.err.println("maxGroupDepth:"+maxGroupTokenStackDepth);
 
         buildDictionaryMemberLists();
@@ -806,7 +809,8 @@ public class TemplateHandler extends DefaultHandler {
                 templateLimit, maxGroupTokenStackDepth + 1 // add one for
                                                            // surrounding
                                                            // template
-                );
+                    , properties
+                                    );
 
         // close stream.
         writer.flush(writer);

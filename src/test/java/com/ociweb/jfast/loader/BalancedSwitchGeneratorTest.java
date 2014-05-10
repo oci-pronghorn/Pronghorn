@@ -4,6 +4,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.generator.BalancedSwitchGenerator;
+
 public class BalancedSwitchGeneratorTest {
 
     @Test

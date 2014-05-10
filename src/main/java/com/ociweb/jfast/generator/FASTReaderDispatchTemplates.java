@@ -1,4 +1,4 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.StaticGlue;
@@ -6,19 +6,22 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.stream.FASTReaderDispatchBase;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase {
 
 
     public FASTReaderDispatchTemplates(PrimitiveReader reader, TemplateCatalog catalog) {
-        super(reader, catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(), 
+        super(reader, catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
                 catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
                 catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(),
                 catalog.getMaxGroupDepth(), 8, 7);
     }
     
     //second constructor only needed for testing.
-    FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
+    protected FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
         super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
@@ -782,21 +785,19 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
     // dictionary reset
 
     protected void genReadDictionaryBytesReset(int idx, ByteHeap byteHeap) {
-        if (null != byteHeap) {
-            byteHeap.setNull(idx);
-        }
+        byteHeap.setNull(idx);
     }
 
     protected void genReadDictionaryTextReset(int idx, TextHeap textHeap) {
         textHeap.reset(idx);
     }
 
-    protected void genReadDictionaryLongReset(int idx, long[] rLongDictionary, long[] rLongInit) {
-        rLongDictionary[idx] = rLongInit[idx];
+    protected void genReadDictionaryLongReset(int idx, long resetConst, long[] rLongDictionary) {
+        rLongDictionary[idx] = resetConst;
     }
 
-    protected void genReadDictionaryIntegerReset(int idx, int[] rIntDictionary, int[] rIntInit) {
-        rIntDictionary[idx] = rIntInit[idx];
+    protected void genReadDictionaryIntegerReset(int idx, int resetConst, int[] rIntDictionary) {
+        rIntDictionary[idx] = resetConst;
     }
 
     //TODO: C, Need a way to stream to disk over gaps of time. Write FAST to a file and Write series of Dictionaries to another, this set is valid for 1 catalog.

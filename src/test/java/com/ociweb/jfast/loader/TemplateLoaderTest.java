@@ -10,6 +10,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.reflect.Constructor;
+import java.net.URI;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -36,7 +37,7 @@ import com.ociweb.jfast.stream.FASTReaderDispatchBase;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
-import com.ociweb.jfast.stream.FASTWriterScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class TemplateLoaderTest {
 
@@ -199,25 +200,8 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
- //       FASTReaderDispatchBase readerDispatch=null;
-        //= 
-//                //new FASTReaderDispatch( 
-//                new FASTReaderDispatchGenExample(reader,catalog);
-//        
         
-        
-       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(reader, catBytes);
-//       try {
-//       FASTDispatchClassLoader classLoader = new FASTDispatchClassLoader(catBytes, FASTReaderDispatchBase.class.getClassLoader());
-//       Class generatedClass = classLoader.loadClass(FASTDispatchClassLoader.READER);
-//       Constructor constructor = generatedClass.getConstructor(PrimitiveReader.class,TemplateCatalog.class);
-//       
-//       readerDispatch = (FASTReaderDispatchBase)constructor.newInstance(reader,new TemplateCatalog(new PrimitiveReader(catBytes,0)));//TODO: A, catalog is internal should not need this!!
-//       //return (FASTReaderDispatchBase)(generatedClass.newInstance());
-//       } catch (Exception e) {
-//           e.printStackTrace();
-//       }
-       
+       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(reader, exampleTemplateFile());
         
         FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
@@ -463,10 +447,10 @@ public class TemplateLoaderTest {
         int maxGroupCount = 3;// NOTE: may need to be VERY large if minimize
                               // latency is turned off!!
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-        FASTWriterScriptPlayerDispatch writerDispatch = new FASTWriterScriptPlayerDispatch(writer, catalog.dictionaryFactory(),
+        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(writer, catalog.dictionaryFactory(),
                 catalog.templatesCount(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
                 catalog.getTextGap(), catalog.getByteVectorGap(), queue, catalog.maxNonTemplatePMapSize(),
-                catalog.dictionaryMembers(), catalog.fullScript(), catalog.getMaxGroupDepth());
+                catalog.dictionaryResetMembers(), catalog.fullScript(), catalog.getMaxGroupDepth());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 
@@ -678,10 +662,9 @@ public class TemplateLoaderTest {
 //    }
 
     static byte[] buildRawCatalogData() {
-        URL source = TemplateLoaderTest.class.getResource("/performance/example.xml");
+        File fileSource = exampleTemplateFile();
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
-        File fileSource = new File(source.getFile().replace("%20", " "));
         try {
             TemplateLoader.buildCatalog(catalogBuffer, fileSource);
         } catch (Exception e) {
@@ -692,6 +675,13 @@ public class TemplateLoaderTest {
 
         byte[] catalogByteArray = catalogBuffer.toByteArray();
         return catalogByteArray;
+    }
+
+    static File exampleTemplateFile() {
+        URL source = TemplateLoaderTest.class.getResource("/performance/example.xml");
+        File fileSource = new File(source.getFile().replace("%20", " "));
+        System.err.println("reading file from "+fileSource);
+        return fileSource;
     }
 
 }

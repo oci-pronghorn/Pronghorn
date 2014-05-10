@@ -5,8 +5,8 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.SourceTemplates;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
@@ -14,10 +14,31 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 
 
     private int readFromIdx = -1;
+    public final int[] rIntInit;
+    public final long[] rLongInit;
 
+    public final int MAX_INT_INSTANCE_MASK; 
+    public final int byteInstanceMask; 
+    public final int MAX_LONG_INSTANCE_MASK;
+    public final int MAX_TEXT_INSTANCE_MASK;
+    public final int nonTemplatePMapSize;
+    public final int[][] dictionaryMembers;
+
+    public FASTReaderInterpreterDispatch(PrimitiveReader reader, byte[] catBytes) {
+        this(reader, new TemplateCatalog(new PrimitiveReader(catBytes,0)));
+    }    
+    
     public FASTReaderInterpreterDispatch(PrimitiveReader reader, TemplateCatalog catalog) {
         super(reader, catalog);
+        this.rIntInit = catalog.dictionaryFactory().integerDictionary();
+        this.rLongInit = catalog.dictionaryFactory().longDictionary();
         
+        this.nonTemplatePMapSize = catalog.maxNonTemplatePMapSize();
+        this.dictionaryMembers = catalog.dictionaryResetMembers();
+        this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
+        this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
+        this.MAX_TEXT_INSTANCE_MASK = (null==textHeap)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount()-1));
+        byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
     }
     
     public FASTReaderInterpreterDispatch(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
@@ -25,6 +46,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
         super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
                 maxNestedGroupDepth, primaryRingBits, textRingBits);
+        this.rIntInit = dcr.integerDictionary();
+        this.rLongInit = dcr.longDictionary();
+        
+        this.nonTemplatePMapSize = nonTemplatePMapSize;
+        this.dictionaryMembers = dictionaryMembers;
+        this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
+        this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
+        this.MAX_TEXT_INSTANCE_MASK = (null==textHeap)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount()-1));
+        byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
     }
 
     public FASTRingBuffer ringBuffer() {
@@ -218,13 +248,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 if (0 == (idx & 4)) {
                     // integer
                     while (m < limit && (idx = members[m++]) >= 0) {
-                        genReadDictionaryIntegerReset(idx, rIntDictionary, rIntInit);
+                        genReadDictionaryIntegerReset(idx, rIntInit[idx], rIntDictionary);
                     }
                 } else {
                     // long
                     // System.err.println("long");
                     while (m < limit && (idx = members[m++]) >= 0) {
-                        genReadDictionaryLongReset(idx, rLongDictionary, rLongInit);
+                        genReadDictionaryLongReset(idx, rLongInit[idx], rLongDictionary);
                     }
                 }
             } else {

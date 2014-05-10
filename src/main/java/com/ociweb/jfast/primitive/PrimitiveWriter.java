@@ -1094,7 +1094,6 @@ public final class PrimitiveWriter {
     // //////////////////////////
     // //////////////////////////
 
-    // TODO: A, Copy, Increment and Delta writes need to have source field as well as target. for Int/Long Signed/Unsigned Normal/Optional
     public void writeIntegerUnsignedCopy(int value, int target, int source, int[] dictionary) {
 
         if (value == dictionary[source]) {

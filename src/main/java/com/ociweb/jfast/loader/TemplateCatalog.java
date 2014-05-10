@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
+import java.util.Properties;
+
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -75,8 +77,9 @@ public class TemplateCatalog {
 
     }
 
+    @Deprecated
     public void setMessagePreambleSize(byte size) {
-        this.preambleSize = size; // TODO: B, add check to ensuer multiple of 4
+        this.preambleSize = size; // TODO: D, add check to ensuer multiple of 4
                                   // only!!!
     }
 
@@ -117,8 +120,11 @@ public class TemplateCatalog {
     public static void save(PrimitiveWriter writer, int uniqueIds, int biggestId, int uniqueTemplateIds,
             int biggestTemplateId, DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap,
             int[][] tokenIdxMembers, int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds,
-            int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth) {
+            int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, Properties properties) {
 
+        Properties props; //additional properties to send to each client.
+        
+        
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, catalogScriptFieldIds,
                 scriptLength, templateIdx, templateLimit);
 
@@ -164,10 +170,6 @@ public class TemplateCatalog {
             }
             dictionaryMembers[d] = members;
         }
-    }
-
-    private int[] resetList(int dictionary) {
-        return dictionaryMembers[dictionary];
     }
 
     /**
@@ -253,7 +255,7 @@ public class TemplateCatalog {
         return maxFieldId;
     }
 
-    public int[][] dictionaryMembers() {
+    public int[][] dictionaryResetMembers() {
         return dictionaryMembers;
     }
 
@@ -261,6 +263,7 @@ public class TemplateCatalog {
         return maxTextLength;
     }
 
+    @Deprecated
     public void setMaxTextLength(int maxTextLength, int gap) {
         this.maxTextLength = maxTextLength;
         this.textLengthGap = gap;
@@ -270,6 +273,7 @@ public class TemplateCatalog {
         return maxByteVectorLength;
     }
 
+    @Deprecated
     public void setMaxByteVectorLength(int maxByteVectorLength, int gap) {
         this.maxByteVectorLength = maxByteVectorLength;
         this.byteVectorGap = gap;

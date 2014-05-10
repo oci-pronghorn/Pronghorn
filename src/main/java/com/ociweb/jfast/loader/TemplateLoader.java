@@ -73,16 +73,12 @@ public class TemplateLoader {
             SAXException, IOException {
         SAXParserFactory spfac = SAXParserFactory.newInstance();
 
-        // //need to load fast.schema file
-        // Schema schema = new Schema();
-        // spfac.setSchema(schema);
-//        ZipOutputStream zost = new ZipOutputStream(catalog);
-//        zost.putNextEntry(new ZipEntry("x"));
+        //TODO: X, compress with lz4 stream 
 
         SAXParser sp = spfac.newSAXParser();
         FASTOutput output = new FASTOutputStream(catalog);
         TemplateHandler handler = new TemplateHandler(output);
-        System.err.println(source);
+        System.err.println("Templates:"+source);
         if (source.isFile()) {
             sp.parse(source, handler);
         } else {

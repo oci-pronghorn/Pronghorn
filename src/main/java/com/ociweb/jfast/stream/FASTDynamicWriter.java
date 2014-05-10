@@ -8,7 +8,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTDynamicWriter {
 
-    private final FASTWriterScriptPlayerDispatch writerDispatch;
+    private final FASTWriterInterpreterDispatch writerDispatch;
     private final TemplateCatalog catalog;
     private final int[] fullScript;
     private final FASTRingBuffer ringBuffer;
@@ -18,7 +18,7 @@ public class FASTDynamicWriter {
     final byte[] preambleData;
 
     public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, FASTRingBuffer ringBuffer,
-            FASTWriterScriptPlayerDispatch writerDispatch) {
+            FASTWriterInterpreterDispatch writerDispatch) {
 
         this.writerDispatch = writerDispatch;
 

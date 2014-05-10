@@ -160,7 +160,7 @@ public abstract class BaseStreamingTest {
 		return g;
 	}
 
-	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterScriptPlayerDispatch fw, int i, int g,
+	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterInterpreterDispatch fw, int i, int g,
 			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize) {
 		if (--g<0) {
 			//close group

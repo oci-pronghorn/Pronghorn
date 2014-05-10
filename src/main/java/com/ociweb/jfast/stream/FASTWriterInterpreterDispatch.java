@@ -15,7 +15,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
+public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
 
     private int templateStackHead = 0;
     private final int[] templateStack;
@@ -55,7 +55,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     public static final int INIT_VALUE_MASK = 0x80000000;
     public final int TEXT_INSTANCE_MASK;
 
-    public FASTWriterScriptPlayerDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
+    public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
             int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
 
@@ -111,12 +111,12 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // int
                 int idx = token & intInstanceMask;
                 
-                FASTWriterScriptPlayerDispatch.writeNullInt(token, writer, intValues, idx);
+                FASTWriterInterpreterDispatch.writeNullInt(token, writer, intValues, idx);
             } else {
                 // long
                 int idx = token & longInstanceMask;
                 
-                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, longValues);
+                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, longValues);
             }
         } else {
             // text decimal bytes
@@ -124,7 +124,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // text
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                FASTWriterScriptPlayerDispatch.writeNullText(token, idx, writer, textHeap);
+                FASTWriterInterpreterDispatch.writeNullText(token, idx, writer, textHeap);
             } else {
                 // decimal bytes
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -132,14 +132,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                     int idx = token & intInstanceMask;
                     
                     //TODO: A, must implement null for decimals
-                    FASTWriterScriptPlayerDispatch.writeNullInt(token, writer,intValues, idx); 
+                    FASTWriterInterpreterDispatch.writeNullInt(token, writer,intValues, idx); 
 
                     int idx1 = token & longInstanceMask;
                     
-                    FASTWriterScriptPlayerDispatch.writeNullLong(token, idx1, writer, longValues);
+                    FASTWriterInterpreterDispatch.writeNullLong(token, idx1, writer, longValues);
                 } else {
                     // byte
-                    FASTWriterScriptPlayerDispatch.writeNullBytes(token, writer, byteHeap, instanceBytesMask);
+                    FASTWriterInterpreterDispatch.writeNullBytes(token, writer, byteHeap, instanceBytesMask);
                 }
             }
         }
@@ -1169,7 +1169,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
-                int constId = idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK;
+                int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
                 
                 genWriteTextUTFDefault(value, offset, length, constId, writer, textHeap);
             }
@@ -1214,7 +1214,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                int constId = idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK;
+                int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
                 
                 genWriteTextDefaultOptional(value, offset, length, constId, writer, textHeap);
             }
@@ -1401,7 +1401,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
                             	int idx = expoToken & intInstanceMask; 
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
+                                FASTWriterInterpreterDispatch.writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
                             } else {
                             	acceptIntegerSignedOptional(expoToken, exponent);
                             }
@@ -1412,7 +1412,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                             	int idx = token & longInstanceMask; 
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, longValues); 
+                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, longValues); 
                             } else {
                             	acceptLongSignedOptional(token, mantissa);
                             }
@@ -1621,14 +1621,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     
     protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            if (textHeap.isNull(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK)) {
+            if (textHeap.isNull(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
-            if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
+            if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -1691,7 +1691,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     }
     
     protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
+        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -1749,14 +1749,14 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
 
     protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            if (textHeap.isNull(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK)) {
+            if (textHeap.isNull(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
                 writer.writeNull();
             }
         } else {
-            if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
+            if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -1822,7 +1822,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     }
     
     protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value)) {
+        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -1876,7 +1876,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     }
     
     protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value, offset, length)) {
+        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -2083,7 +2083,7 @@ public final class FASTWriterScriptPlayerDispatch { //TODO: B, should this exten
     private void genWriteTextDefault2(int token, char[] value, int offset, int length) {
         int idx = token & TEXT_INSTANCE_MASK;
         
-        if (textHeap.equals(idx | FASTWriterScriptPlayerDispatch.INIT_VALUE_MASK, value, offset, length)) {
+        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);

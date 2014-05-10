@@ -1,4 +1,4 @@
-package com.ociweb.jfast.loader;
+package com.ociweb.jfast.generator;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -10,7 +10,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 
-import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
 public class SourceTemplates {
@@ -26,10 +25,14 @@ public class SourceTemplates {
     
     private String templateSource() {
         
-         URL sourceData = getClass().getResource("/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java");
-         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
-        //File sourceDataFile = new File("/home/nate/SpiderOak Hive/kepler/jFAST/src/main/java/com/ociweb/jfast/stream/FASTReaderDispatch.java");
-                
+        //When we are doing active development the file will be found here
+        //This allows for interactive testing without having to complete the full release cycle.
+        File sourceDataFile = new File(readerDispatchTemplateSourcePath());
+        if (!sourceDataFile.exists()) {
+            //when we are in production the file will be found here
+             URL sourceData = getClass().getResource("/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java");
+             sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+        }
         
         String templateSource = "";
         
@@ -114,6 +117,22 @@ public class SourceTemplates {
             //////exactly the same as the params() method except for removing this line.
         }
         return para;
+    }
+
+    public static String readerDispatchTemplateSourcePath() {
+        File classFile;
+        try {
+            String name = FASTReaderDispatchTemplates.class.getSimpleName() + ".class";
+            URL resource = FASTReaderDispatchTemplates.class.getResource(name);
+            System.err.println("URI:  "+resource.toURI());
+            classFile = new File(resource.toURI());
+            //assuming a maven directory structure the needed source file should be found here
+            return classFile.getPath()
+                    .replaceFirst("target.classes", "src"+File.separatorChar+"main"+File.separatorChar+"java")
+                    .replace(".class",".java");
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
+        }
     }
     
     

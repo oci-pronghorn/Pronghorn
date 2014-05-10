@@ -1,4 +1,4 @@
-package com.ociweb.jfast.loader;
+package com.ociweb.jfast.generator;
 
 import java.io.IOException;
 import java.util.Arrays;

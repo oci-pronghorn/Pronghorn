@@ -72,7 +72,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterScriptPlayerDispatch fw = new FASTWriterScriptPlayerDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         if (operationIters < 3) {
@@ -106,7 +106,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullInt(token, writer, fw.intValues, idx);
+                                FASTWriterInterpreterDispatch.writeNullInt(token, writer, fw.intValues, idx);
                             } else {
                                 fw.acceptIntegerSignedOptional(token, testExpConst);
                             }
@@ -114,7 +114,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, fw.longValues);
+                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, testMantConst);
                             }
@@ -136,7 +136,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
                                 int idx = token & fw.intInstanceMask;
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullInt(token, writer, fw.intValues, idx);
+                                FASTWriterInterpreterDispatch.writeNullInt(token, writer, fw.intValues, idx);
                             } else {
                                 fw.acceptIntegerSignedOptional(token, 1);
                             }
@@ -144,7 +144,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                FASTWriterScriptPlayerDispatch.writeNullLong(token, idx, writer, fw.longValues);
+                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, mantissa);
                             }

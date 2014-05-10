@@ -1,33 +1,22 @@
 package com.ociweb.jfast.generator;
 
+import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-
-import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
-import com.ociweb.jfast.loader.BalancedSwitchGenerator;
-import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.SourceTemplates;
 import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTReaderDispatchBase;
-import com.ociweb.jfast.stream.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
@@ -35,10 +24,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
 
     // TODO: C, code does not support final in signatures, this would be nice to have
-    //TODO: A, must gather code and based on complexity group into functions to reduce total calls.
+    //TODO: C, must gather code and based on complexity group into functions to reduce total calls.
     
     
-    
+  //  public static File sourceFile = new File(workingFolder(),FASTDispatchClassLoader.SIMPLE_READER_NAME+".java");
+    //TODO: change to SimpleJavafileObject
     
     
     private static final String GROUP_METHOD_NAME = "grp";
@@ -59,6 +49,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     Set<Integer> sequenceStarts = new HashSet<Integer>();
     byte[] origCatBytes;
     
+    
+    public FASTReaderDispatchGenerator(File templates) {
+        this(parseTemplatesToBytes(templates));
+    }
+    
     public FASTReaderDispatchGenerator(byte[] catBytes) {
         super(null,new TemplateCatalog(new PrimitiveReader(catBytes,0)));
         
@@ -69,6 +64,17 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         fieldCount = 0;
     }
     
+
+    private static byte[] parseTemplatesToBytes(File templates) {
+        ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
+        try {
+            TemplateLoader.buildCatalog(catalogBuffer, templates);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        assertTrue("Catalog must be built.", catalogBuffer.size() > 0);
+        return catalogBuffer.toByteArray();
+    }
     
     //This generator allows for refactoring of the NAME of these methods and the code generation will remain intact.
     
@@ -222,7 +228,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         //////////
     }
     
-    public void generateAllGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
+    private void generateGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
         
         //A Group may be a full message or sequence item or group.
         
@@ -298,88 +304,44 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     
     
-    public void generateFullReaderSource(TemplateCatalog catalog, Appendable target) throws IOException {
+    public <T extends Appendable> T generateFullReaderSource(T target) throws IOException {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        target.append("package com.ociweb.jfast.stream;\n"); //package
+        generateHead(templates, origCatBytes, target);
+        generateGroupMethods(new TemplateCatalog(new PrimitiveReader(origCatBytes,0)),doneScripts,doneScriptsParas,target);
+        generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
+        generateTail(target);
+        
+        return target;
+    }
+
+
+    private static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target) throws IOException {
+        target.append("package "+FASTDispatchClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");
         target.append(templates.imports()); //imports
         target.append("\n");
-        target.append("public final class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {"); //open class
+        target.append("public final class "+FASTDispatchClassLoader.SIMPLE_READER_NAME+" extends FASTReaderDispatchBase {"); //open class
         target.append("\n");
         target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static const
         target.append("\n");
-        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample")); //constructor
+        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),FASTDispatchClassLoader.SIMPLE_READER_NAME)); //constructor
         target.append("\n");
-        generateAllGroupMethods(catalog,doneScripts,doneScriptsParas,target);
-        
-        generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
+    }
+
+    private static void generateTail(Appendable target) throws IOException {
         target.append('}');
-
     }
 
-    public boolean createWriteSourceClassFiles(JavaCompiler compiler) {
-             
-        try {
-            
-            File sourceTarget = new File(workingFolder(),FASTDispatchClassLoader.SIMPLE_READER_NAME+".java");
-            
-            //write source file
-            FileWriter writer = new FileWriter(sourceTarget);
-            generateFullReaderSource(new TemplateCatalog(new PrimitiveReader(origCatBytes,0)),writer);
-            writer.close();
-            
-            //write class file
-            List<File> toCompile = new ArrayList<File>();
-            System.out.println("compile:"+sourceTarget);
-            toCompile.add(sourceTarget);
-            return compile(compiler, toCompile);
-            
-        } catch (IOException e) {
-            throw new FASTException(e);
-        }
-    }
 
-    public static File workingFolder() {
-        File tempDir = new File(System.getProperty("java.io.tmpdir"));
-        //TODO: C, not sure we need to spell out the full directory structure.
-        File path = new File(tempDir,"com");
-        path = new File(path,"ociweb");
-        path = new File(path,"jfast");
-        path = new File(path,"stream");
-        path.mkdirs();
-        return path;
-    }
+
     
     //TODO: C, Add API for getting class/source and for setting class file.
     
     
     
-    public boolean compile(JavaCompiler compiler, Iterable<? extends File> javaFiles) {
-        
-            DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-            StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-            
-            Iterable<? extends JavaFileObject> compilationUnits = fileManager.getJavaFileObjectsFromFiles(javaFiles);
 
-            List<String> optionList = new ArrayList<String>();
-            optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path")));
-            JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnits);
-            if (task.call()) {
-                return true;
-            } else {
-                //did not compile due to error
-                System.err.println("error in compile  ");
-                
-                for (Diagnostic<? extends JavaFileObject> x:      diagnostics.getDiagnostics()) {
-                    System.err.println(x);
-                }
-                return false;
-            }
- 
-        
-    }
     
     @Override
     protected void genReadSequenceClose(int backvalue, FASTReaderDispatchBase dispatch) {
@@ -850,13 +812,13 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadDictionaryLongReset(int idx, long[] rLongDictionary, long[] rLongInit) {
-        generator(new Exception().getStackTrace(),idx);
+    protected void genReadDictionaryLongReset(int idx, long resetConst, long[] rLongDictionary) {
+        generator(new Exception().getStackTrace(),idx, resetConst);
     }
     
     @Override
-    protected void genReadDictionaryIntegerReset(int idx, int[] rIntDictionary, int[] rIntInit) {
-        generator(new Exception().getStackTrace(),idx);
+    protected void genReadDictionaryIntegerReset(int idx, int resetConst, int[] rIntDictionary) {
+        generator(new Exception().getStackTrace(),idx, resetConst);
     }
 
 

@@ -17,7 +17,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
-import com.ociweb.jfast.stream.FASTWriterScriptPlayerDispatch;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 
@@ -77,7 +77,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterScriptPlayerDispatch staticWriter = new FASTWriterScriptPlayerDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
