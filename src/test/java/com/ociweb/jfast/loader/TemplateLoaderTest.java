@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -20,6 +21,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.FASTDispatchClassLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -32,7 +34,6 @@ import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTReaderDispatchBase;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
-import com.ociweb.jfast.stream.FASTReaderDispatchGenExample;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterScriptPlayerDispatch;
@@ -116,10 +117,7 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog.dictionaryFactory(), 3,
-                catalog.dictionaryMembers(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
-                catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8,
-                7);
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
         FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
@@ -170,7 +168,8 @@ public class TemplateLoaderTest {
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
        // new SourceTemplates();
         
-        FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
+        byte[] catBytes = buildRawCatalogData();
+        FASTInput templateCatalogInput = new FASTInputByteArray(catBytes);
         TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(256,templateCatalogInput,4)); //TODO: X, defaults 2048 and 32 may not be optimal.
 
         // values which need to be set client side and are not in the template.
@@ -200,14 +199,26 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;// do not change without testing, 4096 is ideal.
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderDispatchBase readerDispatch = 
-                //new FASTReaderDispatch( 
-                new FASTReaderDispatchGenExample(
-                        
-                        
-                reader, catalog.dictionaryFactory(), 3, catalog.dictionaryMembers(),
-                catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
-                catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
+ //       FASTReaderDispatchBase readerDispatch=null;
+        //= 
+//                //new FASTReaderDispatch( 
+//                new FASTReaderDispatchGenExample(reader,catalog);
+//        
+        
+        
+       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(reader, catBytes);
+//       try {
+//       FASTDispatchClassLoader classLoader = new FASTDispatchClassLoader(catBytes, FASTReaderDispatchBase.class.getClassLoader());
+//       Class generatedClass = classLoader.loadClass(FASTDispatchClassLoader.READER);
+//       Constructor constructor = generatedClass.getConstructor(PrimitiveReader.class,TemplateCatalog.class);
+//       
+//       readerDispatch = (FASTReaderDispatchBase)constructor.newInstance(reader,new TemplateCatalog(new PrimitiveReader(catBytes,0)));//TODO: A, catalog is internal should not need this!!
+//       //return (FASTReaderDispatchBase)(generatedClass.newInstance());
+//       } catch (Exception e) {
+//           e.printStackTrace();
+//       }
+       
+        
         FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
@@ -439,10 +450,7 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader,
-                catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(),
-                catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), catalog.getTextGap(),
-                catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(), 8, 7);
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader,catalog);
         FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 

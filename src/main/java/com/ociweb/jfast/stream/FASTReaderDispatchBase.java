@@ -8,58 +8,49 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTReaderDispatchBase {
 
-    final PrimitiveReader reader;
-    protected final TextHeap textHeap;
-    protected final ByteHeap byteHeap;
+    //NOTE: these must be public or the generated code will not be able to work with them, known JDK bug.
+    
+    public final PrimitiveReader reader;
+    public final TextHeap textHeap;
+    public final ByteHeap byteHeap;
 
-    protected final FASTReaderDispatchBase dispatch;
+    public final FASTReaderDispatchBase dispatch;
 
     // This is the GLOBAL dictionary
     // When unspecified in the template GLOBAL is the default so these are used.
-    protected final int MAX_INT_INSTANCE_MASK;
-    protected final int[] rIntDictionary;
-    protected final int[] rIntInit;
+    public final int MAX_INT_INSTANCE_MASK;
+    public final int[] rIntDictionary;
+    public final int[] rIntInit;
 
-    protected final int MAX_LONG_INSTANCE_MASK;
-    protected final long[] rLongDictionary;
-    protected final long[] rLongInit;
+    public final int MAX_LONG_INSTANCE_MASK;
+    public final long[] rLongDictionary;
+    public final long[] rLongInit;
 
-    protected final int MAX_TEXT_INSTANCE_MASK;
+    public final int MAX_TEXT_INSTANCE_MASK;
 
-    protected final int nonTemplatePMapSize;
-    protected final int[][] dictionaryMembers;
+    public final int nonTemplatePMapSize;
+    public final int[][] dictionaryMembers;
 
-    protected final DictionaryFactory dictionaryFactory;
+    public final DictionaryFactory dictionaryFactory;
 
-    protected DispatchObserver observer;
+    public DispatchObserver observer;
 
-    // constant fields are always the same or missing but never anything else.
-    // manditory constant does not use pmap and has constant injected at
-    // destnation never xmit
-    // optional constant does use the pmap 1 (use initial const) 0 (not present)
-    //
-    // default fields can be the default or overridden this one time with a new
-    // value.
+    public final int maxNestedSeqDepth;
+    public final int[] sequenceCountStack;
 
-    protected final int maxNestedSeqDepth;
-    protected final int[] sequenceCountStack;
-
-    protected int sequenceCountStackHead = -1;
-    protected boolean doSequence; //NOTE: return value from closeGroup
-    protected int jumpSequence; // Only needs to be set when returning true.
+    public int sequenceCountStackHead = -1;
+    public boolean doSequence; //NOTE: return value from closeGroup
+    public int jumpSequence; // Only needs to be set when returning true.
 
 
 
-    protected int activeScriptCursor;
-    protected int activeScriptLimit;
+    public int activeScriptCursor;
+    public int activeScriptLimit;
 
-    protected int[] fullScript;
-
-    protected final FASTRingBuffer rbRingBuffer;
-    protected final int rbMask;
-    protected final int[] rbB;
+    public int[] fullScript;
+    
     public static final int INIT_VALUE_MASK = 0x80000000;
-    protected int byteInstanceMask;
+    public int byteInstanceMask;
     
     
     
@@ -103,8 +94,8 @@ public abstract class FASTReaderDispatchBase {
                                                 null==textHeap? null : textHeap.rawInitAccess(),
                                                 null==byteHeap? null : byteHeap.rawInitAccess()
                                                 );
-        rbMask = rbRingBuffer.mask;
-        rbB = rbRingBuffer.buffer;
+//        rbMask = rbRingBuffer.mask;
+//        rbB = rbRingBuffer.buffer;
         
         byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,
         byteHeap.itemCount() - 1);
@@ -171,6 +162,8 @@ public abstract class FASTReaderDispatchBase {
 
     }
 
+        public final FASTRingBuffer rbRingBuffer;
+    
     public FASTRingBuffer ringBuffer() {
         return rbRingBuffer;//TODO: A, remove method.
     }

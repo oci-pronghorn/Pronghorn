@@ -4,12 +4,21 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase {
 
 
-    public FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
+    public FASTReaderDispatchTemplates(PrimitiveReader reader, TemplateCatalog catalog) {
+        super(reader, catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryMembers(), 
+                catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
+                catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(),
+                catalog.getMaxGroupDepth(), 8, 7);
+    }
+    
+    //second constructor only needed for testing.
+    FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
             int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
         super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
@@ -685,7 +694,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int trim = PrimitiveReader.readIntegerSigned(reader);
         if (0 == trim) {
             byteHeap.setNull(idx);
@@ -709,7 +718,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int trim = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim == 0) {
             byteHeap.setNull(idx);
@@ -725,7 +734,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
 
     }
 
-    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int trim = PrimitiveReader.readIntegerSigned(reader);
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
@@ -741,7 +750,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
     }
     
     
-    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int trim = PrimitiveReader.readIntegerUnsigned(reader);
         int length = PrimitiveReader.readIntegerUnsigned(reader);
         
@@ -754,7 +763,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
     }
 
     
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
         PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.allocate(idx, length), length, reader);
         int len = byteHeap.valueLength(idx);
@@ -762,7 +771,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 0;
         PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.allocate(idx, length), length, reader);
         int len = byteHeap.valueLength(idx);

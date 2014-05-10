@@ -18,6 +18,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.BalancedSwitchGenerator;
@@ -33,12 +34,6 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
 
-
-    //TODO: B, must reduce size of large methods as well.
-    // TODO: B, this code generation must take place when loading the catalog
-    // binary file. So catalog file can be the same cross languages.
-    // TODO: B, copy other dispatch and use it for code generation, if possible
-    // build generator that makes use of its own source as template.
     // TODO: C, code does not support final in signatures, this would be nice to have
     //TODO: A, must gather code and based on complexity group into functions to reduce total calls.
     
@@ -62,20 +57,18 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     String caseTail = "}\n";
     Set<Integer> sequenceStarts = new HashSet<Integer>();
+    byte[] origCatBytes;
     
-    
-    public FASTReaderDispatchGenerator(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
-            int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
-            int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
+    public FASTReaderDispatchGenerator(byte[] catBytes) {
+        super(null,new TemplateCatalog(new PrimitiveReader(catBytes,0)));
         
-        super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
-                maxNestedGroupDepth, primaryRingBits, textRingBits);
-        
+        origCatBytes = catBytes;
         templates = new SourceTemplates();
         fieldBuilder = new StringBuilder();
         caseBuilder = new StringBuilder();
         fieldCount = 0;
     }
+    
     
     //This generator allows for refactoring of the NAME of these methods and the code generation will remain intact.
     
@@ -282,7 +275,15 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         int[] doneValues = new int[doneScripts.size()];
         String[] doneCode = new String[doneScripts.size()];
         for(Integer d:doneScripts) {
-            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\ractiveScriptCursor="+GROUP_METHOD_NAME+d+"("+doneScriptsParas.get(j)+");\n";
+            //rbRingBuffer.buffer, rbRingBuffer.mask
+            
+            //TODO: A, custom ring buffer per calls.
+            String methodCallArgs = doneScriptsParas.get(j)
+                                    .replace("dispatch","this")
+                                    .replace("rbB","rbRingBuffer.buffer")
+                                    .replace("rbMask", "rbRingBuffer.mask");
+
+            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\ractiveScriptCursor="+GROUP_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
@@ -295,17 +296,21 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     }
 
+    
+    
     public void generateFullReaderSource(TemplateCatalog catalog, Appendable target) throws IOException {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        target.append("package com.ociweb.jfast.stream;\n");
+        target.append("package com.ociweb.jfast.stream;\n"); //package
         target.append("\n");
-        target.append(templates.imports());
+        target.append(templates.imports()); //imports
         target.append("\n");
-        target.append("public final class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {");
+        target.append("public final class FASTReaderDispatchGenExample extends FASTReaderDispatchBase {"); //open class
         target.append("\n");
-        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample"));
+        target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static const
+        target.append("\n");
+        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),"FASTReaderDispatchGenExample")); //constructor
         target.append("\n");
         generateAllGroupMethods(catalog,doneScripts,doneScriptsParas,target);
         
@@ -313,57 +318,46 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         target.append('}');
 
     }
-    
-    public void createWriteSourceClassFiles(TemplateCatalog catalog) {
-                
+
+    public boolean createWriteSourceClassFiles(JavaCompiler compiler) {
+             
         try {
             
-            File tempDir = new File(System.getProperty("java.io.tmpdir"));//TODO: need unique directory for this install/catalog.
-            String rootName = "FASTReaderDispatchGenExample"; //TODO: pull out as constant.
-            //TODO: must create full path to this file.
-            
-            File path = new File(tempDir,"com");
-            path = new File(path,"ociweb");
-            path = new File(path,"jfast");
-            path = new File(path,"stream");
-            path.mkdirs();
-            
-            
-            File sourceTarget = new File(path,rootName+".java");
-            
+            File sourceTarget = new File(workingFolder(),FASTDispatchClassLoader.SIMPLE_READER_NAME+".java");
             
             //write source file
             FileWriter writer = new FileWriter(sourceTarget);
-            generateFullReaderSource(catalog,writer);
+            generateFullReaderSource(new TemplateCatalog(new PrimitiveReader(origCatBytes,0)),writer);
             writer.close();
             
             //write class file
             List<File> toCompile = new ArrayList<File>();
+            System.out.println("compile:"+sourceTarget);
             toCompile.add(sourceTarget);
-            compile(toCompile);
-            
-            System.err.println(sourceTarget);
-            
+            return compile(compiler, toCompile);
             
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new FASTException(e);
         }
-        
-        
-        
+    }
+
+    public static File workingFolder() {
+        File tempDir = new File(System.getProperty("java.io.tmpdir"));
+        //TODO: C, not sure we need to spell out the full directory structure.
+        File path = new File(tempDir,"com");
+        path = new File(path,"ociweb");
+        path = new File(path,"jfast");
+        path = new File(path,"stream");
+        path.mkdirs();
+        return path;
     }
     
-    //TODO: A, Write the soruce to a known folder?
-    //TODO: A, Compile from source to another known folder?
-    //TODO: A, Use known folder to load class and use?
+    //TODO: C, Add API for getting class/source and for setting class file.
     
     
-    public void compile(Iterable<? extends File> javaFiles) {
+    
+    public boolean compile(JavaCompiler compiler, Iterable<? extends File> javaFiles) {
         
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        if (null!=compiler) {
-
             DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
             StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
             
@@ -373,12 +367,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path")));
             JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnits);
             if (task.call()) {
-                
-                System.out.println("success");
-                //success
-                
-                //use class loader to pull this up.
-                
+                return true;
             } else {
                 //did not compile due to error
                 System.err.println("error in compile  ");
@@ -386,15 +375,9 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 for (Diagnostic<? extends JavaFileObject> x:      diagnostics.getDiagnostics()) {
                     System.err.println(x);
                 }
-                
+                return false;
             }
-            
-            
-        } else {
-            //unable to compile, no compiler
-            System.err.println("no compiler");
-        }
-        
+ 
         
     }
     
@@ -825,32 +808,32 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
         generator(new Exception().getStackTrace(),idx);
     }
 

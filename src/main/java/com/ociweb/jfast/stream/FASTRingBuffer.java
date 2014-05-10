@@ -24,8 +24,8 @@ import com.ociweb.jfast.field.TextHeap;
  */
 public final class FASTRingBuffer {
 
-    final int[] buffer;
-    final int mask;
+    public final int[] buffer;
+    public final int mask;
 
     public final int maxSize;
 
@@ -138,11 +138,11 @@ public final class FASTRingBuffer {
         return p;
     }
 
-    // TODO: A, Generate list of FieldId static offsets for use by static reader based on templateId.
 
     // next sequence is ready for consumption.
     public final void unBlockSequence() {
         // TODO: A, only filter on the message level. sequence will be  difficult because they are nested. Not sure we want to keep this feature?
+        // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
         
         //TODO: A, build multi target ring buffers per message and null ring buffer to drop messages.
 

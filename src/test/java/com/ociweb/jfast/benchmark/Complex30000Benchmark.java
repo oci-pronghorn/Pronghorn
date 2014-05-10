@@ -40,8 +40,7 @@ public class Complex30000Benchmark extends Benchmark {
 	byte[] testData;
 	
 	public Complex30000Benchmark() {
-		FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-		catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
+		catalog = new TemplateCatalog(new PrimitiveReader(buildRawCatalogData(),0));
 		
 		byte prefixSize = 4;
 		catalog.setMessagePreambleSize(prefixSize);	
@@ -66,16 +65,7 @@ public class Complex30000Benchmark extends Benchmark {
 			
 			fastInput = new FASTInputByteArray(testData);
 			reader = new PrimitiveReader(2048, fastInput, 32);
-			FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, 
-							                    catalog.dictionaryFactory(), 
-							                    3, 
-							                    catalog.dictionaryMembers(), 
-							                    catalog.getMaxTextLength(),
-							                    catalog.getMaxByteVectorLength(),
-							                    catalog.getTextGap(),
-							                    catalog.getByteVectorGap(), 
-							                    catalog.fullScript(),
-							                    catalog.getMaxGroupDepth(), 8, 7); 
+			FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
 
 			dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
 			

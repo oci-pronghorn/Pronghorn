@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -74,6 +76,8 @@ public class TemplateLoader {
         // //need to load fast.schema file
         // Schema schema = new Schema();
         // spfac.setSchema(schema);
+//        ZipOutputStream zost = new ZipOutputStream(catalog);
+//        zost.putNextEntry(new ZipEntry("x"));
 
         SAXParser sp = spfac.newSAXParser();
         FASTOutput output = new FASTOutputStream(catalog);

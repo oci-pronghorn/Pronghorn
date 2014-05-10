@@ -65,6 +65,18 @@ public final class PrimitiveReader {
         input.init(this.buffer);
     }
     
+    
+    public PrimitiveReader(byte[] buffer, int maxPMapCountInBytes) {
+        this.input = null; //TODO: may want dummy impl for this.
+        this.buffer = buffer;
+
+        this.position = 0;
+        this.limit = buffer.length;
+        this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
+        this.invPmapStackDepth = maxPMapCountInBytes-2;
+
+    }
+    
     public static final void reset(PrimitiveReader reader) {
         reader.totalReader = 0;
         reader.position = 0;
