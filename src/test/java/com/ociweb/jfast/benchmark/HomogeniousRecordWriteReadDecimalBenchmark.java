@@ -74,8 +74,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
     static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3,
             new int[0][0], null, 64);
-    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,
-            64, 8, 7);
+    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64,
+            8, 7);
 
     static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 2,
             TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -250,13 +250,13 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
             staticReader.reset(); // reset message to clear the previous values
 
-            staticReader.openGroup(groupToken, pmapSize);
+            staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
             while (--j >= 0) {
                 result |= j;// doing more nothing.
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx);
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);
         }
         return result;
     }
@@ -287,18 +287,12 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     staticWriter.acceptIntegerSigned(token, 1);
                     staticWriter.acceptLongSigned(token, mantissa);
                 } else {
-                    if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
-                        int idx = token & staticWriter.intInstanceMask;
-
-                        FASTWriterInterpreterDispatch.writeNullInt(token, writer, staticWriter.intValues, idx);
-                    } else {
-                        staticWriter.acceptIntegerSignedOptional(token, 1);
-                    }
+                    staticWriter.acceptIntegerSignedOptional(token, 1);
 
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                         int idx = token & staticWriter.longInstanceMask;
 
-                        FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, staticWriter.longValues);
+                        staticWriter.writeNullLong(token, idx, writer, staticWriter.longValues);
                     } else {
                         staticWriter.acceptLongSignedOptional(token, mantissa);
                     }
@@ -315,14 +309,14 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             // staticReader.reset(); //reset message to clear the previous
             // values
 
-            staticReader.openGroup(groupToken, pmapSize);
+            staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
             while (--j >= 0) {
-                staticReader.readDecimalExponent(token);
-                result |= staticReader.readDecimalMantissa(token);
+                staticReader.readDecimalExponent(token, reader);
+                result |= staticReader.readDecimalMantissa(token, reader);
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx);
+            staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);
         }
         return result;
     }

@@ -15,82 +15,15 @@ import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
+public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
 
-    private int templateStackHead = 0;
-    private final int[] templateStack;
 
-    private final PrimitiveWriter writer;
-    private final int instanceBytesMask;
-    
-    public final int[] intValues;
-    private final int[] intInit;
-    public final int intInstanceMask;
-    
-    public final long[] longValues;
-    private final long[] longInit;
-    public final int longInstanceMask;
-    
-    final int nonTemplatePMapSize;
 
-    private int readFromIdx = -1;
-
-    private final DictionaryFactory dictionaryFactory;
-    private final FASTRingBuffer queue;
-    private final int[][] dictionaryMembers;
-
-    private final int[] sequenceCountStack;
-    private int sequenceCountStackHead = -1;
-    private boolean isFirstSequenceItem = false;
-    private boolean isSkippedSequence = false;
-    private DispatchObserver observer;
-    int activeScriptCursor;
-    int activeScriptLimit;
-    final int[] fullScript;
-    
-    private TextHeap textHeap;
-    private ByteHeap byteHeap;
-
-    private RingCharSequence ringCharSequence = new RingCharSequence();
-    public static final int INIT_VALUE_MASK = 0x80000000;
-    public final int TEXT_INSTANCE_MASK;
-
-    public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
-            int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue, int nonTemplatePMapSize,
-            int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
-
-        this.fullScript = fullScript;
-        this.writer = writer;
-        this.dictionaryFactory = dcr;
-        this.nonTemplatePMapSize = nonTemplatePMapSize;
-
-        this.sequenceCountStack = new int[maxNestedGroupDepth];
-
-        this.intValues = dcr.integerDictionary();
-        this.intInit = dcr.integerDictionary();
-        assert (intValues.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(intValues.length));
-        this.intInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (intValues.length - 1));
-        
-        this.longValues = dcr.longDictionary();
-        this.longInit = dcr.longDictionary();
-        assert (longValues.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(longValues.length));
-        this.longInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (longValues.length - 1));
-        
-        this.textHeap = dcr.charDictionary(maxCharSize, gapChars);
-        this.byteHeap = dcr.byteDictionary(maxBytesSize, gapBytes);
-
-        this.TEXT_INSTANCE_MASK = null == textHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount() - 1));
-        this.instanceBytesMask = null==byteHeap? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount()-1));
-
-        this.templateStack = new int[maxTemplates];
-        this.queue = queue;
-        this.dictionaryMembers = dictionaryMembers;
-    }
-
-    public void setDispatchObserver(DispatchObserver observer) {
-        this.observer = observer;
+    public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
+            int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
+            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
+        super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
+                dictionaryMembers, fullScript, maxNestedGroupDepth);
     }
 
     /**
@@ -111,12 +44,12 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // int
                 int idx = token & intInstanceMask;
                 
-                FASTWriterInterpreterDispatch.writeNullInt(token, writer, intValues, idx);
+                writeNullInt(token, writer, intValues, idx);
             } else {
                 // long
                 int idx = token & longInstanceMask;
                 
-                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, longValues);
+                writeNullLong(token, idx, writer, longValues);
             }
         } else {
             // text decimal bytes
@@ -124,7 +57,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // text
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                FASTWriterInterpreterDispatch.writeNullText(token, idx, writer, textHeap);
+                writeNullText(token, idx, writer, textHeap);
             } else {
                 // decimal bytes
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -132,14 +65,14 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     int idx = token & intInstanceMask;
                     
                     //TODO: A, must implement null for decimals
-                    FASTWriterInterpreterDispatch.writeNullInt(token, writer,intValues, idx); 
+                    writeNullInt(token, writer,intValues, idx); 
 
                     int idx1 = token & longInstanceMask;
                     
-                    FASTWriterInterpreterDispatch.writeNullLong(token, idx1, writer, longValues);
+                    writeNullLong(token, idx1, writer, longValues);
                 } else {
                     // byte
-                    FASTWriterInterpreterDispatch.writeNullBytes(token, writer, byteHeap, instanceBytesMask);
+                    writeNullBytes(token, writer, byteHeap, instanceBytesMask);
                 }
             }
         }
@@ -191,7 +124,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDeltaOptional(value, target, source, writer);
+                    genWriteLongSignedDeltaOptional(value, target, source, writer, longValues);
                 }
             } else {
                 // constant
@@ -236,14 +169,14 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongSignedNone(value, idx, writer);
+                    genWriteLongSignedNone(value, idx, writer, longValues);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDelta(value, target, source, writer);
+                    genWriteLongSignedDelta(value, target, source, writer, longValues);
                 }
             } else {
                 // constant
@@ -262,10 +195,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopy(value, target, source, writer);
+                    genWriteLongSignedCopy(value, target, source, writer, longValues);
                 } else {
                     // increment
-                    genWriteLongSignedIncrement(value, target, source, writer);
+                    genWriteLongSignedIncrement(value, target, source, writer, longValues);
                 }
             } else {
                 // default
@@ -293,7 +226,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    genWriteLongUnsignedDeltaOptional(value, target, source, writer);
+                    genWriteLongUnsignedDeltaOptional(value, target, source, writer, longValues);
                 }
             } else {
                 // constant
@@ -311,10 +244,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopyOptional(value, target, source, writer);
+                    genWriteLongUnsignedCopyOptional(value, target, source, writer, longValues);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrementOptional(value, target, source, writer);
+                    genWriteLongUnsignedIncrementOptional(value, target, source, writer, longValues);
                 }
             } else {
                 // default
@@ -337,14 +270,14 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongUnsignedNone(value, idx, writer);
+                    genWriteLongUnsignedNone(value, idx, writer, longValues);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongUnsignedDelta(value, target, source, writer);
+                    genWriteLongUnsignedDelta(value, target, source, writer, longValues);
                 }
             } else {
                 // constant
@@ -363,10 +296,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopy(value, target, source, writer);
+                    genWriteLongUnsignedCopy(value, target, source, writer, longValues);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrement(value, target, source, writer);
+                    genWriteLongUnsignedIncrement(value, target, source, writer, longValues);
                 }
             } else {
                 // default
@@ -417,13 +350,13 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(value, idx, writer);
+                    genWriteIntegerSignedNone(value, idx, writer, intValues);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDelta(value, target, source, writer);
+                    genWriteIntegerSignedDelta(value, target, source, writer, intValues);
                 }
             } else {
                 // constant
@@ -470,13 +403,13 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerUnsignedNone(value, idx, writer);
+                    genWriteIntegerUnsignedNone(value, idx, writer, intValues);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDelta(value, target, source, writer);
+                    genWriteIntegerUnsignedDelta(value, target, source, writer, intValues);
                 }
             } else {
                 // constant
@@ -495,10 +428,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopy(value, target, source, writer);
+                    genWriteIntegerUnsignedCopy(value, target, source, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrement(value, target, source, writer);
+                    genWriteIntegerUnsignedIncrement(value, target, source, writer, intValues);
                 }
             } else {
                 // default
@@ -523,7 +456,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 } else {
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDeltaOptional(value, target, source, writer);
+                    genWriteIntegerSignedDeltaOptional(value, target, source, writer, intValues);
                 }
             } else {
                 // constant
@@ -540,10 +473,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopyOptional(value, target, source, writer);
+                    genWriteIntegerSignedCopyOptional(value, target, source, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrementOptional(value, target, source, writer);
+                    genWriteIntegerSignedIncrementOptional(value, target, source, writer, intValues);
                 }
             } else {
                 // default
@@ -570,7 +503,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDeltaOptional(value, target, source, writer);
+                    genWriteIntegerUnsignedDeltaOptional(value, target, source, writer, intValues);
                 }
             } else {
                 // constant
@@ -587,10 +520,10 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopyOptional(value, target, source, writer);
+                    genWriteIntegerUnsignedCopyOptional(value, target, source, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrementOptional(value, target, source, writer);
+                    genWriteIntegerUnsignedIncrementOptional(value, target, source, writer, intValues);
                 }
             } else {
                 // default
@@ -632,19 +565,22 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNoneOptional(value, offset, length);
+                    genWriteBytesNoneOptional(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteBytesTailOptional(token, value, offset, length);
+                    int idx = token & instanceBytesMask;
+                    genWriteBytesTailOptional(value, offset, length, idx, writer, byteHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteBytesConstantOptional();
+                    genWriteBytesConstantOptional(writer);
                 } else {
                     // delta
-                    genWriteBytesDeltaOptional(token, value, offset, length);
+                    int idx = token & instanceBytesMask;
+                    
+                    genWriteBytesDeltaOptional(value, offset, length, idx, writer, byteHeap);
                 }
             }
         } else {
@@ -652,10 +588,14 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopyOptional(token, value, offset, length);
+                int idx = token & instanceBytesMask;
+                
+                genWriteBytesCopyOptional(value, offset, length, idx, writer, byteHeap);
             } else {
                 // default
-                genWriteBytesDefaultOptional(token, value, offset, length);
+                int idx = token & instanceBytesMask;
+                idx = idx|INIT_VALUE_MASK;
+                genWriteBytesDefaultOptional(value, offset, length, idx, writer, byteHeap);
             }
         }
     }
@@ -670,10 +610,11 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(value, offset, length);
+                    genWriteBytesNone(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteBytesTail(token, value, offset, length);
+                    int idx = token & instanceBytesMask;
+                    genWriteBytesTail(idx, value, offset, length, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -682,7 +623,9 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                     
                 } else {
                     // delta
-                    genWriteBytesDelta(token, value, offset, length);
+                    int idx = token & instanceBytesMask;
+                    
+                    genWriteBytesDelta(value, offset, length, idx, writer, byteHeap);
                 }
             }
         } else {
@@ -741,7 +684,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    genWriteBytesConstantOptional();
+                    genWriteBytesConstantOptional(writer);
                 } else {
                     // delta
                     genWriterBytesDeltaOptional(token, value);
@@ -1283,24 +1226,11 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
         if (pmapSize > 0) {
             genWriteOpenTemplatePMap(templateId, pmapSize, writer);
         } else {
-            genWriteOpenTemplate(templateId);
+            genWriteOpenTemplate(templateId, writer);
         }
     }
 
-    // must happen just before Group so the Group in question must always have
-    // an outer group.
-    private void pushTemplate(int templateId) {
-        int top = templateStack[templateStackHead];
-        if (top == templateId) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(templateId);
-            top = templateId;
-        }
 
-        templateStack[templateStackHead++] = top;
-    }
 
     public void closeGroup(int token) {
         assert (token < 0);
@@ -1308,13 +1238,13 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
-                genWriteCloseTemplatePMap(writer);
+                genWriteCloseTemplatePMap(writer, this);
             } else {
                 genWriteClosePMap(writer);
             }
         } else {
             if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
-                genWriteCloseTemplate();
+                genWriteCloseTemplate(this);
             }
         }
     }
@@ -1401,7 +1331,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
                             	int idx = expoToken & intInstanceMask; 
                                 
-                                FASTWriterInterpreterDispatch.writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
+                                writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
                             } else {
                             	acceptIntegerSignedOptional(expoToken, exponent);
                             }
@@ -1412,7 +1342,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                             	int idx = token & longInstanceMask; 
                                 
-                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, longValues); 
+                                writeNullLong(token, idx, writer, longValues); 
                             } else {
                             	acceptLongSignedOptional(token, mantissa);
                             }
@@ -1506,12 +1436,12 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                                 if (0 == (idx & 4)) {
                                     // integer
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        genWriteDictionaryIntegerReset(idx);
+                                        genWriteDictionaryIntegerReset(idx,intInit[idx], intValues);
                                     }
                                 } else {
                                     // long
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        genWriteDictionaryLongReset(idx);
+                                        genWriteDictionaryLongReset(idx, longInit[idx], longValues);
                                     }
                                 }
                             } else {
@@ -1519,7 +1449,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                                     // text
                                     while (m < limit && (idx = members[m++]) >= 0) {
                                         if (null!=textHeap) {
-                                            genWriteDictionaryTextReset(idx);
+                                            genWriteDictionaryTextReset(idx, textHeap);
                                         }
                                     }
                                 } else {
@@ -1530,7 +1460,7 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
                                         // bytes
                                         while (m < limit && (idx = members[m++]) >= 0) {
                                             if (null!=byteHeap) {
-                                                genWriteDictionaryBytesReset(idx);
+                                                genWriteDictionaryBytesReset(idx, byteHeap);
                                             }
                                         }
                                     }
@@ -1591,1321 +1521,100 @@ public final class FASTWriterInterpreterDispatch { //TODO: B, should this extend
 
     }
 
-
     public void writePreamble(byte[] preambleData) {
         genWritePreamble(preambleData, writer);
     }
-    
-    ///////////////////////
-    
-    protected void genWriteCopyText(int source, int target, TextHeap textHeap) {
-        textHeap.copy(source,target);
-    }
 
-    protected void genWriteCopyBytes(int source, int target, ByteHeap byteHeap) {
-        byteHeap.copy(source,target);
-    }
-    
-    
-    protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
-        writer.openPMap(pmapMaxSize);
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-        writer.closePMap();// TODO: A, this needs to be close but not sure this
-        // is the right location.
-        writer.writeIntegerUnsigned(templateId);
-    }
-
-    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer) {
-        writer.writeByteArrayData(preambleData, 0, preambleData.length);
-    }
-    
-    protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (null == value) {
-            if (textHeap.isNull(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
-            }
-        } else {
-            if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeIntegerUnsigned(value.length() + 1);
-                writer.writeTextUTF(value);
-            }
-        }
-    }
-
-    protected void genWriteUTFTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length() + 1);
-            writer.writeTextUTF(value);
-            textHeap.set(idx, value, 0, value.length());
-        }
-    }
-
-    protected void genWriteUTFTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int tailCount = textHeap.countTailMatch(idx, value);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount; //+1 for optional
-            writer.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail);
-            int length = (value.length() - headCount);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTFAfter(headCount, value);
-            textHeap.appendTail(idx, trimTail, headCount, value);
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
-            int valueSend = value.length() - tailCount;
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTFBefore(value, valueSend);
-            textHeap.appendHead(idx, trimHead, value, valueSend);
-        }
-    }
-    
-    protected void genWriteUTFTextConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-
-    protected void genWriteUTFTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail + 1);// plus 1 for optional
-        int length = (value.length() - headCount);
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTFAfter(headCount, value);
-        textHeap.appendTail(idx, trimTail, headCount, value);
-    }
-
-    protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.length() + 1);
-        writer.writeTextUTF(value);
-    }
-    
-    protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length());
-            writer.writeTextUTF(value);
-        }
-    }
-
-    protected void genWriteUTFTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length());
-            writer.writeTextUTF(value);
-            textHeap.set(idx, value, 0, value.length());
-        }
-    }
-
-    protected void genWriteUTFTextDelta(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int tailCount = textHeap.countTailMatch(idx, value);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount;
-            writer.writeIntegerSigned(trimTail);
-            writer.writeIntegerUnsigned(value.length() - headCount);
-            writer.writeTextUTFAfter(headCount, value);
-            textHeap.appendTail(idx, trimTail, headCount, value);
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
-            int valueSend = value.length() - tailCount;
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTFBefore(value, valueSend);
-            textHeap.appendHead(idx, trimHead, value, valueSend);
-        }
-    }
-
-    protected void genWriteUTFTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail);
-        int length = (value.length() - headCount);
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTFAfter(headCount, value);
-        textHeap.appendTail(idx, trimTail, headCount, value);
-    }
-
-    protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.length());
-        writer.writeTextUTF(value);
-    }
-
-    protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (null == value) {
-            if (textHeap.isNull(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
-            }
-        } else {
-            if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeTextASCII(value);
-            }
-        }
-    }
-
-    protected void genWriteTextCopyOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (null == value) {
-            if (textHeap.isNull(idx)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
-            }
-        } else {
-            if (textHeap.equals(idx, value)) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);
-            } else {
-                PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeTextASCII(value);
-                textHeap.set(idx, value, 0, value.length());
-            }
-        }
-    }
-
-    protected void genWriteTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (null == value) {
-            writer.writeIntegerSigned(0);
-        } else {
-            // count matching front or back chars
-            int headCount = textHeap.countHeadMatch(idx, value);
-            int tailCount = textHeap.countTailMatch(idx, value);
-            if (headCount > tailCount) {
-                int trimTail = textHeap.length(idx) - headCount;
-                assert (trimTail >= 0);
-                writer.writeIntegerSigned(trimTail + 1);// must add one because this
-                                                        // is optional
-                writer.writeTextASCIIAfter(headCount, value);
-                textHeap.appendTail(idx, trimTail, headCount, value);
-            } else {
-                int trimHead = textHeap.length(idx) - tailCount;
-                writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
-                
-                int sentLen = value.length() - tailCount;
-                writer.writeTextASCIIBefore(value, sentLen);
-                textHeap.appendHead(idx, trimHead, value, sentLen);
-            }
-        }
-    }
-
-    protected void genWriteTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail + 1);
-        writer.writeTextASCIIAfter(headCount, value);
-        textHeap.appendTail(idx, trimTail, headCount, value);
-    }
-
-    protected void genWriteNull(PrimitiveWriter writer) {
-        writer.writeNull();
-    }
-    
-    protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value);
-        }
-    }
-
-    protected void genWriteTextCopy(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            // System.err.println("char seq length:"+value.length());
-            writer.writeTextASCII(value);
-            textHeap.set(idx, value, 0, value.length());
-        }
-    }
-
-    protected void genWriteTextDelta(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int tailCount = textHeap.countTailMatch(idx, value);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount;
-            if (trimTail < 0) {
-                throw new UnsupportedOperationException(trimTail + "");
-            }
-            writer.writeIntegerSigned(trimTail);
-            writer.writeTextASCIIAfter(headCount, value);
-            textHeap.appendTail(idx, trimTail, headCount, value);
-        } else {
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
-            
-            int sentLen = value.length() - tailCount;
-            writer.writeTextASCIIBefore(value, sentLen);
-            textHeap.appendHead(idx, trimHead, value, sentLen);
-        }
-    }
-    
-    protected void genWriteTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value);
-        int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail);
-        writer.writeTextASCIIAfter(headCount, value);
-        textHeap.appendTail(idx, trimTail, headCount, value);
-    }
-
-    protected void genWriteTextNone(CharSequence value, PrimitiveWriter writer) {
-        writer.writeTextASCII(value);
-    }
-    
-    protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length + 1);
-            writer.writeTextUTF(value, offset, length);
-        }
-    }
-
-    protected void genWriteTextUTFCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length + 1);
-            writer.writeTextUTF(value, offset, length);
-            textHeap.set(idx, value, offset, length);
-        }
-    }
-
-    protected void genWriteTextUTFDeltaOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount;
-            int valueSend = length - headCount;
-            int startAfter = offset + headCount;
-            textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-            writer.writeIntegerUnsigned(trimTail + 1);
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTF(value, startAfter, valueSend);
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead);
-            int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeTextUTF(value, offset, len);
-            textHeap.appendHead(idx, trimHead, value, offset, len);
-        }
-    }
-
-    protected void genWriteTextUTFConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-
-    protected void genWriteTextUTFTailOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int trimTail = textHeap.length(idx) - headCount;
-        int valueSend = length - headCount;
-        int startAfter = offset + headCount;
-        textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        
-        writer.writeIntegerUnsigned(trimTail + 1);
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeTextUTF(value, startAfter, valueSend);
-    }
-
-    protected void genWriteTextUTFNoneOptional(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length + 1);
-        writer.writeTextUTF(value, offset, length);
-    }
-
-    protected void genWriteTextUTFDefault(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(constId, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTF(value, offset, length);
-        }
-    }
-
-    protected void genWriteTextUTFCopy(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTF(value, offset, length);
-            textHeap.set(idx, value, offset, length);
-        }
-    }
-
-    protected void genWriteTextUTFDelta(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount;
-            int valueSend = length - headCount;
-            int startAfter = offset + headCount + headCount;
-            textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-            
-            writer.writeIntegerUnsigned(trimTail + 0);
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTF(value, startAfter, valueSend);
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead);
-            
-            int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeTextUTF(value, offset, len);
-            
-            textHeap.appendHead(idx, trimHead, value, offset, len);
-        }
-    }
-
-    protected void genWriteTextUTFTail(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int trimTail = textHeap.length(idx) - headCount;
-        int valueSend = length - headCount;
-        int startAfter = offset + headCount;
-        textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        
-        writer.writeIntegerUnsigned(trimTail + 0);
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeTextUTF(value, startAfter, valueSend);
-    }
-
-    
-    protected void genWriteTextUTFNone(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTF(value, offset, length);
-    }
-    
-    protected void genWriteTextDefaultOptional(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(constId, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
-        }
-    }
-
-    protected void genWriteTextCopyOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        if (textHeap.equals(idx, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
-            textHeap.set(idx, value, offset, length);
-        }
-    }
-
-    private void genWriteTextDeltaOptional2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount; // head count is total
-                                                         // that match from
-                                                         // head.
-            writer.writeIntegerSigned(trimTail + 1); // cut off these from tail,
-                                                     // also add 1 because this
-                                                     // is optional
-        
-            int valueSend = length - headCount;
-            int valueStart = offset + headCount;
-        
-            writer.writeTextASCII(value, valueStart, valueSend);
-            textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
-        
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
-        
-            int len = length - tailCount;
-            writer.writeTextASCII(value, offset, len);
-            textHeap.appendHead(idx, trimHead, value, offset, len);
-        
-        }
-    }
-    
-    private void genWriteTextConstantOptional() {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-        // the writeNull will take care of the rest.
-    }
-
-    private void genWriteTextTailOptional2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int trimTail = textHeap.length(idx) - headCount; // head count is total that
-                                                     // match from head.
-        
-        writer.writeIntegerUnsigned(trimTail + 1); // cut off these from tail
-        
-        int valueSend = length - headCount;
-        int valueStart = offset + headCount;
-        
-        writer.writeTextASCII(value, valueStart, valueSend);
-        textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
-    }
-
-    private void genWriteTextNoneOptional(char[] value, int offset, int length) {
-        writer.writeTextASCII(value, offset, length);
-    }
-    
-    private void genWriteTextDefault2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
-        }
-    }
-
-    private void genWriteTextCopy2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        if (textHeap.equals(idx, value, offset, length)) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
-            textHeap.set(idx, value, offset, length);
-        }
-    }
-
-    private void genWriteTextDelta2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        
-        // count matching front or back chars
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = textHeap.countTailMatch(idx, value, offset + length, length);
-        if (headCount > tailCount) {
-            int trimTail = textHeap.length(idx) - headCount; // head count is total
-                                                         // that match from
-                                                         // head.
-            writer.writeIntegerSigned(trimTail); // cut off these from tail
-        
-            int valueSend = length - headCount;
-            int valueStart = offset + headCount;
-        
-            writer.writeTextASCII(value, valueStart, valueSend);
-            textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
-        
-        } else {
-            // replace head, tail matches to tailCount
-            int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerUnsigned(-trimHead);
-        
-            int len = length - tailCount;
-            writer.writeTextASCII(value, offset, len);
-        
-            textHeap.appendHead(idx, trimHead, value, offset, len);
-        }
-    }
-
-    private void genWriteTextTail2(int token, char[] value, int offset, int length) {
-        int idx = token & TEXT_INSTANCE_MASK;
-        int headCount = textHeap.countHeadMatch(idx, value, offset, length);
-        int trimTail = textHeap.length(idx) - headCount; // head count is total that
-                                                     // match from head.
-        writer.writeIntegerUnsigned(trimTail); // cut off these from tail
-        
-        int valueSend = length - headCount;
-        int valueStart = offset + headCount;
-        
-        writer.writeTextASCII(value, valueStart, valueSend);
-        textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
-    }
-
-    private void genWriteTextNone(char[] value, int offset, int length) {
-        writer.writeTextASCII(value, offset, length);
-    }
-    
-    private void genWriterBytesDefaultOptional(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer); 
-        	value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	int len = value.remaining();
-        	if (len<0) {
-        		len = 0;
-        	}
-        	writer.writeIntegerUnsigned(len+1);
-        	writer.writeByteArrayData(value);
-        }
-    }
-
-    private void genWriterBytesCopyOptional(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx, value)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        	value.position(value.limit());//skip over the data just like we wrote it.
-        } 
-        else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(value.remaining()+1);
-        	byteHeap.set(idx, value);//position is NOT modified
-        	writer.writeByteArrayData(value); //this moves the position in value
-        }
-    }
-
-    private void genWriterBytesDeltaOptional(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(idx, value);
-        int tailCount = byteHeap.countTailMatch(idx, value);
-        if (headCount>tailCount) {
-        	writeBytesTail(idx, headCount, value, 1); //does not modify position
-        } else {
-        	writeBytesHead(idx, tailCount, value, 1); //does not modify position
-        }
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-    
-    //TODO: B, will be static
-    private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
-        
-    
-        
-        int trimTail = byteHeap.length(idx)-headCount;
-        if (trimTail<0) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-                
-        writer.writeIntegerUnsigned(valueSend);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        
-    }
-    
-    //TODO: B,  will be static
-    private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
-        
-        //replace head, tail matches to tailCount
-        int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
-        
-        int len = value.remaining() - tailCount;
-        int offset = value.position();
-        writer.writeIntegerUnsigned(len);
-        writer.writeByteArrayData(value, offset, len);
-        byteHeap.appendHead(idx, trimHead, value, offset, len);
-    }
-
-    private void genWriterBytesTailOptional(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        int headCount = byteHeap.countHeadMatch(idx, value);
-        int trimTail = byteHeap.length(idx)-headCount;
-        if (trimTail<0) {
-        	throw new ArrayIndexOutOfBoundsException();
-        }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+1 : trimTail);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-        		
-        writer.writeIntegerUnsigned(valueSend);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    private void genWriterBytesNoneOptional(ByteBuffer value) {
-        writer.writeIntegerUnsigned(value.remaining()+1);
-        writer.writeByteArrayData(value); //this moves the position in value
-    }
-
-    private void genWriteBytesDefault(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        	value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(value.remaining());
-        	writer.writeByteArrayData(value); //this moves the position in value
-        }
-    }
-
-    private void genWriteBytesCopy(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        //System.err.println("AA");
-        if (byteHeap.equals(idx, value)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        	value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(value.remaining());
-        	byteHeap.set(idx, value);//position is NOT modified
-        	writer.writeByteArrayData(value); //this moves the position in value
-        }
-    }
-
-    private void genWriteBytesDelta(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(idx, value);
-        int tailCount = byteHeap.countTailMatch(idx, value);
-        if (headCount>tailCount) {
-        	int trimTail = byteHeap.length(idx)-headCount;
-            if (trimTail<0) {
-            	throw new ArrayIndexOutOfBoundsException();
-            }
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail);
-            
-            int valueSend = value.remaining()-headCount;
-            int startAfter = value.position()+headCount;
-            		
-            writer.writeIntegerUnsigned(valueSend);
-            //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-            byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-            writer.writeByteArrayData(value, startAfter, valueSend); //does not modify position
-        } else {
-        	//replace head, tail matches to tailCount
-            int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 0: -trimHead); 
-            
-            int len = value.remaining() - tailCount;
-            int offset = value.position();
-            writer.writeIntegerUnsigned(len);
-            writer.writeByteArrayData(value, offset, len);
-            byteHeap.appendHead(idx, trimHead, value, offset, len); //does not modify position
-        }
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    private void genWriteBytesTail(int token, ByteBuffer value) {
-        int idx = token & instanceBytesMask;
-        int headCount = byteHeap.countHeadMatch(idx, value);
-        		
-        int trimTail = byteHeap.length(idx)-headCount;
-        if (trimTail<0) {
-        	throw new ArrayIndexOutOfBoundsException();
-        }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-        		
-        writer.writeIntegerUnsigned(valueSend);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    private void genWriteBytesNone(ByteBuffer value) {
-        writer.writeIntegerUnsigned(value.remaining());
-        writer.writeByteArrayData(value); //this moves the position in value
-    }
-    
-    private void genWriteBytesDefault(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length);
-        	writer.writeByteArrayData(value,offset,length);
-        }
-    }
-
-    private void genWriteBytesCopy(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx, value, offset, length)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        }
-        else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length);
-        	writer.writeByteArrayData(value,offset,length);
-        	byteHeap.set(idx, value, offset, length);
-        }
-    }
-
-    private void genWriteBytesDelta(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
-        if (headCount>tailCount) {
-        	writeBytesTail(idx, headCount, value, offset+headCount, length, 0);
-        } else {
-        	writeBytesHead(idx, tailCount, value, offset, length, 0);
-        }
-    }
-
-    private void genWriteBytesTail(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
-        
-        int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
-        
-        int valueSend = length-headCount;
-        int startAfter = offset+headCount;
-        
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-    }
-
-    private void genWriteBytesNone(byte[] value, int offset, int length) {
-        writer.writeIntegerUnsigned(length);
-        writer.writeByteArrayData(value,offset,length);
-    }
-    
-    private void writeBytesHead(int idx, int tailCount, byte[] value, int offset, int length, int opt) {
-        
-        //replace head, tail matches to tailCount
-        int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
-        
-        int len = length - tailCount;
-        writer.writeIntegerUnsigned(len);
-        writer.writeByteArrayData(value, offset, len);
-        
-        byteHeap.appendHead(idx, trimHead, value, offset, len);
-    }
-    
-   private void writeBytesTail(int idx, int headCount, byte[] value, int offset, int length, final int optional) {
-        int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail);
-        
-        int valueSend = length-headCount;
-        int startAfter = offset+headCount;
-        
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-    }
-    
-    private void genWriteBytesDefaultOptional(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length+1);
-        	writer.writeByteArrayData(value,offset,length);
-        }
-    }
-
-    private void genWriteBytesCopyOptional(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        if (byteHeap.equals(idx, value, offset, length)) {
-        	PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-        	PrimitiveWriter.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length+1);
-        	writer.writeByteArrayData(value,offset,length);
-        	byteHeap.set(idx, value, offset, length);
-        }
-    }
-
-    private void genWriteBytesDeltaOptional(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
-        if (headCount>tailCount) {
-        	int trimTail = byteHeap.length(idx)-headCount;
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail);
-            
-            int valueSend = length-headCount;
-            int startAfter = offset+headCount;
-            
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeByteArrayData(value, startAfter, valueSend);
-            byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        } else {
-        	//replace head, tail matches to tailCount
-            int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 1: -trimHead); 
-            
-            int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeByteArrayData(value, offset, len);
-            
-            byteHeap.appendHead(idx, trimHead, value, offset, len);
-        }
-    }
-
-    private void genWriteBytesConstantOptional() {
-        PrimitiveWriter.writePMapBit((byte)1, writer);
-        //the writeNull will take care of the rest.
-    }
-
-    private void genWriteBytesTailOptional(int token, byte[] value, int offset, int length) {
-        int idx = token & instanceBytesMask;
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
-        int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail);
-        
-        int valueSend = length-headCount;
-        int startAfter = offset+headCount;
-        
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-    }
-
-    private void genWriteBytesNoneOptional(byte[] value, int offset, int length) {
-        writer.writeIntegerUnsigned(length+1);
-        writer.writeByteArrayData(value,offset,length);
-    }
-    
-    private void genWriteIntegerSignedDefault(int value, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDefault(value, constDefault);
-    }
-
-    private void genWriteIntegerSignedIncrement(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedIncrement(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerSignedCopy(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedCopy(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerSignedDelta(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDelta(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerSignedNone(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerSigned(intValues[idx] = value);
-    }
-    
-    private void genWriteIntegerUnsignedDefault(int value, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDefault(value, constDefault);
-    }
-
-    private void genWriteIntegerUnsignedIncrement(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedIncrement(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedCopy(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedCopy(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedDelta(int value, int idx, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDelta(value, idx, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedNone(int value, int idx, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(intValues[idx] = value);
-    }
-
-    private void genWriteIntegerSignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-        if (value >= 0) {
-            value++;// room for null
-        }
-        writer.writeIntegerSignedDefaultOptional(value, constDefault);
-    }
-
-    private void genWriteIntegerSignedIncrementOptional(int value, int target, int source, PrimitiveWriter writer) {
-        if (value >= 0) {
-            value++;
-        }
-        int last = intValues[source];
-        intValues[target] = value;
-        writer.writeIntegerSignedIncrementOptional(value, last);
-    }
-
-    private void genWriteIntegerSignedCopyOptional(int value, int idx, int source, PrimitiveWriter writer) {
-        if (value >= 0) {
-            value++;
-        }
-        
-        writer.writeIntegerSignedCopyOptional(value, idx, source, intValues);
-    }
-
-    private void genWriteIntegerSignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-
-    private void genWriteIntegerSignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerSignedNoneOptional(int value, PrimitiveWriter writer) {
-        writer.writeIntegerSignedOptional(value);
-    }
-
-    private void genWriteIntegerUnsignedCopyOptional(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
-    }
-
-    private void genWriteIntegerUnsignedIncrementOptional(int value, int idx, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedIncrementOptional(value, idx, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-
-    private void genWriteIntegerUnsignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
-    }
-
-    private void genWriteIntegerUnsignedNoneOptional(int value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value + 1);
-    }
-
-    private void genWriteLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongUnsignedDefault(value, constDefault);
-    }
-
-    private void genWriteLongUnsignedIncrement(long value, int target, int source, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrement(value, target, source, longValues);
-    }
-
-    private void genWriteLongUnsignedCopy(long value, int target, int source, PrimitiveWriter writer) {
-        writer.writeLongUnsignedCopy(value, target, source, longValues);
-    }
-
-    private void genWriteLongUnsignedDelta(long value, int target, int source, PrimitiveWriter writer) {
-        writer.writeLongSigned(value - longValues[source]);
-        longValues[target] = value;
-    }
-
-    private void genWriteLongUnsignedNone(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongUnsigned(longValues[idx] = value);
-    }
-    
-    private void genWriteLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writneLongUnsignedDefaultOptional(value, constDefault);
-    }
-
-    private void genWriteLongUnsignedIncrementOptional(long value, int idx, int source, PrimitiveWriter writer) {
-        writer.writeLongUnsignedIncrementOptional(value, idx, source, longValues);
-    }
-
-    private void genWriteLongUnsignedCopyOptional(long value, int idx, int source, PrimitiveWriter writer) {
-        value++;// zero is held for null
-        
-        writer.writeLongUnsignedCopyOptional(value, idx, source, longValues);
-    }
-
-    private void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-
-    private void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
-        writer.writeLongUnsigned(value + 1);
-    }
-
-    private void genWriteLongUnsignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer) {
-        long delta = value - longValues[source];
-        writer.writeLongSigned(delta>=0 ? 1+delta : delta);
-        longValues[target] = value;
-    }
-    
-    private void genWriteLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongSignedDefault(value, constDefault);
-    }
-
-    private void genWriteLongSignedIncrement(long value, int target, int source, PrimitiveWriter writer) {
-        writer.writeLongSignedIncrement(value,  longValues[source]);
-        longValues[target] = value;
-    }
-
-    private void genWriteLongSignedCopy(long value, int idx, int source, PrimitiveWriter writer) {
-        writer.writeLongSignedCopy(value, idx, source, longValues);
-    }
-
-    private void genWriteLongSignedNone(long value, int idx, PrimitiveWriter writer) {
-        writer.writeLongSigned(longValues[idx] = value);
-    }
-
-    private void genWriteLongSignedDelta(long value, int target, int source, PrimitiveWriter writer) {
-        writer.writeLongSigned(value - longValues[source]);
-        longValues[target] = value;
-    }
-    
-    private void genWriteLongSignedOptional(long value, PrimitiveWriter writer) {
-        writer.writeLongSignedOptional(value);
-    }
-
-    private void genWriteLongSignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer) {
-        long delta = value - longValues[source];
-        writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
-        longValues[target] = value;
-    }
-
-    private void genWriteLongSignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-    }
-    
-
-    private void genWriteLongSignedCopyOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        if (value >= 0) {
-            value++;
-        }
-        writer.writeLongSignedCopy(value, target, source, longValues);
-    }
-
-    private void genWriteLongSignedIncrementOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        if (value >= 0) {
-            value++;
-        }
-        writer.writeLongSignedIncrementOptional(value, longValues[source]);
-        longValues[target] = value;
-    }
-
-    private void genWriteLongSignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        if (value >= 0) {
-            value++;// room for null
-        }
-        writer.writeLongSignedDefault(value, constDefault);
-    }
-
-    public static void writeNullInt(int token, PrimitiveWriter writer, int[] dictionary, int idx) {
-        //TODO: A, must have genWrite methods for these.
-        
+    public void writeNullInt(int token, PrimitiveWriter writer, int[] dictionary, int idx) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta (both do not use pmap)
-                dictionary[idx] = 0;
-                writer.writeNull(); // no pmap, yes change to last
-                                             // value
+                genWriteNullNoPMapInt(writer, dictionary, idx);    // no pmap, yes change to last value
             } else {
-                // Copy and Increment
-    
-                if (dictionary[idx] == 0) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    dictionary[idx] = 0;
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                } // yes pmap, yes change to last value
+                // Copy and Increment    
+                genWriteNullCopyIncInt(writer, dictionary, idx);  // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
                 // const optional
-                PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
+                genWriteNullPMap(writer); // pmap only
             } else {
-                // default
-    
-                if (dictionary[idx] == 0) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                } // yes pmap, no change to last value
+                // default    
+                genWriteNullDefaultInt(writer, dictionary, idx);   // yes pmap, no change to last value
             }
         }
     }
 
-    public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
-      //TODO: A, must have genWrite methods for these.
-        
+    
+
+    public void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta (both do not use pmap)
-                dictionary[idx] = 0;
-                writer.writeNull(); // no pmap, yes change to last value
+                genWriteNullNoPMapLong(writer, dictionary, idx);  
+                // no pmap, yes change to last value
             } else {
                 // Copy and Increment
-    
-                if (dictionary[idx] == 0) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    dictionary[idx] = 0;
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                } // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                    assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                    PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
-            } else {
-                // default
-                if (dictionary[idx] == 0) { // stored value
-                                                              // was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                } // primitiveWriter pmap, no change to last value
-            }
-        }
-    }
-
-    public static void writeNullText(int token, int idx, PrimitiveWriter writer, TextHeap textHeap) {
-      //TODO: A, must have genWrite methods for these.
-        
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta and Tail
-                writer.writeNull();
-                textHeap.setNull(idx); // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-                
-                if (textHeap.isNull(idx)) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                    textHeap.setNull(idx);
-                } // yes pmap, yes change to last
-                                              // value
+                genWriteNullCopyIncLong(writer, dictionary, idx); // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                PrimitiveWriter.writePMapBit((byte) 0, writer); // pmap only
+                genWriteNullPMap(writer);
             } else {
                 // default
-                if (textHeap.isNull(idx)) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    writer.writeNull();
-                } // yes pmap, no change to last value
+                genWriteNullDefaultLong(writer, dictionary, idx); 
             }
         }
     }
     
-    protected void genWriteDictionaryBytesReset(int idx) {
-        byteHeap.setNull(idx);
+    public void writeNullText(int token, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                // None and Delta and Tail
+                genWriteNullNoPMapText(idx, writer, textHeap); // no pmap, yes change to last value
+            } else {
+                // Copy and Increment
+                genWriteNullCopyIncText(idx, writer, textHeap); // yes pmap, yes change to last value
+            }
+        } else {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                genWriteNullPMap(writer);
+            } else {
+                // default
+                genWriteNullDefaultText(idx, writer, textHeap); // yes pmap, no change to last value
+            }
+        }
     }
 
-    protected void genWriteDictionaryTextReset(int idx) {
-        textHeap.reset(idx);
+
+    public void writeNullBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
+        
+        if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+            if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+                //None and Delta and Tail
+                genWriteNullNoPMapBytes(token, writer, byteHeap, instanceMask);              //no pmap, yes change to last value
+            } else {
+                //Copy and Increment
+                int idx = token & instanceMask;
+                genWriteNullCopyIncBytes(writer, byteHeap, idx);  //yes pmap, yes change to last value 
+            }
+        } else {
+            if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                genWriteNullPMap(writer);      
+            } else {    
+                //default
+                genWriteNullDefaultBytes(token, writer, byteHeap, instanceMask);  //yes pmap,  no change to last value
+            }   
+        }
+        
     }
 
-    protected void genWriteDictionaryLongReset(int idx) {
-        longValues[idx] = longInit[idx];
-    }
-
-    protected void genWriteDictionaryIntegerReset(int idx) {
-        intValues[idx] = intInit[idx];
-    }
     
-    protected void genWriteClosePMap(PrimitiveWriter writer) {
-        writer.closePMap();
-    }
-
-    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer) {
-        writer.closePMap();
-        // must always pop because open will always push
-        templateStackHead--;
-    }
-
-    protected void genWriteCloseTemplate() {
-        // must always pop because open will always push
-        templateStackHead--;
-    }
     
-    protected void genWriteOpenTemplate(int templateId) {
-        // done here for safety to ensure it is always done at group open.
-        pushTemplate(templateId);
-    }
-
-    protected void genWriteOpenTemplatePMap(int templateId, int pmapSize, PrimitiveWriter writer) {
-        writer.openPMap(pmapSize);
-        // done here for safety to ensure it is always done at group open.
-        pushTemplate(templateId);
-    }
-    
-    protected void genWriteOpenGroup(int pmapSize, PrimitiveWriter writer) {
-        writer.openPMap(pmapSize);
-    }
-
-    public static void writeNullBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
-    	
-    	if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
-    		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-    			//None and Delta and Tail
-    			writer.writeNull();
-                byteHeap.setNull(token & instanceMask);              //no pmap, yes change to last value
-    		} else {
-    			//Copy and Increment
-    			int idx = token & instanceMask;
-                
-                if (byteHeap.isNull(idx)) { //stored value was null;
-                	PrimitiveWriter.writePMapBit((byte)0, writer);
-                } else {
-                	PrimitiveWriter.writePMapBit((byte)1, writer);
-                	writer.writeNull();
-                	byteHeap.setNull(idx);
-                }  //yes pmap, yes change to last value	
-    		}
-    	} else {
-    		if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
-    			if (0==(token&(1<<TokenBuilder.SHIFT_TYPE))) {
-    				//const
-    				writer.writeNull();                 //no pmap,  no change to last value  
-    			} else {
-    				//const optional
-    				PrimitiveWriter.writePMapBit((byte)0, writer);       //pmap only
-    			}			
-    		} else {	
-    			//default
-    			if (byteHeap.isNull(token & instanceMask)) { //stored value was null;
-                	PrimitiveWriter.writePMapBit((byte)0, writer);
-                } else {
-                	PrimitiveWriter.writePMapBit((byte)1, writer);
-                	writer.writeNull();
-                }  //yes pmap,  no change to last value
-    		}	
-    	}
-    	
-    }
+    ///////////////////////
+ 
 }

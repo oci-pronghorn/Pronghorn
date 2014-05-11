@@ -205,7 +205,7 @@ public class StreamingTextTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 300, 0, 4, 4, null, 64, 8, 7);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 300, 0, 4, 4, null, 64, 8, 7);
         TextHeap textHeap = fr.textHeap;
 
         long start = System.nanoTime();
@@ -217,7 +217,7 @@ public class StreamingTextTest extends BaseStreamingTest {
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
                 maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 
-        fr.openGroup(groupToken, maxMPapBytes);
+        fr.openGroup(groupToken, maxMPapBytes, reader);
         StringBuilder builder = new StringBuilder();
 
         while (--i >= 0) {
@@ -229,7 +229,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && (i & NULL_SEND_MASK) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int textIdx = fr.readText(tokenLookup[f]);
+                        int textIdx = fr.readText(tokenLookup[f], reader);
                         if (!textHeap.isNull(textIdx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), Boolean.TRUE,
                                     textHeap.isNull(textIdx));
@@ -237,7 +237,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int textIdx = fr.readText(tokenLookup[f]);
+                            int textIdx = fr.readText(tokenLookup[f], reader);
 
                             char[] tdc = testConst;
 
@@ -255,7 +255,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & NULL_SEND_MASK) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int textIdx = fr.readText(tokenLookup[f]);
+                        int textIdx = fr.readText(tokenLookup[f], reader);
                         if (!textHeap.isNull(textIdx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f])
                                     + "Expected null found len " + textHeap.length(textIdx), Boolean.TRUE,
@@ -263,7 +263,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                         }
                     } else {
                         try {
-                            int textIdx = fr.readText(tokenLookup[f]);
+                            int textIdx = fr.readText(tokenLookup[f], reader);
                             char[] tdc = testDataChars[f];
 
                             if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
@@ -281,12 +281,12 @@ public class StreamingTextTest extends BaseStreamingTest {
                     }
                 }
 
-                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);
+                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);
             }
         }
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx);
+            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);
         }
         long duration = System.nanoTime() - start;
         return duration;

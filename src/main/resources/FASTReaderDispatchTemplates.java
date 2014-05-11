@@ -13,19 +13,20 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase {
 
 
-    public FASTReaderDispatchTemplates(PrimitiveReader reader, TemplateCatalog catalog) {
-        super(reader, catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
-                catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(), 
-                catalog.getTextGap(), catalog.getByteVectorGap(), catalog.fullScript(),
-                catalog.getMaxGroupDepth(), 8, 7);
+    public FASTReaderDispatchTemplates(TemplateCatalog catalog) {
+        super(catalog);
+    }
+    
+    public FASTReaderDispatchTemplates(byte[] catBytes) {
+        super(new TemplateCatalog(catBytes));
     }
     
     //second constructor only needed for testing.
-    protected FASTReaderDispatchTemplates(PrimitiveReader reader, DictionaryFactory dcr, int nonTemplatePMapSize,
-            int[][] dictionaryMembers, int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript,
-            int maxNestedGroupDepth, int primaryRingBits, int textRingBits) {
-        super(reader, dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript,
-                maxNestedGroupDepth, primaryRingBits, textRingBits);
+    protected FASTReaderDispatchTemplates(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
+            int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
+            int primaryRingBits, int textRingBits) {
+        super(dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript, maxNestedGroupDepth,
+                primaryRingBits, textRingBits);
     }
 
     

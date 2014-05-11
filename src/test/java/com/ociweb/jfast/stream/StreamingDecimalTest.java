@@ -103,21 +103,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             fw.acceptIntegerSigned(token, testExpConst);
                             fw.acceptLongSigned(token, testMantConst);
                         } else {
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == testExpConst) {
-                                int idx = token & fw.intInstanceMask;
-                                
-                                FASTWriterInterpreterDispatch.writeNullInt(token, writer, fw.intValues, idx);
-                            } else {
-                                fw.acceptIntegerSignedOptional(token, testExpConst);
-                            }
-
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == testMantConst) {
-                                int idx = token & fw.longInstanceMask;
-                                
-                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, fw.longValues);
-                            } else {
-                                fw.acceptLongSignedOptional(token, testMantConst);
-                            }
+                            fw.acceptIntegerSignedOptional(token, testExpConst);
+                            fw.acceptLongSignedOptional(token, testMantConst);
                         }
                     }
                 } else {
@@ -133,18 +120,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             fw.acceptIntegerSigned(token, 1);
                             fw.acceptLongSigned(token, mantissa);
                         } else {
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT == 1) {
-                                int idx = token & fw.intInstanceMask;
-                                
-                                FASTWriterInterpreterDispatch.writeNullInt(token, writer, fw.intValues, idx);
-                            } else {
-                                fw.acceptIntegerSignedOptional(token, 1);
-                            }
+                            fw.acceptIntegerSignedOptional(token, 1);
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                FASTWriterInterpreterDispatch.writeNullLong(token, idx, writer, fw.longValues);
+                                fw.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, mantissa);
                             }
@@ -170,7 +151,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         // if (null==fr) {
-        fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
+        fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
         // } else {
         // //pr.reset();
         // fr.reset();
@@ -187,7 +168,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         int i = operationIters;
         int g = fieldsPerGroup;
 
-        fr.openGroup(groupToken, pmapSize);
+        fr.openGroup(groupToken, pmapSize, reader);
 
         while (--i >= 0) {
             int f = fields;
@@ -202,13 +183,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 } else {
                     readDecimalOthers(tokenLookup, fr, none, f, token);
                 }
-                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, pmapSize);
+                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, pmapSize, reader);
             }
         }
 
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx);
+            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx, reader);
         }
 
         long duration = System.nanoTime() - start;
@@ -217,18 +198,18 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     private void readDecimalOthers(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token) {
         if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = fr.readDecimalExponent(tokenLookup[f]);
+            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = fr.readDecimalMantissa(tokenLookup[f]);
+            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
-            int exp = fr.readDecimalExponent(tokenLookup[f]);
-            long man = fr.readDecimalMantissa(tokenLookup[f]);
+            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
+            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
             if (testData[f] != man) {
                 assertEquals(testData[f], man);
             }
@@ -237,18 +218,18 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     private void readDecimalConstant(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token, int i) {
         if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = fr.readDecimalExponent(tokenLookup[f]);
+            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = fr.readDecimalMantissa(tokenLookup[f]);
+            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
-            int exp = fr.readDecimalExponent(tokenLookup[f]);
-            long man = fr.readDecimalMantissa(tokenLookup[f]);
+            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
+            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
             if (testMantConst != man) {
                 assertEquals(testMantConst, man);
             }
@@ -259,12 +240,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     }
 
     public long totalWritten() {
-        return writer.totalWritten(writer);
+        return PrimitiveWriter.totalWritten(writer);
     }
 
     protected void resetOutputWriter() {
         output.reset();
-        writer.reset(writer);
+        PrimitiveWriter.reset(writer);
     }
 
     protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {

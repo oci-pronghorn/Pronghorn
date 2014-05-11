@@ -103,15 +103,13 @@ public class CodeGenerationTest {
       // new SourceTemplates();
         
         byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData();
-        FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData);
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
+        TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData);
 
         //TODO: A, client side vales must be moved into a client side object, not catalog.
         
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);
-        catalog.setMaxByteVectorLength(0, 0);// byte vectors are unused
-        catalog.setMaxTextLength(14, 8);
+
         //TODO: A, the constants per field needs to be moved into the catalog because they impact code generation.
         
         GeneratedReaderFileObject file = new GeneratedReaderFileObject(buildRawCatalogData);
@@ -135,13 +133,11 @@ public class CodeGenerationTest {
         // plays both together and checks each as they are processed.
         // /////////
         byte[] catBytes = TemplateLoaderTest.buildRawCatalogData();
-        FASTInput templateCatalogInput = new FASTInputByteArray(catBytes);
-        final TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
+        final TemplateCatalog catalog = new TemplateCatalog(catBytes);
 
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);
-        catalog.setMaxByteVectorLength(0, 0);// byte vectors are unused
-        catalog.setMaxTextLength(14, 8);
+
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -150,10 +146,10 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
-        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(primitiveReader1, catalog);
+        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(catalog, readerDispatch1);
+        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(catalog, readerDispatch1, primitiveReader1);
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
@@ -161,7 +157,7 @@ public class CodeGenerationTest {
 
         FASTReaderDispatchBase readerDispatch2 = null;
         try {
-            readerDispatch2 = FASTDispatchClassLoader.loadDispatchReaderGenerated(reader, catBytes);//TemplateLoaderTest.exampleTemplateFile());
+            readerDispatch2 = FASTDispatchClassLoader.loadDispatchReaderGenerated(catBytes);//TemplateLoaderTest.exampleTemplateFile());
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());
@@ -169,7 +165,7 @@ public class CodeGenerationTest {
             fail(e.getMessage());
         }
         
-        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(catalog, readerDispatch2);
+        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(catalog, readerDispatch2, reader);
         FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 
         final int keep = 32;

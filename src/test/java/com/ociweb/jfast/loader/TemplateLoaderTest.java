@@ -51,7 +51,7 @@ public class TemplateLoaderTest {
 
         // reconstruct Catalog object from stream
         FASTInput input = new FASTInputByteArray(catalogByteArray);
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(2048, input, 32));
+        TemplateCatalog catalog = new TemplateCatalog(catalogByteArray);
 
         boolean ok = false;
         int[] script = null;
@@ -98,17 +98,13 @@ public class TemplateLoaderTest {
 
     public void testDecodeComplex30000Two() {
 
-        FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
+        TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
 
         byte prefixSize = 4;
         catalog.setMessagePreambleSize(prefixSize);
 
-        int maxByteVector = 0;
-        catalog.setMaxByteVectorLength(maxByteVector, 0);
 
-        int maxTextLength = 14;
-        catalog.setMaxTextLength(maxTextLength, 8);
+
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -118,8 +114,8 @@ public class TemplateLoaderTest {
         int bufferSize = 4096;
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         System.gc();
@@ -170,13 +166,10 @@ public class TemplateLoaderTest {
        // new SourceTemplates();
         
         byte[] catBytes = buildRawCatalogData();
-        FASTInput templateCatalogInput = new FASTInputByteArray(catBytes);
-        TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(256,templateCatalogInput,4)); //TODO: X, defaults 2048 and 32 may not be optimal.
+        TemplateCatalog catalog = new TemplateCatalog(catBytes); //TODO: X, defaults 2048 and 32 may not be optimal.
 
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);
-        catalog.setMaxByteVectorLength(0, 0);// byte vectors are unused
-        catalog.setMaxTextLength(14, 8);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -201,9 +194,9 @@ public class TemplateLoaderTest {
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
         
-       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(reader, exampleTemplateFile());
+       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(catBytes);
         
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         // TODO: X, look into core affinity
@@ -413,13 +406,10 @@ public class TemplateLoaderTest {
 
     @Test
     public void testDecodeEncodeComplex30000() {
-        FASTInput templateCatalogInput = new FASTInputByteArray(buildRawCatalogData());
-        final TemplateCatalog catalog = new TemplateCatalog(new PrimitiveReader(2048, templateCatalogInput, 32));
+        final TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
 
         // values which need to be set client side and are not in the template.
         catalog.setMessagePreambleSize((byte) 4);
-        catalog.setMaxByteVectorLength(0, 0);// byte vectors are unused
-        catalog.setMaxTextLength(14, 8);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -434,8 +424,8 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader,catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
+        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];

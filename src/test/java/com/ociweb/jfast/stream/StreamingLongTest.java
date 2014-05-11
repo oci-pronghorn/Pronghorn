@@ -132,7 +132,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
-		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
+		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64,8, 7);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -144,7 +144,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
-		fr.openGroup(groupToken, maxMPapBytes);
+		fr.openGroup(groupToken, maxMPapBytes, reader);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -155,12 +155,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f]);
+				     		long value = fr.readLong(tokenLookup[f], reader);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f]);
+							long value = fr.readLong(tokenLookup[f], reader);
 							if (testConst!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testConst, value);
 							}
@@ -169,19 +169,19 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f]);
+				     		long value = fr.readLong(tokenLookup[f], reader);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f]);
+							long value = fr.readLong(tokenLookup[f], reader);
 							if (testData[f]!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testData[f], value);
 							}
 						}
 					
 				}
-				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);				
+				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);				
 			}	
 			
 		//	System.err.println("TST:"+Long.toBinaryString(pr.getFingerprint()));
@@ -189,7 +189,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 			
 		long duration = System.nanoTime() - start;

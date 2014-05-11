@@ -368,7 +368,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 128, 4, 4, null, 64, 8, 7);
         ByteHeap byteHeap = fr.byteHeap;
 
         int token = 0;
@@ -383,7 +383,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
                 maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 
-        fr.openGroup(groupToken, maxMPapBytes);
+        fr.openGroup(groupToken, maxMPapBytes, reader);
 
         while (--i >= 0) {
             int f = fields;
@@ -395,14 +395,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f]);
+                        int idx = fr.readBytes(tokenLookup[f], reader);
                         if (!byteHeap.isNull(idx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, byteHeap.isNull(idx));
                         }
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f]);
+                            int textIdx = fr.readBytes(tokenLookup[f], reader);
 
                             byte[] tdc = testConst;
                             assertTrue("Error:" + TokenBuilder.tokenToString(token),
@@ -417,7 +417,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f]);
+                        int idx = fr.readBytes(tokenLookup[f], reader);
                         if (!byteHeap.isNull(idx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
                                     + byteHeap.length(idx), Boolean.TRUE, byteHeap.isNull(idx));
@@ -425,7 +425,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f]);
+                            int textIdx = fr.readBytes(tokenLookup[f], reader);
 
                             if ((1 & i) == 0) {
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
@@ -447,12 +447,12 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     }
                 }
 
-                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);
+                g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);
             }
         }
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx);
+            fr.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER),idx, reader);
         }
         long duration = System.nanoTime() - start;
         return duration;

@@ -32,11 +32,15 @@ public class TemplateCatalog {
     final int[] scriptFieldIds;
     final int templatesInCatalog;
 
+    final Properties properties;
+    
     final int[][] dictionaryMembers;
 
     // Runtime specific message prefix, only used for some transmission
     // technologies
     byte preambleSize = 0; // default is none
+    
+    //TODO: move these into properties to be set on save only.
     int maxTextLength = 16;// default
     int maxByteVectorLength = 16;// default
     int textLengthGap = 8;// default
@@ -45,8 +49,11 @@ public class TemplateCatalog {
     public static final int END_OF_SEQ_ENTRY = 0x01;
     public static final int END_OF_MESSAGE = 0x02;
 
-    public TemplateCatalog(PrimitiveReader reader) {
+    public TemplateCatalog(byte[] catBytes) {
+        PrimitiveReader reader = new PrimitiveReader(catBytes,0);
 
+        properties = new Properties();
+        
         int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
         assert (templatePow < 32) : "Corrupt catalog file";
         templateStartIdx = new int[1 << templatePow];
@@ -263,20 +270,8 @@ public class TemplateCatalog {
         return maxTextLength;
     }
 
-    @Deprecated
-    public void setMaxTextLength(int maxTextLength, int gap) {
-        this.maxTextLength = maxTextLength;
-        this.textLengthGap = gap;
-    }
-
     public int getMaxByteVectorLength() {
         return maxByteVectorLength;
-    }
-
-    @Deprecated
-    public void setMaxByteVectorLength(int maxByteVectorLength, int gap) {
-        this.maxByteVectorLength = maxByteVectorLength;
-        this.byteVectorGap = gap;
     }
 
     public int templatesCount() {

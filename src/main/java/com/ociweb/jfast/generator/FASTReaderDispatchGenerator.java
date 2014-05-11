@@ -25,10 +25,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     // TODO: C, code does not support final in signatures, this would be nice to have
     //TODO: C, must gather code and based on complexity group into functions to reduce total calls.
-    
-    
-  //  public static File sourceFile = new File(workingFolder(),FASTDispatchClassLoader.SIMPLE_READER_NAME+".java");
-    //TODO: change to SimpleJavafileObject
+
     
     
     private static final String GROUP_METHOD_NAME = "grp";
@@ -36,7 +33,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     SourceTemplates templates;
     
     StringBuilder fieldBuilder;
-    StringBuilder caseBuilder;
+    StringBuilder groupBuilder;
     List<String> caseParaDefs = new ArrayList<String>(); 
     List<String> caseParaVals = new ArrayList<String>(); 
     int scriptPos;
@@ -50,31 +47,16 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     byte[] origCatBytes;
     
     
-    public FASTReaderDispatchGenerator(File templates) {
-        this(parseTemplatesToBytes(templates));
-    }
-    
     public FASTReaderDispatchGenerator(byte[] catBytes) {
-        super(null,new TemplateCatalog(new PrimitiveReader(catBytes,0)));
+        super(new TemplateCatalog(catBytes));
         
         origCatBytes = catBytes;
         templates = new SourceTemplates();
         fieldBuilder = new StringBuilder();
-        caseBuilder = new StringBuilder();
+        groupBuilder = new StringBuilder();
         fieldCount = 0;
     }
     
-
-    private static byte[] parseTemplatesToBytes(File templates) {
-        ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
-        try {
-            TemplateLoader.buildCatalog(catalogBuffer, templates);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        assertTrue("Catalog must be built.", catalogBuffer.size() > 0);
-        return catalogBuffer.toByteArray();
-    }
     
     //This generator allows for refactoring of the NAME of these methods and the code generation will remain intact.
     
@@ -95,14 +77,14 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                      .append(paraDefs)
                      .append(") {\n");
         
-        caseBuilder.append("    return ").append(activeScriptCursor).append(";\n");
+        groupBuilder.append("    return ").append(activeScriptCursor).append(";\n");
         
-        return signatureLine.toString()+caseBuilder.toString()+caseTail+fieldBuilder.toString();
+        return signatureLine.toString()+groupBuilder.toString()+caseTail+fieldBuilder.toString();
     }
     
     private void beginSingleGroupMethod(int scriptPos, int templateId) {
         fieldBuilder.setLength(0);
-        caseBuilder.setLength(0);
+        groupBuilder.setLength(0);
         caseParaDefs.clear();
         caseParaVals.clear();
         this.scriptPos = scriptPos;
@@ -122,26 +104,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         return sequenceStarts;
     }
     
-    private int complexity(CharSequence seq) {
-        int complexity = 0;
-        int i = seq.length();
-        while (--i>=0) {
-            char c = seq.charAt(i);
-            if ('.'==c || //deref 
-                '['==c || //array ref
-                '+'==c || //add
-                '-'==c || //subtract
-                '*'==c || //multiply
-                '&'==c || //and
-                '|'==c || //or
-                '?'==c ) { //ternary 
-                complexity++;
-            }
-        }
-        return complexity;
-    }
-    
-    
     private void generator(StackTraceElement[] trace, long ... values) {
         
         String methodNameKey = " "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
@@ -149,15 +111,10 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         String[] paraDefs = templates.defs(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
         
-  //      assert(params.length<values.length): "Bad params for "+methodNameKey;
-        
         //replace variables with constants
         String template = templates.template(methodNameKey);
-        
-        //TODO: A, sum total complexity and write full method when it reaches 18
-        //int complexity = complexity(template);
-        //System.err.println("///////////////complexity "+complexity);
-        
+       
+       
         long[] data = values;
         int i = data.length;
         while (--i>=0) {
@@ -194,17 +151,58 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         }
         field = fieldPrefix+"_"+field;
         
+                
+        
         if (methodNameKey.contains("Length")) {
             fieldBuilder.append("private static boolean ");
-            caseBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
+            groupBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
+            lastFieldParaValues="_";
+            runningComplexity = 0;
         } else {
+            // ** if the previous para values are the same and if the method will not be too large and still in the same group.
+            // back up field builder and add the new block into the existing method, no field call needs to be added to case/group
+            String curFieldParaValues = fieldParaValues.toString();
+            if (curFieldParaValues.equals(lastFieldParaValues)) {
+                //this field has the same parameters as the  previous so consider combining if possible.
+                
+                //must ensure not spanning outside group+
+                //must ensure not too large.
+                int additionalComplexity = GeneratorUtils.complexity(template);
+                if (additionalComplexity+runningComplexity<10) {
+                    //grow
+                    
+                    
+                    //do backup and chaange********8
+                    
+                } else {
+                    //done so start again.
+                    runningComplexity = additionalComplexity;
+                    
+                    //do normal bevaior.*************
+                    
+                }
+                
+                
+            } else {
+                runningComplexity = GeneratorUtils.complexity(template);
+                
+              //do normal bevaior.*************
+                
+            }
+            lastFieldParaValues = curFieldParaValues;
+            
+            
+            
             fieldBuilder.append("private static void ");
-            caseBuilder.append("    ").append(field).append("(").append(fieldParaValues).append(");\n");
+            groupBuilder.append("    ").append(field).append("(").append(curFieldParaValues).append(");\n");
         }
         fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
         
     }
+    
+    int    runningComplexity = 0;
+    String lastFieldParaValues="_";
 
     private void generateParameters(String[] params, String[] defs, StringBuilder fieldParaValues,
             StringBuilder fieldParaDefs, int x) {
@@ -271,7 +269,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         beginSingleGroupMethod(cursor,i-1);
         activeScriptCursor = cursor;
         activeScriptLimit = limit;
-        dispatchReadByToken();
+        dispatchReadByToken(null);
         return getSingleGroupMethod(doneScriptsParas);
     }
     
@@ -293,7 +291,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public final boolean dispatchReadByToken() {\n");
+        builder.append("public final boolean dispatchReadByToken(PrimitiveReader reader) {\n");
         builder.append("    doSequence = false;\n");
         builder.append("    int x = activeScriptCursor;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
@@ -308,31 +306,16 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        generateHead(templates, origCatBytes, target);
-        generateGroupMethods(new TemplateCatalog(new PrimitiveReader(origCatBytes,0)),doneScripts,doneScriptsParas,target);
+        GeneratorUtils.generateHead(templates, origCatBytes, target, FASTDispatchClassLoader.SIMPLE_READER_NAME, "FASTReaderDispatchBase");
+        generateGroupMethods(new TemplateCatalog(origCatBytes),doneScripts,doneScriptsParas,target);
         generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
-        generateTail(target);
+        GeneratorUtils.generateTail(target);
         
         return target;
     }
 
 
-    private static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target) throws IOException {
-        target.append("package "+FASTDispatchClassLoader.GENERATED_PACKAGE+";\n"); //package
-        target.append("\n");
-        target.append(templates.imports()); //imports
-        target.append("\n");
-        target.append("public final class "+FASTDispatchClassLoader.SIMPLE_READER_NAME+" extends FASTReaderDispatchBase {"); //open class
-        target.append("\n");
-        target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static const
-        target.append("\n");
-        target.append(templates.constructor().replace(FASTReaderDispatchTemplates.class.getSimpleName(),FASTDispatchClassLoader.SIMPLE_READER_NAME)); //constructor
-        target.append("\n");
-    }
-
-    private static void generateTail(Appendable target) throws IOException {
-        target.append('}');
-    }
+    
 
 
 

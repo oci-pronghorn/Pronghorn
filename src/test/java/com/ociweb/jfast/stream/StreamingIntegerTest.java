@@ -155,7 +155,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
+		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64,8, 7);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -165,7 +165,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		int i = operationIters;
 		int g = fieldsPerGroup;
 		
-		fr.openGroup(groupToken, maxMPapBytes);
+		fr.openGroup(groupToken, maxMPapBytes, reader);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -176,12 +176,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 														
 				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f]);
+			     		int value = fr.readInt(tokenLookup[f], reader);
 						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f]);
+						int value = fr.readInt(tokenLookup[f], reader);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -191,12 +191,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f]);
+			     		int value = fr.readInt(tokenLookup[f], reader);
 						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f]);
+						int value = fr.readInt(tokenLookup[f], reader);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);
@@ -204,12 +204,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					}
 				}
 				
-				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes);				
+				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 			
 		long duration = System.nanoTime() - start;

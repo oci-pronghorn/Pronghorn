@@ -8,7 +8,7 @@ import javax.tools.SimpleJavaFileObject;
 
 public class GeneratedReaderFileObject extends SimpleJavaFileObject {
 
-    final byte[] catBytes;
+    private final byte[] catBytes;
     
     public GeneratedReaderFileObject(byte[] catBytes) {
         super(generatedSourceURI(),Kind.SOURCE);

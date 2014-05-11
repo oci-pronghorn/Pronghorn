@@ -11,6 +11,7 @@ import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {
@@ -143,17 +144,17 @@ public abstract class BaseStreamingTest {
 			
 			}
 
-	protected int groupManagementRead(int fieldsPerGroup, FASTReaderInterpreterDispatch fr, int i, int g, int groupToken, int f, int pmapSize) {
+	protected int groupManagementRead(int fieldsPerGroup, FASTReaderInterpreterDispatch fr, int i, int g, int groupToken, int f, int pmapSize, PrimitiveReader reader) {
 		if (--g<0) {
 			//close group 
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
+			fr.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
 	
 				//open new group
-				fr.openGroup(groupToken, pmapSize);
+				fr.openGroup(groupToken, pmapSize, reader);
 				
 			}				
 		}

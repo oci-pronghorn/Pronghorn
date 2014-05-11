@@ -40,16 +40,10 @@ public class Complex30000Benchmark extends Benchmark {
     byte[] testData;
 
     public Complex30000Benchmark() {
-        catalog = new TemplateCatalog(new PrimitiveReader(buildRawCatalogData(), 0));
+        catalog = new TemplateCatalog(buildRawCatalogData());
 
         byte prefixSize = 4;
         catalog.setMessagePreambleSize(prefixSize);
-
-        int maxByteVector = 0;
-        catalog.setMaxByteVectorLength(maxByteVector, 0);
-
-        int maxTextLength = 14;
-        catalog.setMaxTextLength(maxTextLength, 8);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -65,9 +59,9 @@ public class Complex30000Benchmark extends Benchmark {
 
             fastInput = new FASTInputByteArray(testData);
             reader = new PrimitiveReader(2048, fastInput, 32);
-            FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(reader, catalog);
+            FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
 
-            dynamicReader = new FASTDynamicReader(catalog, readerDispatch);
+            dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

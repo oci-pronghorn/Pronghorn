@@ -78,7 +78,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 
 		
 	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
-	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(reader, dcr, 3, new int[0][0], 0, 0, 4, 4, null,64, 8, 7);
+	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64,8, 7);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -598,13 +598,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			
 			staticReader.reset(); //reset message to clear the previous values
 			
-			staticReader.openGroup(groupToken, pmapSize);
+			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = intTestData.length;
 			while (--j>=0) {
 				result |= j;//pr.readIntegerUnsigned();////j;//doing more nothing.
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 		return result;
 	}
@@ -640,13 +640,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticReader.reset(); //reset message to clear the previous values
 			
-			staticReader.openGroup(groupToken, pmapSize);
+			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= staticReader.readInt(token);
+				result |= staticReader.readInt(token, reader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
-			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx);
+			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);
 		}
 		return result;
 	}

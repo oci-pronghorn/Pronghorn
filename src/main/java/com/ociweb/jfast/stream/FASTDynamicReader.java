@@ -53,13 +53,13 @@ public class FASTDynamicReader implements FASTDataProvider {
     // read groups field ids and build repeating lists of tokens.
 
     // only look up the most recent value read and return it to the caller.
-    public FASTDynamicReader(TemplateCatalog catalog, FASTReaderDispatchBase dispatch) {
+    public FASTDynamicReader(TemplateCatalog catalog, FASTReaderDispatchBase dispatch, PrimitiveReader reader) {
         this.catalog = catalog;
         this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
         this.preambleDataLength = catalog.getMessagePreambleSize();
         this.preamble = new byte[preambleDataLength];
         this.readerDispatch = dispatch;
-        this.reader = dispatch.reader;
+        this.reader = reader;
         this.ringBuffer = dispatch.ringBuffer();
         this.lastCapacity = ringBuffer.availableCapacity();
 
@@ -121,7 +121,7 @@ public class FASTDynamicReader implements FASTDataProvider {
             if ((lastCapacity < req) && ((lastCapacity = rb.maxSize-(rb.addPos-rb.remPos)) < req)) {
                 return 0x80000000;
             }
-            neededSpaceOrTemplate=hasMoreNextMessage(req, catalog, readerDispatch);
+            neededSpaceOrTemplate=hasMoreNextMessage(req, catalog, readerDispatch, reader);
         }
         
         
@@ -134,11 +134,11 @@ public class FASTDynamicReader implements FASTDataProvider {
         }
         
         // returns true for end of sequence or group
-        return hasMoreEnd(readerDispatch, rb);
+        return hasMoreEnd(readerDispatch, rb, reader);
     }
 
-    private final int hasMoreEnd(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb) {
-        return readerDispatch.dispatchReadByToken() ? sequence(readerDispatch, rb) : finishTemplate();
+    private final int hasMoreEnd(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb, PrimitiveReader reader) {
+        return readerDispatch.dispatchReadByToken(reader) ? sequence(readerDispatch, rb) : finishTemplate();
     }
 
     private final int sequence(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb) {
@@ -149,13 +149,13 @@ public class FASTDynamicReader implements FASTDataProvider {
         return finishTemplate();
     }
 
-    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderDispatchBase readerDispatch) {
+    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderDispatchBase readerDispatch, PrimitiveReader reader) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
         if (preambleDataLength != 0) {
-            assert (readerDispatch.gatherReadData(readerDispatch.reader, "Preamble"));
+            assert (readerDispatch.gatherReadData(reader, "Preamble"));
             PrimitiveReader.readByteData(preamble, 0, preamble.length, reader);
 
             int i = 0;
