@@ -75,10 +75,11 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
             if(!(READER.equals(name) || WRITER.equals(name))) {
                 return super.loadClass(name);
             }
+            boolean debug = true;//get system property;
             
             //if class is found and matches use it.
             File classFile = new File(classFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".class");
-            if (!forceCompile && classFile.exists()) {
+            if (!debug && !forceCompile && classFile.exists()) {
                 
                 byte[] classData = new byte[(int)classFile.length()];
                 try {
@@ -107,15 +108,17 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
                 GeneratedReaderFileObject sourceFileObject = new GeneratedReaderFileObject(catBytes);
-//                try {
-//                    //only written for debug
-//                    File sourceFile = new File(classFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java");
-//                    FileWriter out = new FileWriter(sourceFile);
-//                    out.write(sourceFileObject.getCharContent(false).toString());
-//                    out.close();
-//                } catch (IOException e1) {
-//                    e1.printStackTrace();
-//                }
+                
+                try {
+                    //only written for debug
+                    File sourceFile = new File(classFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java");
+                    FileWriter out = new FileWriter(sourceFile);
+                    out.write(sourceFileObject.getCharContent(false).toString());
+                    out.close();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
+                
                 toCompile.add(sourceFileObject);
                 JavaCompiler.CompilationTask task = compiler.getTask(null, null, diagnostics, optionList, null, toCompile);
                 

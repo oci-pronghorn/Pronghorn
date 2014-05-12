@@ -24,6 +24,11 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
         super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
                 dictionaryMembers, fullScript, maxNestedGroupDepth);
+        
+        //TODO: create ringBuffer here and put copy in every slot for array same lenght as fullScript
+        //Need either 1, way to pass in message/ringBuffer mapping rules or 2. way to set these after construction.
+        
+        
     }
 
     /**

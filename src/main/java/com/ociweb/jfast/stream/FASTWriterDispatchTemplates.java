@@ -15,7 +15,6 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatchBase {
             int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
         super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
                 dictionaryMembers, fullScript, maxNestedGroupDepth);
-        // TODO Auto-generated constructor stub
     }
 
     

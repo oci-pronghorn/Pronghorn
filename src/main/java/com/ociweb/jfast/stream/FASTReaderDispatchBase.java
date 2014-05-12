@@ -29,6 +29,8 @@ public abstract class FASTReaderDispatchBase {
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
 
+    //remove because we need multiples
+    private final FASTRingBuffer rbRingBuffer;
     
     public static final int INIT_VALUE_MASK = 0x80000000;
     
@@ -63,6 +65,8 @@ public abstract class FASTReaderDispatchBase {
 
 
         //TODO: A, need multiple target ringbuffers per message not a single one here.
+        //build this in interface and generated.
+        //TODO: A, need buffer map passed in to be used?
         this.rbRingBuffer = new FASTRingBuffer((byte) primaryRingBits,
                                                (byte) textRingBits, 
                                                 null==textHeap? null : textHeap.rawInitAccess(),
@@ -130,9 +134,11 @@ public abstract class FASTReaderDispatchBase {
 
     }
 
-        public final FASTRingBuffer rbRingBuffer;
     
+
+    //TODO: make this abstract so we can have generated code avoid array
     public FASTRingBuffer ringBuffer() {
+        
         return rbRingBuffer;//TODO: A, remove method.
     }
 

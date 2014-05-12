@@ -28,19 +28,21 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     
     
+    private static final String END_FIELD_METHOD = "};\n";
+
     private static final String GROUP_METHOD_NAME = "grp";
 
     SourceTemplates templates;
     
-    StringBuilder fieldBuilder;
-    StringBuilder groupBuilder;
+    StringBuilder fieldMethodBuilder;
+    StringBuilder groupMethodBuilder;
     List<String> caseParaDefs = new ArrayList<String>(); 
     List<String> caseParaVals = new ArrayList<String>(); 
     int scriptPos;
     int templateId;
     
     String fieldPrefix;
-    int fieldCount;
+    int fieldMethodCount;
     
     String caseTail = "}\n";
     Set<Integer> sequenceStarts = new HashSet<Integer>();
@@ -52,9 +54,9 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         
         origCatBytes = catBytes;
         templates = new SourceTemplates();
-        fieldBuilder = new StringBuilder();
-        groupBuilder = new StringBuilder();
-        fieldCount = 0;
+        fieldMethodBuilder = new StringBuilder();
+        groupMethodBuilder = new StringBuilder();
+        fieldMethodCount = 0;
     }
     
     
@@ -77,14 +79,14 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                      .append(paraDefs)
                      .append(") {\n");
         
-        groupBuilder.append("    return ").append(activeScriptCursor).append(";\n");
+        groupMethodBuilder.append("    return ").append(activeScriptCursor).append(";\n");
         
-        return signatureLine.toString()+groupBuilder.toString()+caseTail+fieldBuilder.toString();
+        return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
     
     private void beginSingleGroupMethod(int scriptPos, int templateId) {
-        fieldBuilder.setLength(0);
-        groupBuilder.setLength(0);
+        fieldMethodBuilder.setLength(0);
+        groupMethodBuilder.setLength(0);
         caseParaDefs.clear();
         caseParaVals.clear();
         this.scriptPos = scriptPos;
@@ -143,61 +145,119 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             }
             i++;
         }
-        
-        fieldCount++;
-        String field = Integer.toHexString(fieldCount);
-        while (field.length()<3) {
-            field = "0"+field;
-        }
-        field = fieldPrefix+"_"+field;
-        
-                
+
+        String methodName = buildMethodName();
+                       
         
         if (methodNameKey.contains("Length")) {
-            fieldBuilder.append("private static boolean ");
-            groupBuilder.append("    if (").append(field).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
-            lastFieldParaValues="_";
+            fieldMethodBuilder.append("private static boolean ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");;
+            //insert field operator content into method
+            fieldMethodBuilder.append(comment).append(template);
+            //close field method
+            fieldMethodBuilder.append(END_FIELD_METHOD);
+            //add call to this method from the group method
+            groupMethodBuilder.append("    if (").append(methodName).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
             runningComplexity = 0;
+            lastFieldParaValues="_";
         } else {
+            //TODO: once this is cleaned up work on removing the ringbuffer and other fields from base class.
             // ** if the previous para values are the same and if the method will not be too large and still in the same group.
             // back up field builder and add the new block into the existing method, no field call needs to be added to case/group
             String curFieldParaValues = fieldParaValues.toString();
-            if (curFieldParaValues.equals(lastFieldParaValues)) {
-                //this field has the same parameters as the  previous so consider combining if possible.
+            int additionalComplexity = GeneratorUtils.complexity(template);
+            int limit = 32;   //TODO: add warning if method is "Large" 
+            if (additionalComplexity>(limit>>1)) {
+                System.err.print("too big for repeat "+additionalComplexity+"  "+comment);
+            }
+            
+            if (lastMethodContainsParams(curFieldParaValues) &&
+                additionalComplexity+runningComplexity<=limit && 
+                fieldMethodBuilder.length()>0) {
+                //this field has the same parameters as the  previous and
+                //adding this complexity is under the limit and
+                //previous method was appended onto builder
+                //so combine this.
                 
-                //must ensure not spanning outside group+
-                //must ensure not too large.
-                int additionalComplexity = GeneratorUtils.complexity(template);
-                if (additionalComplexity+runningComplexity<10) {
-                    //grow
-                    
-                    
-                    //do backup and chaange********8
-                    
-                } else {
-                    //done so start again.
-                    runningComplexity = additionalComplexity;
-                    
-                    //do normal bevaior.*************
-                    
-                }
+                //strip off the method close so we can tack some more work in it.
+                assert(fieldMethodBuilder.toString().endsWith(END_FIELD_METHOD));
+                fieldMethodBuilder.setLength(fieldMethodBuilder.length()-END_FIELD_METHOD.length());
                 
+                //TODO: add mix back if we want to add this but need extra param.
                 
+                //insert field operator content into method
+                fieldMethodBuilder.append(comment).append(template);
+                //close field method
+                fieldMethodBuilder.append(END_FIELD_METHOD);
+                
+                runningComplexity += additionalComplexity;
             } else {
-                runningComplexity = GeneratorUtils.complexity(template);
                 
-              //do normal bevaior.*************
+                //method signature line
+                fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
+                //insert field operator content into method
+                fieldMethodBuilder.append(comment).append(template);
+                //close field method
+                fieldMethodBuilder.append(END_FIELD_METHOD);
                 
+                //add call to this method from the group method
+                groupMethodBuilder.append("    ").append(methodName).append("(").append(curFieldParaValues).append(");\n");
+
+                runningComplexity = additionalComplexity;
             }
             lastFieldParaValues = curFieldParaValues;
             
             
             
-            fieldBuilder.append("private static void ");
-            groupBuilder.append("    ").append(field).append("(").append(curFieldParaValues).append(");\n");
+            
+            
         }
-        fieldBuilder.append(field).append("(").append(fieldParaDefs).append(") {\n").append(comment).append(template).append("};\n");
         
+
+        
+        
+    }
+
+
+    /**
+     * Regardless of param order determine if the child method can find all the
+     * arguments it needs from the parent.
+     * 
+     * @param curFieldParaValues
+     * @return
+     */
+    private boolean lastMethodContainsParams(String curFieldParaValues) {
+        
+        Set<String> paraSetParent = convertParamsToSet(lastFieldParaValues);
+        Set<String> paraSetChild = convertParamsToSet(curFieldParaValues);
+        return paraSetParent.containsAll(paraSetChild);
+        
+    }
+
+
+    private Set<String> convertParamsToSet(String in) {
+        String[] paras = in.split(",");
+        Set<String> paraSet = new HashSet<String>();
+        int i = paras.length;
+        while (--i>=0) {
+            String temp = paras[i].trim();
+            if (temp.length()>=0) {
+                paraSet.add(temp);
+            }       
+        }
+        return paraSet;
+    }
+
+
+
+    private String buildMethodName() {
+        
+        fieldMethodCount++;
+        String methodName = Integer.toHexString(fieldMethodCount);
+        while (methodName.length()<3) {
+            methodName = "0"+methodName;
+        }
+        methodName = fieldPrefix+"_"+methodName;
+        return methodName;
         
     }
     
@@ -284,8 +344,9 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             //TODO: A, custom ring buffer per calls.
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
-                                    .replace("rbB","rbRingBuffer.buffer")
-                                    .replace("rbMask", "rbRingBuffer.mask");
+                                    .replace("rbRingBuffer","ringBuffer()")
+                                    .replace("rbB","ringBuffer().buffer")
+                                    .replace("rbMask", "ringBuffer().mask");
 
             doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\ractiveScriptCursor="+GROUP_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
@@ -803,7 +864,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     protected void genReadDictionaryIntegerReset(int idx, int resetConst, int[] rIntDictionary) {
         generator(new Exception().getStackTrace(),idx, resetConst);
     }
-
 
     
 }

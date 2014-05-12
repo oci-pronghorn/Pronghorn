@@ -24,7 +24,7 @@ public class StaticGlue {
         }
     }
     //May want to move to dispatch, used in 3 places.
-    public static int readASCIIToHeapValue(byte val, int chr, int idx, TextHeap textHeap,
+    public static int readASCIIToHeapValue(int idx, byte val, int chr, TextHeap textHeap,
             PrimitiveReader primitiveReader) {
 
         if (val < 0) {
@@ -178,6 +178,14 @@ public class StaticGlue {
 
     public static void allocateAndAppendUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int utfLength, int t) {
         PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength, reader);
+    }
+    public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
+        byte val;    //defLen is used for 3 different purposes, defLen, byteValue, and dynLen        
+        
+        int tmp = (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) ?
+                readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
+               readASCIIToHeapNone(idx, val, textHeap, reader);
+        return tmp;
     }
 
 }

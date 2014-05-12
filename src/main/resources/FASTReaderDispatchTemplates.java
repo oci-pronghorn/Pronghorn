@@ -440,15 +440,17 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
     protected void genReadLongSignedDeltaOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         // Delta opp never uses PMAP
         long value = PrimitiveReader.readLongSignedPrivate(reader);
-        long tmpLng;
+        int a = rbMask & rbRingBuffer.addPos++;
+        int b = rbMask & rbRingBuffer.addPos++;
         if (0 == value) {
             rLongDictionary[idx] = 0;// set to absent
-            tmpLng = constAbsent;
+            rbB[a] = (int) (constAbsent >>> 32); 
+            rbB[b] = (int) (constAbsent & 0xFFFFFFFF);
         } else {
-            tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
+            long tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
+            rbB[a] = (int) (tmpLng >>> 32); 
+            rbB[b] = (int) (tmpLng & 0xFFFFFFFF);
         }
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
     protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -526,47 +528,25 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
     }
 
     protected void genReadASCIICopy(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
-         int len;
-        if (PrimitiveReader.popPMapBit(reader)!=0) {
-            byte val;
-            int tmp;
-            if (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) {
-                len=StaticGlue.readASCIIToHeapValue(val, tmp, idx, textHeap, reader);
-            } else {
-                len=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
-            }
-        } else {
-            len = textHeap.valueLength(idx);
-        }
-        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
-        rbB[rbMask & rbRingBuffer.addPos++] = len;
+            int len = (PrimitiveReader.popPMapBit(reader)!=0) ? StaticGlue.readASCIIToHeap(idx, reader, textHeap) : textHeap.valueLength(idx);
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
     
     protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int len;
-       if (PrimitiveReader.popPMapBit(reader)!=0) {
-           byte val;
-           int tmp;
-           if (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) {
-               len=StaticGlue.readASCIIToHeapValue(val, tmp, idx, textHeap, reader);
-           } else {
-               len=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
-           }
-       } else {
-           len = textHeap.valueLength(idx);
-       }
-       rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
-       rbB[rbMask & rbRingBuffer.addPos++] = len;
+            int len = (PrimitiveReader.popPMapBit(reader) != 0) ? StaticGlue.readASCIIToHeap(idx, reader, textHeap) : textHeap.valueLength(idx);
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
     protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int trim = PrimitiveReader.readIntegerSigned(reader);
-        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-        
-        StaticGlue.allocateAndAppendUTF8(idx, textHeap, reader, utfLength, trim);
-        int len = textHeap.valueLength(idx);
-        rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
-        rbB[rbMask & rbRingBuffer.addPos++] = len;
+            int trim = PrimitiveReader.readIntegerSigned(reader);
+            int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
+            
+            StaticGlue.allocateAndAppendUTF8(idx, textHeap, reader, utfLength, trim);
+            int len = textHeap.valueLength(idx);
+            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+            rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
 
@@ -595,7 +575,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         byte val;
         int tmp;
         if (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) {
-            tmp=StaticGlue.readASCIIToHeapValue(val, tmp, idx, textHeap, reader);
+            tmp=StaticGlue.readASCIIToHeapValue(idx, val, tmp, textHeap, reader);
         } else {
             tmp=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
         }
@@ -637,25 +617,20 @@ public abstract class FASTReaderDispatchTemplates extends FASTReaderDispatchBase
         }
     }
 
-
-
     protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
-        if (0 == PrimitiveReader.popPMapBit(reader)) {
-            rbB[rbMask & rbRingBuffer.addPos++] = defIdx;
-            rbB[rbMask & rbRingBuffer.addPos++] = defLen;
-        } else {
-            byte val;
-            int tmp;
-            if (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) {
-                tmp=StaticGlue.readASCIIToHeapValue(val, tmp, idx, textHeap, reader);
+            int a = rbMask & rbRingBuffer.addPos++;
+            int b = rbMask & rbRingBuffer.addPos++;
+            if (0 == PrimitiveReader.popPMapBit(reader)) {
+                rbB[a] = defIdx;
+                rbB[b] = defLen;
             } else {
-                tmp=StaticGlue.readASCIIToHeapNone(idx, val, textHeap, reader);
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, tmp, textHeap);
-            rbB[rbMask & rbRingBuffer.addPos++] = tmp;
-        }
+                int len = StaticGlue.readASCIIToHeap(idx, reader, textHeap);
+                rbB[a] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+                rbB[b] = len;
+            } 
     }
-    
+
+        
     //byte methods
     
     protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
