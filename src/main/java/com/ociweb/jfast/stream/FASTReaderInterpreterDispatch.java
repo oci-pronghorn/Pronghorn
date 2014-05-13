@@ -23,13 +23,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     public final int MAX_TEXT_INSTANCE_MASK;
     public final int nonTemplatePMapSize;
     public final int[][] dictionaryMembers;
-
+    
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
         this(new TemplateCatalog(catBytes));
     }    
     
     public FASTReaderInterpreterDispatch(TemplateCatalog catalog) {
         super(catalog);
+        
         this.rIntInit = catalog.dictionaryFactory().integerDictionary();
         this.rLongInit = catalog.dictionaryFactory().longDictionary();
         
@@ -48,7 +49,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 primaryRingBits, textRingBits);
         this.rIntInit = dcr.integerDictionary();
         this.rLongInit = dcr.longDictionary();
-        
         this.nonTemplatePMapSize = nonTemplatePMapSize;
         this.dictionaryMembers = dictionaryMembers;
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
@@ -58,7 +58,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     }
 
 
-    public boolean dispatchReadByToken(PrimitiveReader reader) {
+    public boolean decode(PrimitiveReader reader) {
 
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit;

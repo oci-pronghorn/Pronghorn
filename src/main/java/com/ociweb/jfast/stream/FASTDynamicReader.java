@@ -29,7 +29,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
  */
 public class FASTDynamicReader implements FASTDataProvider {
 
-    private final FASTReaderDispatchBase readerDispatch;
+    private final FASTDecoder readerDispatch;
 
     private final TemplateCatalog catalog;
 
@@ -53,7 +53,7 @@ public class FASTDynamicReader implements FASTDataProvider {
     // read groups field ids and build repeating lists of tokens.
 
     // only look up the most recent value read and return it to the caller.
-    public FASTDynamicReader(TemplateCatalog catalog, FASTReaderDispatchBase dispatch, PrimitiveReader reader) {
+    public FASTDynamicReader(TemplateCatalog catalog, FASTDecoder dispatch, PrimitiveReader reader) {
         this.catalog = catalog;
         this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
         this.preambleDataLength = catalog.getMessagePreambleSize();
@@ -134,22 +134,18 @@ public class FASTDynamicReader implements FASTDataProvider {
         }
         
         // returns true for end of sequence or group
-        return hasMoreEnd(readerDispatch, rb, reader);
+        return readerDispatch.decode(reader) ? sequence(readerDispatch, rb) : finishTemplate(ringBuffer, reader);
     }
 
-    private final int hasMoreEnd(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb, PrimitiveReader reader) {
-        return readerDispatch.dispatchReadByToken(reader) ? sequence(readerDispatch, rb) : finishTemplate();
-    }
-
-    private final int sequence(FASTReaderDispatchBase readerDispatch, FASTRingBuffer rb) {
+    private final int sequence(FASTDecoder decoder, FASTRingBuffer rb) {
         rb.unBlockSequence();//expensive call change to static?
-        if (readerDispatch.jumpSequence >= 0) {
-            return processSequence(readerDispatch);
+        if (decoder.jumpSequence >= 0) {
+            return processSequence(decoder, reader);
         }
-        return finishTemplate();
+        return finishTemplate(ringBuffer, reader);
     }
 
-    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTReaderDispatchBase readerDispatch, PrimitiveReader reader) {
+    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTDecoder readerDispatch, PrimitiveReader reader) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
@@ -189,7 +185,7 @@ public class FASTDynamicReader implements FASTDataProvider {
         return (readerDispatch.activeScriptLimit - readerDispatch.activeScriptCursor) << 2;
     }
 
-    private final int finishTemplate() {
+    private final int finishTemplate(FASTRingBuffer ringBuffer, PrimitiveReader reader) {
         // reached the end of the script so close and prep for the next one
         ringBuffer.unBlockMessage();
         neededSpaceOrTemplate = -1;
@@ -197,15 +193,15 @@ public class FASTDynamicReader implements FASTDataProvider {
         return 2;// finished reading full message
     }
 
-    private final int processSequence(FASTReaderDispatchBase readerDispatch) {
-        int i = readerDispatch.jumpSequence;
+    private final int processSequence(FASTDecoder decoder, PrimitiveReader reader) {
+        int i = decoder.jumpSequence;
         if (i > 0) { // jumping (backward) to do this sequence again.
             neededSpaceOrTemplate = 1 + (i << 2);
-            readerDispatch.activeScriptCursor -= i;
+            decoder.activeScriptCursor -= i;
             return 1;// has sequence group to read
         } else {
             // finished sequence, no need to jump
-            if (++readerDispatch.activeScriptCursor == readerDispatch.activeScriptLimit) {
+            if (++decoder.activeScriptCursor == decoder.activeScriptLimit) {
                 neededSpaceOrTemplate = -1;
                 PrimitiveReader.closePMap(reader);
                 return 3;// finished reading full message and the sequence

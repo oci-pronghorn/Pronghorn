@@ -1,17 +1,9 @@
 package com.ociweb.jfast.generator;
 
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -22,14 +14,7 @@ import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.loader.TemplateCatalog;
-import com.ociweb.jfast.loader.TemplateLoader;
-import com.ociweb.jfast.stream.FASTReaderDispatchBase;
-import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
     //TODO: A, A clean this up as the basis for a quick talk at the staff meeting. Finish by Sunday night for code talk on this subject
 
@@ -39,6 +24,11 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
     //* Show class replacement, source compile, shared based class. public members due to my odd code?
     //* show how at runtime the class can be replaced with a new implementation.
     //* log each stage to know that it is done?
+
+//Slides: (10 days to wrap up)
+//    1. problem set (show java linking path, show what I want to accomplish with replacements)
+//    2. APIs we will be using to solve the problem. (Compiler, FileObject, ClassLoader)
+//    3. Demo - show the unit tests, walk thru the code
 
 //* do not review source generation unless we have time at the end
 
@@ -54,9 +44,9 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
         final byte[] catBytes;// serialized catalog for the desired templates XML
         final boolean forceCompile;
 
-        static final File classFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
+        static final File workingFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
         static {
-            classFolder.mkdirs();
+            workingFolder.mkdirs();
         }
         
         public FASTDispatchClassLoader(byte[] catBytes, ClassLoader parent) {
@@ -69,16 +59,18 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
             this.forceCompile = forceCompile;
         }        
 
+        //TODO: build unit test that can replace class behavior on the fly.
+        
         @Override
         public Class loadClass(String name) throws ClassNotFoundException {
             //if we want a normal class use the normal class loader
             if(!(READER.equals(name) || WRITER.equals(name))) {
                 return super.loadClass(name);
             }
-            boolean debug = true;//get system property;
+            boolean debug = false;//true;//get system property;
             
             //if class is found and matches use it.
-            File classFile = new File(classFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".class");
+            File classFile = new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".class");
             if (!debug && !forceCompile && classFile.exists()) {
                 
                 byte[] classData = new byte[(int)classFile.length()];
@@ -102,21 +94,24 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
                 
                 List<String> optionList = new ArrayList<String>();
                 optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path"),
-                                                "-d", classFolder.toString()
+                                                "-d", workingFolder.toString()
                                                 ));
                 
 
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
-                GeneratedReaderFileObject sourceFileObject = new GeneratedReaderFileObject(catBytes);
+                FASTReaderSourceFileObject sourceFileObject = new FASTReaderSourceFileObject(catBytes);
                 
-                try {
-                    //only written for debug
-                    File sourceFile = new File(classFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java");
-                    FileWriter out = new FileWriter(sourceFile);
-                    out.write(sourceFileObject.getCharContent(false).toString());
-                    out.close();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
+                if (debug) {
+                    try {
+                        //only written for debug
+                        String sourcePath = GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java";
+                        File sourceFile = new File(workingFolder,sourcePath);
+                        FileWriter out = new FileWriter(sourceFile);
+                        out.write(sourceFileObject.getCharContent(false).toString());
+                        out.close();
+                    } catch (IOException e1) {
+                        e1.printStackTrace();
+                    }
                 }
                 
                 toCompile.add(sourceFileObject);
@@ -129,10 +124,8 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
                         throw new ClassNotFoundException(iter.next().toString());
                     } else {
                         throw new ClassNotFoundException();
-                    }
-                                        
+                    }                 
                 }
-                System.err.println("success we will now use the new class ");
                 byte[] classData = new byte[(int)classFile.length()];
                 try {
                     FileInputStream input = new FileInputStream(classFile);
@@ -144,43 +137,6 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
                 }
             }
             throw new ClassNotFoundException();
-        }
-
-        
-        public static FASTReaderDispatchBase loadDispatchReader(byte[] catBytes) {
-            
-            try {
-                return loadDispatchReaderGenerated(catBytes);
-            } catch (Exception e) {
-                e.printStackTrace();// log this but continue working. TODO: we do not want to log if there was no compiler?
-                
-                return new FASTReaderInterpreterDispatch(catBytes);
-            }
-        }
-
-        public static FASTReaderDispatchBase loadDispatchReaderGenerated(byte[] catBytes)
-                throws ReflectiveOperationException, SecurityException {
-            
-            ClassLoader parentClassLoader = FASTReaderDispatchBase.class.getClassLoader();
-            
-            Class generatedClass = new FASTDispatchClassLoader(catBytes, parentClassLoader).loadClass(READER);
-            
-            byte[] catBytesFromClass = (byte[])generatedClass.getField("catBytes").get(null);
-            if (!Arrays.equals(catBytesFromClass,catBytes)) {
-                System.err.println("attempt recompile due to change in templates.");
-                //the templates catalog this was generated for does not match the current value so force a recompile
-                generatedClass = new FASTDispatchClassLoader(catBytes, parentClassLoader, true).loadClass(READER);
-            }
-                           
-            try {
-                return (FASTReaderDispatchBase)generatedClass.newInstance();
-            } catch (Throwable t) {
-                t.printStackTrace();
-                System.err.println("attempting recompile");
-                //can not create instance because the class is no longer compatible with the rest of the code base so force a recompile
-                generatedClass = new FASTDispatchClassLoader(catBytes, parentClassLoader, true).loadClass(READER);
-                return (FASTReaderDispatchBase)generatedClass.newInstance();
-            }
         }
         
 

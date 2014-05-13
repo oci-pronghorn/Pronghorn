@@ -7,7 +7,7 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public abstract class FASTReaderDispatchBase {
+public abstract class FASTDecoder {
 
     //debugging state
     protected DispatchObserver observer;
@@ -34,14 +34,14 @@ public abstract class FASTReaderDispatchBase {
     
     public static final int INIT_VALUE_MASK = 0x80000000;
     
-    public FASTReaderDispatchBase(TemplateCatalog catalog) {
+    public FASTDecoder(TemplateCatalog catalog) {
         this(catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), catalog.getMaxTextLength(), 
                 catalog.getMaxByteVectorLength(), catalog.getTextGap(), 
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(),
                 8, 7);
     }
     
-    public FASTReaderDispatchBase(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
+    public FASTDecoder(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
             int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
             int primaryRingBits, int textRingBits) {
 
@@ -142,6 +142,6 @@ public abstract class FASTReaderDispatchBase {
         return rbRingBuffer;//TODO: A, remove method.
     }
 
-    public abstract boolean dispatchReadByToken(PrimitiveReader reader);
+    public abstract boolean decode(PrimitiveReader reader);
 
 }

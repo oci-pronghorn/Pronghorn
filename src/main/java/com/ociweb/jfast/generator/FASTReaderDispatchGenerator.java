@@ -16,7 +16,7 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.stream.FASTReaderDispatchBase;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
@@ -24,14 +24,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
 
     // TODO: C, code does not support final in signatures, this would be nice to have
-    //TODO: C, must gather code and based on complexity group into functions to reduce total calls.
-
-    
     
     private static final String END_FIELD_METHOD = "};\n";
-
-    private static final String GROUP_METHOD_NAME = "grp";
-
+    private static final String GROUP_METHOD_NAME = "grp";    
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 128;//NOTE: we may want to make this smaller in the production release.
+    private static final String ENTRY_METHOD_NAME = "decode";
+    
     SourceTemplates templates;
     
     StringBuilder fieldMethodBuilder;
@@ -105,6 +103,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     public Set<Integer> getSequenceStarts() {
         return sequenceStarts;
     }
+    // TODO: B, Group9 has repeated code with group1 that should be shared.
     
     private void generator(StackTraceElement[] trace, long ... values) {
         
@@ -165,13 +164,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             // back up field builder and add the new block into the existing method, no field call needs to be added to case/group
             String curFieldParaValues = fieldParaValues.toString();
             int additionalComplexity = GeneratorUtils.complexity(template);
-            int limit = 32;   //TODO: add warning if method is "Large" 
-            if (additionalComplexity>(limit>>1)) {
-                System.err.print("too big for repeat "+additionalComplexity+"  "+comment);
-            }
+ 
+            assert(validateMethodSize(comment, additionalComplexity));
             
             if (lastMethodContainsParams(curFieldParaValues) &&
-                additionalComplexity+runningComplexity<=limit && 
+                additionalComplexity+runningComplexity<=COMPLEXITY_LIMITY_PER_METHOD && 
                 fieldMethodBuilder.length()>0) {
                 //this field has the same parameters as the  previous and
                 //adding this complexity is under the limit and
@@ -190,6 +187,9 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 fieldMethodBuilder.append(END_FIELD_METHOD);
                 
                 runningComplexity += additionalComplexity;
+                
+                //Do not change lastFieldParaValues
+                
             } else {
                 
                 //method signature line
@@ -203,8 +203,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 groupMethodBuilder.append("    ").append(methodName).append("(").append(curFieldParaValues).append(");\n");
 
                 runningComplexity = additionalComplexity;
+                lastFieldParaValues = curFieldParaValues;
             }
-            lastFieldParaValues = curFieldParaValues;
             
             
             
@@ -215,6 +215,14 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
         
         
+    }
+
+
+    private boolean validateMethodSize(String comment, int additionalComplexity) {
+        if (additionalComplexity>30) {
+            System.err.print("too big for inline "+additionalComplexity+"  "+comment);
+        }
+        return true;
     }
 
 
@@ -329,7 +337,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         beginSingleGroupMethod(cursor,i-1);
         activeScriptCursor = cursor;
         activeScriptLimit = limit;
-        dispatchReadByToken(null);
+        decode(null);
         return getSingleGroupMethod(doneScriptsParas);
     }
     
@@ -352,7 +360,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public final boolean dispatchReadByToken(PrimitiveReader reader) {\n");
+        builder.append("public final boolean "+ENTRY_METHOD_NAME+"(PrimitiveReader reader) {\n");
         builder.append("    doSequence = false;\n");
         builder.append("    int x = activeScriptCursor;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
@@ -367,7 +375,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        GeneratorUtils.generateHead(templates, origCatBytes, target, FASTDispatchClassLoader.SIMPLE_READER_NAME, "FASTReaderDispatchBase");
+        GeneratorUtils.generateHead(templates, origCatBytes, target, FASTDispatchClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
         generateGroupMethods(new TemplateCatalog(origCatBytes),doneScripts,doneScriptsParas,target);
         generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
         GeneratorUtils.generateTail(target);
@@ -388,7 +396,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     
     @Override
-    protected void genReadSequenceClose(int backvalue, FASTReaderDispatchBase dispatch) {
+    protected void genReadSequenceClose(int backvalue, FASTDecoder dispatch) {
         generator(new Exception().getStackTrace(),backvalue);
     }
     
@@ -406,42 +414,42 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // length methods
     
     @Override
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget);
         return true;
     }
 
     @Override
-    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTReaderDispatchBase dispatch) {
+    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target, jumpToTarget);
         return true;

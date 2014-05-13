@@ -22,8 +22,9 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.generator.FASTDispatchClassLoader;
+import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
+import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -33,7 +34,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
-import com.ociweb.jfast.stream.FASTReaderDispatchBase;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -162,8 +163,8 @@ public class TemplateLoaderTest {
     
     @Test
     public void testDecodeComplex30000() {
-        Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-       // new SourceTemplates();
+        
+      Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
         byte[] catBytes = buildRawCatalogData();
         TemplateCatalog catalog = new TemplateCatalog(catBytes); //TODO: X, defaults 2048 and 32 may not be optimal.
@@ -176,25 +177,14 @@ public class TemplateLoaderTest {
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
         long totalTestBytes = sourceDataFile.length();
 
-        // this is much faster because we no longer need to jump out to OS.
-        FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
+        int maxPMapCountInBytes = 2 + ((Math.max(
+                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
 
-        // New memory mapped solution. No need to cache because we warm up and
-        // OS already has it.
-        // FASTInputByteBuffer fastInput =
-        // buildInputForTestingByteBuffer(sourceDataFile);
-
-        /*
-         * nate@Noah:~/github$ sudo vim /etc/sysctl.conf nate@Noah:~/github$
-         * sysctl -p sysctl: permission denied on key 'vm.zone_reclaim_mode'
-         * nate@Noah:~/github$ sudo sysctl -p vm.zone_reclaim_mode = 0
-         * nate@Noah:~/github$
-         */
-        int bufferSize = 4096;// do not change without testing, 4096 is ideal.
-        PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
-                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
+      
+        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile), maxPMapCountInBytes);
         
-       FASTReaderDispatchBase readerDispatch = FASTDispatchClassLoader.loadDispatchReader(catBytes);
+        
+       FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
         
         FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
@@ -280,7 +270,7 @@ public class TemplateLoaderTest {
                 grps++;
 
             }
-            fastInput.reset();
+            //fastInput.reset();
             PrimitiveReader.reset(reader);
             dynamicReader.reset(true);
         }
@@ -319,7 +309,7 @@ public class TemplateLoaderTest {
             // //////
             // reset the data to run the test again.
             // //////
-            fastInput.reset();
+            //fastInput.reset();
             PrimitiveReader.reset(reader);
             dynamicReader.reset(true);
 
@@ -625,6 +615,24 @@ public class TemplateLoaderTest {
 
         FASTInputByteArray fastInput = new FASTInputByteArray(fileData);
         return fastInput;
+    }
+    
+    static byte[] buildBytesForTestingByteArray(File fileSource) {
+        byte[] fileData = null;
+        try {
+            // do not want to time file access so copy file to memory
+            fileData = new byte[(int) fileSource.length()];
+            FileInputStream inputStream = new FileInputStream(fileSource);
+            int readBytes = inputStream.read(fileData);
+            inputStream.close();
+            assertEquals(fileData.length, readBytes);
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return fileData;
     }
 
 //    private String hexString(byte[] targetBuffer) {

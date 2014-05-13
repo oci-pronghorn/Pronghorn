@@ -42,7 +42,7 @@ public final class PrimitiveReader {
     // both bytes but class def likes int much better for alignment
     private byte pmapIdx = -1;
     private byte bitBlock = 0;
-
+    private final int resetLimit;
     
     /**
      * 
@@ -56,7 +56,7 @@ public final class PrimitiveReader {
     public PrimitiveReader(int bufferSizeInBytes, FASTInput input, int maxPMapCountInBytes) {
         this.input = input;
         this.buffer = new byte[bufferSizeInBytes];
-
+        this.resetLimit = 0;
         this.position = 0;
         this.limit = 0;
         this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
@@ -69,7 +69,8 @@ public final class PrimitiveReader {
     public PrimitiveReader(byte[] buffer, int maxPMapCountInBytes) {
         this.input = null; //TODO: may want dummy impl for this.
         this.buffer = buffer;
-
+        this.resetLimit = buffer.length;
+        
         this.position = 0;
         this.limit = buffer.length;
         this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
@@ -80,7 +81,7 @@ public final class PrimitiveReader {
     public static final void reset(PrimitiveReader reader) {
         reader.totalReader = 0;
         reader.position = 0;
-        reader.limit = 0;
+        reader.limit = reader.resetLimit;
         reader.pmapIdx = -1;
         reader.invPmapStackDepth = reader.invPmapStack.length - 2;
 
@@ -105,8 +106,7 @@ public final class PrimitiveReader {
     private static void fetch(int need, PrimitiveReader reader) {
         int count = 0;
         need = fetchAvail(need, reader);
-        while (need > 0) { // TODO: C, if orignial need was zero should also
-                           // compact?
+        while (need > 0) { 
             if (0 == count++) {
 
                 // compact and prep for data spike
@@ -116,6 +116,9 @@ public final class PrimitiveReader {
                     Thread.yield();
                     // TODO: C, if we are in the middle of parsing a field this
                     // becomes a blocking read and requires a timeout and throw.
+                    
+                    // TODO: A, AA must make non-blocking and return if no data, add startPos to move position back to.
+                    // Do allow for small timeout, and throw if not forthcoming, will catch and not expose exception.
 
                 } else {
                     try {
@@ -1034,6 +1037,9 @@ public final class PrimitiveReader {
     public static final boolean isEOF(PrimitiveReader reader) {
         if (reader.limit != reader.position) {
             return false;
+        }
+        if (null==reader.input) {
+            return true;
         }
         fetch(0, reader);
         return reader.limit != reader.position ? false : reader.input.isEOF();

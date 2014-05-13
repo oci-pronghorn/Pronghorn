@@ -8,7 +8,7 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
-public class FASTWriterDispatchTemplates extends FASTWriterDispatchBase {
+public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
 
     public FASTWriterDispatchTemplates(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
             int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
@@ -1143,20 +1143,20 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatchBase {
         writer.closePMap();
     }
 
-    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTWriterDispatchBase dispatch) {
+    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTWriterDispatch dispatch) {
         writer.closePMap();
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
 
-    protected void genWriteCloseTemplate(FASTWriterDispatchBase dispatch) {
+    protected void genWriteCloseTemplate(FASTWriterDispatch dispatch) {
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
     
     // must happen just before Group so the Group in question must always have
     // an outer group.
-    protected void pushTemplate(int templateId, FASTWriterDispatchBase dispatch, PrimitiveWriter writer) {
+    protected void pushTemplate(int templateId, FASTWriterDispatch dispatch, PrimitiveWriter writer) {
         int top = dispatch.templateStack[dispatch.templateStackHead];
         if (top == templateId) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);

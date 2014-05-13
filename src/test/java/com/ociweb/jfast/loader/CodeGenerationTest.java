@@ -22,16 +22,16 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.generator.FASTDispatchClassLoader;
+import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
-import com.ociweb.jfast.generator.GeneratedReaderFileObject;
+import com.ociweb.jfast.generator.FASTReaderSourceFileObject;
 import com.ociweb.jfast.generator.SourceTemplates;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDynamicReader;
-import com.ociweb.jfast.stream.FASTReaderDispatchBase;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -112,7 +112,7 @@ public class CodeGenerationTest {
 
         //TODO: A, the constants per field needs to be moved into the catalog because they impact code generation.
         
-        GeneratedReaderFileObject file = new GeneratedReaderFileObject(buildRawCatalogData);
+        FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);
         assertEquals(Kind.SOURCE, file.getKind());
         CharSequence seq;
         try {
@@ -155,9 +155,9 @@ public class CodeGenerationTest {
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 32);
 
-        FASTReaderDispatchBase readerDispatch2 = null;
+        FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = FASTDispatchClassLoader.loadDispatchReaderGenerated(catBytes);//TemplateLoaderTest.exampleTemplateFile());
+            readerDispatch2 = DispatchLoader.loadGeneratedDispatchReader(catBytes);//TemplateLoaderTest.exampleTemplateFile());
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());

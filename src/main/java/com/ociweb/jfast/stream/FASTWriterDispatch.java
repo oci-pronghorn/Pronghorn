@@ -6,7 +6,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public class FASTWriterDispatchBase {
+public class FASTWriterDispatch { //TODO: rename as FASTEncoder
     protected int templateStackHead = 0;
     protected final int[] templateStack;
 
@@ -45,7 +45,7 @@ public class FASTWriterDispatchBase {
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
 
-    public FASTWriterDispatchBase(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
+    public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
             int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue, int nonTemplatePMapSize,
             int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
 

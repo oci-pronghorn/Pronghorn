@@ -2,6 +2,7 @@ package com.ociweb.jfast.field;
 
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class StaticGlue {
 
@@ -180,12 +181,21 @@ public class StaticGlue {
         PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength, reader);
     }
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
-        byte val;    //defLen is used for 3 different purposes, defLen, byteValue, and dynLen        
-        
+        byte val;         
         int tmp = (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) ?
                 readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
                readASCIIToHeapNone(idx, val, textHeap, reader);
         return tmp;
     }
+    public static void readLongSignedDeltaOptional(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask,
+            FASTRingBuffer rbRingBuffer, long value) {
+        long tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+    }
+    public static void setInt(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int value) {
+        rbB[rbMask & rbRingBuffer.addPos++] = value;
+    }
+    //byte methods
 
 }
