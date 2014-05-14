@@ -6,7 +6,7 @@ import java.util.Arrays;
 public class GeneratorUtils {
 
     public static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target, String name, String base) throws IOException {
-        target.append("package "+FASTDispatchClassLoader.GENERATED_PACKAGE+";\n"); //package
+        target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");
         target.append(templates.imports()); //imports
         target.append("\n");

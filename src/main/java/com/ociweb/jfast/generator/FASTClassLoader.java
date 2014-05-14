@@ -32,7 +32,7 @@ import javax.tools.ToolProvider;
 
 //* do not review source generation unless we have time at the end
 
-    public class FASTDispatchClassLoader extends ClassLoader{
+    public class FASTClassLoader extends ClassLoader{
 
         public static final String GENERATED_PACKAGE = "com.ociweb.jfast.generator";
         public static final String SIMPLE_READER_NAME = "FASTReaderGeneratedDispatch";
@@ -43,20 +43,23 @@ import javax.tools.ToolProvider;
         
         final byte[] catBytes;// serialized catalog for the desired templates XML
         final boolean forceCompile;
+        final boolean exportSource;
 
         static final File workingFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
         static {
             workingFolder.mkdirs();
         }
         
-        public FASTDispatchClassLoader(byte[] catBytes, ClassLoader parent) {
+        public FASTClassLoader(byte[] catBytes, ClassLoader parent) {
             this(catBytes,parent,false);
         }
         
-        public FASTDispatchClassLoader(byte[] catBytes, ClassLoader parent, boolean forceCompile) {
+        public FASTClassLoader(byte[] catBytes, ClassLoader parent, boolean forceCompile) {
             super(parent);
             this.catBytes = catBytes;
-            this.forceCompile = forceCompile;
+            this.exportSource = Boolean.getBoolean("FAST.exportSource");
+            this.forceCompile = forceCompile | exportSource | Boolean.getBoolean("FAST.forceCompile");
+            
         }        
 
         //TODO: build unit test that can replace class behavior on the fly.
@@ -67,11 +70,10 @@ import javax.tools.ToolProvider;
             if(!(READER.equals(name) || WRITER.equals(name))) {
                 return super.loadClass(name);
             }
-            boolean debug = false;//true;//get system property;
             
             //if class is found and matches use it.
             File classFile = new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".class");
-            if (!debug && !forceCompile && classFile.exists()) {
+            if (!forceCompile && classFile.exists()) {
                 
                 byte[] classData = new byte[(int)classFile.length()];
                 try {
@@ -94,24 +96,17 @@ import javax.tools.ToolProvider;
                 
                 List<String> optionList = new ArrayList<String>();
                 optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path"),
-                                                "-d", workingFolder.toString()
+                                                "-d", workingFolder.toString(),
+                                                "-target","1.6",
+                                                "-source","1.6"
                                                 ));
                 
 
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
                 FASTReaderSourceFileObject sourceFileObject = new FASTReaderSourceFileObject(catBytes);
                 
-                if (debug) {
-                    try {
-                        //only written for debug
-                        String sourcePath = GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java";
-                        File sourceFile = new File(workingFolder,sourcePath);
-                        FileWriter out = new FileWriter(sourceFile);
-                        out.write(sourceFileObject.getCharContent(false).toString());
-                        out.close();
-                    } catch (IOException e1) {
-                        e1.printStackTrace();
-                    }
+                if (exportSource) {          
+                    exportSourceToClassFolder(sourceFileObject);
                 }
                 
                 toCompile.add(sourceFileObject);
@@ -131,12 +126,25 @@ import javax.tools.ToolProvider;
                     FileInputStream input = new FileInputStream(classFile);
                     input.read(classData);
                     input.close();
-                    return defineClass(name, classData , 0, classData.length);//TODO: should pass in protection domain.
+                    return defineClass(name, classData , 0, classData.length);
                 } catch (Exception e) {
                    throw new ClassNotFoundException("Unable to read class file.", e);
                 }
             }
             throw new ClassNotFoundException();
+        }
+
+        private void exportSourceToClassFolder(FASTReaderSourceFileObject sourceFileObject) {
+            try {
+                String sourcePath = GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".java";
+                File sourceFile = new File(workingFolder,sourcePath);
+                System.out.println("Wrote source to: "+sourceFile);
+                FileWriter out = new FileWriter(sourceFile);
+                out.write(sourceFileObject.getCharContent(false).toString());
+                out.close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
         }
         
 

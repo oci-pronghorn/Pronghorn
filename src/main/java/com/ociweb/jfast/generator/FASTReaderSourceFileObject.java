@@ -11,7 +11,7 @@ public class FASTReaderSourceFileObject extends SimpleJavaFileObject {
     final FASTReaderDispatchGenerator generator;
     
     public FASTReaderSourceFileObject(byte[] catBytes) {
-        super(new File(FASTDispatchClassLoader.SIMPLE_READER_NAME+".java").toURI(),Kind.SOURCE);
+        super(new File(FASTClassLoader.SIMPLE_READER_NAME+".java").toURI(),Kind.SOURCE);
         //new instance of code generator
         generator = new FASTReaderDispatchGenerator(catBytes);
     }
