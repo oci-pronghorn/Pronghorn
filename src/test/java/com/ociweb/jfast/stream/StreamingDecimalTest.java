@@ -150,12 +150,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        // if (null==fr) {
-        fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7);
-        // } else {
-        // //pr.reset();
-        // fr.reset();
-        // }
+        fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7, maxGroupCount * 10, 0);
+
 
         long start = System.nanoTime();
         if (operationIters < 3) {

@@ -4,7 +4,6 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /*
@@ -31,15 +30,11 @@ public class FASTDynamicReader implements FASTDataProvider {
 
     private final FASTDecoder readerDispatch;
 
-    private final TemplateCatalog catalog;
-
     private final byte[] preamble;
-    private final byte preambleDataLength;
-
+    
     private long messageCount = 0;
     // the smaller the better to make it fit inside the cache.
     private final FASTRingBuffer ringBuffer;
-    private final int maxTemplatePMapSize;
 
     // When setting neededSpace
     // Worst case scenario is that this is full of decimals which each need 3.
@@ -53,11 +48,9 @@ public class FASTDynamicReader implements FASTDataProvider {
     // read groups field ids and build repeating lists of tokens.
 
     // only look up the most recent value read and return it to the caller.
-    public FASTDynamicReader(TemplateCatalog catalog, FASTDecoder dispatch, PrimitiveReader reader) {
-        this.catalog = catalog;
-        this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
-        this.preambleDataLength = catalog.getMessagePreambleSize();
-        this.preamble = new byte[preambleDataLength];
+    public FASTDynamicReader(FASTDecoder dispatch, PrimitiveReader reader) {
+        
+        this.preamble = new byte[dispatch.preambleDataLength];
         this.readerDispatch = dispatch;
         this.reader = reader;
         this.ringBuffer = dispatch.ringBuffer();
@@ -117,11 +110,11 @@ public class FASTDynamicReader implements FASTDataProvider {
                 return 0;
             }
             // must have room to store the new template
-            int req = preambleDataLength + 1;
+            int req = readerDispatch.preambleDataLength + 1;
             if ((lastCapacity < req) && ((lastCapacity = rb.maxSize-(rb.addPos-rb.remPos)) < req)) {
                 return 0x80000000;
             }
-            neededSpaceOrTemplate=hasMoreNextMessage(req, catalog, readerDispatch, reader);
+            neededSpaceOrTemplate=hasMoreNextMessage(req, readerDispatch, reader);
         }
         
         
@@ -145,12 +138,12 @@ public class FASTDynamicReader implements FASTDataProvider {
         return finishTemplate(ringBuffer, reader);
     }
 
-    private int hasMoreNextMessage(int req, TemplateCatalog catalog, FASTDecoder readerDispatch, PrimitiveReader reader) {
+    private int hasMoreNextMessage(int req, FASTDecoder readerDispatch, PrimitiveReader reader) {
         lastCapacity -= req;
 
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
-        if (preambleDataLength != 0) {
+        if (readerDispatch.preambleDataLength != 0) {
             assert (readerDispatch.gatherReadData(reader, "Preamble"));
             PrimitiveReader.readByteData(preamble, 0, preamble.length, reader);
 
@@ -164,25 +157,16 @@ public class FASTDynamicReader implements FASTDataProvider {
         };
         // /////////////////
         // open message (special type of group)
-        int templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);
+        int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
         if (templateId >= 0) {
             messageCount++;
         }
-        int i = templateId;
+        int i = templateId;// write template id at the beginning of this message
+        ringBuffer.appendInt1(i);
+        
+        return readerDispatch.requiredBufferSpace(i);
+        
 
-        ringBuffer.appendInt1(i);// write template id at the beginning of this
-                                 // message
-
-        // set the cursor start and stop for this template
-        readerDispatch.activeScriptCursor = catalog.templateStartIdx[i];
-        readerDispatch.activeScriptLimit = catalog.templateLimitIdx[i];
-
-        // Worst case scenario is that this is full of decimals which each need
-        // 3.
-        // but for easy math we will use 4, will require a little more empty
-        // space in buffer
-        // however we will not need a lookup table
-        return (readerDispatch.activeScriptLimit - readerDispatch.activeScriptCursor) << 2;
     }
 
     private final int finishTemplate(FASTRingBuffer ringBuffer, PrimitiveReader reader) {

@@ -4,12 +4,15 @@
 package com.ociweb.jfast.loader;
 
 import java.util.Properties;
+import java.util.Set;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class TemplateCatalog {
 
+    public static final String KEY_PARAM_PREAMBLE_BYTES = "jFAST.preamble.bytes";
+    
     // because optional values are sent as +1 when >= 0 it is not possible to
     // send the
     // largest supported positive value, as a result this is the ideal default
@@ -38,7 +41,6 @@ public class TemplateCatalog {
 
     // Runtime specific message prefix, only used for some transmission
     // technologies
-    byte preambleSize = 0; // default is none
     
     //TODO: move these into properties to be set on save only.
     int maxTextLength = 16;// default
@@ -53,6 +55,7 @@ public class TemplateCatalog {
         PrimitiveReader reader = new PrimitiveReader(catBytes,0);
 
         properties = new Properties();
+        loadProperties(reader);
         
         int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
         assert (templatePow < 32) : "Corrupt catalog file";
@@ -84,11 +87,24 @@ public class TemplateCatalog {
 
     }
 
-    @Deprecated
-    public void setMessagePreambleSize(byte size) {
-        this.preambleSize = size; // TODO: D, add check to ensuer multiple of 4
-                                  // only!!!
+    private void loadProperties(PrimitiveReader reader) {
+        int props = PrimitiveReader.readIntegerUnsigned(reader);
+        StringBuilder builder = new StringBuilder();
+        int len;
+        while(--props>=0) {
+            
+            builder.setLength(0);
+            len = PrimitiveReader.readIntegerUnsigned(reader);
+            String key = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
+            
+            builder.setLength(0);
+            len = PrimitiveReader.readIntegerUnsigned(reader);
+            String value = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
+            
+            properties.put(key, value);
+        }
     }
+
 
     // Assumes that the tokens are already loaded and ready for use.
     private void loadTemplateScripts(PrimitiveReader reader) {
@@ -129,8 +145,7 @@ public class TemplateCatalog {
             int[][] tokenIdxMembers, int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds,
             int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, Properties properties) {
 
-        Properties props; //additional properties to send to each client.
-        
+        saveProperties(writer,properties);        
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, catalogScriptFieldIds,
                 scriptLength, templateIdx, templateLimit);
@@ -145,6 +160,21 @@ public class TemplateCatalog {
 
         df.save(writer);
 
+    }
+
+    private static void saveProperties(PrimitiveWriter writer, Properties properties) {
+                
+        Set<String> keys = properties.stringPropertyNames();
+        writer.writeIntegerUnsigned(keys.size());
+        for(String key: keys) {
+            writer.writeIntegerUnsigned(key.length());
+            writer.writeTextUTF(key);
+            
+            String prop = properties.getProperty(key);
+            writer.writeIntegerUnsigned(prop.length());
+            writer.writeTextUTF(prop);
+        }
+        
     }
 
     private static void saveDictionaryMembers(PrimitiveWriter writer, int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
@@ -250,10 +280,14 @@ public class TemplateCatalog {
         return dictionaryFactory;
     }
 
-    public byte getMessagePreambleSize() {
-        return preambleSize;
+    public boolean hasProperty(String key) {
+        return properties.containsKey(key);
     }
-
+    
+    public int getIntProperty(String key, int absentValue) {
+        return properties.containsKey(key)?Integer.parseInt(properties.getProperty(key)):absentValue;
+    }
+    
     public int maxTemplatePMapSize() {
         return maxTemplatePMapSize;
     }

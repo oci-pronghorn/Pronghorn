@@ -33,9 +33,10 @@ public final class PrimitiveReader {
 
     private final FASTInput input;
     private final byte[] buffer;
-    private final byte[] invPmapStack;
-
+    
+    private byte[] invPmapStack;
     private int invPmapStackDepth;
+
     private int position;
     private int limit;
 
@@ -53,7 +54,7 @@ public final class PrimitiveReader {
      * @param input
      * @param maxPMapCountInBytes must be large enough to hold deepest possible nesting of pmaps
      */
-    public PrimitiveReader(int bufferSizeInBytes, FASTInput input, int maxPMapCountInBytes) {
+    public PrimitiveReader(int bufferSizeInBytes, FASTInput input, int maxPMapCountInBytes) { //TODO: Stack must be provided by FASTDecoder? to support change? and may change?
         this.input = input;
         this.buffer = new byte[bufferSizeInBytes];
         this.resetLimit = 0;
@@ -64,7 +65,21 @@ public final class PrimitiveReader {
 
         input.init(this.buffer);
     }
+    //TODO: valid template switch over can only happen when PmapStack is empty!
     
+    public PrimitiveReader(byte[] buffer) {
+        this.input = null; //TODO: may want dummy impl for this.
+        this.buffer = buffer;
+        this.resetLimit = buffer.length;
+        
+        this.position = 0;
+        this.limit = buffer.length;
+        //in this case where the full data is provided then we know it can not be larger than the buffer.
+        int maxPMapCountInBytes = buffer.length;
+        this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
+        this.invPmapStackDepth = maxPMapCountInBytes-2;
+
+    }
     
     public PrimitiveReader(byte[] buffer, int maxPMapCountInBytes) {
         this.input = null; //TODO: may want dummy impl for this.

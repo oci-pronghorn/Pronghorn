@@ -14,7 +14,6 @@ public class FASTDynamicWriter {
     private final FASTRingBuffer ringBuffer;
 
     boolean needTemplate = true;
-    final int preambleDataLength;
     final byte[] preambleData;
 
     public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, FASTRingBuffer ringBuffer,
@@ -26,8 +25,7 @@ public class FASTDynamicWriter {
         this.fullScript = catalog.fullScript();
         this.ringBuffer = ringBuffer;
 
-        this.preambleDataLength = catalog.getMessagePreambleSize();
-        this.preambleData = new byte[preambleDataLength];
+        this.preambleData = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
     }
 
     // non blocking write, returns if there is nothing to do.
@@ -44,10 +42,10 @@ public class FASTDynamicWriter {
 
             if (needTemplate) {
 
-                if (preambleDataLength != 0) {
+                if (preambleData.length != 0) {
 
                     int i = 0;
-                    int s = preambleDataLength;
+                    int s = preambleData.length;
                     while (i < s) {
                         int d = FASTRingBufferReader.readInt(ringBuffer, idx);
                         preambleData[i++] = (byte) (0xFF & (d >>> 24));

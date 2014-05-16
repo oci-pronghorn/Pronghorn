@@ -337,7 +337,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         beginSingleGroupMethod(cursor,i-1);
         activeScriptCursor = cursor;
         activeScriptLimit = limit;
-        decode(null);
+        decode(null);//Generate the code, if any method was missed a null pointer will result.
         return getSingleGroupMethod(doneScriptsParas);
     }
     

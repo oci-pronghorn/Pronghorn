@@ -100,17 +100,8 @@ public class CodeGenerationTest {
     
     @Test
     public void testCodeGenerator() {
-      // new SourceTemplates();
         
         byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData();
-        TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData);
-
-        //TODO: A, client side vales must be moved into a client side object, not catalog.
-        
-        // values which need to be set client side and are not in the template.
-        catalog.setMessagePreambleSize((byte) 4);
-
-        //TODO: A, the constants per field needs to be moved into the catalog because they impact code generation.
         
         FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);
         assertEquals(Kind.SOURCE, file.getKind());
@@ -135,25 +126,20 @@ public class CodeGenerationTest {
         byte[] catBytes = TemplateLoaderTest.buildRawCatalogData();
         final TemplateCatalog catalog = new TemplateCatalog(catBytes);
 
-        // values which need to be set client side and are not in the template.
-        catalog.setMessagePreambleSize((byte) 4);
-
-
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
-        long totalTestBytes = sourceDataFile.length();
 
         FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(catalog, readerDispatch1, primitiveReader1);
+        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(readerDispatch1, primitiveReader1);
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
-        final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 32);
+        final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 33);
 
         FASTDecoder readerDispatch2 = null;
         try {
@@ -165,7 +151,7 @@ public class CodeGenerationTest {
             fail(e.getMessage());
         }
         
-        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(catalog, readerDispatch2, reader);
+        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(readerDispatch2, reader);
         FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 
         final int keep = 32;

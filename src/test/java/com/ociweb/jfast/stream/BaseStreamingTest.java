@@ -26,6 +26,7 @@ public abstract class BaseStreamingTest {
 	protected final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	
 	protected final int ID_TOKEN_TOGGLE = 0x1;
+	protected int maxGroupCount;
 	
 	protected void tester(int[] types, int[] operators, String label, int charFields, int byteFields) {	
 		
@@ -36,7 +37,7 @@ public abstract class BaseStreamingTest {
 		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;
 		
 		int streamByteSize = operationIters*((maxMPapBytes*(fields/fieldsPerGroup))+(fields*4));
-		int maxGroupCount = operationIters*fields/fieldsPerGroup;
+		maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
 		
 		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);

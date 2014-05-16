@@ -127,12 +127,14 @@ public class TemplateHandler extends DefaultHandler {
                                                                          // big.
     int groupTokenStackHead = -1;
     int maxGroupTokenStackDepth;
+    final Properties properties;
+    
 
-    public TemplateHandler(FASTOutput output) {
-        writer = new PrimitiveWriter(4096, output, 128, false);
-
-        dictionaryNames.add(globalDictionaryName);
-        activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
+    public TemplateHandler(FASTOutput output, Properties properties) {
+        this.writer = new PrimitiveWriter(4096, output, 128, false);
+        this.properties = properties;
+        this.dictionaryNames.add(globalDictionaryName);
+        this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
 
     }
 
@@ -784,10 +786,7 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     public void postProcessing() {
-        Properties properties = new Properties();
-        properties.setProperty("something.else", "hello world");
-        
-        // System.err.println("maxGroupDepth:"+maxGroupTokenStackDepth);
+
 
         buildDictionaryMemberLists();
 
@@ -809,8 +808,7 @@ public class TemplateHandler extends DefaultHandler {
                 templateLimit, maxGroupTokenStackDepth + 1 // add one for
                                                            // surrounding
                                                            // template
-                    , properties
-                                    );
+                    , properties);
 
         // close stream.
         writer.flush(writer);

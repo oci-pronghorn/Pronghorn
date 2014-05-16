@@ -11,6 +11,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Properties;
 
 import org.openfast.Message;
 import org.openfast.MessageInputStream;
@@ -22,6 +23,7 @@ import org.openfast.template.loader.XMLMessageTemplateLoader;
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.loader.TemplateLoader;
+import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -40,10 +42,7 @@ public class Complex30000Benchmark extends Benchmark {
     byte[] testData;
 
     public Complex30000Benchmark() {
-        catalog = new TemplateCatalog(buildRawCatalogData());
-
-        byte prefixSize = 4;
-        catalog.setMessagePreambleSize(prefixSize);
+        catalog = new TemplateCatalog(TemplateLoaderTest.buildRawCatalogData());
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -61,30 +60,13 @@ public class Complex30000Benchmark extends Benchmark {
             reader = new PrimitiveReader(2048, fastInput, 32);
             FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
 
-            dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
+            dynamicReader = new FASTDynamicReader(readerDispatch, reader);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private byte[] buildRawCatalogData() {
-        URL source = getClass().getResource("/performance/example.xml");
-        File fileSource = new File(source.getFile());
-
-        ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
-        try {
-            TemplateLoader.buildCatalog(catalogBuffer, fileSource);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        assertTrue("Catalog must be built.", catalogBuffer.size() > 0);
-
-        byte[] catalogByteArray = catalogBuffer.toByteArray();
-        return catalogByteArray;
     }
 
     public static void main(String[] args) {

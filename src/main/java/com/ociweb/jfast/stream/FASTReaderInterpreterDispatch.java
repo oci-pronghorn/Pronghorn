@@ -44,9 +44,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     
     public FASTReaderInterpreterDispatch(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
             int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
-            int primaryRingBits, int textRingBits) {
+            int primaryRingBits, int textRingBits, int stackPMapInBytes, int preambleSize) {
         super(dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript, maxNestedGroupDepth,
-                primaryRingBits, textRingBits);
+                primaryRingBits, textRingBits, 42, null, null,stackPMapInBytes, preambleSize);
         this.rIntInit = dcr.integerDictionary();
         this.rLongInit = dcr.longDictionary();
         this.nonTemplatePMapSize = nonTemplatePMapSize;

@@ -16,6 +16,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -49,7 +50,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
-
+               
         // reconstruct Catalog object from stream
         FASTInput input = new FASTInputByteArray(catalogByteArray);
         TemplateCatalog catalog = new TemplateCatalog(catalogByteArray);
@@ -59,7 +60,7 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(444, catalogByteArray.length);
+            assertEquals(468, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);
@@ -101,12 +102,6 @@ public class TemplateLoaderTest {
 
         TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
 
-        byte prefixSize = 4;
-        catalog.setMessagePreambleSize(prefixSize);
-
-
-
-
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
 
@@ -116,7 +111,7 @@ public class TemplateLoaderTest {
         PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
         FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         System.gc();
@@ -169,9 +164,6 @@ public class TemplateLoaderTest {
         byte[] catBytes = buildRawCatalogData();
         TemplateCatalog catalog = new TemplateCatalog(catBytes); //TODO: X, defaults 2048 and 32 may not be optimal.
 
-        // values which need to be set client side and are not in the template.
-        catalog.setMessagePreambleSize((byte) 4);
-
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
@@ -186,7 +178,7 @@ public class TemplateLoaderTest {
         
        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
         
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         // TODO: X, look into core affinity
@@ -197,7 +189,9 @@ public class TemplateLoaderTest {
         int count = 1024;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
-        byte[] preamble = new byte[catalog.preambleSize];
+        
+        
+        byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
 
         int msgs = 0;
         int grps = 0;
@@ -398,9 +392,6 @@ public class TemplateLoaderTest {
     public void testDecodeEncodeComplex30000() {
         final TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
 
-        // values which need to be set client side and are not in the template.
-        catalog.setMessagePreambleSize((byte) 4);
-
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
@@ -415,7 +406,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
         FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(catalog, readerDispatch, reader);
+        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
@@ -659,12 +650,15 @@ public class TemplateLoaderTest {
 //        return builder.toString();
 //    }
 
-    static byte[] buildRawCatalogData() {
-        File fileSource = exampleTemplateFile();
+    public static byte[] buildRawCatalogData() {
+        File fileSource = exampleTemplateFile("/performance/example.xml");
+        //this example uses the preamble feature
+        Properties properties = new Properties(); 
+        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, fileSource);
+            TemplateLoader.buildCatalog(catalogBuffer, fileSource, properties);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -675,8 +669,8 @@ public class TemplateLoaderTest {
         return catalogByteArray;
     }
 
-    static File exampleTemplateFile() {
-        URL source = TemplateLoaderTest.class.getResource("/performance/example.xml");
+    static File exampleTemplateFile(String resource) {
+        URL source = TemplateLoaderTest.class.getResource(resource);
         File fileSource = new File(source.getFile().replace("%20", " "));
         System.err.println("reading file from "+fileSource);
         return fileSource;

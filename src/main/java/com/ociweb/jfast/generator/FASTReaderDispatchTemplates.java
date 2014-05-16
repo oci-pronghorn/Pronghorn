@@ -24,12 +24,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     //second constructor only needed for testing.
     protected FASTReaderDispatchTemplates(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
             int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
-            int primaryRingBits, int textRingBits) {
+            int primaryRingBits, int textRingBits, int maxPMapCountInBytes, int[] templateStartIdx, int[] templateLimitIdx, int stackPMapInBytes, int preambleSize) {
         super(dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript, maxNestedGroupDepth,
-                primaryRingBits, textRingBits);
+                primaryRingBits,textRingBits,  maxPMapCountInBytes, templateStartIdx, templateLimitIdx,  stackPMapInBytes, preambleSize);
     }
 
-    
+
     protected void genReadCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);
     }
