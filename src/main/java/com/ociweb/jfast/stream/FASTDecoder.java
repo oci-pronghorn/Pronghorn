@@ -39,6 +39,14 @@ public abstract class FASTDecoder {
     private final int[] templateLimitIdx;
     public final int maxTemplatePMapSize;
     public final byte preambleDataLength;
+    //TODO: call to this class can be static if the next 2 fields are removed.
+    
+    // When setting neededSpace
+    // Worst case scenario is that this is full of decimals which each need 3.
+    // but for easy math we will use 4, will require a little more empty space
+    // in buffer
+    // however we will not need a lookup table
+    public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
     public FASTDecoder(TemplateCatalog catalog) {
         this(catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), catalog.getMaxTextLength(), 
@@ -182,6 +190,14 @@ public abstract class FASTDecoder {
         // space in buffer
         // however we will not need a lookup table
         return (activeScriptLimit - activeScriptCursor) << 2;
+    }
+    
+    public void reset(boolean clearData) {
+        activeScriptCursor = 0;
+        activeScriptLimit = 0;
+        if (clearData) {
+            reset();
+        }
     }
 
 }

@@ -1,9 +1,5 @@
 package com.ociweb.jfast.generator;
 
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,8 +9,8 @@ import java.util.Set;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalog;
-import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -112,6 +108,13 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         String[] paraDefs = templates.defs(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
         
+        //template details to add as comments
+        int token = fullScript[activeScriptCursor];
+        int fieldId = fieldIdScript[activeScriptCursor];
+        String fieldName = fieldNameScript[activeScriptCursor];        
+        comment+="        //name='"+fieldName+"' id="+fieldId+" token="+TokenBuilder.tokenToString(token)+"\n";
+
+        
         //replace variables with constants
         String template = templates.template(methodNameKey);
        
@@ -195,6 +198,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 //method signature line
                 fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
                 //insert field operator content into method
+      //          fieldMethodBuilder.append("System.err.println(\"hello world\");");
                 fieldMethodBuilder.append(comment).append(template);
                 //close field method
                 fieldMethodBuilder.append(END_FIELD_METHOD);
@@ -205,16 +209,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 runningComplexity = additionalComplexity;
                 lastFieldParaValues = curFieldParaValues;
             }
-            
-            
-            
-            
-            
         }
-        
-
-        
-        
     }
 
 

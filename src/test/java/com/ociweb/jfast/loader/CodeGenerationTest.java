@@ -30,7 +30,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
-import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -131,15 +131,14 @@ public class CodeGenerationTest {
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
 
         FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
-        PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
+        final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTDynamicReader dynamicReader1 = new FASTDynamicReader(readerDispatch1, primitiveReader1);
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
-        final PrimitiveReader reader = new PrimitiveReader(2048, fastInput2, 33);
+        final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, 33);
 
         FASTDecoder readerDispatch2 = null;
         try {
@@ -150,8 +149,6 @@ public class CodeGenerationTest {
         } catch (SecurityException e) {
             fail(e.getMessage());
         }
-        
-        FASTDynamicReader dynamicReader2 = new FASTDynamicReader(readerDispatch2, reader);
         FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
 
         final int keep = 32;
@@ -162,7 +159,7 @@ public class CodeGenerationTest {
 
             @Override
             public void tokenItem(long absPos, int token, int cursor, String value) {
-                String msg = " " + (PrimitiveReader.totalRead(reader) - PrimitiveReader.bytesReadyToParse(reader)) + " R_"
+                String msg = " " + (PrimitiveReader.totalRead(primitiveReader1) - PrimitiveReader.bytesReadyToParse(primitiveReader2)) + " R_"
                         + TokenBuilder.tokenToString(token) + " id:"
                         + (cursor >= catalog.scriptFieldIds.length ? "ERR" : "" + catalog.scriptFieldIds[cursor])
                         + " curs:" + cursor + " tok:" + token + " " + value;
@@ -173,8 +170,8 @@ public class CodeGenerationTest {
 
         int errCount = 0;
         int i = 0;
-        while (dynamicReader1.hasMore() != 0 &&
-               dynamicReader2.hasMore() != 0) {
+        while (FASTInputReactor.select(readerDispatch1, primitiveReader1) != 0 &&
+                FASTInputReactor.select(readerDispatch2, primitiveReader2) != 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);
@@ -211,7 +208,7 @@ public class CodeGenerationTest {
                 i++;
             }
         }
-        assertEquals(primitiveReader1.totalRead(reader), PrimitiveReader.totalRead(reader));
+        assertEquals(primitiveReader1.totalRead(primitiveReader1), PrimitiveReader.totalRead(primitiveReader2));
 
     }
     

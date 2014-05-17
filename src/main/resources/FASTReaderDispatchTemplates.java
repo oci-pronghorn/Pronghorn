@@ -88,6 +88,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     //TODO: C, once this all works find a better way to inline it with only 1 conditional.
+    //TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
+    
     protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedIncrement(target, source, rIntDictionary, reader);

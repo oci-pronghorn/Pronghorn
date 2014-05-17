@@ -27,6 +27,7 @@ public class TemplateHandler extends DefaultHandler {
     // Catalog represents all the templates supported
     int[] catalogScriptTokens = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
     int[] catalogScriptFieldIds = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
+    String[] catalogScriptFieldNames = new String[TokenBuilder.MAX_FIELD_ID_VALUE];
 
     int catalogTemplateScriptIdx = 0;
 
@@ -226,7 +227,7 @@ public class TemplateHandler extends DefaultHandler {
         } else if (qName.equalsIgnoreCase("bytevector")) {
             fieldOperator = OperatorMask.Field_None;
             fieldType = TypeMask.ByteArray;
-            fieldId = Integer.valueOf(attributes.getValue("id"));
+            fieldId = Integer.parseInt(attributes.getValue("id"));
             fieldName = attributes.getValue("name");
 
         } else if (qName.equalsIgnoreCase("copy")) {
@@ -288,6 +289,7 @@ public class TemplateHandler extends DefaultHandler {
             groupOpenTokenPMapStack[groupTokenStackHead] = 0;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; // Zero id
                                                                    // for group
 
@@ -369,6 +371,7 @@ public class TemplateHandler extends DefaultHandler {
                         activeDictionary, TokenBuilder.MASK_ABSENT_DEFAULT);
 
                 catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
+                catalogScriptFieldNames[catalogTemplateScriptIdx] = templateName;
                 catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
             }
 
@@ -397,7 +400,7 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     private void commonIdAttributes(Attributes attributes, long defaultAbsent) throws SAXException {
-        fieldId = Integer.valueOf(attributes.getValue("id"));
+        fieldId = Integer.parseInt(attributes.getValue("id"));
         if (fieldId < 0) {
             throw new SAXException("Field Id must be positive: " + fieldId);
         } else {
@@ -447,6 +450,7 @@ public class TemplateHandler extends DefaultHandler {
             fieldOperatorValue = null;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
@@ -479,6 +483,7 @@ public class TemplateHandler extends DefaultHandler {
             fieldOperatorValue = null;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("string")) {
@@ -492,6 +497,7 @@ public class TemplateHandler extends DefaultHandler {
             fieldOperatorValue = null;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("decimal")) {
@@ -549,9 +555,11 @@ public class TemplateHandler extends DefaultHandler {
             fieldMantissaOperatorValue = null;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = tokenExponent;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
            
             catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
             fieldPMapInc = 1;// set back to 1 we are leaving decimal processing
@@ -568,6 +576,7 @@ public class TemplateHandler extends DefaultHandler {
             int token = buildToken(tokenBuilderByteCount);
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("template")) {
@@ -602,6 +611,7 @@ public class TemplateHandler extends DefaultHandler {
             // repeating group pmap therefore
             // we are waiting until now to add the open group token.
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = groupOpenTokenStack[groupTokenStackHead];
@@ -804,7 +814,7 @@ public class TemplateHandler extends DefaultHandler {
         // write catalog data.
         TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
                 defaultConstValues, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers,
-                tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, catalogTemplateScriptIdx, templateIdx,
+                tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, catalogTemplateScriptIdx, templateIdx,
                 templateLimit, maxGroupTokenStackDepth + 1 // add one for
                                                            // surrounding
                                                            // template

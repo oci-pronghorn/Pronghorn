@@ -16,23 +16,24 @@ import java.util.Properties;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
+import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class DispatchLoaderTest {
 
-    //TODO: AA * Finish Russ site
-    //TODO: AA * Finish unit tests here and refactoring.
-    
+
     //On IBM JVM this may hold the classes in permGen space longer than expected, but they are GC.
     //by keeping a ref that class and its loader must stay arround. and we will hit perm gen error.
     
     @Test
-    public void test() {
-        
+    public void test() {        
         
         //These two are the same except for the internal version number
         byte[] catalog1=buildRawCatalogData("/performance/example.xml");
@@ -40,43 +41,54 @@ public class DispatchLoaderTest {
         
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));      
-        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile));
+        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile),40);
 
         //Base class reference, known at static compile time.        
         FASTDecoder decoder;
         
-    //    FASTRingBuffer target = new FASTRingBuffer();
+                
+        decoder = new FASTReaderInterpreterDispatch(catalog1);
+        FASTRingBuffer ringBuffer = decoder.ringBuffer(); //Data comes from here.
         
-        decoder = DispatchLoader.loadDispatchReader(catalog1); //pass in target
+        int messageIdIdx = 1;//0 is the preamble
         
+        int triggerRecord1 = 50;
+        int triggerRecord2 = 99;
         
-        
-        decoder.decode(reader);//pump
-        
-        //Ring bufer is bound to catalog becuase it can inject the constants by reference, eg no copy.
-        FASTRingBuffer buffer = decoder.ringBuffer();
-        //The message type offsets are also bound to catalog so they should be in buffer.
-        
-        
-        //read from target
-        //read message id from target.
-        
-        
-        decoder = DispatchLoader.loadDispatchReader(catalog2);
-        decoder.decode(reader);
-        
+        int records=0;
+        //Non-Blocking reactor dispatch
+        int flag;
+        while (0!=(flag=FASTInputReactor.select(decoder, reader))) {
+                 
+           // boolean x = (0 == (flag & TemplateCatalog.END_OF_SEQ_ENTRY));
+            boolean y = (0 != (flag & TemplateCatalog.END_OF_MESSAGE));
+            
+           if (y)  {
+               
+               int messageId = FASTRingBufferReader.readInt(ringBuffer, messageIdIdx);
+               String version = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+1, new StringBuilder()).toString();
+               System.err.println(messageId+" "+version+" flag:"+flag);
+               
+               
+               ringBuffer.dump(); //don't need the data but do need to empty the queue.
+               
+               records++;
 
-        //demo memory leak?
-//        List<FASTDecoder> x = new ArrayList<FASTDecoder>();
-//        while(true) {
-//        decoder = DispatchLoader.loadDispatchReader(catalog1);
-//         x.add(decoder);
-////       // decoder.decode(reader)
-//        
-//        decoder = DispatchLoader.loadDispatchReader(catalog2);
-//        x.add(decoder);
-//        }
-//        //decoder.decode(reader)
+//               if (records==triggerRecord1) {
+//                   //TODO: this load lost the dictonary!
+//                   decoder = DispatchLoader.loadDispatchReader(catalog1);
+//                   ringBuffer = decoder.ringBuffer();
+//               }
+//               if (records==triggerRecord2) {
+//                   decoder = DispatchLoader.loadDispatchReader(catalog2);
+//                   ringBuffer = decoder.ringBuffer();
+//               }
+           }
+        }
+        
+        //TODO: must add nested groups in ring buffer and fetch ID.
+        
+        
         
     }
     
@@ -85,11 +97,13 @@ public class DispatchLoaderTest {
 
         URL source = TemplateLoaderTest.class.getResource(resourceName);
         
+        Properties properties = new Properties(); 
+        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");//TODO: when this is missing we get exception in odd places, what can be done to help make those error esier to find?
+        
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
             File file = new File(source.toURI());
             assertTrue(file.exists());
-            Properties properties = new Properties(); //TODO: load from file or args?
             TemplateLoader.buildCatalog(catalogBuffer, file, properties);
         } catch (Exception e) {
             throw new RuntimeException(e);

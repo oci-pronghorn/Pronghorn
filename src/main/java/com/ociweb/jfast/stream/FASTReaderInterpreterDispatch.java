@@ -24,12 +24,19 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     public final int nonTemplatePMapSize;
     public final int[][] dictionaryMembers;
     
+    //required for code generation and other documentation/debugging.
+    protected final int[] fieldIdScript;
+    protected final String[] fieldNameScript;
+    
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
         this(new TemplateCatalog(catBytes));
     }    
     
     public FASTReaderInterpreterDispatch(TemplateCatalog catalog) {
         super(catalog);
+        
+        this.fieldIdScript = catalog.fieldIdScript();
+        this.fieldNameScript = catalog.fieldNameScript();
         
         this.rIntInit = catalog.dictionaryFactory().integerDictionary();
         this.rLongInit = catalog.dictionaryFactory().longDictionary();
@@ -47,6 +54,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             int primaryRingBits, int textRingBits, int stackPMapInBytes, int preambleSize) {
         super(dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript, maxNestedGroupDepth,
                 primaryRingBits, textRingBits, 42, null, null,stackPMapInBytes, preambleSize);
+        this.fieldIdScript = null;
+        this.fieldNameScript = null;
         this.rIntInit = dcr.integerDictionary();
         this.rLongInit = dcr.longDictionary();
         this.nonTemplatePMapSize = nonTemplatePMapSize;

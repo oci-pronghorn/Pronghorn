@@ -27,7 +27,7 @@ import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -36,7 +36,7 @@ public class Complex30000Benchmark extends Benchmark {
 
     FASTInputByteArray fastInput;
     PrimitiveReader reader;
-    FASTDynamicReader dynamicReader;
+    FASTReaderInterpreterDispatch readerDispatch;
     FASTRingBuffer queue;
     TemplateCatalog catalog;
     byte[] testData;
@@ -58,9 +58,8 @@ public class Complex30000Benchmark extends Benchmark {
 
             fastInput = new FASTInputByteArray(testData);
             reader = new PrimitiveReader(2048, fastInput, 32);
-            FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-
-            dynamicReader = new FASTDynamicReader(readerDispatch, reader);
+            readerDispatch = new FASTReaderInterpreterDispatch(catalog);
+            queue = readerDispatch.ringBuffer();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -69,58 +68,10 @@ public class Complex30000Benchmark extends Benchmark {
         }
     }
 
-    public static void main(String[] args) {
-        System.err.println("loading...");
-        Complex30000Benchmark obj = new Complex30000Benchmark();
-        System.err.println("testing...");
-        obj.testDecodeComplex30000Two();
 
-        System.gc();
-        long start = System.nanoTime();
-        obj.fastCore(obj.dynamicReader, 1, obj.queue);
-        long duration = System.nanoTime() - start;
-        System.err.println("duration:" + duration);
-
-        // //obj.openFastTest();
-        // long startx = System.nanoTime();
-        // int count = 300;
-        // obj.timeDecodeComplex30000(count);
-        // long durationx = (System.nanoTime()-startx)/count;
-        // System.err.println("done "+durationx+"ns");
-
-    }
-
-    public void testDecodeComplex30000Two() {
-
-        int count = 5;
-        int result = 0;
-
-        FASTRingBuffer queue = dynamicReader.ringBuffer();
-
-        int iter = count;
-        while (--iter >= 0) {
-
-            double start = System.nanoTime();
-            result = fastCore(dynamicReader, result, queue);
-            double duration = System.nanoTime() - start;
-
-            int ns = (int) (duration);
-            System.err.println("Duration:" + ns + "ns "); // Phrases/Clauses
-
-            // //////
-            // reset the data to run the test again.
-            // //////
-            fastInput.reset();
-            PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
-
-        }
-
-    }
-
-    private int fastCore(FASTDynamicReader dynamicReader, int result, FASTRingBuffer queue) {
+    private int fastCore(int result, FASTRingBuffer queue) {
         int flag;
-        while (0 != (flag = dynamicReader.hasMore())) {
+        while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
             if (0 != (flag & 0x02)) {
                 result |= FASTRingBufferReader.readInt(queue, 0);// must do some
                                                                  // real work or
@@ -139,11 +90,11 @@ public class Complex30000Benchmark extends Benchmark {
         int result = 0;
         while (--reps >= 0) {
 
-            fastCore(dynamicReader, result, queue);
+            fastCore(result, queue);
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            dynamicReader.reset(false);
+            readerDispatch.reset(false);
 
         }
         return result;

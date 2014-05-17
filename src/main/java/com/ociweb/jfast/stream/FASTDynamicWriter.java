@@ -48,10 +48,10 @@ public class FASTDynamicWriter {
                     int s = preambleData.length;
                     while (i < s) {
                         int d = FASTRingBufferReader.readInt(ringBuffer, idx);
-                        preambleData[i++] = (byte) (0xFF & (d >>> 24));
-                        preambleData[i++] = (byte) (0xFF & (d >>> 16));
+                        preambleData[i++] = (byte) (0xFF & (d >>> 0));
                         preambleData[i++] = (byte) (0xFF & (d >>> 8));
-                        preambleData[i++] = (byte) (0xFF & d);
+                        preambleData[i++] = (byte) (0xFF & (d >>> 16));
+                        preambleData[i++] = (byte) (0xFF & (d >>> 24));
                         idx++;
                     }
                     writerDispatch.writePreamble(preambleData);

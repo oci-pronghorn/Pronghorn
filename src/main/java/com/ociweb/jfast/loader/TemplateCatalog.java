@@ -33,6 +33,7 @@ public class TemplateCatalog {
 
     final int[] scriptTokens;
     final int[] scriptFieldIds;
+    final String[] scriptFieldNames;
     final int templatesInCatalog;
 
     final Properties properties;
@@ -65,6 +66,7 @@ public class TemplateCatalog {
         int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
         scriptTokens = new int[fullScriptLength];
         scriptFieldIds = new int[fullScriptLength];
+        scriptFieldNames = new String[fullScriptLength];
         templatesInCatalog = PrimitiveReader.readIntegerUnsigned(reader);
 
         loadTemplateScripts(reader);
@@ -119,10 +121,18 @@ public class TemplateCatalog {
         }
         // System.err.println("total:"+templatesInCatalog);
 
+        StringBuilder builder = new StringBuilder();
         i = scriptTokens.length;
         while (--i >= 0) {
             scriptTokens[i] = PrimitiveReader.readIntegerSigned(reader);
             scriptFieldIds[i] = PrimitiveReader.readIntegerUnsigned(reader);
+            int len = PrimitiveReader.readIntegerUnsigned(reader);
+            String name ="";
+            if (len>0) {
+                builder.setLength(0);
+                name = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
+            }
+            scriptFieldNames[i] = name;
         }
 
         // System.err.println("script tokens/fields "+scriptTokens.length);//46
@@ -143,11 +153,12 @@ public class TemplateCatalog {
     public static void save(PrimitiveWriter writer, int uniqueIds, int biggestId, int uniqueTemplateIds,
             int biggestTemplateId, DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap,
             int[][] tokenIdxMembers, int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds,
-            int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, Properties properties) {
+            String[] catalogScriptFieldNames, int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, Properties properties) {
 
         saveProperties(writer,properties);        
         
-        saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, catalogScriptFieldIds,
+        saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
+                catalogScriptFieldIds, catalogScriptFieldNames,
                 scriptLength, templateIdx, templateLimit);
 
         saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
@@ -223,10 +234,11 @@ public class TemplateCatalog {
      * @param writer
      * @param uniqueTemplateIds
      * @param biggestTemplateId
+     * @param catalogScriptFieldNames 
      * @param scripts
      */
     private static void saveTemplateScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
-            int[] catalogScriptTokens, int[] catalogScriptFieldIds, int scriptLength, int[] templateStartIdx,
+            int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, int[] templateStartIdx,
             int[] templateLimitIdx) {
         // what size array will we need for template lookup. this must be a
         // power of two
@@ -266,12 +278,13 @@ public class TemplateCatalog {
         i = scriptLength;
         while (--i >= 0) {
             writer.writeIntegerSigned(catalogScriptTokens[i]);
-            writer.writeIntegerUnsigned(catalogScriptFieldIds[i]); // not sure
-                                                                   // about how
-                                                                   // helpfull
-                                                                   // this
-                                                                   // structure
-                                                                   // is.
+            writer.writeIntegerUnsigned(catalogScriptFieldIds[i]); 
+            String name = catalogScriptFieldNames[i];
+            int len = null==name?0:name.length();
+            writer.writeIntegerUnsigned(len);
+            if (len>0) {
+                writer.writeTextUTF(name);
+            }
         }
 
     }
@@ -314,6 +327,12 @@ public class TemplateCatalog {
 
     public int[] fullScript() {
         return scriptTokens;
+    }
+    public int[] fieldIdScript() {
+        return scriptFieldIds;
+    }
+    public String[] fieldNameScript() {
+        return scriptFieldNames;
     }
 
     public int getByteVectorGap() {

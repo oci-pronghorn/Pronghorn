@@ -1224,4 +1224,16 @@ public final class PrimitiveReader {
 
     }
 
+    public static int readRawInt(PrimitiveReader reader) {
+        if (reader.limit-reader.position <4) {
+            fetch(4, reader);
+        }
+        
+        return (((0xFF & reader.buffer[reader.position++]) << 0) | 
+                ((0xFF & reader.buffer[reader.position++]) << 8) |
+                ((0xFF & reader.buffer[reader.position++]) << 16) | 
+                ((0xFF & reader.buffer[reader.position++]) << 24));
+
+    }
+
 }

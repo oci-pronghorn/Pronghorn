@@ -73,6 +73,7 @@ import javax.tools.ToolProvider;
             
             //if class is found and matches use it.
             File classFile = new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+".class");
+            System.out.println("Read class from: "+classFile+" force compile: "+forceCompile);
             if (!forceCompile && classFile.exists()) {
                 
                 byte[] classData = new byte[(int)classFile.length()];
@@ -91,7 +92,7 @@ import javax.tools.ToolProvider;
             //if we have a compiler then regenerate the source and class based on the templates.
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (null!=compiler && compiler.getSourceVersions().contains(SourceVersion.RELEASE_6)) {
-                
+                System.err.println("recompile");
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 
                 List<String> optionList = new ArrayList<String>();
@@ -113,14 +114,15 @@ import javax.tools.ToolProvider;
                 JavaCompiler.CompilationTask task = compiler.getTask(null, null, diagnostics, optionList, null, toCompile);
                 
                 if (!task.call()) {
+                    List<Diagnostic<? extends JavaFileObject>> diagnosticList = diagnostics.getDiagnostics();
+                    Supervisor.logCompileError(diagnosticList);
                     //did not compile due to error
-                    Iterator<Diagnostic<? extends JavaFileObject>> iter = diagnostics.getDiagnostics().iterator();
-                    if (iter.hasNext()) {
-                        throw new ClassNotFoundException(iter.next().toString());
+                    if (!diagnosticList.isEmpty()) {
+                        throw new ClassNotFoundException(diagnosticList.get(0).toString());
                     } else {
-                        throw new ClassNotFoundException();
+                        throw new ClassNotFoundException("Compiler error");
                     }                 
-                }
+                } 
                 byte[] classData = new byte[(int)classFile.length()];
                 try {
                     FileInputStream input = new FileInputStream(classFile);

@@ -33,7 +33,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
-import com.ociweb.jfast.stream.FASTDynamicReader;
+import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -60,7 +60,7 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(468, catalogByteArray.length);
+            assertEquals(1016, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);
@@ -93,67 +93,6 @@ public class TemplateLoaderTest {
         return builder.toString();
     }
 
-    public static void main(String[] args) {
-        TemplateLoaderTest tlt = new TemplateLoaderTest();
-        tlt.testDecodeComplex30000Two();
-    }
-
-    public void testDecodeComplex30000Two() {
-
-        TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
-
-        // connect to file
-        URL sourceData = getClass().getResource("/performance/complex30000.dat");
-
-        FASTInputByteArray fastInput = buildInputForTestingByteArray(new File(sourceData.getFile()));
-        int totalTestBytes = fastInput.remaining();
-        int bufferSize = 4096;
-        PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, (2 + ((Math.max(
-                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth())));
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
-        FASTRingBuffer queue = readerDispatch.ringBuffer();
-
-        System.gc();
-
-        int count = 5;
-        int result = 0;
-
-        int iter = count;
-        while (--iter >= 0) {
-
-            double start = System.nanoTime();
-
-            int flag;
-            while (0 != (flag = dynamicReader.hasMore())) {
-                if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
-                    result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
-                                                   // hot-spot may delete this
-                                                   // loop.
-                    queue.dump(); // must dump values in buffer or we will hang
-                                  // when reading.
-                }
-            }
-
-            double duration = System.nanoTime() - start;
-
-            int ns = (int) (duration / count);
-            float nsPerByte = (ns / (float) totalTestBytes);
-            int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
-
-            System.err.println("Duration:" + ns + "ns " + " " + nsPerByte + "nspB " + " " + mbps + "mbps " + " Bytes:"
-                    + totalTestBytes); // Phrases/Clauses
-
-            // //////
-            // reset the data to run the test again.
-            // //////
-            fastInput.reset();
-            PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
-
-        }
-
-    }
     
     
     @Test
@@ -177,8 +116,9 @@ public class TemplateLoaderTest {
         
         
        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+       
+    
         
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         // TODO: X, look into core affinity
@@ -201,7 +141,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             grps = 0;
             int flag = 0; // same id needed for writer construction
-            while (0 != (flag = dynamicReader.hasMore())) {
+            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
                 // New flags
                 // 0000 eof
                 // 0001 has sequence group to read (may be combined with end of
@@ -266,7 +206,7 @@ public class TemplateLoaderTest {
             }
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
+            readerDispatch.reset(true);
         }
 
         iter = count;
@@ -275,7 +215,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
 
             int flag;
-            while (0 != (flag = dynamicReader.hasMore())) {
+            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
                     result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                    // hot-spot may delete this
@@ -305,7 +245,7 @@ public class TemplateLoaderTest {
             // //////
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
+            readerDispatch.reset(true);
 
         }
         assertTrue(result != 0);
@@ -390,7 +330,8 @@ public class TemplateLoaderTest {
 
     @Test
     public void testDecodeEncodeComplex30000() {
-        final TemplateCatalog catalog = new TemplateCatalog(buildRawCatalogData());
+        byte[] catBytes = buildRawCatalogData();
+        final TemplateCatalog catalog = new TemplateCatalog(catBytes);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -405,8 +346,8 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
-        FASTReaderInterpreterDispatch readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-        FASTDynamicReader dynamicReader = new FASTDynamicReader(readerDispatch, reader);
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+        
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
@@ -453,7 +394,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             grps = 0;
             int flags = 0; // same id needed for writer construction
-            while (0 != (flags = dynamicReader.hasMore())) {
+            while (0 != (flags = FASTInputReactor.select(readerDispatch, reader))) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
@@ -468,7 +409,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
+            readerDispatch.reset(true);
 
             writer.flush(writer);
             wroteSize = Math.max(wroteSize, writer.totalWritten(writer));
@@ -489,7 +430,7 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             double start = System.nanoTime();
-            while (0 != dynamicReader.hasMore()) {
+            while (0 != FASTInputReactor.select(readerDispatch, reader)) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
@@ -513,7 +454,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            dynamicReader.reset(true);
+            readerDispatch.reset(true);
 
             fastOutput.reset();
             writer.reset(writer);
