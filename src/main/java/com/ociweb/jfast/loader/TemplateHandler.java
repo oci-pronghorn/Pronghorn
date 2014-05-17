@@ -372,7 +372,7 @@ public class TemplateHandler extends DefaultHandler {
 
                 catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
                 catalogScriptFieldNames[catalogTemplateScriptIdx] = templateName;
-                catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+                catalogScriptFieldIds[catalogTemplateScriptIdx++] = templateId;
             }
 
         } else if (qName.equalsIgnoreCase("templates")) {
@@ -492,7 +492,11 @@ public class TemplateHandler extends DefaultHandler {
 
             // only set if the value was given
             if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-                defaultConstValues.addInit(token & TokenBuilder.MAX_INSTANCE, fieldOperatorValue.toCharArray());
+                
+                int idx = token & TokenBuilder.MAX_INSTANCE;
+               // System.err.println("default value for "+fieldId+" "+fieldName+"  is "+fieldOperatorValue+" at "+idx+" pos "+catalogTemplateScriptIdx);
+                
+                defaultConstValues.addInit(idx, fieldOperatorValue.toCharArray());
             }
             fieldOperatorValue = null;
 

@@ -90,7 +90,7 @@ public class TextHeap {
                     System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, len);
                 }
                 // will be zero zero for values without constants.
-                int offset = i << 1;
+                int offset = charInitIndex[i] << 1;
                 initTat[offset] = startIdx;
                 initTat[offset + 1] = stopIdx;
 

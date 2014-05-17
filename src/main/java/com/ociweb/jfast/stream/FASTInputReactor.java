@@ -75,7 +75,7 @@ public class FASTInputReactor {
     private static int checkSpaceAndDecode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
         if (decoder.neededSpaceOrTemplate > 0) {
             if (( rb.maxSize-(rb.addPos-rb.remPos)) < decoder.neededSpaceOrTemplate) {
-                return 0x80000000;
+                return 0x80000000;//TODO: why does this run out of space adn block??
             }
             decoder.neededSpaceOrTemplate = 0;
         }

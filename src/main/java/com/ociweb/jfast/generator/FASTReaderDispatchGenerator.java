@@ -73,6 +73,9 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                      .append(paraDefs)
                      .append(") {\n");
         
+        signatureLine.append("//script ").append(activeScriptCursor).append('-').append(activeScriptLimit)
+                    .append(" id:").append(fieldIdScript[activeScriptCursor]).append("\n");
+        
         groupMethodBuilder.append("    return ").append(activeScriptCursor).append(";\n");
         
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();

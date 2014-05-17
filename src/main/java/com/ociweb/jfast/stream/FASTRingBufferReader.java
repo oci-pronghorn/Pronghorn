@@ -58,6 +58,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     public static Appendable readText(FASTRingBuffer ring, int idx, Appendable target) {
         int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
         int len = FASTRingBufferReader.readTextLength(ring, idx);
+     //   System.err.println("** read text pos:"+(ring.mask & (ring.remPos + idx))+" pos "+ (0x7FFFFFFF&pos) +" len "+len);
         if (pos < 0) {
             return readTextConst(ring,len,target,0x7FFFFFFF & pos);
         } else {

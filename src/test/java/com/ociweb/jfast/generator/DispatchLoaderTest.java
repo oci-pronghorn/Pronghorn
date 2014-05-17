@@ -64,25 +64,30 @@ public class DispatchLoaderTest {
             boolean y = (0 != (flag & TemplateCatalog.END_OF_MESSAGE));
             
            if (y)  {
-               
+               int pos = ringBuffer.mask & (ringBuffer.remPos + messageIdIdx);
                int messageId = FASTRingBufferReader.readInt(ringBuffer, messageIdIdx);
                String version = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+1, new StringBuilder()).toString();
-               System.err.println(messageId+" "+version+" flag:"+flag);
+               String msgType = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+3, new StringBuilder()).toString();
+  //             System.err.println("msg:"+messageId+" from "+pos+"   ver:"+version+" flag:"+flag+" type:"+msgType);
                
                
                ringBuffer.dump(); //don't need the data but do need to empty the queue.
                
                records++;
 
-//               if (records==triggerRecord1) {
-//                   //TODO: this load lost the dictonary!
-//                   decoder = DispatchLoader.loadDispatchReader(catalog1);
-//                   ringBuffer = decoder.ringBuffer();
-//               }
-//               if (records==triggerRecord2) {
-//                   decoder = DispatchLoader.loadDispatchReader(catalog2);
-//                   ringBuffer = decoder.ringBuffer();
-//               }
+               if (records==triggerRecord1) {
+                   
+                   //TODO: this load lost the dictonary!
+                   decoder = DispatchLoader.loadDispatchReader(catalog1);
+                   ringBuffer = decoder.ringBuffer();
+               }
+               if (records==triggerRecord2) {
+                   decoder = DispatchLoader.loadDispatchReader(catalog2);
+                   ringBuffer = decoder.ringBuffer();
+               }
+               if (records>150) {
+                   break;
+               }
            }
         }
         

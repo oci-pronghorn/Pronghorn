@@ -79,6 +79,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             int token = fullScript[activeScriptCursor];
 
             assert (gatherReadData(reader, activeScriptCursor));
+            
+            //System.err.println("write to "+(ringBuffer().mask &ringBuffer().addPos)+" "+fieldNameScript[activeScriptCursor]+" token: "+TokenBuilder.tokenToString(token));
 
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
@@ -1147,7 +1149,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     genReadASCIINone(idx, ringBuffer().buffer, ringBuffer().mask, reader, textHeap, ringBuffer());//always dynamic
                 } else {
                     // tail
-                    int fromIdx = readFromIdx;
                     genReadASCIITail(idx, ringBuffer().buffer, ringBuffer().mask, textHeap, reader, ringBuffer());//always dynamic
                 }
             } else {

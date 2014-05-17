@@ -85,7 +85,7 @@ public class ByteHeap {
                     System.arraycopy(byteInitValue[i], 0, initBuffer, startIdx, len);
                 }
                 // will be zero zero for values without constants.
-                int offset = i << 1;
+                int offset = byteInitIndex[i] << 1;
                 initTat[offset] = startIdx;
                 initTat[offset + 1] = stopIdx;
 

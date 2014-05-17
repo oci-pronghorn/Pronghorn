@@ -39,7 +39,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadSequenceClose(int backvalue, FASTDecoder dispatch) {
-        if (dispatch.sequenceCountStackHead <= 0) {
+        if (dispatch.sequenceCountStackHead < 0) {
             // no sequence to worry about or not the right time
             dispatch.doSequence = false;
         } else {
@@ -150,8 +150,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 
     protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
-        int value = rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader);
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             dispatch.activeScriptCursor = jumpToTarget;
