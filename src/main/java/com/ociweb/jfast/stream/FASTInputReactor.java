@@ -71,25 +71,31 @@ public class FASTInputReactor {
         return checkSpaceAndDecode(decoder, reader, rb);
     }
 
-
     private static int checkSpaceAndDecode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
         if (decoder.neededSpaceOrTemplate > 0) {
             if (( rb.maxSize-(rb.addPos-rb.remPos)) < decoder.neededSpaceOrTemplate) {
-                return 0x80000000;//TODO: why does this run out of space adn block??
+                return 0x80000000;
             }
             decoder.neededSpaceOrTemplate = 0;
-        }
-        
+        }        
         // returns true for end of sequence or group
         return decoder.decode(reader) ? sequence(decoder, rb, reader) : finishTemplate(rb, reader, decoder);
     }
 
     private static final int sequence(FASTDecoder decoder, FASTRingBuffer rb, PrimitiveReader reader) {
-        rb.unBlockSequence();//expensive call change to static?
-        if (decoder.jumpSequence >= 0) {
-            return processSequence(decoder, reader);
+        rb.unBlockSequence();//TODO: expensive call change to static?
+        if ( decoder.readyToDoSequence) { // jumping (backward) to do this sequence again.
+            decoder.readyToDoSequence = false;
+            return 1;// has group to read
+        } else {
+            // finished sequence, no need to jump
+            if (++decoder.activeScriptCursor == decoder.activeScriptLimit) {
+                decoder.neededSpaceOrTemplate = -1;
+                PrimitiveReader.closePMap(reader);
+                return 3;// finished reading full message and the sequence
+            }
+            return 1;// has group to read
         }
-        return finishTemplate(rb, reader, decoder);
     }
 
     private static int hasMoreNextMessage(int req, FASTDecoder readerDispatch, PrimitiveReader reader, FASTRingBuffer rb) {
@@ -139,23 +145,6 @@ public class FASTInputReactor {
         decoder.neededSpaceOrTemplate = -1;
         PrimitiveReader.closePMap(reader);
         return 2;// finished reading full message
-    }
-
-    private static final int processSequence(FASTDecoder decoder, PrimitiveReader reader) {
-        int i = decoder.jumpSequence;
-        if (i > 0) { // jumping (backward) to do this sequence again.
-            decoder.neededSpaceOrTemplate = 1 + (i << 2);
-            decoder.activeScriptCursor -= i;
-            return 1;// has sequence group to read
-        } else {
-            // finished sequence, no need to jump
-            if (++decoder.activeScriptCursor == decoder.activeScriptLimit) {
-                decoder.neededSpaceOrTemplate = -1;
-                PrimitiveReader.closePMap(reader);
-                return 3;// finished reading full message and the sequence
-            }
-            return 1;// has sequence group to read
-        }
     }
 
 }

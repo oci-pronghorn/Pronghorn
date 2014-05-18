@@ -38,26 +38,21 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         byteHeap.copy(source,target);
     }
     
+    // each sequence will need to repeat the pmap but we only need to push
+    // and pop the stack when the sequence is first encountered.
+    // if count is zero we can pop it off but not until then.
     protected void genReadSequenceClose(int backvalue, FASTDecoder dispatch) {
-        if (dispatch.sequenceCountStackHead < 0) {
-            // no sequence to worry about or not the right time
-            dispatch.doSequence = false;
-        } else {
-        
-            // each sequence will need to repeat the pmap but we only need to push
-            // and pop the stack when the sequence is first encountered.
-            // if count is zero we can pop it off but not until then.
-        
+        if (dispatch.sequenceCountStackHead >= 0) {        
             if (--dispatch.sequenceCountStack[dispatch.sequenceCountStackHead] < 1) {
                 // this group is a sequence so pop it off the stack.
                 --dispatch.sequenceCountStackHead;
-                // finished this sequence so leave pointer where it is
-                dispatch.jumpSequence = 0;
-            } else {
-                // do this sequence again so move pointer back
-                dispatch.jumpSequence = backvalue;
+                // finished this sequence so leave pointer where it is               
+            } else {                  
+                // do this sequence again so move pointer back                
+                dispatch.neededSpaceOrTemplate = 1 + (backvalue << 2);
+                dispatch.activeScriptCursor -= backvalue;                
+                dispatch.readyToDoSequence = true;
             }
-            dispatch.doSequence = true;
         }
     }
     
@@ -71,7 +66,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     
     //length methods
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedDefault(constDefault, reader);
@@ -81,16 +76,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             dispatch.activeScriptCursor = jumpToTarget;
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
             return false;
        }
     }
 
     //TODO: C, once this all works find a better way to inline it with only 1 conditional.
-    //TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
     
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    
+    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedIncrement(target, source, rIntDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = value;
@@ -99,13 +94,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             dispatch.activeScriptCursor = jumpToTarget;
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
             return false;
        }
     }
 
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = value;
@@ -114,26 +109,26 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             dispatch.activeScriptCursor = jumpToTarget;
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
             return false;
        }
     }
 
-    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
         if (constDefault == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
             dispatch.activeScriptCursor = jumpToTarget;
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = constDefault;
             return false;
        }
     }
 
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = (rIntDictionary[target] = (int) (rIntDictionary[source] + PrimitiveReader.readLongSigned(reader)));
         rbB[rbMask & rbRingBuffer.addPos++] = value;
@@ -142,21 +137,23 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             dispatch.activeScriptCursor = jumpToTarget;
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
             return false;
        }
     }
 
-    protected boolean genReadLength(int target,  int jumpToTarget, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
+    //TODO: A, this should end the fragment so the next call can have a new basis. 
+    protected boolean genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
+    //    dispatch.jumpSequence = 0;
         rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader);
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
+            dispatch.activeScriptCursor = jumpToTarget; //TODO: generated code is ignoring this assingment and replacing it.
             return true;
         } else {
-            // jumpSequence = 0;
+            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
             return false;
        }
@@ -169,6 +166,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
     //TODO: D, perhaps frame support is related to buffer size in primtive write so the right number of bits can be set.
     //TODO: X, Add undecoded field option so caller can deal with the subtraction of optinals.
+    //TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
     
     // int methods
 

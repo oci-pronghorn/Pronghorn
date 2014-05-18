@@ -74,7 +74,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 
         //TODO: based on activeScriptCursor set ring buffer member to be used.
         
-        
         do {
             int token = fullScript[activeScriptCursor];
 
@@ -149,7 +148,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         } else {
                             int idx = TokenBuilder.MAX_INSTANCE & token;
                             closeGroup(token,idx, reader);
-                            return doSequence;
+                            return sequenceCountStackHead>=0;//doSequence;
                         }
 
                     } else {
@@ -159,7 +158,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         // checking
                         // Only happens once before a node sequence so push it
                         // on the count stack
-                        readLength(token,activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1, readFromIdx, reader);
+                        int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
+                        readLength(token,jumpToTarget, readFromIdx, reader);
+                        //TODO: will return new position assign to active script cursor!!
+
+                        //TODO: almost right except that generated wipes out the new assigned jump over target
+//                        readyToDoSequence = true;
+//                        activeScriptCursor++;
+//                        return true;
 
                     }
                 } else {
@@ -808,7 +814,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     }
 
     private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
-
+        //because the generator hacks this boolean return value it is not helpful here.
+        
+        FASTRingBuffer ringBuffer = ringBuffer();
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -816,17 +824,17 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int target = token & MAX_INT_INSTANCE_MASK;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadLength(target, jumpToTarget, ringBuffer().buffer, ringBuffer().mask, ringBuffer(), rIntDictionary, reader, this);
+                    genReadLength(target, jumpToTarget, activeScriptCursor, ringBuffer.buffer, ringBuffer.mask, ringBuffer, rIntDictionary, reader, this);
                 } else {
                     // delta
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    genReadLengthDelta(target, source, jumpToTarget, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, ringBuffer(), reader, this);
+                    genReadLengthDelta(target, source, jumpToTarget, activeScriptCursor, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer(), reader, this);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
-                genReadLengthConstant(constDefault, jumpToTarget, ringBuffer().buffer, ringBuffer().mask, ringBuffer(), this);
+                genReadLengthConstant(constDefault, jumpToTarget, activeScriptCursor, ringBuffer.buffer, ringBuffer.mask, ringBuffer, this);
             }
 
         } else {
@@ -838,13 +846,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthCopy(target, source, jumpToTarget, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, ringBuffer(), reader, this);
+                    genReadLengthCopy(target, source, jumpToTarget, activeScriptCursor, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    genReadLengthIncrement(target, source, jumpToTarget, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, ringBuffer(), reader, this);
+                    genReadLengthIncrement(target, source, jumpToTarget, activeScriptCursor, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
                 }
             } else {
                 // default
@@ -852,7 +860,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                 int constDefault = rIntDictionary[source];
 
-                genReadLengthDefault(constDefault, jumpToTarget, ringBuffer().buffer, reader, ringBuffer().mask, ringBuffer(), this);
+                genReadLengthDefault(constDefault, jumpToTarget, activeScriptCursor, ringBuffer.buffer, reader, ringBuffer.mask, ringBuffer, this);
             }
         }
     }
@@ -1006,10 +1014,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         //token driven logic so nothing will need to be generated for this false case
         if (0!=(token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
             genReadSequenceClose(backvalue, this);
-        } else {
-            doSequence = false;
-        }
-        
+        }         
     }
 
 

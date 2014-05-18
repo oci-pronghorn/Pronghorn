@@ -42,24 +42,51 @@ public final class FASTRingBuffer {
     final char[] constTextBuffer; //defined externally and never changes
     final byte[] constByteBuffer;
 
-    //TODO: A, Filter is a mistake instead we need Ring buffers per messages and a drop message one as well. Then it is all hardcoded per instance setup. need hash for those options.
     FASTFilter filter = FASTFilter.none;
 
-    final AtomicInteger removeCount = new AtomicInteger();
-    final AtomicInteger addCount = new AtomicInteger();
-    public int addPos = 0;
-    public int remPos = 0;
+    final AtomicInteger removeCount;
+    private final AtomicInteger addCount;
+    public int addPos;
+    public int remPos;
 
     public FASTRingBuffer(byte primaryBits, byte charBits, char[] constTextBuffer, byte[] constByteBuffer) {
-        assert (primaryBits >= 1);
+        assert (primaryBits >= 1);       
+        
+        //single buffer size for every nested set of groups, must be set to support the largest need.
+        this.maxSize = 1 << primaryBits;
+        this.mask = maxSize - 1;
+        
 
+        this.buffer = new int[maxSize];
+        
+        //TODO: A, need name for partial group as used by code generator.  fragment, fragmented group.
+        
+        
+        //TODO: A, each field is a constant value relative to the start of the group. A group NEVER spans a sequence.
+        //TODO: A, to split work on messages multiple ring buffers are encouraged. If only one is used switch will be required.
+        //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
+        //TODO: A, Build custom selectors(), Multi ring vs single ring, Multi threaded vs single threaded.
+        //TODO: A, selector return values should be different for each of 4 cases, work out a chart.
+        //TODO: A, build reader macro to manage sequence state /depth as the data rolls in.
+        
+        
+        //TODO: A, use callback upon new class load to reset field offsets.
+        
+       
+        this.removeCount = new AtomicInteger(); //reader reads from this position.
+        this.addCount = new AtomicInteger(); // consumer is allowed to read up to addCount
+        this.addPos = 0; //assigned to addCount when the full record is read.
+        this.remPos = 0; //reads from this postion and assigned from removeCount;
+        
+
+
+        //constant data will never change and is populated externally.
+        
         this.constTextBuffer = constTextBuffer;
         this.constByteBuffer = constByteBuffer;
         
-        this.maxSize = 1 << primaryBits;
-        this.mask = maxSize - 1;
-        this.buffer = new int[maxSize];
-
+        //single text and byte buffers because this is where the variable length data will go.
+        
         this.maxCharSize = 1 << charBits;
         this.charMask = maxCharSize - 1;
         this.charBuffer = new char[maxCharSize];
@@ -117,10 +144,6 @@ public final class FASTRingBuffer {
     // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
-    public final int appendInt1(int value) {
-        buffer[mask & addPos++] = value;
-        return value;
-    }
 
     public int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         final int p = addCharPos;
@@ -185,6 +208,9 @@ public final class FASTRingBuffer {
     }
 
     public void dump() {
+        
+        
+        
         // move the removePosition up to the addPosition
         // System.err.println("resetup to "+addPos);
         remPos = addPos;

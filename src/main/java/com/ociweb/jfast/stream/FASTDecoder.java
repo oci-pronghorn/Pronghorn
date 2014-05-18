@@ -17,11 +17,11 @@ public abstract class FASTDecoder {
 
     //active state, TODO: C, minimize or remove these.
     public int sequenceCountStackHead = -1;
-    public boolean doSequence; //NOTE: return value from closeGroup
-    public int jumpSequence; // Only needs to be set when returning true.
+    public boolean readyToDoSequence; //is aligned to top of sequence
     public int activeScriptCursor;
     public int activeScriptLimit;
     public final int[] sequenceCountStack;
+    
 
     //dictionary data
     protected final long[] rLongDictionary;
@@ -95,12 +95,14 @@ public abstract class FASTDecoder {
         //TODO: A, need multiple target ringbuffers per message not a single one here.
         //build this in interface and generated.
         //TODO: A, need buffer map passed in to be used?
-        this.rbRingBuffer = FASTDecoder.ringBufferBuilder(primaryRingBits, textRingBits, textHeap, byteHeap);
+        this.rbRingBuffer = FASTDecoder.ringBufferBuilder(primaryRingBits, textRingBits, textHeap, byteHeap, maxNestedGroupDepth);
 
 
     }
 
-    public static FASTRingBuffer ringBufferBuilder(int primaryRingBits, int textRingBits, TextHeap textHeap, ByteHeap byteHeap) {
+    private static FASTRingBuffer ringBufferBuilder(int primaryRingBits, int textRingBits, 
+                                                    TextHeap textHeap, ByteHeap byteHeap,
+                                                    int maxNestedGroupDepth) {
         return new FASTRingBuffer((byte) primaryRingBits,
                                                (byte) textRingBits, 
                                                 null==textHeap? null : textHeap.rawInitAccess(),

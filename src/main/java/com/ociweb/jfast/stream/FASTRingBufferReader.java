@@ -261,4 +261,10 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             }
     }
 
+    public static void dump(FASTRingBuffer queue) {
+        
+        queue.removeCount.lazySet(queue.remPos = queue.addPos);
+        
+    }
+
 }

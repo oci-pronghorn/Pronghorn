@@ -220,10 +220,20 @@ public class TemplateLoaderTest {
                     result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                    // hot-spot may delete this
                                                    // loop.
+                                       
+                    FASTRingBufferReader.dump(queue);//overkill
+                    
+                    //TODO: A, how far to jump forward, cant know until the sequence size logic is resolved.
+                    
+                 //   queue.removeForward(step);
+
                 } else if (flag < 0) {// negative flag indicates queue is backed
                                       // up.
-                    queue.dump(); // must dump values in buffer or we will hang
-                                  // when reading.
+                    
+                    System.err.println("why is this happening");
+                    
+                    // must dump values in buffer or we will hang when reading.
+                    FASTRingBufferReader.dump(queue);
                 }
             }
 
@@ -384,7 +394,7 @@ public class TemplateLoaderTest {
         System.gc();
 
         int warmup = 20;// set much larger for profiler
-        int count = 256;
+        int count = 128;
 
         long wroteSize = 0;
         int msgs = 0;

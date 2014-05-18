@@ -53,7 +53,8 @@ public class DispatchLoaderTest {
         int messageIdIdx = 1;//0 is the preamble
         
         int triggerRecord1 = 50;
-        int triggerRecord2 = 99;
+        int triggerRecord2 = 100;
+        int triggerRecord3 = 150;
         
         int records=0;
         //Non-Blocking reactor dispatch
@@ -64,11 +65,22 @@ public class DispatchLoaderTest {
             boolean y = (0 != (flag & TemplateCatalog.END_OF_MESSAGE));
             
            if (y)  {
-               int pos = ringBuffer.mask & (ringBuffer.remPos + messageIdIdx);
-               int messageId = FASTRingBufferReader.readInt(ringBuffer, messageIdIdx);
+              // int pos = ringBuffer.mask & (ringBuffer.remPos + messageIdIdx);
+              // int messageId = FASTRingBufferReader.readInt(ringBuffer, messageIdIdx);
                String version = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+1, new StringBuilder()).toString();
-               String msgType = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+3, new StringBuilder()).toString();
-  //             System.err.println("msg:"+messageId+" from "+pos+"   ver:"+version+" flag:"+flag+" type:"+msgType);
+               //String msgType = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+3, new StringBuilder()).toString();
+             //  System.err.println("msg:"+messageId+" from "+pos+"   ver:"+version+" flag:"+flag+" type:"+msgType);
+               
+               if (records<triggerRecord1) {
+                   //Interpreter
+                   assertEquals("1.0",version);
+               } else if (records<triggerRecord2) {
+                   //compiled
+                   assertEquals("1.0",version);
+               } else if (records>=triggerRecord2) {
+                   //compiled 2
+                   assertEquals("2.0",version);
+               }
                
                
                ringBuffer.dump(); //don't need the data but do need to empty the queue.
@@ -77,7 +89,6 @@ public class DispatchLoaderTest {
 
                if (records==triggerRecord1) {
                    
-                   //TODO: this load lost the dictonary!
                    decoder = DispatchLoader.loadDispatchReader(catalog1);
                    ringBuffer = decoder.ringBuffer();
                }
@@ -85,7 +96,7 @@ public class DispatchLoaderTest {
                    decoder = DispatchLoader.loadDispatchReader(catalog2);
                    ringBuffer = decoder.ringBuffer();
                }
-               if (records>150) {
+               if (records>triggerRecord3) {
                    break;
                }
            }
