@@ -41,7 +41,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     // each sequence will need to repeat the pmap but we only need to push
     // and pop the stack when the sequence is first encountered.
     // if count is zero we can pop it off but not until then.
-    protected void genReadSequenceClose(int backvalue, FASTDecoder dispatch) {
+    protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {
+       
         if (dispatch.sequenceCountStackHead >= 0) {        
             if (--dispatch.sequenceCountStack[dispatch.sequenceCountStackHead] < 1) {
                 // this group is a sequence so pop it off the stack.
@@ -50,7 +51,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             } else {                  
                 // do this sequence again so move pointer back                
                 dispatch.neededSpaceOrTemplate = 1 + (backvalue << 2);
-                dispatch.activeScriptCursor -= backvalue;                
+                dispatch.activeScriptCursor = topCursorPos;            
                 dispatch.readyToDoSequence = true;
             }
         }
@@ -66,96 +67,95 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     
     //length methods
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         
         int length;
-        int value = length = PrimitiveReader.readIntegerUnsignedDefault(constDefault, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = value;
+        rbB[rbMask & rbRingBuffer.addPos++] = length = PrimitiveReader.readIntegerUnsignedDefault(constDefault, reader);
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
-            return true;
+            return jumpToTarget;
+          
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-            return false;
+            return jumpToNext;
+           
        }
     }
 
     //TODO: C, once this all works find a better way to inline it with only 1 conditional.
     
     
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedIncrement(target, source, rIntDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
-            return true;
+            return jumpToTarget;
+           
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-            return false;
+            return jumpToNext;
+           
        }
     }
 
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
         int value = length = PrimitiveReader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = value;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
-            return true;
+            return jumpToTarget;
+           
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-            return false;
+            return jumpToNext;
+            
        }
     }
 
-    protected boolean genReadLengthConstant(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected int genReadLengthConstant(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
         if (constDefault == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
-            return true;
+            return jumpToTarget;
+            
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = constDefault;
-            return false;
+            return jumpToNext;
+            
        }
     }
 
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
-        int length;
-        int value = length = (rIntDictionary[target] = (int) (rIntDictionary[source] + PrimitiveReader.readLongSigned(reader)));
-        rbB[rbMask & rbRingBuffer.addPos++] = value;
+    protected int genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+
+        int length = (rIntDictionary[target] = (int) (rIntDictionary[source] + PrimitiveReader.readLongSigned(reader)));
+        rbB[rbMask & rbRingBuffer.addPos++] = length;
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget;
-            return true;
+            return jumpToTarget;
+            
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-            return false;
+            return jumpToNext;
+            
        }
     }
 
     //TODO: A, this should end the fragment so the next call can have a new basis. 
-    protected boolean genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
-    //    dispatch.jumpSequence = 0;
+   
         rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader);
         if (length == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            dispatch.activeScriptCursor = jumpToTarget; //TODO: generated code is ignoring this assingment and replacing it.
-            return true;
+            return jumpToTarget;
+            
         } else {
-            dispatch.activeScriptCursor = jumpToNext;
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-            return false;
+            return jumpToNext;
+            
        }
     }
     

@@ -1,5 +1,6 @@
 package com.ociweb.jfast.generator;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.List;
 
@@ -8,12 +9,13 @@ import javax.tools.JavaFileObject;
 
 public class Supervisor {
     
-    public static void log(String message, Throwable t){
-        
+    public static void err(String message, Throwable t){
+        System.err.println(message);
+        t.printStackTrace();
     }
     
     public static void log(String message){
-        
+        System.out.println(message);
     }
 
     public static void logCompileError(List<Diagnostic<? extends JavaFileObject>> diagnostics) {
@@ -21,6 +23,10 @@ public class Supervisor {
         while (iter.hasNext()) {
             System.err.println(iter.next());
         }
+    }
+
+    public static void templateSource(File templates) {
+        System.out.println("Templates:"+templates);
     }
 
 }

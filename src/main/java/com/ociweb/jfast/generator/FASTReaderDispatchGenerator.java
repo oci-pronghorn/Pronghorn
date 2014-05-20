@@ -69,7 +69,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         doneScriptsParas.add(paraVals);
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private static int ")
+        signatureLine.append("private static void ")
                      .append(FRAGMENT_METHOD_NAME)
                      .append(scriptPos)
                      .append("(")
@@ -78,8 +78,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         
         signatureLine.append("//script ").append(activeScriptCursor).append('-').append(activeScriptLimit)
                     .append(" id:").append(fieldIdScript[activeScriptCursor]).append("\n");
-        
-        groupMethodBuilder.append("    return ").append(activeScriptCursor).append(";\n");
+
+       // groupMethodBuilder.append("    System.out.println(\"called "+FRAGMENT_METHOD_NAME+scriptPos+"  \");\n");
         
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
@@ -136,7 +136,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 strData = "0x"+Integer.toHexString((int)data[i]);
             }
             
-            template = template.replace(paraVals[i],strData+"/*"+paraVals[i]+"*/");
+            template = template.replace(paraVals[i],strData+"/*"+paraVals[i]+"="+Long.toString(data[i])+"*/");
         }
         
         
@@ -158,14 +158,13 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                        
         
         if (methodNameKey.contains("Length")) {
-            fieldMethodBuilder.append("private static boolean ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");;
+            fieldMethodBuilder.append("private static int ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");;
             //insert field operator content into method
             fieldMethodBuilder.append(comment).append(template);
             //close field method
             fieldMethodBuilder.append(END_FIELD_METHOD);
-            //add call to this method from the group method
-            groupMethodBuilder.append("    if (").append(methodName).append("(").append(fieldParaValues).append(")) {return "+(activeScriptCursor+1)+";};\n");
-            //TODO: A, this should end the fragment so the next call can have a new basis.
+            //add call to this method from the group method  TODO: need to return the value from this method  constant value for jumpToTarget
+            groupMethodBuilder.append("    dispatch.activeScriptCursor=").append(methodName).append("(").append(fieldParaValues).append(");\n");
             runningComplexity = 0;
             lastFieldParaValues="_";
         } else {
@@ -189,7 +188,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 assert(fieldMethodBuilder.toString().endsWith(END_FIELD_METHOD));
                 fieldMethodBuilder.setLength(fieldMethodBuilder.length()-END_FIELD_METHOD.length());
                 
-                //TODO: add mix back if we want to add this but need extra param.
+                //TODO: A, add mix back if we want to add this but need extra param.
                 
                 //insert field operator content into method
                 fieldMethodBuilder.append(comment).append(template);
@@ -204,8 +203,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 
                 //method signature line
                 fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
+           //     groupMethodBuilder.append("    System.out.println(\"called "+methodName+"  \");\n");
                 //insert field operator content into method
-      //          fieldMethodBuilder.append("System.err.println(\"hello world\");");
                 fieldMethodBuilder.append(comment).append(template);
                 //close field method
                 fieldMethodBuilder.append(END_FIELD_METHOD);
@@ -358,7 +357,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                                     .replace("rbB","ringBuffer().buffer")
                                     .replace("rbMask", "ringBuffer().mask");
 
-            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\ractiveScriptCursor="+FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
+            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\r"+FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
@@ -397,8 +396,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     
     @Override
-    protected void genReadSequenceClose(int backvalue, FASTDecoder dispatch) {
-        generator(new Exception().getStackTrace(),backvalue);
+    protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace(),backvalue, topCursorPos);
     }
     
     @Override
@@ -415,45 +414,45 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // length methods
     
     @Override
-    protected boolean genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
 
     @Override
-    protected boolean genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
 
     @Override
-    protected boolean genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
 
     @Override
-    protected boolean genReadLengthConstant(int constDefault, int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected int genReadLengthConstant(int constDefault, int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
 
     @Override
-    protected boolean genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
 
     @Override
-    protected boolean genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected int genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target, jumpToTarget,jumpToNext);
-        return true;
+        return jumpToNext;
     }
     
     // copy methods

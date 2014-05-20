@@ -28,84 +28,80 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class DispatchLoaderTest {
 
-
-    //On IBM JVM this may hold the classes in permGen space longer than expected, but they are GC.
-    //by keeping a ref that class and its loader must stay arround. and we will hit perm gen error.
-    
+    final int PREAMBLE_IDX = 0;
+    final int MESSAGE_ID_IDX = 1;
+    final int VERSION_IDX = 2;
+       
     @Test
-    public void test() {        
+    public void testClassReplacement() {        
         
         //These two are the same except for the internal version number
         byte[] catalog1=buildRawCatalogData("/performance/example.xml");
         byte[] catalog2=buildRawCatalogData("/performance/example2.xml");
         
-        URL sourceData = getClass().getResource("/performance/complex30000.dat");
-        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));      
-        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile),40);
+        PrimitiveReader reader = buildReader("/performance/complex30000.dat");
 
+        int switchToCompiled1 = 50;
+        int switchToCompiled2 = 100;
+        int exitTest = 150;
+                       
+        FASTClassLoader.deleteFiles();
+        
         //Base class reference, known at static compile time.        
         FASTDecoder decoder;
         
-                
+        //create the first decoder (known at static compile time)
         decoder = new FASTReaderInterpreterDispatch(catalog1);
-        FASTRingBuffer ringBuffer = decoder.ringBuffer(); //Data comes from here.
-        
-        int messageIdIdx = 1;//0 is the preamble
-        
-        int triggerRecord1 = 50;
-        int triggerRecord2 = 100;
-        int triggerRecord3 = 150;
+        System.err.println("Created new "+decoder.getClass().getSimpleName());
         
         int records=0;
-        //Non-Blocking reactor dispatch
         int flag;
+        //Non-Blocking reactor select
         while (0!=(flag=FASTInputReactor.select(decoder, reader))) {
                  
-           // boolean x = (0 == (flag & TemplateCatalog.END_OF_SEQ_ENTRY));
-            boolean y = (0 != (flag & TemplateCatalog.END_OF_MESSAGE));
-            
-           if (y)  {
-              // int pos = ringBuffer.mask & (ringBuffer.remPos + messageIdIdx);
-              // int messageId = FASTRingBufferReader.readInt(ringBuffer, messageIdIdx);
-               String version = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+1, new StringBuilder()).toString();
-               //String msgType = FASTRingBufferReader.readText(ringBuffer, messageIdIdx+3, new StringBuilder()).toString();
-             //  System.err.println("msg:"+messageId+" from "+pos+"   ver:"+version+" flag:"+flag+" type:"+msgType);
+            if ((0 != (flag & TemplateCatalog.END_OF_MESSAGE)))  {
+                
+               String version = FASTRingBufferReader.readText(decoder.ringBuffer(), 
+                                                              VERSION_IDX, 
+                                                              new StringBuilder()).toString();
                
-               if (records<triggerRecord1) {
+               if (records<switchToCompiled1) {
                    //Interpreter
                    assertEquals("1.0",version);
-               } else if (records<triggerRecord2) {
+               } else if (records<switchToCompiled2) {
                    //compiled
                    assertEquals("1.0",version);
-               } else if (records>=triggerRecord2) {
+               } else if (records<exitTest) {
                    //compiled 2
                    assertEquals("2.0",version);
-               }
+               }               
                
-               
-               ringBuffer.dump(); //don't need the data but do need to empty the queue.
+               decoder.ringBuffer().dump(); //don't need the data but do need to empty the queue.
                
                records++;
 
-               if (records==triggerRecord1) {
-                   
+               if (records==switchToCompiled1) {
                    decoder = DispatchLoader.loadDispatchReader(catalog1);
-                   ringBuffer = decoder.ringBuffer();
+                   System.err.println("Created new "+decoder.getClass().getSimpleName());
                }
-               if (records==triggerRecord2) {
+               if (records==switchToCompiled2) {
                    decoder = DispatchLoader.loadDispatchReader(catalog2);
-                   ringBuffer = decoder.ringBuffer();
+                   System.err.println("Created new "+decoder.getClass().getSimpleName());
                }
-               if (records>triggerRecord3) {
+               if (records>exitTest) {
                    break;
                }
            }
         }
-        
-        //TODO: must add nested groups in ring buffer and fetch ID.
-        
-        
-        
+  
+    }
+
+
+    private PrimitiveReader buildReader(String name) {
+        URL sourceData = getClass().getResource(name);
+        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));      
+        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile));
+        return reader;
     }
     
     
@@ -114,7 +110,7 @@ public class DispatchLoaderTest {
         URL source = TemplateLoaderTest.class.getResource(resourceName);
         
         Properties properties = new Properties(); 
-        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");//TODO: when this is missing we get exception in odd places, what can be done to help make those error esier to find?
+        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
         
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {

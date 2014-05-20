@@ -2,6 +2,7 @@ package com.ociweb.jfast.loader;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -24,6 +25,7 @@ import org.junit.Test;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.primitive.FASTInput;
@@ -114,10 +116,11 @@ public class TemplateLoaderTest {
       
         PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile), maxPMapCountInBytes);
         
+        FASTClassLoader.deleteFiles();
         
-       FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-       
-    
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+  
         
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
@@ -161,6 +164,7 @@ public class TemplateLoaderTest {
 
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
                     msgs++;
+
                     // this is a template message.
                     int bufferIdx = 0;
                     if (preamble.length > 0) {
@@ -356,7 +360,9 @@ public class TemplateLoaderTest {
         // buildInputForTestingByteBuffer(sourceDataFile);
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
+        
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+       // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 

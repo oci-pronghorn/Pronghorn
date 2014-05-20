@@ -40,8 +40,6 @@ public class FASTInputReactor {
      * Note nested sequence will stop once for each of the sequences therefore
      * at the bottom hasMore may not have any new data but is only done as a
      * notification that the loop has completed.
-     * @param decoder TODO
-     * @param reader TODO
      * 
      * @return
      */
@@ -89,7 +87,7 @@ public class FASTInputReactor {
             return 1;// has group to read
         } else {
             // finished sequence, no need to jump
-            if (++decoder.activeScriptCursor == decoder.activeScriptLimit) {
+            if (1+decoder.activeScriptCursor == decoder.activeScriptLimit) {
                 decoder.neededSpaceOrTemplate = -1;
                 PrimitiveReader.closePMap(reader);
                 return 3;// finished reading full message and the sequence

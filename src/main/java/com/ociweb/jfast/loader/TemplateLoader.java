@@ -17,6 +17,7 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
 
+import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
@@ -81,7 +82,8 @@ public class TemplateLoader {
         SAXParser sp = spfac.newSAXParser();
         FASTOutput output = new FASTOutputStream(catalog);
         TemplateHandler handler = new TemplateHandler(output, properties);
-        System.err.println("Templates:"+source);
+        Supervisor.templateSource(source);
+        
         if (source.isFile()) {
             sp.parse(source, handler);
         } else {

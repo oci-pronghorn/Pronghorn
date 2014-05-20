@@ -124,7 +124,6 @@ public class SourceTemplates {
         try {
             String name = FASTReaderDispatchTemplates.class.getSimpleName() + ".class";
             URL resource = FASTReaderDispatchTemplates.class.getResource(name);
-            System.err.println("URI:  "+resource.toURI());
             classFile = new File(resource.toURI());
             //assuming a maven directory structure the needed source file should be found here
             return classFile.getPath()

@@ -8,17 +8,16 @@ import javax.tools.SimpleJavaFileObject;
 
 public class FASTReaderSourceFileObject extends SimpleJavaFileObject {
 
-    final FASTReaderDispatchGenerator generator;
+    final byte[] catBytes;
     
     public FASTReaderSourceFileObject(byte[] catBytes) {
         super(new File(FASTClassLoader.SIMPLE_READER_NAME+".java").toURI(),Kind.SOURCE);
-        //new instance of code generator
-        generator = new FASTReaderDispatchGenerator(catBytes);
+        this.catBytes = catBytes;
     }
     
     public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
         //generate new source into the StringBuffer and return it.
-        return generator.generateFullReaderSource(new StringBuilder());
+        return new FASTReaderDispatchGenerator(catBytes).generateFullReaderSource(new StringBuilder());
     }
     
 }
