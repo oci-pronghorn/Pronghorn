@@ -31,7 +31,7 @@ public class TemplateCatalog {
                                          // shortened!
     public final int[] templateLimitIdx;
 
-    final int[] scriptTokens;
+    public final int[] scriptTokens;
     final int[] scriptFieldIds;
     final String[] scriptFieldNames;
     final int templatesInCatalog;

@@ -46,6 +46,7 @@ import javax.tools.ToolProvider;
             Supervisor.log("Created new FASTClassLoader forceCompile:"+forceCompile+" exportSource:"+exportSource);
         }        
         
+        @SuppressWarnings("boxing")
         @Override
         public Class loadClass(String name) throws ClassNotFoundException {
             //if we want a normal class use the normal class loader
@@ -85,9 +86,8 @@ import javax.tools.ToolProvider;
                 
                 toCompile.add(sourceFileObject);
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-                JavaCompiler.CompilationTask task = compiler.getTask(null, null, diagnostics, optionList, null, toCompile);
                 
-                if (task.call()) {
+                if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
                     byte[] classData = readClassBytes(classFile);
                     return defineClass(name, classData , 0, classData.length);
                 } else {

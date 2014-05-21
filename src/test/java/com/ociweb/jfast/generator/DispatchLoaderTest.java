@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
@@ -38,13 +39,13 @@ public class DispatchLoaderTest {
         //These two are the same except for the internal version number
         byte[] catalog1=buildRawCatalogData("/performance/example.xml");
         byte[] catalog2=buildRawCatalogData("/performance/example2.xml");
-        
+                
         PrimitiveReader reader = buildReader("/performance/complex30000.dat");
 
+        //setup
         int switchToCompiled1 = 50;
         int switchToCompiled2 = 100;
         int exitTest = 150;
-                       
         FASTClassLoader.deleteFiles();
         
         //Base class reference, known at static compile time.        
@@ -69,10 +70,10 @@ public class DispatchLoaderTest {
                    //Interpreter
                    assertEquals("1.0",version);
                } else if (records<switchToCompiled2) {
-                   //compiled
+                   //Compiled
                    assertEquals("1.0",version);
                } else if (records<exitTest) {
-                   //compiled 2
+                   //Compiled 2
                    assertEquals("2.0",version);
                }               
                
