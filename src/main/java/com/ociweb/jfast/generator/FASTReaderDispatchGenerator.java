@@ -18,7 +18,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
-
+    // TODO: X, look into core affinity
     // TODO: C, code does not support final in signatures, this would be nice to have
     
     private static final String END_FIELD_METHOD = "};\n";

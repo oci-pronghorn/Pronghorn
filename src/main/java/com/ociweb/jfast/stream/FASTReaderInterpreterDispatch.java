@@ -73,7 +73,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit;
 
-        //TODO: based on activeScriptCursor set ring buffer member to be used.
+        //TODO: A, based on activeScriptCursor set ring buffer member to be used.
         
         do {
             int token = fullScript[activeScriptCursor];

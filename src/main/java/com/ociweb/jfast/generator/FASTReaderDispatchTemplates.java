@@ -143,7 +143,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
        }
     }
 
-    //TODO: A, this should end the fragment so the next call can have a new basis. 
     protected int genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         int length;
    
@@ -161,11 +160,10 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     //TODO: A, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
     //TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
-    //TODO: B, Modify code generator to share called function whenever possible, faster inline and smaller footprint
     //TODO: B, set the default template for the case when it is undefined in catalog.
     //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
     //TODO: D, perhaps frame support is related to buffer size in primtive write so the right number of bits can be set.
-    //TODO: X, Add undecoded field option so caller can deal with the subtraction of optinals.
+    //TODO: X, Add un-decoded field option so caller can deal with the subtraction of optionals.
     //TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
     
     // int methods

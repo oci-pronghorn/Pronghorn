@@ -905,8 +905,7 @@ public class TextHeap {
     }
 
     public void setSingleCharText(char ch, int idx) {
-        // TODO: A, This implementation assumes that all text can always support
-        // length of 1
+        // TODO: C, This implementation assumes that all text can always support length of 1, must confirm
         final int offset = idx << 2;
         int targIndex = tat[offset]; // because we have zero length
 

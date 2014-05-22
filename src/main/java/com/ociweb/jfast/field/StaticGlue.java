@@ -1,7 +1,10 @@
 package com.ociweb.jfast.field;
 
+import java.nio.ByteBuffer;
+
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class StaticGlue {
@@ -183,7 +186,7 @@ public class StaticGlue {
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
         byte val;         
         int tmp = (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) ?
-                readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
+               readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
                readASCIIToHeapNone(idx, val, textHeap, reader);
         return tmp;
     }
@@ -197,5 +200,34 @@ public class StaticGlue {
         rbB[rbMask & rbRingBuffer.addPos++] = value;
     }
     //byte methods
+    public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, ByteHeap byteHeap, PrimitiveWriter writer) {
+        
+        //replace head, tail matches to tailCount
+        int trimHead = byteHeap.length(idx)-tailCount;
+        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
+        
+        int len = value.remaining() - tailCount;
+        int offset = value.position();
+        writer.writeIntegerUnsigned(len);
+        writer.writeByteArrayData(value, offset, len);
+        byteHeap.appendHead(idx, trimHead, value, offset, len);
+    }
+    public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, ByteHeap byteHeap, PrimitiveWriter writer) {
+                   
+        int trimTail = byteHeap.length(idx)-headCount;
+        if (trimTail<0) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
+        
+        int valueSend = value.remaining()-headCount;
+        int startAfter = value.position()+headCount;
+                
+        writer.writeIntegerUnsigned(valueSend);
+        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
+        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        writer.writeByteArrayData(value, startAfter, valueSend);
+        
+    }
 
 }

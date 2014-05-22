@@ -2,7 +2,6 @@ package com.ociweb.jfast.loader;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -10,15 +9,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Constructor;
-import java.net.URI;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -26,19 +22,15 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
-import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
-import com.ociweb.jfast.generator.Supervisor;
-import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
-import com.ociweb.jfast.stream.FASTInputReactor;
-import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTDynamicWriter;
+import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
@@ -54,7 +46,6 @@ public class TemplateLoaderTest {
         byte[] catalogByteArray = buildRawCatalogData();
                
         // reconstruct Catalog object from stream
-        FASTInput input = new FASTInputByteArray(catalogByteArray);
         TemplateCatalog catalog = new TemplateCatalog(catalogByteArray);
 
         boolean ok = false;
@@ -103,7 +94,7 @@ public class TemplateLoaderTest {
       Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
         byte[] catBytes = buildRawCatalogData();
-        TemplateCatalog catalog = new TemplateCatalog(catBytes); //TODO: X, defaults 2048 and 32 may not be optimal.
+        TemplateCatalog catalog = new TemplateCatalog(catBytes); 
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -124,9 +115,7 @@ public class TemplateLoaderTest {
         
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
-        // TODO: X, look into core affinity
-
-        // TODO: B, Use generated class if found else use slower base class
+        
 
         int warmup = 128;
         int count = 1024;
@@ -221,21 +210,16 @@ public class TemplateLoaderTest {
             int flag;
             while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
-                    result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
-                                                   // hot-spot may delete this
-                                                   // loop.
-                                       
-             //       FASTRingBufferReader.dump(queue);//overkill
-                    
-                    //TODO: A, how far to jump forward, cant know until the sequence size logic is resolved.
-                    
+                    result |= FASTRingBufferReader.readInt(queue, 0);
+                    // must do some real work or
+                    // hot-spot may delete this
+                    // loop.
+                                        
+                 //TODO: A, how far to jump forward, can't know until the sequence size logic is resolved.                    
                  //   queue.removeForward(step);
 
-                } else if (flag < 0) {// negative flag indicates queue is backed
-                                      // up.
-                    
-                //    System.err.println("why is this happening");
-                    
+                } else if (flag < 0) {
+                    // negative flag indicates queue is backed up.
                     // must dump values in buffer or we will hang when reading.
                     FASTRingBufferReader.dump(queue);
                 }

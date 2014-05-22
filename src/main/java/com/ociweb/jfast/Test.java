@@ -156,16 +156,9 @@ public class Test {
                                                      // hot-spot may delete this
                                                      // loop.
                                          
-               //       FASTRingBufferReader.dump(queue);//overkill
+//TODO: A, need stand alone code for getting performance numbers on other platforms.
                       
-                      //TODO: A, how far to jump forward, cant know until the sequence size logic is resolved.
-                      
-                   //   queue.removeForward(step);
-
-                  } else if (flag < 0) {// negative flag indicates queue is backed
-                                        // up.
-                      
-                  //    System.err.println("why is this happening");
+                  } else if (flag < 0) {
                       
                       // must dump values in buffer or we will hang when reading.
                       FASTRingBufferReader.dump(queue);

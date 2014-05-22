@@ -3,6 +3,7 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -610,46 +611,11 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         int headCount = byteHeap.countHeadMatch(idx, value);
         int tailCount = byteHeap.countTailMatch(idx, value);
         if (headCount>tailCount) {
-            writeBytesTail(idx, headCount, value, 1); //does not modify position
+            StaticGlue.writeBytesTail(idx, headCount, value, 1, byteHeap, writer); //does not modify position
         } else {
-            writeBytesHead(idx, tailCount, value, 1); //does not modify position
+            StaticGlue.writeBytesHead(idx, tailCount, value, 1, byteHeap, writer); //does not modify position
         }
         value.position(value.limit());//skip over the data just like we wrote it.
-    }
-    
-    //TODO: B, will be static
-    private void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional) {
-        
-    
-        
-        int trimTail = byteHeap.length(idx)-headCount;
-        if (trimTail<0) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-                
-        writer.writeIntegerUnsigned(valueSend);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
-        
-    }
-    
-    //TODO: B,  will be static
-    private void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt) {
-        
-        //replace head, tail matches to tailCount
-        int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
-        
-        int len = value.remaining() - tailCount;
-        int offset = value.position();
-        writer.writeIntegerUnsigned(len);
-        writer.writeByteArrayData(value, offset, len);
-        byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
 
     protected void genWriterBytesTailOptional(int token, ByteBuffer value) {

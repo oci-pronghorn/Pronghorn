@@ -57,19 +57,12 @@ public final class FASTRingBuffer {
         this.mask = maxSize - 1;
         
 
-        this.buffer = new int[maxSize];
-        
-        //TODO: A, need name for partial group as used by code generator.  fragment, fragmented group.
-        
+        this.buffer = new int[maxSize];      
         
         //TODO: A, each field is a constant value relative to the start of the group. A group NEVER spans a sequence.
         //TODO: A, to split work on messages multiple ring buffers are encouraged. If only one is used switch will be required.
         //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
         //TODO: A, Build custom selectors(), Multi ring vs single ring, Multi threaded vs single threaded.
-        //TODO: A, selector return values should be different for each of 4 cases, work out a chart.
-        //TODO: A, build reader macro to manage sequence state /depth as the data rolls in.
-        
-        
         //TODO: A, use callback upon new class load to reset field offsets.
         
        
@@ -216,9 +209,6 @@ public final class FASTRingBuffer {
         remPos = addPos;
         removeCount.lazySet(addPos);
     }
-
-    // TODO: A, Given templateId, and FieldId return offset for RingBuffer to
-    // get value, must keep in client code
 
     // this is for fast direct WRITE TO target
     public void readChars(int idx, char[] target, int targetIdx, TextHeap textHeap) {
