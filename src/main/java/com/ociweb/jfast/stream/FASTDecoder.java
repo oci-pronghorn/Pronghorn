@@ -14,9 +14,9 @@ public abstract class FASTDecoder {
     
     //active state, TODO: C, minimize or remove these.
     public int sequenceCountStackHead = -1;
-    public boolean readyToDoSequence; //is aligned to top of sequence
     public int activeScriptCursor;
     public int activeScriptLimit;
+    
     public final int[] sequenceCountStack;
     
     //dictionary data
@@ -28,7 +28,6 @@ public abstract class FASTDecoder {
     //remove because we need multiples
     private final FASTRingBuffer rbRingBuffer;
     
-    public static final int INIT_VALUE_MASK = 0x80000000;
     public final int maxPMapCountInBytes;
     
     private final int[] templateStartIdx;

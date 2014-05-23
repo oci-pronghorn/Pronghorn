@@ -77,23 +77,11 @@ public class FASTInputReactor {
             decoder.neededSpaceOrTemplate = 0;
         }        
         // returns true for end of sequence or group
-        return decoder.decode(reader) ? sequence(decoder, rb, reader) : finishTemplate(rb, reader, decoder);
-    }
-
-    private static final int sequence(FASTDecoder decoder, FASTRingBuffer rb, PrimitiveReader reader) {
-        FASTRingBuffer.unBlockSequence(rb);
-        if ( decoder.readyToDoSequence) { // jumping (backward) to do this sequence again.
-            decoder.readyToDoSequence = false;
-            return 1;// has group to read
+        if (decoder.decode(reader)) {
+            FASTRingBuffer.unBlockSequence(rb);
+            return 1;// has more to read
         } else {
-            // finished sequence, no need to jump
-            if (1+decoder.activeScriptCursor == decoder.activeScriptLimit) {//TODO: A, need limit to not be exposed here.
-                System.err.println("**********************888 This happens");
-                decoder.neededSpaceOrTemplate = -1;
-                PrimitiveReader.closePMap(reader);
-                return 3;// finished reading full message and the sequence
-            }
-            return 1;// has group to read
+            return finishTemplate(rb, reader, decoder);
         }
     }
 

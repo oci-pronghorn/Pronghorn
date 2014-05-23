@@ -38,6 +38,7 @@ public class TextHeap {
 
     // text allocation table
     public final int[] tat;
+    public static final int INIT_VALUE_MASK = 0x80000000;
 
     // 4 ints per text body.
     // start index position (inclusive)

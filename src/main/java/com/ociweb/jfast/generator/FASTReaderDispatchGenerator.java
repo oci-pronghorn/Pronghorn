@@ -579,6 +579,39 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
+    
+    ///
+    
+    @Override
+    protected void genReadExponentDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),constAbsent,constDefault);
+    }
+    
+    @Override
+    protected void genReadExponentIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),target,source,constAbsent);
+    }
+    
+    @Override
+    protected void genReadExponentCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),target,source,constAbsent);
+    }
+    
+    @Override
+    protected void genReadExponentConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),constAbsent,constConst);
+    }
+    
+    @Override
+    protected void genReadExponentDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),target,source,constAbsent);
+    }
+    
+    @Override
+    protected void genReadExponentOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        generator(new Exception().getStackTrace(),constAbsent);
+    }
+    
 
     // long methods
     
