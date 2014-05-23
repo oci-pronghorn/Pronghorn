@@ -63,7 +63,7 @@ public class TemplateLoader {
             System.exit(FILE_NOT_FOUND);
         }
 
-        Properties properties = new Properties(); //TODO: load from file or args?
+        Properties properties = new Properties(); //TODO: B, load from file or args?
         
         try {
             buildCatalog(new FileOutputStream(catalog), source, properties);

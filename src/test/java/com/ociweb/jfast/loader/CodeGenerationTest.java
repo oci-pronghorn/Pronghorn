@@ -195,10 +195,6 @@ public class CodeGenerationTest {
                         String msg = "int " + i + " byte " + (i * 4) + "  ";
                         // TODO: Z, regenerate code for this section that does
                         // not match.
-                        // TODO: Z, skip pmap mismatch and look for real change
-                        // all problems happen after this
-                        // ASCIIOptional:001001/Default:000011/9 id:5799 curs:28
-                        // tok:-1539571703
 
                         assertEquals(msg, int1, int2);
                     }

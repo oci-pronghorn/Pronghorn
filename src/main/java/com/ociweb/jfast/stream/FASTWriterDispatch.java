@@ -6,7 +6,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public class FASTWriterDispatch { //TODO: rename as FASTEncoder
+public class FASTWriterDispatch { //TODO: C, rename as FASTEncoder
     protected int templateStackHead = 0;
     protected final int[] templateStack;
 

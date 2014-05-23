@@ -43,10 +43,10 @@ public class TemplateCatalog {
     // Runtime specific message prefix, only used for some transmission
     // technologies
     
-    //TODO: move these into properties to be set on save only.
-    int maxTextLength = 16;// default
+    //TODO: A, move these into properties to be set on save only.
+    int maxTextLength = 15;// default
     int maxByteVectorLength = 16;// default
-    int textLengthGap = 8;// default
+    int textLengthGap = 2;//8;// default
     int byteVectorGap = 8;// default
 
     public static final int END_OF_SEQ_ENTRY = 0x01;

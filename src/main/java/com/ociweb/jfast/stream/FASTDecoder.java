@@ -11,10 +11,7 @@ public abstract class FASTDecoder {
 
     //debugging state
     protected DispatchObserver observer;
-    //for testing only TODO: C, minimize or remove these.
-    protected final DictionaryFactory dictionaryFactory;
-    protected final int[] fullScript;
-
+    
     //active state, TODO: C, minimize or remove these.
     public int sequenceCountStackHead = -1;
     public boolean readyToDoSequence; //is aligned to top of sequence
@@ -22,7 +19,6 @@ public abstract class FASTDecoder {
     public int activeScriptLimit;
     public final int[] sequenceCountStack;
     
-
     //dictionary data
     protected final long[] rLongDictionary;
     protected final int[] rIntDictionary;
@@ -39,13 +35,7 @@ public abstract class FASTDecoder {
     private final int[] templateLimitIdx;
     public final int maxTemplatePMapSize;
     public final byte preambleDataLength;
-    //TODO: call to this class can be static if the next 2 fields are removed.
-    
-    // When setting neededSpace
-    // Worst case scenario is that this is full of decimals which each need 3.
-    // but for easy math we will use 4, will require a little more empty space
-    // in buffer
-    // however we will not need a lookup table
+        
     public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
     public FASTDecoder(TemplateCatalog catalog) {
@@ -68,7 +58,6 @@ public abstract class FASTDecoder {
             int primaryRingBits, int textRingBits, int maxPMapCountInBytes, int[] templateStartIdx, int[] templateLimitIdx,
             int maxTemplatePMapSize, int preambleDataLength) {
 
-        this.dictionaryFactory = dcr;
         this.maxPMapCountInBytes = maxPMapCountInBytes;
         this.textHeap = dcr.charDictionary(maxTextLen, charGap);
         this.byteHeap = dcr.byteDictionary(maxVectorLen, bytesGap);
@@ -77,7 +66,6 @@ public abstract class FASTDecoder {
         this.preambleDataLength = (byte)preambleDataLength;
         
         this.sequenceCountStack = new int[maxNestedGroupDepth];
-        this.fullScript = fullScript;
         this.rIntDictionary = dcr.integerDictionary();
         this.rLongDictionary = dcr.longDictionary();
         
@@ -92,7 +80,7 @@ public abstract class FASTDecoder {
         assert(null==textHeap || TokenBuilder.isPowerOfTwo(textHeap.itemCount()));
 
 
-        //TODO: A, need multiple target ringbuffers per message not a single one here.
+        //TODO: A, need multiple target ringbuffers per message leading fragment logic not a single one here.
         //build this in interface and generated.
         //TODO: A, need buffer map passed in to be used?
         this.rbRingBuffer = FASTDecoder.ringBufferBuilder(primaryRingBits, textRingBits, textHeap, byteHeap, maxNestedGroupDepth);
@@ -114,9 +102,7 @@ public abstract class FASTDecoder {
         this.observer = observer;
     }
 
-    protected boolean gatherReadData(PrimitiveReader reader, int cursor) {
-
-        int token = fullScript[cursor];
+    protected boolean gatherReadData(PrimitiveReader reader, int cursor, int token) {
 
         if (null != observer) {
             String value = "";
@@ -129,9 +115,7 @@ public abstract class FASTDecoder {
         return true;
     }
 
-    protected boolean gatherReadData(PrimitiveReader reader, int cursor, String value) {
-
-        int token = fullScript[cursor];
+    protected boolean gatherReadData(PrimitiveReader reader, int cursor, String value, int token) {
 
         if (null != observer) {
             // totalRead is bytes loaded from stream.
@@ -153,7 +137,7 @@ public abstract class FASTDecoder {
         return true;
     }
     
-    public void reset() {
+    public void reset(DictionaryFactory dictionaryFactory) {
 
         // clear all previous values to un-set
         dictionaryFactory.reset(rIntDictionary);
@@ -170,7 +154,7 @@ public abstract class FASTDecoder {
 
     
 
-    //TODO: make this abstract so we can have generated code avoid array
+    //TODO: A, make this abstract so we can have generated code avoid array
     public FASTRingBuffer ringBuffer() {
         
         return rbRingBuffer;//TODO: A, add args to request message specific ring buffer.
@@ -194,12 +178,9 @@ public abstract class FASTDecoder {
         return (activeScriptLimit - activeScriptCursor) << 2;
     }
     
-    public void reset(boolean clearData) {
+    public void reset() {
         activeScriptCursor = 0;
         activeScriptLimit = 0;
-        if (clearData) {
-            reset();
-        }
     }
 
 }

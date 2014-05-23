@@ -105,7 +105,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     public Set<Integer> getSequenceStarts() {
         return sequenceStarts;
     }
-    // TODO: B, Group9 has repeated code with group1 that should be shared.
     
     private void generator(StackTraceElement[] trace, long ... values) {
         
@@ -163,13 +162,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             fieldMethodBuilder.append(comment).append(template);
             //close field method
             fieldMethodBuilder.append(END_FIELD_METHOD);
-            //add call to this method from the group method  TODO: need to return the value from this method  constant value for jumpToTarget
+            //add call to this method from the group method  TODO: A, inline assignemnt so it need not be here.
             groupMethodBuilder.append("    dispatch.activeScriptCursor=").append(methodName).append("(").append(fieldParaValues).append(");\n");
             runningComplexity = 0;
             lastFieldParaValues="_";
         } else {
-            //TODO: once this is cleaned up work on removing the ringbuffer and other fields from base class.
-            // ** if the previous para values are the same and if the method will not be too large and still in the same group.
+            //TODO: X, if the previous para values are the same and if the method will not be too large and still in the same group.
             // back up field builder and add the new block into the existing method, no field call needs to be added to case/group
             String curFieldParaValues = fieldParaValues.toString();
             int additionalComplexity = GeneratorUtils.complexity(template);
@@ -187,9 +185,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 //strip off the method close so we can tack some more work in it.
                 assert(fieldMethodBuilder.toString().endsWith(END_FIELD_METHOD));
                 fieldMethodBuilder.setLength(fieldMethodBuilder.length()-END_FIELD_METHOD.length());
-                
-                //TODO: A, add mix back if we want to add this but need extra param.
-                
+                                
                 //insert field operator content into method
                 fieldMethodBuilder.append(comment).append(template);
                 //close field method
@@ -203,7 +199,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                 
                 //method signature line
                 fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
-           //     groupMethodBuilder.append("    System.out.println(\"called "+methodName+"  \");\n");
+          
                 //insert field operator content into method
                 fieldMethodBuilder.append(comment).append(template);
                 //close field method
@@ -357,7 +353,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                                     .replace("rbB","ringBuffer().buffer")
                                     .replace("rbMask", "ringBuffer().mask");
 
-            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor));\n\r"+FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
+            int token = fullScript[activeScriptCursor];
+            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor,"+token+"));\n\r"+FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();

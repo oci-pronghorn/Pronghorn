@@ -18,10 +18,8 @@ public class FASTFilter {
 		this.next = next;
 	}
 	
-	//TODO: B, filter, can accept, reject or hold pending(block message until complete and filtered)
-	//TODO: B, filter, sequence count is MAX not expected, 24/8 count/seqId, id for end of sequence.
+	//TODO: B, filter, can accept or reject once based on first fragment only
 	
-	//When the end is reached the default will be used if it is still undetermined.
 	
 	byte defaultBehavior() {
 		return 1;

@@ -81,12 +81,9 @@ public final class PrimitiveWriter {
         this.safetyStackPosPos = new long[maxGroupCount];
 
         this.output = output;
-
-        // TODO: Z, writing to one end and reading the other of flushSkips may
-        // be causing performance issues
         this.flushSkipsSize = maxGroupCount * 2;
-        this.flushSkips = new int[flushSkipsSize];// this may grow very large,
-                                                  // to fields per group
+        // this may grow very large, to fields per group
+        this.flushSkips = new int[flushSkipsSize];
 
         output.init(new DataTransfer(this));
     }

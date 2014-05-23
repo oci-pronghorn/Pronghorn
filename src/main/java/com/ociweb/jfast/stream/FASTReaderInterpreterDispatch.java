@@ -29,6 +29,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
     
+    protected final int[] fullScript;
+    
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
         this(new TemplateCatalog(catBytes));
     }    
@@ -47,7 +49,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
         this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
         this.MAX_TEXT_INSTANCE_MASK = (null==textHeap)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount()-1));
-        byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
+        this.byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
+        
+        this.fullScript = catalog.fullScript();
     }
     
     public FASTReaderInterpreterDispatch(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
@@ -64,7 +68,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
         this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
         this.MAX_TEXT_INSTANCE_MASK = (null==textHeap)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount()-1));
-        byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
+        this.byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     byteHeap.itemCount() - 1);
+        
+        this.fullScript = fullScript;
     }
 
 
@@ -74,11 +80,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         int limit = activeScriptLimit;
 
         //TODO: A, based on activeScriptCursor set ring buffer member to be used.
+        //FASTRingBuffer ringbuffer = this.ringBuffer(activeScriptCursor)
         
         do {
             int token = fullScript[activeScriptCursor];
 
-            assert (gatherReadData(reader, activeScriptCursor));
+            assert (gatherReadData(reader, activeScriptCursor, token));
             
             //System.err.println("write to "+(ringBuffer().mask &ringBuffer().addPos)+" "+fieldNameScript[activeScriptCursor]+" token: "+TokenBuilder.tokenToString(token));
 
@@ -107,20 +114,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     } else {
                         // 011??
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            //The previous dictionary value will need to have two read from values 
-                            //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
-                            
-                            // 0110? Decimal and DecimalOptional
-                            readDecimalExponent(token, reader); //TODO: can decimal copy previous from different spots?
-                            
-                            //TODO: A, Pass the optional bit flag on to Mantissa for var bit optionals
-                            
-                            token = fullScript[++activeScriptCursor]; //pull second token
-                            //TODO: this token MAY be the readFromIdx and if so we will need to pull another.
-                            
-                            
-                            readDecimalMantissa(token, reader);
-                            readFromIdx = -1; //reset for next field where it might be used. TODO: not sure this is right for both parts of decimal
+                            decodeDecimal(reader, token, fullScript[++activeScriptCursor]); //pull second token);
                         } else {
                             if (readFromIdx>=0) {
                                 int source = token & MAX_TEXT_INSTANCE_MASK;
@@ -183,6 +177,53 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             }
         } while (++activeScriptCursor < limit);
         return sequenceCountStackHead>=0;//false;
+    }
+
+    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken) {
+        //The previous dictionary value will need to have two read from values 
+        //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
+        // 0110? Decimal and DecimalOptional
+        
+        //Use Int exponent but we need to shift the bits first to move the operator
+        
+        int expoToken = expToken&
+                      ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
+                       (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
+                       (TokenBuilder.MAX_INSTANCE));
+        expoToken |= (expToken>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
+        expoToken |= 0x80000000;
+                
+        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+            
+            readIntegerSigned(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader);
+            //exponent is NOT optional so do normal mantissa processing.
+            if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+                // not optional
+                readLongSigned(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
+            } else {
+                // optional
+                readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
+            }
+            
+        } else {
+            decodeOptionalDecimal(reader, mantToken, expoToken);
+        }
+        
+        readFromIdx = -1; //reset for next field where it might be used. TODO: A, not sure this is right for both parts of decimal
+    }
+
+    private void decodeOptionalDecimal(PrimitiveReader reader, int mantToken, int expoToken) {
+        //TODO:  AA, these calls need special logic for supporting the mantissa skip when the exponent is missing.
+        
+        readIntegerSignedOptional(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader);
+        
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+            // not optional
+            readLongSigned(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
+        } else {
+            // optional
+            readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
+        }
     }
 
     //TODO: B, generator must track previous read from for text etc and  generator must track if previous is not used then do not write to dictionary.
@@ -413,8 +454,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                     int target = token & instanceMask;
-
-                    genReadLongSignedNone(target, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                    
+                    genReadLongSignedNone(target, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());  
                 } else {
                     // delta
                     int target = token & instanceMask;
@@ -1042,6 +1083,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
 
+        //TODO: must pass boolean in for this mantissa support.
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // not optional
             readLongSigned(token, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
@@ -1050,7 +1093,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             readLongSignedOptional(token, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
         }
         
-        //NOTE: for testing we need to check what was written
+        //must return what was written
         return FASTRingBuffer.peekLong(ringBuffer().buffer, ringBuffer().addPos-2, ringBuffer().mask);
     };
 
@@ -1237,8 +1280,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int constId = (token & MAX_TEXT_INSTANCE_MASK) | FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     int constInit = textHeap.initStartOffset(constId)| FASTReaderInterpreterDispatch.INIT_VALUE_MASK;
                     
-                    //TODO: redo text to avoid copy and have usage counter in text heap.
-                    int constValue = token & MAX_TEXT_INSTANCE_MASK; //TODO: A, is this real? how do we know where to copy from ?
+                    //TODO: B, redo text to avoid copy and have usage counter in text heap and, not sure we know which array to read from.
+                    int constValue = token & MAX_TEXT_INSTANCE_MASK; 
                     genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constId), textHeap.initLength(constValue), ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
                 }
             } else {

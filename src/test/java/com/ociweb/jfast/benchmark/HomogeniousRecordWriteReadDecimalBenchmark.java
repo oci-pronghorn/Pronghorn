@@ -20,6 +20,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
@@ -57,9 +58,9 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
     static final int[] tokenLookup = buildTokens(fields, types, operators);
 
-    static final DictionaryFactory dcr = new DictionaryFactory();
+    static final DictionaryFactory dictionaryFactory = new DictionaryFactory();
     static {
-        dcr.setTypeCounts(fields, fields, fields, fields);
+        dictionaryFactory.setTypeCounts(fields, fields, fields, fields);
     }
     static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 
@@ -72,9 +73,9 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     static final int[] intTestData = new int[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
     static final long[] longTestData = new long[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
 
-    static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3,
+    static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, 64, 64, 8, 8, null, 3,
             new int[0][0], null, 64);
-    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64,
+    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dictionaryFactory, 3, new int[0][0], 0, 0, 4, 4, null, 64,
             8, 7, maxGroupCount * 10, 0);
 
     static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 2,
@@ -248,7 +249,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             input.reset(); // for testing reset bytes back to the beginning.
             PrimitiveReader.reset(reader);// for testing clear any data found in reader
 
-            staticReader.reset(); // reset message to clear the previous values
+            staticReader.reset(dictionaryFactory); // reset message to clear the previous values
 
             staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
@@ -312,8 +313,9 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
             while (--j >= 0) {
-                staticReader.readDecimalExponent(token, reader);
-                result |= staticReader.readDecimalMantissa(token, reader);
+                
+                staticReader.decodeDecimal(reader,token,token);
+                result |= j;
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;
             staticReader.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), idx, reader);

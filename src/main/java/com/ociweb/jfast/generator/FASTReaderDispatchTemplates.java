@@ -386,7 +386,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
- //TODO: C, test if using ringBuffer reference instead of rbMask is better?
+
     protected void genReadLongSignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=PrimitiveReader.readLongSignedCopy(idx, source, rLongDictionary, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
@@ -404,7 +404,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
-
+  
     protected void genReadLongSignedNone(int idx, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         long tmpLng=rLongDictionary[idx] = PrimitiveReader.readLongSigned(reader);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
@@ -417,7 +417,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
-    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { //TODO: B, Document, anything at the end is ignored and can be injected values.
+    protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { 
         long tmpLng=PrimitiveReader.readLongSignedIncrementOptional(idx, source, rLongDictionary, constAbsent, reader);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
@@ -483,6 +483,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
+    //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
     protected void genReadUTF8DeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int trim = PrimitiveReader.readIntegerSigned(reader);
         if (0 == trim) {

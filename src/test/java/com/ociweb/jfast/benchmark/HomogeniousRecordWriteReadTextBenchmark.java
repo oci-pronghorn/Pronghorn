@@ -59,9 +59,9 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
           };
 
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
-	static final DictionaryFactory dcr = new DictionaryFactory();
+	static final DictionaryFactory dictionaryFactory = new DictionaryFactory();
 	static {
-		dcr.setTypeCounts(fields,fields,fields,fields);
+		dictionaryFactory.setTypeCounts(fields,fields,fields,fields);
 	}
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
@@ -75,8 +75,8 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
 	
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
-	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 24, 0, 4, 4, null, 64,8, 7, maxGroupCount * 10, 0);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, 64, 64, 8, 8, null, 3, new int[0][0],null,64);
+	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dictionaryFactory, 3, new int[0][0], 24, 0, 4, 4, null, 64,8, 7, maxGroupCount * 10, 0);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -385,7 +385,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
-			staticReader.reset(); //reset message to clear the previous values
+			staticReader.reset(dictionaryFactory); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = textTestData.length;

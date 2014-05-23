@@ -48,9 +48,15 @@ public final class FASTRingBuffer {
     private final AtomicInteger addCount;
     public int addPos;
     public int remPos;
+    
+    //TODO: A, use stack of offsets for each fragment until full message is completed.
+    private int[] fragStack; //TODO: B, first offset 0 points to the constants after the ring buffer.
 
     public FASTRingBuffer(byte primaryBits, byte charBits, char[] constTextBuffer, byte[] constByteBuffer) {
         assert (primaryBits >= 1);       
+        
+        int maxFragDepth = 10;//TODO: B, must compute max frag depth in template parser.        
+        this.fragStack = new int[maxFragDepth];
         
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
@@ -59,8 +65,6 @@ public final class FASTRingBuffer {
 
         this.buffer = new int[maxSize];      
         
-        //TODO: A, each field is a constant value relative to the start of the group. A group NEVER spans a sequence.
-        //TODO: A, to split work on messages multiple ring buffers are encouraged. If only one is used switch will be required.
         //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
         //TODO: A, Build custom selectors(), Multi ring vs single ring, Multi threaded vs single threaded.
         //TODO: A, use callback upon new class load to reset field offsets.
@@ -132,7 +136,6 @@ public final class FASTRingBuffer {
 
     }
 
-    // TODO: D, add mappers to go from one buffer to the next
     // TODO: Z, add consumer/Iterator to go from ring buffer to Object stream
     // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
@@ -154,43 +157,42 @@ public final class FASTRingBuffer {
         return p;
     }
 
+    // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
+    
+    //TODO: A, build multi target ring buffers per message and null ring buffer to drop messages.
 
     // next sequence is ready for consumption.
-    public final void unBlockSequence() {
-        // TODO: A, only filter on the message level. sequence will be  difficult because they are nested. Not sure we want to keep this feature?
-        // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
-        
-        //TODO: A, build multi target ring buffers per message and null ring buffer to drop messages.
-
+    public static final void unBlockSequence(FASTRingBuffer ringBuffer) {
+        //can not change mind after first decision.
         // if filtered out the addPos will be rolled back to newGroupPos
-        byte f = filter.go(addCount.get(), this);
+        byte f = ringBuffer.filter.go(ringBuffer.addCount.get(), ringBuffer);
         
         if (f > 0) {// consumer is allowed to read up to addCount
             // normal
-            addCount.lazySet(addPos);
+            ringBuffer.addCount.lazySet(ringBuffer.addPos);
         } else if (f < 0) {
             // skip
-            addPos = addCount.get();
+            ringBuffer.addPos = ringBuffer.addCount.get();
         } // else hold
     }
 
     //
-    public void unBlockMessage() {
+    public static final void unBlockMessage(FASTRingBuffer ringBuffer) {
+        // TODO: B, add filter rules against leading fragment of message including message id. Can not change mind later!      
+        
         // if filtered out the addPos will be rolled back to newGroupPos
-        byte f = filter.go(addCount.get(), this);// TODO: B, may call at end of
-                                                 // message, can not change
-                                                 // mind!
+        byte f = ringBuffer.filter.go(ringBuffer.addCount.get(), ringBuffer);
         if (0 == f) {
             // do not hold use default instead
-            f = filter.defaultBehavior();
+            f = ringBuffer.filter.defaultBehavior();
         }
 
         if (f > 0) {// consumer is allowed to read up to addCount
             // normal
-            addCount.lazySet(addPos);
+            ringBuffer.addCount.lazySet(ringBuffer.addPos);
         } else {
             // skip
-            addPos = addCount.get();
+            ringBuffer.addPos = ringBuffer.addCount.get();
         }
     }
 

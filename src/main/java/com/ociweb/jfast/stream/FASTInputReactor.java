@@ -81,13 +81,14 @@ public class FASTInputReactor {
     }
 
     private static final int sequence(FASTDecoder decoder, FASTRingBuffer rb, PrimitiveReader reader) {
-        rb.unBlockSequence();//TODO: expensive call change to static?
+        FASTRingBuffer.unBlockSequence(rb);
         if ( decoder.readyToDoSequence) { // jumping (backward) to do this sequence again.
             decoder.readyToDoSequence = false;
             return 1;// has group to read
         } else {
             // finished sequence, no need to jump
-            if (1+decoder.activeScriptCursor == decoder.activeScriptLimit) {
+            if (1+decoder.activeScriptCursor == decoder.activeScriptLimit) {//TODO: A, need limit to not be exposed here.
+                System.err.println("**********************888 This happens");
                 decoder.neededSpaceOrTemplate = -1;
                 PrimitiveReader.closePMap(reader);
                 return 3;// finished reading full message and the sequence
@@ -138,8 +139,9 @@ public class FASTInputReactor {
     }
 
     private static final int finishTemplate(FASTRingBuffer ringBuffer, PrimitiveReader reader, FASTDecoder decoder) {
+        
         // reached the end of the script so close and prep for the next one
-        ringBuffer.unBlockMessage();
+        FASTRingBuffer.unBlockMessage(ringBuffer);
         decoder.neededSpaceOrTemplate = -1;
         PrimitiveReader.closePMap(reader);
         return 2;// finished reading full message

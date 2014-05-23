@@ -94,7 +94,7 @@ public class Complex30000Benchmark extends Benchmark {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(false);
+            readerDispatch.reset();
 
         }
         return result;

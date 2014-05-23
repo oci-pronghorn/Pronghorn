@@ -111,7 +111,7 @@ public class TemplateLoaderTest {
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
     //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-  
+        System.gc();
         
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
@@ -199,7 +199,8 @@ public class TemplateLoaderTest {
             }
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(true);
+            readerDispatch.reset();
+            readerDispatch.reset(catalog.dictionaryFactory());
         }
 
         iter = count;
@@ -243,7 +244,8 @@ public class TemplateLoaderTest {
             // //////
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(true);
+            readerDispatch.reset();
+            readerDispatch.reset(catalog.dictionaryFactory());
 
         }
         assertTrue(result != 0);
@@ -409,7 +411,8 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(true);
+            readerDispatch.reset();
+            readerDispatch.reset(catalog.dictionaryFactory());
 
             writer.flush(writer);
             wroteSize = Math.max(wroteSize, writer.totalWritten(writer));
@@ -454,7 +457,8 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(true);
+            readerDispatch.reset();
+            readerDispatch.reset(catalog.dictionaryFactory());
 
             fastOutput.reset();
             writer.reset(writer);

@@ -15,9 +15,7 @@ import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { //TODO: B, should this extend a class with the gens then super. can be used. with writer above that.
-
-
+public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
     public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
             int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
@@ -25,7 +23,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
                 dictionaryMembers, fullScript, maxNestedGroupDepth);
         
-        //TODO: create ringBuffer here and put copy in every slot for array same lenght as fullScript
+        //TODO: AA, create ringBuffer here and put copy in every slot for array same lenght as fullScript
         //Need either 1, way to pass in message/ringBuffer mapping rules or 2. way to set these after construction.
         
         
@@ -1320,38 +1318,39 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
                         expoToken |= 0x80000000;
                         
-                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            
-                            
+                        ///
+                        ///
+                        //
+                        
+                        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
                             acceptIntegerSigned(expoToken, exponent);
-                            
-                            //NOTE: moving forward one to get second token for decimals
-                            token = fullScript[++activeScriptCursor];
-                            
-                            acceptLongSigned(token, mantissa);
                         } else {
-                            
-                            //TODO: A, need null decimal implementation.
-                            
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
-                            	int idx = expoToken & intInstanceMask; 
+                                int idx = expoToken & intInstanceMask; 
                                 
                                 writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
                             } else {
-                            	acceptIntegerSignedOptional(expoToken, exponent);
-                            }
-                            
-                            //NOTE: moving forward one to get second token for decimals
-                            token = fullScript[++activeScriptCursor];
-                            
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-                            	int idx = token & longInstanceMask; 
-                                
-                                writeNullLong(token, idx, writer, longValues); 
-                            } else {
-                            	acceptLongSignedOptional(token, mantissa);
+                                acceptIntegerSignedOptional(expoToken, exponent);
                             }
                         }
+                        
+                        int mantToken = fullScript[++activeScriptCursor];
+                        
+                        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+                            acceptLongSigned(mantToken, mantissa);
+                        } else {
+                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
+                                int idx = mantToken & longInstanceMask; 
+                                
+                                //TODO: B, Must not write null if we have already done so above, but this must also be compiled.
+                                
+                                writeNullLong(mantToken, idx, writer, longValues); 
+                            } else {
+                                acceptLongSignedOptional(mantToken, mantissa);
+                            }
+                        }
+                        
+                        
                     } else {
                         // //0111? ByteArray
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {

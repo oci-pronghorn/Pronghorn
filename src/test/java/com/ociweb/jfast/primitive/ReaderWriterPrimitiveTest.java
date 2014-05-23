@@ -227,7 +227,7 @@ public class ReaderWriterPrimitiveTest {
 			
 		}).start();
 		
-
+		PrimitiveReader.setTimeout(1000000000, pr);
 			
 		cycles = testCycles;
 		while (--cycles>=0) {	

@@ -4,7 +4,9 @@
 package com.ociweb.jfast.primitive;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
+import com.ociweb.jfast.error.FASTError;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 
@@ -43,7 +45,11 @@ public final class PrimitiveReader {
     // both bytes but class def likes int much better for alignment
     private byte pmapIdx = -1;
     private byte bitBlock = 0;
-    private final int resetLimit;
+    private final int resetLimit;  
+
+    //Needed to be this large to pass unit tests.
+    private long nanoBlockingTimeout = 5000000; //maximum wait time for more incoming content in nanoseconds.
+
     
     /**
      * 
@@ -54,7 +60,7 @@ public final class PrimitiveReader {
      * @param input
      * @param maxPMapCountInBytes must be large enough to hold deepest possible nesting of pmaps
      */
-    public PrimitiveReader(int bufferSizeInBytes, FASTInput input, int maxPMapCountInBytes) { //TODO: Stack must be provided by FASTDecoder? to support change? and may change?
+    public PrimitiveReader(int bufferSizeInBytes, FASTInput input, int maxPMapCountInBytes) { 
         this.input = input;
         this.buffer = new byte[bufferSizeInBytes];
         this.resetLimit = 0;
@@ -65,10 +71,10 @@ public final class PrimitiveReader {
 
         input.init(this.buffer);
     }
-    //TODO: valid template switch over can only happen when PmapStack is empty!
+    //TODO: C, validate valid template switch over can only happen when PmapStack is empty!
     
     public PrimitiveReader(byte[] buffer) {
-        this.input = null; //TODO: may want dummy impl for this.
+        this.input = null; //TODO: C, may want dummy impl for this.
         this.buffer = buffer;
         this.resetLimit = buffer.length;
         
@@ -82,7 +88,7 @@ public final class PrimitiveReader {
     }
     
     public PrimitiveReader(byte[] buffer, int maxPMapCountInBytes) {
-        this.input = null; //TODO: may want dummy impl for this.
+        this.input = null; //TODO: C, may want dummy impl for this.
         this.buffer = buffer;
         this.resetLimit = buffer.length;
         
@@ -102,6 +108,14 @@ public final class PrimitiveReader {
 
     }
 
+    public static final void setTimeout(long nanos, PrimitiveReader reader) {
+        reader.nanoBlockingTimeout = nanos;
+    }
+    
+    public static final long getTimeout(PrimitiveReader reader) {
+        return reader.nanoBlockingTimeout;
+    }
+    
     public static final long totalRead(PrimitiveReader reader) {
         return reader.totalReader;
     }
@@ -113,7 +127,7 @@ public final class PrimitiveReader {
     public static final void fetch(PrimitiveReader reader) {
         fetch(0, reader);
     }
-
+    
     // Will not return until the need is met because the parser has
     // determined that we can not continue until this data is provided.
     // this call may however read in more than the need because its ready
@@ -121,25 +135,19 @@ public final class PrimitiveReader {
     private static void fetch(int need, PrimitiveReader reader) {
         int count = 0;
         need = fetchAvail(need, reader);
+        long timeout = 0;
         while (need > 0) { 
             if (0 == count++) {
-
-                // compact and prep for data spike
+                timeout = System.nanoTime()+reader.nanoBlockingTimeout;
+                
+                //TODO: X, compact buffer in prep for data spike
 
             } else {
-                if (count < 10) {
-                    Thread.yield();
-                    // TODO: C, if we are in the middle of parsing a field this
-                    // becomes a blocking read and requires a timeout and throw.
+                if (System.nanoTime()>timeout) {
                     
-                    // TODO: A, AA must make non-blocking and return if no data, add startPos to move position back to.
-                    // Do allow for small timeout, and throw if not forthcoming, will catch and not expose exception.
-
-                } else {
-                    try {
-                        Thread.sleep(0, 100);
-                    } catch (InterruptedException e) {
-                    }
+                    //TODO: B, must roll back to previous position to decode can try again later on this steam.
+                    
+                    throw new FASTException(FASTError.TIMEOUT);
                 }
             }
 
@@ -208,6 +216,8 @@ public final class PrimitiveReader {
     // //
     // called at the start of each group unless group knows it has no pmap
     public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
+        //TODO: X, pmapMaxSize is a constant for many templates and can be injected.
+        
         if (reader.position >= reader.limit) {
             fetch(1, reader);
         }
@@ -216,7 +226,6 @@ public final class PrimitiveReader {
 
         int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
         reader.bitBlock = reader.buffer[reader.position];
-        //TODO: A, this is a constant for many templates and can be injected? still its a copy!.
         k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader);
         reader.invPmapStack[k] = (byte) (3 + pmapMaxSize + (reader.invPmapStackDepth - k));
 

@@ -33,7 +33,7 @@ public class Test {
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
           
           byte[] catBytes = buildRawCatalogData();
-          TemplateCatalog catalog = new TemplateCatalog(catBytes); //TODO: X, defaults 2048 and 32 may not be optimal.
+          TemplateCatalog catalog = new TemplateCatalog(catBytes); 
 
           // connect to file
           URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -56,8 +56,6 @@ public class Test {
           FASTRingBuffer queue = readerDispatch.ringBuffer();
 
           // TODO: X, look into core affinity
-
-          // TODO: B, Use generated class if found else use slower base class
 
           int warmup = 128;
           int count = 1024;
@@ -141,7 +139,8 @@ public class Test {
               }
               //fastInput.reset();
               PrimitiveReader.reset(reader);
-              readerDispatch.reset(true);
+              readerDispatch.reset();
+              readerDispatch.reset(catalog.dictionaryFactory());
           }
 
           iter = count;
@@ -183,7 +182,8 @@ public class Test {
               // //////
               //fastInput.reset();
               PrimitiveReader.reset(reader);
-              readerDispatch.reset(true);
+              readerDispatch.reset();
+              readerDispatch.reset(catalog.dictionaryFactory());
 
           }
           assert(result != 0);
