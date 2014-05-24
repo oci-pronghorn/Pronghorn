@@ -341,7 +341,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
                 // Delta opp never uses PMAP
-                long value = PrimitiveReader.readLongSignedPrivate(reader);
+                long value = PrimitiveReader.readLongSigned(reader);
                 int result1;
                 if (0 == value) {
                     rIntDictionary[target] = 0;// set to absent

@@ -290,11 +290,7 @@ public final class PrimitiveReader {
     // ///////////////////////////////////
     // ///////////////////////////////////
 
-    public static final long readLongSigned(PrimitiveReader reader) {
-        return readLongSignedPrivate(reader);
-    }
-
-    public static long readLongSignedPrivate(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+    public static long readLongSigned(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
         if (reader.limit - reader.position <= 10) {
             return readLongSignedSlow(reader);
         }
@@ -1116,34 +1112,12 @@ public final class PrimitiveReader {
         return (popPMapBit(reader) == 0 ? constDefault : readIntegerSigned(reader));
     }
 
-    public static final int readIntegerSignedDefaultOptional(int constDefault, int constAbsent, PrimitiveReader reader) {
-        if (popPMapBit(reader) == 0) {
-            return constDefault;
-        } else {
-            int value = readIntegerSigned(reader);
-            return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
-        }
-    }
-
     public static final int readIntegerSignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
         return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readIntegerSigned(reader)));
     }
 
-    public static final int readIntegerSignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent, PrimitiveReader reader) {
-
-        if (popPMapBit(reader) == 0) {
-            return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
-        } else {
-            int value;
-            if ((value = readIntegerSigned(reader)) == 0) {
-                dictionary[target] = 0;
-                return constAbsent;
-            } else {
-                return (dictionary[target] = value) - 1;
-            }
-        }
-    }
+    
 
     // For the Long values
 
@@ -1187,25 +1161,20 @@ public final class PrimitiveReader {
 
     //TODO: B, can duplicate this to make a more effecient version when source==target
     public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readLongSignedPrivate(reader));
-    }
-
-    public static final long readLongSignedDefault(long constDefault, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? constDefault : readLongSignedPrivate(reader));
+        return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readLongSigned(reader));
     }
 
     public static final long readLongSignedDefaultOptional(long constDefault, long constAbsent, PrimitiveReader reader) {
         if (popPMapBit(reader) == 0) {
             return constDefault;
         } else {
-            long value = readLongSignedPrivate(reader);
+            long value = readLongSigned(reader);
             return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
         }
     }
 
     public static final long readLongSignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readLongSignedPrivate(reader)));
+        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1) : (dictionary[target] = readLongSigned(reader)));
     }
 
     public static final long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
@@ -1214,7 +1183,7 @@ public final class PrimitiveReader {
             return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
         } else {
             long value;
-            if ((value = readLongSignedPrivate(reader)) == 0) {
+            if ((value = readLongSigned(reader)) == 0) {
                 dictionary[target] = 0;
                 return constAbsent;
             } else {
