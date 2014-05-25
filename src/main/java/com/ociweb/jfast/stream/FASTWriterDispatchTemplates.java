@@ -881,11 +881,11 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         writer.writeByteArrayData(value,offset,length);
     }
     
-    protected void genWriteIntegerSignedDefault(int value, int constDefault, PrimitiveWriter writer) {
+    protected void genWriteIntegerSignedDefault(int constDefault, int value, PrimitiveWriter writer) {
         writer.writeIntegerSignedDefault(value, constDefault);
     }
 
-    protected void genWriteIntegerSignedIncrement(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
+    protected void genWriteIntegerSignedIncrement(int target, int source, int value, PrimitiveWriter writer, int[] intValues) {
         writer.writeIntegerSignedIncrement(value, target, source, intValues);
     }
 
@@ -893,15 +893,15 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         writer.writeIntegerSignedCopy(value, target, source, intValues);
     }
 
-    protected void genWriteIntegerSignedDelta(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
+    protected void genWriteIntegerSignedDelta(int target, int source, int value, PrimitiveWriter writer, int[] intValues) {
         writer.writeIntegerSignedDelta(value, target, source, intValues);
     }
 
-    protected void genWriteIntegerSignedNone(int value, int idx, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSigned(intValues[idx] = value);
+    protected void genWriteIntegerSignedNone(int target, int value, PrimitiveWriter writer, int[] intValues) {
+        writer.writeIntegerSigned(intValues[target] = value);
     }
     
-    protected void genWriteIntegerUnsignedDefault(int value, int constDefault, PrimitiveWriter writer) {
+    protected void genWriteIntegerUnsignedDefault(int constDefault, int value, PrimitiveWriter writer) {
         writer.writeIntegerUnsignedDefault(value, constDefault);
     }
 
@@ -913,74 +913,191 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         writer.writeIntegerUnsignedCopy(value, target, source, intValues);
     }
 
-    protected void genWriteIntegerUnsignedDelta(int value, int idx, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedDelta(value, idx, source, intValues);
+    protected void genWriteIntegerUnsignedDelta(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
+        writer.writeIntegerUnsignedDelta(value, target, source, intValues);
     }
 
-    protected void genWriteIntegerUnsignedNone(int value, int idx, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsigned(intValues[idx] = value);
+    protected void genWriteIntegerUnsignedNone(int value, int target, PrimitiveWriter writer, int[] intValues) {
+        writer.writeIntegerUnsigned(intValues[target] = value);
     }
 
-    protected void genWriteIntegerSignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-        if (value >= 0) {
-            value++;// room for null
+    protected void genWriteIntegerSignedDefaultOptional(int source, int constDefault, int valueOfNull, int value, PrimitiveWriter writer) {
+        if (valueOfNull == value) {
+            StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+        } else {
+            writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault);
         }
-        writer.writeIntegerSignedDefaultOptional(value, constDefault);
     }
 
-    protected void genWriteIntegerSignedIncrementOptional(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        if (value >= 0) {
-            value++;
+    protected void genWriteIntegerSignedIncrementOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+        } else { 
+            int last = intValues[source];
+            writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last);  
+        }        
+    }
+
+    protected void genWriteIntegerSignedCopyOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+        } else {        
+            writer.writeIntegerSignedCopyOptional(value>=0?value+1:value, target, source, intValues);
         }
-        int last = intValues[source];
-        intValues[target] = value;
-        writer.writeIntegerSignedIncrementOptional(value, last);
     }
 
-    protected void genWriteIntegerSignedCopyOptional(int value, int idx, int source, PrimitiveWriter writer, int[] intValues) {
-        if (value >= 0) {
-            value++;
+    //this is how a "boolean" is sent using a single bit in the encoding.
+    protected void genWriteIntegerSignedConstantOptional(int valueOfNull, int value, PrimitiveWriter writer) {
+        PrimitiveWriter.writePMapBit(valueOfNull==value ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
+    }
+
+    protected void genWriteIntegerSignedDeltaOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+        } else {
+            writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
         }
-        
-        writer.writeIntegerSignedCopyOptional(value, idx, source, intValues);
     }
 
-    protected void genWriteIntegerSignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
+    protected void genWriteIntegerSignedNoneOptional(int target, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+        } else {
+            writer.writeIntegerSignedOptional(value);
+        }
     }
 
-    protected void genWriteIntegerSignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
+    protected void genWriteIntegerUnsignedCopyOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+        } else { 
+            writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
+        }
     }
 
-    protected void genWriteIntegerSignedNoneOptional(int value, PrimitiveWriter writer) {
-        writer.writeIntegerSignedOptional(value);
+    protected void genWriteIntegerUnsignedDefaultOptional(int source, int valueOfNull, int value, int constDefault, PrimitiveWriter writer) {
+        if (valueOfNull == value) {
+            StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+        } else {
+            writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
+        }
     }
 
-    protected void genWriteIntegerUnsignedCopyOptional(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
+    protected void genWriteIntegerUnsignedIncrementOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+        } else { 
+            writer.writeIntegerUnsignedIncrementOptional(value, target, source, intValues);
+        }
     }
 
-    protected void genWriteIntegerUnsignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
+    protected void genWriteIntegerUnsignedConstantOptional(int valueOfNull, int value, PrimitiveWriter writer) {
+        PrimitiveWriter.writePMapBit(valueOfNull==value ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
     }
 
-    protected void genWriteIntegerUnsignedIncrementOptional(int value, int idx, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedIncrementOptional(value, idx, source, intValues);
+    protected void genWriteIntegerUnsignedDeltaOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
+        if (valueOfNull == value) {
+            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+        } else {
+            writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
+        }
     }
 
-    protected void genWriteIntegerUnsignedConstantOptional(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
+    protected void genWriteIntegerUnsignedNoneOptional(int target, int valueOfNull, int value, PrimitiveWriter writer) {
+        if (valueOfNull == value) {
+            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+        } else {
+            writer.writeIntegerUnsigned(value + 1);
+        }
+    }
+    
+    
+    //TODO: A, need to move the ring buffer logic down into the gen methdos instead of passing value in each case for write!!!
+    
+
+    ////////////////////////
+    ///Decimals with optional exponent
+    /////////////////////////
+
+      protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+      {
+        int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
+        if (exponentValueOfNull == exponentValue) {
+            StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+        } else {
+            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault);
+            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+        }
+      }
     }
 
-    protected void genWriteIntegerUnsignedDeltaOptional(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
+    protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
+            if (exponentValueOfNull == exponentValue) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+            } else { 
+                int last = intValues[exponentSource];
+                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }   
+        }
     }
 
-    protected void genWriteIntegerUnsignedNoneOptional(int value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value + 1);
+    protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+            } else {        
+                writer.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
     }
 
+    protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+        { 
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull==exponentValue) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos));        
+            }     
+        }
+    }
+
+    protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
+    }
+
+    protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedOptional(exponentValue);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
+    }
+//TODO: must duplicate the code above for the other 5 types.
+      
+    
+    //////////////
+    //end of decimals
+    ///////////////
+    
     protected void genWriteLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
         writer.writeLongUnsignedDefault(value, constDefault);
     }
@@ -1151,31 +1268,7 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
     }
     
     public void genWriteNullPMap(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 0, writer);
-    }
-
-    public void genWriteNullDefaultInt(PrimitiveWriter writer, int[] dictionary, int idx) {
-        if (dictionary[idx] == 0) { // stored value was null;
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
-        }
-    }
-
-    public void genWriteNullCopyIncInt(PrimitiveWriter writer, int[] dictionary, int idx) {
-        if (0 == dictionary[idx]) { // stored value was null;
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            dictionary[idx] = 0;
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
-        }
-    }
-
-    public void genWriteNullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
-        dictionary[idx] = 0;
-        writer.writeNull();
+        StaticGlue.nullPMap(writer);  // null for const optional
     }
 
     public void genWriteNullDefaultLong(PrimitiveWriter writer, long[] dictionary, int idx) {

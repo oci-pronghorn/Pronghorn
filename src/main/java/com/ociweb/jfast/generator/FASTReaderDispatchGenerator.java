@@ -26,7 +26,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     private static final String FRAGMENT_METHOD_NAME = "fragment";    
     
-    private static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//32;//128;//NOTE: we may want to make this smaller in the production release.
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 64;//32;//128;//NOTE: we may want to make this smaller in the production release.
     private static final String ENTRY_METHOD_NAME = "decode";
     
     SourceTemplates templates;

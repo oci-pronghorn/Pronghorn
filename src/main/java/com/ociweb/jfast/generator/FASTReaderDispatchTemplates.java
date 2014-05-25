@@ -17,6 +17,9 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 //TODO: X, Add un-decoded field option so caller can deal with the subtraction of optionals.
 //TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
 
+//TODO: X, Send Amazon gift card to anyone who can supply another software based project, template, and example file that can run faster than this implementation. (One per project)
+
+
 //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
 
 public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
@@ -192,11 +195,36 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     // int methods
 
     protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        rbB[rbMask & rbRingBuffer.addPos++] = PrimitiveReader.readIntegerUnsignedDefaultOptional(constDefault, constAbsent, reader);
+
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
+        } else {
+            int value = PrimitiveReader.readIntegerUnsigned(reader);
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = value-1;
+            }
+        }
+
     }
 
     protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        rbB[rbMask & rbRingBuffer.addPos++] = PrimitiveReader.readIntegerUnsignedIncrementOptional(target, source, rIntDictionary, constAbsent, reader);
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            if (rIntDictionary[target] == 0) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+            }
+        } else {
+            int value;
+            if ((value = PrimitiveReader.readIntegerUnsigned(reader)) == 0) {
+                rIntDictionary[target] = 0;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = value) - 1;
+            }
+        }
     }
 
     protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -288,31 +316,29 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadIntegerSignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int result;
+
         if (PrimitiveReader.popPMapBit(reader) == 0) {
-            result = constDefault;
+            rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
         } else {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            result = value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
+            rbB[rbMask & rbRingBuffer.addPos++] =  value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
         }
-        rbB[rbMask & rbRingBuffer.addPos++] = result;
     }
 
 
     protected void genReadIntegerSignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int result;
+
         if (PrimitiveReader.popPMapBit(reader) == 0) {
-            result = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+            rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
         } else {
             int value;
             if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
                 rIntDictionary[target] = 0;
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
             } else {
-                result = (rIntDictionary[target] = value) - 1;
+                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = value) - 1;
             }
         }
-        rbB[rbMask & rbRingBuffer.addPos++] = result;
     }
     
 
@@ -444,6 +470,24 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     //optional decimals//////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
+    /*
+     * From the spec:
+     * 
+    Decimal fields with individual operators have the following utilization:
+        • If the decimal has mandatory presence, the exponent and mantissa fields are treated as two
+        separate mandatory integer fields as described above.
+        • If the decimal has optional presence, the exponent field is treated as an optional integer field and
+        the mantissa field is treated as a mandatory integer field. The presence of the mantissa field and
+        any related bits in the presence map are dependent on the presence of the exponent. The
+        mantissa field appears in the stream iff the exponent value is considered present. If the mantissa
+        has an operator that requires a bit in the presence map, this bit is present iff the exponent value is
+        considered present.
+    */
+    
+    //The parser will ensure that the second token used for the decimal will never be of type optional.
+    //The code here will skip over reading the pmap bit and data if the exponent is "Absent"
+    
+    
     //default
     
     protected void genReadDecimalDefaultOptionalMantissaDefault(int constAbsent, int constDefault, long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -476,7 +520,15 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalIncrementOptionalMantissaDefault(int target, int source, int constAbsent, long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {   
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }    
+                
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
@@ -527,31 +579,28 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaDefault(int constAbsent, int constConst, long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
-                //Long signed default
-               if (0==PrimitiveReader.popPMapBit(reader)) {
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
-               } else {
-                   long tmpLng = PrimitiveReader.readLongSigned(reader);
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-               }
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-            }
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            //must still write long even when we skipped reading its pmap bit. but value is undefined.
+            rbRingBuffer.addPos+=2;
+        } else {
+            rbB[rbMask & rbRingBuffer.addPos++] = constConst;
+            //Long signed default
+           if (0==PrimitiveReader.popPMapBit(reader)) {
+               rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
+               rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
+           } else {
+               long tmpLng = PrimitiveReader.readLongSigned(reader);
+               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+           }
         }
+        
     }
     protected void genReadDecimalDeltaOptionalMantissaDefault(int target, int source, int constAbsent, long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
                 rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
@@ -574,22 +623,23 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalOptionalMantissaDefault(int constAbsent, long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
-                //Long signed default
-               if (0==PrimitiveReader.popPMapBit(reader)) {
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
-               } else {
-                   long tmpLng = PrimitiveReader.readLongSigned(reader);
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-                   rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-               }
-            } else {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbRingBuffer.addPos+=2;
-        }
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
+              //Long signed default
+                if (0==PrimitiveReader.popPMapBit(reader)) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
+                    rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
+                } else {
+                    long tmpLng = PrimitiveReader.readLongSigned(reader);
+                    rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                    rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+                }
+            }
+            
         }
     }
     
@@ -619,7 +669,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalIncrementOptionalMantissaIncrement(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }    
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
@@ -660,58 +717,54 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaIncrement(int constAbsent, int constConst, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
+
+            if (PrimitiveReader.popPMapBit(reader) == 0) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = constConst;
                 //Long signed increment
                long tmpLng=PrimitiveReader.readLongSignedIncrement(mantissaTarget, mantissaSource, rLongDictionary, reader);
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+            }
+
     }
     protected void genReadDecimalDeltaOptionalMantissaIncrement(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
             } else {
-                result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (!absent) {
+                rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
                 //Long signed increment
                 long tmpLng=PrimitiveReader.readLongSignedIncrement(mantissaTarget, mantissaSource, rLongDictionary, reader);
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+            
         }
     }
     
     protected void genReadDecimalOptionalMantissaIncrement(int constAbsent, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
                 //Long signed increment
                long tmpLng=PrimitiveReader.readLongSignedIncrement(mantissaTarget, mantissaSource, rLongDictionary, reader);
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+     
         }
     }
     
@@ -741,30 +794,38 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadDecimalIncrementOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
-            int result1;
+            
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                result1 = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }    
+                
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
                     rIntDictionary[target] = 0;
-                    result1 = constAbsent;
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
                 } else {
-                    result1 = (rIntDictionary[target] = value) - 1;
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = value) - 1;
                 }
             }
-            int result = result1;
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (constAbsent != result) {
-                //Long signed copy
-                long tmpLng=PrimitiveReader.readLongSignedCopy(mantissaTarget, mantissaSource, rLongDictionary, reader);
-                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+            
+            //Long signed copy
+            long tmpLng=PrimitiveReader.readLongSignedCopy(mantissaTarget, mantissaSource, rLongDictionary, reader);
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        }    
+            
+         
     }
     
     protected void genReadDecimalCopyOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -786,58 +847,55 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaCopy(int constAbsent, int constConst, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
+
+            if (PrimitiveReader.popPMapBit(reader) == 0) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = constConst;
                 //Long signed copy
                long tmpLng=PrimitiveReader.readLongSignedCopy(mantissaTarget, mantissaSource, rLongDictionary, reader);
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+            }             
+
     }
     protected void genReadDecimalDeltaOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
             } else {
-                result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (!absent) {
+                rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
                 //Long signed copy
                 long tmpLng=PrimitiveReader.readLongSignedCopy(mantissaTarget, mantissaSource, rLongDictionary, reader);
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+            
         }
     }
     
     protected void genReadDecimalOptionalMantissaCopy(int constAbsent, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
+            
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
                 //Long signed copy
                long tmpLng=PrimitiveReader.readLongSignedCopy(mantissaTarget, mantissaSource, rLongDictionary, reader);
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+                    
         }
     }
     
@@ -866,7 +924,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalIncrementOptionalMantissaConstant(int target, int source, int constAbsent, long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }    
+                
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
@@ -905,55 +972,53 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaConstant(int constAbsent, int constConst, long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
+        
+            if (PrimitiveReader.popPMapBit(reader) == 0) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
+            } else {
+                rbB[rbMask & rbRingBuffer.addPos++] = constConst;
                 //Long signed constant
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
                rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+            } 
+            
     }
+      
     protected void genReadDecimalDeltaOptionalMantissaConstant(int target, int source, int constAbsent, long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
             } else {
-                result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (!absent) {
+                rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
                 //Long signed constant
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+            
         }
     }
-    
+
     protected void genReadDecimalOptionalMantissaConstant(int constAbsent, long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
+            
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
-                //Long signed constant
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
-            } else {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbRingBuffer.addPos+=2;
-        }
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
+                //Long signed constant
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (mantissaConstDefault & 0xFFFFFFFF);
+            }
+                        
         }
     }
     
@@ -983,7 +1048,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalIncrementOptionalMantissaDelta(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }    
+                
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
@@ -1023,58 +1097,53 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaDelta(int constAbsent, int constConst, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
-                //Long signed delta
-               long tmpLng=(rLongDictionary[mantissaTarget] = (rLongDictionary[mantissaSource] + PrimitiveReader.readLongSigned(reader)));
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            //must still write long even when we skipped reading its pmap bit. but value is undefined.
+            rbRingBuffer.addPos+=2;
+        } else {
+            rbB[rbMask & rbRingBuffer.addPos++] = constConst;
+            //Long signed delta
+           long tmpLng=(rLongDictionary[mantissaTarget] = (rLongDictionary[mantissaSource] + PrimitiveReader.readLongSigned(reader)));
+           rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+           rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        } 
+        
     }
     protected void genReadDecimalDeltaOptionalMantissaDelta(int target, int source, int constAbsent, int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
             } else {
-                result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (!absent) {
+                rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
                 //Long signed delta
                 long tmpLng=(rLongDictionary[mantissaTarget] = (rLongDictionary[mantissaSource] + PrimitiveReader.readLongSigned(reader)));
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+            
         }
     }
     
     protected void genReadDecimalOptionalMantissaDelta(int constAbsent, int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
-                //Long signed delta
-               long tmpLng=(rLongDictionary[mantissaTarget] = (rLongDictionary[mantissaSource] + PrimitiveReader.readLongSigned(reader)));
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbRingBuffer.addPos+=2;
-        }
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
+                //Long signed delta
+                long tmpLng=(rLongDictionary[mantissaTarget] = (rLongDictionary[mantissaSource] + PrimitiveReader.readLongSigned(reader)));
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+            
         }
     }
     
@@ -1104,7 +1173,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalIncrementOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             if (PrimitiveReader.popPMapBit(reader) == 0) {
-                rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] == 0 ? constAbsent : (rIntDictionary[target] = rIntDictionary[source] + 1));
+                
+                if (0==rIntDictionary[target]) {
+                    rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;  
+                    //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                    rbRingBuffer.addPos+=2;
+                    return;
+                } else {
+                    rbB[rbMask & rbRingBuffer.addPos++] = (rIntDictionary[target] = rIntDictionary[source] + 1);
+                }        
+               
             } else {
                 int value;
                 if ((value = PrimitiveReader.readIntegerSigned(reader)) == 0) {
@@ -1144,63 +1222,57 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadDecimalConstantOptionalMantissaNone(int constAbsent, int constConst, int mantissaTarget, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {
-            boolean absent = PrimitiveReader.popPMapBit(reader) == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = (absent ? constAbsent : constConst);
-            if (!absent) {
-                //Long signed none
-               long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
-        }
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+            //must still write long even when we skipped reading its pmap bit. but value is undefined.
+            rbRingBuffer.addPos+=2;
+        } else {
+            rbB[rbMask & rbRingBuffer.addPos++] = constConst;
+            //Long signed none
+           long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
+           rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+           rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        } 
+
     }
     protected void genReadDecimalDeltaOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            int result;
-            boolean absent = 0==value;
-            if (absent) {
+            if (0==value) {
                 rIntDictionary[target] = 0;// set to absent
-                result = constAbsent;
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;
+                //must still write long even when we skipped reading its pmap bit. but value is undefined.
+                rbRingBuffer.addPos+=2;
             } else {
-                result = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
-            }
-            rbB[rbMask & rbRingBuffer.addPos++] = result;
-            if (!absent) {
+                rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = (int) (rIntDictionary[source] + (value > 0 ? value - 1 : value));
                 //Long signed none
                 long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
                 rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
-                //must still write long even when we skipped reading its pmap bit. but value is undefined.
-                rbRingBuffer.addPos+=2;
-        }
+            }
+            
         }
     }
     
     protected void genReadDecimalOptionalMantissaNone(int constAbsent, int mantissaTarget, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         {
+            
             int value = PrimitiveReader.readIntegerSigned(reader);
-            boolean absent = value == 0;
-            rbB[rbMask & rbRingBuffer.addPos++] = absent ? constAbsent : (value > 0 ? value - 1 : value);
-            if (!absent) {
-                //Long signed none
-               long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-               rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
-            } else {
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;                
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbRingBuffer.addPos+=2;
+            } else {                
+                rbB[rbMask & rbRingBuffer.addPos++] = (value > 0 ? value - 1 : value);                    
+                //Long signed none
+                long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }                      
+    
         }
-        }
-    }
-    
-    
-    
+    }    
+        
     /////////////////////////////////////////////////////////////////////////////
     /////end ////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////
@@ -1245,22 +1317,55 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadLongUnsignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long tmpLng=PrimitiveReader.readLongUnsignedDefaultOptional(constDefault, constAbsent, reader);
+        long result;
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            result = constDefault;
+        } else {
+            long value = PrimitiveReader.readLongUnsigned(reader);
+            if (0==value) {
+                result = constAbsent;
+            } else {
+                result = value -1;
+            }
+        }
+        long tmpLng=result;
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
 
     protected void genReadLongUnsignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long tmpLng=PrimitiveReader.readLongUnsignedIncrementOptional(idx, source, rLongDictionary, constAbsent, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            if (0 == rLongDictionary[idx]) {
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = (rLongDictionary[idx] = rLongDictionary[source] + 1);
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+        } else {
+            long value;
+            if ((value = PrimitiveReader.readLongUnsigned(reader)) == 0) {
+                rLongDictionary[idx] = 0;
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = (rLongDictionary[idx] = value) - 1;
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+        }
+
     }
 
     protected void genReadLongUnsignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        {
         long xl1;
         long tmpLng=(0 == (xl1 = PrimitiveReader.readLongUnsignedCopy(idx, source, rLongDictionary, reader)) ? constAbsent : xl1 - 1);
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        }
     }
 
     protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -1289,14 +1394,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadLongUnsignedOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long value = PrimitiveReader.readLongUnsigned(reader);
-        if (0==value) {
-            rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
-            rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
-        } else {
-            long tmpLng = value-1;
-            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        {
+            long value = PrimitiveReader.readLongUnsigned(reader);
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = value-1;
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
         }
     }
 
@@ -1311,17 +1418,20 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         }        
     }
 
-    //TODO: X, rewrite so long values are pre shifted and masked for these constants. walk the rest of the code for these.
     protected void genReadLongSignedIncrement(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long tmpLng=PrimitiveReader.readLongSignedIncrement(idx, source, rLongDictionary, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        {
+            long tmpLng=PrimitiveReader.readLongSignedIncrement(idx, source, rLongDictionary, reader);
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        }
     }
 
     protected void genReadLongSignedCopy(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long tmpLng=PrimitiveReader.readLongSignedCopy(idx, source, rLongDictionary, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        {
+            long tmpLng=PrimitiveReader.readLongSignedCopy(idx, source, rLongDictionary, reader);
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        }
     }
 
     protected void genReadLongSignedConstant(long constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
@@ -1342,15 +1452,47 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadLongSignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        long tmpLng=PrimitiveReader.readLongSignedDefaultOptional(constDefault, constAbsent, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (constDefault >>> 32); 
+            rbB[rbMask & rbRingBuffer.addPos++] = (int) (constDefault & 0xFFFFFFFF);
+        } else {
+            long value = PrimitiveReader.readLongSigned(reader);
+            if (0==value) {
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = (value > 0 ? value - 1 : value);
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+        }
     }
 
     protected void genReadLongSignedIncrementOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) { 
-        long tmpLng=PrimitiveReader.readLongSignedIncrementOptional(idx, source, rLongDictionary, constAbsent, reader);
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+
+        if (PrimitiveReader.popPMapBit(reader) == 0) {
+            if (0 == rLongDictionary[idx]) {
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = (rLongDictionary[idx] = rLongDictionary[source] + 1);
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+        } else {
+            long value;
+            if ((value = PrimitiveReader.readLongSigned(reader)) == 0) {
+                rLongDictionary[idx] = 0;
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (constAbsent & 0xFFFFFFFF);
+            } else {
+                long tmpLng = (rLongDictionary[idx] = value) - 1;
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
+                rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+            }
+        }
+
     }
 
     protected void genReadLongSignedCopyOptional(int idx, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {

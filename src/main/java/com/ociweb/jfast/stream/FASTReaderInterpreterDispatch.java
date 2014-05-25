@@ -185,14 +185,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
         // 0110? Decimal and DecimalOptional
         
-        //Use Int exponent but we need to shift the bits first to move the operator
-        
-        int expoToken = expToken&
-                      ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
-                       (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
-                       (TokenBuilder.MAX_INSTANCE));
-        expoToken |= (expToken>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
-        expoToken |= 0x80000000;
+
+        int expoToken = expToken;
                 
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
             
@@ -216,9 +210,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     }
 
     private void decodeOptionalDecimal(PrimitiveReader reader, int mantToken, int expoToken) {
-        //TODO:  AA, these calls need special logic for supporting the mantissa skip when the exponent is missing.
+       System.err.println("warning: this must be implemented for:"+TokenBuilder.tokenToString(expoToken));
         
-        //TODO: these must return a boolean to indicate if the next step should be done.
+       //In this method we split out by exponent operator then call the specific method needed
+       //for the remaining split by mantissa.
         
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -286,8 +281,59 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             // optional
             readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
         }
+        
+        
     }
 
+    private void readLongSigned1(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
+
+        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = token & instanceMask;
+                // none, delta
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    
+                   // genReadLongSignedNone(target, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());  
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
+
+                 //   genReadLongSignedDelta(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[token & instanceMask];
+             //   genReadLongSignedConstant(constDefault, ringBuffer().buffer, ringBuffer().mask, ringBuffer());
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = token & instanceMask;
+                int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
+                // copy, increment
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy
+
+              //      genReadLongSignedCopy(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                } else {
+                    // increment
+
+            //        genReadLongSignedIncrement(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[token & instanceMask];
+
+          //      genReadLongSignedDefault(constDefault, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+            }
+        }
+    }
+    
+    
     //TODO: B, generator must track previous read from for text etc and  generator must track if previous is not used then do not write to dictionary.
     //TODO: B, add new genCopy for each dictionary type and call as needed before the gen methods, LATER: integrate this behavior.
     
@@ -512,15 +558,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = token & instanceMask;
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int target = token & instanceMask;
                     
                     genReadLongSignedNone(target, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());  
                 } else {
                     // delta
-                    int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
                     genReadLongSignedDelta(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
@@ -535,17 +580,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = token & instanceMask;
+                int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int target = token & instanceMask;
-                    int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
                     genReadLongSignedCopy(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
                 } else {
                     // increment
-                    int target = token & instanceMask;
-                    int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
 
                     genReadLongSignedIncrement(target, source, rLongDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
                 }

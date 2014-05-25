@@ -47,7 +47,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // int
                 int idx = token & intInstanceMask;
                 
-                writeNullInt(token, writer, intValues, idx);
+                // hack until all the classes no longer need this method.
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                } else {
+                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                }
             } else {
                 // long
                 int idx = token & longInstanceMask;
@@ -68,7 +73,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     int idx = token & intInstanceMask;
                     
                     //TODO: A, must implement null for decimals
-                    writeNullInt(token, writer,intValues, idx); 
+                    // hack until all the classes no longer need this method.
+                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    } else {
+                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    } 
 
                     int idx1 = token & longInstanceMask;
                     
@@ -353,13 +363,13 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(value, idx, writer, intValues);
+                    genWriteIntegerSignedNone(idx, value, writer, intValues);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDelta(value, target, source, writer, intValues);
+                    genWriteIntegerSignedDelta(target, source, value, writer, intValues);
                 }
             } else {
                 // constant
@@ -383,14 +393,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     genWriteIntegerSignedCopy(value, target, source, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrement(value, target, source, writer, intValues);
+                    genWriteIntegerSignedIncrement(target, source, value, writer, intValues);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefault(value, constDefault, writer);
+                genWriteIntegerSignedDefault(constDefault, value, writer);
             }
         }
     }
@@ -441,52 +451,58 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefault(value, constDefault, writer);
+                genWriteIntegerUnsignedDefault(constDefault, value, writer);
             }
         }
     }
 
 
     public void acceptIntegerSignedOptional(int token, int value) {
+        
+        //TODO: B, Add lookup for value of absent/null instead of this constant.
+        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+        
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = (token & intInstanceMask);
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerSignedNoneOptional(value, writer);
+                    genWriteIntegerSignedNoneOptional(target, valueOfNull, value, writer, intValues);
                 } else {
-                    int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDeltaOptional(value, target, source, writer, intValues);
+                    genWriteIntegerSignedDeltaOptional(target, source, valueOfNull, value, writer, intValues);
                 }
             } else {
                 // constant
-                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteIntegerSignedConstantOptional(writer);
+                assert (intValues[token & intInstanceMask] == value &&
+                        valueOfNull == value) : "Only the constant value from the template or null may be sent";
+                
+                genWriteIntegerSignedConstantOptional(valueOfNull, value, writer);
                 // the writeNull will take care of the rest.
             }
 
         } else {
+            int target = (token & intInstanceMask);
+            int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                int target = (token & intInstanceMask);
-                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopyOptional(value, target, source, writer, intValues);
+                    genWriteIntegerSignedCopyOptional(target, source, valueOfNull, value, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrementOptional(value, target, source, writer, intValues);
+                    genWriteIntegerSignedIncrementOptional(target, source, valueOfNull, value, writer, intValues);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefaultOptional(value, constDefault, writer);
+                genWriteIntegerSignedDefaultOptional(source, constDefault, valueOfNull, value, writer);
             }
         }
     }
@@ -494,46 +510,49 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     private void acceptIntegerUnsignedOptional(int token, int value) {
 
+        //TODO: B, Add lookup for value of absent/null instead of this constant.
+        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = (token & intInstanceMask);
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerUnsignedNoneOptional(value, writer);
+                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, value, writer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDeltaOptional(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedDeltaOptional(target, source, valueOfNull, value, writer, intValues);
                 }
             } else {
                 // constant
                 assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteIntegerUnsignedConstantOptional(writer);
+                genWriteIntegerUnsignedConstantOptional(valueOfNull, value, writer);
                 // the writeNull will take care of the rest.
             }
 
         } else {
+            int target = (token & intInstanceMask);
+            int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // copy, increment
-                int target = (token & intInstanceMask);
-                int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopyOptional(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedCopyOptional(target, source, valueOfNull, value, writer, intValues);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrementOptional(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedIncrementOptional(target, source, valueOfNull, value, writer, intValues);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefaultOptional(value, constDefault, writer);
+                genWriteIntegerUnsignedDefaultOptional(source, valueOfNull, value, constDefault, writer);
             }
         }
     }
@@ -1307,31 +1326,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                         // 0110? Decimal and DecimalOptional
                         
+                        int expoToken = token;
                         
                         int exponent = FASTRingBufferReader.readInt(queue, fieldPos);
                         long mantissa = FASTRingBufferReader.readLong(queue, fieldPos + 1);
+
                         
-                        int expoToken = token&
-                                ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
-                                        (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
-                                        (TokenBuilder.MAX_INSTANCE));
-                        expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
-                        expoToken |= 0x80000000;
-                        
-                        ///
-                        ///
-                        //
+                        //at runtime if the value is null for the exponent must not
+                        //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
                             acceptIntegerSigned(expoToken, exponent);
                         } else {
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT==exponent) {
-                                int idx = expoToken & intInstanceMask; 
-                                
-                                writeNullInt(expoToken, writer, intValues, idx); //needed for decimal.
-                            } else {
-                                acceptIntegerSignedOptional(expoToken, exponent);
-                            }
+                            //TODO: need special methods for the null support in decimals.
+                            
+                            acceptIntegerSignedOptional(expoToken, exponent);
+
                         }
                         
                         int mantToken = fullScript[++activeScriptCursor];
@@ -1528,29 +1538,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     public void writePreamble(byte[] preambleData) {
         genWritePreamble(preambleData, writer);
     }
-
-    public void writeNullInt(int token, PrimitiveWriter writer, int[] dictionary, int idx) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta (both do not use pmap)
-                genWriteNullNoPMapInt(writer, dictionary, idx);    // no pmap, yes change to last value
-            } else {
-                // Copy and Increment    
-                genWriteNullCopyIncInt(writer, dictionary, idx);  // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                // const optional
-                genWriteNullPMap(writer); // pmap only
-            } else {
-                // default    
-                genWriteNullDefaultInt(writer, dictionary, idx);   // yes pmap, no change to last value
-            }
-        }
-    }
-
-    
 
     public void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {

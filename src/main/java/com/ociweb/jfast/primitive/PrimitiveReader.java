@@ -21,6 +21,11 @@ import com.ociweb.jfast.field.TokenBuilder;
  * the Java and Julia implementations to have the same design.  It also removes any vtable
  * lookups that may have been required by a more traditional approach.
  * 
+ * None of the Optional field logic is here.  That can be better optimized at the layer above
+ * this class. Here we will find Unsigned/Signed, Char sequence and Byte sequence logic. How 
+ * these methods are combined in order to meet the needs of the spec are found in the 
+ * FASTReaderDispatchTemplates class.
+ * 
  * @author Nathan Tippy
  * 
  */
@@ -1077,30 +1082,9 @@ public final class PrimitiveReader {
         return (popPMapBit(reader) == 0 ? constDefault : readIntegerUnsigned(reader));
     }
 
-    public static final int readIntegerUnsignedDefaultOptional(int constDefault, int constAbsent, PrimitiveReader reader) {
-        int value;
-        return (popPMapBit(reader) == 0) ? constDefault
-                : (value = readIntegerUnsigned(reader)) == 0 ? constAbsent : value - 1;
-    }
-
     public static final int readIntegerUnsignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
         return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readIntegerUnsigned(reader)));
-    }
-
-    public static final int readIntegerUnsignedIncrementOptional(int target, int source, int[] dictionary, int constAbsent, PrimitiveReader reader) {
-
-        if (popPMapBit(reader) == 0) {
-            return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
-        } else {
-            int value;
-            if ((value = readIntegerUnsigned(reader)) == 0) {
-                dictionary[target] = 0;
-                return constAbsent;
-            } else {
-                return (dictionary[target] = value) - 1;
-            }
-        }
     }
 
     public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
@@ -1130,33 +1114,9 @@ public final class PrimitiveReader {
         return (popPMapBit(reader) == 0 ? constDefault : readLongUnsigned(reader));
     }
 
-    public static final long readLongUnsignedDefaultOptional(long constDefault, long constAbsent, PrimitiveReader reader) {
-        if (popPMapBit(reader) == 0) {
-            return constDefault;
-        } else {
-            long value = readLongUnsigned(reader);
-            return value == 0 ? constAbsent : value - 1;
-        }
-    }
-
     public static final long readLongUnsignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
         return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
                 : (dictionary[target] = readLongUnsigned(reader)));
-    }
-
-    public static final long readLongUnsignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
-
-        if (popPMapBit(reader) == 0) {
-            return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
-        } else {
-            long value;
-            if ((value = readLongUnsigned(reader)) == 0) {
-                dictionary[target] = 0;
-                return constAbsent;
-            } else {
-                return (dictionary[target] = value) - 1;
-            }
-        }
     }
 
     //TODO: B, can duplicate this to make a more effecient version when source==target
@@ -1164,33 +1124,10 @@ public final class PrimitiveReader {
         return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readLongSigned(reader));
     }
 
-    public static final long readLongSignedDefaultOptional(long constDefault, long constAbsent, PrimitiveReader reader) {
-        if (popPMapBit(reader) == 0) {
-            return constDefault;
-        } else {
-            long value = readLongSigned(reader);
-            return value == 0 ? constAbsent : (value > 0 ? value - 1 : value);
-        }
-    }
-
     public static final long readLongSignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
         return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1) : (dictionary[target] = readLongSigned(reader)));
     }
-
-    public static final long readLongSignedIncrementOptional(int target, int source, long[] dictionary, long constAbsent, PrimitiveReader reader) {
-
-        if (popPMapBit(reader) == 0) {
-            return (dictionary[target] == 0 ? constAbsent : (dictionary[target] = dictionary[source] + 1));
-        } else {
-            long value;
-            if ((value = readLongSigned(reader)) == 0) {
-                dictionary[target] = 0;
-                return constAbsent;
-            } else {
-                return (dictionary[target] = value) - 1;
-            }
-        }
-    }
+    
 
     // //////////////
     // /////////
@@ -1202,6 +1139,7 @@ public final class PrimitiveReader {
 
     }
 
+    //only needed for preamble, which is not BTW found in the spec.
     public static int readRawInt(PrimitiveReader reader) {
         if (reader.limit-reader.position <4) {
             fetch(4, reader);

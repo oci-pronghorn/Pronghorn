@@ -127,32 +127,15 @@ public class TokenBuilder {
         int type = extractType(token);
         int count = token & TokenBuilder.MAX_INSTANCE;
 
-        if (type == TypeMask.Decimal || type == TypeMask.DecimalOptional) {
-            int opp1 = (token >> (TokenBuilder.SHIFT_OPER + TokenBuilder.SHIFT_OPER_DECIMAL_EX))
-                    & TokenBuilder.MASK_OPER_DECIMAL_EX;
-            int opp2 = (token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER_DECIMAL_EX;
-            if (isInValidCombo(type, opp1)) {
-                throw new UnsupportedOperationException("bad token");
-            }
-            ;
-            if (isInValidCombo(type, opp2)) {
-                throw new UnsupportedOperationException("bad token");
-            }
-            ;
-            return (TypeMask.toString(type) + "/" + OperatorMask.toString(type, opp1) + "/"
-                    + OperatorMask.toString(type, opp2) + "/" + count);
+        int opp = (token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER;
+        if (isInValidCombo(type, opp)) {
+            throw new UnsupportedOperationException("bad token");
+        }
+        ;
 
-        } else {
-            int opp = (token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER;
-            if (isInValidCombo(type, opp)) {
-                throw new UnsupportedOperationException("bad token");
-            }
-            ;
-
-            return (TypeMask.toString(type) + "/" + OperatorMask.toString(type, opp) + "/" + count);
+        return (TypeMask.toString(type) + "/" + OperatorMask.toString(type, opp) + "/" + count);
         }
 
-    }
 
     /**
      * Computes the absent values as needed. 00 -> 1 01 -> 0 10 -> -1 11 ->

@@ -98,12 +98,13 @@ public class TemplateHandler extends DefaultHandler {
     String fieldDictionary;
     String fieldDictionaryKey;
 
-    boolean fieldExponentOptional = false;
     int fieldExponentAbsent;
     int fieldExponentOperator;
     String fieldExponentOperatorValue;
 
-    boolean fieldMantissaOptional = false;
+  //TODO AA: check parser to ensure second token is never marked optional.
+   
+    
     long fieldMantissaAbsent;
     int fieldMantissaOperator;
     String fieldMantissaOperatorValue;
@@ -193,14 +194,14 @@ public class TemplateHandler extends DefaultHandler {
 
             commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
 
-            fieldExponentOptional = false;
-            fieldMantissaOptional = false;
             fieldExponentOperator = OperatorMask.Field_None;
             fieldMantissaOperator = OperatorMask.Field_None;
 
         } else if (qName.equalsIgnoreCase("exponent")) {
             fieldPMapInc = 1;
-            fieldExponentOptional = "optional".equals(attributes.getValue("presence"));
+            if ("optional".equals(attributes.getValue("presence"))) {
+                fieldType = TypeMask.DecimalOptional;
+            }
             fieldOperator = OperatorMask.Field_None;
 
             String absentString = attributes.getValue("nt_absent_const");
@@ -213,7 +214,6 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("mantissa")) {
             fieldPMapInc = 1;
-            fieldMantissaOptional = "optional".equals(attributes.getValue("presence"));
             fieldOperator = OperatorMask.Field_None;
 
             String absentString = attributes.getValue("nt_absent_const");
@@ -506,14 +506,14 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("decimal")) {
 
-            // decimal specific logic to combine the operators
-            if (0 != fieldExponentOperator || 0 != fieldMantissaOperator) {
-                fieldOperator = (fieldExponentOperator << TokenBuilder.SHIFT_OPER_DECIMAL_EX) | fieldMantissaOperator;
-            } else {
-                fieldOperator |= (fieldOperator << TokenBuilder.SHIFT_OPER_DECIMAL_EX);
-            }
-            
+            fieldOperator = fieldExponentOperator;
             int tokenExponent = buildToken(tokenBuilderIntCount);
+            
+            //Mantissa is NEVER optional because the optional logic is done by exponent.
+            //Masking off the optional bit
+            fieldType = 0xFFFFFFFE&fieldType;            
+            
+            fieldOperator = fieldMantissaOperator;
             int tokenMantisssa = buildToken(tokenBuilderLongCount);
 
             int optionalExponentOffset = 0;

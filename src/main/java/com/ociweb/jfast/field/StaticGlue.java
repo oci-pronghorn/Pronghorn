@@ -229,5 +229,29 @@ public class StaticGlue {
         writer.writeByteArrayData(value, startAfter, valueSend);
         
     }
+    public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
+        dictionary[idx] = 0;
+        writer.writeNull();
+    }
+    public static void nullCopyIncInt(PrimitiveWriter writer, int[] dictionary, int source, int target) {
+        if (0 == dictionary[source]) { // stored value was null;
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
+        } else {
+            dictionary[target] = 0;
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
+            writer.writeNull();
+        }
+    }
+    public static void nullPMap(PrimitiveWriter writer) {
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+    }
+    public static void nullDefaultInt(PrimitiveWriter writer, int[] dictionary, int source) {
+        if (0 == dictionary[source]) { // stored value was null;
+            PrimitiveWriter.writePMapBit((byte) 0, writer);
+        } else {
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
+            writer.writeNull();
+        }
+    }
 
 }

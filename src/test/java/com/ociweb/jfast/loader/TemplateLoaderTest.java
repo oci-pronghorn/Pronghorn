@@ -53,7 +53,7 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(1016, catalogByteArray.length);
+            assertEquals(1014, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);
@@ -111,13 +111,14 @@ public class TemplateLoaderTest {
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
     //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+        System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
         FASTRingBuffer queue = readerDispatch.ringBuffer();
 
         
 
-        int warmup = 128;
+        int warmup = 64;
         int count = 1024;
         int result = 0;
         int[] fullScript = catalog.scriptTokens;
