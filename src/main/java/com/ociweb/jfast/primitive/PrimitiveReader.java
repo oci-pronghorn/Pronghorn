@@ -52,8 +52,9 @@ public final class PrimitiveReader {
     private byte bitBlock = 0;
     private final int resetLimit;  
 
-    //Needed to be this large to pass unit tests.
-    private long nanoBlockingTimeout = 5000000; //maximum wait time for more incoming content in nanoseconds.
+    //To disable timeout use this: PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
+    //Can be set as needed but it should remain small for non-blocking behavior.
+    private long nanoBlockingTimeout = 1000;//1 micro seconds  
 
     
     /**

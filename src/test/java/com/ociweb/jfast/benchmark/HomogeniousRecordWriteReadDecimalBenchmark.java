@@ -261,6 +261,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;
@@ -284,11 +285,21 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
+                //bridge solution as the ring buffer is introduce into all the APIs
+                rbRingBufferLocal.dump();
+                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = 1;
+                FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                int rbPos = 0;
+
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                    staticWriter.acceptIntegerSigned(token, 1);
-                    staticWriter.acceptLongSigned(token, mantissa);
+                                             
+                      staticWriter.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
+                      staticWriter.acceptLongSigned(token, mantissa);
                 } else {
-                    staticWriter.acceptIntegerSignedOptional(token, 1);
+                                                
+                    int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                    
+                    staticWriter.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
 
                     if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                         int idx = token & staticWriter.longInstanceMask;

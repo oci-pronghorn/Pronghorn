@@ -99,6 +99,7 @@ public class ReaderWriterPrimitiveTest {
 		writer = new PrimitiveWriter(capacity, new FASTOutputStream(baost),(int) count, minimizeLatency);
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
 		PrimitiveReader pr = new PrimitiveReader(2048, input, 32);
+		PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
 		
 		writeDurationIOSpeed = Float.MAX_VALUE;
 		float readDuration = Float.MAX_VALUE;
@@ -194,7 +195,7 @@ public class ReaderWriterPrimitiveTest {
 			}
 			
 			pr = new PrimitiveReader(2048, new FASTInputSocketChannel(socketChannel), 32);
-			
+			PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
 			
 		} catch (IOException e) {
 			e.printStackTrace();

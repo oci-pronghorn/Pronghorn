@@ -881,133 +881,164 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         writer.writeByteArrayData(value,offset,length);
     }
     
-    protected void genWriteIntegerSignedDefault(int constDefault, int value, PrimitiveWriter writer) {
-        writer.writeIntegerSignedDefault(value, constDefault);
+    protected void genWriteIntegerSignedDefault(int constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerSignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault);
     }
 
-    protected void genWriteIntegerSignedIncrement(int target, int source, int value, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedIncrement(value, target, source, intValues);
+    protected void genWriteIntegerSignedIncrement(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerSignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerSignedCopy(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedCopy(value, target, source, intValues);
+    protected void genWriteIntegerSignedCopy(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerSignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerSignedDelta(int target, int source, int value, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSignedDelta(value, target, source, intValues);
+    protected void genWriteIntegerSignedDelta(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerSignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerSignedNone(int target, int value, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerSigned(intValues[target] = value);
+    protected void genWriteIntegerSignedNone(int target, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerSigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos));
     }
     
-    protected void genWriteIntegerUnsignedDefault(int constDefault, int value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsignedDefault(value, constDefault);
+    protected void genWriteIntegerUnsignedDefault(int constDefault, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerUnsignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault);
     }
 
-    protected void genWriteIntegerUnsignedIncrement(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedIncrement(value, target, source, intValues);
+    protected void genWriteIntegerUnsignedIncrement( int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerUnsignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerUnsignedCopy(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedCopy(value, target, source, intValues);
+    protected void genWriteIntegerUnsignedCopy(int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerUnsignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerUnsignedDelta(int value, int target, int source, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsignedDelta(value, target, source, intValues);
+    protected void genWriteIntegerUnsignedDelta(int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerUnsignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
     }
 
-    protected void genWriteIntegerUnsignedNone(int value, int target, PrimitiveWriter writer, int[] intValues) {
-        writer.writeIntegerUnsigned(intValues[target] = value);
+    protected void genWriteIntegerUnsignedNone(int target, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        writer.writeIntegerUnsigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos));
     }
 
-    protected void genWriteIntegerSignedDefaultOptional(int source, int constDefault, int valueOfNull, int value, PrimitiveWriter writer) {
-        if (valueOfNull == value) {
-            StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
-        } else {
-            writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault);
+    protected void genWriteIntegerSignedDefaultOptional(int source, int constDefault, int valueOfNull, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+            } else {
+                writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault);
+            }
         }
     }
 
-    protected void genWriteIntegerSignedIncrementOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
-            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
-        } else { 
-            int last = intValues[source];
-            writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last);  
-        }        
+    protected void genWriteIntegerSignedIncrementOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+            } else { 
+                int last = intValues[source];
+                writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last);  
+            }
+        }
     }
 
-    protected void genWriteIntegerSignedCopyOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
-            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
-        } else {        
-            writer.writeIntegerSignedCopyOptional(value>=0?value+1:value, target, source, intValues);
-        }
+    protected void genWriteIntegerSignedCopyOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            //TODO: C, these reader calls should all be inlined to remove the object de-ref by passing in the mask and buffer directly as was done in the reader.
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+            } else {        
+                writer.writeIntegerSignedCopyOptional(value>=0?value+1:value, target, source, intValues);
+            }
+        }   
     }
 
     //this is how a "boolean" is sent using a single bit in the encoding.
-    protected void genWriteIntegerSignedConstantOptional(int valueOfNull, int value, PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit(valueOfNull==value ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
+    protected void genWriteIntegerSignedConstantOptional(int valueOfNull, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        PrimitiveWriter.writePMapBit(valueOfNull==FASTRingBufferReader.readInt(rbRingBuffer, rbPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
     }
 
-    protected void genWriteIntegerSignedDeltaOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
+    protected void genWriteIntegerSignedDeltaOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
+            }
+        }
+    }
+
+    protected void genWriteIntegerSignedNoneOptional(int target, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedOptional(value);
+            }
+        }
+    }
+
+    protected void genWriteIntegerUnsignedCopyOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+            } else { 
+                writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
+            }
+        }
+    }
+
+    protected void genWriteIntegerUnsignedDefaultOptional(int source, int valueOfNull, int constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer,rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+            } else {
+                writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
+            }
+        }
+    }
+
+    protected void genWriteIntegerUnsignedIncrementOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer,rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+            } else { 
+                writer.writeIntegerUnsignedIncrementOptional(value, target, source, intValues);
+            }
+        }
+    }
+
+    protected void genWriteIntegerUnsignedConstantOptional(int valueOfNull, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        PrimitiveWriter.writePMapBit(valueOfNull==FASTRingBufferReader.readInt(rbRingBuffer,rbPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
+    }
+
+    protected void genWriteIntegerUnsignedDeltaOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer,rbPos);
+            if (valueOfNull == value) {
             StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
-        } else {
-            writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
+            } else {
+                writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
+            }
         }
     }
 
-    protected void genWriteIntegerSignedNoneOptional(int target, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
-            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
-        } else {
-            writer.writeIntegerSignedOptional(value);
-        }
-    }
-
-    protected void genWriteIntegerUnsignedCopyOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
-            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
-        } else { 
-            writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
-        }
-    }
-
-    protected void genWriteIntegerUnsignedDefaultOptional(int source, int valueOfNull, int value, int constDefault, PrimitiveWriter writer) {
-        if (valueOfNull == value) {
-            StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
-        } else {
-            writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
-        }
-    }
-
-    protected void genWriteIntegerUnsignedIncrementOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
-            StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
-        } else { 
-            writer.writeIntegerUnsignedIncrementOptional(value, target, source, intValues);
-        }
-    }
-
-    protected void genWriteIntegerUnsignedConstantOptional(int valueOfNull, int value, PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit(valueOfNull==value ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
-    }
-
-    protected void genWriteIntegerUnsignedDeltaOptional(int target, int source, int valueOfNull, int value, PrimitiveWriter writer, int[] intValues) {
-        if (valueOfNull == value) {
-            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
-        } else {
-            writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
-        }
-    }
-
-    protected void genWriteIntegerUnsignedNoneOptional(int target, int valueOfNull, int value, PrimitiveWriter writer) {
-        if (valueOfNull == value) {
-            StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
-        } else {
-            writer.writeIntegerUnsigned(value + 1);
+    protected void genWriteIntegerUnsignedNoneOptional(int target, int valueOfNull, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        {
+            int value = FASTRingBufferReader.readInt(rbRingBuffer,rbPos);
+            if (valueOfNull == value) {
+                StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerUnsigned(value + 1);
+            }
         }
     }
     

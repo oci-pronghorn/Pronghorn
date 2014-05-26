@@ -106,13 +106,13 @@ public class StreamingLongTest extends BaseStreamingTest {
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
-						fw.writeLong(token, testConst); 
+						writeLong(fw, token, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);
 					} else {
-						fw.writeLong(token, testData[f]); 
+					    writeLong(fw, token, testData[f]); 
 					}
 				}	
 				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
@@ -126,6 +126,31 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 		return System.nanoTime() - start;
 	}
+
+    public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value) {
+        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+        
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                            // the work.
+            // not optional
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                fw.acceptLongUnsigned(token, value);
+            } else {
+                fw.acceptLongSigned(token, value);
+            }
+        } else {
+            if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
+                fw.write(token);
+            } else {
+                // optional
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    fw.acceptLongUnsignedOptional(token, value);
+                } else {
+                    fw.acceptLongSignedOptional(token, value);
+                }
+            }
+        }
+    }
 	
 
 	@Override

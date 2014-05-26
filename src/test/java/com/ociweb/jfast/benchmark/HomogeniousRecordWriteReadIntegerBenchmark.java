@@ -18,6 +18,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.StreamingIntegerTest;
 
 public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 
@@ -626,7 +627,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = intTestData.length;
 			while (--j>=0) {
-				staticWriter.writeInteger(token, intTestData[j]);
+			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();
@@ -667,7 +668,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = intTestData.length;
 			while (--j>=0) {
-				staticWriter.writeInteger(token, intTestData[j]);
+			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

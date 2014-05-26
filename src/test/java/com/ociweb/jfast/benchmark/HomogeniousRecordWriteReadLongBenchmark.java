@@ -22,6 +22,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.StreamingLongTest;
 
 public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 
@@ -398,7 +399,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize);
 			int j = longTestData.length;
 			while (--j>=0) {
-				staticWriter.writeLong(token, longTestData[j]);
+			    StreamingLongTest.writeLong(staticWriter, token, longTestData[j]);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
 			staticWriter.flush();

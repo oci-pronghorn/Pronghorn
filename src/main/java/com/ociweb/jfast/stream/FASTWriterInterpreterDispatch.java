@@ -17,6 +17,10 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
+
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
+      
+    
     public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
             int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
             int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
@@ -47,11 +51,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // int
                 int idx = token & intInstanceMask;
                 
+                //temp solution as the ring buffer is introduce into all the APIs
+                rbRingBufferLocal.dump();
+                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                int rbPos = 0;
+
                 // hack until all the classes no longer need this method.
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
                 } else {
-                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
                 }
             } else {
                 // long
@@ -72,12 +82,16 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // decimal
                     int idx = token & intInstanceMask;
                     
-                    //TODO: A, must implement null for decimals
-                    // hack until all the classes no longer need this method.
+                    //temp solution as the ring buffer is introduce into all the APIs     
+                    rbRingBufferLocal.dump();
+                    rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                    FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                    int rbPos = 0;
+                                        // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
                     } else {
-                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
                     } 
 
                     int idx1 = token & longInstanceMask;
@@ -90,36 +104,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             }
         }
 
-    }
-
-    /**
-     * Method for writing signed unsigned and/or optional longs. To write the
-     * "null" or absence of a value use void write(int id)
-     */
-    public void writeLong(int token, long value) {
-
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                            // the work.
-            // not optional
-            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                acceptLongUnsigned(token, value);
-            } else {
-                acceptLongSigned(token, value);
-            }
-        } else {
-            if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
-                write(token);
-            } else {
-                // optional
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptLongUnsignedOptional(token, value);
-                } else {
-                    acceptLongSignedOptional(token, value);
-                }
-            }
-        }
     }
 
     //TODO: C, should not be public
@@ -226,7 +210,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptLongUnsignedOptional(int token, long value) {
+    void acceptLongUnsignedOptional(int token, long value) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -274,7 +258,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptLongUnsigned(int token, long value) {
+    void acceptLongUnsigned(int token, long value) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -325,36 +309,21 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    /**
-     * Method for writing signed unsigned and/or optional integers. To write the
-     * "null" or absence of an integer use void write(int id)
-     */
-    public void writeInteger(int token, int value) {
+    public void acceptIntegerSigned(int token, int value, FASTRingBuffer rbRingBuffer, Object newParam, Object thing) {
 
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                            // the work.
-            // not optional
-            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                acceptIntegerUnsigned(token, value);
-            } else {
-                acceptIntegerSigned(token, value);
-            }
-        } else {
-            if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
-                write(token);
-            } else {
-                // optional
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptIntegerUnsignedOptional(token, value);
-                } else {
-                    acceptIntegerSignedOptional(token, value);
-                }
-            }
-        }
+        
+        
+      //temp solution as the ring buffer is introduce into all the APIs
+      rbRingBuffer.dump();
+      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = value;
+      FASTRingBuffer.unBlockMessage(rbRingBuffer);
+      int rbPos = 0;
+        
+        
+        acceptIntegerSigned(token, rbPos, rbRingBuffer);
     }
 
-    public void acceptIntegerSigned(int token, int value) {
-
+    public void acceptIntegerSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -363,19 +332,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(idx, value, writer, intValues);
+                    genWriteIntegerSignedNone(idx, writer, intValues, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDelta(target, source, value, writer, intValues);
+                    
+                    genWriteIntegerSignedDelta(target, source, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (intValues[token & intInstanceMask] == value) : "Only the constant value "
-                        + intValues[token & intInstanceMask]
-                        + " from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
                 // on the other receiver side will inject this value from the
@@ -390,24 +357,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopy(value, target, source, writer, intValues);
+                    genWriteIntegerSignedCopy(target, source, writer, intValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrement(target, source, value, writer, intValues);
+                    genWriteIntegerSignedIncrement(target, source, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefault(constDefault, value, writer);
+                genWriteIntegerSignedDefault(constDefault, writer, rbPos, rbRingBuffer);
             }
         }
     }
 
-
-    private void acceptIntegerUnsigned(int token, int value) {
-
+    public void acceptIntegerUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -416,17 +381,16 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerUnsignedNone(value, idx, writer, intValues);
+                    genWriteIntegerUnsignedNone(idx, rbPos, writer, intValues, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDelta(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedDelta(target, source, rbPos, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
                 // on the other receiver side will inject this value from the
@@ -441,28 +405,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopy(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedCopy(target, source, rbPos, writer, intValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrement(value, target, source, writer, intValues);
+                    genWriteIntegerUnsignedIncrement(target, source, rbPos, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefault(constDefault, value, writer);
+                genWriteIntegerUnsignedDefault(constDefault, rbPos, writer, rbRingBuffer);
             }
         }
     }
-
-
-    public void acceptIntegerSignedOptional(int token, int value) {
-        
-        //TODO: B, Add lookup for value of absent/null instead of this constant.
-        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-        
-
+ 
+    public void acceptIntegerSignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -470,17 +428,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerSignedNoneOptional(target, valueOfNull, value, writer, intValues);
+                    genWriteIntegerSignedNoneOptional(target, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 } else {
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDeltaOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerSignedDeltaOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (intValues[token & intInstanceMask] == value &&
-                        valueOfNull == value) : "Only the constant value from the template or null may be sent";
-                
-                genWriteIntegerSignedConstantOptional(valueOfNull, value, writer);
+                genWriteIntegerSignedConstantOptional(valueOfNull, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -492,27 +447,23 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopyOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerSignedCopyOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrementOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerSignedIncrementOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefaultOptional(source, constDefault, valueOfNull, value, writer);
+
+                genWriteIntegerSignedDefaultOptional(source, constDefault, valueOfNull, writer, rbPos, rbRingBuffer);
             }
         }
     }
 
-
-    private void acceptIntegerUnsignedOptional(int token, int value) {
-
-        //TODO: B, Add lookup for value of absent/null instead of this constant.
-        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-        
+    public void acceptIntegerUnsignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -520,17 +471,16 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, value, writer);
+                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, writer, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDeltaOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerUnsignedDeltaOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (intValues[token & intInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteIntegerUnsignedConstantOptional(valueOfNull, value, writer);
+                genWriteIntegerUnsignedConstantOptional(valueOfNull, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -542,17 +492,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopyOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerUnsignedCopyOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrementOptional(target, source, valueOfNull, value, writer, intValues);
+                    genWriteIntegerUnsignedIncrementOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefaultOptional(source, valueOfNull, value, constDefault, writer);
+                genWriteIntegerUnsignedDefaultOptional(source, valueOfNull, constDefault, writer, rbPos, rbRingBuffer);
             }
         }
     }
@@ -1307,9 +1257,51 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
                 // 00???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    writeInteger(token, FASTRingBufferReader.readInt(queue, fieldPos));
+                    
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                        // the work.
+                        // not optional
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                            acceptIntegerUnsigned(token, fieldPos, queue);
+                        } else {
+                            acceptIntegerSigned(token, FASTRingBufferReader.readInt(queue, fieldPos), rbRingBufferLocal, null, null);
+                        }
+                    } else {
+
+                        // optional
+                        //TODO: B, Add lookup for value of absent/null instead of this constant.
+                        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
+                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, queue);                            
+                        } else {        
+                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, queue);
+                        }
+
+                    }
                 } else {
-                    writeLong(token, FASTRingBufferReader.readLong(queue, fieldPos));
+                    long value = FASTRingBufferReader.readLong(queue, fieldPos);
+                    assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                    
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                        // the work.
+                        // not optional
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                            acceptLongUnsigned(token, value);
+                        } else {
+                            acceptLongSigned(token, value);
+                        }
+                    } else {
+                        if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
+                            write(token);
+                        } else {
+                            // optional
+                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                                acceptLongUnsignedOptional(token, value);
+                            } else {
+                                acceptLongSignedOptional(token, value);
+                            }
+                        }
+                    }
                 }
             } else {
                 // 01???
@@ -1336,11 +1328,13 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerSigned(expoToken, exponent);
+                            acceptIntegerSigned(expoToken, exponent, rbRingBufferLocal, null, null);
                         } else {
-                            //TODO: need special methods for the null support in decimals.
-                            
-                            acceptIntegerSignedOptional(expoToken, exponent);
+                                    
+                            //TODO: B, Add lookup for value of absent/null instead of this constant.
+                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                                                        
+                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, queue);
 
                         }
                         
@@ -1416,7 +1410,29 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // Only happens once before a node sequence so push it on
                     // the count stack
                     int length = FASTRingBufferReader.readInt(queue, fieldPos);
-                    writeInteger(token, length);
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                        // the work.
+                        // not optional
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                            acceptIntegerUnsigned(token, fieldPos, queue);
+                        } else {
+                            acceptIntegerSigned(token, length, rbRingBufferLocal, null, null);
+                        }
+                    } else {
+                        if (length == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
+                            write(token);
+                        } else {
+                            // optional
+                            //TODO: B, Add lookup for value of absent/null instead of this constant.
+                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                            
+                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
+                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, queue);
+                            } else {
+                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, queue);
+                            }
+                        }
+                    }
 
                     if (length == 0) {
                         isFirstSequenceItem = false;

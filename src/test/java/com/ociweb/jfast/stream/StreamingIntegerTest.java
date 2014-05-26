@@ -129,14 +129,14 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
 						fw.write(token);//nothing
 					} else {
-						fw.writeInteger(token, testConst); 
+						writeInteger(fw, token, testConst); 
 					}
 				} else {
 					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
 						//System.err.println("write null");
 						fw.write(token);
 					} else {
-						fw.writeInteger(token, testData[f]); 
+					    writeInteger(fw, token, testData[f]); 
 					}
 				}
 							
@@ -150,6 +150,32 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 		return System.nanoTime() - start;
 	}
+
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
+
+    public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value) {
+        //temp solution as the ring buffer is introduce into all the APIs
+        rbRingBufferLocal.dump();
+        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = value;
+        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+        int rbPos = 0;
+
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {            
+                
+                fw.acceptIntegerUnsigned(token, rbPos, rbRingBufferLocal);
+            } else {
+                fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
+            }
+        } else {
+            // optional
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                fw.acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+            } else {
+                fw.acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+            }
+        }
+    }
 	
 	@Override
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 

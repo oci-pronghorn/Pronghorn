@@ -67,6 +67,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
@@ -99,11 +100,20 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
+                        //bridge solution as the ring buffer is introduce into all the APIs
+                        rbRingBufferLocal.dump();
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = testExpConst;
+                        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                        int rbPos = 0;
+
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            fw.acceptIntegerSigned(token, testExpConst);
+                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
                             fw.acceptLongSigned(token, testMantConst);
                         } else {
-                            fw.acceptIntegerSignedOptional(token, testExpConst);
+                                    
+                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                            
+                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
                             fw.acceptLongSignedOptional(token, testMantConst);
                         }
                     }
@@ -116,11 +126,21 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
-                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            fw.acceptIntegerSigned(token, 1);
+                        //bridge solution as the ring buffer is introduce into all the APIs
+                        rbRingBufferLocal.dump();
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = 1;
+                        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                        int rbPos = 0;
+
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
+                                
+                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
                             fw.acceptLongSigned(token, mantissa);
                         } else {
-                            fw.acceptIntegerSignedOptional(token, 1);
+                                    
+                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                            
+                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
