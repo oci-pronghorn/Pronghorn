@@ -19,6 +19,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 
 //TODO: X, Send Amazon gift card to anyone who can supply another software based project, template, and example file that can run faster than this implementation. (One per project)
 
+//TODO: A, UTF-8 Takes bytes count not char count, MUST confirm this is implemented correctly.
 
 //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
 

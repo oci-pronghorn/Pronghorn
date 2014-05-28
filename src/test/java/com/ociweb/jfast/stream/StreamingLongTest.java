@@ -35,6 +35,8 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
+	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
 	
@@ -134,7 +136,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                                                             // the work.
             // not optional
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                fw.acceptLongUnsigned(token, value);
+                fw.acceptLongUnsigned(token, value, rbRingBufferLocal);
             } else {
                 fw.acceptLongSigned(token, value);
             }
@@ -208,9 +210,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 				}
 				g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);				
 			}	
-			
-		//	System.err.println("TST:"+Long.toBinaryString(pr.getFingerprint()));
-			
+						
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
 		    int idx = TokenBuilder.MAX_INSTANCE & groupToken;
@@ -222,12 +222,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 	}
 
 	public long totalWritten() {
-		return writer.totalWritten(writer);
+		return PrimitiveWriter.totalWritten(writer);
 	}
 	
 	protected void resetOutputWriter() {
 		output.reset();
-		writer.reset(writer);
+		PrimitiveWriter.reset(writer);
 	}
 
 	

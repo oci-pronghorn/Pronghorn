@@ -257,8 +257,29 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
+//  public void acceptIntegerSigned(int token, int value, FASTRingBuffer rbRingBuffer, Object newParam, Object thing) {
+//
+//      
+//      
+//  //temp solution as the ring buffer is introduce into all the APIs
+//  rbRingBuffer.dump();
+//  rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = value;
+//  FASTRingBuffer.unBlockMessage(rbRingBuffer);
+//  int rbPos = 0;
+//      
+//      
+//      acceptIntegerSigned(token, rbPos, rbRingBuffer);
+//  }
 
-    void acceptLongUnsigned(int token, long value) {
+    void acceptLongUnsigned(int token, long value, FASTRingBuffer rbRingBuffer) {
+        
+//      //temp solution as the ring buffer is introduce into all the APIs
+//      rbRingBuffer.dump();
+//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = value;
+//      FASTRingBuffer.unBlockMessage(rbRingBuffer);
+//      int rbPos = 0;
+        
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -309,19 +330,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    public void acceptIntegerSigned(int token, int value, FASTRingBuffer rbRingBuffer, Object newParam, Object thing) {
-
-        
-        
-      //temp solution as the ring buffer is introduce into all the APIs
-      rbRingBuffer.dump();
-      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = value;
-      FASTRingBuffer.unBlockMessage(rbRingBuffer);
-      int rbPos = 0;
-        
-        
-        acceptIntegerSigned(token, rbPos, rbRingBuffer);
-    }
 
     public void acceptIntegerSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -1264,7 +1272,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                             acceptIntegerUnsigned(token, fieldPos, queue);
                         } else {
-                            acceptIntegerSigned(token, FASTRingBufferReader.readInt(queue, fieldPos), rbRingBufferLocal, null, null);
+                            acceptIntegerSigned(token, fieldPos, queue);
                         }
                     } else {
 
@@ -1286,7 +1294,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsigned(token, value);
+                            acceptLongUnsigned(token, value, rbRingBufferLocal);
                         } else {
                             acceptLongSigned(token, value);
                         }
@@ -1328,7 +1336,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerSigned(expoToken, exponent, rbRingBufferLocal, null, null);
+                            acceptIntegerSigned(expoToken, fieldPos, queue);
                         } else {
                                     
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
@@ -1416,7 +1424,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                             acceptIntegerUnsigned(token, fieldPos, queue);
                         } else {
-                            acceptIntegerSigned(token, length, rbRingBufferLocal, null, null);
+                            acceptIntegerSigned(token, fieldPos, queue);
                         }
                     } else {
                         if (length == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {

@@ -153,7 +153,7 @@ public abstract class FASTDecoder {
 
     
 
-    //TODO: A, make this abstract so we can have generated code avoid array
+    //TODO: A, build array of ringBuffer lookup manager that is created once and passed in here upon creation, remove method then use array lookup direct.
     public FASTRingBuffer ringBuffer() {
         
         return rbRingBuffer;//TODO: A, add args to request message specific ring buffer.
