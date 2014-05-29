@@ -501,6 +501,40 @@ public final class PrimitiveReader {
         return target;
     }
 
+    public static final int readTextASCIIIntoRing(char[] target, int targetOffset, int mask, PrimitiveReader reader) {
+
+        // TODO: Z, speed up textASCII, by add fast copy by fetch of limit, then
+        // return error when limit is reached? Do not call fetch on limit we do
+        // not know that we need them.
+
+        if (reader.limit - reader.position < 2) {
+            fetch(2, reader);
+        }
+
+        byte v = reader.buffer[reader.position];
+
+        if (0 == v) {
+            v = reader.buffer[reader.position + 1];
+            if (0x80 != (v & 0xFF)) {
+                throw new UnsupportedOperationException();
+            }
+            // nothing to change in the target
+            reader.position += 2;
+            return 0; // zero length string
+        } else {
+            int idx = targetOffset;
+            while (reader.buffer[reader.position] >= 0) {
+                target[mask&idx++] = (char) (reader.buffer[reader.position++]);
+                if (reader.position >= reader.limit) {
+                    fetch(1, reader); // CAUTION: may change value of position
+                }
+            }
+            target[mask&idx++] = (char) (0x7F & reader.buffer[reader.position++]);
+            return idx - targetOffset;// length of string
+
+        }
+    }
+    
     public static final int readTextASCII(char[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
 
         // TODO: Z, speed up textASCII, by add fast copy by fetch of limit, then
@@ -1076,6 +1110,7 @@ public final class PrimitiveReader {
     // ///////////////////////////////
 
     public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        //TODO: 4% perf problem in profiler, can be better if target== source ???
         return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readIntegerUnsigned(reader));
     }
 

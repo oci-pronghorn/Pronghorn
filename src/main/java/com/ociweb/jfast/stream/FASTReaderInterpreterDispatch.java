@@ -15,7 +15,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  {
 
 
-    private int readFromIdx = -1;
+    public int readFromIdx = -1;
     public final int[] rIntInit;
     public final long[] rLongInit;
 
@@ -203,15 +203,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             
         } else {
             //exponent is optional so the mantissa bit may be absent
-            decodeOptionalDecimal(reader, mantToken, expoToken);
+            decodeOptionalDecimal(reader, expoToken, mantToken);
         }
         
         readFromIdx = -1; //reset for next field where it might be used. TODO: A, not sure this is right for both parts of decimal
     }
 
-    private void decodeOptionalDecimal(PrimitiveReader reader, int mantToken, int expoToken) {
-       System.err.println("warning: this must be implemented for:"+TokenBuilder.tokenToString(expoToken));
-        
+    private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken) {
+              
+       // System.err.println("decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
        //In this method we split out by exponent operator then call the specific method needed
        //for the remaining split by mantissa.
         
@@ -221,23 +221,26 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 // none, delta
                 if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-        
-                    genReadExponentOptional(constAbsent, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                    int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                    
+                    decodeOptionalDecimalNone(expoConstAbsent, mantToken, reader, ringBuffer());
+                    
                 } else {
                     // delta
-                    int target = expoToken & MAX_INT_INSTANCE_MASK;
-                    int source = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-        
-                    genReadExponentDeltaOptional(target, source, constAbsent, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                    int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
+                    int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
+                    int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                    
+                    decodeOptionalDecimalDelta(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffer());
+                    
                 }
             } else {
                 // constant
-                int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-                int constConst = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
-        
-                genReadExponentConstantOptional(constAbsent, constConst, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                int expoConstConst = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
+                
+                decodeOptionalDecimalConstant(expoConstAbsent,expoConstConst,mantToken, reader, ringBuffer());
+                
             }
         
         } else {
@@ -246,44 +249,310 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 // copy, increment
                 if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    int target = expoToken & MAX_INT_INSTANCE_MASK;
-                    int source = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-        
-                    genReadExponentCopyOptional(target, source, constAbsent, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                    int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
+                    int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
+                    int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                    
+                    decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffer());
+                    
                 } else {
                     // increment
-                    int target = expoToken & MAX_INT_INSTANCE_MASK;
-                    int source = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-        
-                    genReadExponentIncrementOptional(target, source, constAbsent, rIntDictionary, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                    int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
+                    int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
+                    int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                    
+                    decodeOptionalDecimalIncrement(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffer());
+                    
                 }
             } else {
                 // default
-                int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-                int constDefault = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK] == 0 ? constAbsent
+                int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
+                int expoConstDefault = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK] == 0 ? expoConstAbsent
                         : rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
-        
-                genReadExponentDefaultOptional(constAbsent, constDefault, ringBuffer().buffer, ringBuffer().mask, reader, ringBuffer());
+                
+                decodeOptionalDecimalDefault(expoConstAbsent,expoConstDefault,mantToken, reader, ringBuffer());
+                
+            }
+        }
+                        
+    }
+
+    private void decodeOptionalDecimalDefault(int expoConstAbsent, int expoConstDefault, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int mantissaTarget = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    genReadDecimalDefaultOptionalMantissaNone(expoConstAbsent, expoConstDefault, mantissaTarget, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer, rLongDictionary);
+                } else {
+                    // delta
+                    int mantissaSource = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : mantissaTarget;
+                    genReadDecimalDefaultOptionalMantissaDelta(expoConstAbsent, expoConstDefault, mantissaTarget, mantissaSource, rbRingBuffer.buffer, rLongDictionary, rbRingBuffer.mask, reader, rbRingBuffer);
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long mantissaConstDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                genReadDecimalDefaultOptionalMantissaConstant(expoConstAbsent, expoConstDefault, mantissaConstDefault, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer);
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int mantissaTarget = mantToken & MAX_LONG_INSTANCE_MASK;
+                int mantissaSource = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : mantissaTarget;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy      
+                    genReadDecimalDefaultOptionalMantissaCopy(expoConstAbsent, expoConstDefault, mantissaTarget, mantissaSource, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer);
+                } else {
+                    // increment
+                    genReadDecimalDefaultOptionalMantissaIncrement(expoConstAbsent, expoConstDefault, mantissaTarget, mantissaSource, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer);
+                }
+            } else {
+
+                // default
+                long mantissaConstDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                genReadDecimalDefaultOptionalMantissaDefault(expoConstAbsent, expoConstDefault, mantissaConstDefault, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer);
             }
         }
         
-        
-        
-        //TODO: AA, do this in code generation, if the boolean is set then wrap the following call with { }        
-        //TODO: AA, must still call these for generation !!
-        
-        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-            // not optional
-            readLongSigned(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
-        } else {
-            // optional
-            readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
-        }
-        
-        
+
     }
+
+    private void decodeOptionalDecimalIncrement(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException(); 
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy        // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                } else {
+                    // increment
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+        }
+    }
+
+    private void decodeOptionalDecimalCopy(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException(); 
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                }
+  
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy        // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                } else {
+                    // increment
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+        }    }
+
+    private void decodeOptionalDecimalConstant(int expoConstAbsent, int expoConstConst, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException(); 
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy        // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                } else {
+                    // increment
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+        }
+    }
+
+    private void decodeOptionalDecimalDelta(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException(); 
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy        // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                } else {
+                    // increment
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+        }
+    }
+
+    private void decodeOptionalDecimalNone(int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        
+        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                // none, delta
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException(); 
+                } else {
+                    // delta
+                    int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                }
+            } else {
+                // constant
+                // always return this required value.
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                int target = mantToken & MAX_LONG_INSTANCE_MASK;
+                int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
+                // copy, increment
+                if (0 == (mantToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy        // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();
+                } else {
+                    // increment
+                    // TODO Auto-generated method stub
+                    throw new UnsupportedOperationException();                }
+            } else {
+                // default
+                long constDefault = rLongDictionary[mantToken & MAX_LONG_INSTANCE_MASK];
+                // TODO Auto-generated method stub
+                throw new UnsupportedOperationException();
+            }
+        }
+    }
+    
 
     private void readLongSigned1(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
 
@@ -495,7 +764,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         return FASTRingBuffer.peekLong(ringBuffer().buffer, ringBuffer().addPos-2, ringBuffer().mask);
     }
 
-    private void readLongSignedOptional(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
+    public void readLongSignedOptional(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -553,7 +822,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 
     }
 
-    private void readLongSigned(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
+    public void readLongSigned(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -733,7 +1002,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         return FASTRingBuffer.peek(ringBuffer().buffer, ringBuffer().addPos-1, ringBuffer().mask);
     }
 
-    private void readIntegerSignedOptional(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
+    public void readIntegerSignedOptional(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -791,7 +1060,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 
     }
 
-    private void readIntegerSigned(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
+    public void readIntegerSigned(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1155,51 +1424,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 
 
     
-    public int readDecimalExponent(int token, PrimitiveReader reader) {
-        assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        
-        // TODO: A, Optional absent null is not implemented yet for Decimal type. should swap in "special" operation for mantissa.
-        // This can be done in a similar way to how the token is adjusted in order to use the normal int processing.
-        
-        //Use Int exponent but we need to shift the bits first to move the operator
-        
-        int expoToken = token&
-                      ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
-                       (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
-                       (TokenBuilder.MAX_INSTANCE));
-        expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
-        expoToken |= 0x80000000;
-        
-        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-            // 00010 IntegerSigned
-            readIntegerSigned(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader);
-        } else {
-            // 00011 IntegerSignedOptional
-            readIntegerSignedOptional(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader);
-        }
-        //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peek(ringBuffer().buffer, ringBuffer().addPos-1, ringBuffer().mask);
-    }
-
-    public long readDecimalMantissa(int token, PrimitiveReader reader) {
-        assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-            // not optional
-            readLongSigned(token, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
-        } else {
-            // optional
-            readLongSignedOptional(token, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader);
-        }
-        
-        //must return what was written
-        return FASTRingBuffer.peekLong(ringBuffer().buffer, ringBuffer().addPos-2, ringBuffer().mask);
-    };
-
     public int readText(int token, PrimitiveReader reader) {
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));

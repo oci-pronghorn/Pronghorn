@@ -131,14 +131,20 @@ public class StreamingLongTest extends BaseStreamingTest {
 
     public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value) {
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+        //  solution as the ring buffer is introduce into all the APIs
+        rbRingBufferLocal.dump();            
+        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (value >>> 32);
+        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (value & 0xFFFFFFFF); 
+        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+        int rbPos = 0;                    
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             // not optional
-            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                fw.acceptLongUnsigned(token, value, rbRingBufferLocal);
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                    
+                fw.acceptLongUnsigned(token, rbPos, rbRingBufferLocal);
             } else {
-                fw.acceptLongSigned(token, value);
+                fw.acceptLongSigned(token, rbPos, rbRingBufferLocal);
             }
         } else {
             if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
@@ -148,7 +154,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                     fw.acceptLongUnsignedOptional(token, value);
                 } else {
-                    fw.acceptLongSignedOptional(token, value);
+                    fw.acceptLongSignedOptional(token, value, rbRingBufferLocal);
                 }
             }
         }

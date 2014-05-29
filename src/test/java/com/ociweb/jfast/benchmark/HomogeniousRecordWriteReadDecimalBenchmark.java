@@ -288,13 +288,15 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 //bridge solution as the ring buffer is introduce into all the APIs
                 rbRingBufferLocal.dump();
                 rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = 1;
+                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa >>> 32);
+                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa & 0xFFFFFFFF); 
                 FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
                 int rbPos = 0;
 
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                                              
                       staticWriter.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
-                      staticWriter.acceptLongSigned(token, mantissa);
+                      staticWriter.acceptLongSigned(token, rbPos+1, rbRingBufferLocal);
                 } else {
                                                 
                     int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
@@ -306,7 +308,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
                         staticWriter.writeNullLong(token, idx, writer, staticWriter.longValues);
                     } else {
-                        staticWriter.acceptLongSignedOptional(token, mantissa);
+                        staticWriter.acceptLongSignedOptional(token, mantissa, rbRingBufferLocal);
                     }
                 }
             }

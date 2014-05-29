@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -29,10 +30,10 @@ public final class FASTRingBuffer {
 
     public final int maxSize;
 
-    final int maxCharSize;
-    final int charMask;
-    final char[] charBuffer;
-    int addCharPos = 0;
+    public final int maxCharSize;
+    public final int charMask;
+    public final char[] charBuffer;
+    public int addCharPos = 0;
 
     final int maxByteSize;
     final int byteMask;
@@ -145,6 +146,16 @@ public final class FASTRingBuffer {
         final int p = addCharPos;
         if (len > 0) {
             addCharPos = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
+        }
+        return p;
+    }
+    
+    public int writeTextToRingBuffer(int heapId, int len, PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+        final int p = addCharPos;
+        if (len > 0) {
+            
+            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(charBuffer, p, charBuffer.length, reader);
+            addCharPos+=lenTemp;// = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
         }
         return p;
     }

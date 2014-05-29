@@ -103,18 +103,20 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         //bridge solution as the ring buffer is introduce into all the APIs
                         rbRingBufferLocal.dump();
                         rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = testExpConst;
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (testMantConst >>> 32);
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (testMantConst & 0xFFFFFFFF); 
                         FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                             fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
-                            fw.acceptLongSigned(token, testMantConst);
+                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal);
                         } else {
                                     
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
-                            fw.acceptLongSignedOptional(token, testMantConst);
+                            fw.acceptLongSignedOptional(token, testMantConst, rbRingBufferLocal);
                         }
                     }
                 } else {
@@ -129,13 +131,15 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         //bridge solution as the ring buffer is introduce into all the APIs
                         rbRingBufferLocal.dump();
                         rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = 1;
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa >>> 32);
+                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa & 0xFFFFFFFF); 
                         FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
                                 
-                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
-                            fw.acceptLongSigned(token, mantissa);
+                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);                            
+                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal);
                         } else {
                                     
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
@@ -147,7 +151,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                                 
                                 fw.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
-                                fw.acceptLongSignedOptional(token, mantissa);
+                                fw.acceptLongSignedOptional(token, mantissa, rbRingBufferLocal);
                             }
                         }
                     }
@@ -214,18 +218,18 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     private void readDecimalOthers(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token) {
         if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr);
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
-            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
-            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr);
             if (testData[f] != man) {
                 assertEquals(testData[f], man);
             }
@@ -234,18 +238,18 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     private void readDecimalConstant(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token, int i) {
         if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr);
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr);
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
-            int exp = fr.readDecimalExponent(tokenLookup[f], reader);
-            long man = fr.readDecimalMantissa(tokenLookup[f], reader);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr);
             if (testMantConst != man) {
                 assertEquals(testMantConst, man);
             }
@@ -281,6 +285,51 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
         input = new FASTInputByteArray(writtenData, writtenBytes);
         reader = new PrimitiveReader(4096, input, maxGroupCount * 10);
+    }
+
+    public static long readDecimalMantissa(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder) {
+        assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+            // not optional
+            decoder.readLongSigned(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader);
+        } else {
+            // optional
+            decoder.readLongSignedOptional(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader);
+        }
+        
+        //must return what was written
+        return FASTRingBuffer.peekLong(decoder.ringBuffer().buffer, decoder.ringBuffer().addPos-2, decoder.ringBuffer().mask);
+    }
+
+    public static int readDecimalExponent(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder) {
+        assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
+        
+        // TODO: A, Optional absent null is not implemented yet for Decimal type. should swap in "special" operation for mantissa.
+        // This can be done in a similar way to how the token is adjusted in order to use the normal int processing.
+        
+        //Use Int exponent but we need to shift the bits first to move the operator
+        
+        int expoToken = token&
+                      ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
+                       (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
+                       (TokenBuilder.MAX_INSTANCE));
+        expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
+        expoToken |= 0x80000000;
+        
+        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+            // 00010 IntegerSigned
+            decoder.readIntegerSigned(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader);
+        } else {
+            // 00011 IntegerSignedOptional
+            decoder.readIntegerSignedOptional(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader);
+        }
+        //NOTE: for testing we need to check what was written
+        return FASTRingBuffer.peek(decoder.ringBuffer().buffer, decoder.ringBuffer().addPos-1, decoder.ringBuffer().mask);
     }
 
 }

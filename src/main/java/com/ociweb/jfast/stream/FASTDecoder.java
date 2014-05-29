@@ -90,6 +90,7 @@ public abstract class FASTDecoder {
     private static FASTRingBuffer ringBufferBuilder(int primaryRingBits, int textRingBits, 
                                                     TextHeap textHeap, ByteHeap byteHeap,
                                                     int maxNestedGroupDepth) {
+
         return new FASTRingBuffer((byte) primaryRingBits,
                                                (byte) textRingBits, 
                                                 null==textHeap? null : textHeap.rawInitAccess(),

@@ -334,7 +334,22 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         beginSingleGroupMethod(cursor,i-1);
         activeScriptCursor = cursor;
         activeScriptLimit = limit;
-        decode(null);//Generate the code, if any method was missed a null pointer will result.
+        try {
+            decode(null);//Generate the code, if any method was missed a null pointer will result.
+        } catch (NullPointerException npe) {
+            StackTraceElement[] stackTrace = npe.getStackTrace();
+            int j = 0;
+            while (j<stackTrace.length) {
+                //Check for programming error where the template was modified without overriding the method here.
+                String method = stackTrace[j++].getMethodName();
+                if (method.startsWith("gen")) {
+                    System.err.println("Must override: "+method+" to prevent running logic while generating.");
+                    System.exit(0);
+                }
+                
+            }
+            throw npe;
+        }
         return getSingleGroupMethod(doneScriptsParas);
     }
     
@@ -581,7 +596,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     ///
-    
+    /*
     @Override
     protected void genReadExponentDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
@@ -611,7 +626,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     protected void genReadExponentOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
-    
+    */
 
     // long methods
     
@@ -896,6 +911,316 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     protected void genReadDictionaryIntegerReset(int idx, int resetConst, int[] rIntDictionary) {
         generator(new Exception().getStackTrace(),idx, resetConst);
     }
+
+    //decimals    
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaDefault(int constAbsent, int constDefault,
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        
+        generator(new Exception().getStackTrace(), constAbsent, constDefault, mantissaConstDefault);
+
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaDefault(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        
+        generator(new Exception().getStackTrace(), target, source, constAbsent, mantissaConstDefault);
+
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaDefault(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaDefault(int constAbsent, int constConst,
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaDefault(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaDefault(int constAbsent, long mantissaConstDefault, int[] rbB,
+            int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaIncrement(int constAbsent, int constDefault,
+            int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaIncrement(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaIncrement(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaIncrement(int constAbsent, int constConst, int mantissaTarget,
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaIncrement(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaIncrement(int constAbsent, int mantissaTarget, int mantissaSource,
+            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaCopy(int constAbsent, int constDefault, int mantissaTarget,
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaCopy(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget,
+            int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaCopy(int constAbsent, int constConst, int mantissaTarget,
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget,
+            int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaCopy(int constAbsent, int mantissaTarget, int mantissaSource,
+            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaConstant(int constAbsent, int constDefault,
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaConstant(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaConstant(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaConstant(int constAbsent, int constConst,
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaConstant(int target, int source, int constAbsent,
+            long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaConstant(int constAbsent, long mantissaConstDefault, int[] rbB,
+            int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaConstDefault);
+    }
+
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaDelta(int constAbsent, int constDefault, int mantissaTarget,
+            int mantissaSource, int[] rbB, long[] rLongDictionary, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaDelta(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaDelta(int target, int source, int constAbsent, int mantissaTarget,
+            int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaDelta(int constAbsent, int constConst, int mantissaTarget,
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaDelta(int target, int source, int constAbsent,
+            int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaDelta(int constAbsent, int mantissaTarget, int mantissaSource,
+            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
+    }
+
+
+    @Override
+    protected void genReadDecimalDefaultOptionalMantissaNone(int constAbsent, int constDefault, int mantissaTarget,
+            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget);
+    }
+
+
+    @Override
+    protected void genReadDecimalIncrementOptionalMantissaNone(int target, int source, int constAbsent,
+            int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
+    }
+
+
+    @Override
+    protected void genReadDecimalCopyOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget,
+            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
+    }
+
+
+    @Override
+    protected void genReadDecimalConstantOptionalMantissaNone(int constAbsent, int constConst, int mantissaTarget,
+            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget);
+    }
+
+
+    @Override
+    protected void genReadDecimalDeltaOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget,
+            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
+    }
+
+
+    @Override
+    protected void genReadDecimalOptionalMantissaNone(int constAbsent, int mantissaTarget, int[] rbB, int rbMask,
+            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+        // TODO Auto-generated method stub
+        generator(new Exception().getStackTrace(),constAbsent, mantissaTarget);
+    }
+    
+
 
     
 }

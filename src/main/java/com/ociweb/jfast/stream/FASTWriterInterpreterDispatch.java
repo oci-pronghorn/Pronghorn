@@ -106,8 +106,18 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     }
 
-    //TODO: C, should not be public
-    public void acceptLongSignedOptional(int token, long value) {
+
+
+    public void acceptLongSignedOptional(int token, long value, FASTRingBuffer rbRingBuffer) {
+        
+//      ////    //temp solution as the ring buffer is introduce into all the APIs
+//      rbRingBuffer.dump();            
+//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
+//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
+//      FASTRingBuffer.unBlockMessage(rbRingBuffer);
+//      int rbPos = 0;
+        
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -155,9 +165,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
+//
+//    public void acceptLongSigned(int token, long value, Object newParam, FASTRingBuffer rbRingBuffer) {
+//        
+//        ////    //temp solution as the ring buffer is introduce into all the APIs
+//        rbRingBuffer.dump();            
+//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
+//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
+//        FASTRingBuffer.unBlockMessage(rbRingBuffer);
+//        int rbPos = 0;
+//        
+//
+//        acceptLongSigned(token, rbPos, rbRingBuffer);
+//
+//    }
 
-    public void acceptLongSigned(int token, long value) {
-
+    public void acceptLongSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -166,18 +189,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongSignedNone(value, idx, writer, longValues);
+                    genWriteLongSignedNone(idx, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDelta(value, target, source, writer, longValues);
+                    genWriteLongSignedDelta(target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
                 // on the other receiver side will inject this value from the
@@ -192,20 +214,19 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopy(value, target, source, writer, longValues);
+                    genWriteLongSignedCopy(target, source, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongSignedIncrement(value, target, source, writer, longValues);
+                    genWriteLongSignedIncrement(target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefault(value, constDefault, writer);
+                genWriteLongSignedDefault(constDefault, writer, rbPos, rbRingBuffer);
             }
         }
-
     }
 
 
@@ -271,15 +292,21 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 //      acceptIntegerSigned(token, rbPos, rbRingBuffer);
 //  }
 
-    void acceptLongUnsigned(int token, long value, FASTRingBuffer rbRingBuffer) {
-        
-//      //temp solution as the ring buffer is introduce into all the APIs
-//      rbRingBuffer.dump();
-//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = value;
+//    void acceptLongUnsigned(int token, long value, FASTRingBuffer rbRingBuffer) {
+//        
+////      //temp solution as the ring buffer is introduce into all the APIs
+//      rbRingBuffer.dump();            
+//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
+//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
 //      FASTRingBuffer.unBlockMessage(rbRingBuffer);
 //      int rbPos = 0;
-        
-        
+//        
+//        
+//        acceptLongUnsigned(token, rbPos, rbRingBuffer);
+//        
+//    }
+
+    public void acceptLongUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -288,18 +315,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongUnsignedNone(value, idx, writer, longValues);
+                    genWriteLongUnsignedNone(idx, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongUnsignedDelta(value, target, source, writer, longValues);
+                    genWriteLongUnsignedDelta(target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
-                assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
                 // nothing need be sent because constant does not use pmap and
                 // the template
                 // on the other receiver side will inject this value from the
@@ -314,17 +340,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopy(value, target, source, writer, longValues);
+                    genWriteLongUnsignedCopy(target, source, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrement(value, target, source, writer, longValues);
+                    genWriteLongUnsignedIncrement(target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefault(value, constDefault, writer);
+                genWriteLongUnsignedDefault(constDefault, writer, rbPos, rbRingBuffer);
             }
         }
     }
@@ -1294,9 +1320,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsigned(token, value, rbRingBufferLocal);
+                            acceptLongUnsigned(token, fieldPos, queue);
                         } else {
-                            acceptLongSigned(token, value);
+                            acceptLongSigned(token, fieldPos, queue);
                         }
                     } else {
                         if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
@@ -1306,7 +1332,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 acceptLongUnsignedOptional(token, value);
                             } else {
-                                acceptLongSignedOptional(token, value);
+                                acceptLongSignedOptional(token, value, rbRingBufferLocal);
                             }
                         }
                     }
@@ -1349,7 +1375,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         int mantToken = fullScript[++activeScriptCursor];
                         
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongSigned(mantToken, mantissa);
+                            acceptLongSigned(mantToken, fieldPos + 1, queue);
                         } else {
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                                 int idx = mantToken & longInstanceMask; 
@@ -1358,7 +1384,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                 
                                 writeNullLong(mantToken, idx, writer, longValues); 
                             } else {
-                                acceptLongSignedOptional(mantToken, mantissa);
+                                acceptLongSignedOptional(mantToken, mantissa, rbRingBufferLocal);
                             }
                         }
                         

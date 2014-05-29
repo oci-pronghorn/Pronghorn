@@ -1129,25 +1129,26 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
     //end of decimals
     ///////////////
     
-    protected void genWriteLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongUnsignedDefault(value, constDefault);
+    protected void genWriteLongUnsignedDefault(long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {        
+        writer.writeLongUnsignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
     }
 
-    protected void genWriteLongUnsignedIncrement(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        writer.writeLongUnsignedIncrement(value, target, source, longValues);
+    protected void genWriteLongUnsignedIncrement(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeLongUnsignedIncrement(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues);
     }
 
-    protected void genWriteLongUnsignedCopy(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        writer.writeLongUnsignedCopy(value, target, source, longValues);
+    protected void genWriteLongUnsignedCopy(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeLongUnsignedCopy(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues);
     }
 
-    protected void genWriteLongUnsignedDelta(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
+    protected void genWriteLongUnsignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         writer.writeLongSigned(value - longValues[source]);
         longValues[target] = value;
     }
 
-    protected void genWriteLongUnsignedNone(long value, int idx, PrimitiveWriter writer, long[] longValues) {
-        writer.writeLongUnsigned(longValues[idx] = value);
+    protected void genWriteLongUnsignedNone(int idx, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeLongUnsigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos));
     }
     
     protected void genWriteLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
@@ -1178,24 +1179,27 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         longValues[target] = value;
     }
     
-    protected void genWriteLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writeLongSignedDefault(value, constDefault);
+    protected void genWriteLongSignedDefault(long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
     }
 
-    protected void genWriteLongSignedIncrement(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
+    protected void genWriteLongSignedIncrement(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         writer.writeLongSignedIncrement(value,  longValues[source]);
         longValues[target] = value;
     }
 
-    protected void genWriteLongSignedCopy(long value, int idx, int source, PrimitiveWriter writer, long[] longValues) {
+    protected void genWriteLongSignedCopy(int idx, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         writer.writeLongSignedCopy(value, idx, source, longValues);
     }
 
-    protected void genWriteLongSignedNone(long value, int idx, PrimitiveWriter writer, long[] longValues) {
-        writer.writeLongSigned(longValues[idx] = value);
+    protected void genWriteLongSignedNone(int idx, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        writer.writeLongSigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos));
     }
 
-    protected void genWriteLongSignedDelta(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
+    protected void genWriteLongSignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
+        long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         writer.writeLongSigned(value - longValues[source]);
         longValues[target] = value;
     }
