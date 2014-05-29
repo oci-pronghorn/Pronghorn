@@ -101,9 +101,6 @@ public class TemplateHandler extends DefaultHandler {
     int fieldExponentAbsent;
     int fieldExponentOperator;
     String fieldExponentOperatorValue;
-
-  //TODO AA: check parser to ensure second token is never marked optional.
-   
     
     long fieldMantissaAbsent;
     int fieldMantissaOperator;

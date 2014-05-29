@@ -1109,8 +1109,8 @@ public final class PrimitiveReader {
     // Dictionary specific operations
     // ///////////////////////////////
 
+    //TODO: C, 4% perf problem in profiler, can be better if target== source ???
     public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        //TODO: 4% perf problem in profiler, can be better if target== source ???
         return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readIntegerUnsigned(reader));
     }
 

@@ -47,7 +47,7 @@ public final class FASTRingBuffer {
 
     final AtomicInteger removeCount;
     private final AtomicInteger addCount;
-    public int addPos;
+    public int addPos;//TODO: AAA, turn into array, passed into each with ++
     public int remPos;
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
