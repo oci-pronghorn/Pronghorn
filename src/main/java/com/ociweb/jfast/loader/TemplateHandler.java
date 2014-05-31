@@ -228,6 +228,7 @@ public class TemplateHandler extends DefaultHandler {
             fieldName = attributes.getValue("name");
 
         } else if (qName.equalsIgnoreCase("copy")) {
+            setActiveDictionary(attributes);
             fieldOperator = OperatorMask.Field_Copy;
             fieldOperatorValue = attributes.getValue("value");
             groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
@@ -251,22 +252,26 @@ public class TemplateHandler extends DefaultHandler {
             groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
 
         } else if (qName.equalsIgnoreCase("delta")) {
+            setActiveDictionary(attributes);
             fieldOperator = OperatorMask.Field_Delta;
             fieldOperatorValue = attributes.getValue("value");
             // Never uses pmap
 
         } else if (qName.equalsIgnoreCase("increment")) {
+            setActiveDictionary(attributes);
             fieldOperator = OperatorMask.Field_Increment;
             groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
             fieldOperatorValue = attributes.getValue("value");
 
         } else if (qName.equalsIgnoreCase("tail")) {
+            setActiveDictionary(attributes);
             fieldOperator = OperatorMask.Field_Tail;
             // Never uses pmap
 
         } else if (qName.equalsIgnoreCase("group")) {
+            
             fieldName = attributes.getValue("name");
-
+            setActiveDictionary(attributes);
             // Token must hold the max bytes needed for the PMap but this is the
             // start element
             // and that data is not ready yet. So in the Count field we will put
@@ -293,7 +298,7 @@ public class TemplateHandler extends DefaultHandler {
         } else if (qName.equalsIgnoreCase("sequence")) {
 
             fieldName = attributes.getValue("name");
-
+            setActiveDictionary(attributes);
             // Token must hold the max bytes needed for the PMap but this is the
             // start element
             // and that data is not ready yet. So in the Count field we will put
@@ -358,8 +363,6 @@ public class TemplateHandler extends DefaultHandler {
             templateXMLns = attributes.getValue("xmlns");
             templateName = attributes.getValue("name");
 
-            // TODO: A, must also add dictionary logic to group etc. not just
-            // template
             setActiveDictionary(attributes);
 
             if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
@@ -373,14 +376,20 @@ public class TemplateHandler extends DefaultHandler {
             }
 
         } else if (qName.equalsIgnoreCase("templates")) {
-
+            setActiveDictionary(attributes);
             templatesXMLns = attributes.getValue("xmlns");
 
         }
     }
 
+    //template, templates, sequence, group, ops - copy,inc,delta,tail all set dictionary.
+    //TODO: B, must pop and return the previous dictionary at end of scope.
     private void setActiveDictionary(Attributes attributes) {
         String dictionaryName = attributes.getValue("dictionary");
+        if (null==dictionaryName) {
+            //Do not change activeDictionary if dictionary attribute does not appear.
+            return;
+        }
         if ("template".equalsIgnoreCase(dictionaryName)) {
             dictionaryName = SPECIAL_PREFIX + templateId;
         } else if ("apptype".equalsIgnoreCase(dictionaryName)) {

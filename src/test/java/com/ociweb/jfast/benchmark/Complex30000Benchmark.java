@@ -27,6 +27,7 @@ import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -59,7 +60,7 @@ public class Complex30000Benchmark extends Benchmark {
             fastInput = new FASTInputByteArray(testData);
             reader = new PrimitiveReader(2048, fastInput, 32);
             readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-            queue = readerDispatch.ringBuffer();
+            queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);//readerDispatch.ringBuffer();
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -71,7 +72,7 @@ public class Complex30000Benchmark extends Benchmark {
 
     private int fastCore(int result, FASTRingBuffer queue) {
         int flag;
-        while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
+        while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
             if (0 != (flag & 0x02)) {
                 result |= FASTRingBufferReader.readInt(queue, 0);// must do some
                                                                  // real work or

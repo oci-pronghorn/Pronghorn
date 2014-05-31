@@ -57,6 +57,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
 
+
     protected void genReadCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);
     }
@@ -1629,7 +1630,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 //                rbRingBuffer.addCharPos+=lenTemp;                
 //                rbB[rbMask & rbRingBuffer.addPos++] = lenTemp;
     
-    //TODO: perf problem. 6% in profiler, compiler should ONLY write back to heap IFF this field is read by another field.
+    //TODO: C, perf problem. 6% in profiler, compiler should ONLY write back to heap IFF this field is read by another field.
     //this block is no longer in use however the  performance did not show up. so....
 
     protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {

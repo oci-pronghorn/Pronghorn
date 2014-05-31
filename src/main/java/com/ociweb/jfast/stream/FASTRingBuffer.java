@@ -47,7 +47,7 @@ public final class FASTRingBuffer {
 
     final AtomicInteger removeCount;
     private final AtomicInteger addCount;
-    public int addPos;//TODO: AAA, turn into array, passed into each with ++
+    public int addPos;
     public int remPos;
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
@@ -56,7 +56,7 @@ public final class FASTRingBuffer {
     public FASTRingBuffer(byte primaryBits, byte charBits, char[] constTextBuffer, byte[] constByteBuffer) {
         assert (primaryBits >= 1);       
         
-        int maxFragDepth = 10;//TODO: B, must compute max frag depth in template parser.        
+        int maxFragDepth = 10;//TODO: A, must compute max frag depth in template parser.        
         this.fragStack = new int[maxFragDepth];
         
         //single buffer size for every nested set of groups, must be set to support the largest need.
@@ -67,7 +67,7 @@ public final class FASTRingBuffer {
         this.buffer = new int[maxSize];      
         
         //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
-        //TODO: A, Build custom selectors(), Multi ring vs single ring, Multi threaded vs single threaded.
+
         //TODO: A, use callback upon new class load to reset field offsets.
         
        

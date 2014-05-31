@@ -24,8 +24,6 @@ public abstract class FASTDecoder {
     protected final int[] rIntDictionary;
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
-
-    private final FASTRingBuffer[] arrayRingBuffers;
     
     public final int maxPMapCountInBytes;
     
@@ -42,9 +40,8 @@ public abstract class FASTDecoder {
                 catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(),
                 8, 7, computePMapStackInBytes(catalog), catalog.templateStartIdx, catalog.templateLimitIdx,
                 catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0));
-
     }
-
+    
     private static int computePMapStackInBytes(TemplateCatalog catalog) {
         return 2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
@@ -77,24 +74,16 @@ public abstract class FASTDecoder {
         assert(null==textHeap || textHeap.itemCount()<TokenBuilder.MAX_INSTANCE);
         assert(null==textHeap || TokenBuilder.isPowerOfTwo(textHeap.itemCount()));
 
-
-        //TODO: A, need multiple target ringbuffers per message leading fragment logic not a single one here.
-        //build this in interface and generated.
-        //TODO: A, need buffer map passed in to be used?
-        arrayRingBuffers = new FASTRingBuffer[1];
-        arrayRingBuffers[0] = FASTDecoder.ringBufferBuilder(primaryRingBits, textRingBits, textHeap, byteHeap, maxNestedGroupDepth);
-
-
     }
 
-    private static FASTRingBuffer ringBufferBuilder(int primaryRingBits, int textRingBits, 
-                                                    TextHeap textHeap, ByteHeap byteHeap,
-                                                    int maxNestedGroupDepth) {
+    public static FASTRingBuffer ringBufferBuilder(int primaryRingBits, 
+                                                    int textRingBits, 
+                                                    FASTDecoder decoder) {
 
         return new FASTRingBuffer((byte) primaryRingBits,
                                                (byte) textRingBits, 
-                                                null==textHeap? null : textHeap.rawInitAccess(),
-                                                null==byteHeap? null : byteHeap.rawInitAccess()
+                                                null==decoder.textHeap? null : decoder.textHeap.rawInitAccess(),
+                                                null==decoder.byteHeap? null : decoder.byteHeap.rawInitAccess()
                                                 );
     }
     
@@ -150,14 +139,6 @@ public abstract class FASTDecoder {
         }
         sequenceCountStackHead = -1;
 
-    }
-
-    
-
-    //TODO: A, build array of ringBuffer lookup manager that is created once and passed in here upon creation, remove method then use array lookup direct.
-    public FASTRingBuffer ringBuffer() {
-        
-        return arrayRingBuffers[0];//TODO: A, add args to request message specific ring buffer.
     }
 
     public abstract boolean decode(PrimitiveReader reader);

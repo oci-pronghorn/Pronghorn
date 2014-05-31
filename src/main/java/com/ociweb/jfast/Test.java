@@ -27,7 +27,8 @@ public class Test {
     public static void main(String[] args) {
         new Test().testDecodeComplex30000();
     }
-
+    
+  //TODO: A, need stand alone code for getting performance numbers easily after checkout
     public void testDecodeComplex30000() {
         
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
@@ -52,8 +53,10 @@ public class Test {
           System.err.println("using:"+readerDispatch.getClass().getSimpleName());
       //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
     
+      //  arrayRingBuffers = new FASTRingBuffer[1];
+      //  arrayRingBuffers[0] = FASTDecoder.ringBufferBuilder(8, 7, this);
           
-          FASTRingBuffer queue = readerDispatch.ringBuffer();
+          FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);//readerDispatch.ringBuffer();
 
           // TODO: X, look into core affinity
 
@@ -73,7 +76,7 @@ public class Test {
               msgs = 0;
               grps = 0;
               int flag = 0; // same id needed for writer construction
-              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
+              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
                   // New flags
                   // 0000 eof
                   // 0001 has sequence group to read (may be combined with end of
@@ -149,13 +152,12 @@ public class Test {
               double start = System.nanoTime();
 
               int flag;
-              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
+              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
                   if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
                       result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                      // hot-spot may delete this
                                                      // loop.
-                                         
-//TODO: A, need stand alone code for getting performance numbers on other platforms.
+                                      
                       
                   } else if (flag < 0) {
                       

@@ -55,14 +55,16 @@ public class DispatchLoaderTest {
         decoder = new FASTReaderInterpreterDispatch(catalog1);
         System.err.println("Created new "+decoder.getClass().getSimpleName());
         
+        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, decoder);
+        
         int records=0;
         int flag;
         //Non-Blocking reactor select
-        while (0!=(flag=FASTInputReactor.select(decoder, reader))) {
+        while (0!=(flag=FASTInputReactor.select(decoder, reader, queue))) {
                  
             if ((0 != (flag & TemplateCatalog.END_OF_MESSAGE)))  {
                 
-               String version = FASTRingBufferReader.readText(decoder.ringBuffer(), 
+               String version = FASTRingBufferReader.readText(queue, 
                                                               VERSION_IDX, 
                                                               new StringBuilder()).toString();
                
@@ -77,7 +79,7 @@ public class DispatchLoaderTest {
                    assertEquals("2.0",version);
                }               
                
-               decoder.ringBuffer().dump(); //don't need the data but do need to empty the queue.
+               queue.dump(); //don't need the data but do need to empty the queue.
                
                records++;
 

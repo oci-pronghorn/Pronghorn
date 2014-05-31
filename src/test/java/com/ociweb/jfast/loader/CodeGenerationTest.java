@@ -135,21 +135,21 @@ public class CodeGenerationTest {
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTRingBuffer queue1 = readerDispatch1.ringBuffer();
+        FASTRingBuffer queue1 = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch1);
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, 33);
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedDispatchReader(catBytes);//TemplateLoaderTest.exampleTemplateFile());
+            readerDispatch2 = DispatchLoader.loadGeneratedDispatchReader(catBytes);
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());
         } catch (SecurityException e) {
             fail(e.getMessage());
         }
-        FASTRingBuffer queue2 = readerDispatch2.ringBuffer();
+        FASTRingBuffer queue2 = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch2);
 
         final int keep = 32;
         final int mask = keep - 1;
@@ -170,8 +170,8 @@ public class CodeGenerationTest {
 
         int errCount = 0;
         int i = 0;
-        while (FASTInputReactor.select(readerDispatch1, primitiveReader1) != 0 &&
-                FASTInputReactor.select(readerDispatch2, primitiveReader2) != 0) {
+        while (FASTInputReactor.select(readerDispatch1, primitiveReader1, queue1) != 0 &&
+                FASTInputReactor.select(readerDispatch2, primitiveReader2, queue2) != 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);

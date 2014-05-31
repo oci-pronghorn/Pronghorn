@@ -361,7 +361,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         for(Integer d:doneScripts) {
             //rbRingBuffer.buffer, rbRingBuffer.mask
             
-            //TODO: A, custom ring buffer per calls.
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","ringBuffer()")

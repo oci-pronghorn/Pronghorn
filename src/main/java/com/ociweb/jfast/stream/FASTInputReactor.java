@@ -45,12 +45,12 @@ public class FASTInputReactor {
      */
 
     // TODO: B, Check support for group that may be optional
-    public static int select(FASTDecoder decoder, PrimitiveReader reader) {
+    public static int select(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
         // start new script or detect that the end of the data has been reached
         if (decoder.neededSpaceOrTemplate < 0) {
-            return beginNewTemplate(decoder, reader, decoder.ringBuffer());
+            return beginNewTemplate(decoder, reader, ringBuffer);
         }
-        return checkSpaceAndDecode(decoder, reader, decoder.ringBuffer());
+        return checkSpaceAndDecode(decoder, reader, ringBuffer);
     }
 
 

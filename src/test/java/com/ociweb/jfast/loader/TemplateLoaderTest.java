@@ -53,7 +53,7 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(1014, catalogByteArray.length);
+            assertEquals(1013, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);
@@ -114,7 +114,7 @@ public class TemplateLoaderTest {
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
-        FASTRingBuffer queue = readerDispatch.ringBuffer();
+        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);
 
         
 
@@ -134,7 +134,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             grps = 0;
             int flag = 0; // same id needed for writer construction
-            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
+            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
                 // New flags
                 // 0000 eof
                 // 0001 has sequence group to read (may be combined with end of
@@ -210,7 +210,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
 
             int flag;
-            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader))) {
+            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
                 if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
                     result |= FASTRingBufferReader.readInt(queue, 0);
                     // must do some real work or
@@ -351,7 +351,7 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
-        FASTRingBuffer queue = readerDispatch.ringBuffer();
+        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
         FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
@@ -397,7 +397,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             grps = 0;
             int flags = 0; // same id needed for writer construction
-            while (0 != (flags = FASTInputReactor.select(readerDispatch, reader))) {
+            while (0 != (flags = FASTInputReactor.select(readerDispatch, reader, queue))) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
@@ -434,7 +434,7 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             double start = System.nanoTime();
-            while (0 != FASTInputReactor.select(readerDispatch, reader)) {
+            while (0 != FASTInputReactor.select(readerDispatch, reader, queue)) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }

@@ -108,14 +108,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    public void acceptLongSignedOptional(int token, long value, FASTRingBuffer rbRingBuffer) {
+    public void acceptLongSignedOptional(int token, long valueOfNull, long value, FASTRingBuffer rbRingBuffer) {
         
 //      ////    //temp solution as the ring buffer is introduce into all the APIs
-//      rbRingBuffer.dump();            
-//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
-//      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
-//      FASTRingBuffer.unBlockMessage(rbRingBuffer);
-//      int rbPos = 0;
+      rbRingBuffer.dump();            
+      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
+      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
+      FASTRingBuffer.unBlockMessage(rbRingBuffer);
+      int rbPos = 0;
         
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -1332,7 +1332,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 acceptLongUnsignedOptional(token, value);
                             } else {
-                                acceptLongSignedOptional(token, value, rbRingBufferLocal);
+                                acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal);
                             }
                         }
                     }
@@ -1377,6 +1377,8 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
                             acceptLongSigned(mantToken, fieldPos + 1, queue);
                         } else {
+                            long valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                            
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                                 int idx = mantToken & longInstanceMask; 
                                 
@@ -1384,7 +1386,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                 
                                 writeNullLong(mantToken, idx, writer, longValues); 
                             } else {
-                                acceptLongSignedOptional(mantToken, mantissa, rbRingBufferLocal);
+                                acceptLongSignedOptional(mantToken, valueOfNull, mantissa, rbRingBufferLocal);
                             }
                         }
                         

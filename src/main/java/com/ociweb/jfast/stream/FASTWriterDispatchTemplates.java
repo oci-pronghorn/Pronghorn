@@ -1042,10 +1042,6 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         }
     }
     
-    
-    //TODO: A, need to move the ring buffer logic down into the gen methdos instead of passing value in each case for write!!!
-    
-
     ////////////////////////
     ///Decimals with optional exponent
     /////////////////////////
@@ -1122,7 +1118,90 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
             }
         }
     }
-//TODO: must duplicate the code above for the other 5 types.
+    
+ /*   
+   
+          protected void genWriteDecimalDefaultOptionalDefault(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+      {
+        int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
+        if (exponentValueOfNull == exponentValue) {
+            StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+        } else {
+            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault);
+            
+            //writer.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
+            
+            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+        }
+      }
+    }
+
+    protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
+            if (exponentValueOfNull == exponentValue) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+            } else { 
+                int last = intValues[exponentSource];
+                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }   
+        }
+    }
+
+    protected void genWriteDecimalCopyOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+            } else {        
+                writer.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
+    }
+
+    protected void genWriteDecimalConstantOptionalDefault(int exponentValueOfNull, int mantissaTarget, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+        { 
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull==exponentValue) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos));        
+            }     
+        }
+    }
+
+    protected void genWriteDecimalDeltaOptionalDefault(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
+    }
+
+    protected void genWriteDecimalNoneOptionalDefault(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+        {   
+            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
+            if (exponentValueOfNull == exponentValue) {
+                StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
+            } else {
+                writer.writeIntegerSignedOptional(exponentValue);
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            }
+        }
+    }
+    
+    
+   
+  */  
+    
+//TODO: B, must duplicate the code above for the other 5 types.
       
     
     //////////////
