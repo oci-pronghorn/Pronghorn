@@ -135,7 +135,7 @@ public class CodeGenerationTest {
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTRingBuffer queue1 = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch1);
+        FASTRingBuffer queue1 = readerDispatch1.ringBuffer(0);
 
         FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
         final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, 33);
@@ -149,7 +149,7 @@ public class CodeGenerationTest {
         } catch (SecurityException e) {
             fail(e.getMessage());
         }
-        FASTRingBuffer queue2 = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch2);
+        FASTRingBuffer queue2 = readerDispatch2.ringBuffer(0);
 
         final int keep = 32;
         final int mask = keep - 1;

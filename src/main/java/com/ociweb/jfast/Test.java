@@ -51,14 +51,7 @@ public class Test {
           
           FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
           System.err.println("using:"+readerDispatch.getClass().getSimpleName());
-      //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-    
-      //  arrayRingBuffers = new FASTRingBuffer[1];
-      //  arrayRingBuffers[0] = FASTDecoder.ringBufferBuilder(8, 7, this);
-          
-          FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);//readerDispatch.ringBuffer();
-
-          // TODO: X, look into core affinity
+          FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
           int warmup = 128;
           int count = 1024;

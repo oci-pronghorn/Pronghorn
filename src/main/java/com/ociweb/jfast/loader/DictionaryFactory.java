@@ -20,7 +20,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
  * @author Nathan Tippy
  * 
  */
-public class DictionaryFactory {
+public class DictionaryFactory { //TODO: A is this really the new context?
 
     /*
      * Dictionary: Max count of all fields for dictionary shared across
@@ -62,6 +62,11 @@ public class DictionaryFactory {
     private byte[][] byteInitValue;
 
     private int byteInitTotalLength;
+    
+    int singleTextSize=64;
+    int gapTextSize=8;
+    int singleBytesSize=46; 
+    int gapBytesSize=8;
 
     public DictionaryFactory() {
 
@@ -244,18 +249,6 @@ public class DictionaryFactory {
         // System.err.println("default   "+idx+" is "+new String(value));
     }
 
-    private char[] ZERO_LENGTH_CHARS = new char[0];
-
-//    public char[] getInitChars(int idx) {
-//        int i = charInitCount;
-//        while (--i >= 0) {
-//            if (idx == charInitIndex[i]) {
-//                return charInitValue[i];
-//            }
-//        }
-//        return ZERO_LENGTH_CHARS;
-//    }
-
     public void addInit(int idx, byte[] value) {
 
         byteInitIndex[byteInitCount] = idx;
@@ -303,24 +296,32 @@ public class DictionaryFactory {
         return array;
     }
 
-    public TextHeap charDictionary(int singleTextSize, int gapSize) {
+    TextHeap textHeap;
+    ByteHeap byteHeap;    
+    
+    public TextHeap charDictionary() {
         if (charCount == 0) {
             return null;
         }
-        TextHeap heap = new TextHeap(singleTextSize, gapSize, nextPowerOfTwo(charCount), charInitTotalLength,
-                charInitIndex, charInitValue);
-        heap.reset();
-        return heap;
+        if (null==textHeap) {
+            textHeap = new TextHeap(singleTextSize, gapTextSize, nextPowerOfTwo(charCount), charInitTotalLength,
+                    charInitIndex, charInitValue);
+            textHeap.reset();
+        }
+        return textHeap;
     }
 
-    public ByteHeap byteDictionary(int singleBytesSize, int gapSize) {
+    public ByteHeap byteDictionary() {
         if (bytesCount == 0) {
             return null;
         }
-        ByteHeap heap = new ByteHeap(singleBytesSize, gapSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
-                byteInitIndex, byteInitValue);
-        heap.reset();
-        return heap;
+        if (null==byteHeap) {
+            byteHeap = new ByteHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
+                    byteInitIndex, byteInitValue);
+            byteHeap.reset();
+        }
+        
+        return byteHeap;
     }
 
     public void reset(int[] values) {

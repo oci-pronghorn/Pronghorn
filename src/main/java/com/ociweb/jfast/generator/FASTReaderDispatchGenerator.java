@@ -26,7 +26,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     private static final String FRAGMENT_METHOD_NAME = "fragment";    
     
-    private static final int COMPLEXITY_LIMITY_PER_METHOD = 64;//32;//128;//NOTE: we may want to make this smaller in the production release.
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 18;
     private static final String ENTRY_METHOD_NAME = "decode";
     
     SourceTemplates templates;
@@ -363,12 +363,14 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
-                                    .replace("rbRingBuffer","ringBuffer()")
-                                    .replace("rbB","ringBuffer().buffer")
-                                    .replace("rbMask", "ringBuffer().mask");
+                                    .replace("rbRingBuffer","rb")
+                                    .replace("rbB","rb.buffer")
+                                    .replace("rbMask", "rb.mask");
 
             int token = fullScript[activeScriptCursor];
-            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor,"+token+"));\n\r"+FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
+            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor,"+token+"));\n\r"+
+                          FASTRingBuffer.class.getSimpleName()+" rb=ringBuffers["+d+"];\n\r"+
+                          FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
@@ -788,7 +790,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIICopy(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
@@ -833,7 +835,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,defIdx,defLen);
     }
     

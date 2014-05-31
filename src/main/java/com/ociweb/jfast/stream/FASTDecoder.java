@@ -31,15 +31,15 @@ public abstract class FASTDecoder {
     private final int[] templateLimitIdx;
     public final int maxTemplatePMapSize;
     public final byte preambleDataLength;
+    protected final FASTRingBuffer[] ringBuffers;
         
     public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
     public FASTDecoder(TemplateCatalog catalog) {
-        this(catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), catalog.getMaxTextLength(), 
-                catalog.getMaxByteVectorLength(), catalog.getTextGap(), 
-                catalog.getByteVectorGap(), catalog.fullScript(), catalog.getMaxGroupDepth(),
+        this(catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
+                catalog.fullScript(), catalog.getMaxGroupDepth(),
                 8, 7, computePMapStackInBytes(catalog), catalog.templateStartIdx, catalog.templateLimitIdx,
-                catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0));
+                catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
     }
     
     private static int computePMapStackInBytes(TemplateCatalog catalog) {
@@ -48,14 +48,14 @@ public abstract class FASTDecoder {
     }
     
             
-    public FASTDecoder(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
-            int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
+    private FASTDecoder(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
+            int[] fullScript, int maxNestedGroupDepth,
             int primaryRingBits, int textRingBits, int maxPMapCountInBytes, int[] templateStartIdx, int[] templateLimitIdx,
-            int maxTemplatePMapSize, int preambleDataLength) {
+            int maxTemplatePMapSize, int preambleDataLength, FASTRingBuffer[] ringBuffers) {
 
         this.maxPMapCountInBytes = maxPMapCountInBytes;
-        this.textHeap = dcr.charDictionary(maxTextLen, charGap);
-        this.byteHeap = dcr.byteDictionary(maxVectorLen, bytesGap);
+        this.textHeap = dcr.charDictionary();
+        this.byteHeap = dcr.byteDictionary();
 
         this.maxTemplatePMapSize = maxTemplatePMapSize;
         this.preambleDataLength = (byte)preambleDataLength;
@@ -67,6 +67,8 @@ public abstract class FASTDecoder {
         this.templateStartIdx = templateStartIdx;
         this.templateLimitIdx = templateLimitIdx;
         
+        this.ringBuffers = ringBuffers;
+        
         assert (rIntDictionary.length < TokenBuilder.MAX_INSTANCE);
         assert (TokenBuilder.isPowerOfTwo(rIntDictionary.length));
         assert (rLongDictionary.length < TokenBuilder.MAX_INSTANCE);
@@ -74,17 +76,6 @@ public abstract class FASTDecoder {
         assert(null==textHeap || textHeap.itemCount()<TokenBuilder.MAX_INSTANCE);
         assert(null==textHeap || TokenBuilder.isPowerOfTwo(textHeap.itemCount()));
 
-    }
-
-    public static FASTRingBuffer ringBufferBuilder(int primaryRingBits, 
-                                                    int textRingBits, 
-                                                    FASTDecoder decoder) {
-
-        return new FASTRingBuffer((byte) primaryRingBits,
-                                               (byte) textRingBits, 
-                                                null==decoder.textHeap? null : decoder.textHeap.rawInitAccess(),
-                                                null==decoder.byteHeap? null : decoder.byteHeap.rawInitAccess()
-                                                );
     }
     
     public void setDispatchObserver(DispatchObserver observer) {
@@ -141,6 +132,10 @@ public abstract class FASTDecoder {
 
     }
 
+    public FASTRingBuffer ringBuffer(int idx) {
+        return ringBuffers[idx];
+    }
+    
     public abstract boolean decode(PrimitiveReader reader);
 
     public int requiredBufferSpace(int i) {

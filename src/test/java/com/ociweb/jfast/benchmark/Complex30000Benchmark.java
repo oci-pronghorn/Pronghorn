@@ -60,7 +60,7 @@ public class Complex30000Benchmark extends Benchmark {
             fastInput = new FASTInputByteArray(testData);
             reader = new PrimitiveReader(2048, fastInput, 32);
             readerDispatch = new FASTReaderInterpreterDispatch(catalog);
-            queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);//readerDispatch.ringBuffer();
+            queue = readerDispatch.ringBuffer(0);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

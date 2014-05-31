@@ -196,9 +196,7 @@ public class StaticGlue {
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
         rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
     }
-    public static void setInt(int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int value) {
-        rbB[rbMask & rbRingBuffer.addPos++] = value;
-    }
+
     //byte methods
     public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, ByteHeap byteHeap, PrimitiveWriter writer) {
         

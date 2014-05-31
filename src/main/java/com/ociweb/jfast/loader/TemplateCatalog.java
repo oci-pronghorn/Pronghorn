@@ -8,6 +8,7 @@ import java.util.Set;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class TemplateCatalog {
 
@@ -52,6 +53,8 @@ public class TemplateCatalog {
     public static final int END_OF_SEQ_ENTRY = 0x01;
     public static final int END_OF_MESSAGE = 0x02;
 
+    final FASTRingBuffer[] ringBuffers;
+    
     public TemplateCatalog(byte[] catBytes) {
         PrimitiveReader reader = new PrimitiveReader(catBytes,0);
 
@@ -83,12 +86,50 @@ public class TemplateCatalog {
         maxNonTemplatePMapSize = PrimitiveReader.readIntegerUnsigned(reader);
         maxPMapDepth = PrimitiveReader.readIntegerUnsigned(reader);
 
-        // System.err.println("PMaps sizes templates:"+maxTemplatePMapSize+" nonTemplates:"+maxNonTemplatePMapSize+" both should be very small for best peformance.");
-
         dictionaryFactory = new DictionaryFactory(reader);
 
+        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
     }
-
+    
+    @Deprecated //for testing only
+    public TemplateCatalog(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
+                          int[] fullScript, int maxNestedGroupDepth,
+                          int primaryRingBits, int textRingBits, int stackPMapInBytes, int preambleSize) {
+        
+        this.scriptTokens = fullScript;
+        this.maxNonTemplatePMapSize  = nonTemplatePMapSize;
+        this.dictionaryMembers = dictionaryMembers;
+        this.maxPMapDepth = maxNestedGroupDepth;
+        this.templatesInCatalog=-1;
+        this.templateStartIdx=null;
+        this.templateLimitIdx=null;
+        this.scriptFieldNames=null;
+        this.scriptFieldIds=null;
+        this.properties = new Properties();
+        this.maxTemplatePMapSize = stackPMapInBytes;
+        this.maxFieldId=-1;
+        this.dictionaryFactory = dcr;
+        int fullScriptLength = null==fullScript?1:fullScript.length;
+        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
+    }
+    
+    
+    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length) {
+        FASTRingBuffer[] buffers = new FASTRingBuffer[length];
+        //TODO: simple imlementation needs adavanced controls.
+        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory);
+        int i = length;
+        while (--i>=0) {
+            buffers[i]=rb;            
+        }        
+        return buffers;
+    }
+    
+    public FASTRingBuffer[] ringBuffers() {
+        return ringBuffers;
+    }
+    
+    
     private void loadProperties(PrimitiveReader reader) {
         int props = PrimitiveReader.readIntegerUnsigned(reader);
         StringBuilder builder = new StringBuilder();

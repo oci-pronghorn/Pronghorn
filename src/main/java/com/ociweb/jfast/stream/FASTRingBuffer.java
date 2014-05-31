@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /**
@@ -53,9 +54,10 @@ public final class FASTRingBuffer {
     //TODO: A, use stack of offsets for each fragment until full message is completed.
     private int[] fragStack; //TODO: B, first offset 0 points to the constants after the ring buffer.
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, char[] constTextBuffer, byte[] constByteBuffer) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr) {
         assert (primaryBits >= 1);       
         
+                
         int maxFragDepth = 10;//TODO: A, must compute max frag depth in template parser.        
         this.fragStack = new int[maxFragDepth];
         
@@ -79,9 +81,24 @@ public final class FASTRingBuffer {
 
 
         //constant data will never change and is populated externally.
-        
-        this.constTextBuffer = constTextBuffer;
-        this.constByteBuffer = constByteBuffer;
+        if (null!=dcr) {
+            TextHeap textHeap = dcr.charDictionary();
+            if (null!=textHeap) {
+                this.constTextBuffer = textHeap.rawInitAccess();            
+            } else {
+                this.constTextBuffer = null;
+            }
+            ByteHeap byteHeap = dcr.byteDictionary();
+            if (null!=byteHeap) {
+                this.constByteBuffer = byteHeap.rawInitAccess();            
+            } else {
+                this.constByteBuffer = null;
+            }
+        } else {
+            this.constTextBuffer = null;
+            this.constByteBuffer = null;
+        }
+                
         
         //single text and byte buffers because this is where the variable length data will go.
         

@@ -55,7 +55,7 @@ public class DispatchLoaderTest {
         decoder = new FASTReaderInterpreterDispatch(catalog1);
         System.err.println("Created new "+decoder.getClass().getSimpleName());
         
-        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, decoder);
+        FASTRingBuffer queue = decoder.ringBuffer(0);
         
         int records=0;
         int flag;
@@ -85,10 +85,12 @@ public class DispatchLoaderTest {
 
                if (records==switchToCompiled1) {
                    decoder = DispatchLoader.loadDispatchReader(catalog1);
+                   queue = decoder.ringBuffer(0);
                    System.err.println("Created new "+decoder.getClass().getSimpleName());
                }
                if (records==switchToCompiled2) {
                    decoder = DispatchLoader.loadDispatchReader(catalog2);
+                   queue = decoder.ringBuffer(0);
                    System.err.println("Created new "+decoder.getClass().getSimpleName());
                }
                if (records>exitTest) {

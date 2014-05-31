@@ -9,13 +9,11 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
-public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
+public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     public FASTWriterDispatchTemplates(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
-            int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
-            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
-        super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
-                dictionaryMembers, fullScript, maxNestedGroupDepth);
+            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
+        super(writer, dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, ringBuffers);
     }
 
     
@@ -1340,20 +1338,20 @@ public class FASTWriterDispatchTemplates extends FASTWriterDispatch {
         writer.closePMap();
     }
 
-    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTWriterDispatch dispatch) {
+    protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTEncoder dispatch) {
         writer.closePMap();
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
 
-    protected void genWriteCloseTemplate(FASTWriterDispatch dispatch) {
+    protected void genWriteCloseTemplate(FASTEncoder dispatch) {
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
     
     // must happen just before Group so the Group in question must always have
     // an outer group.
-    protected void pushTemplate(int templateId, FASTWriterDispatch dispatch, PrimitiveWriter writer) {
+    protected void pushTemplate(int templateId, FASTEncoder dispatch, PrimitiveWriter writer) {
         int top = dispatch.templateStack[dispatch.templateStackHead];
         if (top == templateId) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);

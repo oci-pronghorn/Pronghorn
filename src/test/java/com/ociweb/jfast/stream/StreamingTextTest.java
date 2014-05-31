@@ -10,13 +10,14 @@ import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
+import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
@@ -102,7 +103,7 @@ public class StreamingTextTest extends BaseStreamingTest {
         int streamByteSize = operationIters * ((maxMPapBytes * (fields / fieldsPerGroup)) + (fields * avgFieldSize));
         int maxGroupCount = operationIters * fields / fieldsPerGroup;
 
-        int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
+        int[] tokenLookup = TestUtil.buildTokens(fields, types, operators);
         byte[] writeBuffer = new byte[streamByteSize];
 
         // /////////////////////////////
@@ -135,7 +136,7 @@ public class StreamingTextTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -205,7 +206,9 @@ public class StreamingTextTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 300, 0, 4, 4, null, 64, 8, 7, maxGroupCount * 10, 0);
+        
+        TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
         TextHeap textHeap = fr.textHeap;
 
         long start = System.nanoTime();

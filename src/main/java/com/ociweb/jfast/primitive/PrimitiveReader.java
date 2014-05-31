@@ -523,13 +523,15 @@ public final class PrimitiveReader {
             return 0; // zero length string
         } else {
             int idx = targetOffset;
-            while (reader.buffer[reader.position] >= 0) {
+            while (v >= 0) {
                 target[mask&idx++] = (char) (reader.buffer[reader.position++]);
                 if (reader.position >= reader.limit) {
                     fetch(1, reader); // CAUTION: may change value of position
                 }
+                v= reader.buffer[reader.position];
             }
-            target[mask&idx++] = (char) (0x7F & reader.buffer[reader.position++]);
+            target[mask&idx++] = (char) (0x7F & v); 
+            reader.position++;
             return idx - targetOffset;// length of string
 
         }

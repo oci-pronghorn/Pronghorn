@@ -40,11 +40,6 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     
 
     FASTReaderInterpreterDispatch fr;
-    FASTRingBuffer[] arrayRingBuffers = new FASTRingBuffer[1];
-    
-//  arrayRingBuffers = new FASTRingBuffer[1];
-//  arrayRingBuffers[0] = FASTDecoder.ringBufferBuilder(8, 7, this);
-    
 
     // NO PMAP
     // NONE, DELTA, and CONSTANT(non-optional)
@@ -75,13 +70,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, 64, 64, 8, 8, null, 3, new int[0][0], null, 64);
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         if (operationIters < 3) {
@@ -181,8 +176,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        fr = new FASTReaderInterpreterDispatch(dcr, 3, new int[0][0], 0, 0, 4, 4, null, 64, 8, 7, maxGroupCount * 10, 0);
-        arrayRingBuffers[0] = FASTDecoder.ringBufferBuilder(8, 7, fr);
+        TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0);
+        fr = new FASTReaderInterpreterDispatch(testCatalog);
         
 
         long start = System.nanoTime();
@@ -227,18 +222,18 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     private void readDecimalOthers(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token) {
         
         if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
-            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
-            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, fr.ringBuffer(0));
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (testData[f] != man) {
                 assertEquals(testData[f], man);
             }
@@ -247,20 +242,20 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     private void readDecimalConstant(int[] tokenLookup, FASTReaderInterpreterDispatch fr, long none, int f, int token, int i) {
         if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
-            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (exp != TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),
                         TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, exp);
             }
-            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (none != man) {
                 assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, man);
             }
         } else {
             
             
-            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
-            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, arrayRingBuffers[0]);
+            int exp = StreamingDecimalTest.readDecimalExponent(tokenLookup[f], reader, fr, fr.ringBuffer(0));
+            long man = StreamingDecimalTest.readDecimalMantissa(tokenLookup[f], reader, fr, fr.ringBuffer(0));
             if (testMantConst != man) {
                 assertEquals(testMantConst, man);
             }

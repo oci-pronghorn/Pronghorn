@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.MappedByteBuffer;
 
-import com.ociweb.jfast.benchmark.HomogeniousRecordWriteReadLongBenchmark;
+import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -40,7 +40,7 @@ public abstract class BaseStreamingTest {
 		maxGroupCount = operationIters*fields/fieldsPerGroup;
 		
 		
-		int[] tokenLookup = HomogeniousRecordWriteReadLongBenchmark.buildTokens(fields, types, operators);
+		int[] tokenLookup = TestUtil.buildTokens(fields, types, operators);
 		
 		byte[] writeBuffer = new byte[streamByteSize];
 
@@ -188,9 +188,7 @@ public abstract class BaseStreamingTest {
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 
-	    		DictionaryFactory dcr = new DictionaryFactory();
-	    
-	    		dcr.setTypeCounts(fields, fields, charFields, byteFields);
+
 	    		
 				long maxOverhead;
 				long totalOverhead;
@@ -207,10 +205,14 @@ public abstract class BaseStreamingTest {
 				minDuration = Long.MAX_VALUE;
 				
 				buildInputReader(maxGroupCount, writtenData, (int)byteCount);
+				DictionaryFactory dcr;
 				
 				try {
 					int w = warmup+sampleSize;
 					while (--w>=0) {
+			    
+					    dcr = new DictionaryFactory();
+			            dcr.setTypeCounts(fields, fields, charFields, byteFields);
 
 						resetInputReader();
 						
@@ -262,9 +264,7 @@ public abstract class BaseStreamingTest {
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
-		DictionaryFactory dcr = new DictionaryFactory();
-	    
-		dcr.setTypeCounts(fields, fields, charFields, byteFields);
+
 		
 		        long byteCount=0;
 		
@@ -282,6 +282,9 @@ public abstract class BaseStreamingTest {
 					int w = warmup+sampleSize;
 					while (--w>=0) {
 					
+					    DictionaryFactory dcr = new DictionaryFactory();
+					    dcr.setTypeCounts(fields, fields, charFields, byteFields);
+					    
 						resetOutputWriter();
 						
 						//compute overhead

@@ -4,9 +4,10 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
-public class FASTWriterDispatch { //TODO: C, rename as FASTEncoder
+public class FASTEncoder { 
     protected int templateStackHead = 0;
     protected final int[] templateStack;
 
@@ -26,7 +27,6 @@ public class FASTWriterDispatch { //TODO: C, rename as FASTEncoder
     protected int readFromIdx = -1;
 
     protected final DictionaryFactory dictionaryFactory;
-    protected final FASTRingBuffer queue;
     protected final int[][] dictionaryMembers;
 
     protected final int[] sequenceCountStack;
@@ -45,9 +45,19 @@ public class FASTWriterDispatch { //TODO: C, rename as FASTEncoder
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
 
-    public FASTWriterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int maxCharSize,
-            int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue, int nonTemplatePMapSize,
-            int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
+    protected final FASTRingBuffer[] ringBuffers;
+    
+//    public FASTEncoder(Primitive writer, TemplateCatalog catalog) {
+//        this(writer, catalog.dictionaryFactory(), catalog.m
+//                
+//                catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
+//                catalog.fullScript(), catalog.getMaxGroupDepth(),
+//                8, 7, computePMapStackInBytes(catalog), catalog.templateStartIdx, catalog.templateLimitIdx,
+//                catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
+//    }
+    
+    public FASTEncoder(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize,
+                                int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
 
         this.fullScript = fullScript;
         this.writer = writer;
@@ -68,15 +78,15 @@ public class FASTWriterDispatch { //TODO: C, rename as FASTEncoder
         assert (TokenBuilder.isPowerOfTwo(longValues.length));
         this.longInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (longValues.length - 1));
         
-        this.textHeap = dcr.charDictionary(maxCharSize, gapChars);
-        this.byteHeap = dcr.byteDictionary(maxBytesSize, gapBytes);
+        this.textHeap = dcr.charDictionary();
+        this.byteHeap = dcr.byteDictionary();
 
         this.TEXT_INSTANCE_MASK = null == textHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount() - 1));
         this.instanceBytesMask = null==byteHeap? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount()-1));
 
         this.templateStack = new int[maxTemplates];
-        this.queue = queue;
         this.dictionaryMembers = dictionaryMembers;
+        this.ringBuffers = ringBuffers;
     }
 
     public void setDispatchObserver(DispatchObserver observer) {

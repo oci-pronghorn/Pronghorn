@@ -114,7 +114,7 @@ public class TemplateLoaderTest {
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
-        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);
+        FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
         
 
@@ -351,7 +351,7 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
-        FASTRingBuffer queue = FASTDecoder.ringBufferBuilder(8, 7, readerDispatch);
+        FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
         FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
@@ -363,8 +363,7 @@ public class TemplateLoaderTest {
                               // latency is turned off!!
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(writer, catalog.dictionaryFactory(),
-                catalog.templatesCount(), catalog.getMaxTextLength(), catalog.getMaxByteVectorLength(),
-                catalog.getTextGap(), catalog.getByteVectorGap(), queue, catalog.maxNonTemplatePMapSize(),
+                catalog.templatesCount(), queue, catalog.maxNonTemplatePMapSize(),
                 catalog.dictionaryResetMembers(), catalog.fullScript(), catalog.getMaxGroupDepth());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);

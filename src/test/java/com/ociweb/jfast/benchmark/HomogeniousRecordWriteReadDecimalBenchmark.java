@@ -73,10 +73,12 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     static final int[] intTestData = new int[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
     static final long[] longTestData = new long[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
 
-    static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, 64, 64, 8, 8, null, 3,
-            new int[0][0], null, 64);
-    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(dictionaryFactory, 3, new int[0][0], 0, 0, 4, 4, null, 64,
-            8, 7, maxGroupCount * 10, 0);
+    static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
+    
+    
+    static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,  8, 7, maxGroupCount * 10, 0);
+    
+    static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
 
     static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_PMap, 2,
             TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -261,7 +263,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;

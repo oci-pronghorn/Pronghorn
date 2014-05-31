@@ -3,6 +3,9 @@ package com.ociweb.jfast.generator;
 import java.io.IOException;
 import java.util.Arrays;
 
+import com.ociweb.jfast.stream.FASTDecoder;
+import com.ociweb.jfast.stream.FASTRingBuffer;
+
 public class GeneratorUtils {
 
     public static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target, String name, String base) throws IOException {

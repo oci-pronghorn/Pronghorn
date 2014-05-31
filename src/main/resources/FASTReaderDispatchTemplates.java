@@ -48,15 +48,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         super(new TemplateCatalog(catBytes));
     }
     
-    //second constructor only needed for testing.
-    protected FASTReaderDispatchTemplates(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
-            int maxTextLen, int maxVectorLen, int charGap, int bytesGap, int[] fullScript, int maxNestedGroupDepth,
-            int primaryRingBits, int textRingBits, int maxPMapCountInBytes, int[] templateStartIdx, int[] templateLimitIdx, int stackPMapInBytes, int preambleSize) {
-        super(dcr, nonTemplatePMapSize, dictionaryMembers, maxTextLen, maxVectorLen, charGap, bytesGap, fullScript, maxNestedGroupDepth,
-                primaryRingBits,textRingBits,  maxPMapCountInBytes, templateStartIdx, templateLimitIdx,  stackPMapInBytes, preambleSize);
-    }
-
-
 
     protected void genReadCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);
@@ -1535,7 +1526,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rbB[rbMask & rbRingBuffer.addPos++] = len;
     }
 
-    protected void genReadASCIICopy(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
             int len = (PrimitiveReader.popPMapBit(reader)!=0) ? StaticGlue.readASCIIToHeap(idx, reader, textHeap) : textHeap.valueLength(idx);
             rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
             rbB[rbMask & rbRingBuffer.addPos++] = len;
@@ -1625,24 +1616,23 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         }
     }
 
-//                rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.addCharPos;
-//                int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, rbRingBuffer.addCharPos, rbRingBuffer.charMask, reader);
-//                rbRingBuffer.addCharPos+=lenTemp;                
-//                rbB[rbMask & rbRingBuffer.addPos++] = lenTemp;
     
     //TODO: C, perf problem. 6% in profiler, compiler should ONLY write back to heap IFF this field is read by another field.
     //this block is no longer in use however the  performance did not show up. so....
 
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
             if (0 == PrimitiveReader.popPMapBit(reader)) {
-                StaticGlue.setInt(rbB,rbMask,rbRingBuffer,defIdx);
-                StaticGlue.setInt(rbB,rbMask,rbRingBuffer,defLen);
+                rbB[rbMask & rbRingBuffer.addPos++] =defIdx;
+                rbB[rbMask & rbRingBuffer.addPos++] =defLen;
             } else {
+//                int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.addCharPos, rbRingBuffer.charMask, reader);
+//                rbRingBuffer.addCharPos+=lenTemp;                
+//                rbB[rbMask & rbRingBuffer.addPos++] = lenTemp;
                 
-                //is not clear why but this block is faster than the direct copy from stream
+//                //is not clear why but this block is faster than the direct copy from stream
                 int len = StaticGlue.readASCIIToHeap(idx, reader, textHeap);
-                StaticGlue.setInt(rbB,rbMask,rbRingBuffer,rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap));
-                StaticGlue.setInt(rbB,rbMask,rbRingBuffer,len);
+                rbB[rbMask & rbRingBuffer.addPos++] = rbRingBuffer.writeTextToRingBuffer(idx, len, textHeap);
+                rbB[rbMask & rbRingBuffer.addPos++] = len;
             }
     }
         

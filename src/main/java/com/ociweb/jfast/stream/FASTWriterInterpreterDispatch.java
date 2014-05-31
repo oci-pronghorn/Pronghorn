@@ -18,19 +18,24 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
 
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null,null);
-      
-    
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
+     
+    //TODO: AA, must remove writer from the constructor here and use as argument in each write method.
+    //TODO: AA, must convert signature to useCatalog.
     public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
-            int maxCharSize, int maxBytesSize, int gapChars, int gapBytes, FASTRingBuffer queue,
-            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
-        super(writer, dcr, maxTemplates, maxCharSize, maxBytesSize, gapChars, gapBytes, queue, nonTemplatePMapSize,
-                dictionaryMembers, fullScript, maxNestedGroupDepth);
+            FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
+        super(writer, dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, buildRingBuffers(queue,fullScript));
+    }
+
+    private static FASTRingBuffer[] buildRingBuffers(FASTRingBuffer queue, int[] fullScript) {
+        int len = null==fullScript?1:fullScript.length;
         
-        //TODO: AA, create ringBuffer here and put copy in every slot for array same lenght as fullScript
-        //Need either 1, way to pass in message/ringBuffer mapping rules or 2. way to set these after construction.
-        
-        
+        FASTRingBuffer[] buffers = new FASTRingBuffer[len];
+        int i = len;
+        while (--i>=0) {
+            buffers[i]=queue;
+        }
+        return buffers;
     }
 
     /**
@@ -1284,7 +1289,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
         int token = fullScript[activeScriptCursor];
 
-        assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, queue));
+        assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, ringBuffers[activeScriptCursor]));
 
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
@@ -1296,9 +1301,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, queue);
+                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, queue);
+                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         }
                     } else {
 
@@ -1306,23 +1311,23 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //TODO: B, Add lookup for value of absent/null instead of this constant.
                         int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
-                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, queue);                            
+                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);                            
                         } else {        
-                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, queue);
+                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
                         }
 
                     }
                 } else {
-                    long value = FASTRingBufferReader.readLong(queue, fieldPos);
+                    long value = FASTRingBufferReader.readLong(ringBuffers[activeScriptCursor], fieldPos);
                     assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                     
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsigned(token, fieldPos, queue);
+                            acceptLongUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         } else {
-                            acceptLongSigned(token, fieldPos, queue);
+                            acceptLongSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         }
                     } else {
                         if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
@@ -1340,12 +1345,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    int length = FASTRingBufferReader.readTextLength(queue, fieldPos);
+                    int length = FASTRingBufferReader.readTextLength(ringBuffers[activeScriptCursor], fieldPos);
                     if (length < 0) {
                         write(token);
                     } else {
-                        char[] buffer = queue.readRingCharBuffer(fieldPos);
-                        write(token, ringCharSequence.set(buffer, queue.readRingCharPos(fieldPos), queue.readRingCharMask(), length));
+                        char[] buffer = ringBuffers[activeScriptCursor].readRingCharBuffer(fieldPos);
+                        write(token, ringCharSequence.set(buffer, ringBuffers[activeScriptCursor].readRingCharPos(fieldPos), ringBuffers[activeScriptCursor].readRingCharMask(), length));
                     }
                 } else {
                     // 011??
@@ -1354,28 +1359,28 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         
                         int expoToken = token;
                         
-                        int exponent = FASTRingBufferReader.readInt(queue, fieldPos);
-                        long mantissa = FASTRingBufferReader.readLong(queue, fieldPos + 1);
+                        int exponent = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
+                        long mantissa = FASTRingBufferReader.readLong(ringBuffers[activeScriptCursor], fieldPos + 1);
 
                         
                         //at runtime if the value is null for the exponent must not
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerSigned(expoToken, fieldPos, queue);
+                            acceptIntegerSigned(expoToken, fieldPos, ringBuffers[activeScriptCursor]);
                         } else {
                                     
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                                                         
-                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, queue);
+                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
 
                         }
                         
                         int mantToken = fullScript[++activeScriptCursor];
                         
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongSigned(mantToken, fieldPos + 1, queue);
+                            acceptLongSigned(mantToken, fieldPos + 1, ringBuffers[activeScriptCursor]);
                         } else {
                             long valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                             
@@ -1445,14 +1450,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // checking
                     // Only happens once before a node sequence so push it on
                     // the count stack
-                    int length = FASTRingBufferReader.readInt(queue, fieldPos);
+                    int length = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, queue);
+                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, queue);
+                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
                         }
                     } else {
                         if (length == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
@@ -1463,9 +1468,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
-                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, queue);
+                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
                             } else {
-                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, queue);
+                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
                             }
                         }
                     }
