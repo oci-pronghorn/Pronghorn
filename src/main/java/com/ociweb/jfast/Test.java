@@ -5,9 +5,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Properties;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
@@ -15,6 +18,8 @@ import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
+import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -24,11 +29,13 @@ public class Test {
 
     // mvn exec:java -Dexec.mainClass="com.ociweb.jfast.Test"
             
+   // -XX:MaxInlineLevel=9 -XX:InlineSmallCode=4096 -XX:MinInliningThreshold=10000 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:UseSSE=2 -XX:MaxInlineSize=10240
+    
     public static void main(String[] args) {
         new Test().testDecodeComplex30000();
+        //TODO: A, need stand alone code for getting performance numbers easily after checkout
     }
     
-  //TODO: A, need stand alone code for getting performance numbers easily after checkout
     public void testDecodeComplex30000() {
         
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
@@ -37,15 +44,10 @@ public class Test {
           TemplateCatalog catalog = new TemplateCatalog(catBytes); 
 
           // connect to file
-          URL sourceData = getClass().getResource("/performance/complex30000.dat");
-          File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
-          long totalTestBytes = sourceDataFile.length();
 
           int maxPMapCountInBytes = 2 + ((Math.max(
-                  catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
-
-        
-          PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile), maxPMapCountInBytes);
+                  catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());             
+          
           
           FASTClassLoader.deleteFiles();
           
@@ -54,7 +56,7 @@ public class Test {
           FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
           int warmup = 128;
-          int count = 1024;
+          int count = 1024000;
           int result = 0;
           int[] fullScript = catalog.scriptTokens;
           
@@ -66,6 +68,9 @@ public class Test {
           long queuedBytes = 0;
           int iter = warmup;
           while (--iter >= 0) {
+              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream("/performance/complex30000.dat"));
+              PrimitiveReader reader = new PrimitiveReader(1024,fastInputStream, maxPMapCountInBytes);
+              PrimitiveReader.setTimeout(Long.MAX_VALUE, reader);
               msgs = 0;
               grps = 0;
               int flag = 0; // same id needed for writer construction
@@ -141,7 +146,14 @@ public class Test {
 
           iter = count;
           while (--iter >= 0) {
-
+              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream("/performance/complex30000.dat"));
+              PrimitiveReader reader = new PrimitiveReader(1024*1024*2,fastInputStream, maxPMapCountInBytes);
+              PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
+              
+              System.gc();
+              
+              PrimitiveReader.setTimeout(Long.MAX_VALUE, reader);
+              
               double start = System.nanoTime();
 
               int flag;
@@ -160,6 +172,7 @@ public class Test {
               }
 
               double duration = System.nanoTime() - start;
+              long totalTestBytes = fastInputStream.totalBytes();
               if ((0x7F & iter) == 0) {
                   int ns = (int) duration;
                   float mmsgPerSec = (msgs * (float) 1000l / ns);
@@ -168,7 +181,7 @@ public class Test {
 
                   System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
                           + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
-                          + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs + " Groups:" + grps); // Phrases/Clauses
+                          + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs); // Phrases/Clauses
                   // Helps let us kill off the job.
               }
 
@@ -264,57 +277,30 @@ public class Test {
         return fastInput;
     }
     
-    static byte[] buildBytesForTestingByteArray(File fileSource) {
-        byte[] fileData = null;
+    static InputStream testDataInputStream(String resource) {
+        
+        InputStream resourceInput = Test.class.getResourceAsStream(resource);
+        if (null!=resourceInput) {
+            return resourceInput;            
+        }
+        
+        //TODO: B, messy needs cleanup.
         try {
-            // do not want to time file access so copy file to memory
-            fileData = new byte[(int) fileSource.length()];
-            FileInputStream inputStream = new FileInputStream(fileSource);
-            int readBytes = inputStream.read(fileData);
-            inputStream.close();
-            assert(fileData.length==readBytes);
+            return new FileInputStream(new File(resource));
 
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+            throw new FASTException(e);
         }
-        return fileData;
     }
 
-//    private String hexString(byte[] targetBuffer) {
-//        StringBuilder builder = new StringBuilder();
-//
-//        for (byte b : targetBuffer) {
-//
-//            String tmp = Integer.toHexString(0xFF & b);
-//            builder.append(tmp.substring(Math.max(0, tmp.length() - 2))).append(" ");
-//
-//        }
-//        return builder.toString();
-//    }
-
-//    private String binString(byte[] targetBuffer) {
-//        StringBuilder builder = new StringBuilder();
-//
-//        for (byte b : targetBuffer) {
-//
-//            String tmp = Integer.toBinaryString(0xFF & b);
-//            builder.append(tmp.substring(Math.max(0, tmp.length() - 8))).append(" ");
-//
-//        }
-//        return builder.toString();
-//    }
-
     public static byte[] buildRawCatalogData() {
-        File fileSource = exampleTemplateFile("/performance/example.xml");
         //this example uses the preamble feature
         Properties properties = new Properties(); 
         properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, fileSource, properties);
+            TemplateLoader.buildCatalog(catalogBuffer, "/performance/example.xml", properties);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -325,10 +311,4 @@ public class Test {
         return catalogByteArray;
     }
 
-    static File exampleTemplateFile(String resource) {
-        URL source = Test.class.getResource(resource);
-        File fileSource = new File(source.getFile().replace("%20", " "));
-        System.err.println("reading file from "+fileSource);
-        return fileSource;
-    }
 }

@@ -136,7 +136,7 @@ public class StreamingTextTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(dcr, 100, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -148,7 +148,7 @@ public class StreamingTextTest extends BaseStreamingTest {
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
                 maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 
-        fw.openGroup(groupToken, maxMPapBytes);
+        fw.openGroup(groupToken, maxMPapBytes, writer);
 
         while (--i >= 0) {
             int f = fields;
@@ -159,36 +159,36 @@ public class StreamingTextTest extends BaseStreamingTest {
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (testNullString(i, token)) {
-                        fw.write(token);
+                        fw.write(token, writer);
                     } else {
                         if (testCharSequence(i)) {
-                            fw.write(token, testConstSeq);
+                            fw.write(token, testConstSeq, writer);
                         } else {
                             char[] array = testConst;
-                            fw.write(token, array, 0, array.length);
+                            fw.write(token, array, 0, array.length, writer);
                         }
                     }
                 } else {
                     if (testNullString(f, token)) {
-                        fw.write(token);
+                        fw.write(token, writer);
                     } else {
                         if (testCharSequence(i)) {
-                            fw.write(token, testData[f]);
+                            fw.write(token, testData[f], writer);
                         } else {
                             char[] array = testDataChars[f];
-                            fw.write(token, array, 0, array.length);
+                            fw.write(token, array, 0, array.length, writer);
                         }
                     }
                 }
 
-                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);
+                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes, writer);
             }
         }
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
-            fw.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER));
+            fw.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), writer);
         }
-        fw.flush();
-        fw.flush();
+        fw.flush(writer);
+        fw.flush(writer);
         long duration = System.nanoTime() - start;
         return duration;
     }

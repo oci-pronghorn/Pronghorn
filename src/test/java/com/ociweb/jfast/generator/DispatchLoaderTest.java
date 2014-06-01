@@ -112,16 +112,12 @@ public class DispatchLoaderTest {
     
     static byte[] buildRawCatalogData(String resourceName) {
 
-        URL source = TemplateLoaderTest.class.getResource(resourceName);
-        
         Properties properties = new Properties(); 
         properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
         
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            File file = new File(source.toURI());
-            assertTrue(file.exists());
-            TemplateLoader.buildCatalog(catalogBuffer, file, properties);
+            TemplateLoader.buildCatalog(catalogBuffer, resourceName, properties);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

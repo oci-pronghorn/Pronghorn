@@ -76,7 +76,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};
 	
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
 	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
 	
@@ -376,13 +376,13 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = textTestData.length;
 			while (--j>=0) {
 				result |= textTestData[j].length();//do nothing
 			}
-			staticWriter.closeGroup(groupToken);
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken, writer);
+			staticWriter.flush(writer);
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
@@ -415,13 +415,13 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = textTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token,textTestData[j]);
+				staticWriter.write(token,textTestData[j], writer);
 			}
-			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
+			staticWriter.flush(writer);
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 

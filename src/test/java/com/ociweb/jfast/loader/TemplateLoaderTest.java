@@ -44,7 +44,9 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
+        assertEquals(697, catalogByteArray.length);
                
+        
         // reconstruct Catalog object from stream
         TemplateCatalog catalog = new TemplateCatalog(catalogByteArray);
 
@@ -53,7 +55,6 @@ public class TemplateLoaderTest {
         try {
             // /performance/example.xml contains 3 templates.
             assertEquals(3, catalog.templatesCount());
-            assertEquals(1013, catalogByteArray.length);
 
             script = catalog.fullScript();
             assertEquals(48, script.length);
@@ -362,9 +363,9 @@ public class TemplateLoaderTest {
         int maxGroupCount = 3;// NOTE: may need to be VERY large if minimize
                               // latency is turned off!!
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(writer, catalog.dictionaryFactory(),
-                catalog.templatesCount(), queue, catalog.maxNonTemplatePMapSize(),
-                catalog.dictionaryResetMembers(), catalog.fullScript(), catalog.getMaxGroupDepth());
+        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog.dictionaryFactory(), catalog.templatesCount(),
+                queue, catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
+                catalog.fullScript(), catalog.getMaxGroupDepth());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 
@@ -596,14 +597,13 @@ public class TemplateLoaderTest {
 //    }
 
     public static byte[] buildRawCatalogData() {
-        File fileSource = exampleTemplateFile("/performance/example.xml");
         //this example uses the preamble feature
         Properties properties = new Properties(); 
         properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, fileSource, properties);
+            TemplateLoader.buildCatalog(catalogBuffer, "/performance/example.xml", properties);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -614,11 +614,5 @@ public class TemplateLoaderTest {
         return catalogByteArray;
     }
 
-    static File exampleTemplateFile(String resource) {
-        URL source = TemplateLoaderTest.class.getResource(resource);
-        File fileSource = new File(source.getFile().replace("%20", " "));
-        System.err.println("reading file from "+fileSource);
-        return fileSource;
-    }
 
 }

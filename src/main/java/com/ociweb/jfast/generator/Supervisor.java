@@ -25,7 +25,7 @@ public class Supervisor {
         }
     }
 
-    public static void templateSource(File templates) {
+    public static void templateSource(String templates) {
         System.out.println("Templates:"+templates);
     }
 

@@ -104,81 +104,81 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     //TODO: C, once this all works find a better way to inline it with only 1 conditional.
     
     
-    protected int genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         {
             int length;
             int value = length = PrimitiveReader.readIntegerUnsignedIncrement(target, source, rIntDictionary, reader);
             rbB[rbMask & rbRingBuffer.addPos++] = value;
             if (length == 0) {
                 // jumping over sequence (forward) it was skipped (rare case)
-                return jumpToTarget;
+                dispatch.activeScriptCursor = jumpToTarget;
                
             } else {
                 dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-                return jumpToNext;
+                dispatch.activeScriptCursor = jumpToNext;
                
            }
         }
     }
 
-    protected int genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         {
             int length;
             int value = length = PrimitiveReader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
             rbB[rbMask & rbRingBuffer.addPos++] = value;
             if (length == 0) {
                 // jumping over sequence (forward) it was skipped (rare case)
-                return jumpToTarget;
+                dispatch.activeScriptCursor = jumpToTarget;
                
             } else {
                 dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-                return jumpToNext;
+                dispatch.activeScriptCursor = jumpToNext;
                 
            }
         }
     }
 
-    protected int genReadLengthConstant(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected void genReadLengthConstant(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
         rbB[rbMask & rbRingBuffer.addPos++] = constDefault;
         if (constDefault == 0) {
             // jumping over sequence (forward) it was skipped (rare case)
-            return jumpToTarget;
+            dispatch.activeScriptCursor = jumpToTarget;
             
         } else {
             dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = constDefault;
-            return jumpToNext;
+            dispatch.activeScriptCursor = jumpToNext;
             
        }
     }
 
-    protected int genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
         {
             int length = (rIntDictionary[target] = (int) (rIntDictionary[source] + PrimitiveReader.readLongSigned(reader)));
             rbB[rbMask & rbRingBuffer.addPos++] = length;
             if (length == 0) {
                 // jumping over sequence (forward) it was skipped (rare case)
-                return jumpToTarget;
+                dispatch.activeScriptCursor = jumpToTarget;
                 
             } else {
                 dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-                return jumpToNext;
+                dispatch.activeScriptCursor = jumpToNext;
                 
            }
         }
     }
 
-    protected int genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         {
             int length;
    
             rbB[rbMask & rbRingBuffer.addPos++] = rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader);
             if (length == 0) {
                 // jumping over sequence (forward) it was skipped (rare case)
-                return jumpToTarget;
+                dispatch.activeScriptCursor = jumpToTarget;
                 
             } else {
                 dispatch.sequenceCountStack[++dispatch.sequenceCountStackHead] = length;
-                return jumpToNext;
+                dispatch.activeScriptCursor = jumpToNext;
                 
            }
         }
@@ -364,7 +364,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 
     
     protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        {//TODO: AA, must remove rbRingBuffer.addPos++ and replace with array passed in OR constant local count.
+        {
             int value = PrimitiveReader.readIntegerSigned(reader);
             if (0 == value) {
                 rbB[rbMask & rbRingBuffer.addPos++] = constAbsent;

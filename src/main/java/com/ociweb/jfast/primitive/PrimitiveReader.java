@@ -144,16 +144,13 @@ public final class PrimitiveReader {
         long timeout = 0;
         while (need > 0) { 
             if (0 == count++) {
-                timeout = System.nanoTime()+reader.nanoBlockingTimeout;
-                
-                //TODO: X, compact buffer in prep for data spike
-
+                timeout = System.nanoTime()+reader.nanoBlockingTimeout;//Math.min(reader.nanoBlockingTimeout,1000000000*60);
             } else {
-                if (System.nanoTime()>timeout) {
+                if (System.nanoTime()>timeout && count>100) {
                     
                     //TODO: B, must roll back to previous position to decode can try again later on this steam.
                     
-                    throw new FASTException(FASTError.TIMEOUT);
+                    throw new FASTException(FASTError.TIMEOUT+" of "+reader.nanoBlockingTimeout);
                 }
             }
 

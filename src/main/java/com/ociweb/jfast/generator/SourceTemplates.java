@@ -1,15 +1,18 @@
 package com.ociweb.jfast.generator;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
 public class SourceTemplates {
@@ -25,12 +28,35 @@ public class SourceTemplates {
     
     private String templateSource() {
         
+        String sourceFile = "/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java";
+        
+        InputStream inputStream = SourceTemplates.class.getResourceAsStream(sourceFile);
+        if (null!=inputStream) {
+           
+            
+            int v;
+            StringBuilder builder = new StringBuilder();
+            try {
+                while ((v=inputStream.read())>0) {
+                    builder.append((char)v);                    
+                }
+                inputStream.close();
+            } catch (IOException e) {
+                throw new FASTException(e);
+            }
+            return builder.toString();
+            
+        }
+        
+        //TOOD: B, clean up the rest of this it is very messy.
+        
+        
         //When we are doing active development the file will be found here
         //This allows for interactive testing without having to complete the full release cycle.
         File sourceDataFile = new File(readerDispatchTemplateSourcePath());
         if (!sourceDataFile.exists()) {
             //when we are in production the file will be found here
-             URL sourceData = getClass().getResource("/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java");
+             URL sourceData = getClass().getResource("/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java"); //TODO: A, change to stream.
              sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
         }
         
@@ -124,11 +150,19 @@ public class SourceTemplates {
         try {
             String name = FASTReaderDispatchTemplates.class.getSimpleName() + ".class";
             URL resource = FASTReaderDispatchTemplates.class.getResource(name);
-            classFile = new File(resource.toURI());
+      //      System.err.println("class location:"+resource);
+            
+            
+            
+            classFile = new File(resource.toURI());//TODO: A, does not work in maaven jar, must fix.
             //assuming a maven directory structure the needed source file should be found here
             return classFile.getPath()
                     .replaceFirst("target.classes", "src"+File.separatorChar+"main"+File.separatorChar+"java")
                     .replace(".class",".java");
+            
+            
+            
+            
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }

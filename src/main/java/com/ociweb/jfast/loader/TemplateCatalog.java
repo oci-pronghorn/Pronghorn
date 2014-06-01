@@ -3,11 +3,16 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.loader;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.Properties;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class TemplateCatalog {
@@ -56,7 +61,16 @@ public class TemplateCatalog {
     final FASTRingBuffer[] ringBuffers;
     
     public TemplateCatalog(byte[] catBytes) {
-        PrimitiveReader reader = new PrimitiveReader(catBytes,0);
+        
+        FASTInputStream inputStream;
+        try {
+            inputStream = new FASTInputStream(new GZIPInputStream(new ByteArrayInputStream(catBytes),catBytes.length));
+        } catch (IOException e) {
+            throw new FASTException(e);
+        }
+        
+        
+        PrimitiveReader reader = new PrimitiveReader(1024, inputStream, 0);
 
         properties = new Properties();
         loadProperties(reader);
@@ -117,12 +131,14 @@ public class TemplateCatalog {
     private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length) {
         FASTRingBuffer[] buffers = new FASTRingBuffer[length];
         //TODO: simple imlementation needs adavanced controls.
-        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory);
+        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory, 10); //TODO: A, must compute max frag depth in template parser.    
         int i = length;
         while (--i>=0) {
             buffers[i]=rb;            
         }        
         return buffers;
+        
+        //TODO: B, build  null ring buffer to drop messages.
     }
     
     public FASTRingBuffer[] ringBuffers() {

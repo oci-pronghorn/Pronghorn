@@ -11,9 +11,9 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTWriterDispatchTemplates extends FASTEncoder {
 
-    public FASTWriterDispatchTemplates(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
+    public FASTWriterDispatchTemplates(DictionaryFactory dcr, int maxTemplates,
             int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
-        super(writer, dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, ringBuffers);
+        super(dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, ringBuffers);
     }
 
     
@@ -443,7 +443,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextDeltaOptional2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextDeltaOptional2(int token, char[] value, int offset, int length, TextHeap textHeap, PrimitiveWriter writer) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
@@ -456,7 +456,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             writer.writeIntegerSigned(trimTail + 1); // cut off these from tail,
                                                      // also add 1 because this
                                                      // is optional
-        
+   
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
         
@@ -474,13 +474,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         
         }
     }
+    //TODO: A, write templateId and dispatch instance in leading integer. If value is bad the dispatch can be reset.
     
-    protected void genWriteTextConstantOptional() {
+    protected void genWriteTextConstantOptional(PrimitiveWriter writer) {
         PrimitiveWriter.writePMapBit((byte) 1, writer);
         // the writeNull will take care of the rest.
     }
 
-    protected void genWriteTextTailOptional2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextTailOptional2(int token, char[] value, int offset, int length, PrimitiveWriter writer, TextHeap textHeap) {
         int idx = token & TEXT_INSTANCE_MASK;
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
@@ -495,11 +496,11 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
-    protected void genWriteTextNoneOptional(char[] value, int offset, int length) {
+    protected void genWriteTextNoneOptional(char[] value, int offset, int length, PrimitiveWriter writer) {
         writer.writeTextASCII(value, offset, length);
     }
     
-    protected void genWriteTextDefault2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextDefault2(int token, char[] value, int offset, int length, TextHeap textHeap, PrimitiveWriter writer) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
@@ -510,7 +511,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextCopy2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextCopy2(int token, char[] value, int offset, int length, TextHeap textHeap, PrimitiveWriter writer) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         if (textHeap.equals(idx, value, offset, length)) {
@@ -522,7 +523,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextDelta2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextDelta2(int token, char[] value, int offset, int length, PrimitiveWriter writer, TextHeap textHeap) {
         int idx = token & TEXT_INSTANCE_MASK;
         
         // count matching front or back chars
@@ -552,7 +553,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextTail2(int token, char[] value, int offset, int length) {
+    protected void genWriteTextTail2(int token, char[] value, int offset, int length, PrimitiveWriter writer, TextHeap textHeap) {
         int idx = token & TEXT_INSTANCE_MASK;
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
@@ -566,11 +567,11 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
-    protected void genWriteTextNone(char[] value, int offset, int length) {
+    protected void genWriteTextNone(char[] value, int offset, int length, PrimitiveWriter writer) {
         writer.writeTextASCII(value, offset, length);
     }
     
-    protected void genWriterBytesDefaultOptional(int token, ByteBuffer value) {
+    protected void genWriterBytesDefaultOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
@@ -587,7 +588,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriterBytesCopyOptional(int token, ByteBuffer value) {
+    protected void genWriterBytesCopyOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx, value)) {
@@ -602,7 +603,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriterBytesDeltaOptional(int token, ByteBuffer value) {
+    protected void genWriterBytesDeltaOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         
         //count matching front or back chars
@@ -616,7 +617,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriterBytesTailOptional(int token, ByteBuffer value) {
+    protected void genWriterBytesTailOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         int headCount = byteHeap.countHeadMatch(idx, value);
         int trimTail = byteHeap.length(idx)-headCount;
@@ -635,12 +636,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriterBytesNoneOptional(ByteBuffer value) {
+    protected void genWriterBytesNoneOptional(ByteBuffer value, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(value.remaining()+1);
         writer.writeByteArrayData(value); //this moves the position in value
     }
 
-    protected void genWriteBytesDefault(int token, ByteBuffer value) {
+    protected void genWriteBytesDefault(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value)) {
@@ -653,7 +654,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesCopy(int token, ByteBuffer value) {
+    protected void genWriteBytesCopy(int token, ByteBuffer value, ByteHeap byteHeap, PrimitiveWriter writer) {
         int idx = token & instanceBytesMask;
         //System.err.println("AA");
         if (byteHeap.equals(idx, value)) {
@@ -667,7 +668,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesDelta(int token, ByteBuffer value) {
+    protected void genWriteBytesDelta(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         
         //count matching front or back chars
@@ -701,7 +702,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriteBytesTail(int token, ByteBuffer value) {
+    protected void genWriteBytesTail(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         int idx = token & instanceBytesMask;
         int headCount = byteHeap.countHeadMatch(idx, value);
                 
@@ -721,12 +722,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriteBytesNone(ByteBuffer value) {
+    protected void genWriteBytesNone(ByteBuffer value, PrimitiveWriter writer) {
         writer.writeIntegerUnsigned(value.remaining());
         writer.writeByteArrayData(value); //this moves the position in value
     }
     
-    protected void genWriteBytesDefault(int token, byte[] value, int offset, int length) {
+    protected void genWriteBytesDefault(int token, byte[] value, int offset, int length, ByteHeap byteHeap, PrimitiveWriter writer) {
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
@@ -738,7 +739,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesCopy(int token, byte[] value, int offset, int length) {
+    protected void genWriteBytesCopy(int token, byte[] value, int offset, int length, ByteHeap byteHeap, PrimitiveWriter writer) {
         int idx = token & instanceBytesMask;
         
         if (byteHeap.equals(idx, value, offset, length)) {
@@ -1044,7 +1045,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     ///Decimals with optional exponent
     /////////////////////////
 
-      protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+      protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues, int[] intValues) {
       {
         int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
         if (exponentValueOfNull == exponentValue) {
@@ -1056,7 +1057,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
       }
     }
 
-    protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues) {
         {
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
             if (exponentValueOfNull == exponentValue) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
@@ -1069,7 +1070,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues) {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
             if (exponentValueOfNull == exponentValue) {
@@ -1081,7 +1082,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues) {
         { 
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
             if (exponentValueOfNull==exponentValue) {
@@ -1093,7 +1094,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues) {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
             if (exponentValueOfNull == exponentValue) {
@@ -1105,7 +1106,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues) {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos); 
             if (exponentValueOfNull == exponentValue) {

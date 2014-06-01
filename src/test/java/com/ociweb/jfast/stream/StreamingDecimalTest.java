@@ -70,13 +70,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(dcr, 100, null, 3, new int[0][0], null, 64);
 
         long start = System.nanoTime();
         if (operationIters < 3) {
@@ -86,7 +86,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
         int i = operationIters;
         int g = fieldsPerGroup;
-        fw.openGroup(groupToken, pmapSize);
+        fw.openGroup(groupToken, pmapSize, writer);
 
         while (--i >= 0) {
             int f = fields;
@@ -97,7 +97,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token);
+                        fw.write(token, writer);
                     } else {
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -112,19 +112,19 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
-                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal);
+                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal, writer);
+                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal, writer);
                         } else {
                                     
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
-                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
-                            fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, testMantConst, rbRingBufferLocal);
+                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
+                            fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, testMantConst, rbRingBufferLocal, writer);
                         }
                     }
                 } else {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token);
+                        fw.write(token, writer);
                     } else {
                         long mantissa = testData[f];
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
@@ -141,32 +141,32 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
                                 
-                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);                            
-                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal);
+                            fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal, writer);                            
+                            fw.acceptLongSigned(token, rbPos+1, rbRingBufferLocal, writer);
                         } else {
                                     
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
-                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal);
+                            fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
 
                             if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
                                 fw.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
-                                fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbRingBufferLocal);
+                                fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbRingBufferLocal, writer);
                             }
                         }
                     }
                 }
-                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize);
+                g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize, writer);
             }
         }
         if (((fieldsPerGroup * fields) % fieldsPerGroup) == 0) {
-            fw.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER));
+            fw.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), writer);
         }
-        fw.flush();
-        fw.flush();
+        fw.flush(writer);
+        fw.flush(writer);
 
         return System.nanoTime() - start;
     }

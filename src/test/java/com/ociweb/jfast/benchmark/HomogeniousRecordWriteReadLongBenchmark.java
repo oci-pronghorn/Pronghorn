@@ -83,7 +83,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
 	
 	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
@@ -310,20 +310,20 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		int groupToken = groupTokenNoMap;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			staticWriter.reset(); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = longTestData.length;
 			while (--j>=0) {
 				result |= longTestData[j];//do nothing
 			}
-			staticWriter.closeGroup(groupToken);
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken, writer);
+			staticWriter.flush(writer);
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
@@ -347,7 +347,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		long result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			
 			///Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -356,13 +356,13 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = longTestData.length;
 			while (--j>=0) {
-			    StreamingLongTest.writeLong(staticWriter, token, longTestData[j]);
+			    StreamingLongTest.writeLong(staticWriter, token, longTestData[j], writer);
 			}
-			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
+			staticWriter.flush(writer);
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 

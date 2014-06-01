@@ -12,6 +12,7 @@ public class FASTDynamicWriter {
     private final TemplateCatalog catalog;
     private final int[] fullScript;
     private final FASTRingBuffer ringBuffer;
+    private final PrimitiveWriter writer;
 
     boolean needTemplate = true;
     final byte[] preambleData;
@@ -24,6 +25,7 @@ public class FASTDynamicWriter {
         this.catalog = catalog;
         this.fullScript = catalog.fullScript();
         this.ringBuffer = ringBuffer;
+        this.writer = primitiveWriter;
 
         this.preambleData = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
     }
@@ -54,7 +56,7 @@ public class FASTDynamicWriter {
                         preambleData[i++] = (byte) (0xFF & (d >>> 24));
                         idx++;
                     }
-                    writerDispatch.writePreamble(preambleData);
+                    writerDispatch.writePreamble(preambleData, writer);
                 }
                 ;
 
@@ -62,7 +64,7 @@ public class FASTDynamicWriter {
                 int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
                 idx++;
 
-                writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId);
+                writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId, writer);
 
                 // tokens - reading
                 writerDispatch.activeScriptCursor = catalog.templateStartIdx[templateId];
@@ -78,7 +80,7 @@ public class FASTDynamicWriter {
             do {
                 int token = fullScript[writerDispatch.activeScriptCursor];
 
-                if (writerDispatch.dispatchWriteByToken(idx)) {
+                if (writerDispatch.dispatchWriteByToken(idx, writer)) {
 
                     if (writerDispatch.isSkippedSequence()) {
                         int seqScriptLength = TokenBuilder.MAX_INSTANCE

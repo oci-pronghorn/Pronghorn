@@ -35,7 +35,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -84,7 +84,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(dcr, 100, null, 3, new int[0][0], null, 64);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -93,7 +93,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken, maxMPapBytes);
+		fw.openGroup(groupToken, maxMPapBytes, writer);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -106,30 +106,30 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);//nothing
+						fw.write(token, writer);//nothing
 					} else {
-						writeLong(fw, token, testConst); 
+						writeLong(fw, token, testConst, writer); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);
+						fw.write(token, writer);
 					} else {
-					    writeLong(fw, token, testData[f]); 
+					    writeLong(fw, token, testData[f], writer); 
 					}
 				}	
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes, writer);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 		}
-		fw.flush();
-		fw.flush();
+		fw.flush(writer);
+		fw.flush(writer);
 				
 		return System.nanoTime() - start;
 	}
 
-    public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value) {
+    public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value, PrimitiveWriter writer) {
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         //  solution as the ring buffer is introduce into all the APIs
         rbRingBufferLocal.dump();            
@@ -142,19 +142,19 @@ public class StreamingLongTest extends BaseStreamingTest {
                                                             // the work.
             // not optional
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                    
-                fw.acceptLongUnsigned(token, rbPos, rbRingBufferLocal);
+                fw.acceptLongUnsigned(token, rbPos, rbRingBufferLocal, writer);
             } else {
-                fw.acceptLongSigned(token, rbPos, rbRingBufferLocal);
+                fw.acceptLongSigned(token, rbPos, rbRingBufferLocal, writer);
             }
         } else {
             if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
-                fw.write(token);
+                fw.write(token, writer);
             } else {
                 // optional
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    fw.acceptLongUnsignedOptional(token, value);
+                    fw.acceptLongUnsignedOptional(token, value, writer);
                 } else {
-                    fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal);
+                    fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
                 }
             }
         }

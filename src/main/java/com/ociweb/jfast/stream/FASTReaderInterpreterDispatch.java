@@ -137,7 +137,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         // on the count stack
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
-                        activeScriptCursor = readLength(token,jumpToTarget, readFromIdx, reader);
+                        readLength(token,jumpToTarget, readFromIdx, reader);
                         return sequenceCountStackHead>=0;
                         //return true;
 
@@ -1133,7 +1133,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         }
     }
 
-    private int readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
+    private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
         //because the generator hacks this boolean return value it is not helpful here.
         int jumpToNext = activeScriptCursor+1;
         FASTRingBuffer ringBuffer = ringBuffers[activeScriptCursor];
@@ -1144,17 +1144,17 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int target = token & MAX_INT_INSTANCE_MASK;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    return genReadLength(target, jumpToTarget, jumpToNext, ringBuffer.buffer, ringBuffer.mask, ringBuffer, rIntDictionary, reader, this);
+                    genReadLength(target, jumpToTarget, jumpToNext, ringBuffer.buffer, ringBuffer.mask, ringBuffer, rIntDictionary, reader, this);
                 } else {
                     // delta
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    return genReadLengthDelta(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffers[activeScriptCursor], reader, this);
+                    genReadLengthDelta(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffers[activeScriptCursor], reader, this);
                 }
             } else {
                 // constant
                 // always return this required value.
                 int constDefault = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
-                return genReadLengthConstant(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, ringBuffer.mask, ringBuffer, this);
+                genReadLengthConstant(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, ringBuffer.mask, ringBuffer, this);
             }
 
         } else {
@@ -1166,13 +1166,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    return genReadLengthCopy(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
+                    genReadLengthCopy(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
 
-                    return genReadLengthIncrement(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
+                    genReadLengthIncrement(target, source, jumpToTarget, jumpToNext, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, ringBuffer, reader, this);
                 }
             } else {
                 // default
@@ -1180,7 +1180,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
                 int constDefault = rIntDictionary[source];
 
-                return genReadLengthDefault(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, reader, ringBuffer.mask, ringBuffer, this);
+                genReadLengthDefault(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, reader, ringBuffer.mask, ringBuffer, this);
             }
         }
     }

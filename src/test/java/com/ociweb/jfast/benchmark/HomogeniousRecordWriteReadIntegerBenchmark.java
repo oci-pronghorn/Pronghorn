@@ -79,7 +79,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(writer, dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
 	
 	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
@@ -580,7 +580,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -589,13 +589,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = intTestData.length;
 			while (--j>=0) {
 				result |= intTestData[j];//do nothing
 			}
-			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
+			staticWriter.flush(writer);
 
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
@@ -618,7 +618,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -627,13 +627,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = intTestData.length;
 			while (--j>=0) {
-			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j]);
+			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j],writer);
 			}
-			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
+			staticWriter.flush(writer);
 			
 			//13 to 18 bytes per record with 10 fields, It would be nice if caliper can display this but how?
 			//System.err.println("bytes written:"+pw.totalWritten()+" for "+TokenBuilder.tokenToString(token));
@@ -659,7 +659,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 		int result = 0;
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
-			writer.reset(writer); //clear any values found in writer
+			PrimitiveWriter.reset(writer); //clear any values found in writer
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//staticWriter.reset(); //reset message to clear out old values;
@@ -668,13 +668,13 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			//This is an example of how to use the staticWriter
 			//Note that this is fast but does not allow for dynamic templates
 			//////////////////////////////////////////////////////////////////
-			staticWriter.openGroup(groupToken, pmapSize);
+			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = intTestData.length;
 			while (--j>=0) {
-			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j]);
+			    StreamingIntegerTest.writeInteger(staticWriter, token, intTestData[j], writer);
 			}
-			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
-			staticWriter.flush();
+			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
+			staticWriter.flush(writer);
 			
 		}
 		return result;

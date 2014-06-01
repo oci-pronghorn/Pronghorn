@@ -4,12 +4,13 @@
 package com.ociweb.jfast.loader;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Properties;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
@@ -48,7 +49,7 @@ public class TemplateLoader {
     public static void main(String[] args) {
 
         File catalog = new File(getReqArg("-catalog", "-c", args));
-        File source = new File(getReqArg("-source", "-s", args));
+        String source = getReqArg("-source", "-s", args);
 
         if (!catalog.canWrite()) {
             printHelp("Unable to write to location: " + catalog);
@@ -57,10 +58,6 @@ public class TemplateLoader {
         if (catalog.isDirectory()) {
             printHelp("Catalog must be a file not a directory: " + catalog);
             System.exit(FILE_REQUIRED_NOT_DIRECTORY);
-        }
-        if (!source.exists()) {
-            printHelp("Unable to find source: " + source);
-            System.exit(FILE_NOT_FOUND);
         }
 
         Properties properties = new Properties(); //TODO: B, load from file or args?
@@ -73,21 +70,29 @@ public class TemplateLoader {
         }
     }
 
-    public static void buildCatalog(OutputStream catalog, File source, Properties properties) throws ParserConfigurationException,
+    public static void buildCatalog(OutputStream outputStream, String source, Properties properties) throws ParserConfigurationException,
             SAXException, IOException {
         SAXParserFactory spfac = SAXParserFactory.newInstance();
-
-        //TODO: X, compress with lz4 stream 
-
+        GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
         SAXParser sp = spfac.newSAXParser();
-        FASTOutput output = new FASTOutputStream(catalog);
-        TemplateHandler handler = new TemplateHandler(output, properties);
+        FASTOutput output = new FASTOutputStream(gZipOutputStream);
+        TemplateHandler handler = new TemplateHandler(output, properties);        
         Supervisor.templateSource(source);
+                        
+        InputStream sourceInputStream = TemplateLoader.class.getResourceAsStream(source);
+
+        File folder = null;
+        if (null==sourceInputStream) {
+            folder = new File(source);
+            if (folder.exists() && !folder.isDirectory()) {
+                sourceInputStream = new FileInputStream(source);
+            }        
+        }        
         
-        if (source.isFile()) {
-            sp.parse(source, handler);
+        if (null!= sourceInputStream) {
+            sp.parse(sourceInputStream, handler);   
         } else {
-            for (File f : source.listFiles()) {
+            for (File f : folder.listFiles()) {
                 if (f.isFile()) {
                     sp.parse(f, handler);
                 }
@@ -95,6 +100,7 @@ public class TemplateLoader {
         }
 
         handler.postProcessing();
+        gZipOutputStream.close();
     }
 
     private static void printHelp(String message) {

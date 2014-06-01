@@ -831,7 +831,7 @@ public class TemplateHandler extends DefaultHandler {
                     , properties);
 
         // close stream.
-        writer.flush(writer);
+        PrimitiveWriter.flush(writer);
         // System.err.println("wrote:"+writer.totalWritten());
 
     }

@@ -54,11 +54,9 @@ public final class FASTRingBuffer {
     //TODO: A, use stack of offsets for each fragment until full message is completed.
     private int[] fragStack; //TODO: B, first offset 0 points to the constants after the ring buffer.
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth) {
         assert (primaryBits >= 1);       
         
-                
-        int maxFragDepth = 10;//TODO: A, must compute max frag depth in template parser.        
         this.fragStack = new int[maxFragDepth];
         
         //single buffer size for every nested set of groups, must be set to support the largest need.
@@ -186,8 +184,7 @@ public final class FASTRingBuffer {
     }
 
     // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
-    
-    //TODO: A, build multi target ring buffers per message and null ring buffer to drop messages.
+ 
 
     // next sequence is ready for consumption.
     public static final void unBlockSequence(FASTRingBuffer ringBuffer) {

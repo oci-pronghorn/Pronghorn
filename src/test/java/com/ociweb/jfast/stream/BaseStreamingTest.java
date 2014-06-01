@@ -12,6 +12,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 
 public abstract class BaseStreamingTest {
@@ -163,16 +164,16 @@ public abstract class BaseStreamingTest {
 	}
 
 	protected int groupManagementWrite(int fieldsPerGroup, FASTWriterInterpreterDispatch fw, int i, int g,
-			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize) {
+			                             int groupOpenToken, int groupCloseToken, int f, int pmapSize, PrimitiveWriter writer) {
 		if (--g<0) {
 			//close group
-			fw.closeGroup(groupOpenToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			fw.closeGroup(groupOpenToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			
 			g = fieldsPerGroup;
 			if (f>0 || i>0) {
 	
 				//open new group
-				fw.openGroup(groupOpenToken, pmapSize);
+				fw.openGroup(groupOpenToken, pmapSize, writer);
 				
 			}				
 		}

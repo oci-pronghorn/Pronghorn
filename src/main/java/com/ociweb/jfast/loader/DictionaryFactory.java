@@ -20,7 +20,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
  * @author Nathan Tippy
  * 
  */
-public class DictionaryFactory { //TODO: A is this really the new context?
+public class DictionaryFactory { 
 
     /*
      * Dictionary: Max count of all fields for dictionary shared across

@@ -15,6 +15,7 @@ public class FASTInputStream implements FASTInput {
 	private InputStream inst;
 	private byte[] targetBuffer;
 	private boolean eof = false;
+	private long total;
 	
 	public FASTInputStream(InputStream inst) {
 		this.inst = inst;
@@ -27,16 +28,18 @@ public class FASTInputStream implements FASTInput {
 	public int fill(int offset, int len) {
 		try {
 			
-			len = Math.min(len,inst.available());
+		    int avail = inst.available();
+		    if (avail>0) {
+		        len = Math.min(len,inst.available());
+		    }
 			
-			
-			//Only fill with the bytes avail.
-			
+			//Only fill with the bytes avail.			
 			int result = inst.read(targetBuffer, offset, len);
 			if (result<0) {
-				eof = true;
+				eof = true;;
 				return 0;
 			}
+			total+=result;
 			return result;
 		} catch (IOException e) {
 			throw new FASTException(e);
@@ -51,6 +54,10 @@ public class FASTInputStream implements FASTInput {
 	@Override
 	public boolean isEOF() {
 		return eof;
+	}
+	
+	public long totalBytes() {
+	    return total;
 	}
 	
 }

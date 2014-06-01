@@ -18,13 +18,12 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
 
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
      
-    //TODO: AA, must remove writer from the constructor here and use as argument in each write method.
     //TODO: AA, must convert signature to useCatalog.
-    public FASTWriterInterpreterDispatch(PrimitiveWriter writer, DictionaryFactory dcr, int maxTemplates,
-            FASTRingBuffer queue, int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
-        super(writer, dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, buildRingBuffers(queue,fullScript));
+    public FASTWriterInterpreterDispatch(DictionaryFactory dcr, int maxTemplates, FASTRingBuffer queue,
+            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth) {
+        super(dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, buildRingBuffers(queue,fullScript));
     }
 
     private static FASTRingBuffer[] buildRingBuffers(FASTRingBuffer queue, int[] fullScript) {
@@ -42,7 +41,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
      * Write null value, must only be used if the field id is one of optional
      * type.
      */
-    public void write(int token) {
+    public void write(int token, PrimitiveWriter writer) {
 
         // only optional field types can use this method.
         assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))); 
@@ -64,9 +63,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
                 // hack until all the classes no longer need this method.
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 } else {
-                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 }
             } else {
                 // long
@@ -94,9 +93,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     int rbPos = 0;
                                         // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } else {
-                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } 
 
                     int idx1 = token & longInstanceMask;
@@ -113,7 +112,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    public void acceptLongSignedOptional(int token, long valueOfNull, long value, FASTRingBuffer rbRingBuffer) {
+    public void acceptLongSignedOptional(int token, long valueOfNull, long value, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         
 //      ////    //temp solution as the ring buffer is introduce into all the APIs
       rbRingBuffer.dump();            
@@ -185,7 +184,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 //
 //    }
 
-    public void acceptLongSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptLongSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -236,7 +235,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    void acceptLongUnsignedOptional(int token, long value) {
+    void acceptLongUnsignedOptional(int token, long value, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -311,7 +310,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 //        
 //    }
 
-    public void acceptLongUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptLongUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -362,7 +361,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    public void acceptIntegerSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptIntegerSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -411,7 +410,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         }
     }
 
-    public void acceptIntegerUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptIntegerUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -459,7 +458,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         }
     }
  
-    public void acceptIntegerSignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptIntegerSignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -502,7 +501,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         }
     }
 
-    public void acceptIntegerUnsignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void acceptIntegerUnsignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -547,7 +546,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    public void write(int token, byte[] value, int offset, int length) {
+    public void write(int token, byte[] value, int offset, int length, PrimitiveWriter writer) {
 
         assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -561,13 +560,13 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         }
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-            acceptByteArray(token, value, offset, length);
+            acceptByteArray(token, value, offset, length, writer, byteHeap);
         } else {
-            acceptByteArrayOptional(token, value, offset, length);
+            acceptByteArrayOptional(token, value, offset, length, writer);
         }
     }
 
-    private void acceptByteArrayOptional(int token, byte[] value, int offset, int length) {
+    private void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -612,7 +611,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    private void acceptByteArray(int token, byte[] value, int offset, int length) {
+    private void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, ByteHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -644,10 +643,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token, value, offset, length);
+                genWriteBytesCopy(token, value, offset, length, byteHeap, writer);
             } else {
                 // default
-                genWriteBytesDefault(token, value, offset, length);
+                genWriteBytesDefault(token, value, offset, length, byteHeap, writer);
             }
         }
     }
@@ -657,7 +656,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     // this can avoid string check for copy operation if its already known that
     // we are sending the same value.
 
-    public void write(int token, ByteBuffer buffer) {
+    public void write(int token, ByteBuffer buffer, PrimitiveWriter writer) {
 
         assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -672,13 +671,13 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
-            acceptByteBuffer(token, buffer);
+            acceptByteBuffer(token, buffer, writer, byteHeap);
         } else {
-            acceptByteBufferOptional(token, buffer);
+            acceptByteBufferOptional(token, buffer, writer, byteHeap);
         }
     }
 
-    private void acceptByteBufferOptional(int token, ByteBuffer value) {
+    private void acceptByteBufferOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -687,10 +686,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriterBytesNoneOptional(value);
+                    genWriterBytesNoneOptional(value, writer);
                 } else {
                     // tail
-                    genWriterBytesTailOptional(token, value);
+                    genWriterBytesTailOptional(token, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -698,7 +697,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     genWriteBytesConstantOptional(writer);
                 } else {
                     // delta
-                    genWriterBytesDeltaOptional(token, value);
+                    genWriterBytesDeltaOptional(token, value, writer, byteHeap);
                 }
             }
         } else {
@@ -706,17 +705,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriterBytesCopyOptional(token, value);
+                genWriterBytesCopyOptional(token, value, writer, byteHeap);
             } else {
                 // default
-                genWriterBytesDefaultOptional(token, value);
+                genWriterBytesDefaultOptional(token, value, writer, byteHeap);
             }
         }
     }
 
 
 
-    private void acceptByteBuffer(int token, ByteBuffer value) {
+    private void acceptByteBuffer(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -725,10 +724,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(value);
+                    genWriteBytesNone(value, writer);
                 } else {
                     // tail
-                    genWriteBytesTail(token, value);
+                    genWriteBytesTail(token, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -737,7 +736,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     
                 } else {
                     // delta
-                    genWriteBytesDelta(token, value);
+                    genWriteBytesDelta(token, value, writer, byteHeap);
                 }
             }
         } else {
@@ -745,17 +744,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token, value);
+                genWriteBytesCopy(token, value, byteHeap, writer);
             } else {
                 // default
-                genWriteBytesDefault(token, value);
+                genWriteBytesDefault(token, value, writer, byteHeap);
             }
         }
     }
 
 
 
-    public void write(int token, CharSequence value) {
+    public void write(int token, CharSequence value, PrimitiveWriter writer) {
 
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -771,23 +770,23 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
-                acceptCharSequenceASCII(token, value);
+                acceptCharSequenceASCII(token, value, writer, textHeap);
             } else {
                 // utf8
-                acceptCharSequenceUTF8(token, value);
+                acceptCharSequenceUTF8(token, value, writer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
-                acceptCharSequenceASCIIOptional(token, value);
+                acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
             } else {
                 // utf8 optional
-                acceptCharSequenceUTF8Optional(token, value);
+                acceptCharSequenceUTF8Optional(token, value, writer);
             }
         }
     }
 
-    private void acceptCharSequenceUTF8Optional(int token, CharSequence value) {
+    private void acceptCharSequenceUTF8Optional(int token, CharSequence value, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -835,7 +834,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptCharSequenceUTF8(int token, CharSequence value) {
+    private void acceptCharSequenceUTF8(int token, CharSequence value, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -885,7 +884,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptCharSequenceASCIIOptional(int token, CharSequence value) {
+    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -916,7 +915,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // constant
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    genWriteTextConstantOptional();
+                    genWriteTextConstantOptional(writer);
                 } else {
                     // delta
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "
@@ -952,7 +951,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    private void acceptCharSequenceASCII(int token, CharSequence value) {
+    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1001,7 +1000,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    public void write(int token, char[] value, int offset, int length) {
+    public void write(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -1017,23 +1016,23 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
-                acceptCharArrayASCII(token, value, offset, length);
+                acceptCharArrayASCII(token, value, offset, length, writer);
             } else {
                 // utf8
-                acceptCharArrayUTF8(token, value, offset, length);
+                acceptCharArrayUTF8(token, value, offset, length, writer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
-                acceptCharArrayASCIIOptional(token, value, offset, length);
+                acceptCharArrayASCIIOptional(token, value, offset, length, writer);
             } else {
                 // utf8 optional
-                acceptCharArrayUTF8Optional(token, value, offset, length);
+                acceptCharArrayUTF8Optional(token, value, offset, length, writer);
             }
         }
     }
 
-    private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length) {
+    private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1083,7 +1082,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptCharArrayUTF8(int token, char[] value, int offset, int length) {
+    private void acceptCharArrayUTF8(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1132,7 +1131,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length) {
+    private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1141,19 +1140,19 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNoneOptional(value, offset, length);
+                    genWriteTextNoneOptional(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteTextTailOptional2(token, value, offset, length);
+                    genWriteTextTailOptional2(token, value, offset, length, writer, textHeap);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteTextConstantOptional();
+                    genWriteTextConstantOptional(writer);
                 } else {
                     // delta
-                    genWriteTextDeltaOptional2(token, value, offset, length);
+                    genWriteTextDeltaOptional2(token, value, offset, length, textHeap, writer);
                 }
             }
         } else {
@@ -1178,7 +1177,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    private void acceptCharArrayASCII(int token, char[] value, int offset, int length) {
+    private void acceptCharArrayASCII(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1188,10 +1187,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNone(value, offset, length);
+                    genWriteTextNone(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteTextTail2(token, value, offset, length);
+                    genWriteTextTail2(token, value, offset, length, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1200,7 +1199,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     
                 } else {
                     // delta
-                    genWriteTextDelta2(token, value, offset, length);
+                    genWriteTextDelta2(token, value, offset, length, writer, textHeap);
                 }
             }
         } else {
@@ -1208,17 +1207,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopy2(token, value, offset, length);
+                genWriteTextCopy2(token, value, offset, length, textHeap, writer);
             } else {
                 // default
-                genWriteTextDefault2(token, value, offset, length);
+                genWriteTextDefault2(token, value, offset, length, textHeap, writer);
             }
         }
     }
 
 
 
-    public void openGroup(int token, int pmapSize) {
+    public void openGroup(int token, int pmapSize, PrimitiveWriter writer) {
         assert (token < 0);
         assert (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
         assert (0 == (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
@@ -1229,7 +1228,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     }
 
-    public void openGroup(int token, int templateId, int pmapSize) {
+    public void openGroup(int token, int templateId, int pmapSize, PrimitiveWriter writer) {
         assert (token < 0);
         assert (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
@@ -1243,7 +1242,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
 
 
-    public void closeGroup(int token) {
+    public void closeGroup(int token, PrimitiveWriter writer) {
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
@@ -1261,7 +1260,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
 
-    public void flush() {
+    public void flush(PrimitiveWriter writer) {
         PrimitiveWriter.flush(writer);
     }
 
@@ -1285,7 +1284,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     // long fieldCount = 0;
 
-    public boolean dispatchWriteByToken(int fieldPos) {
+    public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
 
         int token = fullScript[activeScriptCursor];
 
@@ -1301,9 +1300,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
 
@@ -1311,9 +1310,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //TODO: B, Add lookup for value of absent/null instead of this constant.
                         int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
-                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);                            
+                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);                            
                         } else {        
-                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
 
                     }
@@ -1325,19 +1324,19 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptLongUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         } else {
-                            acceptLongSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptLongSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
                         if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
-                            write(token);
+                            write(token, writer);
                         } else {
                             // optional
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                                acceptLongUnsignedOptional(token, value);
+                                acceptLongUnsignedOptional(token, value, writer);
                             } else {
-                                acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal);
+                                acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
                             }
                         }
                     }
@@ -1347,10 +1346,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                     int length = FASTRingBufferReader.readTextLength(ringBuffers[activeScriptCursor], fieldPos);
                     if (length < 0) {
-                        write(token);
+                        write(token, writer);
                     } else {
                         char[] buffer = ringBuffers[activeScriptCursor].readRingCharBuffer(fieldPos);
-                        write(token, ringCharSequence.set(buffer, ringBuffers[activeScriptCursor].readRingCharPos(fieldPos), ringBuffers[activeScriptCursor].readRingCharMask(), length));
+                        write(token, ringCharSequence.set(buffer, ringBuffers[activeScriptCursor].readRingCharPos(fieldPos), ringBuffers[activeScriptCursor].readRingCharMask(), length),writer);
                     }
                 } else {
                     // 011??
@@ -1367,20 +1366,20 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerSigned(expoToken, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerSigned(expoToken, fieldPos, ringBuffers[activeScriptCursor], writer);
                         } else {
                                     
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                                                         
-                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
 
                         }
                         
                         int mantToken = fullScript[++activeScriptCursor];
                         
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongSigned(mantToken, fieldPos + 1, ringBuffers[activeScriptCursor]);
+                            acceptLongSigned(mantToken, fieldPos + 1, ringBuffers[activeScriptCursor], writer);
                         } else {
                             long valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                             
@@ -1391,7 +1390,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                 
                                 writeNullLong(mantToken, idx, writer, longValues); 
                             } else {
-                                acceptLongSignedOptional(mantToken, valueOfNull, mantissa, rbRingBufferLocal);
+                                acceptLongSignedOptional(mantToken, valueOfNull, mantissa, rbRingBufferLocal, writer);
                             }
                         }
                         
@@ -1425,11 +1424,11 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         // this is NOT a message/template so the non-template
                         // pmapSize is used.
                         // System.err.println("open group:"+TokenBuilder.tokenToString(token));
-                        openGroup(token, nonTemplatePMapSize);
+                        openGroup(token, nonTemplatePMapSize, writer);
 
                     } else {
                         // System.err.println("close group:"+TokenBuilder.tokenToString(token));
-                        closeGroup(token);// closing this seq causing throw!!
+                        closeGroup(token, writer);// closing this seq causing throw!!
                         if (0 != (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
                             // must always pop because open will always push
                             if (0 == --sequenceCountStack[sequenceCountStackHead]) {
@@ -1455,22 +1454,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor]);
+                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
                         if (length == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
-                            write(token);
+                            write(token, writer);
                         } else {
                             // optional
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
                             int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
-                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
+                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
                             } else {
-                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor]);
+                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
                             }
                         }
                     }
@@ -1586,13 +1585,13 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         return true;
     }
 
-    public void openMessage(int pmapMaxSize, int templateId) {
+    public void openMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
 
         genWriteOpenMessage(pmapMaxSize, templateId, writer);
 
     }
 
-    public void writePreamble(byte[] preambleData) {
+    public void writePreamble(byte[] preambleData, PrimitiveWriter writer) {
         genWritePreamble(preambleData, writer);
     }
 

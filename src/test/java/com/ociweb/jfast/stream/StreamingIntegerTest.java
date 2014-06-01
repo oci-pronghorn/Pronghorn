@@ -107,14 +107,14 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(writer, dcr, 100, null, 3, new int[0][0], null, 64);
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(dcr, 100, null, 3, new int[0][0], null, 64);
 		
 		long start = System.nanoTime();
 		assert(operationIters>3) : "must allow operations to have 3 data points but only had "+operationIters;
 				
 		int i = operationIters;
 		int g = fieldsPerGroup;
-		fw.openGroup(groupToken, maxMPapBytes);
+		fw.openGroup(groupToken, maxMPapBytes, writer);
 		
 		while (--i>=0) {
 			int f = fields;
@@ -127,33 +127,33 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token);//nothing
+						fw.write(token, writer);//nothing
 					} else {
-						writeInteger(fw, token, testConst); 
+						writeInteger(fw, token, testConst, writer); 
 					}
 				} else {
 					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
 						//System.err.println("write null");
-						fw.write(token);
+						fw.write(token, writer);
 					} else {
-					    writeInteger(fw, token, testData[f]); 
+					    writeInteger(fw, token, testData[f], writer); 
 					}
 				}
 							
-				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes);				
+				g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, maxMPapBytes, writer);				
 			}			
 		}
 		if ( ((fieldsPerGroup*fields)%fieldsPerGroup) == 0  ) {
-			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER));
+			fw.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 		}
-		fw.flush();
+		fw.flush(writer);
 				
 		return System.nanoTime() - start;
 	}
 
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
 
-    public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value) {
+    public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
         rbRingBufferLocal.dump();
         rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = value;
@@ -163,16 +163,16 @@ public class StreamingIntegerTest extends BaseStreamingTest {
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {            
                 
-                fw.acceptIntegerUnsigned(token, rbPos, rbRingBufferLocal);
+                fw.acceptIntegerUnsigned(token, rbPos, rbRingBufferLocal, writer);
             } else {
-                fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal);
+                fw.acceptIntegerSigned(token, rbPos, rbRingBufferLocal, writer);
             }
         } else {
             // optional
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                fw.acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                fw.acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
             } else {
-                fw.acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal);
+                fw.acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
             }
         }
     }
