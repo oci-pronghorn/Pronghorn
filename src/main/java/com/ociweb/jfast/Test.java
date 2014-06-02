@@ -27,13 +27,8 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class Test {
 
-    // mvn exec:java -Dexec.mainClass="com.ociweb.jfast.Test"
-            
-   // -XX:MaxInlineLevel=9 -XX:InlineSmallCode=4096 -XX:MinInliningThreshold=10000 -XX:+AlwaysPreTouch -XX:+UseNUMA -XX:UseSSE=2 -XX:MaxInlineSize=10240
-    
     public static void main(String[] args) {
         new Test().testDecodeComplex30000();
-        //TODO: A, need stand alone code for getting performance numbers easily after checkout
     }
     
     public void testDecodeComplex30000() {
@@ -284,10 +279,8 @@ public class Test {
             return resourceInput;            
         }
         
-        //TODO: B, messy needs cleanup.
         try {
             return new FileInputStream(new File(resource));
-
         } catch (FileNotFoundException e) {
             throw new FASTException(e);
         }

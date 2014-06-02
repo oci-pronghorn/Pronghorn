@@ -84,7 +84,8 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(dcr, 100, null, 3, new int[0][0], null, 64);
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalog(dcr, 3, new int[0][0], null,
+        64,8, 7, 4 ,4, 100 ), null);
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {
@@ -166,7 +167,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
 	    
-	    TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0);
+	    TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
 		
 		long start = System.nanoTime();

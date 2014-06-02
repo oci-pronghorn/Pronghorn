@@ -83,9 +83,10 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(dictionaryFactory, 100, null, 3, new int[0][0], null, 64);
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null,
+    64,8, 7, 4 ,4, 100 ), null);
 	
-	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0);
+	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
 	
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0, TokenBuilder.MASK_ABSENT_DEFAULT);

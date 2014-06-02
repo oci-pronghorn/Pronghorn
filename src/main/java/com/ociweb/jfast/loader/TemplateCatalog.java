@@ -108,19 +108,20 @@ public class TemplateCatalog {
     @Deprecated //for testing only
     public TemplateCatalog(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
                           int[] fullScript, int maxNestedGroupDepth,
-                          int primaryRingBits, int textRingBits, int stackPMapInBytes, int preambleSize) {
+                          int primaryRingBits, int textRingBits, int maxTemplatePMapSize, int preambleSize,
+                          int templatesCount) {
         
         this.scriptTokens = fullScript;
         this.maxNonTemplatePMapSize  = nonTemplatePMapSize;
         this.dictionaryMembers = dictionaryMembers;
         this.maxPMapDepth = maxNestedGroupDepth;
-        this.templatesInCatalog=-1;
+        this.templatesInCatalog=templatesCount;
         this.templateStartIdx=null;
         this.templateLimitIdx=null;
         this.scriptFieldNames=null;
         this.scriptFieldIds=null;
         this.properties = new Properties();
-        this.maxTemplatePMapSize = stackPMapInBytes;
+        this.maxTemplatePMapSize = maxTemplatePMapSize;
         this.maxFieldId=-1;
         this.dictionaryFactory = dcr;
         int fullScriptLength = null==fullScript?1:fullScript.length;
@@ -131,7 +132,8 @@ public class TemplateCatalog {
     private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length) {
         FASTRingBuffer[] buffers = new FASTRingBuffer[length];
         //TODO: simple imlementation needs adavanced controls.
-        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory, 10); //TODO: A, must compute max frag depth in template parser.    
+        //TODO: A, must compute max frag depth in template parser.    
+        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory, 10); 
         int i = length;
         while (--i>=0) {
             buffers[i]=rb;            

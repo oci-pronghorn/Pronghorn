@@ -363,9 +363,7 @@ public class TemplateLoaderTest {
         int maxGroupCount = 3;// NOTE: may need to be VERY large if minimize
                               // latency is turned off!!
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog.dictionaryFactory(), catalog.templatesCount(),
-                queue, catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
-                catalog.fullScript(), catalog.getMaxGroupDepth());
+        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog,queue);
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 
@@ -415,10 +413,10 @@ public class TemplateLoaderTest {
             readerDispatch.reset();
             readerDispatch.reset(catalog.dictionaryFactory());
 
-            writer.flush(writer);
-            wroteSize = Math.max(wroteSize, writer.totalWritten(writer));
+            PrimitiveWriter.flush(writer);
+            wroteSize = Math.max(wroteSize, PrimitiveWriter.totalWritten(writer));
             fastOutput.reset();
-            writer.reset(writer);
+            PrimitiveWriter.reset(writer);
             dynamicWriter.reset(true);
 
             // only need to collect data on the first run

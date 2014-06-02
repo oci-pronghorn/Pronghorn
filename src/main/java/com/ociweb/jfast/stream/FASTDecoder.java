@@ -24,9 +24,7 @@ public abstract class FASTDecoder {
     protected final int[] rIntDictionary;
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
-    
-    public final int maxPMapCountInBytes;
-    
+        
     private final int[] templateStartIdx;
     private final int[] templateLimitIdx;
     public final int maxTemplatePMapSize;
@@ -36,10 +34,9 @@ public abstract class FASTDecoder {
     public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
     public FASTDecoder(TemplateCatalog catalog) {
-        this(catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
-                catalog.fullScript(), catalog.getMaxGroupDepth(),
-                8, 7, computePMapStackInBytes(catalog), catalog.templateStartIdx, catalog.templateLimitIdx,
-                catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
+        this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(), computePMapStackInBytes(catalog), 
+             catalog.templateStartIdx, catalog.templateLimitIdx,
+             catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
     }
     
     private static int computePMapStackInBytes(TemplateCatalog catalog) {
@@ -48,12 +45,10 @@ public abstract class FASTDecoder {
     }
     
             
-    private FASTDecoder(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
-            int[] fullScript, int maxNestedGroupDepth,
-            int primaryRingBits, int textRingBits, int maxPMapCountInBytes, int[] templateStartIdx, int[] templateLimitIdx,
+    private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, int maxPMapCountInBytes,
+            int[] templateStartIdx, int[] templateLimitIdx,
             int maxTemplatePMapSize, int preambleDataLength, FASTRingBuffer[] ringBuffers) {
 
-        this.maxPMapCountInBytes = maxPMapCountInBytes;
         this.textHeap = dcr.charDictionary();
         this.byteHeap = dcr.byteDictionary();
 

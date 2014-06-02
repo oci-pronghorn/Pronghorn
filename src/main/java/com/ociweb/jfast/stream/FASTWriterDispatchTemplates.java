@@ -6,16 +6,19 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalog;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
 public class FASTWriterDispatchTemplates extends FASTEncoder {
 
-    public FASTWriterDispatchTemplates(DictionaryFactory dcr, int maxTemplates,
-            int nonTemplatePMapSize, int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
-        super(dcr, maxTemplates, nonTemplatePMapSize, dictionaryMembers, fullScript, maxNestedGroupDepth, ringBuffers);
-    }
-
+    public FASTWriterDispatchTemplates(final TemplateCatalog catalog, FASTRingBuffer[] ringBuffers) {
+        
+        super(catalog.dictionaryFactory(), catalog.templatesCount(),
+              catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
+              catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
+        
+    }    
     
     protected void genWriteCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);

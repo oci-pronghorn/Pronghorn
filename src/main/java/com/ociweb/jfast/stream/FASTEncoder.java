@@ -46,17 +46,16 @@ public class FASTEncoder {
 
     protected final FASTRingBuffer[] ringBuffers;
     
-//    public FASTEncoder(TemplateCatalog catalog) {
-//        this(writer, catalog.dictionaryFactory(), catalog.m
-//                
-//                catalog.dictionaryFactory(), catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(), 
-//                catalog.fullScript(), catalog.getMaxGroupDepth(),
-//                8, 7, computePMapStackInBytes(catalog), catalog.templateStartIdx, catalog.templateLimitIdx,
-//                catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
-//    }
+    public FASTEncoder(TemplateCatalog catalog, FASTRingBuffer[] ringBuffers) {
+        this(catalog.dictionaryFactory(), catalog.templatesCount(),
+             catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
+             catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
+    }
+    
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize,
-                                int[][] dictionaryMembers, int[] fullScript, int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
+                                int[][] dictionaryMembers, int[] fullScript, 
+                                int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;

@@ -77,7 +77,7 @@ public class ReaderWriterPrimitiveTest {
 															   new byte[]{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}
 	};
 	
-	//needed for threaded test.
+	//needed for threaded test.	
 	private PrimitiveWriter writer;
 	private float writeDurationIOSpeed;
 	public static final int VERY_LONG_STRING_MASK = 0x0F;//0x7F; 
@@ -115,7 +115,7 @@ public class ReaderWriterPrimitiveTest {
 					speedWriteTest(i++);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			long duration = System.nanoTime()-start;
 			totalBytesWritten = baost.toByteArray().length;
 			writeDurationIOSpeed =  min(writeDurationIOSpeed, duration/(float)totalBytesWritten);
@@ -345,6 +345,7 @@ public class ReaderWriterPrimitiveTest {
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)totalBytesWritten);
 		}
+		writer = null;//no longer needed
 		System.out.println("                ByteArray: write:"+writeDurationIOSpeed+"ns  read:"+readDuration+"ns  per byte");
 		System.gc();
 		Thread.yield();
@@ -375,12 +376,12 @@ public class ReaderWriterPrimitiveTest {
 		return result.toString();
 	}
 
-
+//TODO: B, throws out of memory error on windows under maven test.
 	@Test 
 	public void testNulls() {
 		
 		int fieldSize = 2;
-		int nullLoops = 10000;
+		int nullLoops = 1000;
 		int capacity = speedTestSize*fieldSize*nullLoops;
 		
 		byte[] buffer = new byte[capacity];		
@@ -392,7 +393,7 @@ public class ReaderWriterPrimitiveTest {
 			i++;
 		}
 		
-		writer.flush(writer);
+		PrimitiveWriter.flush(writer);
 		
 		FASTInputByteArray input = new FASTInputByteArray(buffer);
 		final PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -413,7 +414,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		int cycles = testCycles;
 		while (--cycles>=0) {
-			writer.reset(writer);
+		    PrimitiveWriter.reset(writer);
 			int tp = passes*nullLoops;
 			
 			long start = System.nanoTime();
@@ -423,8 +424,8 @@ public class ReaderWriterPrimitiveTest {
 				writer.writeNull();				
 			}
 
-			writer.flush(writer);
-			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)writer.totalWritten(writer));
+			PrimitiveWriter.flush(writer);
+			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)PrimitiveWriter.totalWritten(writer));
 			
 			input.reset(buffer);	
 			PrimitiveReader.reset(reader);
@@ -434,9 +435,9 @@ public class ReaderWriterPrimitiveTest {
 			while (--j>=0) {
 				PrimitiveReader.readIntegerUnsigned(reader);					
 			}
-			readDuration = min(readDuration, (System.nanoTime()-start)/(float)writer.totalWritten(writer));
+			readDuration = min(readDuration, (System.nanoTime()-start)/(float)PrimitiveWriter.totalWritten(writer));
 		}
-		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte  totalWritten:"+writer.totalWritten(writer));
+		System.out.println("null: write:"+writeDuration+"ns  read:"+readDuration+"ns per byte  totalWritten:"+PrimitiveWriter.totalWritten(writer));
 		System.gc();
 		Thread.yield();
 		
