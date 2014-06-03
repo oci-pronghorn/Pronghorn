@@ -189,13 +189,13 @@ public class CodeGenerationTest {
                         while (--j >= 0) {
                             System.err.println(j + " " + reads2[mask & (c - j)]);
                         }
-                        System.err.println("1:" + Integer.toBinaryString(int1));
-                        System.err.println("2:" + Integer.toBinaryString(int2));
+                        System.err.println("From positions:"+queue1.remPos+" & "+queue2.remPos);
+                                           
+                        System.err.println("Intrp:" + Integer.toBinaryString(int1));
+                        System.err.println("Compl:" + Integer.toBinaryString(int2));
 
                         String msg = "int " + i + " byte " + (i * 4) + "  ";
-                        // TODO: Z, regenerate code for this section that does
-                        // not match.
-
+                        
                         assertEquals(msg, int1, int2);
                     }
                 }

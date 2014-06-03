@@ -376,7 +376,6 @@ public class ReaderWriterPrimitiveTest {
 		return result.toString();
 	}
 
-//TODO: B, throws out of memory error on windows under maven test.
 	@Test 
 	public void testNulls() {
 		

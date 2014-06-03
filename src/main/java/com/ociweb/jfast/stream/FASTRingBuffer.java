@@ -109,6 +109,8 @@ public final class FASTRingBuffer {
         this.byteBuffer = new byte[maxByteSize];
     }
 
+    //TODO: AA, must add way of selecting what field to skip writing for the consumer.
+    
     /**
      * Empty and restore to original values.
      */
