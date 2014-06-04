@@ -12,7 +12,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
@@ -79,10 +79,10 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	
 
 		
-	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null,
+	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null,
     64,8, 7, 4 ,4, 100 ), null);
 	
-	static final TemplateCatalog testCatalog = new TemplateCatalog(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
+	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
 	
 	static final int groupTokenMap = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);

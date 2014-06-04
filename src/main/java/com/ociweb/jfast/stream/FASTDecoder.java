@@ -4,7 +4,7 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTDecoder {
@@ -33,13 +33,13 @@ public abstract class FASTDecoder {
         
     public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
-    public FASTDecoder(TemplateCatalog catalog) {
+    public FASTDecoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(), computePMapStackInBytes(catalog), 
-             catalog.templateStartIdx, catalog.templateLimitIdx,
-             catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
+             catalog.getTemplateStartIdx(), catalog.getTemplateLimitIdx(),
+             catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
     }
     
-    private static int computePMapStackInBytes(TemplateCatalog catalog) {
+    private static int computePMapStackInBytes(TemplateCatalogConfig catalog) {
         return 2 + ((Math.max(
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
     }

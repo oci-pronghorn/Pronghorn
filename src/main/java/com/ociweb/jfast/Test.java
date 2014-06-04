@@ -14,7 +14,7 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -36,7 +36,7 @@ public class Test {
         Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
           
           byte[] catBytes = buildRawCatalogData();
-          TemplateCatalog catalog = new TemplateCatalog(catBytes); 
+          TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
           // connect to file
 
@@ -53,10 +53,10 @@ public class Test {
           int warmup = 128;
           int count = 1024000;
           int result = 0;
-          int[] fullScript = catalog.scriptTokens;
+          int[] fullScript = catalog.getScriptTokens();
           
           
-          byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
+          byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
 
           int msgs = 0;
           int grps = 0;
@@ -87,7 +87,7 @@ public class Test {
                   // spin lock if input stream is not ready.
                   //
 
-                  if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
+                  if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
                       msgs++;
 
                       // this is a template message.
@@ -106,8 +106,8 @@ public class Test {
                       bufferIdx += 1;// point to first field
                       assert(1 == templateId || 2 == templateId || 99 == templateId);
 
-                      int i = catalog.templateStartIdx[templateId];
-                      int limit = catalog.templateLimitIdx[templateId];
+                      int i = catalog.getTemplateStartIdx()[templateId];
+                      int limit = catalog.getTemplateLimitIdx()[templateId];
                       // System.err.println("new templateId "+templateId);
                       while (i < limit) {
                           int token = fullScript[i++];
@@ -153,7 +153,7 @@ public class Test {
 
               int flag;
               while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
-                  if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
+                  if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
                       result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
                                                      // hot-spot may delete this
                                                      // loop.
@@ -289,7 +289,7 @@ public class Test {
     public static byte[] buildRawCatalogData() {
         //this example uses the preamble feature
         Properties properties = new Properties(); 
-        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
+        properties.put(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES, "4");
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {

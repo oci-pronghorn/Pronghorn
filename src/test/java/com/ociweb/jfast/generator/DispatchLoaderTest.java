@@ -17,7 +17,7 @@ import java.util.Properties;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -62,7 +62,7 @@ public class DispatchLoaderTest {
         //Non-Blocking reactor select
         while (0!=(flag=FASTInputReactor.select(decoder, reader, queue))) {
                  
-            if ((0 != (flag & TemplateCatalog.END_OF_MESSAGE)))  {
+            if ((0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)))  {
                 
                String version = FASTRingBufferReader.readText(queue, 
                                                               VERSION_IDX, 
@@ -113,7 +113,7 @@ public class DispatchLoaderTest {
     static byte[] buildRawCatalogData(String resourceName) {
 
         Properties properties = new Properties(); 
-        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
+        properties.put(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES, "4");
         
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {

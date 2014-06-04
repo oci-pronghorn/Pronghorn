@@ -15,52 +15,72 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
-public class TemplateCatalog {
+public class TemplateCatalogConfig {
 
+    ///////////
+    //properties that should only be set after reading the documentation.
+    //Change impact generated code so the changes must be done only once before the catBytes are generated.
+    ///////////
+    
     public static final String KEY_PARAM_PREAMBLE_BYTES = "jFAST.preamble.bytes";
+
+    public static final String KEY_MAX_TEXT_LENGTH = "jFAST.text.length_max";
+    public static final int DEFAULT_MAX_TEXT_LENGTH = 128;
+    
+    public static final String KEY_MAX_TEXT_GAP = "jFAST.text.gap_max";
+    public static final int DEFAULT_MAX_TEXT_GAP = 16;
+    
+    public static final String KEY_MAX_BYTES_LENGTH = "jFAST.bytes.length_max";
+    public static final int DEFAULT_MAX_BYTES_LENGTH = 1024;
+    
+    public static final String KEY_MAX_BYTES_GAP = "jFAST.bytes.gap_max";
+    public static final int DEFAULT_MAX_BYTES_GAP = 256;
+
+    public static final String KEY_IGNORE_FIELD_BY_NAME = "jFAST.field.ignore.names";//comma separated.
+    public static final String KEY_IGNORE_FIELD_BY_ID = "jFAST.field.ignore.id";//comma separated.
+    
+    //TODO: add ringBuffer groups for message/templates
+    //  (t1,t2,t3)(t4,t5)t6  this is a set of sets, how is it easist to define?
+    final Properties properties;//TODO: A, pull out into custom behavior class with default values and getters?
+    
+    
+    
     
     // because optional values are sent as +1 when >= 0 it is not possible to
     // send the
     // largest supported positive value, as a result this is the ideal default
     // because it
     // can not possibly collide with any real values
-    public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
+    public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;//TODO: A, move these elsewhere?
     public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 
-    final DictionaryFactory dictionaryFactory;
-    final int maxTemplatePMapSize;
-    final int maxNonTemplatePMapSize;
-    final int maxPMapDepth;
-    final int maxFieldId;
+    private final DictionaryFactory dictionaryFactory;
+    private final int maxTemplatePMapSize;
+    private final int maxNonTemplatePMapSize;
+    private final int maxPMapDepth;
+    private final int maxFieldId;
 
-    public final int[] templateStartIdx; // TODO: X, these two arrays can be
+    private final int[] templateStartIdx; // TODO: X, these two arrays can be
                                          // shortened!
-    public final int[] templateLimitIdx;
+    private final int[] templateLimitIdx;
 
-    public final int[] scriptTokens;
+    private final int[] scriptTokens;
     final int[] scriptFieldIds;
-    final String[] scriptFieldNames;
-    final int templatesInCatalog;
+    private final String[] scriptFieldNames;
+    private final int templatesInCatalog;
 
-    final Properties properties;
     
-    final int[][] dictionaryMembers;
+    private final int[][] dictionaryMembers;
 
     // Runtime specific message prefix, only used for some transmission
     // technologies
-    
-    //TODO: A, move these into properties to be set on save only.
-    int maxTextLength = 15;// default
-    int maxByteVectorLength = 16;// default
-    int textLengthGap = 2;//8;// default
-    int byteVectorGap = 8;// default
 
     public static final int END_OF_SEQ_ENTRY = 0x01;
     public static final int END_OF_MESSAGE = 0x02;
 
-    final FASTRingBuffer[] ringBuffers;
+    private final FASTRingBuffer[] ringBuffers;
     
-    public TemplateCatalog(byte[] catBytes) {
+    public TemplateCatalogConfig(byte[] catBytes) {
         
         FASTInputStream inputStream;
         try {
@@ -106,7 +126,7 @@ public class TemplateCatalog {
     }
     
     @Deprecated //for testing only
-    public TemplateCatalog(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
+    public TemplateCatalogConfig(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
                           int[] fullScript, int maxNestedGroupDepth,
                           int primaryRingBits, int textRingBits, int maxTemplatePMapSize, int preambleSize,
                           int templatesCount) {
@@ -174,16 +194,16 @@ public class TemplateCatalog {
         while (--i >= 0) {
             // look up for script index given the templateId
             int templateId = PrimitiveReader.readIntegerUnsigned(reader);
-            templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
-            templateLimitIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            getTemplateStartIdx()[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            getTemplateLimitIdx()[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
             // System.err.println("templateId "+templateId);
         }
         // System.err.println("total:"+templatesInCatalog);
 
         StringBuilder builder = new StringBuilder();
-        i = scriptTokens.length;
+        i = getScriptTokens().length;
         while (--i >= 0) {
-            scriptTokens[i] = PrimitiveReader.readIntegerSigned(reader);
+            getScriptTokens()[i] = PrimitiveReader.readIntegerSigned(reader);
             scriptFieldIds[i] = PrimitiveReader.readIntegerUnsigned(reader);
             int len = PrimitiveReader.readIntegerUnsigned(reader);
             String name ="";
@@ -372,20 +392,28 @@ public class TemplateCatalog {
         return dictionaryMembers;
     }
 
+    
     public int getMaxTextLength() {
-        return maxTextLength;
+        return getIntProperty(KEY_MAX_TEXT_LENGTH, DEFAULT_MAX_TEXT_LENGTH);
+    }
+    public int getTextGap() {
+        return getIntProperty(KEY_MAX_TEXT_GAP, DEFAULT_MAX_TEXT_GAP);
     }
 
     public int getMaxByteVectorLength() {
-        return maxByteVectorLength;
+        return getIntProperty(KEY_MAX_BYTES_LENGTH, DEFAULT_MAX_BYTES_LENGTH);
     }
+
+    public int getByteVectorGap() {
+        return getIntProperty(KEY_MAX_BYTES_GAP, DEFAULT_MAX_BYTES_GAP);
+    }    
 
     public int templatesCount() {
         return templatesInCatalog;
     }
 
     public int[] fullScript() {
-        return scriptTokens;
+        return getScriptTokens();
     }
     public int[] fieldIdScript() {
         return scriptFieldIds;
@@ -394,13 +422,6 @@ public class TemplateCatalog {
         return scriptFieldNames;
     }
 
-    public int getByteVectorGap() {
-        return byteVectorGap;
-    }
-
-    public int getTextGap() {
-        return textLengthGap;
-    }
 
     public int maxNonTemplatePMapSize() {
         return maxNonTemplatePMapSize;
@@ -408,6 +429,18 @@ public class TemplateCatalog {
 
     public int getMaxGroupDepth() {
         return maxPMapDepth;
+    }
+
+    public int[] getTemplateStartIdx() {
+        return templateStartIdx;
+    }
+
+    public int[] getTemplateLimitIdx() {
+        return templateLimitIdx;
+    }
+
+    public int[] getScriptTokens() {
+        return scriptTokens;
     }
 
 }

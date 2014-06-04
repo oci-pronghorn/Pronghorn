@@ -144,30 +144,30 @@ public class TemplateHandler extends DefaultHandler {
             fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional
                     : TypeMask.IntegerUnsigned;
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("int32")) {
             fieldOperator = OperatorMask.Field_None;
             fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional
                     : TypeMask.IntegerSigned;
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("uint64")) {
             fieldOperator = OperatorMask.Field_None;
             fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional
                     : TypeMask.LongUnsigned;
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
         } else if (qName.equalsIgnoreCase("int64")) {
             fieldOperator = OperatorMask.Field_None;
             fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional
                     : TypeMask.LongSigned;
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
         } else if (qName.equalsIgnoreCase("length")) {
             fieldOperator = OperatorMask.Field_None;
             fieldType = TypeMask.GroupLength;// NOTE: length is not optional
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
 
         } else if (qName.equalsIgnoreCase("string")) {
             fieldOperator = OperatorMask.Field_None;
@@ -180,7 +180,7 @@ public class TemplateHandler extends DefaultHandler {
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextASCIIOptional
                         : TypeMask.TextASCII;
             }
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("decimal")) {
             fieldOperator = OperatorMask.Field_None; // none is zero and the
                                                      // same for twin and single
@@ -189,7 +189,7 @@ public class TemplateHandler extends DefaultHandler {
             fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional
                     : TypeMask.Decimal;
 
-            commonIdAttributes(attributes, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+            commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
 
             fieldExponentOperator = OperatorMask.Field_None;
             fieldMantissaOperator = OperatorMask.Field_None;
@@ -206,7 +206,7 @@ public class TemplateHandler extends DefaultHandler {
                 fieldExponentAbsent = Integer.parseInt(absentString.trim());
             } else {
                 // default value for absent of this type
-                fieldExponentAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                fieldExponentAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
             }
 
         } else if (qName.equalsIgnoreCase("mantissa")) {
@@ -218,7 +218,7 @@ public class TemplateHandler extends DefaultHandler {
                 fieldMantissaAbsent = Long.parseLong(absentString.trim());
             } else {
                 // default value for absent of this type
-                fieldMantissaAbsent = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                fieldMantissaAbsent = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
             }
 
         } else if (qName.equalsIgnoreCase("bytevector")) {
@@ -822,7 +822,7 @@ public class TemplateHandler extends DefaultHandler {
                                tokenBuilderByteCount.intValue());
 
         // write catalog data.
-        TemplateCatalog.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
+        TemplateCatalogConfig.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
                 defaultConstValues, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers,
                 tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, catalogTemplateScriptIdx, templateIdx,
                 templateLimit, maxGroupTokenStackDepth + 1 // add one for

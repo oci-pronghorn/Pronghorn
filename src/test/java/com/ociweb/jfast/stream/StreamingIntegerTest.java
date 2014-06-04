@@ -12,7 +12,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -107,7 +107,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalog(dcr, 3, new int[0][0], null,
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dcr, 3, new int[0][0], null,
         64,8, 7, 4 ,4, 100 ), null);
 		
 		long start = System.nanoTime();
@@ -171,9 +171,9 @@ public class StreamingIntegerTest extends BaseStreamingTest {
         } else {
             // optional
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                fw.acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
             } else {
-                fw.acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
             }
         }
     }
@@ -182,7 +182,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, 
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
-	    TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
+	    TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
 		
 		long start = System.nanoTime();
@@ -205,8 +205,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
 			     		int value = fr.readInt(tokenLookup[f], reader);
-						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
-							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
+						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
+							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
 						int value = fr.readInt(tokenLookup[f], reader);
@@ -220,8 +220,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
 			     		int value = fr.readInt(tokenLookup[f], reader);
-						if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
-							assertEquals(TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
+						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
+							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
 						int value = fr.readInt(tokenLookup[f], reader);

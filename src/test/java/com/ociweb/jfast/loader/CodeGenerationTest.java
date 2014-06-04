@@ -124,7 +124,7 @@ public class CodeGenerationTest {
         // plays both together and checks each as they are processed.
         // /////////
         byte[] catBytes = TemplateLoaderTest.buildRawCatalogData();
-        final TemplateCatalog catalog = new TemplateCatalog(catBytes);
+        final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");

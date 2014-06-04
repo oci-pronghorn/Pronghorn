@@ -3,13 +3,13 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTDynamicWriter {
 
     private final FASTWriterInterpreterDispatch writerDispatch;
-    private final TemplateCatalog catalog;
+    private final TemplateCatalogConfig catalog;
     private final int[] fullScript;
     private final FASTRingBuffer ringBuffer;
     private final PrimitiveWriter writer;
@@ -17,7 +17,7 @@ public class FASTDynamicWriter {
     boolean needTemplate = true;
     final byte[] preambleData;
 
-    public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalog catalog, FASTRingBuffer ringBuffer,
+    public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalogConfig catalog, FASTRingBuffer ringBuffer,
             FASTWriterInterpreterDispatch writerDispatch) {
 
         this.writerDispatch = writerDispatch;
@@ -27,7 +27,7 @@ public class FASTDynamicWriter {
         this.ringBuffer = ringBuffer;
         this.writer = primitiveWriter;
 
-        this.preambleData = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
+        this.preambleData = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
     }
 
     // non blocking write, returns if there is nothing to do.
@@ -67,8 +67,8 @@ public class FASTDynamicWriter {
                 writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId, writer);
 
                 // tokens - reading
-                writerDispatch.activeScriptCursor = catalog.templateStartIdx[templateId];
-                writerDispatch.activeScriptLimit = catalog.templateLimitIdx[templateId];
+                writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx()[templateId];
+                writerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx()[templateId];
 
                 if (0 == writerDispatch.activeScriptLimit && 0 == writerDispatch.activeScriptCursor) {
                     throw new FASTException("Unknown template:" + templateId);

@@ -3,6 +3,7 @@ package com.ociweb.jfast.generator;
 import java.io.IOException;
 import java.util.Arrays;
 
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
@@ -17,7 +18,7 @@ public class GeneratorUtils {
         target.append("\n");
         target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
-        target.append("public "+name+"() {super(new TemplateCatalog(catBytes));}");//constructor
+        target.append("public "+name+"() {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
         target.append("\n");
     }
 

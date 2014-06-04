@@ -18,7 +18,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -301,7 +301,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
-        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalog(dcr, 3, new int[0][0], null,
+        FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dcr, 3, new int[0][0], null,
         64,8, 7, 4 ,4, 100 ), null);
 
         long start = System.nanoTime();
@@ -370,7 +370,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0, -1);
+        TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0, -1);
         FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
         ByteHeap byteHeap = fr.byteHeap;
 

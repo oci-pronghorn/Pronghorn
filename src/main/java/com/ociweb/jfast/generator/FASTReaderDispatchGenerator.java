@@ -10,7 +10,7 @@ import java.util.Set;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -47,7 +47,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     
     public FASTReaderDispatchGenerator(byte[] catBytes) {
-        super(new TemplateCatalog(catBytes));
+        super(new TemplateCatalogConfig(catBytes));
         
         origCatBytes = catBytes;
         templates = new SourceTemplates();
@@ -291,12 +291,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         //////////
     }
     
-    private void generateGroupMethods(TemplateCatalog catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
+    private void generateGroupMethods(TemplateCatalogConfig catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
         
         //A Group may be a full message or sequence item or group.
         
-        int[] startCursor = catalog.templateStartIdx;
-        int[] limitCursor = catalog.templateLimitIdx;
+        int[] startCursor = catalog.getTemplateStartIdx();
+        int[] limitCursor = catalog.getTemplateLimitIdx();
         int i = 0;
         while (i<startCursor.length) {
             int cursor = startCursor[i];
@@ -389,7 +389,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         List<String> doneScriptsParas = new ArrayList<String>();
         
         GeneratorUtils.generateHead(templates, origCatBytes, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
-        generateGroupMethods(new TemplateCatalog(origCatBytes),doneScripts,doneScriptsParas,target);
+        generateGroupMethods(new TemplateCatalogConfig(origCatBytes),doneScripts,doneScriptsParas,target);
         generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
         GeneratorUtils.generateTail(target);
         

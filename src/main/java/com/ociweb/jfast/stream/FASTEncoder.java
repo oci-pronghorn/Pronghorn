@@ -4,7 +4,7 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTEncoder { 
@@ -46,7 +46,7 @@ public class FASTEncoder {
 
     protected final FASTRingBuffer[] ringBuffers;
     
-    public FASTEncoder(TemplateCatalog catalog, FASTRingBuffer[] ringBuffers) {
+    public FASTEncoder(TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
              catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);

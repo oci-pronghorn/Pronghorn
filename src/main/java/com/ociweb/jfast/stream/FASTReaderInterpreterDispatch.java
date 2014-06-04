@@ -9,7 +9,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  {
@@ -33,10 +33,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     protected final int[] fullScript;
         
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
-        this(new TemplateCatalog(catBytes));
+        this(new TemplateCatalogConfig(catBytes));
     }    
     
-    public FASTReaderInterpreterDispatch(TemplateCatalog catalog) {
+    public FASTReaderInterpreterDispatch(TemplateCatalogConfig catalog) {
         super(catalog);
         
         this.fieldIdScript = catalog.fieldIdScript();

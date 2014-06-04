@@ -6,13 +6,13 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
 public class FASTWriterDispatchTemplates extends FASTEncoder {
 
-    public FASTWriterDispatchTemplates(final TemplateCatalog catalog, FASTRingBuffer[] ringBuffers) {
+    public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
         
         super(catalog.dictionaryFactory(), catalog.templatesCount(),
               catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),

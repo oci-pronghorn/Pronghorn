@@ -4,7 +4,7 @@ import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -40,12 +40,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     * 
     * @param catalog
     */
-    public FASTReaderDispatchTemplates(TemplateCatalog catalog) {
+    public FASTReaderDispatchTemplates(TemplateCatalogConfig catalog) {
         super(catalog);
     }
     
     public FASTReaderDispatchTemplates(byte[] catBytes) {
-        super(new TemplateCatalog(catBytes));
+        super(new TemplateCatalogConfig(catBytes));
     }
     
 

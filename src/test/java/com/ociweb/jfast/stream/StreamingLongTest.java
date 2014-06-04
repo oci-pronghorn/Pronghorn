@@ -11,7 +11,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
@@ -84,7 +84,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalog(dcr, 3, new int[0][0], null,
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dcr, 3, new int[0][0], null,
         64,8, 7, 4 ,4, 100 ), null);
 		
 		long start = System.nanoTime();
@@ -148,14 +148,14 @@ public class StreamingLongTest extends BaseStreamingTest {
                 fw.acceptLongSigned(token, rbPos, rbRingBufferLocal, writer);
             }
         } else {
-            if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
+            if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
                 fw.write(token, writer);
             } else {
                 // optional
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                     fw.acceptLongUnsignedOptional(token, value, writer);
                 } else {
-                    fw.acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
+                    fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
                 }
             }
         }
@@ -167,7 +167,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup,
 			                      DictionaryFactory dcr) {
 	    
-	    TemplateCatalog testCatalog = new TemplateCatalog(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
+	    TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
 		
 		long start = System.nanoTime();
@@ -175,7 +175,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 			
-		long none = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+		long none = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 		
 		int i = operationIters;
 		int g = fieldsPerGroup;

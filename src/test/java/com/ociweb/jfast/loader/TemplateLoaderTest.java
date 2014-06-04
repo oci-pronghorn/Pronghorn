@@ -48,7 +48,7 @@ public class TemplateLoaderTest {
                
         
         // reconstruct Catalog object from stream
-        TemplateCatalog catalog = new TemplateCatalog(catalogByteArray);
+        TemplateCatalogConfig catalog = new TemplateCatalogConfig(catalogByteArray);
 
         boolean ok = false;
         int[] script = null;
@@ -95,7 +95,7 @@ public class TemplateLoaderTest {
       Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
         byte[] catBytes = buildRawCatalogData();
-        TemplateCatalog catalog = new TemplateCatalog(catBytes); 
+        TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -122,10 +122,10 @@ public class TemplateLoaderTest {
         int warmup = 64;
         int count = 1024;
         int result = 0;
-        int[] fullScript = catalog.scriptTokens;
+        int[] fullScript = catalog.getScriptTokens();
         
         
-        byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES,0)];
+        byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
 
         int msgs = 0;
         int grps = 0;
@@ -153,7 +153,7 @@ public class TemplateLoaderTest {
                 // spin lock if input stream is not ready.
                 //
 
-                if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
+                if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
                     msgs++;
 
                     // this is a template message.
@@ -172,8 +172,8 @@ public class TemplateLoaderTest {
                     bufferIdx += 1;// point to first field
                     assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
 
-                    int i = catalog.templateStartIdx[templateId];
-                    int limit = catalog.templateLimitIdx[templateId];
+                    int i = catalog.getTemplateStartIdx()[templateId];
+                    int limit = catalog.getTemplateLimitIdx()[templateId];
                     // System.err.println("new templateId "+templateId);
                     while (i < limit) {
                         int token = fullScript[i++];
@@ -212,7 +212,7 @@ public class TemplateLoaderTest {
 
             int flag;
             while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
-                if (0 != (flag & TemplateCatalog.END_OF_MESSAGE)) {
+                if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
                     result |= FASTRingBufferReader.readInt(queue, 0);
                     // must do some real work or
                     // hot-spot may delete this
@@ -333,7 +333,7 @@ public class TemplateLoaderTest {
     @Test
     public void testDecodeEncodeComplex30000() {
         byte[] catBytes = buildRawCatalogData();
-        final TemplateCatalog catalog = new TemplateCatalog(catBytes);
+        final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -400,7 +400,7 @@ public class TemplateLoaderTest {
                     dynamicWriter.write();
                 }
 
-                if (0 != (flags & TemplateCatalog.END_OF_MESSAGE)) {
+                if (0 != (flags & TemplateCatalogConfig.END_OF_MESSAGE)) {
                     msgs++;
                 }
                 grps++;
@@ -597,7 +597,7 @@ public class TemplateLoaderTest {
     public static byte[] buildRawCatalogData() {
         //this example uses the preamble feature
         Properties properties = new Properties(); 
-        properties.put(TemplateCatalog.KEY_PARAM_PREAMBLE_BYTES, "4");
+        properties.put(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES, "4");
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {

@@ -11,7 +11,7 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalog;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
@@ -19,7 +19,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
     
-    public FASTWriterInterpreterDispatch(final TemplateCatalog catalog, FASTRingBuffer queue) {
+    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer queue) {
         super(catalog, buildRingBuffers(queue, catalog.fullScript()));
     }
     
@@ -54,15 +54,15 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 
                 //temp solution as the ring buffer is introduce into all the APIs
                 rbRingBufferLocal.dump();
-                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                 FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
                 int rbPos = 0;
 
                 // hack until all the classes no longer need this method.
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                    acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 } else {
-                    acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                    acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 }
             } else {
                 // long
@@ -85,14 +85,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     
                     //temp solution as the ring buffer is introduce into all the APIs     
                     rbRingBufferLocal.dump();
-                    rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                    rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                     FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
                     int rbPos = 0;
                                         // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        acceptIntegerUnsignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                        acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } else {
-                        acceptIntegerSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
+                        acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } 
 
                     int idx1 = token & longInstanceMask;
@@ -1305,7 +1305,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
                         // optional
                         //TODO: B, Add lookup for value of absent/null instead of this constant.
-                        int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                        int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
                             acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);                            
                         } else {        
@@ -1326,14 +1326,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             acceptLongSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
-                        if (value == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
+                        if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
                             write(token, writer);
                         } else {
                             // optional
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 acceptLongUnsignedOptional(token, value, writer);
                             } else {
-                                acceptLongSignedOptional(token, TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
+                                acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
                             }
                         }
                     }
@@ -1367,7 +1367,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         } else {
                                     
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
-                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                            int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                                                         
                             acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
 
@@ -1378,9 +1378,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
                             acceptLongSigned(mantToken, fieldPos + 1, ringBuffers[activeScriptCursor], writer);
                         } else {
-                            long valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                            long valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                             
-                            if (TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
+                            if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
                                 int idx = mantToken & longInstanceMask; 
                                 
                                 //TODO: B, Must not write null if we have already done so above, but this must also be compiled.
@@ -1456,12 +1456,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
-                        if (length == TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
+                        if (length == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                             write(token, writer);
                         } else {
                             // optional
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
-                            int valueOfNull = TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                            int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
                                 acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
