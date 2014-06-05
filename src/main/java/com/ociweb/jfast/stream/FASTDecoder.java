@@ -9,13 +9,17 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTDecoder {
 
-    //debugging state
-    protected DispatchObserver observer;
+    //debugging state, remove
+    protected static DispatchObserver observer;
     
     //active state, TODO: C, minimize or remove these.
     public int sequenceCountStackHead = -1;
+
+    private final int[] templateStartIdx;
+    private final int[] templateLimitIdx;
     public int activeScriptCursor;
     public int activeScriptLimit;
+    public final int maxTemplatePMapSize;
     
     public final int[] sequenceCountStack;
     
@@ -25,9 +29,7 @@ public abstract class FASTDecoder {
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
         
-    private final int[] templateStartIdx;
-    private final int[] templateLimitIdx;
-    public final int maxTemplatePMapSize;
+    
     public final byte preambleDataLength;
     protected final FASTRingBuffer[] ringBuffers;
         

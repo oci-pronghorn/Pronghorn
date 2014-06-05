@@ -79,7 +79,7 @@ public class Complex30000Benchmark extends Benchmark {
                                                                  // hot-spot may
                                                                  // delete this
                                                                  // loop.
-                queue.dump(); // must dump values in buffer or we will hang when
+                FASTRingBuffer.dump(queue); // must dump values in buffer or we will hang when
                               // reading.
             }
         }

@@ -105,11 +105,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         //bridge solution as the ring buffer is introduce into all the APIs
-                        rbRingBufferLocal.dump();
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = testExpConst;
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (testMantConst >>> 32);
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (testMantConst & 0xFFFFFFFF); 
-                        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                        FASTRingBuffer.dump(rbRingBufferLocal);
+                       
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,testExpConst);
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testMantConst >>> 32));
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testMantConst & 0xFFFFFFFF)); 
+                        FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -133,11 +134,11 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         //bridge solution as the ring buffer is introduce into all the APIs
-                        rbRingBufferLocal.dump();
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = 1;
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa >>> 32);
-                        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (mantissa & 0xFFFFFFFF); 
-                        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                        FASTRingBuffer.dump(rbRingBufferLocal);
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,1);
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (mantissa >>> 32));
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (mantissa & 0xFFFFFFFF)); 
+                        FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
@@ -308,7 +309,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
         
         //must return what was written
-        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.addPos-2, ringBuffer.mask);
+        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.addPos.value-2, ringBuffer.mask);
     }
 
     public static int readDecimalExponent(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder, FASTRingBuffer ringBuffer) {
@@ -335,7 +336,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
             decoder.readIntegerSignedOptional(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader);
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos-1, ringBuffer.mask);
+        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-1, ringBuffer.mask);
     }
 
 }

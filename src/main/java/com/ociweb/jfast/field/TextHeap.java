@@ -53,6 +53,10 @@ public class TextHeap {
     public TextHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, int charInitTotalLength,
             int[] charInitIndex, char[][] charInitValue) {
 
+        if (singleTextSize<1) {
+            throw new UnsupportedOperationException("Text length must be 1 or more.");
+        }
+        
         itemCount = fixedTextItemCount;
 
         gapCount = fixedTextItemCount + 1;
@@ -107,18 +111,18 @@ public class TextHeap {
 
         int i = itemCount;
         while (--i >= 0) {
-            setNull(i);
+            setNull(i, this);
         }
     }
 
-    public void setZeroLength(int idx) {
+    public static void setZeroLength(int idx, TextHeap textHeap) {
         int offset = idx << 2;
-        tat[offset + 1] = tat[offset];
+        textHeap.tat[offset + 1] = textHeap.tat[offset];
     }
 
-    public void setNull(int idx) {
+    public static void setNull(int idx, TextHeap textHeap) {
         int offset = idx << 2;
-        tat[offset + 1] = tat[offset] - 1;
+        textHeap.tat[offset + 1] = textHeap.tat[offset] - 1;
     }
 
     public boolean isNull(int idx) {
@@ -882,7 +886,7 @@ public class TextHeap {
             buffer = data;
         }
         if (len < 0) {
-            setNull(targetIdx);
+            setNull(targetIdx, this);
             return;
         }
         set(targetIdx, buffer, startFrom, length(sourceIdx));
@@ -905,12 +909,13 @@ public class TextHeap {
 
     }
 
-    public void setSingleCharText(char ch, int idx) {
-        // TODO: C, This implementation assumes that all text can always support length of 1, must confirm
+    public static void setSingleCharText(char ch, int idx, TextHeap textHeap) {
+        // This implementation assumes that all text can always support length of 1. Enforced in constructor.
         final int offset = idx << 2;
-        int targIndex = tat[offset]; // because we have zero length
+                
+        int targIndex = textHeap.tat[offset]; // because we have zero length
 
-        data[targIndex] = ch;
-        tat[offset + 1] = 1 + targIndex;
+        textHeap.data[targIndex] = ch;
+        textHeap.tat[offset + 1] = 1 + targIndex;
     }
 }

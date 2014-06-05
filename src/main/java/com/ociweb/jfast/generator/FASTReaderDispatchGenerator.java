@@ -15,6 +15,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
@@ -26,7 +27,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     private static final String FRAGMENT_METHOD_NAME = "fragment";    
     
-    private static final int COMPLEXITY_LIMITY_PER_METHOD = 18;
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 518;
     private static final String ENTRY_METHOD_NAME = "decode";
     
     SourceTemplates templates;
@@ -76,11 +77,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                      .append(paraDefs)
                      .append(") {\n");
         
-        signatureLine.append("//script ").append(activeScriptCursor).append('-').append(activeScriptLimit)
-                    .append(" id:").append(fieldIdScript[activeScriptCursor]).append("\n");
-
-       // groupMethodBuilder.append("    System.out.println(\"called "+FRAGMENT_METHOD_NAME+scriptPos+"  \");\n");
-        
+       
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
     
@@ -364,6 +361,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
+                                    .replace("rbPos","rb.addPos")
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
 
@@ -421,38 +419,38 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // length methods
     
     @Override
-    protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget,jumpToNext);
         return jumpToNext;
     }
 
     @Override
-    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
     }
 
     @Override
-    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
     }
 
     @Override
-    protected void genReadLengthConstant(int constDefault, int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, FASTDecoder dispatch) {
+    protected void genReadLengthConstant(int constDefault, int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),constDefault,jumpToTarget,jumpToNext);
     }
 
     @Override
-    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target,source,jumpToTarget,jumpToNext);
     }
 
     @Override
-    protected void genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         sequenceStarts.add(activeScriptCursor+1);
         generator(new Exception().getStackTrace(),target, jumpToTarget,jumpToNext);
     }
@@ -472,154 +470,154 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // int methods
 
     @Override
-    protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
     }
     
     @Override
-    protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
 
     @Override
-    protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constConst);
     }
     
     @Override
-    protected void genReadIntegerUnsignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadIntegerUnsignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
     
     @Override
-    protected void genReadIntegerUnsignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadIntegerUnsignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadIntegerUnsignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerUnsigned(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerUnsigned(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target);
     }
     
     @Override
-    protected void genReadIntegerSignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedDefault(int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadIntegerSignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedIncrement(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerSignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerConstant(int constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerConstant(int constDefault, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadIntegerSignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedDelta(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadIntegerSignedNone(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedNone(int target, int[] rbB, int rbMask, PrimitiveReader reader, int[] rIntDictionary, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target);
     }
     
     @Override
-    protected void genReadIntegerSignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
     }
     
     @Override
-    protected void genReadIntegerSignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadIntegerSignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadIntegerSignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constConst);
     }
     
     @Override
-    protected void genReadIntegerSignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadIntegerSignedOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
     
     ///
     /*
     @Override
-    protected void genReadExponentDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentDefaultOptional(int constAbsent, int constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
     }
     
     @Override
-    protected void genReadExponentIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadExponentCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadExponentConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constConst);
     }
     
     @Override
-    protected void genReadExponentDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentDeltaOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadExponentOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadExponentOptional(int constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
     */
@@ -627,122 +625,122 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // long methods
     
     @Override
-    protected void genReadLongUnsignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadLongUnsignedIncrement(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedIncrement(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongUnsignedCopy(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedCopy(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongConstant(long constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongConstant(long constDefault, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadLongUnsignedDelta(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedDelta(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongUnsignedNone(int target, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedNone(int target, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target);
     }
     
     @Override
-    protected void genReadLongUnsignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
     }
     
     @Override
-    protected void genReadLongUnsignedIncrementOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedIncrementOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
 
     @Override
-    protected void genReadLongUnsignedCopyOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedCopyOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constConst);
     }
     
     @Override
-    protected void genReadLongUnsignedDeltaOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedDeltaOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadLongUnsignedOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongUnsignedOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
     
     @Override
-    protected void genReadLongSignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedDefault(long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadLongSignedIncrement(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedIncrement(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongSignedCopy(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedCopy(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongSignedConstant(long constDefault, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedConstant(long constDefault, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
     
     @Override
-    protected void genReadLongSignedDelta(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedDelta(int target, int source, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source);
     }
     
     @Override
-    protected void genReadLongSignedNone(int target, long[] rLongDictionary, int[] is, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedNone(int target, long[] rLongDictionary, int[] is, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target);
     }
     
     @Override
-    protected void genReadLongSignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedDefaultOptional(long constAbsent, long constDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constDefault);
     }
     
     @Override
-    protected void genReadLongSignedIncrementOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedIncrementOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadLongSignedCopyOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedCopyOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedConstantOptional(long constAbsent, long constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent,constConst);
     }
     
     @Override
-    protected void genReadLongSignedDeltaOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedDeltaOptional(int target, int source, long constAbsent, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),target,source,constAbsent);
     }
     
     @Override
-    protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constAbsent);
     }
 
@@ -750,139 +748,139 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     
     @Override
-    protected void genReadUTF8None(int idx, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8None(int idx, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,optOff);
     }
     
     @Override
-    protected void genReadUTF8TailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8TailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadUTF8DeltaOptional(int idx, int[] is, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8DeltaOptional(int idx, int[] is, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadUTF8Delta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8Delta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constIdx,constLen);
     }
     
     @Override
-    protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadUTF8Copy(int idx, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8Copy(int idx, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,optOff);
     }
     
     @Override
-    protected void genReadUTF8Default(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadUTF8Default(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,defIdx, defLen,optOff);
     }
     
     @Override
-    protected void genReadASCIINone(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIINone(int idx, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadASCIIDeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDeltaOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constInit,constValue,constInitLen,constValueLen);
     }
     
     @Override
-    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,defIdx,defLen);
     }
     
     //byte methods
     
     @Override
-    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constIdx,constLen);
     }
     
     @Override
-    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constInit,constInitLen,constValue,constValueLen);
     }
     
     @Override
-    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,defIdx, defLen,optOff);
     }
     
     @Override
-    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx,optOff);
     }
     
     @Override
-    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
     
     @Override
-    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer, PrimitiveReader reader) {
+    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         generator(new Exception().getStackTrace(),idx);
     }
 
@@ -912,7 +910,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDefaultOptionalMantissaDefault(int constAbsent, int constDefault,
-            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(), constAbsent, constDefault, mantissaConstDefault);
 
@@ -922,7 +920,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaDefault(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(), target, source, constAbsent, mantissaConstDefault);
 
@@ -932,7 +930,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalCopyOptionalMantissaDefault(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
 
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
     }
@@ -940,7 +938,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaDefault(int constAbsent, int constConst,
-            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaConstDefault);
     }
@@ -949,7 +947,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDeltaOptionalMantissaDefault(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
     }
@@ -957,7 +955,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaDefault(int constAbsent, long mantissaConstDefault, int[] rbB,
-            int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaConstDefault);
     }
@@ -966,7 +964,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDefaultOptionalMantissaIncrement(int constAbsent, int constDefault,
             int mantissaTarget, int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
     }
@@ -975,7 +973,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaIncrement(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -984,7 +982,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalCopyOptionalMantissaIncrement(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -992,7 +990,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaIncrement(int constAbsent, int constConst, int mantissaTarget,
-            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
     }
@@ -1001,7 +999,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDeltaOptionalMantissaIncrement(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1009,7 +1007,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaIncrement(int constAbsent, int mantissaTarget, int mantissaSource,
-            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1017,7 +1015,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDefaultOptionalMantissaCopy(int constAbsent, int constDefault, int mantissaTarget,
-            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
     }
@@ -1026,7 +1024,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaCopy(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1035,7 +1033,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalCopyOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget,
             int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1043,7 +1041,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaCopy(int constAbsent, int constConst, int mantissaTarget,
-            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
     }
@@ -1052,7 +1050,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDeltaOptionalMantissaCopy(int target, int source, int constAbsent, int mantissaTarget,
             int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1060,7 +1058,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaCopy(int constAbsent, int mantissaTarget, int mantissaSource,
-            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1068,7 +1066,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDefaultOptionalMantissaConstant(int constAbsent, int constDefault,
-            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaConstDefault);
     }
@@ -1077,7 +1075,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaConstant(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
     }
@@ -1086,7 +1084,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalCopyOptionalMantissaConstant(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
     }
@@ -1094,7 +1092,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaConstant(int constAbsent, int constConst,
-            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            long mantissaConstDefault, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaConstDefault);
     }
@@ -1103,7 +1101,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDeltaOptionalMantissaConstant(int target, int source, int constAbsent,
             long mantissaConstDefault, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer) {
+            PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaConstDefault);
     }
@@ -1111,7 +1109,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaConstant(int constAbsent, long mantissaConstDefault, int[] rbB,
-            int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaConstDefault);
     }
@@ -1119,7 +1117,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDefaultOptionalMantissaDelta(int constAbsent, int constDefault, int mantissaTarget,
-            int mantissaSource, int[] rbB, long[] rLongDictionary, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+            int mantissaSource, int[] rbB, long[] rLongDictionary, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         
         generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget, mantissaSource);
     }
@@ -1128,7 +1126,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaDelta(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1137,7 +1135,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalCopyOptionalMantissaDelta(int target, int source, int constAbsent, int mantissaTarget,
             int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1145,7 +1143,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaDelta(int constAbsent, int constConst, int mantissaTarget,
-            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int mantissaSource, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget, mantissaSource);
     }
@@ -1154,7 +1152,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalDeltaOptionalMantissaDelta(int target, int source, int constAbsent,
             int mantissaTarget, int mantissaSource, int[] rIntDictionary, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1162,7 +1160,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaDelta(int constAbsent, int mantissaTarget, int mantissaSource,
-            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaTarget, mantissaSource);
     }
@@ -1170,7 +1168,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDefaultOptionalMantissaNone(int constAbsent, int constDefault, int mantissaTarget,
-            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),constAbsent, constDefault, mantissaTarget);
     }
@@ -1179,7 +1177,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadDecimalIncrementOptionalMantissaNone(int target, int source, int constAbsent,
             int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader,
-            FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
     }
@@ -1187,7 +1185,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalCopyOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget,
-            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
     }
@@ -1195,7 +1193,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalConstantOptionalMantissaNone(int constAbsent, int constConst, int mantissaTarget,
-            int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),constAbsent, constConst, mantissaTarget);
     }
@@ -1203,7 +1201,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalDeltaOptionalMantissaNone(int target, int source, int constAbsent, int mantissaTarget,
-            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),target, source, constAbsent, mantissaTarget);
     }
@@ -1211,7 +1209,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     @Override
     protected void genReadDecimalOptionalMantissaNone(int constAbsent, int mantissaTarget, int[] rbB, int rbMask,
-            PrimitiveReader reader, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
+            PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         
         generator(new Exception().getStackTrace(),constAbsent, mantissaTarget);
     }

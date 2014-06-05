@@ -79,7 +79,7 @@ public class DispatchLoaderTest {
                    assertEquals("2.0",version);
                }               
                
-               queue.dump(); //don't need the data but do need to empty the queue.
+               FASTRingBuffer.dump(queue); //don't need the data but do need to empty the queue.
                
                records++;
 

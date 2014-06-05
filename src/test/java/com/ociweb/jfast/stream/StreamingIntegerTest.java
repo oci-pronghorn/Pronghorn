@@ -156,9 +156,9 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 
     public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
-        rbRingBufferLocal.dump();
-        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = value;
-        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+        FASTRingBuffer.dump(rbRingBufferLocal);
+        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,value);
+        FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
         int rbPos = 0;
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {

@@ -133,10 +133,10 @@ public class StreamingLongTest extends BaseStreamingTest {
     public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value, PrimitiveWriter writer) {
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         //  solution as the ring buffer is introduce into all the APIs
-        rbRingBufferLocal.dump();            
-        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (value >>> 32);
-        rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = (int) (value & 0xFFFFFFFF); 
-        FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+        FASTRingBuffer.dump(rbRingBufferLocal);            
+        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (value >>> 32));
+        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (value & 0xFFFFFFFF)); 
+        FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
         int rbPos = 0;                    
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all

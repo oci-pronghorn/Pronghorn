@@ -1,6 +1,7 @@
 package com.ociweb.jfast.stream;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
@@ -26,9 +27,15 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
  */
 public final class FASTRingBuffer {
 
+    public static class PaddedLong {
+        public long value = 0, padding1, padding2, padding3, padding4;
+    }
+    
     public final int[] buffer;
     public final int mask;
-
+    public final PaddedLong addPos = new PaddedLong();
+    public final PaddedLong remPos = new PaddedLong();
+    
     public final int maxSize;
 
     public final int maxCharSize;
@@ -44,12 +51,10 @@ public final class FASTRingBuffer {
     final char[] constTextBuffer; //defined externally and never changes
     final byte[] constByteBuffer;
 
-    FASTFilter filter = FASTFilter.none;
 
-    final AtomicInteger removeCount;
-    private final AtomicInteger addCount;
-    public int addPos;
-    public int remPos;
+    final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
+    private final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
+
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
     private int[] fragStack; //TODO: B, first offset 0 points to the constants after the ring buffer.
@@ -69,14 +74,6 @@ public final class FASTRingBuffer {
         //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
 
         //TODO: A, use callback upon new class load to reset field offsets.
-        
-       
-        this.removeCount = new AtomicInteger(); //reader reads from this position.
-        this.addCount = new AtomicInteger(); // consumer is allowed to read up to addCount
-        this.addPos = 0; //assigned to addCount when the full record is read.
-        this.remPos = 0; //reads from this postion and assigned from removeCount;
-        
-
 
         //constant data will never change and is populated externally.
         if (null!=dcr) {
@@ -116,8 +113,8 @@ public final class FASTRingBuffer {
      */
     public void reset() {
         addCharPos = 0;
-        addPos = 0;
-        remPos = 0;
+        addPos.value = 0;
+        remPos.value = 0;
         removeCount.set(0);
         addCount.set(0);
     }
@@ -142,15 +139,15 @@ public final class FASTRingBuffer {
     // TODO: C, look at adding reduce method in addition to filter.
 
     public final int availableCapacity() {
-        return maxSize - (addPos - remPos);
+        return maxSize - (int)(addPos.value - remPos.value);
     }
 
-    public static int peek(int[] buf, int pos, int mask) {
-        return buf[mask & pos];
+    public static int peek(int[] buf, long pos, int mask) {
+        return buf[mask & (int)pos];
     }
 
-    public static long peekLong(int[] buf, int pos, int mask) {
-        return (((long) buf[mask & pos]) << 32) | (((long) buf[mask & (pos + 1)]) & 0xFFFFFFFFl);
+    public static long peekLong(int[] buf, long pos, int mask) {
+        return (((long) buf[mask & (int)pos]) << 32) | (((long) buf[mask & (int)(pos + 1)]) & 0xFFFFFFFFl);
 
     }
 
@@ -159,28 +156,28 @@ public final class FASTRingBuffer {
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
 
-    public int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
-        final int p = addCharPos;
+    public static int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
+        final int p = rbRingBuffer.addCharPos;
         if (len > 0) {
-            addCharPos = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
+            rbRingBuffer.addCharPos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.charBuffer, p, rbRingBuffer.charMask,textHeap);
         }
         return p;
     }
     
-    public int writeTextToRingBuffer(int heapId, int len, PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
-        final int p = addCharPos;
+    public static int writeTextToRingBuffer(int heapId, int len, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
+        final int p = rbRingBuffer.addCharPos;
         if (len > 0) {
             
-            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(charBuffer, p, charBuffer.length, reader);
-            addCharPos+=lenTemp;// = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
+            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, p, rbRingBuffer.charBuffer.length, reader);
+            rbRingBuffer.addCharPos+=lenTemp;// = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
         }
         return p;
     }
 
-    public int writeBytesToRingBuffer(int heapId, int len, ByteHeap byteHeap) {
-        final int p = addBytePos;
+    public static int writeBytesToRingBuffer(int heapId, int len, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+        final int p = rbRingBuffer.addBytePos;
         if (len > 0) {
-            addBytePos = byteHeap.copyToRingBuffer(heapId, byteBuffer, p, byteMask);
+            rbRingBuffer.addBytePos = byteHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask);
         }
         return p;
     }
@@ -188,64 +185,38 @@ public final class FASTRingBuffer {
     // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
 
-    // next sequence is ready for consumption.
-    public static final void unBlockSequence(FASTRingBuffer ringBuffer) {
-        //can not change mind after first decision.
-        // if filtered out the addPos will be rolled back to newGroupPos
-        byte f = ringBuffer.filter.go(ringBuffer.addCount.get(), ringBuffer);
-        
-        if (f > 0) {// consumer is allowed to read up to addCount
-            // normal
-            ringBuffer.addCount.lazySet(ringBuffer.addPos);
-        } else if (f < 0) {
-            // skip
-            ringBuffer.addPos = ringBuffer.addCount.get();
-        } // else hold
-    }
-
-    //
-    public static final void unBlockMessage(FASTRingBuffer ringBuffer) {
-        // TODO: B, add filter rules against leading fragment of message including message id. Can not change mind later!      
-        
-        // if filtered out the addPos will be rolled back to newGroupPos
-        byte f = ringBuffer.filter.go(ringBuffer.addCount.get(), ringBuffer);
-        if (0 == f) {
-            // do not hold use default instead
-            f = ringBuffer.filter.defaultBehavior();
-        }
-
-        if (f > 0) {// consumer is allowed to read up to addCount
-            // normal
-            ringBuffer.addCount.lazySet(ringBuffer.addPos);
-        } else {
-            // skip
-            ringBuffer.addPos = ringBuffer.addCount.get();
-        }
+    // fragment is ready for consumption
+    public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
+            ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
     }
 
     public void removeForward(int step) {
-        remPos = removeCount.get() + step;
-        assert (remPos <= addPos);
-        removeCount.lazySet(remPos);
+        remPos.value = removeCount.get() + step;
+        assert (remPos.value <= addPos.value);
+        removeCount.lazySet(remPos.value);
     }
 
-    public void dump() {
-        
-        
-        
+    public static void addValue(int[] rbB, int rbMask, PaddedLong pos, int value) {
+        long p = pos.value;
+        rbB[rbMask & (int)p] = value;
+        pos.value = p+1;
+    }
+    
+    public static void dump(FASTRingBuffer rb) {
+                       
         // move the removePosition up to the addPosition
         // System.err.println("resetup to "+addPos);
-        remPos = addPos;
-        removeCount.lazySet(addPos);
+        rb.remPos.value = rb.addPos.value;
+        rb.removeCount.lazySet(rb.addPos.value);
     }
 
     // this is for fast direct WRITE TO target
     public void readChars(int idx, char[] target, int targetIdx, TextHeap textHeap) {
-        int ref1 = buffer[mask & (remPos + idx)];
+        int ref1 = buffer[(int)(mask & (remPos.value + idx))];
         if (ref1 < 0) {
             textHeap.get(ref1, target, targetIdx);
         } else {
-            int len = buffer[mask & (remPos + idx + 1)];
+            int len = buffer[(int)(mask & (remPos.value + idx + 1))];
             // copy into target but may need to loop from text buffer
             while (--len >= 0) {
                 target[targetIdx + len] = charBuffer[(ref1 + len) & charMask];
@@ -257,13 +228,13 @@ public final class FASTRingBuffer {
     // these are needed for fast direct READ FROM here
     public int readRingCharPos(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
-        int ref1 = buffer[mask & (remPos + fieldPos)];
+        int ref1 = buffer[(int)(mask & (remPos.value + fieldPos))];
         return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
     }
 
     public char[] readRingCharBuffer(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
-        return buffer[mask & (remPos + fieldPos)] < 0 ? constTextBuffer : this.charBuffer;
+        return buffer[(int)(mask & (remPos.value + fieldPos))] < 0 ? constTextBuffer : this.charBuffer;
     }
 
     public int readRingCharMask() {
@@ -273,11 +244,13 @@ public final class FASTRingBuffer {
 
 
     public boolean hasContent() {
-        return addPos > remPos;
+        return addPos.value > remPos.value;
     }
 
     public int contentRemaining() {
-        return addPos - remPos;
+        return (int)(addPos.value - remPos.value);
     }
+
+
 
 }

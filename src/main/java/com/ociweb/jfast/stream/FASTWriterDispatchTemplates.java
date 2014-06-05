@@ -1426,13 +1426,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeNull();
-            textHeap.setNull(idx);
+            textHeap.setNull(idx, textHeap);
         }
     }
 
     public void genWriteNullNoPMapText(int idx, PrimitiveWriter writer, TextHeap textHeap) {
         writer.writeNull();
-        textHeap.setNull(idx);
+        textHeap.setNull(idx, textHeap);
     }
     
     public void genWriteNullDefaultBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {

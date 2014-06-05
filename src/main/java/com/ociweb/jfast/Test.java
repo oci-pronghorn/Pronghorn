@@ -128,7 +128,7 @@ public class Test {
                       // only dump at end of template not end of sequence.
                       // the removePosition must remain at the beginning until
                       // message is complete.
-                      queue.dump();
+                      FASTRingBuffer.dump(queue);
                   }
                   grps++;
 

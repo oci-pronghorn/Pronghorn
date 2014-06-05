@@ -62,7 +62,7 @@ public class FASTInputReactor {
         }
         // must have room to store the new template
         int req = decoder.preambleDataLength + 1;
-        if ( (( rb.maxSize-(rb.addPos-rb.remPos)) < req)) {
+        if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {
             return 0x80000000;
         }
         decoder.neededSpaceOrTemplate=hasMoreNextMessage(req, decoder, reader, rb);
@@ -71,14 +71,14 @@ public class FASTInputReactor {
 
     private static int checkSpaceAndDecode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
         if (decoder.neededSpaceOrTemplate > 0) {
-            if (( rb.maxSize-(rb.addPos-rb.remPos)) < decoder.neededSpaceOrTemplate) {
+            if (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < decoder.neededSpaceOrTemplate) {
                 return 0x80000000;
             }
             decoder.neededSpaceOrTemplate = 0;
         }        
         // returns true for end of sequence or group
         if (decoder.decode(reader)) {
-            FASTRingBuffer.unBlockSequence(rb);
+            FASTRingBuffer.unBlockFragment(rb);
             return 1;// has more to read
         } else {
             return finishTemplate(rb, reader, decoder);
@@ -113,12 +113,12 @@ public class FASTInputReactor {
         //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
         p = readerDispatch.preambleDataLength;
         if (p>0) {
-            rb.buffer[rb.mask & rb.addPos++] = a;
+            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
             if (p>4) {
-                rb.buffer[rb.mask & rb.addPos++] = b;
+                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
             }
         }
-        rb.buffer[rb.mask & rb.addPos++] = templateId;
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
                 
         // write template id at the beginning of this message
         return readerDispatch.requiredBufferSpace(templateId);
@@ -129,7 +129,7 @@ public class FASTInputReactor {
     private static final int finishTemplate(FASTRingBuffer ringBuffer, PrimitiveReader reader, FASTDecoder decoder) {
         
         // reached the end of the script so close and prep for the next one
-        FASTRingBuffer.unBlockMessage(ringBuffer);
+        FASTRingBuffer.unBlockFragment(ringBuffer);
         decoder.neededSpaceOrTemplate = -1;
         PrimitiveReader.closePMap(reader);
         return 2;// finished reading full message

@@ -53,9 +53,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                 int idx = token & intInstanceMask;
                 
                 //temp solution as the ring buffer is introduce into all the APIs
-                rbRingBufferLocal.dump();
-                rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-                FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                FASTRingBuffer.dump(rbRingBufferLocal);
+                FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
                 int rbPos = 0;
 
                 // hack until all the classes no longer need this method.
@@ -84,9 +84,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     int idx = token & intInstanceMask;
                     
                     //temp solution as the ring buffer is introduce into all the APIs     
-                    rbRingBufferLocal.dump();
-                    rbRingBufferLocal.buffer[rbRingBufferLocal.mask & rbRingBufferLocal.addPos++] = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-                    FASTRingBuffer.unBlockMessage(rbRingBufferLocal);
+                    FASTRingBuffer.dump(rbRingBufferLocal);
+                    FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
                     int rbPos = 0;
                                         // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -112,10 +112,10 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     public void acceptLongSignedOptional(int token, long valueOfNull, long value, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         
 //      ////    //temp solution as the ring buffer is introduce into all the APIs
-      rbRingBuffer.dump();            
-      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
-      rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
-      FASTRingBuffer.unBlockMessage(rbRingBuffer);
+      FASTRingBuffer.dump(rbRingBuffer);            
+      FASTRingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos,(int) (value >>> 32));
+      FASTRingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos,(int) (value & 0xFFFFFFFF)); 
+      FASTRingBuffer.unBlockFragment(rbRingBuffer);
       int rbPos = 0;
         
         

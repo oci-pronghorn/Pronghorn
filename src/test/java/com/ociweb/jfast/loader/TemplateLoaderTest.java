@@ -31,6 +31,7 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
@@ -111,7 +112,9 @@ public class TemplateLoaderTest {
         FASTClassLoader.deleteFiles();
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-    //  readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+   //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+        
+        
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
@@ -128,12 +131,15 @@ public class TemplateLoaderTest {
         byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
 
         int msgs = 0;
-        int grps = 0;
-        long queuedBytes = 0;
+        int frags = 0;
+        
+        long totalBytesOut = 0;
+        long totalRingInts = 0;
+        
         int iter = warmup;
         while (--iter >= 0) {
             msgs = 0;
-            grps = 0;
+            frags = 0;
             int flag = 0; // same id needed for writer construction
             while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
                 // New flags
@@ -158,6 +164,7 @@ public class TemplateLoaderTest {
 
                     // this is a template message.
                     int bufferIdx = 0;
+                    
                     if (preamble.length > 0) {
                         int i = 0;
                         int s = preamble.length;
@@ -180,23 +187,23 @@ public class TemplateLoaderTest {
                         // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 
                         if (isText(token)) {
-                            queuedBytes += (4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
+                            totalBytesOut += (4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
                         }
 
                         // find the next index after this token.
                         bufferIdx += stepSizeInRingBuffer(token);
 
                     }
-                    queuedBytes += bufferIdx;// ring buffer bytes, NOT full
-                                             // string byteVector data.
+                    totalBytesOut += (4 * bufferIdx);
+                    totalRingInts += bufferIdx;
 
                     // must dump values in buffer or we will hang when reading.
                     // only dump at end of template not end of sequence.
                     // the removePosition must remain at the beginning until
                     // message is complete.
-                    queue.dump();
+                    FASTRingBuffer.dump(queue);
                 }
-                grps++;
+                frags++;
 
             }
             //fastInput.reset();
@@ -205,6 +212,9 @@ public class TemplateLoaderTest {
             readerDispatch.reset(catalog.dictionaryFactory());
         }
 
+        totalBytesOut/=warmup;
+        totalRingInts/=warmup;
+        
         iter = count;
         while (--iter >= 0) {
 
@@ -234,10 +244,14 @@ public class TemplateLoaderTest {
                 float mmsgPerSec = (msgs * (float) 1000l / ns);
                 float nsPerByte = (ns / (float) totalTestBytes);
                 int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
+                
+                float mfieldPerSec = (totalRingInts* (float) 1000l / ns);
 
                 System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
-                        + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
-                        + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs + " Groups:" + grps); // Phrases/Clauses
+                        + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + totalBytesOut + " cmpr:"
+                        + (1f-(totalTestBytes / (float) totalBytesOut)) + " Messages:" + msgs + " Frags:" + frags
+                        + " RingInts:"+totalRingInts+ " mfps "+mfieldPerSec 
+                        ); // Phrases/Clauses
                 // Helps let us kill off the job.
             }
 

@@ -6,6 +6,7 @@ import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class StaticGlue {
 
@@ -15,7 +16,7 @@ public class StaticGlue {
         // 0x00, 0x80 is zero length string
         if (0 == val) {
             // almost never happens
-            textHeap.setZeroLength(idx);
+            TextHeap.setZeroLength(idx, textHeap);
             // must move cursor off the second byte
             val = PrimitiveReader.readTextASCIIByte(reader); // < .1%
             // at least do a validation because we already have what we need
@@ -23,7 +24,7 @@ public class StaticGlue {
             return 0;//length
         } else {
             // happens rarely when it equals 0x80
-            textHeap.setNull(idx);
+            TextHeap.setNull(idx, textHeap);
             return -1;//length
         }
     }
@@ -32,7 +33,7 @@ public class StaticGlue {
             PrimitiveReader primitiveReader) {
 
         if (val < 0) {
-            textHeap.setSingleCharText((char) chr, idx);
+            TextHeap.setSingleCharText((char) chr, idx, textHeap);
             return 1;
         } else {
             readASCIIToHeapValueLong(val, idx, textHeap, primitiveReader);
@@ -85,7 +86,7 @@ public class StaticGlue {
 
     public static int readASCIIHead(final int idx, int trim, TextHeap textHeap, PrimitiveReader reader) {
         
-        
+
         if (trim < 0) {
             textHeap.trimHead(idx, -trim);
         }
@@ -113,7 +114,7 @@ public class StaticGlue {
 
 
     public static int readASCIITail(final int idx, TextHeap textHeap, PrimitiveReader reader, int tail) {
-        textHeap.trimTail(idx, tail);
+        textHeap.trimTail(idx, tail);       
         byte val = PrimitiveReader.readTextASCIIByte(reader);
         if (val == 0) {
             // nothing to append
@@ -124,10 +125,10 @@ public class StaticGlue {
         } else {
             if (val == (byte) 0x80) {
                 // nothing to append
-                textHeap.setNull(idx);
+                TextHeap.setNull(idx, textHeap);
             } else {
                 if (textHeap.isNull(idx)) {
-                    textHeap.setZeroLength(idx);
+                    TextHeap.setZeroLength(idx, textHeap);
                 }
                 fastHeapAppend(idx, val, textHeap, reader);
             }
@@ -184,17 +185,17 @@ public class StaticGlue {
         PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength, reader);
     }
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
-        byte val;         
-        int tmp = (0 != (tmp = 0x7F & (val = PrimitiveReader.readTextASCIIByte(reader)))) ?
+        byte val = PrimitiveReader.readTextASCIIByte(reader);         
+        int tmp = (0 != (tmp = 0x7F & val)) ?
                readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
                readASCIIToHeapNone(idx, val, textHeap, reader);
         return tmp;
     }
     public static void readLongSignedDeltaOptional(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask,
-            FASTRingBuffer rbRingBuffer, long value) {
+            PaddedLong rbPos, long value) {
         long tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng >>> 32); 
-        rbB[rbMask & rbRingBuffer.addPos++] = (int) (tmpLng & 0xFFFFFFFF);
+        FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng >>> 32)); 
+        FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng & 0xFFFFFFFF));
     }
 
     //byte methods

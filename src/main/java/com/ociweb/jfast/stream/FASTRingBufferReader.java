@@ -25,12 +25,12 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         1.0E36f,1.0E37f,1.0E38f,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN};
     
     public static int readInt(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (ring.remPos + idx)];
+        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
     }
 
     public static long readLong(FASTRingBuffer ring, int idx) {
-        int i = ring.remPos + idx;
-        return (((long) ring.buffer[ring.mask & i]) << 32) | (((long) ring.buffer[ring.mask & (i + 1)]) & 0xFFFFFFFFl);
+        long i = ring.remPos.value + idx;
+        return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
 
     public static double readDouble(FASTRingBuffer ring, int idx) {
@@ -42,21 +42,21 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static int readDecimalExponent(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (ring.remPos + idx)];
+        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
     }
     
     public static long readDecimalMantissa(FASTRingBuffer ring, int idx) {
-        int i = ring.remPos + idx + 1; //plus one to skip over exponent
-        return (((long) ring.buffer[ring.mask & i]) << 32) | (((long) ring.buffer[ring.mask & (i + 1)]) & 0xFFFFFFFFl);
+        long i = ring.remPos.value + idx + 1; //plus one to skip over exponent
+        return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
     
 
     public static int readTextLength(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (ring.remPos + idx + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
     }
 
     public static Appendable readText(FASTRingBuffer ring, int idx, Appendable target) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readTextLength(ring, idx);
      //   System.err.println("** read text pos:"+(ring.mask & (ring.remPos + idx))+" pos "+ (0x7FFFFFFF&pos) +" len "+len);
         if (pos < 0) {
@@ -92,7 +92,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readText(FASTRingBuffer ring, int idx, char[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readTextLength(ring, idx);
         if (pos < 0) {
             readTextConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
@@ -117,7 +117,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readText(FASTRingBuffer ring, int idx, char[] target, int targetOffset, int targetMask) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readTextLength(ring, idx);
         if (pos < 0) {
             readTextConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
@@ -147,7 +147,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         if (len!=seq.length()) {
             return false;
         }
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         if (pos < 0) {
             return eqTextConst(ring,len,seq,0x7FFFFFFF & pos);
         } else {
@@ -181,11 +181,11 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     //Bytes
     
     public static int readBytesLength(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (ring.remPos + idx + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
     }
 
     public static ByteBuffer readBytes(FASTRingBuffer ring, int idx, ByteBuffer target) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             return readBytesConst(ring,len,target,0x7FFFFFFF & pos);
@@ -212,7 +212,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readBytes(FASTRingBuffer ring, int idx, byte[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
@@ -237,7 +237,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readBytes(FASTRingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
-        int pos = ring.buffer[ring.mask & (ring.remPos + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
@@ -263,7 +263,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 
     public static void dump(FASTRingBuffer queue) {
         
-        queue.removeCount.lazySet(queue.remPos = queue.addPos);
+        queue.removeCount.lazySet(queue.remPos.value = queue.addPos.value);
         
     }
 

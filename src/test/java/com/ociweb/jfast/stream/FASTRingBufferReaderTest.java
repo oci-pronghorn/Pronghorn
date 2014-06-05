@@ -1,6 +1,6 @@
 package com.ociweb.jfast.stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
@@ -14,6 +14,5 @@ public class FASTRingBufferReaderTest {
         assertEquals(1f,FASTRingBufferReader.powf[64],.00001f);
         
     }
-    
     
 }
