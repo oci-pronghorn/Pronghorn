@@ -388,7 +388,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		int i = 0;
 		while (i<nullLoops) {
-			writer.writeNull();
+			writer.writeNull(writer);
 			i++;
 		}
 		
@@ -420,7 +420,7 @@ public class ReaderWriterPrimitiveTest {
 
 			int j = tp;
 			while (--j>=0) {				
-				writer.writeNull();				
+				writer.writeNull(writer);				
 			}
 
 			PrimitiveWriter.flush(writer);
@@ -470,8 +470,8 @@ public class ReaderWriterPrimitiveTest {
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
-			writer.writeIntegerSigned(unsignedIntData[i]);
-			writer.writeIntegerSigned(-unsignedIntData[i]);			
+			writer.writeIntegerSigned(unsignedIntData[i], writer);
+			writer.writeIntegerSigned(-unsignedIntData[i], writer);			
 			writer.writeIntegerUnsigned(unsignedIntData[i]);
 			
 			writer.writeIntegerSignedOptional(unsignedIntData[i]);
@@ -664,7 +664,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(-unsignedIntData[j++]);
+					writer.writeIntegerSigned(-unsignedIntData[j++], writer);
 				}
 			}
 			writer.flush(writer);
@@ -698,7 +698,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(unsignedIntData[j++]);
+					writer.writeIntegerSigned(unsignedIntData[j++], writer);
 				}
 			}
 			writer.flush(writer);
@@ -733,7 +733,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(unsignedIntData[j++]);
+					writer.writeIntegerSigned(unsignedIntData[j++], writer);
 				}
 			}
 			writer.flush(writer);

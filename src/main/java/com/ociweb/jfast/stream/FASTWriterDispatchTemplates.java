@@ -32,8 +32,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
         writer.openPMap(pmapMaxSize);
         PrimitiveWriter.writePMapBit((byte) 1, writer);
-        writer.closePMap();// TODO: A, this needs to be close but not sure this
-        // is the right location.
+        writer.closePMap();                                // TODO: A, this needs to be close but not sure this is the right location.
         writer.writeIntegerUnsigned(templateId);
     }
 
@@ -47,7 +46,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
+                writer.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
@@ -77,7 +76,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int tailCount = textHeap.countTailMatch(idx, value);
         if (headCount > tailCount) {
             int trimTail = textHeap.length(idx) - headCount; //+1 for optional
-            writer.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail);
+            writer.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail, writer);
             int length = (value.length() - headCount);
             writer.writeIntegerUnsigned(length);
             writer.writeTextUTFAfter(headCount, value);
@@ -85,7 +84,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
+            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             writer.writeIntegerUnsigned(valueSend);
             writer.writeTextUTFBefore(value, valueSend);
@@ -139,14 +138,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int tailCount = textHeap.countTailMatch(idx, value);
         if (headCount > tailCount) {
             int trimTail = textHeap.length(idx) - headCount;
-            writer.writeIntegerSigned(trimTail);
+            writer.writeIntegerSigned(trimTail, writer);
             writer.writeIntegerUnsigned(value.length() - headCount);
             writer.writeTextUTFAfter(headCount, value);
             textHeap.appendTail(idx, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
+            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             writer.writeIntegerUnsigned(valueSend);
             writer.writeTextUTFBefore(value, valueSend);
@@ -175,7 +174,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
+                writer.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
@@ -193,7 +192,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull();
+                writer.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx, value)) {
@@ -208,7 +207,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            writer.writeIntegerSigned(0);
+            writer.writeIntegerSigned(0, writer);
         } else {
             // count matching front or back chars
             int headCount = textHeap.countHeadMatch(idx, value);
@@ -216,13 +215,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (headCount > tailCount) {
                 int trimTail = textHeap.length(idx) - headCount;
                 assert (trimTail >= 0);
-                writer.writeIntegerSigned(trimTail + 1);// must add one because this
+                writer.writeIntegerSigned(trimTail + 1, writer);// must add one because this
                                                         // is optional
                 writer.writeTextASCIIAfter(headCount, value);
                 textHeap.appendTail(idx, trimTail, headCount, value);
             } else {
                 int trimHead = textHeap.length(idx) - tailCount;
-                writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
+                writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
                 
                 int sentLen = value.length() - tailCount;
                 writer.writeTextASCIIBefore(value, sentLen);
@@ -240,7 +239,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteNull(PrimitiveWriter writer) {
-        writer.writeNull();
+        writer.writeNull(writer);
     }
     
     protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -272,12 +271,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (trimTail < 0) {
                 throw new UnsupportedOperationException(trimTail + "");
             }
-            writer.writeIntegerSigned(trimTail);
+            writer.writeIntegerSigned(trimTail, writer);
             writer.writeTextASCIIAfter(headCount, value);
             textHeap.appendTail(idx, trimTail, headCount, value);
         } else {
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead);
+            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             
             int sentLen = value.length() - tailCount;
             writer.writeTextASCIIBefore(value, sentLen);
@@ -333,7 +332,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead);
+            writer.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead, writer);
             int len = length - tailCount;
             writer.writeIntegerUnsigned(len);
             writer.writeTextUTF(value, offset, len);
@@ -399,7 +398,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead);
+            writer.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead, writer);
             
             int len = length - tailCount;
             writer.writeIntegerUnsigned(len);
@@ -456,7 +455,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
-            writer.writeIntegerSigned(trimTail + 1); // cut off these from tail,
+            writer.writeIntegerSigned(trimTail + 1, writer); // cut off these from tail,
                                                      // also add 1 because this
                                                      // is optional
    
@@ -469,7 +468,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead);
+            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
         
             int len = length - tailCount;
             writer.writeTextASCII(value, offset, len);
@@ -536,7 +535,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
-            writer.writeIntegerSigned(trimTail); // cut off these from tail
+            writer.writeIntegerSigned(trimTail, writer); // cut off these from tail
         
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
@@ -694,7 +693,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 0: -trimHead); 
+            writer.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
             
             int len = value.remaining() - tailCount;
             int offset = value.position();
@@ -791,7 +790,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
+        writer.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
         
         int len = length - tailCount;
         writer.writeIntegerUnsigned(len);
@@ -850,7 +849,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 1: -trimHead); 
+            writer.writeIntegerSigned(trimHead==0? 1: -trimHead, writer); 
             
             int len = length - tailCount;
             writer.writeIntegerUnsigned(len);
@@ -900,7 +899,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteIntegerSignedNone(int target, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos));
+        writer.writeIntegerSigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos), writer);
     }
     
     protected void genWriteIntegerUnsignedDefault(int constDefault, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
@@ -1392,7 +1391,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
 
@@ -1402,13 +1401,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             dictionary[idx] = 0;
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
 
     public void genWriteNullNoPMapLong(PrimitiveWriter writer, long[] dictionary, int idx) {
         dictionary[idx] = 0;
-        writer.writeNull();
+        writer.writeNull(writer);
     }
     
     public void genWriteNullDefaultText(int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -1416,7 +1415,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
 
@@ -1425,13 +1424,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
             textHeap.setNull(idx, textHeap);
         }
     }
 
     public void genWriteNullNoPMapText(int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        writer.writeNull();
+        writer.writeNull(writer);
         textHeap.setNull(idx, textHeap);
     }
     
@@ -1440,12 +1439,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
 
     public void genWriteNullNoPMapBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
-        writer.writeNull();
+        writer.writeNull(writer);
         byteHeap.setNull(token & instanceMask);
     }
 
@@ -1454,7 +1453,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
             byteHeap.setNull(idx);
         }
     }

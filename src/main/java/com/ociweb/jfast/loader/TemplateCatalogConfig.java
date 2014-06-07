@@ -22,37 +22,14 @@ public class TemplateCatalogConfig {
     //Change impact generated code so the changes must be done only once before the catBytes are generated.
     ///////////
     
-    public static final String KEY_PARAM_PREAMBLE_BYTES = "jFAST.preamble.bytes";
-
-    public static final String KEY_MAX_TEXT_LENGTH = "jFAST.text.length_max";
-    public static final int DEFAULT_MAX_TEXT_LENGTH = 128;
-    
-    public static final String KEY_MAX_TEXT_GAP = "jFAST.text.gap_max";
-    public static final int DEFAULT_MAX_TEXT_GAP = 16;
-    
-    public static final String KEY_MAX_BYTES_LENGTH = "jFAST.bytes.length_max";
-    public static final int DEFAULT_MAX_BYTES_LENGTH = 1024;
-    
-    public static final String KEY_MAX_BYTES_GAP = "jFAST.bytes.gap_max";
-    public static final int DEFAULT_MAX_BYTES_GAP = 256;
-
-    public static final String KEY_IGNORE_FIELD_BY_NAME = "jFAST.field.ignore.names";//comma separated.
-    public static final String KEY_IGNORE_FIELD_BY_ID = "jFAST.field.ignore.id";//comma separated.
-    
-    //TODO: add constants per field for the optional values, what about writing them back raw? or remove branch substract logic!!.
-    //TODO: add ringBuffer groups for message/templates
-    //  (t1,t2,t3)(t4,t5)t6  this is a set of sets, how is it easist to define?
-    final Properties properties;//TODO: A, pull out into custom behavior class with default values and getters?
-    
-    
+    final ClientConfig clientConfig;
     
     
     // because optional values are sent as +1 when >= 0 it is not possible to
     // send the
     // largest supported positive value, as a result this is the ideal default
-    // because it
-    // can not possibly collide with any real values
-    public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;//TODO: A, move these elsewhere?
+    // because it can not possibly collide with any real values
+    public static final int DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT = Integer.MAX_VALUE;
     public static final long DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG = Long.MAX_VALUE;
 
     private final DictionaryFactory dictionaryFactory;
@@ -93,9 +70,7 @@ public class TemplateCatalogConfig {
         
         PrimitiveReader reader = new PrimitiveReader(1024, inputStream, 0);
 
-        properties = new Properties();
-        loadProperties(reader);
-        
+                
         int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
         assert (templatePow < 32) : "Corrupt catalog file";
         templateStartIdx = new int[1 << templatePow];
@@ -124,6 +99,12 @@ public class TemplateCatalogConfig {
         dictionaryFactory = new DictionaryFactory(reader);
 
         ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
+                
+        clientConfig = new ClientConfig(reader);
+        
+        
+        
+        
     }
     
     @Deprecated //for testing only
@@ -141,11 +122,11 @@ public class TemplateCatalogConfig {
         this.templateLimitIdx=null;
         this.scriptFieldNames=null;
         this.scriptFieldIds=null;
-        this.properties = new Properties();
         this.maxTemplatePMapSize = maxTemplatePMapSize;
         this.maxFieldId=-1;
         this.dictionaryFactory = dcr;
         int fullScriptLength = null==fullScript?1:fullScript.length;
+        this.clientConfig = new ClientConfig();
         this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
     }
     
@@ -169,24 +150,6 @@ public class TemplateCatalogConfig {
     }
     
     
-    private void loadProperties(PrimitiveReader reader) {
-        int props = PrimitiveReader.readIntegerUnsigned(reader);
-        StringBuilder builder = new StringBuilder();
-        int len;
-        while(--props>=0) {
-            
-            builder.setLength(0);
-            len = PrimitiveReader.readIntegerUnsigned(reader);
-            String key = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
-            
-            builder.setLength(0);
-            len = PrimitiveReader.readIntegerUnsigned(reader);
-            String value = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
-            
-            properties.put(key, value);
-        }
-    }
-
 
     // Assumes that the tokens are already loaded and ready for use.
     private void loadTemplateScripts(PrimitiveReader reader) {
@@ -233,9 +196,7 @@ public class TemplateCatalogConfig {
     public static void save(PrimitiveWriter writer, int uniqueIds, int biggestId, int uniqueTemplateIds,
             int biggestTemplateId, DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap,
             int[][] tokenIdxMembers, int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds,
-            String[] catalogScriptFieldNames, int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, Properties properties) {
-
-        saveProperties(writer,properties);        
+            String[] catalogScriptFieldNames, int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
                 catalogScriptFieldIds, catalogScriptFieldNames,
@@ -249,7 +210,8 @@ public class TemplateCatalogConfig {
         writer.writeIntegerUnsigned(maxNonTemplatePMap);
         writer.writeIntegerUnsigned(maxPMapDepth);
 
-        df.save(writer);
+        df.save(writer);        
+        clientConfig.save(writer);
 
     }
 
@@ -280,7 +242,7 @@ public class TemplateCatalogConfig {
             writer.writeIntegerUnsigned(h);// length of reset script (eg member
                                            // list)
             while (--h >= 0) {
-                writer.writeIntegerSigned(members[h]);
+                writer.writeIntegerSigned(members[h], writer);
             }
         }
     }
@@ -357,7 +319,7 @@ public class TemplateCatalogConfig {
         // write the scripts
         i = scriptLength;
         while (--i >= 0) {
-            writer.writeIntegerSigned(catalogScriptTokens[i]);
+            writer.writeIntegerSigned(catalogScriptTokens[i], writer);
             writer.writeIntegerUnsigned(catalogScriptFieldIds[i]); 
             String name = catalogScriptFieldNames[i];
             int len = null==name?0:name.length();
@@ -372,15 +334,7 @@ public class TemplateCatalogConfig {
     public DictionaryFactory dictionaryFactory() {
         return dictionaryFactory;
     }
-
-    public boolean hasProperty(String key) {
-        return properties.containsKey(key);
-    }
-    
-    public int getIntProperty(String key, int absentValue) {
-        return properties.containsKey(key)?Integer.parseInt(properties.getProperty(key)):absentValue;
-    }
-    
+   
     public int maxTemplatePMapSize() {
         return maxTemplatePMapSize;
     }
@@ -393,21 +347,9 @@ public class TemplateCatalogConfig {
         return dictionaryMembers;
     }
 
-    
-    public int getMaxTextLength() {
-        return getIntProperty(KEY_MAX_TEXT_LENGTH, DEFAULT_MAX_TEXT_LENGTH);
+    public ClientConfig clientConfig() {
+        return clientConfig;
     }
-    public int getTextGap() {
-        return getIntProperty(KEY_MAX_TEXT_GAP, DEFAULT_MAX_TEXT_GAP);
-    }
-
-    public int getMaxByteVectorLength() {
-        return getIntProperty(KEY_MAX_BYTES_LENGTH, DEFAULT_MAX_BYTES_LENGTH);
-    }
-
-    public int getByteVectorGap() {
-        return getIntProperty(KEY_MAX_BYTES_GAP, DEFAULT_MAX_BYTES_GAP);
-    }    
 
     public int templatesCount() {
         return templatesInCatalog;

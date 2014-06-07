@@ -198,6 +198,8 @@ public final class FASTRingBuffer {
         removeCount.lazySet(remPos.value);
     }
 
+    //TODO: A: finish the field lookup so the constants need not be written to the loop! 
+    //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
     public static void addValue(int[] rbB, int rbMask, PaddedLong pos, int value) {
         long p = pos.value;
         rbB[rbMask & (int)p] = value;

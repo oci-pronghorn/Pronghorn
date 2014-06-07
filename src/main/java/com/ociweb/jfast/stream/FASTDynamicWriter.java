@@ -27,7 +27,7 @@ public class FASTDynamicWriter {
         this.ringBuffer = ringBuffer;
         this.writer = primitiveWriter;
 
-        this.preambleData = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
+        this.preambleData = new byte[catalog.clientConfig().getPreableBytes()];
     }
 
     // non blocking write, returns if there is nothing to do.

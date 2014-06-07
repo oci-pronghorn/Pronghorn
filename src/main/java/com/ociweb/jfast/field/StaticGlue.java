@@ -204,7 +204,7 @@ public class StaticGlue {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead); 
+        writer.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
         
         int len = value.remaining() - tailCount;
         int offset = value.position();
@@ -231,7 +231,7 @@ public class StaticGlue {
     }
     public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
         dictionary[idx] = 0;
-        writer.writeNull();
+        writer.writeNull(writer);
     }
     public static void nullCopyIncInt(PrimitiveWriter writer, int[] dictionary, int source, int target) {
         if (0 == dictionary[source]) { // stored value was null;
@@ -239,7 +239,7 @@ public class StaticGlue {
         } else {
             dictionary[target] = 0;
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
     public static void nullPMap(PrimitiveWriter writer) {
@@ -250,25 +250,25 @@ public class StaticGlue {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull();
+            writer.writeNull(writer);
         }
     }
     public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
         //TODO: C, 4% perf problem in profiler, can be better if target== source ???
-        return dictionary[target] = (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readIntegerUnsigned(reader));
+        return dictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readIntegerUnsigned(reader));
     }
     public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
         //TODO: C, 4% perf problem in profiler, can be better if target== source ???
-        return (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : (dictionary[target] = PrimitiveReader.readIntegerSigned(reader)));
+        return (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : (dictionary[target] = PrimitiveReader.readIntegerSigned(reader)));
     }
     public static final long readLongUnsignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
         //TODO: B, can duplicate this to make a more effecient version when source==target
-        return (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source]
+        return (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source]
                 : (dictionary[target] = PrimitiveReader.readLongUnsigned(reader)));
     }
     public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
         //TODO: B, can duplicate this to make a more effecient version when source==target
-        return dictionary[target] = (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readLongSigned(reader));
+        return dictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readLongSigned(reader));
     }
 
 }

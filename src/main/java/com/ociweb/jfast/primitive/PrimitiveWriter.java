@@ -294,11 +294,11 @@ public final class PrimitiveWriter {
 
     }
 
-    public final void writeNull() {
-        if (limit >= buffer.length) {
-            output.flush();
+    public static final void writeNull(PrimitiveWriter writer) {
+        if (writer.limit >= writer.buffer.length) {
+            writer.output.flush();
         }
-        buffer[limit++] = (byte) 0x80;
+        writer.buffer[writer.limit++] = (byte) 0x80;
     }
 
     public final void writeLongSignedOptional(long value) {
@@ -614,11 +614,11 @@ public final class PrimitiveWriter {
         }
     }
 
-    public final void writeIntegerSigned(int value) {
+    public static final void writeIntegerSigned(int value, PrimitiveWriter writer) {
         if (value >= 0) {
-            writeIntegerSignedPos(value, this);
+            writeIntegerSignedPos(value, writer);
         } else {
-            writeIntegerSignedNeg(value, this);
+            writeIntegerSignedNeg(value, writer);
         }
     }
 
@@ -1171,7 +1171,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(dictionary[target] = value);
+            writeIntegerSigned(dictionary[target] = value, this);
         }
     }
 
@@ -1180,7 +1180,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(dictionary[target] = value);
+            writeIntegerSigned(dictionary[target] = value, this);
         }
     }
 
@@ -1190,7 +1190,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(value);
+            writeIntegerSigned(value, this);
         }
     }
 
@@ -1199,7 +1199,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(value);
+            writeIntegerSigned(value, this);
         }
     }
 
@@ -1210,7 +1210,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(value);
+            writeIntegerSigned(value, this);
         }
     }
 
@@ -1219,14 +1219,14 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, this);
         } else {
             writePMapBit((byte) 1, this);
-            writeIntegerSigned(value);
+            writeIntegerSigned(value, this);
         }
     }
 
     public void writeIntegerSignedDelta(int value, int target, int source, int[] dictionary) {
         int last = dictionary[source];
         if (value > 0 == last > 0) {
-            writeIntegerSigned(value - last);
+            writeIntegerSigned(value - last, this);
             dictionary[target] = value;
         } else {
             writeLongSigned(value - (long) last);
@@ -1239,7 +1239,7 @@ public final class PrimitiveWriter {
         if (value > 0 == last > 0) {
             int dif = value - last;
             dictionary[target] = value;
-            writeIntegerSigned(dif >= 0 ? 1 + dif : dif);
+            writeIntegerSigned(dif >= 0 ? 1 + dif : dif, this);
         } else {
             long dif = value - (long) last;
             dictionary[target] = value;

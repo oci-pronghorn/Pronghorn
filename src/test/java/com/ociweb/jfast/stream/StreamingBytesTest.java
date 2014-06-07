@@ -121,7 +121,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
         PrimitiveReader.openPMap(1, reader);
         int idx2 = token & byteInstanceMask;
-        if (PrimitiveReader.popPMapBit(reader) != 0) {
+        if (PrimitiveReader.readPMapBit(reader) != 0) {
             int length1 = PrimitiveReader.readIntegerUnsigned(reader) - 0;
             PrimitiveReader.readByteData(dictionaryReader.rawAccess(), dictionaryReader.allocate(idx2, length1), length1, reader);
         }
@@ -153,7 +153,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     private int readBytesDefault(int idx3, PrimitiveReader reader, ByteHeap byteHeap) {
         int id;
         int result;
-        if (PrimitiveReader.popPMapBit(reader) == 0) {
+        if (PrimitiveReader.readPMapBit(reader) == 0) {
             // System.err.println("z");
             result = idx3 | INIT_VALUE_MASK;// use constant
         } else {
@@ -228,7 +228,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         } else {
         	//replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 0: -trimHead); 
+            writer.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
             
             int len = length - tailCount;
             writer.writeIntegerUnsigned(len);

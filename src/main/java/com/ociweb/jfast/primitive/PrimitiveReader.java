@@ -261,7 +261,7 @@ public final class PrimitiveReader {
         return k;
     }
 
-    public static byte popPMapBit(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
+    public static byte readPMapBit(PrimitiveReader reader) {
         byte pidx = reader.pmapIdx; 
         if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0)) {
             // Frequent, 6 out of every 7 plus the last bit block
@@ -1126,7 +1126,7 @@ public final class PrimitiveReader {
     public static final int openMessage(int pmapMaxSize, PrimitiveReader reader) {
         openPMap(pmapMaxSize, reader);
         // return template id or unknown
-        return (0 != popPMapBit(reader)) ? readIntegerUnsigned(reader) : -1;// template Id
+        return (0 != readPMapBit(reader)) ? readIntegerUnsigned(reader) : -1;// template Id
 
     }
 

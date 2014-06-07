@@ -17,6 +17,7 @@ import java.util.Properties;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.loader.ClientConfig;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
@@ -112,12 +113,12 @@ public class DispatchLoaderTest {
     
     static byte[] buildRawCatalogData(String resourceName) {
 
-        Properties properties = new Properties(); 
-        properties.put(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES, "4");
+        ClientConfig clientConfig = new ClientConfig();
+        clientConfig.setPreableBytes((short)4);
         
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, resourceName, properties);
+            TemplateLoader.buildCatalog(catalogBuffer, resourceName, clientConfig);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

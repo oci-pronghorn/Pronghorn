@@ -15,6 +15,8 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  {
 
 
+    //TODO: X, in this class we can determine when the pmap will switch to the next 7 bits and at runtime this is fixed and need not be computed.
+    
     public int readFromIdx = -1;
     public final int[] rIntInit;
     public final long[] rLongInit;
@@ -1113,8 +1115,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     // copy
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-
-                    genReadIntegerUnsignedCopy(target, source, rIntDictionary, ringBuffers[activeScriptCursor].buffer, ringBuffers[activeScriptCursor].mask, reader, ringBuffers[activeScriptCursor].addPos);
+                    
+                    if (target==source) {
+                        genReadIntegerUnsignedCopyUnWatched(target, rIntDictionary, ringBuffers[activeScriptCursor].buffer, ringBuffers[activeScriptCursor].mask, reader, ringBuffers[activeScriptCursor].addPos);
+                    } else {
+                        genReadIntegerUnsignedCopy(target, source, rIntDictionary, ringBuffers[activeScriptCursor].buffer, ringBuffers[activeScriptCursor].mask, reader, ringBuffers[activeScriptCursor].addPos);
+                    }
+                    
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;

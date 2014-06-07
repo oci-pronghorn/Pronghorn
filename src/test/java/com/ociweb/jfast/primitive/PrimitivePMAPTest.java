@@ -264,25 +264,25 @@ public class PrimitivePMAPTest {
         // open this pmap
         PrimitiveReader.openPMap(maxPMapSize, reader);
 
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // next byte
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // unwritten and assumed trailing zeros test
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // close
         PrimitiveReader.closePMap(reader);
 
@@ -302,47 +302,47 @@ public class PrimitivePMAPTest {
         // open this pmap
         PrimitiveReader.openPMap(2, reader);
 
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // stop at this point to load another pmap and read it all before
         // continuing
         PrimitiveReader.openPMap(2, reader);
         // first byte of second pmap
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // second byte of second pmap
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // unwritten and assumed trailing zeros test
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // resume with first pmap
         PrimitiveReader.closePMap(reader);
         // /
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // next byte from first pmap
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // close
         PrimitiveReader.closePMap(reader);
 
@@ -366,66 +366,66 @@ public class PrimitivePMAPTest {
         // open this pmap
         PrimitiveReader.openPMap(2, reader);
 
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // stop at this point to load another pmap and read it all before
         // continuing
         PrimitiveReader.openPMap(2, reader);
         // first byte of second pmap
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // stop here and load the third pmap
         PrimitiveReader.openPMap(2, reader);
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // second byte of third map
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
 
         PrimitiveReader.closePMap(reader);
         // second byte of second pmap
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // unwritten and assumed trailing zeros test
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // resume with first pmap
         PrimitiveReader.closePMap(reader);
         // /
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
         // next byte from first pmap
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
-        assertEquals(1, PrimitiveReader.popPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
         // close
         PrimitiveReader.closePMap(reader);
 
@@ -616,33 +616,33 @@ public class PrimitivePMAPTest {
                     int j = pmapData.length;
                     if (j == 0) {
 
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
-                        assertEquals(0, PrimitiveReader.popPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+                        assertEquals(0, PrimitiveReader.readPMapBit(reader));
 
                     } else {
                         int totalBits = maxWrittenBytes * 7;
                         while (--j >= 0) {
                             byte b = pmapData[j];
 
-                            assertEquals((b & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 1) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 2) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 3) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 4) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 5) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 6) & 1), PrimitiveReader.popPMapBit(reader));
-                            assertEquals(((b >> 7) & 1), PrimitiveReader.popPMapBit(reader));
+                            assertEquals((b & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 1) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 2) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 3) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 4) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 5) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 6) & 1), PrimitiveReader.readPMapBit(reader));
+                            assertEquals(((b >> 7) & 1), PrimitiveReader.readPMapBit(reader));
 
                             totalBits -= 8;
                         }
                         // confirm the rest of the "unwriten bits are zeros"
                         while (--totalBits >= 0) {
-                            assertEquals(0, PrimitiveReader.popPMapBit(reader));
+                            assertEquals(0, PrimitiveReader.readPMapBit(reader));
                         }
                     }
                     PrimitiveReader.closePMap(reader);
@@ -683,15 +683,15 @@ public class PrimitivePMAPTest {
             int j = testPmaps[i].length;
             while (--j >= 0) {
                 // 8 of these will force 1 at least 1 byte change per pass
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
-                result |= PrimitiveReader.popPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
 
-                result |= PrimitiveReader.popPMapBit(reader);
+                result |= PrimitiveReader.readPMapBit(reader);
             }
 
             PrimitiveReader.closePMap(reader);

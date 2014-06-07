@@ -45,7 +45,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
-        assertEquals(697, catalogByteArray.length);
+        assertEquals(679, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -126,7 +126,7 @@ public class TemplateLoaderTest {
         int[] fullScript = catalog.getScriptTokens();
         
         
-        byte[] preamble = new byte[catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0)];
+        byte[] preamble = new byte[catalog.clientConfig.getPreableBytes()];
 
         int msgs = 0;
         int frags = 0;
@@ -610,12 +610,12 @@ public class TemplateLoaderTest {
 
     public static byte[] buildRawCatalogData() {
         //this example uses the preamble feature
-        Properties properties = new Properties(); 
-        properties.put(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES, "4");
+        ClientConfig clientConfig = new ClientConfig();
+        clientConfig.setPreableBytes((short)4);
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, "/performance/example.xml", properties);
+            TemplateLoader.buildCatalog(catalogBuffer, "/performance/example.xml", clientConfig);
         } catch (Exception e) {
             e.printStackTrace();
         }

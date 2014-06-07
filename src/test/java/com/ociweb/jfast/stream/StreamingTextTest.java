@@ -212,9 +212,7 @@ public class StreamingTextTest extends BaseStreamingTest {
             int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
-        
-        //TODO: A, Need to test by checking ring buffer NOT the TextHeap!!
-        
+       
         TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 9, maxGroupCount * 10, 0, -1);
         FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
         

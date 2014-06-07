@@ -38,7 +38,7 @@ public abstract class FASTDecoder {
     public FASTDecoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(), computePMapStackInBytes(catalog), 
              catalog.getTemplateStartIdx(), catalog.getTemplateLimitIdx(),
-             catalog.maxTemplatePMapSize(), catalog.getIntProperty(TemplateCatalogConfig.KEY_PARAM_PREAMBLE_BYTES,0), catalog.ringBuffers());
+             catalog.maxTemplatePMapSize(), catalog.clientConfig().getPreableBytes(), catalog.ringBuffers());
     }
     
     private static int computePMapStackInBytes(TemplateCatalogConfig catalog) {

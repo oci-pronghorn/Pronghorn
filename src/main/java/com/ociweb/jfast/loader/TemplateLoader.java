@@ -60,23 +60,23 @@ public class TemplateLoader {
             System.exit(FILE_REQUIRED_NOT_DIRECTORY);
         }
 
-        Properties properties = new Properties(); //TODO: B, load from file or args?
+        ClientConfig clientConfig = new ClientConfig(); //TODO: B, load from file or args?
         
         try {
-            buildCatalog(new FileOutputStream(catalog), source, properties);
+            buildCatalog(new FileOutputStream(catalog), source, clientConfig);
         } catch (Exception e) {
             e.printStackTrace();
             System.exit(BUILDING_EXCEPTION);
         }
     }
 
-    public static void buildCatalog(OutputStream outputStream, String source, Properties properties) throws ParserConfigurationException,
+    public static void buildCatalog(OutputStream outputStream, String source, ClientConfig clientConfig) throws ParserConfigurationException,
             SAXException, IOException {
         SAXParserFactory spfac = SAXParserFactory.newInstance();
         GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
         SAXParser sp = spfac.newSAXParser();
         FASTOutput output = new FASTOutputStream(gZipOutputStream);
-        TemplateHandler handler = new TemplateHandler(output, properties);        
+        TemplateHandler handler = new TemplateHandler(output, clientConfig);        
         Supervisor.templateSource(source);
                         
         InputStream sourceInputStream = TemplateLoader.class.getResourceAsStream(source);

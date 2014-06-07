@@ -530,6 +530,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
+    protected void genReadIntegerUnsignedCopyUnWatched(int target, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+        generator(new Exception().getStackTrace(),target);
+    }
+    
+    @Override
     protected void genReadIntegerUnsignedConstant(int constDefault, int[] rbB, int rbMask, PaddedLong rbPos) {
         generator(new Exception().getStackTrace(),constDefault);
     }
