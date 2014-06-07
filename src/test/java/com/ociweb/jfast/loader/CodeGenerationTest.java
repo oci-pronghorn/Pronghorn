@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.generator.FASTReaderSourceFileObject;
 import com.ociweb.jfast.generator.SourceTemplates;
@@ -45,6 +46,7 @@ public class CodeGenerationTest {
      */
     @BeforeClass
     public static void setupTemplateResource() {
+        FASTClassLoader.deleteFiles();//must always build fresh.
         System.out.println("**********************************************************************");
 
         String srcPath = SourceTemplates.readerDispatchTemplateSourcePath();
@@ -100,7 +102,7 @@ public class CodeGenerationTest {
     
     @Test
     public void testCodeGenerator() {
-        
+                
         byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData();
         
         FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);

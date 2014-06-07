@@ -76,6 +76,11 @@ public class FASTInputReactor {
             }
             decoder.neededSpaceOrTemplate = 0;
         }        
+        return decode(decoder, reader, rb);
+    }
+
+
+    private static int decode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
         // returns true for end of sequence or group
         if (decoder.decode(reader)) {
             FASTRingBuffer.unBlockFragment(rb);

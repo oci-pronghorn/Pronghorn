@@ -58,12 +58,15 @@ public class StreamingTextTest extends BaseStreamingTest {
 
     @Test
     public void asciiTest() {
-        int[] types = new int[] { TypeMask.TextASCII, TypeMask.TextASCIIOptional, };
+        int[] types = new int[] { 
+                TypeMask.TextASCII,
+                TypeMask.TextASCIIOptional, 
+                };
 
         // TODO: Z, Force this error and introduce more discriptive error, will
         // fail without good message if HeapText is too small!!
-        int[] operators = new int[] { OperatorMask.Field_None, // W5 R16 w/o
-                                                               // equals
+        int[] operators = new int[] {
+                OperatorMask.Field_None, // W5 R16 w/o equals
                 OperatorMask.Field_Constant, // W6 R16 w/o equals
                 OperatorMask.Field_Copy, // W84 R31 w/o equals
                 OperatorMask.Field_Default, // W6 R16
@@ -202,15 +205,20 @@ public class StreamingTextTest extends BaseStreamingTest {
         return (i & 1) == 0;
     }
 
+    
+
     @Override
     protected long timeReadLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
 
         PrimitiveReader.reset(reader);
         
-        TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0, -1);
+        //TODO: A, Need to test by checking ring buffer NOT the TextHeap!!
+        
+        TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 9, maxGroupCount * 10, 0, -1);
         FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
-        TextHeap textHeap = fr.textHeap;
+        
+        FASTRingBuffer ringBuffer = fr.ringBuffer(0);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -222,7 +230,6 @@ public class StreamingTextTest extends BaseStreamingTest {
                 maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 
         fr.openGroup(groupToken, maxMPapBytes, reader);
-        StringBuilder builder = new StringBuilder();
 
         while (--i >= 0) {
             int f = fields;
@@ -230,25 +237,29 @@ public class StreamingTextTest extends BaseStreamingTest {
             while (--f >= 0) {
 
                 int token = tokenLookup[f];
+                
+                fr.dispatchReadByTokenForText(tokenLookup[f], reader);
+                FASTRingBuffer.unBlockFragment(ringBuffer);
+                
+                int len = FASTRingBufferReader.readTextLength(ringBuffer, 0);
+                
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
+                    
+                    
                     if (sendNulls && (i & NULL_SEND_MASK) == 0 && TokenBuilder.isOptional(token)) {
-
-                        int textIdx = fr.readText(tokenLookup[f], reader);
-                        if (!textHeap.isNull(textIdx)) {
-                            assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), Boolean.TRUE,
-                                    textHeap.isNull(textIdx));
+                        
+                        if (len>0) {
+                            assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), 0,
+                                        len);
                         }
 
                     } else {
                         try {
-                            int textIdx = fr.readText(tokenLookup[f], reader);
 
-                            char[] tdc = testConst;
-
-                            if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
-
-                                assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), testConst, textHeap
-                                        .get(textIdx, new StringBuilder()).toString());
+                            if (!FASTRingBufferReader.eqText(ringBuffer, 0, testConstSeq)) {
+                                assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]),
+                                        testConstSeq,
+                                        FASTRingBufferReader.readText(ringBuffer, 0, new StringBuilder()).toString());
                             }
 
                         } catch (Exception e) {
@@ -259,23 +270,20 @@ public class StreamingTextTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & NULL_SEND_MASK) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int textIdx = fr.readText(tokenLookup[f], reader);
-                        if (!textHeap.isNull(textIdx)) {
-                            assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f])
-                                    + "Expected null found len " + textHeap.length(textIdx), Boolean.TRUE,
-                                    textHeap.isNull(textIdx));
+                        if (len>0) {
+                            assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), 0,
+                                        len);
                         }
+                        
                     } else {
                         try {
-                            int textIdx = fr.readText(tokenLookup[f], reader);
-                            char[] tdc = testDataChars[f];
-
-                            if (!textHeap.equals(textIdx, tdc, 0, tdc.length)) {
-
-                                builder.setLength(0);
-                                assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]), testData[f],
-                                        textHeap.get(textIdx, new StringBuilder()).toString());
+                           
+                            if (!FASTRingBufferReader.eqText(ringBuffer, 0, testData[f])) {
+                                assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]),
+                                        testData[f],
+                                        FASTRingBufferReader.readText(ringBuffer, 0, new StringBuilder()).toString());
                             }
+                            
 
                         } catch (Exception e) {
                             System.err.println("expected text; " + testData[f]);
@@ -284,7 +292,9 @@ public class StreamingTextTest extends BaseStreamingTest {
                         }
                     }
                 }
-
+                //dont need text any more
+                FASTRingBuffer.dump(ringBuffer);
+                
                 g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);
             }
         }

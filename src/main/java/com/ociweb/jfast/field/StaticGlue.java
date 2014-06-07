@@ -185,12 +185,13 @@ public class StaticGlue {
         PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength, reader);
     }
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
-        byte val = PrimitiveReader.readTextASCIIByte(reader);         
-        int tmp = (0 != (tmp = 0x7F & val)) ?
+        byte val = PrimitiveReader.readTextASCIIByte(reader);  
+        int tmp = 0x7F & val;
+        return (0 != tmp) ?
                readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
                readASCIIToHeapNone(idx, val, textHeap, reader);
-        return tmp;
     }
+    
     public static void readLongSignedDeltaOptional(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask,
             PaddedLong rbPos, long value) {
         long tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
@@ -251,6 +252,23 @@ public class StaticGlue {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             writer.writeNull();
         }
+    }
+    public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        //TODO: C, 4% perf problem in profiler, can be better if target== source ???
+        return dictionary[target] = (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readIntegerUnsigned(reader));
+    }
+    public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
+        //TODO: C, 4% perf problem in profiler, can be better if target== source ???
+        return (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : (dictionary[target] = PrimitiveReader.readIntegerSigned(reader)));
+    }
+    public static final long readLongUnsignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        //TODO: B, can duplicate this to make a more effecient version when source==target
+        return (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source]
+                : (dictionary[target] = PrimitiveReader.readLongUnsigned(reader)));
+    }
+    public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
+        //TODO: B, can duplicate this to make a more effecient version when source==target
+        return dictionary[target] = (PrimitiveReader.popPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readLongSigned(reader));
     }
 
 }

@@ -585,7 +585,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         }
     }
 
-    private void dispatchReadByTokenForText(int token, PrimitiveReader reader) {
+    void dispatchReadByTokenForText(int token, PrimitiveReader reader) {
         // System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
 
         // 010??

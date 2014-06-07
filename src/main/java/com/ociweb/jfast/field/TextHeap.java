@@ -607,7 +607,7 @@ public class TextHeap {
             System.arraycopy(data, pos, target, tStart, len);
         } else {
             // done as two copies
-            int firstLen = targetMask - tStart;
+            int firstLen = 1+ targetMask - tStart;
             System.arraycopy(data, pos, target, tStart, firstLen);
             System.arraycopy(data, pos + firstLen, target, 0, len - firstLen);
         }

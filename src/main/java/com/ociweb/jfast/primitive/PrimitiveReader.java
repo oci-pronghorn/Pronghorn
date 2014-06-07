@@ -229,35 +229,35 @@ public final class PrimitiveReader {
 
         int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
         reader.bitBlock = reader.buffer[reader.position];
-        k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader);
+        k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader, reader.buffer);
         reader.invPmapStack[k] = (byte) (3 + pmapMaxSize + (reader.invPmapStackDepth - k));
 
         // set next bit to read
         reader.pmapIdx = 6;
     }
 
-    private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader) {
+    private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader, byte[] buffer) {
         if (reader.limit - reader.position > pmapMaxSize) {
-            if ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0) {
-                if ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0) {
+            if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
+                if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
                     do {
-                    } while ((pmapStack[k++] = reader.buffer[reader.position++]) >= 0);
+                    } while ((pmapStack[k++] = buffer[reader.position++]) >= 0);
                 }
             }
         } else {
-            k = openPMapSlow(k,reader);
+            k = openPMapSlow(k,reader, buffer);
         }
         return k;
     }
 
-    private static int openPMapSlow(int k, PrimitiveReader reader) {
+    private static int openPMapSlow(int k, PrimitiveReader reader, byte[] buffer) {
         // must use slow path because we are near the end of the buffer.
         do {
             if (reader.position >= reader.limit) {
                 fetch(1, reader);
             }
             // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
-        } while ((reader.invPmapStack[k++] = reader.buffer[reader.position++]) >= 0);
+        } while ((reader.invPmapStack[k++] = buffer[reader.position++]) >= 0);
         return k;
     }
 
@@ -268,7 +268,7 @@ public final class PrimitiveReader {
             reader.pmapIdx = (byte) (pidx - 1);
             return (byte) (1 & (reader.bitBlock >>> pidx));
         } else {
-            return (pidx >= 0 ? popPMapBitLow(reader.bitBlock, reader) : 0); //detect next byte or continue with zeros.
+            return (pidx < 0 ? 0 :popPMapBitLow(reader.bitBlock, reader)); //detect next byte or continue with zeros.
         }
     }
 
@@ -293,20 +293,21 @@ public final class PrimitiveReader {
     // ///////////////////////////////////
     // ///////////////////////////////////
 
-    public static long readLongSigned(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
-        if (reader.limit - reader.position <= 10) {
-            return readLongSignedSlow(reader);
+    //recursive use of the stack turns out to be a good way to unroll this loop.
+    private static long readLongSignedTail(long a, PrimitiveReader reader) {
+        byte v = reader.buffer[reader.position++];
+        return (v<0) ? a | (v & 0x7Fl) : readLongSignedTail((a | v) << 7,reader);
+    }
+    
+    public static long readLongSigned(PrimitiveReader reader) {//TODO: AA, Invoked 100's of millions of times, must be tight.
+        
+        if (reader.limit - reader.position >= 10) {// not near end so go fast.
+            byte v = reader.buffer[reader.position++];
+            long accumulator = ((v & 0x40) == 0) ? 0l : 0xFFFFFFFFFFFFFF80l;            
+            return (v < 0) ? accumulator |(v & 0x7F) : readLongSignedTail((accumulator | v) << 7,reader);
         }
+        return readLongSignedSlow(reader);
 
-        long v = reader.buffer[reader.position++];
-        long accumulator = ((v & 0x40) == 0) ? 0l : 0xFFFFFFFFFFFFFF80l;
-
-        while (v >= 0) {
-            accumulator = (accumulator | v) << 7;
-            v = reader.buffer[reader.position++];
-        }
-
-        return accumulator | (v & 0x7Fl);
     }
 
     private static long readLongSignedSlow(PrimitiveReader reader) {
@@ -327,68 +328,65 @@ public final class PrimitiveReader {
         return accumulator | (v & 0x7F);
     }
 
+    //recursive use of the stack turns out to be a good way to unroll this loop.
+    private static long readLongUnsignedTail(long a, PrimitiveReader reader) {
+        byte v = reader.buffer[reader.position++];
+        return (v<0) ? (a << 7) | (v & 0x7F) : readLongUnsignedTail((a<<7)|v,reader);
+    }
+    
     public static long readLongUnsigned(PrimitiveReader reader) {
-        if (reader.position > reader.limit - 10) {
-            if (reader.position >= reader.limit) {
-                fetch(1, reader);
-            }
+        
+        if (reader.limit - reader.position >= 10) {// not near end so go fast.
             byte v = reader.buffer[reader.position++];
-            long accumulator;
-            if (v >= 0) { // (v & 0x80)==0) {
-                accumulator = v << 7;
-            } else {
-                return (v & 0x7F);
-            }
+            return (v < 0) ? (v & 0x7F) : readLongUnsignedTail(v,reader);
+        }
+        return readLongUnsignedSlow(reader);
+    }
+
+    private static long readLongUnsignedSlow(PrimitiveReader reader) {
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
+        }
+        byte v = reader.buffer[reader.position++];
+        long accumulator;
+        if (v >= 0) { // (v & 0x80)==0) {
+            accumulator = v << 7;
+        } else {
+            return (v & 0x7F);
+        }
+
+        if (reader.position >= reader.limit) {
+            fetch(1, reader);
+        }
+        v = reader.buffer[reader.position++];
+
+        while (v >= 0) { // (v & 0x80)==0) {
+            accumulator = (accumulator | v) << 7;
 
             if (reader.position >= reader.limit) {
                 fetch(1, reader);
             }
             v = reader.buffer[reader.position++];
 
-            while (v >= 0) { // (v & 0x80)==0) {
-                accumulator = (accumulator | v) << 7;
-
-                if (reader.position >= reader.limit) {
-                    fetch(1, reader);
-                }
-                v = reader.buffer[reader.position++];
-
-            }
-            return accumulator | (v & 0x7F);
-        }
-        byte[] buf = reader.buffer;
-
-        byte v = buf[reader.position++];
-        long accumulator;
-        if (v >= 0) {// (v & 0x80)==0) {
-            accumulator = v << 7;
-        } else {
-            return (v & 0x7F);
-        }
-
-        v = buf[reader.position++];
-        while (v >= 0) {// (v & 0x80)==0) {
-            accumulator = (accumulator | v) << 7;
-            v = buf[reader.position++];
         }
         return accumulator | (v & 0x7F);
+    }  
+    
+    //recursive use of the stack turns out to be a good way to unroll this loop.
+    private static int readIntegerSignedTail(int a, PrimitiveReader reader) {
+        byte v = reader.buffer[reader.position++];
+        return (v<0) ? a | (v & 0x7F) : readIntegerSignedTail((a | v) << 7,reader);
     }
-
-    public static int readIntegerSigned(PrimitiveReader reader) {
-        if (reader.limit - reader.position <= 5) {
-            return readIntegerSignedSlow(reader);
+    
+    public static int readIntegerSigned(PrimitiveReader reader) {//TODO: AA, Invoked 100's of millions of times, must be tight.
+          if (reader.limit - reader.position >= 10) {// not near end so go fast.
+            byte v = reader.buffer[reader.position++];
+            int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;            
+            return (v < 0) ? accumulator |(v & 0x7F) : readIntegerSignedTail((accumulator | v) << 7,reader);
         }
-        int p = reader.position;
-        byte v = reader.buffer[p++];
-        int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;
-
-        while (v >= 0) { // (v & 0x80)==0) {
-            accumulator = (accumulator | v) << 7;
-            v = reader.buffer[p++];
-        }
-        reader.position = p;
-        return accumulator | (v & 0x7F);
+        return readIntegerSignedSlow(reader);
     }
+    
 
     private static int readIntegerSignedSlow(PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
@@ -409,26 +407,19 @@ public final class PrimitiveReader {
 
     public static int readIntegerUnsigned(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
         if (reader.limit - reader.position >= 5) {// not near end so go fast.
-            byte v;
-            return ((v = reader.buffer[reader.position++]) < 0) ? (v & 0x7F) : readIntegerUnsignedLarger(v, reader);
+            byte v = reader.buffer[reader.position++];
+            return (v < 0) ? (v & 0x7F) : readIntegerUnsignedTail(v,reader);
         } else {
             return readIntegerUnsignedSlow(reader);
         }
     }
 
-    private static int readIntegerUnsignedLarger(byte t, PrimitiveReader reader) {
+    //recursive use of the stack turns out to be a good way to unroll this loop.
+    private static int readIntegerUnsignedTail(int a, PrimitiveReader reader) {
         byte v = reader.buffer[reader.position++];
-        if (v < 0) {
-            return (t << 7) | (v & 0x7F);
-        } else {
-            int accumulator = ((t << 7) | v) << 7;
-            while ((v = reader.buffer[reader.position++]) >= 0) {
-                accumulator = (accumulator | v) << 7;
-            }
-            return accumulator | (v & 0x7F);
-        }
+        return (v<0) ? (a << 7) | (v & 0x7F) : readIntegerUnsignedTail((a<<7)|v,reader);
     }
-
+    
     private static int readIntegerUnsignedSlow(PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
             fetch(1, reader);
@@ -500,10 +491,34 @@ public final class PrimitiveReader {
 
     public static final int readTextASCIIIntoRing(char[] target, int targetOffset, int mask, PrimitiveReader reader) {
 
-        // TODO: Z, speed up textASCII, by add fast copy by fetch of limit, then
-        // return error when limit is reached? Do not call fetch on limit we do
-        // not know that we need them.
+        if (reader.limit - reader.position > mask) {
+            int p = reader.position;
+            byte[] buffer = reader.buffer;
+            byte v = buffer[p];
 
+            if (0 == v) {
+                v = buffer[p + 1];
+                if (0x80 != (v & 0xFF)) {
+                    throw new UnsupportedOperationException();
+                }
+                // nothing to change in the target
+                reader.position += 2;
+                return 0; // zero length string
+            } else {
+                int idx = targetOffset;
+                while (v >= 0) {
+                    target[mask&idx++] = (char) (buffer[p++]);
+                    v= buffer[p];
+                }
+                target[mask&idx++] = (char) (0x7F & v);
+                reader.position = p+1;
+                return idx - targetOffset;// length of string
+            }
+        }        
+        return readTextASCIIIntoRingSlow(target, targetOffset, mask, reader);
+    }
+
+    private static int readTextASCIIIntoRingSlow(char[] target, int targetOffset, int mask, PrimitiveReader reader) {
         if (reader.limit - reader.position < 2) {
             fetch(2, reader);
         }
@@ -1104,65 +1119,6 @@ public final class PrimitiveReader {
         return reader.limit != reader.position ? false : reader.input.isEOF();
     }
 
-    // ///////////////////////////////
-    // Dictionary specific operations
-    // ///////////////////////////////
-
-    //TODO: C, 4% perf problem in profiler, can be better if target== source ???
-    public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readIntegerUnsigned(reader));
-    }
-
-    public static final int readIntegerUnsignedDefault(int constDefault, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? constDefault : readIntegerUnsigned(reader));
-    }
-
-    public static final int readIntegerUnsignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readIntegerUnsigned(reader)));
-    }
-
-    public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? dictionary[source]
-                : (dictionary[target] = readIntegerSigned(reader)));
-    }
-
-    public static final int readIntegerSignedDefault(int constDefault, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? constDefault : readIntegerSigned(reader));
-    }
-
-    public static final int readIntegerSignedIncrement(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readIntegerSigned(reader)));
-    }
-
-    
-
-    // For the Long values
-
-    public static final long readLongUnsignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? dictionary[source]
-                : (dictionary[target] = readLongUnsigned(reader)));
-    }
-
-    public static final long readLongUnsignedDefault(long constDefault, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? constDefault : readLongUnsigned(reader));
-    }
-
-    public static final long readLongUnsignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1)
-                : (dictionary[target] = readLongUnsigned(reader)));
-    }
-
-    //TODO: B, can duplicate this to make a more effecient version when source==target
-    public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return dictionary[target] = (popPMapBit(reader) == 0 ? dictionary[source] : readLongSigned(reader));
-    }
-
-    public static final long readLongSignedIncrement(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        return (popPMapBit(reader) == 0 ? (dictionary[target] = dictionary[source] + 1) : (dictionary[target] = readLongSigned(reader)));
-    }
-    
 
     // //////////////
     // /////////

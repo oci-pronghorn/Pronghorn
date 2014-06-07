@@ -118,12 +118,10 @@ public class TemplateLoaderTest {
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
-        FASTRingBuffer queue = readerDispatch.ringBuffer(0);
-
-        
+        FASTRingBuffer queue = readerDispatch.ringBuffer(0);      
 
         int warmup = 64;
-        int count = 1024;
+        int count = 512;
         int result = 0;
         int[] fullScript = catalog.getScriptTokens();
         
@@ -217,7 +215,9 @@ public class TemplateLoaderTest {
         
         iter = count;
         while (--iter >= 0) {
-
+            if (Thread.interrupted()) {
+                System.exit(0);
+            }
             double start = System.nanoTime();
 
             int flag;

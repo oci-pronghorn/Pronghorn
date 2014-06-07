@@ -172,6 +172,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             int i = 0;
             while (--len >= 0) {
                 if (seq.charAt(i++)!=buffer[mask & pos++]) {
+                    System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
                     return false;
                 }
             }

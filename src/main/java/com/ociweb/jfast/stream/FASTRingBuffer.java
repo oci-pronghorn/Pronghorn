@@ -157,18 +157,20 @@ public final class FASTRingBuffer {
 
 
     public static int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
-        final int p = rbRingBuffer.addCharPos;
         if (len > 0) {
-            rbRingBuffer.addCharPos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.charBuffer, p, rbRingBuffer.charMask,textHeap);
+            final int p = rbRingBuffer.addCharPos;
+            rbRingBuffer.addCharPos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.charBuffer, p, rbRingBuffer.charMask, textHeap);
+            return p;
+        } else {
+            return 0;//should never read from here anyway so zero is safe
         }
-        return p;
     }
     
-    public static int writeTextToRingBuffer(int heapId, int len, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
+    public static int writeTextToRingBuffer(int len, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
         final int p = rbRingBuffer.addCharPos;
         if (len > 0) {
             
-            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, p, rbRingBuffer.charBuffer.length, reader);
+            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, p, rbRingBuffer.charMask, reader);
             rbRingBuffer.addCharPos+=lenTemp;// = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
         }
         return p;

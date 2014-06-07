@@ -3,9 +3,12 @@ package com.ociweb.jfast.generator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
@@ -27,7 +30,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     private static final String FRAGMENT_METHOD_NAME = "fragment";    
     
-    private static final int COMPLEXITY_LIMITY_PER_METHOD = 518;
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 25;//
     private static final String ENTRY_METHOD_NAME = "decode";
     
     SourceTemplates templates;
@@ -45,6 +48,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     String caseTail = "}\n";
     Set<Integer> sequenceStarts = new HashSet<Integer>();
     byte[] origCatBytes;
+    
+    Map<String, AtomicInteger> usages = new HashMap<String,AtomicInteger>();
     
     
     public FASTReaderDispatchGenerator(byte[] catBytes) {
@@ -105,7 +110,15 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     private void generator(StackTraceElement[] trace, long ... values) {
         
-        String methodNameKey = " "+trace[0].getMethodName()+'('; ///must include beginning and end to ensure match
+        String templateMethodName = trace[0].getMethodName();
+        if (usages.containsKey(templateMethodName)) {
+            usages.get(templateMethodName).incrementAndGet();
+        } else {
+            usages.put(templateMethodName,new AtomicInteger(1));
+        }
+        
+        
+        String methodNameKey = " "+templateMethodName+'('; ///must include beginning and end to ensure match
         String[] paraVals = templates.params(methodNameKey);
         String[] paraDefs = templates.defs(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
@@ -390,6 +403,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         generateGroupMethods(new TemplateCatalogConfig(origCatBytes),doneScripts,doneScriptsParas,target);
         generateEntryDispatchMethod(doneScripts,doneScriptsParas,target);
         GeneratorUtils.generateTail(target);
+        
+        //System.err.println(usages.toString().replace(", ",",\n"));
         
         return target;
     }

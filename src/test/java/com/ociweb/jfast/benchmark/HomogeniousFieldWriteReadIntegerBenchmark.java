@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -226,7 +227,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 				
-				int value = PrimitiveReader.readIntegerSignedCopy(target, source, rIntDictionary, reader);
+				int value = StaticGlue.readIntegerSignedCopy(target, source, rIntDictionary, reader);
 				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
 			}
 			if (pmapSize>0) {

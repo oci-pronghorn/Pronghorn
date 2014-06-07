@@ -39,6 +39,7 @@ public class TemplateCatalogConfig {
     public static final String KEY_IGNORE_FIELD_BY_NAME = "jFAST.field.ignore.names";//comma separated.
     public static final String KEY_IGNORE_FIELD_BY_ID = "jFAST.field.ignore.id";//comma separated.
     
+    //TODO: add constants per field for the optional values, what about writing them back raw? or remove branch substract logic!!.
     //TODO: add ringBuffer groups for message/templates
     //  (t1,t2,t3)(t4,t5)t6  this is a set of sets, how is it easist to define?
     final Properties properties;//TODO: A, pull out into custom behavior class with default values and getters?
