@@ -3,6 +3,9 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /*
@@ -25,7 +28,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
  * or pushing down fields as it probably changes the meaning of the data. 
  * 
  */
-public class FASTInputReactor {
+public final class FASTInputReactor {
 
     /**
      * Read up to the end of the next sequence or message (eg. a repeating
@@ -43,62 +46,115 @@ public class FASTInputReactor {
      * 
      * @return
      */
+    
+    private final FASTDecoder decoder; 
+    private final PrimitiveReader reader;
+  //  private final ExecutorService service;
+    
+    public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader) {
+        this.decoder=decoder;
+        this.reader=reader;
+//        System.err.println("new reactor with thread");
+//        //TODO: When creating new reactors how is this old thread disposed of?
+//        service = Executors.newSingleThreadExecutor();
+////        Thread startup = new Thread(new Runnable(){
+////
+////            @Override
+////            public void run() {
+////                PrimtiveReader.// TODO Auto-generated method stub
+////                
+////            }});
+////        startup.start();
+////        
+//        service.execute(decoder.newRunnable(reader));
+//        //TODO: wait until this is started up?
+//        
+//        try {
+//            Thread.sleep(10000);
+//        } catch (InterruptedException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+        
+    }
 
     // TODO: B, Check support for group that may be optional
-    public static int select(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    
+    //TODO: A, All data must be communicated throught the ring buffer to support threading however stream state is returned here.
+    //return states -1, 0 , 1 for NoDataToRead, Success, NoRoomToWrite
+    public int select() {
         // start new script or detect that the end of the data has been reached
         if (decoder.neededSpaceOrTemplate < 0) {
-            return beginNewTemplate(decoder, reader, ringBuffer);
+            return beginNewTemplate(decoder, reader);
         }
-        return checkSpaceAndDecode(decoder, reader, ringBuffer);
+        return decode(decoder, reader);
     }
 
 
-    private static int beginNewTemplate(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
+    private static int beginNewTemplate(FASTDecoder decoder, PrimitiveReader reader) {
         // checking EOF first before checking for blocked queue
         if (PrimitiveReader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
             //System.err.println(messageCount);
             return 0;
         }
-        // must have room to store the new template
-        int req = decoder.preambleDataLength + 1;
-        if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {
-            return 0x80000000;
+        int err = hasMoreNextMessage(decoder, reader);
+        if (err!=0) {
+            return err;
         }
-        decoder.neededSpaceOrTemplate=hasMoreNextMessage(req, decoder, reader, rb);
-        return checkSpaceAndDecode(decoder, reader, rb);
+        return decode(decoder, reader);
     }
 
-    private static int checkSpaceAndDecode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
-        if (decoder.neededSpaceOrTemplate > 0) {
-            if (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < decoder.neededSpaceOrTemplate) {
-                return 0x80000000;
-            }
-            decoder.neededSpaceOrTemplate = 0;
-        }        
-        return decode(decoder, reader, rb);
-    }
+    private static int decode(FASTDecoder decoder, PrimitiveReader reader) {
+        //TODO: MUST run decoder in separate thread.
+        
+        //notify other thread to start
+        //wait
+        
+        //this thread must wait until done
+        
+      //  decoder.newRunnable(reader);
+//System.err.println("decode");
 
-
-    private static int decode(FASTDecoder decoder, PrimitiveReader reader, FASTRingBuffer rb) {
+//        PrimitiveReader.notify(reader); //process is now running.
+//        
+//        if (decoder.temp) {            
+//            return 1;// has more to read
+//        } else {
+//            return finishTemplate(reader, decoder);
+//        }
+//        
+        
+//        
+//        
         // returns true for end of sequence or group
-        if (decoder.decode(reader)) {
-            FASTRingBuffer.unBlockFragment(rb);
+        if (decoder.decode(reader)) {            
             return 1;// has more to read
         } else {
-            return finishTemplate(rb, reader, decoder);
+            return finishTemplate(reader, decoder);
         }
+        
+        
     }
 
-    private static int hasMoreNextMessage(int req, FASTDecoder readerDispatch, PrimitiveReader reader, FASTRingBuffer rb) {
+    private static int hasMoreNextMessage(FASTDecoder readerDispatch, PrimitiveReader reader) {
 
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
-        assert (readerDispatch.preambleDataLength != 0 && readerDispatch.gatherReadData(reader, "Preamble"));
+        assert (readerDispatch.preambleDataLength != 0 && readerDispatch.gatherReadData(reader, "Preamble", 0));
         //ring buffer is build on int32s so the implementation limits preamble to units of 4
         assert ((readerDispatch.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
         assert (readerDispatch.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
-                
+                        
+        
+        // must have room to store the new template
+        //TODO: AA, Must add PEEK method to PrimtiveReader to see what the template is and know which ringBuffer to theck!!
+        FASTRingBuffer rb = readerDispatch.ringBuffer(0);//BIG HACK;
+        int req = readerDispatch.preambleDataLength + 1;
+        if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {
+            return 0x80000000;
+        }
+        
+        
         //Hold the preamble value here until we know the template and therefore the needed ring buffer.
         int p = readerDispatch.preambleDataLength;
         int a=0, b=0;
@@ -113,28 +169,17 @@ public class FASTInputReactor {
         // /////////////////
         // open message (special type of group)
         int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
-        
-        //we know the templateId so we now know which ring buffer to use.
-        //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
-        p = readerDispatch.preambleDataLength;
-        if (p>0) {
-            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
-            if (p>4) {
-                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
-            }
-        }
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
-                
+        readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
+       
         // write template id at the beginning of this message
-        return readerDispatch.requiredBufferSpace(templateId);
+        return readerDispatch.requiredBufferSpace(templateId, a, b);
         
 
     }
 
-    private static final int finishTemplate(FASTRingBuffer ringBuffer, PrimitiveReader reader, FASTDecoder decoder) {
+    private static final int finishTemplate(PrimitiveReader reader, FASTDecoder decoder) {
         
         // reached the end of the script so close and prep for the next one
-        FASTRingBuffer.unBlockFragment(ringBuffer);
         decoder.neededSpaceOrTemplate = -1;
         PrimitiveReader.closePMap(reader);
         return 2;// finished reading full message

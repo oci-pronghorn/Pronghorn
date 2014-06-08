@@ -99,7 +99,6 @@ public class ReaderWriterPrimitiveTest {
 		writer = new PrimitiveWriter(capacity, new FASTOutputStream(baost),(int) count, minimizeLatency);
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
 		PrimitiveReader pr = new PrimitiveReader(2048, input, 32);
-		PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
 		
 		writeDurationIOSpeed = Float.MAX_VALUE;
 		float readDuration = Float.MAX_VALUE;
@@ -195,7 +194,6 @@ public class ReaderWriterPrimitiveTest {
 			}
 			
 			pr = new PrimitiveReader(2048, new FASTInputSocketChannel(socketChannel), 32);
-			PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
 			
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -228,8 +226,9 @@ public class ReaderWriterPrimitiveTest {
 			
 		}).start();
 		
-		PrimitiveReader.setTimeout(1000000000, pr);
-			
+		
+		
+		
 		cycles = testCycles;
 		while (--cycles>=0) {	
 			long start = System.nanoTime();
@@ -237,6 +236,16 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int i = 0;
 				while (i<unsignedLongData.length) {
+				    //this test can not support blocking feed data so pre-fetch it now.
+				    boolean ok = true;
+				    while (ok) {
+    				    try {
+    				        PrimitiveReader.fetch(pr);
+    				        ok = false;
+    				    } catch (Exception e) {
+    				        ok = true;
+    				    }
+				    }
 					speedReadTest(pr);
 					i++;
 				}
@@ -363,7 +372,7 @@ public class ReaderWriterPrimitiveTest {
 	private final void speedWriteTest(int i) {
 		writer.openPMap(10);
 		writer.writeLongUnsigned(unsignedLongData[i]);
-		writer.writeLongSigned(-unsignedLongData[i]);		
+		writer.writeLongSigned(-unsignedLongData[i], writer);		
 		writer.closePMap();
 	}
 	
@@ -459,8 +468,8 @@ public class ReaderWriterPrimitiveTest {
 		int i = 0;
 		while (i<unsignedLongData.length) {
 			writer.writeLongUnsigned(unsignedLongData[i]);
-			writer.writeLongSigned(unsignedLongData[i]);
-			writer.writeLongSigned(-unsignedLongData[i]);
+			writer.writeLongSigned(unsignedLongData[i], writer);
+			writer.writeLongSigned(-unsignedLongData[i], writer);
 			
 			writer.writeLongSignedOptional(unsignedLongData[i]);
 			if (0!=unsignedLongData[i]) {
@@ -560,7 +569,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongSigned(-unsignedLongData[i++]);
+					writer.writeLongSigned(-unsignedLongData[i++], writer);
 				}
 			}
 			writer.flush(writer);
@@ -593,7 +602,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongSigned(unsignedLongData[i++]);
+					writer.writeLongSigned(unsignedLongData[i++], writer);
 				}
 			}
 			writer.flush(writer);

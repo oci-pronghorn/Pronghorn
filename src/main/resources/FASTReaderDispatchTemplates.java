@@ -86,6 +86,9 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     
     //length methods
+    
+    //TODO: A, the length metods are very rarely if ever(check) used by another dictionary field so they dont need the write back.
+    
     protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
         {
             int length;
@@ -102,7 +105,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         }
     }
 
-    //TODO: C, once this all works find a better way to inline it with only 1 conditional.
     
     
     protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
@@ -172,8 +174,9 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
         {
             int length;
-   
-            FASTRingBuffer.addValue(rbB,rbMask,rbPos, rIntDictionary[target] = length = PrimitiveReader.readIntegerUnsigned(reader));
+
+            //TODO: C, once this all works find a better way to inline it with only 1 conditional. /*rIntDictionary[trget] =length */ 
+            FASTRingBuffer.addValue(rbB,rbMask,rbPos, length = PrimitiveReader.readIntegerUnsigned(reader));
             if (length == 0) {
                 // jumping over sequence (forward) it was skipped (rare case)
                 dispatch.activeScriptCursor = jumpToTarget;

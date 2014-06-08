@@ -33,6 +33,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     protected final String[] fieldNameScript;
     
     protected final int[] fullScript;
+
         
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
         this(new TemplateCatalogConfig(catBytes));
@@ -61,14 +62,16 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     public boolean decode(PrimitiveReader reader) {
 
         // move everything needed in this tight loop to the stack
-        int limit = activeScriptLimit;
+        int limit = activeScriptLimit; //TODO: AAAA, remvoe this by using the stackHead depth for all wrapping groups
 
-        //TODO: AA, based on activeScriptCursor set ring buffer member to be used.
-        //FASTRingBuffer ringbuffer = this.ringBuffer(activeScriptCursor)
+        
+        //TODO: A, must pass this in to each method so they need not look it up again. also must use this one before cursor moves!
+        FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         
         do {
             int token = fullScript[activeScriptCursor];
-
+            
+            
             assert (gatherReadData(reader, activeScriptCursor, token));
             
             //System.err.println("write to "+(ringBuffers[activeScriptCursor].mask &ringBuffers[activeScriptCursor].addPos)+" "+fieldNameScript[activeScriptCursor]+" token: "+TokenBuilder.tokenToString(token));
@@ -127,6 +130,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         } else {
                             int idx = TokenBuilder.MAX_INSTANCE & token;
                             closeGroup(token,idx, reader);
+                            FASTRingBuffer.unBlockFragment(rbRingBuffer);
                             return sequenceCountStackHead>=0;//doSequence;
                         }
 
@@ -140,6 +144,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
                         readLength(token,jumpToTarget, readFromIdx, reader);
+                        FASTRingBuffer.unBlockFragment(rbRingBuffer);
                         return sequenceCountStackHead>=0;
                         //return true;
 
@@ -160,6 +165,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 }
             }
         } while (++activeScriptCursor < limit);
+        FASTRingBuffer.unBlockFragment(rbRingBuffer);
         return sequenceCountStackHead>=0;//false;
     }
 

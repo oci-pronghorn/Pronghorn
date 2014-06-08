@@ -170,10 +170,14 @@ public class CodeGenerationTest {
             }
         });
 
+        FASTInputReactor reactor1 = new FASTInputReactor(readerDispatch1, primitiveReader1);
+        FASTInputReactor reactor2 = new FASTInputReactor(readerDispatch2, primitiveReader2);
+        
+        
         int errCount = 0;
         int i = 0;
-        while (FASTInputReactor.select(readerDispatch1, primitiveReader1, queue1) != 0 &&
-                FASTInputReactor.select(readerDispatch2, primitiveReader2, queue2) != 0) {
+        while (reactor1.select() != 0 &&
+               reactor2.select() != 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);

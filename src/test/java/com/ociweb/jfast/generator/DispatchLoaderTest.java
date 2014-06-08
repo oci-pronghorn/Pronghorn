@@ -56,12 +56,14 @@ public class DispatchLoaderTest {
         decoder = new FASTReaderInterpreterDispatch(catalog1);
         System.err.println("Created new "+decoder.getClass().getSimpleName());
         
+        FASTInputReactor reactor = new FASTInputReactor(decoder,reader);
+        
         FASTRingBuffer queue = decoder.ringBuffer(0);
         
         int records=0;
         int flag;
         //Non-Blocking reactor select
-        while (0!=(flag=FASTInputReactor.select(decoder, reader, queue))) {
+        while (0!=(flag=reactor.select())) {
                  
             if ((0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)))  {
                 
@@ -86,11 +88,13 @@ public class DispatchLoaderTest {
 
                if (records==switchToCompiled1) {
                    decoder = DispatchLoader.loadDispatchReader(catalog1);
+                   reactor = new FASTInputReactor(decoder,reader);
                    queue = decoder.ringBuffer(0);
                    System.err.println("Created new "+decoder.getClass().getSimpleName());
                }
                if (records==switchToCompiled2) {
                    decoder = DispatchLoader.loadDispatchReader(catalog2);
+                   reactor = new FASTInputReactor(decoder,reader);
                    queue = decoder.ringBuffer(0);
                    System.err.println("Created new "+decoder.getClass().getSimpleName());
                }

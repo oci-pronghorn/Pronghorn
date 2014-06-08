@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.charset.Charset;
@@ -109,6 +110,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		char[] target = new char[unicodeTestString.length()];
 		
+		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
 		PrimitiveReader.readTextUTF8(target, 0, unicodeTestString.length(), reader);
@@ -141,11 +143,12 @@ public class UTF8EncodeDecodeTest {
 	public void testUTF8DecoderAppendableTightBuffer() {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		
+		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
-		String target = PrimitiveReader.readTextUTF8(unicodeTestString.length(), new StringBuilder(), reader).toString();
+		String target = PrimitiveReader.readTextUTF8(/*data.length*/ unicodeTestString.length(), new StringBuilder(), reader).toString();
 		
-		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	
+		assertEquals("chars do not match "+unicodeTestString+" vs "+target, unicodeTestString, target);	
 		
 	}
 }

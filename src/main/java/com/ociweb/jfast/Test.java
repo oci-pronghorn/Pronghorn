@@ -15,6 +15,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.loader.ClientConfig;
+import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -29,175 +30,188 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 public class Test {
 
     public static void main(String[] args) {
-        new Test().testDecodeComplex30000();
+        
+        //this example uses the preamble feature
+        ClientConfig clientConfig = new ClientConfig();
+        clientConfig.setPreableBytes((short)4);
+        String templateSource = "/performance/example.xml";
+        String dataSource = "/performance/complex30000.dat";
+        
+        new Test().decode(clientConfig, templateSource, dataSource);
     }
     
-    public void testDecodeComplex30000() {
+    public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
+         int count = 1024000;
         
-        Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
-          
-          byte[] catBytes = buildRawCatalogData();
+                
+          byte[] catBytes = buildRawCatalogData(clientConfig, templateSource);
           TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
           // connect to file
 
+          //TODO: AA, API design flaw, most will not want to compute this mess.
           int maxPMapCountInBytes = 2 + ((Math.max(
                   catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());             
           
           
           FASTClassLoader.deleteFiles();
-          
           FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-          System.err.println("using:"+readerDispatch.getClass().getSimpleName());
-          FASTRingBuffer queue = readerDispatch.ringBuffer(0);
-
-          int warmup = 128;
-          int count = 1024000;
-          int result = 0;
-          int[] fullScript = catalog.getScriptTokens();
           
-          
-          byte[] preamble = new byte[catalog.clientConfig().getPreableBytes()];
 
           int msgs = 0;
-          int grps = 0;
-          long queuedBytes = 0;
-          int iter = warmup;
+          int queuedBytes = 0;
+
+          int iter = count;
           while (--iter >= 0) {
-              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream("/performance/complex30000.dat"));
-              PrimitiveReader reader = new PrimitiveReader(1024,fastInputStream, maxPMapCountInBytes);
-              PrimitiveReader.setTimeout(Long.MAX_VALUE, reader);
-              msgs = 0;
-              grps = 0;
-              int flag = 0; // same id needed for writer construction
-              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
-                  // New flags
-                  // 0000 eof
-                  // 0001 has sequence group to read (may be combined with end of
-                  // message)
-                  // 0010 has message to read
-                  // neg unable to write to ring buffer
-
-                  // consumer code can stop only at end of message if desired or
-                  // for
-                  // lower latency can stop at the end of every sequence entry.
-                  // the call to hasMore is non-blocking with respect to the
-                  // consumer and
-                  // will return negative value if the ring buffer is full but it
-                  // will
-                  // spin lock if input stream is not ready.
-                  //
-
-                  if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                      msgs++;
-
-                      // this is a template message.
-                      int bufferIdx = 0;
-                      if (preamble.length > 0) {
-                          int i = 0;
-                          int s = preamble.length;
-                          while (i < s) {
-                              FASTRingBufferReader.readInt(queue, bufferIdx);
-                              i += 4;
-                              bufferIdx++;
-                          }
-                      }
-
-                      int templateId = FASTRingBufferReader.readInt(queue, bufferIdx);
-                      bufferIdx += 1;// point to first field
-                      assert(1 == templateId || 2 == templateId || 99 == templateId);
-
-                      int i = catalog.getTemplateStartIdx()[templateId];
-                      int limit = catalog.getTemplateLimitIdx()[templateId];
-                      // System.err.println("new templateId "+templateId);
-                      while (i < limit) {
-                          int token = fullScript[i++];
-                          // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
-
-                          if (isText(token)) {
-                              queuedBytes += (4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
-                          }
-
-                          // find the next index after this token.
-                          bufferIdx += stepSizeInRingBuffer(token);
-
-                      }
-                      queuedBytes += bufferIdx;// ring buffer bytes, NOT full
-                                               // string byteVector data.
-
-                      // must dump values in buffer or we will hang when reading.
-                      // only dump at end of template not end of sequence.
-                      // the removePosition must remain at the beginning until
-                      // message is complete.
-                      FASTRingBuffer.dump(queue);
-                  }
-                  grps++;
-
-              }
-              //fastInput.reset();
-              PrimitiveReader.reset(reader);
-              readerDispatch.reset();
-              readerDispatch.reset(catalog.dictionaryFactory());
-          }
-
-          iter = count;
-          while (--iter >= 0) {
-              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream("/performance/complex30000.dat"));
+              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream(dataSource));
               PrimitiveReader reader = new PrimitiveReader(1024*1024*2,fastInputStream, maxPMapCountInBytes);
-              PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
               
+              PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
+              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
+              
+              FASTRingBuffer queue = readerDispatch.ringBuffer(0);
               System.gc();
               
-              PrimitiveReader.setTimeout(Long.MAX_VALUE, reader);
+              msgs = 0;
+              
+              //TODO: A, API bug, must be able to set the ring buffer size and fragment size check must establish minimum.
+                            
+              //TODO: AA, API incomplete
+              
+              //should always look up the field constants once before usages but this also must be redone if template changes.
+              //int myField = catalog.lookupField("templateName","fieldName"); Only do this against known template
+              
+              
+              FieldReferenceOffsetManager from = catalog.getFROM();
+              
+              //these two only happen at the beginning of a new template.
+              int preambleOffset = from.preambleOffset; 
+              int templateOffset = from.templateOffset;
+              
+              
+           //   int fragmentSize = from.lookupFragmentSize(fragmentId);
+              
               
               double start = System.nanoTime();
-
+              int templateId = -1;
               int flag;
-              while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
-                  if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                      result |= FASTRingBufferReader.readInt(queue, 0);// must do some real work or
-                                                     // hot-spot may delete this
-                                                     // loop.
-                                      
+              while (0 != (flag = reactor.select())) {
+                  //In this single threaded example we will consume every fragment as it
+                  //is written to the ring buffer, as a result the ring buffer will always
+                  //return to empty after every cycle and should not block further reads unless
+                  //it has been initialized smaller than one of the fragments.
+                  
+                  if (flag<0) { //May notify internal error log that data could not be moved for this reason
+                      //TODO: API A, select failure reasons, NoIncomingData, NoRoomForOutgoingData, NoError,  -1, 0 , 1
+                      //out of space in ring buffer so we must consume some messages
+                      if (!queue.hasContent()) {
+                          System.err.println("The internal buffer is not large enough to hold the fragment.");
+                          System.exit(-1);
+                      } else {
+                          System.err.println("odd, this should not have happened");
+                          //because every fragment is read as it is is written this is not expected to be called.
+                          FASTRingBuffer.dump(queue);
+                      }                     
+                  } else {
                       
-                  } else if (flag < 0) {
+                      //we have a new fragment to read
+                      if (templateId<0) { //TODO: A, API perhaps flag should return beginning of template?
+                          templateId = FASTRingBufferReader.readInt(queue, templateOffset);
+                          
+                          int cursor = catalog.getTemplateStartIdx()[templateId];
+                          //this cursor will end with 
+                          //  - fixed stop
+                          //  - dyn jump between 2 locations based on count in stack. (may come from pmap bit if group is optional)
+                          //this cursor has a fixed size with it.
+                          
+                          //TODO: AA, need test for optional groups this is probably broken. 
+                          //we know that each of these templates can only go to a specific fragment next.
+                          //this is determined by the length if there is one or it is fixed.
+                          
+                          
+                      }
                       
-                      // must dump values in buffer or we will hang when reading.
+                      //must read fragment id!
+                      //this is the position in the script
+                      //if select returns the script location we can use that but what about threaded cases?
+                      
+                      //reader can walk a script on client side to know the state of the next fragment without adding it to ring buffer.
+                      
+                      //stack in ring buffer allows reading of fields still in ring
+                      
+                      //need client stack of nestedd seq etc. to know when we switch to the next one.
+                      //at end of fragment length# will tell repeat for next sequence.
+                      
+                      
+                      /*
+                      //TODO: API, AA need consistant way to know what kind of frament we have without data from select!!
+                      
+                      ## if the fragment id is always on the front of the fragment in ring buffer it will 
+                         Be limited by the memory write speeds and more data will move
+                         Be easy to determine the fragment in the client
+                         
+                      ## if the id is passed back from select it will
+                         Make it difficult to code multithreaded setup.
+                         Be easy for single threaded app to read the fragment
+                         
+                      ## if the client side follows along with a helper script class
+                         A dedicated walker class will need to be written
+                         The decoder will not need to do more work.
+                         Every thread will be able to run at its own pace.
+                      
+                      TODO: AAA, URGENT change, Knowing the end of a template is discovered by having walked an by no other means.
+                      
+                      */
+                      
+                      queuedBytes += 1;
                       FASTRingBufferReader.dump(queue);
+                      //
+                      
+                      
+                      //this fragment marks the end of a message
+                      if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
+                          msgs++;
+                          templateId = -1;
+                      }
+                      
                   }
+                  
               }
 
               double duration = System.nanoTime() - start;
-              long totalTestBytes = fastInputStream.totalBytes();
-              if ((0x7F & iter) == 0) {
-                  int ns = (int) duration;
-                  float mmsgPerSec = (msgs * (float) 1000l / ns);
-                  float nsPerByte = (ns / (float) totalTestBytes);
-                  int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
-
-                  System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
-                          + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
-                          + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs); // Phrases/Clauses
-                  // Helps let us kill off the job.
+              
+              if (shouldPrint(iter)) {
+                  printSummary(msgs, queuedBytes, duration, fastInputStream.totalBytes()); 
               }
 
               // //////
-              // reset the data to run the test again.
+              // reset the dictionary to run the test again.
               // //////
-              //fastInput.reset();
-              PrimitiveReader.reset(reader);
-              readerDispatch.reset();
               readerDispatch.reset(catalog.dictionaryFactory());
 
           }
-          assert(result != 0);
 
       }
-    private boolean isText(int token) {
-        return 0x08 == (0x1F & (token >>> TokenBuilder.SHIFT_TYPE));
+
+    private boolean shouldPrint(int iter) {
+        return (0x7F & iter) == 0;
     }
 
-    private int stepSizeInRingBuffer(int token) {
+    private void printSummary(int msgs, int queuedBytes, double duration, long totalTestBytes) {
+        int ns = (int) duration;
+          float mmsgPerSec = (msgs * (float) 1000l / ns);
+          float nsPerByte = (ns / (float) totalTestBytes);
+          int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
+
+          System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
+                  + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
+                  + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs);
+    }
+    
+    //TODO: A, Where does the lookup go?
+    public static int stepSizeInRingBuffer(int token) {
+        //TODO: C, Convert to array lookup
+        
         int stepSize = 0;
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
@@ -222,8 +236,7 @@ public class Test {
                         stepSize = 3;
                     } else {
                         // int for bytes
-                        stepSize = 0;// BYTES ARE NOT IMPLEMENTED YET BUT WILL
-                                     // BE 2;
+                        stepSize = 2;
                     }
                 }
             }
@@ -273,7 +286,7 @@ public class Test {
         return fastInput;
     }
     
-    static InputStream testDataInputStream(String resource) {
+    private static InputStream testDataInputStream(String resource) {
         
         InputStream resourceInput = Test.class.getResourceAsStream(resource);
         if (null!=resourceInput) {
@@ -287,14 +300,12 @@ public class Test {
         }
     }
 
-    public static byte[] buildRawCatalogData() {
-        //this example uses the preamble feature
-        ClientConfig clientConfig = new ClientConfig();
-        clientConfig.setPreableBytes((short)4);
+    private static byte[] buildRawCatalogData(ClientConfig clientConfig, String source) {
+
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
         try {
-            TemplateLoader.buildCatalog(catalogBuffer, "/performance/example.xml", clientConfig);
+            TemplateLoader.buildCatalog(catalogBuffer, source, clientConfig);
         } catch (Exception e) {
             e.printStackTrace();
         }

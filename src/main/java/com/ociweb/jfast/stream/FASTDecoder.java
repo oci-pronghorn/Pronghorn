@@ -7,7 +7,7 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public abstract class FASTDecoder {
+public abstract class FASTDecoder{
 
     //debugging state, remove
     protected static DispatchObserver observer;
@@ -17,8 +17,9 @@ public abstract class FASTDecoder {
 
     private final int[] templateStartIdx;
     private final int[] templateLimitIdx;
-    public int activeScriptCursor;
-    public int activeScriptLimit;
+    
+    public int activeScriptCursor; //needed by generated code to hold state between calls.
+    
     public final int maxTemplatePMapSize;
     
     public final int[] sequenceCountStack;
@@ -78,7 +79,7 @@ public abstract class FASTDecoder {
     public void setDispatchObserver(DispatchObserver observer) {
         this.observer = observer;
     }
-
+//inject the observer
     protected boolean gatherReadData(PrimitiveReader reader, int cursor, int token) {
 
         if (null != observer) {
@@ -104,7 +105,7 @@ public abstract class FASTDecoder {
         return true;
     }
 
-    protected boolean gatherReadData(PrimitiveReader reader, String msg) {
+    protected boolean gatherReadData(PrimitiveReader reader, String msg, int activeScriptCursor) {
 
         if (null != observer) {
             long absPos = PrimitiveReader.totalRead(reader) - PrimitiveReader.bytesReadyToParse(reader);
@@ -115,7 +116,7 @@ public abstract class FASTDecoder {
     }
     
     public void reset(DictionaryFactory dictionaryFactory) {
-
+                
         // clear all previous values to un-set
         dictionaryFactory.reset(rIntDictionary);
         dictionaryFactory.reset(rLongDictionary);
@@ -134,26 +135,63 @@ public abstract class FASTDecoder {
     }
     
     public abstract boolean decode(PrimitiveReader reader);
+        
+    volatile boolean  temp;
+    
+    public Runnable newRunnable(final PrimitiveReader reader) {
+        return new Runnable() {
 
-    public int requiredBufferSpace(int i) {
+            @Override
+            public void run() {
+                while (true) {
+                    PrimitiveReader.wait(reader);
+                    temp = decode(reader);
+                }
+                
+            }
         
-        //TODO: B, this assignment is required for the interpreter but we can optimize it out for the compiled version.
+        };
+    }
+    
+    
+    
+
+    public int activeScriptLimit; //TODO: A, remvoe this once limit is removed from iterprister after stack is used for exit flag.
+    
         
-        // set the cursor start and stop for this template
-        activeScriptCursor = templateStartIdx[i];
-        activeScriptLimit = templateLimitIdx[i];
+    public int requiredBufferSpace(int templateId, int a, int b) {
+        
+        activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
+        activeScriptLimit = templateLimitIdx[templateId];
+      
+        
+        //we know the templateId so we now know which ring buffer to use.
+        FASTRingBuffer rb = ringBuffers[activeScriptCursor];
+        int p = preambleDataLength;
+        if (p>0) {
+            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
+            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
+            if (p>4) {
+                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
+            }
+        }
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+        
 
         // Worst case scenario is that this is full of decimals which each need
         // 3.
         // but for easy math we will use 4, will require a little more empty
         // space in buffer
         // however we will not need a lookup table
-        return (activeScriptLimit - activeScriptCursor) << 2;
-    }
-    
-    public void reset() {
-        activeScriptCursor = 0;
-        activeScriptLimit = 0;
+        int neededSpace =  (activeScriptLimit - activeScriptCursor) << 2;
+        
+        
+        if (neededSpace > 0) {
+            if (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                return 0x80000000;
+            }
+        }   
+        return 0;
     }
 
 }

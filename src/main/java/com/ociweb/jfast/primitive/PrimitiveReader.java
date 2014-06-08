@@ -36,26 +36,25 @@ public final class PrimitiveReader {
     // footprint will fit in execution cache.
     // if we in-line too much the block will be to large and may spill.
 
-    private long totalReader;
-
+    private final int resetLimit;  
     private final FASTInput input;
     private final byte[] buffer;
+
+
+    
+    private long totalReader;
     
     private byte[] invPmapStack;
     private int invPmapStackDepth;
 
-    private int position;
+    private int position; 
     private int limit;
 
     // both bytes but class def likes int much better for alignment
     private byte pmapIdx = -1;
     private byte bitBlock = 0;
-    private final int resetLimit;  
 
-    //To disable timeout use this: PrimitiveReader.setTimeout(Long.MAX_VALUE, pr);
-    //Can be set as needed but it should remain small for non-blocking behavior.
-    private long nanoBlockingTimeout = 1000;//1 micro seconds  
-
+  
     
     /**
      * 
@@ -74,7 +73,6 @@ public final class PrimitiveReader {
         this.limit = 0;
         this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
         this.invPmapStackDepth = maxPMapCountInBytes-2;
-
         input.init(this.buffer);
     }
     //TODO: C, validate valid template switch over can only happen when PmapStack is empty!
@@ -113,14 +111,6 @@ public final class PrimitiveReader {
         reader.invPmapStackDepth = reader.invPmapStack.length - 2;
 
     }
-
-    public static final void setTimeout(long nanos, PrimitiveReader reader) {
-        reader.nanoBlockingTimeout = nanos;
-    }
-    
-    public static final long getTimeout(PrimitiveReader reader) {
-        return reader.nanoBlockingTimeout;
-    }
     
     public static final long totalRead(PrimitiveReader reader) {
         return reader.totalReader;
@@ -134,30 +124,56 @@ public final class PrimitiveReader {
         fetch(0, reader);
     }
     
+    private Object lock = new Object();
+    private byte state = 0;
+    
     // Will not return until the need is met because the parser has
     // determined that we can not continue until this data is provided.
     // this call may however read in more than the need because its ready
     // and convenient to reduce future calls.
     private static void fetch(int need, PrimitiveReader reader) {
-        int count = 0;
-        need = fetchAvail(need, reader);
-        long timeout = 0;
-        while (need > 0) { 
-            if (0 == count++) {
-                timeout = System.nanoTime()+reader.nanoBlockingTimeout;//Math.min(reader.nanoBlockingTimeout,1000000000*60);
-            } else {
-                if (System.nanoTime()>timeout && count>100) {
-                    
-                    //TODO: B, must roll back to previous position to decode can try again later on this steam.
-                    
-                    throw new FASTException(FASTError.TIMEOUT+" of "+reader.nanoBlockingTimeout);
-                }
+
+        need = fetchAvail(need, reader);        
+        if (need > 0) {
+            reader.state = -1;        
+            while (need > 0) { 
+           //     wait(reader);
+                need = fetchAvail(need, reader);
             }
-
-            need = fetchAvail(need, reader);
+            reader.state = 0;
         }
-
     }
+    
+    //before calling notify must wait the outer thread!
+    
+    //do not call from inside sync block, will wake up reading thread to "do the next thing"
+    public static void notify(PrimitiveReader reader) {
+       // System.err.println("notify");
+        synchronized(reader.lock) {
+            //reading thread should "do the next thing"
+            reader.lock.notifyAll();
+            //wait until the reading thread is done.
+            try{
+                reader.lock.wait();
+            } catch (InterruptedException e) {
+                throw new FASTException(e);
+            }              
+        }
+    }
+
+    public static void wait(PrimitiveReader reader) {
+        synchronized(reader.lock) {
+            try {
+                //release outer caller to return
+                reader.lock.notifyAll();
+                //wait until outer caller calls gain.
+                reader.lock.wait();
+            } catch (InterruptedException e) {
+                throw new FASTException(e);
+            }            
+        }        
+    }
+    
 
     private static int fetchAvail(int need, PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
@@ -166,8 +182,14 @@ public final class PrimitiveReader {
         int remainingSpace = reader.buffer.length - reader.limit;
         if (need <= remainingSpace) {
             // fill remaining space if possible to reduce fetch later
-
-            int filled = reader.input.fill(reader.limit, remainingSpace);
+            // but as we near the end prevent overflow by only getting what is needed.
+            
+            int maxFill = remainingSpace;//
+        //    int maxFill = Math.max(remainingSpace>>2,need);  //This is causing utf-8 decode to break.
+            //TODO: C, how to do the above without conditional. High bits on in remaining space so shif it down with leading zeros?
+                        
+            
+            int filled = reader.input.fill(reader.limit, maxFill);
 
             //
             reader.totalReader += filled;
@@ -178,21 +200,37 @@ public final class PrimitiveReader {
             return noRoomOnFetch(need, reader);
         }
     }
-
+    
+    /**
+     * Move all the data in the buffer down so we have room for the new data.
+     * This call must be minimized because it can cause a spike it does however allow the normal
+     * case to go faster without having the deal with ring buffer logic.
+     * 
+     * @param need
+     * @param reader
+     * @return
+     */
     private static int noRoomOnFetch(int need, PrimitiveReader reader) {
+        
+        int keep = 0;//10; //TODO: A, set this value based on largest step that may require roll back in the middle, what about text, get value from config?
+        
+        
+        int keepFromPosition = reader.position-keep;
+        
         // not enough room at end of buffer for the need
-        int populated = reader.limit - reader.position;
+        int populated = reader.limit - keepFromPosition;
         int reqiredSize = need + populated;
 
         assert (reader.buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
                 + " bytes";
 
-        System.arraycopy(reader.buffer, reader.position, reader.buffer, 0, populated);
-        // fill and return
 
+        
+        System.arraycopy(reader.buffer, keepFromPosition, reader.buffer, 0, populated);
+        // if possible fill
         int filled = reader.input.fill(populated, reader.buffer.length - populated);
 
-        reader.position = 0;
+        reader.position = keep;
         reader.totalReader += filled;
         reader.limit = populated + filled;
 
@@ -645,6 +683,8 @@ public final class PrimitiveReader {
 
     public static Appendable readTextUTF8(int charCount, Appendable target, PrimitiveReader reader) {
 
+        //TODO: B, need to count the bytes here instead of chars
+
         while (--charCount >= 0) {
             if (reader.position >= reader.limit) {
                 fetch(1, reader); // CAUTION: may change value of position
@@ -658,7 +698,7 @@ public final class PrimitiveReader {
                     throw new FASTException(e);
                 }
             } else {
-                decodeUTF8(target, b, reader);
+                int bytesConsumed = decodeUTF8(target, b, reader);
             }
         }
         return target;
@@ -763,7 +803,8 @@ public final class PrimitiveReader {
     }
 
     // convert single char that is not the simple case
-    private static void decodeUTF8(Appendable target, byte b, PrimitiveReader reader) {
+    private static int decodeUTF8(Appendable target, byte b, PrimitiveReader reader) {
+         
         byte[] source = reader.buffer;
 
         int result;
@@ -778,7 +819,7 @@ public final class PrimitiveReader {
                     fetch(1, reader); // CAUTION: may change value of position
                 }
                 ++reader.position;
-                return;
+                return 1;
             }
             // code point 11
             result = (b & 0x1F);
@@ -799,8 +840,6 @@ public final class PrimitiveReader {
                 if (0 != (b & 0x10)) {
                     // if (((byte)(0xFF&(b<<4)))>=0) {
                     // code point 21
-                    if (true)
-                        throw new UnsupportedOperationException("this is not getting tested!");
                     result = (b & 0x07);
                 } else {
                     if (((byte) (0xFF & (b << 5))) >= 0) {
@@ -824,7 +863,7 @@ public final class PrimitiveReader {
                                 fetch(5, reader);
                             }
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
 
                         if ((source[reader.position] & 0xC0) != 0x80) {
@@ -839,7 +878,7 @@ public final class PrimitiveReader {
                                 fetch(5, reader);
                             }
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
                         if (reader.position >= reader.limit) {
                             fetch(1, reader); // CAUTION: may change value of position
@@ -857,7 +896,7 @@ public final class PrimitiveReader {
                             fetch(4, reader);
                         }
                         reader.position += 4;
-                        return;
+                        return 4;
                     }
                     if (reader.position >= reader.limit) {
                         fetch(1, reader); // CAUTION: may change value of position
@@ -875,7 +914,7 @@ public final class PrimitiveReader {
                         fetch(3, reader);
                     }
                     reader.position += 3;
-                    return;
+                    return 3;
                 }
                 if (reader.position >= reader.limit) {
                     fetch(1, reader); // CAUTION: may change value of position
@@ -892,7 +931,7 @@ public final class PrimitiveReader {
                     fetch(2, reader);
                 }
                 reader.position += 2;
-                return;
+                return 2;
             }
             if (reader.position >= reader.limit) {
                 fetch(1, reader); // CAUTION: may change value of position
@@ -909,7 +948,7 @@ public final class PrimitiveReader {
                 fetch(1, reader); // CAUTION: may change value of position
             }
             reader.position += 1;
-            return;
+            return 1;
         }
         try {
             if (reader.position >= reader.limit) {
@@ -919,10 +958,11 @@ public final class PrimitiveReader {
         } catch (IOException e) {
             throw new FASTException(e);
         }
+        return 5;
     }
 
     // convert single char that is not the simple case
-    private static void decodeUTF8(char[] target, int targetIdx, byte b, PrimitiveReader reader) {
+    private static int decodeUTF8(char[] target, int targetIdx, byte b, PrimitiveReader reader) {
 
         byte[] source = reader.buffer;
 
@@ -934,7 +974,7 @@ public final class PrimitiveReader {
                     fetch(1, reader); // CAUTION: may change value of position
                 }
                 ++reader.position;
-                return;
+                return 1;
             }
             // code point 11
             result = (b & 0x1F);
@@ -963,7 +1003,7 @@ public final class PrimitiveReader {
                                 fetch(5, reader);
                             }
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
 
                         if ((source[reader.position] & 0xC0) != 0x80) {
@@ -973,7 +1013,7 @@ public final class PrimitiveReader {
                                 fetch(5, reader);
                             }
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
                         if (reader.position >= reader.limit) {
                             fetch(1, reader); // CAUTION: may change value of position
@@ -986,7 +1026,7 @@ public final class PrimitiveReader {
                             fetch(4, reader);
                         }
                         reader.position += 4;
-                        return;
+                        return 4;
                     }
                     if (reader.position >= reader.limit) {
                         fetch(1, reader); // CAUTION: may change value of position
@@ -999,7 +1039,7 @@ public final class PrimitiveReader {
                         fetch(3, reader);
                     }
                     reader.position += 3;
-                    return;
+                    return 3;
                 }
                 if (reader.position >= reader.limit) {
                     fetch(1, reader); // CAUTION: may change value of position
@@ -1012,7 +1052,7 @@ public final class PrimitiveReader {
                     fetch(2, reader);
                 }
                 reader.position += 2;
-                return;
+                return 2;
             }
             if (reader.position >= reader.limit) {
                 fetch(1, reader); // CAUTION: may change value of position
@@ -1025,16 +1065,17 @@ public final class PrimitiveReader {
                 fetch(1, reader); // CAUTION: may change value of position
             }
             reader.position += 1;
-            return;
+            return 1;
         }
         if (reader.position >= reader.limit) {
             fetch(1, reader); // CAUTION: may change value of position
         }
         target[targetIdx] = (char) ((result << 6) | (source[reader.position++] & 0x3F));
+        return 5;
     }
 
-    private static void decodeUTF8Fast(char[] target, int targetIdx, byte b, PrimitiveReader reader) {
-
+    private static int decodeUTF8Fast(char[] target, int targetIdx, byte b, PrimitiveReader reader) {
+        
         byte[] source = reader.buffer;
 
         int result;
@@ -1042,7 +1083,7 @@ public final class PrimitiveReader {
             if ((b & 0x40) == 0) {
                 target[targetIdx] = 0xFFFD; // Bad data replacement char
                 ++reader.position;
-                return;
+                return 1;
             }
             // code point 11
             result = (b & 0x1F);
@@ -1068,44 +1109,45 @@ public final class PrimitiveReader {
                             target[targetIdx] = 0xFFFD; // Bad data replacement
                                                         // char
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
 
                         if ((source[reader.position] & 0xC0) != 0x80) {
                             target[targetIdx] = 0xFFFD; // Bad data replacement
                                                         // char
                             reader.position += 5;
-                            return;
+                            return 5;
                         }
                         result = (result << 6) | (source[reader.position++] & 0x3F);
                     }
                     if ((source[reader.position] & 0xC0) != 0x80) {
                         target[targetIdx] = 0xFFFD; // Bad data replacement char
                         reader.position += 4;
-                        return;
+                        return 4;
                     }
                     result = (result << 6) | (source[reader.position++] & 0x3F);
                 }
                 if ((source[reader.position] & 0xC0) != 0x80) {
                     target[targetIdx] = 0xFFFD; // Bad data replacement char
                     reader.position += 3;
-                    return;
+                    return 3;
                 }
                 result = (result << 6) | (source[reader.position++] & 0x3F);
             }
             if ((source[reader.position] & 0xC0) != 0x80) {
                 target[targetIdx] = 0xFFFD; // Bad data replacement char
                 reader.position += 2;
-                return;
+                return 2;
             }
             result = (result << 6) | (source[reader.position++] & 0x3F);
         }
         if ((source[reader.position] & 0xC0) != 0x80) {
             target[targetIdx] = 0xFFFD; // Bad data replacement char
             reader.position += 1;
-            return;
+            return 1;
         }
         target[targetIdx] = (char) ((result << 6) | (source[reader.position++] & 0x3F));
+        return 5;
     }
 
     public static final boolean isEOF(PrimitiveReader reader) {
@@ -1142,5 +1184,6 @@ public final class PrimitiveReader {
                 ((0xFF & reader.buffer[reader.position++]) << 24));
 
     }
+
 
 }

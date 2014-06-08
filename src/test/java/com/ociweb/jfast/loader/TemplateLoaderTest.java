@@ -114,6 +114,7 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
    //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
@@ -139,7 +140,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             frags = 0;
             int flag = 0; // same id needed for writer construction
-            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
+            while (0 != (flag = reactor.select())) {
                 // New flags
                 // 0000 eof
                 // 0001 has sequence group to read (may be combined with end of
@@ -206,7 +207,6 @@ public class TemplateLoaderTest {
             }
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset();
             readerDispatch.reset(catalog.dictionaryFactory());
         }
 
@@ -221,7 +221,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
 
             int flag;
-            while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
+            while (0 != (flag = reactor.select())) {
                 if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
                     result |= FASTRingBufferReader.readInt(queue, 0);
                     // must do some real work or
@@ -260,7 +260,6 @@ public class TemplateLoaderTest {
             // //////
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset();
             readerDispatch.reset(catalog.dictionaryFactory());
 
         }
@@ -366,6 +365,8 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
         byte[] targetBuffer = new byte[(int) (totalTestBytes)];
@@ -409,7 +410,7 @@ public class TemplateLoaderTest {
             msgs = 0;
             grps = 0;
             int flags = 0; // same id needed for writer construction
-            while (0 != (flags = FASTInputReactor.select(readerDispatch, reader, queue))) {
+            while (0 != (flags = reactor.select())) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
@@ -424,7 +425,6 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset();
             readerDispatch.reset(catalog.dictionaryFactory());
 
             PrimitiveWriter.flush(writer);
@@ -446,7 +446,7 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             double start = System.nanoTime();
-            while (0 != FASTInputReactor.select(readerDispatch, reader, queue)) {
+            while (0 != reactor.select()) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
@@ -470,7 +470,6 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset();
             readerDispatch.reset(catalog.dictionaryFactory());
 
             fastOutput.reset();

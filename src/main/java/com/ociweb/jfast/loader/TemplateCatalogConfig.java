@@ -57,6 +57,8 @@ public class TemplateCatalogConfig {
     public static final int END_OF_MESSAGE = 0x02;
 
     private final FASTRingBuffer[] ringBuffers;
+
+    private final FieldReferenceOffsetManager from;
     
     public TemplateCatalogConfig(byte[] catBytes) {
         
@@ -103,7 +105,8 @@ public class TemplateCatalogConfig {
         clientConfig = new ClientConfig(reader);
         
         
-        
+        //must be done after the client config construction
+        from = new FieldReferenceOffsetManager(this);
         
     }
     
@@ -128,6 +131,9 @@ public class TemplateCatalogConfig {
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = new ClientConfig();
         this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
+        
+        //must be done after the client config construction
+        from = new FieldReferenceOffsetManager(this);
     }
     
     
@@ -384,6 +390,10 @@ public class TemplateCatalogConfig {
 
     public int[] getScriptTokens() {
         return scriptTokens;
+    }
+
+    public FieldReferenceOffsetManager getFROM() {
+        return from;
     }
 
 }

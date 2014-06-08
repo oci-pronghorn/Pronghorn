@@ -883,11 +883,11 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
     
     protected void genWriteIntegerSignedDefault(int constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault);
+        writer.writeIntegerSignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault, writer);
     }
 
     protected void genWriteIntegerSignedIncrement(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        writer.writeIntegerSignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerSignedCopy(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
@@ -895,7 +895,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteIntegerSignedDelta(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        writer.writeIntegerSignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerSignedNone(int target, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
@@ -928,7 +928,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
             } else {
-                writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault);
+                writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault, writer);
             }
         }
     }
@@ -940,7 +940,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else { 
                 int last = intValues[source];
-                writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last);  
+                writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last, writer);  
             }
         }
     }
@@ -1053,8 +1053,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (exponentValueOfNull == exponentValue) {
             StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
         } else {
-            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault);
-            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault, writer);
+            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
         }
       }
     }
@@ -1066,8 +1066,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
-                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last); 
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last, writer); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }   
         }
     }
@@ -1079,7 +1079,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else {        
                 writer.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1091,7 +1091,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos));        
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer);        
             }     
         }
     }
@@ -1103,7 +1103,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
                 writer.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1115,7 +1115,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
                 writer.writeIntegerSignedOptional(exponentValue);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1223,7 +1223,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSigned(value - longValues[source]);
+        writer.writeLongSigned(value - longValues[source], writer);
         longValues[target] = value;
     }
 
@@ -1255,7 +1255,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         long delta = value - longValues[source];
-        writer.writeLongSigned(delta>=0 ? 1+delta : delta);
+        writer.writeLongSigned(delta>=0 ? 1+delta : delta, writer);
         longValues[target] = value;
     }
     
@@ -1265,7 +1265,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedIncrement(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSignedIncrement(value,  longValues[source]);
+        writer.writeLongSignedIncrement(value,  longValues[source], writer);
         longValues[target] = value;
     }
 
@@ -1275,12 +1275,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteLongSignedNone(int idx, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongSigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos));
+        writer.writeLongSigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos), writer);
     }
 
     protected void genWriteLongSignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSigned(value - longValues[source]);
+        writer.writeLongSigned(value - longValues[source], writer);
         longValues[target] = value;
     }
     
@@ -1290,7 +1290,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         long delta = value - longValues[source];
-        writer.writeLongSigned(((delta + (delta >>> 63)) + 1));
+        writer.writeLongSigned(((delta + (delta >>> 63)) + 1), writer);
         longValues[target] = value;
     }
 
@@ -1310,7 +1310,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedIncrementOptional(value, longValues[source]);
+        writer.writeLongSignedIncrementOptional(value, longValues[source], writer);
         longValues[target] = value;
     }
 

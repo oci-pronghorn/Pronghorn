@@ -165,7 +165,7 @@ public class DictionaryFactory {
         c = longInitCount;
         while (--c >= 0) {
             writer.writeIntegerUnsigned(longInitIndex[c]);
-            writer.writeLongSigned(longInitValue[c]);
+            writer.writeLongSigned(longInitValue[c], writer);
         }
 
         writer.writeIntegerUnsigned(charInitCount);

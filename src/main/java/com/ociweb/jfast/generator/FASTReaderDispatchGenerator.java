@@ -379,15 +379,17 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                                     .replace("rbMask", "rb.mask");
 
             int token = fullScript[activeScriptCursor];
-            doneCode[j] = "assert (gatherReadData(reader, activeScriptCursor,"+token+"));\n\r"+
-                          FASTRingBuffer.class.getSimpleName()+" rb=ringBuffers["+d+"];\n\r"+
+            doneCode[j] = "assert (gatherReadData(reader, x,"+token+"));\n\r"+
+                          " rb=ringBuffers["+d+"];\n\r"+
                           FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
         builder.append("public final boolean "+ENTRY_METHOD_NAME+"(PrimitiveReader reader) {\n");
         builder.append("    int x = activeScriptCursor;\n");
+        builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
+        builder.append("    FASTRingBuffer.unBlockFragment(rb);\n");
         builder.append("    return sequenceCountStackHead>=0;\n"); 
         builder.append("}\n");
 

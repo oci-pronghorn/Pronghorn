@@ -38,6 +38,7 @@ public class Complex30000Benchmark extends Benchmark {
     FASTInputByteArray fastInput;
     PrimitiveReader reader;
     FASTReaderInterpreterDispatch readerDispatch;
+    FASTInputReactor reactor;
     FASTRingBuffer queue;
     TemplateCatalogConfig catalog;
     byte[] testData;
@@ -60,6 +61,8 @@ public class Complex30000Benchmark extends Benchmark {
             fastInput = new FASTInputByteArray(testData);
             reader = new PrimitiveReader(2048, fastInput, 32);
             readerDispatch = new FASTReaderInterpreterDispatch(catalog);
+            
+            reactor = new FASTInputReactor(readerDispatch,reader);
             queue = readerDispatch.ringBuffer(0);
 
         } catch (FileNotFoundException e) {
@@ -72,7 +75,7 @@ public class Complex30000Benchmark extends Benchmark {
 
     private int fastCore(int result, FASTRingBuffer queue) {
         int flag;
-        while (0 != (flag = FASTInputReactor.select(readerDispatch, reader, queue))) {
+        while (0 != (flag = reactor.select())) {
             if (0 != (flag & 0x02)) {
                 result |= FASTRingBufferReader.readInt(queue, 0);// must do some
                                                                  // real work or
@@ -95,7 +98,7 @@ public class Complex30000Benchmark extends Benchmark {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset();
+            readerDispatch.reset(this.catalog.dictionaryFactory());
 
         }
         return result;

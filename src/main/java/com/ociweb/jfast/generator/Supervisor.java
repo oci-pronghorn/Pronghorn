@@ -14,8 +14,8 @@ public class Supervisor {
         t.printStackTrace();
     }
     
-    public static void log(String message){
-        System.out.println(message);
+    public static void log(String message){//TODO: convert to specific calls
+     //   System.out.println(message);
     }
 
     public static void logCompileError(List<Diagnostic<? extends JavaFileObject>> diagnostics) {

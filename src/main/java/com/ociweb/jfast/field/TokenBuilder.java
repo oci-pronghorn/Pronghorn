@@ -172,4 +172,8 @@ public class TokenBuilder {
         return ((1 | (0l - (b >> 1))) >>> (1 & b));
     }
 
+    public static boolean isText(int token) {
+        return 0x08 == (0x1F & (token >>> SHIFT_TYPE));
+    }
+
 }
