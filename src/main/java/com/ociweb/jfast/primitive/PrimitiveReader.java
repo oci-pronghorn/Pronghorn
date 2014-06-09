@@ -5,6 +5,8 @@ package com.ociweb.jfast.primitive;
 
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.ociweb.jfast.error.FASTError;
 import com.ociweb.jfast.error.FASTException;
@@ -53,8 +55,23 @@ public final class PrimitiveReader {
     // both bytes but class def likes int much better for alignment
     private byte pmapIdx = -1;
     private byte bitBlock = 0;
+    
+    
+    private static InputSupervisor feedSupervisor = new InputSupervisor(){
 
+        @Override
+        public void needBytes(int need, FASTInput input) {
+            try {
+                Thread.sleep(0, 1000); //sleep 1 microsecond
+            } catch (InterruptedException e) {
+            }
+        }};
   
+     //only called when we need more data and the input is not providing any
+     public static void setInputPolicy(InputSupervisor is) {
+       feedSupervisor = is;
+     }
+        
     
     /**
      * 
@@ -124,9 +141,6 @@ public final class PrimitiveReader {
         fetch(0, reader);
     }
     
-    private Object lock = new Object();
-    private byte state = 0;
-    
     // Will not return until the need is met because the parser has
     // determined that we can not continue until this data is provided.
     // this call may however read in more than the need because its ready
@@ -134,45 +148,29 @@ public final class PrimitiveReader {
     private static void fetch(int need, PrimitiveReader reader) {
 
         need = fetchAvail(need, reader);        
-        if (need > 0) {
-            reader.state = -1;        
+        if (need > 0) {       
             while (need > 0) { 
-           //     wait(reader);
+                reader.feedSupervisor.needBytes(need, reader.input);
                 need = fetchAvail(need, reader);
             }
-            reader.state = 0;
         }
     }
     
-    //before calling notify must wait the outer thread!
+    //Loop as fast as possible and move all the data on background thread
+    //if we have no input or output space block waiting for notify to continue.
+    //done via call back, once processed the caller can then call notify to continue processing.
     
-    //do not call from inside sync block, will wake up reading thread to "do the next thing"
-    public static void notify(PrimitiveReader reader) {
-       // System.err.println("notify");
-        synchronized(reader.lock) {
-            //reading thread should "do the next thing"
-            reader.lock.notifyAll();
-            //wait until the reading thread is done.
-            try{
-                reader.lock.wait();
-            } catch (InterruptedException e) {
-                throw new FASTException(e);
-            }              
-        }
-    }
+    //Normal blocking the call can just notify to continue looping.
+    //Async, all the readers run in a thread pool, some stop and call listener
+    
+    
+    
+    //Non blocking read of the ringBuffers is supported! behind that it is a hybred.
+    
+    //caller is able to read current state.
 
-    public static void wait(PrimitiveReader reader) {
-        synchronized(reader.lock) {
-            try {
-                //release outer caller to return
-                reader.lock.notifyAll();
-                //wait until outer caller calls gain.
-                reader.lock.wait();
-            } catch (InterruptedException e) {
-                throw new FASTException(e);
-            }            
-        }        
-    }
+    
+
     
 
     private static int fetchAvail(int need, PrimitiveReader reader) {

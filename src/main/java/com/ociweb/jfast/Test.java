@@ -9,6 +9,10 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -24,6 +28,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
@@ -43,7 +48,8 @@ public class Test {
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
          int count = 1024000;
         
-                
+        
+                  
           byte[] catBytes = buildRawCatalogData(clientConfig, templateSource);
           TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
@@ -57,9 +63,31 @@ public class Test {
           FASTClassLoader.deleteFiles();
           FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
           
+          final AtomicInteger msgs = new AtomicInteger();
+          
+          FASTListener listener = new FASTListener() {
+              
+              FASTRingBuffer queue;
+              @Override
+              public void fragment(int templateId, FASTRingBuffer queue) {
+                  msgs.incrementAndGet();
+                  this.queue=queue;
+              }
+              
+              @Override
+              public void fragment() {
+                  
+                  FASTRingBufferReader.dump(queue);
+                  
+                  
+              }
+              
+          };
 
-          int msgs = 0;
-          int queuedBytes = 0;
+          
+
+          
+          int queuedBytes = 10;
 
           int iter = count;
           while (--iter >= 0) {
@@ -67,12 +95,16 @@ public class Test {
               PrimitiveReader reader = new PrimitiveReader(1024*1024*2,fastInputStream, maxPMapCountInBytes);
               
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
-              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
+                            
+              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader, listener );
               
-              FASTRingBuffer queue = readerDispatch.ringBuffer(0);
+              //TODO: A, Add api to get notification when items are added to these queues? cool for single threaded?
+              //for single thead can just consume queue then
+              //for multi thread can prioritize the queue to be processed  or ignore and round robin?
+              
               System.gc();
               
-              msgs = 0;
+              msgs.set(0);
               
               //TODO: A, API bug, must be able to set the ring buffer size and fragment size check must establish minimum.
                             
@@ -88,62 +120,54 @@ public class Test {
               int preambleOffset = from.preambleOffset; 
               int templateOffset = from.templateOffset;
               
-              
+              ExecutorService service = Executors.newSingleThreadExecutor();
            //   int fragmentSize = from.lookupFragmentSize(fragmentId);
               
               
               double start = System.nanoTime();
-              int templateId = -1;
-              int flag;
-              while (0 != (flag = reactor.select())) {
-                  //In this single threaded example we will consume every fragment as it
-                  //is written to the ring buffer, as a result the ring buffer will always
-                  //return to empty after every cycle and should not block further reads unless
-                  //it has been initialized smaller than one of the fragments.
-                  
-                  if (flag<0) { //May notify internal error log that data could not be moved for this reason
-                      //TODO: API A, select failure reasons, NoIncomingData, NoRoomForOutgoingData, NoError,  -1, 0 , 1
-                      //out of space in ring buffer so we must consume some messages
-                      if (!queue.hasContent()) {
-                          System.err.println("The internal buffer is not large enough to hold the fragment.");
-                          System.exit(-1);
-                      } else {
-                          System.err.println("odd, this should not have happened");
-                          //because every fragment is read as it is is written this is not expected to be called.
-                          FASTRingBuffer.dump(queue);
-                      }                     
-                  } else {
-                      
-                      //we have a new fragment to read
-                      if (templateId<0) { //TODO: A, API perhaps flag should return beginning of template?
-                          templateId = FASTRingBufferReader.readInt(queue, templateOffset);
-                          
-                          int cursor = catalog.getTemplateStartIdx()[templateId];
-                          //this cursor will end with 
-                          //  - fixed stop
-                          //  - dyn jump between 2 locations based on count in stack. (may come from pmap bit if group is optional)
-                          //this cursor has a fixed size with it.
-                          
-                          //TODO: AA, need test for optional groups this is probably broken. 
-                          //we know that each of these templates can only go to a specific fragment next.
-                          //this is determined by the length if there is one or it is fixed.
-                          
-                          
-                      }
-                      
-                      //must read fragment id!
-                      //this is the position in the script
-                      //if select returns the script location we can use that but what about threaded cases?
-                      
-                      //reader can walk a script on client side to know the state of the next fragment without adding it to ring buffer.
-                      
-                      //stack in ring buffer allows reading of fields still in ring
-                      
-                      //need client stack of nestedd seq etc. to know when we switch to the next one.
-                      //at end of fragment length# will tell repeat for next sequence.
-                      
-                      
-                      /*
+              
+              //TODO: We can have one reactor per reader, so reader should be created inside?
+              //TODO: how do we hand off if the dispatch changes.
+              //newReactor = reactor.newDispatch(readerDispatch)
+              
+             // reactor.runnable().run();
+              reactor.start(service);//Need to exit somehow?
+              
+              service.shutdown();
+              try {
+                service.awaitTermination(100,TimeUnit.DAYS);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+              double duration = System.nanoTime() - start;
+              
+              if (shouldPrint(iter)) {
+                  printSummary(msgs.get(), queuedBytes, duration, fastInputStream.totalBytes()); 
+              }
+
+              // //////
+              // reset the dictionary to run the test again.
+              // //////
+              readerDispatch.reset(catalog.dictionaryFactory());
+
+          }
+
+      }
+
+    
+    //must read fragment id!
+    //this is the position in the script
+    //if select returns the script location we can use that but what about threaded cases?
+    
+    //reader can walk a script on client side to know the state of the next fragment without adding it to ring buffer.
+    
+    //stack in ring buffer allows reading of fields still in ring
+    
+    //need client stack of nestedd seq etc. to know when we switch to the next one.
+    //at end of fragment length# will tell repeat for next sequence.
+    /*//TODO: AA, need test for optional groups this is probably broken. 
                       //TODO: API, AA need consistant way to know what kind of frament we have without data from select!!
                       
                       ## if the fragment id is always on the front of the fragment in ring buffer it will 
@@ -161,37 +185,7 @@ public class Test {
                       
                       TODO: AAA, URGENT change, Knowing the end of a template is discovered by having walked an by no other means.
                       
-                      */
-                      
-                      queuedBytes += 1;
-                      FASTRingBufferReader.dump(queue);
-                      //
-                      
-                      
-                      //this fragment marks the end of a message
-                      if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                          msgs++;
-                          templateId = -1;
-                      }
-                      
-                  }
-                  
-              }
-
-              double duration = System.nanoTime() - start;
-              
-              if (shouldPrint(iter)) {
-                  printSummary(msgs, queuedBytes, duration, fastInputStream.totalBytes()); 
-              }
-
-              // //////
-              // reset the dictionary to run the test again.
-              // //////
-              readerDispatch.reset(catalog.dictionaryFactory());
-
-          }
-
-      }
+     */
 
     private boolean shouldPrint(int iter) {
         return (0x7F & iter) == 0;

@@ -15,6 +15,8 @@ import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 
@@ -31,6 +33,7 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -96,7 +99,7 @@ public class TemplateLoaderTest {
       Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
         byte[] catBytes = buildRawCatalogData();
-        TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
+        final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -114,7 +117,9 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
    //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+
+        
+        
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
@@ -124,94 +129,90 @@ public class TemplateLoaderTest {
         int warmup = 64;
         int count = 512;
         int result = 0;
-        int[] fullScript = catalog.getScriptTokens();
+        final int[] fullScript = catalog.getScriptTokens();
         
         
-        byte[] preamble = new byte[catalog.clientConfig.getPreableBytes()];
+        final byte[] preamble = new byte[catalog.clientConfig.getPreableBytes()];
 
-        int msgs = 0;
-        int frags = 0;
+        final AtomicInteger msgs = new AtomicInteger();
+        int frags = 0;      
         
-        long totalBytesOut = 0;
-        long totalRingInts = 0;
+        final AtomicLong totalBytesOut = new AtomicLong();
+        final AtomicLong totalRingInts = new AtomicLong();
+        
+        FASTListener listener = new FASTListener() {
+            
+            @Override
+            public void fragment(int templateId, FASTRingBuffer queue) {
+                msgs.incrementAndGet();
+
+                // this is a template message.
+                int bufferIdx = 0;
+                
+                if (preamble.length > 0) {
+                    int i = 0;
+                    int s = preamble.length;
+                    while (i < s) {
+                        FASTRingBufferReader.readInt(queue, bufferIdx);
+                        i += 4;
+                        bufferIdx++;
+                    }
+                }
+
+                int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
+                bufferIdx += 1;// point to first field
+                assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
+
+                int i = catalog.getTemplateStartIdx()[templateId];
+                int limit = catalog.getTemplateLimitIdx()[templateId];
+                // System.err.println("new templateId "+templateId);
+                while (i < limit) {
+                    int token = fullScript[i++];
+                    // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
+
+                    if (isText(token)) {
+                        totalBytesOut.addAndGet(4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
+                    }
+
+                    // find the next index after this token.
+                    bufferIdx += stepSizeInRingBuffer(token);
+
+                }
+                totalBytesOut.addAndGet(4 * bufferIdx);
+                totalRingInts.addAndGet(bufferIdx);
+
+                // must dump values in buffer or we will hang when reading.
+                // only dump at end of template not end of sequence.
+                // the removePosition must remain at the beginning until
+                // message is complete.
+                FASTRingBuffer.dump(queue);
+            }
+            
+            @Override
+            public void fragment() {
+            }
+            
+        };
+        
+        
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader,listener);
+
         
         int iter = warmup;
         while (--iter >= 0) {
-            msgs = 0;
+            msgs.set(0);
             frags = 0;
             int flag = 0; // same id needed for writer construction
             while (0 != (flag = reactor.select())) {
-                // New flags
-                // 0000 eof
-                // 0001 has sequence group to read (may be combined with end of
-                // message)
-                // 0010 has message to read
-                // neg unable to write to ring buffer
-
-                // consumer code can stop only at end of message if desired or
-                // for
-                // lower latency can stop at the end of every sequence entry.
-                // the call to hasMore is non-blocking with respect to the
-                // consumer and
-                // will return negative value if the ring buffer is full but it
-                // will
-                // spin lock if input stream is not ready.
-                //
-
-                if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                    msgs++;
-
-                    // this is a template message.
-                    int bufferIdx = 0;
-                    
-                    if (preamble.length > 0) {
-                        int i = 0;
-                        int s = preamble.length;
-                        while (i < s) {
-                            FASTRingBufferReader.readInt(queue, bufferIdx);
-                            i += 4;
-                            bufferIdx++;
-                        }
-                    }
-
-                    int templateId = FASTRingBufferReader.readInt(queue, bufferIdx);
-                    bufferIdx += 1;// point to first field
-                    assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
-
-                    int i = catalog.getTemplateStartIdx()[templateId];
-                    int limit = catalog.getTemplateLimitIdx()[templateId];
-                    // System.err.println("new templateId "+templateId);
-                    while (i < limit) {
-                        int token = fullScript[i++];
-                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
-
-                        if (isText(token)) {
-                            totalBytesOut += (4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
-                        }
-
-                        // find the next index after this token.
-                        bufferIdx += stepSizeInRingBuffer(token);
-
-                    }
-                    totalBytesOut += (4 * bufferIdx);
-                    totalRingInts += bufferIdx;
-
-                    // must dump values in buffer or we will hang when reading.
-                    // only dump at end of template not end of sequence.
-                    // the removePosition must remain at the beginning until
-                    // message is complete.
-                    FASTRingBuffer.dump(queue);
-                }
-                frags++;
-
+                              frags++;
             }
             //fastInput.reset();
             PrimitiveReader.reset(reader);
             readerDispatch.reset(catalog.dictionaryFactory());
         }
 
-        totalBytesOut/=warmup;
-        totalRingInts/=warmup;
+        totalBytesOut.set(totalBytesOut.longValue()/warmup);
+        totalRingInts.set(totalRingInts.longValue()/warmup);
         
         iter = count;
         while (--iter >= 0) {
@@ -222,16 +223,7 @@ public class TemplateLoaderTest {
 
             int flag;
             while (0 != (flag = reactor.select())) {
-                if (0 != (flag & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                    result |= FASTRingBufferReader.readInt(queue, 0);
-                    // must do some real work or
-                    // hot-spot may delete this
-                    // loop.
-                                        
-                 //TODO: A, how far to jump forward, can't know until the sequence size logic is resolved.                    
-                 //   queue.removeForward(step);
-
-                } else if (flag < 0) {
+                if (flag < 0) {
                     // negative flag indicates queue is backed up.
                     // must dump values in buffer or we will hang when reading.
                     FASTRingBufferReader.dump(queue);
@@ -241,15 +233,15 @@ public class TemplateLoaderTest {
             double duration = System.nanoTime() - start;
             if ((0x7F & iter) == 0) {
                 int ns = (int) duration;
-                float mmsgPerSec = (msgs * (float) 1000l / ns);
+                float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
                 float nsPerByte = (ns / (float) totalTestBytes);
                 int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
                 
-                float mfieldPerSec = (totalRingInts* (float) 1000l / ns);
+                float mfieldPerSec = (totalRingInts.longValue()* (float) 1000l / ns);
 
                 System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
                         + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + totalBytesOut + " cmpr:"
-                        + (1f-(totalTestBytes / (float) totalBytesOut)) + " Messages:" + msgs + " Frags:" + frags
+                        + (1f-(totalTestBytes / (float) totalBytesOut.longValue())) + " Messages:" + msgs + " Frags:" + frags
                         + " RingInts:"+totalRingInts+ " mfps "+mfieldPerSec 
                         ); // Phrases/Clauses
                 // Helps let us kill off the job.
@@ -263,7 +255,6 @@ public class TemplateLoaderTest {
             readerDispatch.reset(catalog.dictionaryFactory());
 
         }
-        assertTrue(result != 0);
 
     }
 
@@ -365,7 +356,24 @@ public class TemplateLoaderTest {
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        final AtomicInteger msgs = new AtomicInteger();
+        
+        FASTListener listener = new FASTListener() {
+            
+            @Override
+            public void fragment(int templateId, FASTRingBuffer buffer) {
+                msgs.incrementAndGet();
+            }
+            
+            @Override
+            public void fragment() {
+                // TODO Auto-generated method stub
+                
+            }
+            
+        };
+        
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader,listener);
         
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
@@ -398,25 +406,21 @@ public class TemplateLoaderTest {
         });
 
         System.gc();
-
+        
         int warmup = 20;// set much larger for profiler
         int count = 128;
 
         long wroteSize = 0;
-        int msgs = 0;
+        msgs.set(0);
         int grps = 0;
         int iter = warmup;
         while (--iter >= 0) {
-            msgs = 0;
+            msgs.set(0);
             grps = 0;
             int flags = 0; // same id needed for writer construction
             while (0 != (flags = reactor.select())) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
-                }
-
-                if (0 != (flags & TemplateCatalogConfig.END_OF_MESSAGE)) {
-                    msgs++;
                 }
                 grps++;
             }
@@ -455,7 +459,7 @@ public class TemplateLoaderTest {
 
             if ((0x3F & iter) == 0) {
                 int ns = (int) duration;
-                float mmsgPerSec = (msgs * (float) 1000l / ns);
+                float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
                 float nsPerByte = (ns / (float) totalTestBytes);
                 int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
 

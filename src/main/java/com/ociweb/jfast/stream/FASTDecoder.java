@@ -136,23 +136,7 @@ public abstract class FASTDecoder{
     
     public abstract boolean decode(PrimitiveReader reader);
         
-    volatile boolean  temp;
-    
-    public Runnable newRunnable(final PrimitiveReader reader) {
-        return new Runnable() {
 
-            @Override
-            public void run() {
-                while (true) {
-                    PrimitiveReader.wait(reader);
-                    temp = decode(reader);
-                }
-                
-            }
-        
-        };
-    }
-    
     
     
 

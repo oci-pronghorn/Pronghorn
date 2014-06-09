@@ -50,12 +50,6 @@ public class TemplateCatalogConfig {
     
     private final int[][] dictionaryMembers;
 
-    // Runtime specific message prefix, only used for some transmission
-    // technologies
-
-    public static final int END_OF_SEQ_ENTRY = 0x01;
-    public static final int END_OF_MESSAGE = 0x02;
-
     private final FASTRingBuffer[] ringBuffers;
 
     private final FieldReferenceOffsetManager from;

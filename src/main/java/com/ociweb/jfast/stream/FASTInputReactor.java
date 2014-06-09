@@ -48,36 +48,80 @@ public final class FASTInputReactor {
      */
     
     private final FASTDecoder decoder; 
-    private final PrimitiveReader reader;
-  //  private final ExecutorService service;
+    private final PrimitiveReader reader;//the reader is non-blocking but awkward to use directly.
+    private final FASTListener listener;
+    
+    //TODO: single execution service must be used for all and passed in.
+    //TODO: reactor will add its runnable to to the single service and remove upon dispose.
+    //TODO: runnable loops as long as there is data, no data then wait until feed in data.
+    //TODO: if the feed stops in the middle of the data must wait that thread till it gets in.
     
     public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader) {
         this.decoder=decoder;
         this.reader=reader;
-//        System.err.println("new reactor with thread");
-//        //TODO: When creating new reactors how is this old thread disposed of?
-//        service = Executors.newSingleThreadExecutor();
-////        Thread startup = new Thread(new Runnable(){
-////
-////            @Override
-////            public void run() {
-////                PrimtiveReader.// TODO Auto-generated method stub
-////                
-////            }});
-////        startup.start();
-////        
-//        service.execute(decoder.newRunnable(reader));
-//        //TODO: wait until this is started up?
-//        
-//        try {
-//            Thread.sleep(10000);
-//        } catch (InterruptedException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
+        this.listener = new FASTListener(){
+
+            @Override
+            public void fragment(int templateId, FASTRingBuffer buffer) {
+                // TODO Auto-generated method stub
+                
+            }
+
+            @Override
+            public void fragment() {
+                // TODO Auto-generated method stub
+                
+            }};
         
     }
 
+    Runnable run = new Runnable() {
+
+        @Override
+        public void run() {
+            int i = 0;
+            while (pump()) {
+                if (0==(0xFFF&i++)) {
+                    Thread.yield();//Do no yield between every fragment, it slows down way too much. 
+                }
+                
+            }
+            
+    }};
+    
+    public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener) {
+        this.decoder=decoder;
+        this.reader=reader;
+        this.listener = listener;
+    }
+    
+    public void start(ExecutorService executorService) {
+        executorService.execute(run);        
+    }
+    
+    public Runnable runnable() {
+        return run;
+    }
+    
+    public boolean pump() {
+
+        if (decoder.decode(reader)) {     
+            listener.fragment();
+            return true;// has more to read
+        } else {
+            PrimitiveReader.closePMap(reader);            
+            if (PrimitiveReader.isEOF(reader)) { 
+                listener.fragment();
+                //System.err.println(messageCount);
+                return false;
+            }
+            hasMoreNextMessage(decoder, reader, listener);
+            listener.fragment();
+            return true;// finished reading full message
+        }   
+    }
+    
+    
     // TODO: B, Check support for group that may be optional
     
     //TODO: A, All data must be communicated throught the ring buffer to support threading however stream state is returned here.
@@ -85,58 +129,49 @@ public final class FASTInputReactor {
     public int select() {
         // start new script or detect that the end of the data has been reached
         if (decoder.neededSpaceOrTemplate < 0) {
-            return beginNewTemplate(decoder, reader);
+            return beginNewTemplate(decoder, reader, listener);
         }
-        return decode(decoder, reader);
+        return decode(decoder, reader, listener);
     }
 
 
-    private static int beginNewTemplate(FASTDecoder decoder, PrimitiveReader reader) {
+    private static int beginNewTemplate(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener ) {
         // checking EOF first before checking for blocked queue
-        if (PrimitiveReader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
+        if (PrimitiveReader.isEOF(reader)) { //REMOVE
             //System.err.println(messageCount);
             return 0;
         }
-        int err = hasMoreNextMessage(decoder, reader);
+        int err = hasMoreNextMessage(decoder, reader, listener);
         if (err!=0) {
             return err;
         }
-        return decode(decoder, reader);
+        return decode(decoder, reader, listener);
     }
 
-    private static int decode(FASTDecoder decoder, PrimitiveReader reader) {
-        //TODO: MUST run decoder in separate thread.
-        
-        //notify other thread to start
-        //wait
-        
-        //this thread must wait until done
-        
-      //  decoder.newRunnable(reader);
-//System.err.println("decode");
+    private static int decode(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener) {
 
-//        PrimitiveReader.notify(reader); //process is now running.
-//        
-//        if (decoder.temp) {            
-//            return 1;// has more to read
-//        } else {
-//            return finishTemplate(reader, decoder);
-//        }
-//        
-        
-//        
-//        
         // returns true for end of sequence or group
-        if (decoder.decode(reader)) {            
+        if (decoder.decode(reader)) {     
+            listener.fragment();
             return 1;// has more to read
         } else {
-            return finishTemplate(reader, decoder);
-        }
-        
+            listener.fragment();
+            // reached the end of the script so close and prep for the next one
+            decoder.neededSpaceOrTemplate = -1;
+            PrimitiveReader.closePMap(reader);
+            
+//            if (PrimitiveReader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
+//                //System.err.println(messageCount);
+//                return 0;
+//            }
+            
+            
+            return 2;// finished reading full message
+        }   
         
     }
 
-    private static int hasMoreNextMessage(FASTDecoder readerDispatch, PrimitiveReader reader) {
+    private static int hasMoreNextMessage(FASTDecoder readerDispatch, PrimitiveReader reader, FASTListener listener) {
 
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
@@ -170,19 +205,13 @@ public final class FASTInputReactor {
         // open message (special type of group)
         int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
         readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
-       
+        
+        listener.fragment(templateId, readerDispatch.ringBuffer(readerDispatch.activeScriptCursor));
+        
         // write template id at the beginning of this message
         return readerDispatch.requiredBufferSpace(templateId, a, b);
         
 
-    }
-
-    private static final int finishTemplate(PrimitiveReader reader, FASTDecoder decoder) {
-        
-        // reached the end of the script so close and prep for the next one
-        decoder.neededSpaceOrTemplate = -1;
-        PrimitiveReader.closePMap(reader);
-        return 2;// finished reading full message
     }
 
 }
