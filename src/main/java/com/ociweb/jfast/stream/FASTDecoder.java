@@ -142,12 +142,24 @@ public abstract class FASTDecoder{
 
     public int activeScriptLimit; //TODO: A, remvoe this once limit is removed from iterprister after stack is used for exit flag.
     
+    public int requiredBufferSpace2(int templateId, int a, int b) {
+        
+        activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
+        activeScriptLimit = templateLimitIdx[templateId];
+
+        return (activeScriptLimit - activeScriptCursor) << 2;
+        
+        
+    }
+    
         
     public int requiredBufferSpace(int templateId, int a, int b) {
         
         activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
         activeScriptLimit = templateLimitIdx[templateId];
       
+        
+        
         
         //we know the templateId so we now know which ring buffer to use.
         FASTRingBuffer rb = ringBuffers[activeScriptCursor];

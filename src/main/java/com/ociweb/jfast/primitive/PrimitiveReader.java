@@ -57,19 +57,19 @@ public final class PrimitiveReader {
     private byte bitBlock = 0;
     
     
-    private static InputSupervisor feedSupervisor = new InputSupervisor(){
+    private static InputBlockagePolicy blockagePolicy = new InputBlockagePolicy(){ //   blockagePolicy
+        
+        @Override
+        public void detectedInputBlockage(int need, FASTInput input) {
+        }
 
         @Override
-        public void needBytes(int need, FASTInput input) {
-            try {
-                Thread.sleep(0, 1000); //sleep 1 microsecond
-            } catch (InterruptedException e) {
-            }
+        public void resolvedInputBlockage(FASTInput input) {
         }};
   
      //only called when we need more data and the input is not providing any
-     public static void setInputPolicy(InputSupervisor is) {
-       feedSupervisor = is;
+     public static void setInputPolicy(InputBlockagePolicy is) {
+       blockagePolicy = is;
      }
         
     
@@ -148,11 +148,14 @@ public final class PrimitiveReader {
     private static void fetch(int need, PrimitiveReader reader) {
 
         need = fetchAvail(need, reader);        
-        if (need > 0) {       
+        if (need > 0) {     
+            reader.blockagePolicy.detectedInputBlockage(need, reader.input);
+            //TODO: A, change to blocking read here instead of spinning.
             while (need > 0) { 
-                reader.feedSupervisor.needBytes(need, reader.input);
+                Thread.yield();
                 need = fetchAvail(need, reader);
             }
+            reader.blockagePolicy.resolvedInputBlockage(reader.input);
         }
     }
     

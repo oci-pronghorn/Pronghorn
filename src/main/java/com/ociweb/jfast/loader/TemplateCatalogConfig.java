@@ -135,7 +135,7 @@ public class TemplateCatalogConfig {
         FASTRingBuffer[] buffers = new FASTRingBuffer[length];
         //TODO: simple imlementation needs adavanced controls.
         //TODO: A, must compute max frag depth in template parser.    
-        FASTRingBuffer rb = new FASTRingBuffer((byte)8,(byte)7,dFactory, 10); 
+        FASTRingBuffer rb = new FASTRingBuffer((byte)13,(byte)7,dFactory, 10); 
         int i = length;
         while (--i>=0) {
             buffers[i]=rb;            

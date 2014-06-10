@@ -53,7 +53,7 @@ public final class FASTRingBuffer {
 
 
     final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
-    private final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
+    public final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
 
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
@@ -210,8 +210,8 @@ public final class FASTRingBuffer {
                        
         // move the removePosition up to the addPosition
         // System.err.println("resetup to "+addPos);
-        rb.remPos.value = rb.addPos.value;
-        rb.removeCount.lazySet(rb.addPos.value);
+        ;
+        rb.removeCount.lazySet(rb.remPos.value = rb.addPos.value);
     }
 
     // this is for fast direct WRITE TO target

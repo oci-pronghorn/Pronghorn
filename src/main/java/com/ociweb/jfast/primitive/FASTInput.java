@@ -10,4 +10,7 @@ public interface FASTInput {
 	void init(byte[] targetBuffer);
 	
 	boolean isEOF();
+
+    void block();
+    
 }

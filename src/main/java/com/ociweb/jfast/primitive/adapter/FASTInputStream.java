@@ -59,5 +59,12 @@ public class FASTInputStream implements FASTInput {
 	public long totalBytes() {
 	    return total;
 	}
+
+    @Override
+    public void block() {
+        
+        // TODO Auto-generated method stub
+        
+    }
 	
 }

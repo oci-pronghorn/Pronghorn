@@ -49,4 +49,10 @@ public class FASTInputByteBuffer implements FASTInput {
 	public boolean isEOF() {
 		return byteBuffer.remaining()==0;
 	}
+
+    @Override
+    public void block() {
+        // TODO Auto-generated method stub
+        
+    }
 }

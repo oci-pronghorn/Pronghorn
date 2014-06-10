@@ -54,4 +54,10 @@ public class FASTInputSocketChannel implements FASTInput {
 		return !socketChannel.isConnected();
 	}
 
+    @Override
+    public void block() {
+        // TODO Auto-generated method stub
+        
+    }
+
 }

@@ -59,4 +59,10 @@ public class FASTInputByteArray implements FASTInput {
 	public byte[] getSource() {
 		return buffer;
 	}
+
+    @Override
+    public void block() {
+        // TODO Auto-generated method stub
+        
+    }
 }

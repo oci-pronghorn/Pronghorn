@@ -5,7 +5,10 @@ package com.ociweb.jfast.stream;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
+import com.ociweb.jfast.primitive.FASTInput;
+import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /*
@@ -75,19 +78,6 @@ public final class FASTInputReactor {
         
     }
 
-    Runnable run = new Runnable() {
-
-        @Override
-        public void run() {
-            int i = 0;
-            while (pump()) {
-                if (0==(0xFFF&i++)) {
-                    Thread.yield();//Do no yield between every fragment, it slows down way too much. 
-                }
-                
-            }
-            
-    }};
     
     public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener) {
         this.decoder=decoder;
@@ -95,31 +85,148 @@ public final class FASTInputReactor {
         this.listener = listener;
     }
     
-    public void start(ExecutorService executorService) {
-        executorService.execute(run);        
-    }
-    
-    public Runnable runnable() {
-        return run;
-    }
-    
-    public boolean pump() {
+    public void start(final ThreadPoolExecutor executorService, PrimitiveReader reader) {
+        
+        PrimitiveReader.setInputPolicy(new InputBlockagePolicy() {
+            Object lock = new Object();
 
-        if (decoder.decode(reader)) {     
-            listener.fragment();
-            return true;// has more to read
-        } else {
-            PrimitiveReader.closePMap(reader);            
-            if (PrimitiveReader.isEOF(reader)) { 
-                listener.fragment();
-                //System.err.println(messageCount);
-                return false;
+            @Override
+            public void detectedInputBlockage(int need, FASTInput input) {
+                synchronized(lock) {
+                    executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
+                }                
             }
-            hasMoreNextMessage(decoder, reader, listener);
-            listener.fragment();
-            return true;// finished reading full message
-        }   
+             
+            @Override
+            public void resolvedInputBlockage(FASTInput input) {
+                synchronized(lock) {
+                    executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()-1);
+                }
+            }
+            
+        });
+        
+        final Runnable run = new Runnable() {
+
+            @Override
+            public void run() {
+                int f;
+                int c = 0xFFFF;
+                while ((f=pump2())>=0 && --c>=0) {
+                    
+                }
+                
+                if (f>=0) {
+                  //  System.err.println("pump");
+                    executorService.execute(this);
+                } else {
+                    executorService.shutdown();
+                }
+            }
+            
+        };        
+        executorService.execute(run);        
+        
     }
+
+    
+    int targetRingBufferId = -1;
+    
+    public int pump2() {
+        // start new script or detect that the end of the data has been reached
+        if (targetRingBufferId < 0) {
+            // checking EOF first before checking for blocked queue
+            if (PrimitiveReader.isEOF(reader)) { 
+                return -1;
+            }
+            pump2startTemplate();
+        }        
+        return pump2decode();
+    }
+
+    private int pump2decode() {
+        int result = targetRingBufferId;
+        // returns true for end of sequence or group
+        if (!decoder.decode(reader)) {  
+            // reached the end of the script so close and prep for the next one
+            targetRingBufferId = -1;
+            PrimitiveReader.closePMap(reader);            
+        }
+        return result;
+    }
+
+    private void pump2startTemplate() {
+        // get next token id then immediately start processing the script
+        // /read prefix bytes if any (only used by some implementations)
+        assert (decoder.preambleDataLength != 0 && decoder.gatherReadData(reader, "Preamble", 0));
+        //ring buffer is build on int32s so the implementation limits preamble to units of 4
+        assert ((decoder.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
+        assert (decoder.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
+        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
+        int p = decoder.preambleDataLength;
+        int a=0, b=0;
+        if (p>0) {
+            a = PrimitiveReader.readRawInt(reader);
+             if (p>4) {
+                b = PrimitiveReader.readRawInt(reader);
+                assert(p==8) : "Unsupported large preamble";
+            }
+        }
+        
+        // /////////////////
+        // open message (special type of group)
+        int templateId = PrimitiveReader.openMessage(decoder.maxTemplatePMapSize, reader);
+        targetRingBufferId = decoder.activeScriptCursor;
+                    
+        // write template id at the beginning of this message
+        int neededSpace = 1 + decoder.preambleDataLength + decoder.requiredBufferSpace2(templateId, a, b);
+        //we know the templateId so we now know which ring buffer to use.
+        FASTRingBuffer rb = decoder.ringBuffers[decoder.activeScriptCursor];
+        
+        if (neededSpace > 0) {
+            int size = rb.maxSize;
+            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                    //TODO: must call blocking policy on this, already committed to read.
+                  //  System.err.println("no room in ring buffer");
+                   Thread.yield();// rb.dump(rb);
+                }
+                
+            }
+        }                   
+        
+        p = decoder.preambleDataLength;
+        if (p>0) {
+            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
+            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
+            if (p>4) {
+                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
+            }
+        }
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+    }
+    
+    
+//    
+//    //return ringbuffer id or -1 
+//    public boolean pump() {
+//
+//        if (decoder.decode(reader)) {     
+//            listener.fragment();
+//            return true;// has more to read
+//        } else {
+//            PrimitiveReader.closePMap(reader);            
+//            if (PrimitiveReader.isEOF(reader)) { 
+//                listener.fragment();
+//                return false;
+//            }
+//            //TODO: if there is no more data to pull, 
+//            
+//            hasMoreNextMessage(decoder, reader, listener);
+//            listener.fragment();
+//            return true;// finished reading full message
+//        }   
+//    }
     
     
     // TODO: B, Check support for group that may be optional
@@ -180,37 +287,38 @@ public final class FASTInputReactor {
         assert ((readerDispatch.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
         assert (readerDispatch.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
                         
-        
+        int result;
         // must have room to store the new template
         //TODO: AA, Must add PEEK method to PrimtiveReader to see what the template is and know which ringBuffer to theck!!
         FASTRingBuffer rb = readerDispatch.ringBuffer(0);//BIG HACK;
         int req = readerDispatch.preambleDataLength + 1;
         if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {
-            return 0x80000000;
-        }
+            result = 0x80000000;
+        } else {
         
-        
-        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
-        int p = readerDispatch.preambleDataLength;
-        int a=0, b=0;
-        if (p>0) {
-            a = PrimitiveReader.readRawInt(reader);
-             if (p>4) {
-                b = PrimitiveReader.readRawInt(reader);
-                assert(p==8) : "Unsupported large preamble";
+            
+            //Hold the preamble value here until we know the template and therefore the needed ring buffer.
+            int p = readerDispatch.preambleDataLength;
+            int a=0, b=0;
+            if (p>0) {
+                a = PrimitiveReader.readRawInt(reader);
+                 if (p>4) {
+                    b = PrimitiveReader.readRawInt(reader);
+                    assert(p==8) : "Unsupported large preamble";
+                }
             }
+    
+            // /////////////////
+            // open message (special type of group)
+            int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
+            readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
+            
+            listener.fragment(templateId, readerDispatch.ringBuffer(readerDispatch.activeScriptCursor));
+            
+            // write template id at the beginning of this message
+            result =  readerDispatch.requiredBufferSpace(templateId, a, b);
         }
-
-        // /////////////////
-        // open message (special type of group)
-        int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
-        readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
-        
-        listener.fragment(templateId, readerDispatch.ringBuffer(readerDispatch.activeScriptCursor));
-        
-        // write template id at the beginning of this message
-        return readerDispatch.requiredBufferSpace(templateId, a, b);
-        
+        return result;
 
     }
 

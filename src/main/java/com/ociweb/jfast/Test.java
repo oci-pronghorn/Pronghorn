@@ -11,6 +11,7 @@ import java.net.URL;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -47,8 +48,7 @@ public class Test {
     
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
          int count = 1024000;
-        
-        
+                
                   
           byte[] catBytes = buildRawCatalogData(clientConfig, templateSource);
           TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
@@ -65,26 +65,7 @@ public class Test {
           
           final AtomicInteger msgs = new AtomicInteger();
           
-          FASTListener listener = new FASTListener() {
-              
-              FASTRingBuffer queue;
-              @Override
-              public void fragment(int templateId, FASTRingBuffer queue) {
-                  msgs.incrementAndGet();
-                  this.queue=queue;
-              }
-              
-              @Override
-              public void fragment() {
-                  
-                  FASTRingBufferReader.dump(queue);
-                  
-                  
-              }
-              
-          };
-
-          
+        
 
           
           int queuedBytes = 10;
@@ -96,7 +77,7 @@ public class Test {
               
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
                             
-              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader, listener );
+              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
               
               //TODO: A, Add api to get notification when items are added to these queues? cool for single threaded?
               //for single thead can just consume queue then
@@ -120,28 +101,11 @@ public class Test {
               int preambleOffset = from.preambleOffset; 
               int templateOffset = from.templateOffset;
               
-              ExecutorService service = Executors.newSingleThreadExecutor();
-           //   int fragmentSize = from.lookupFragmentSize(fragmentId);
+              
+              //double duration = singleThreadedExample(readerDispatch, msgs, reactor);
+              double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
               
-              double start = System.nanoTime();
-              
-              //TODO: We can have one reactor per reader, so reader should be created inside?
-              //TODO: how do we hand off if the dispatch changes.
-              //newReactor = reactor.newDispatch(readerDispatch)
-              
-             // reactor.runnable().run();
-              reactor.start(service);//Need to exit somehow?
-              
-              service.shutdown();
-              try {
-                service.awaitTermination(100,TimeUnit.DAYS);
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-
-              double duration = System.nanoTime() - start;
               
               if (shouldPrint(iter)) {
                   printSummary(msgs.get(), queuedBytes, duration, fastInputStream.totalBytes()); 
@@ -155,6 +119,81 @@ public class Test {
           }
 
       }
+
+    private double singleThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor) {
+        double start = System.nanoTime();
+          
+          /////////////////////////////////////
+          //Example of single threaded usage
+          /////////////////////////////////////
+          boolean ok = true;
+          while (ok) {
+              switch (reactor.pump2()) {
+                  case -1:
+                      ok = false;
+                      break;
+                  default:
+                      FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+                      
+                      //TODO: only if this is the beginning or end of a template!!
+                      msgs.incrementAndGet();
+                      
+                      FASTRingBuffer.dump(rb);
+                      break;
+              }
+              
+          }
+          //////////////////////////////////
+          //End of single threaded example
+          //////////////////////////////////
+          
+          double duration = System.nanoTime() - start;
+        return duration;
+    }
+    
+    private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor, PrimitiveReader reader) {
+        
+        ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1);//number of reactors to support 
+        
+        int a =0;
+        
+        double start = System.nanoTime();
+          
+            reactor.start(executor, reader);
+            
+            FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+            int j = 0;
+            long rp = rb.remPos.value;
+            do {
+                ///TODO: we are checking on zero change way too often!!
+                //need to be notified of add count change? eg lock.
+                int limit = (int)(rb.addCount.intValue()-(rp+j));
+                if (limit>0) {
+                    while (--limit>=0 ) {
+                           int x = FASTRingBufferReader.readInt(rb, j++);
+                       //    rb.removeForward(1);
+                         //   rb.dump(rb);
+//                           int k = 1000;
+//                           while (--k>=0) {
+//                          int z = x*7/3;
+//                          a+=z;
+//                           }
+    
+                    }
+                    if (j>4000) {
+                        rb.removeForward(j);
+                        rp = rb.remPos.value;
+                        j=0;
+                    }
+                } 
+                Thread.yield();
+                //These two threads must take turns.
+            }while (!executor.isShutdown());
+    
+          
+          double duration = System.nanoTime() - start;
+        return duration;
+    }
 
     
     //must read fragment id!
