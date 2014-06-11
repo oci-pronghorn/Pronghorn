@@ -93,10 +93,10 @@ public class StreamingBytesTest extends BaseStreamingTest {
         writeBytesDelta(writer, dictionaryWriter, instanceMask, token, value, offset, length);
         writeBytesConstant();
 
-        writer.openPMap(1);
+        writer.openPMap(1, writer);
         writeBytesCopy(writer, dictionaryWriter, instanceMask, token, value, offset, length);
         writeBytesDefault(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        writer.closePMap();
+        writer.closePMap(writer);
         writer.flush(writer);
 
         FASTInput input = new FASTInputByteArray(buffer);
@@ -187,8 +187,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
         	writer.writePMapBit((byte)0, writer);
         } else {
         	writer.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length);
-        	writer.writeByteArrayData(value,offset,length);
+        	writer.writeIntegerUnsigned(length, writer);
+        	writer.writeByteArrayData(value,offset,length, writer);
         }
     }
 
@@ -200,8 +200,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
         }
         else {
         	writer.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length);
-        	writer.writeByteArrayData(value,offset,length);
+        	writer.writeIntegerUnsigned(length, writer);
+        	writer.writeByteArrayData(value,offset,length, writer);
         	byteHeap.set(idx, value, offset, length);
         }
     }
@@ -217,13 +217,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
         if (headCount>tailCount) {
         	int trimTail = byteHeap.length(idx)-headCount;
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
+            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
             
             int valueSend = length-headCount;
             int startAfter = offset+headCount+headCount;
             
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeByteArrayData(value, startAfter, valueSend);
+            writer.writeIntegerUnsigned(valueSend, writer);
+            writer.writeByteArrayData(value, startAfter, valueSend, writer);
             byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         } else {
         	//replace head, tail matches to tailCount
@@ -231,8 +231,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
             writer.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
             
             int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeByteArrayData(value, offset, len);
+            writer.writeIntegerUnsigned(len, writer);
+            writer.writeByteArrayData(value, offset, len, writer);
             
             byteHeap.appendHead(idx, trimHead, value, offset, len);
         }
@@ -243,13 +243,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
         
         int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
+        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
         
         int valueSend = length-headCount;
         int startAfter = offset+headCount;
         
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        writer.writeIntegerUnsigned(valueSend, writer);
+        writer.writeByteArrayData(value, startAfter, valueSend, writer);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
 

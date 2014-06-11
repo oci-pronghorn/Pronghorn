@@ -111,7 +111,7 @@ public final class FASTInputReactor {
             @Override
             public void run() {
                 int f;
-                int c = 0xFFFF;
+                int c = 0xFFF;
                 while ((f=pump2())>=0 && --c>=0) {
                     
                 }

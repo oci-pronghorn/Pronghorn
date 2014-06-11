@@ -180,12 +180,12 @@ public class Test {
 //                           }
     
                     }
-                    if (j>4000) {
-                        rb.removeForward(j);
-                        rp = rb.remPos.value;
+                    if (j>1024) {
+                        rp+=j;
+                        rb.removeForward2(rp);
                         j=0;
                     }
-                } 
+                }
                 Thread.yield();
                 //These two threads must take turns.
             }while (!executor.isShutdown());

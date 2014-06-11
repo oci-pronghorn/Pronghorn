@@ -36,7 +36,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
-		writer.writeTextUTF(unicodeTestString);
+		writer.writeTextUTF(unicodeTestString, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -49,7 +49,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
-		writer.writeTextUTF(unicodeTestString);
+		writer.writeTextUTF(unicodeTestString, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -63,7 +63,7 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length);
+		writer.writeTextUTF(temp,0,temp.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -77,7 +77,7 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length);
+		writer.writeTextUTF(temp,0,temp.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));

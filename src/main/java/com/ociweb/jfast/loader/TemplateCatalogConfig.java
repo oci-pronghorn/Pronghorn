@@ -204,11 +204,11 @@ public class TemplateCatalogConfig {
 
         saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
 
-        writer.writeIntegerUnsigned(biggestId);
+        writer.writeIntegerUnsigned(biggestId, writer);
         // System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
-        writer.writeIntegerUnsigned(maxTemplatePMap);
-        writer.writeIntegerUnsigned(maxNonTemplatePMap);
-        writer.writeIntegerUnsigned(maxPMapDepth);
+        writer.writeIntegerUnsigned(maxTemplatePMap, writer);
+        writer.writeIntegerUnsigned(maxNonTemplatePMap, writer);
+        writer.writeIntegerUnsigned(maxPMapDepth, writer);
 
         df.save(writer);        
         clientConfig.save(writer);
@@ -218,14 +218,14 @@ public class TemplateCatalogConfig {
     private static void saveProperties(PrimitiveWriter writer, Properties properties) {
                 
         Set<String> keys = properties.stringPropertyNames();
-        writer.writeIntegerUnsigned(keys.size());
+        writer.writeIntegerUnsigned(keys.size(), writer);
         for(String key: keys) {
-            writer.writeIntegerUnsigned(key.length());
-            writer.writeTextUTF(key);
+            writer.writeIntegerUnsigned(key.length(), writer);
+            writer.writeTextUTF(key, writer);
             
             String prop = properties.getProperty(key);
-            writer.writeIntegerUnsigned(prop.length());
-            writer.writeTextUTF(prop);
+            writer.writeIntegerUnsigned(prop.length(), writer);
+            writer.writeTextUTF(prop, writer);
         }
         
     }
@@ -233,13 +233,13 @@ public class TemplateCatalogConfig {
     private static void saveDictionaryMembers(PrimitiveWriter writer, int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
         // save count of dictionaries
         int dictionaryCount = tokenIdxMembers.length;
-        writer.writeIntegerUnsigned(dictionaryCount);
+        writer.writeIntegerUnsigned(dictionaryCount, writer);
         //
         int d = dictionaryCount;
         while (--d >= 0) {
             int[] members = tokenIdxMembers[d];
             int h = tokenIdxMemberHeads[d];
-            writer.writeIntegerUnsigned(h);// length of reset script (eg member
+            writer.writeIntegerUnsigned(h, writer);// length of reset script (eg member
                                            // list)
             while (--h >= 0) {
                 writer.writeIntegerSigned(members[h], writer);
@@ -295,24 +295,24 @@ public class TemplateCatalogConfig {
             tmp = tmp >> 1;
         }
         assert (pow < 32);
-        writer.writeIntegerUnsigned(pow);// will be < 32
-        writer.writeIntegerUnsigned(scriptLength);
+        writer.writeIntegerUnsigned(pow, writer);// will be < 32
+        writer.writeIntegerUnsigned(scriptLength, writer);
 
         // total number of templates are are defining here in the catalog
-        writer.writeIntegerUnsigned(uniqueTemplateIds);
+        writer.writeIntegerUnsigned(uniqueTemplateIds, writer);
         // write each template index
         int i = templateStartIdx.length;
         while (--i >= 0) {
             if (0 != templateStartIdx[i]) {
-                writer.writeIntegerUnsigned(i);
-                writer.writeIntegerUnsigned(templateStartIdx[i] - 1); // return
+                writer.writeIntegerUnsigned(i, writer);
+                writer.writeIntegerUnsigned(templateStartIdx[i] - 1, writer); // return
                                                                       // the
                                                                       // index
                                                                       // to its
                                                                       // original
                                                                       // value
                                                                       // (-1)
-                writer.writeIntegerUnsigned(templateLimitIdx[i]);
+                writer.writeIntegerUnsigned(templateLimitIdx[i], writer);
             }
         }
 
@@ -320,12 +320,12 @@ public class TemplateCatalogConfig {
         i = scriptLength;
         while (--i >= 0) {
             writer.writeIntegerSigned(catalogScriptTokens[i], writer);
-            writer.writeIntegerUnsigned(catalogScriptFieldIds[i]); 
+            writer.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
             String name = catalogScriptFieldNames[i];
             int len = null==name?0:name.length();
-            writer.writeIntegerUnsigned(len);
+            writer.writeIntegerUnsigned(len, writer);
             if (len>0) {
-                writer.writeTextUTF(name);
+                writer.writeTextUTF(name, writer);
             }
         }
 

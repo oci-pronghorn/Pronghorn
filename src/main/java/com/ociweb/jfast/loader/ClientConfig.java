@@ -72,13 +72,13 @@ public class ClientConfig {
 
     public void save(PrimitiveWriter writer) {
         
-        writer.writeIntegerUnsigned(preableBytes);
+        writer.writeIntegerUnsigned(preableBytes, writer);
 
-        writer.writeIntegerUnsigned(textLengthMax);
-        writer.writeIntegerUnsigned(textGap);
+        writer.writeIntegerUnsigned(textLengthMax, writer);
+        writer.writeIntegerUnsigned(textGap, writer);
 
-        writer.writeIntegerUnsigned(bytesLengthMax);
-        writer.writeIntegerUnsigned(bytesGap);
+        writer.writeIntegerUnsigned(bytesLengthMax, writer);
+        writer.writeIntegerUnsigned(bytesGap, writer);
         
 //        //write filter fields list
 //        writer.writeIntegerUnsigned(ignoreFieldIds.length);

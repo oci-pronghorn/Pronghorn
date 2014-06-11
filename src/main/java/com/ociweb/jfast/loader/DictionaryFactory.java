@@ -149,44 +149,44 @@ public class DictionaryFactory {
 
     public void save(PrimitiveWriter writer) {
 
-        writer.writeIntegerUnsigned(integerCount);
-        writer.writeIntegerUnsigned(longCount);
-        writer.writeIntegerUnsigned(charCount);
-        writer.writeIntegerUnsigned(bytesCount);
+        writer.writeIntegerUnsigned(integerCount, writer);
+        writer.writeIntegerUnsigned(longCount, writer);
+        writer.writeIntegerUnsigned(charCount, writer);
+        writer.writeIntegerUnsigned(bytesCount, writer);
 
-        writer.writeIntegerUnsigned(integerInitCount);
+        writer.writeIntegerUnsigned(integerInitCount, writer);
         int c = integerInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(integerInitIndex[c]);
+            writer.writeIntegerUnsigned(integerInitIndex[c], writer);
             writer.writeIntegerSigned(integerInitValue[c], writer);
         }
 
-        writer.writeIntegerUnsigned(longInitCount);
+        writer.writeIntegerUnsigned(longInitCount, writer);
         c = longInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(longInitIndex[c]);
+            writer.writeIntegerUnsigned(longInitIndex[c], writer);
             writer.writeLongSigned(longInitValue[c], writer);
         }
 
-        writer.writeIntegerUnsigned(charInitCount);
+        writer.writeIntegerUnsigned(charInitCount, writer);
         c = charInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(charInitIndex[c]);
+            writer.writeIntegerUnsigned(charInitIndex[c], writer);
             char[] value = charInitValue[c];
-            writer.writeIntegerUnsigned(value.length);
-            writer.writeTextUTF(value, 0, value.length);
+            writer.writeIntegerUnsigned(value.length, writer);
+            writer.writeTextUTF(value, 0, value.length, writer);
         }
-        writer.writeIntegerUnsigned(charInitTotalLength);
+        writer.writeIntegerUnsigned(charInitTotalLength, writer);
 
-        writer.writeIntegerUnsigned(byteInitCount);
+        writer.writeIntegerUnsigned(byteInitCount, writer);
         c = byteInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(byteInitIndex[c]);
+            writer.writeIntegerUnsigned(byteInitIndex[c], writer);
             byte[] value = byteInitValue[c];
-            writer.writeIntegerUnsigned(value.length);
-            writer.writeByteArrayData(value, 0, value.length);
+            writer.writeIntegerUnsigned(value.length, writer);
+            writer.writeByteArrayData(value, 0, value.length, writer);
         }
-        writer.writeIntegerUnsigned(byteInitTotalLength);
+        writer.writeIntegerUnsigned(byteInitTotalLength, writer);
 
         /*
          * Fastest searialize deserialize however its more verbose and there is

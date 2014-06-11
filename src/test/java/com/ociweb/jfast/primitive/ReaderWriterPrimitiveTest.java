@@ -370,10 +370,10 @@ public class ReaderWriterPrimitiveTest {
 
 
 	private final void speedWriteTest(int i) {
-		writer.openPMap(10);
-		writer.writeLongUnsigned(unsignedLongData[i]);
+		writer.openPMap(10, writer);
+		writer.writeLongUnsigned(unsignedLongData[i], writer);
 		writer.writeLongSigned(-unsignedLongData[i], writer);		
-		writer.closePMap();
+		writer.closePMap(writer);
 	}
 	
 	
@@ -467,13 +467,13 @@ public class ReaderWriterPrimitiveTest {
 		
 		int i = 0;
 		while (i<unsignedLongData.length) {
-			writer.writeLongUnsigned(unsignedLongData[i]);
+			writer.writeLongUnsigned(unsignedLongData[i], writer);
 			writer.writeLongSigned(unsignedLongData[i], writer);
 			writer.writeLongSigned(-unsignedLongData[i], writer);
 			
-			writer.writeLongSignedOptional(unsignedLongData[i]);
+			writer.writeLongSignedOptional(unsignedLongData[i], writer);
 			if (0!=unsignedLongData[i]) {
-				writer.writeLongSignedOptional(-unsignedLongData[i]);
+				writer.writeLongSignedOptional(-unsignedLongData[i], writer);
 			}
 			i++;
 		}
@@ -481,11 +481,11 @@ public class ReaderWriterPrimitiveTest {
 		while (i<unsignedIntData.length) {	
 			writer.writeIntegerSigned(unsignedIntData[i], writer);
 			writer.writeIntegerSigned(-unsignedIntData[i], writer);			
-			writer.writeIntegerUnsigned(unsignedIntData[i]);
+			writer.writeIntegerUnsigned(unsignedIntData[i], writer);
 			
-			writer.writeIntegerSignedOptional(unsignedIntData[i]);
+			writer.writeIntegerSignedOptional(unsignedIntData[i], writer);
 			if (0!=unsignedIntData[i]) {
-				writer.writeIntegerSignedOptional(-unsignedIntData[i]);
+				writer.writeIntegerSignedOptional(-unsignedIntData[i], writer);
 			}
 			i++;
 		}
@@ -537,7 +537,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongUnsigned(unsignedLongData[i++]);
+					writer.writeLongUnsigned(unsignedLongData[i++], writer);
 				}
 			}
 			writer.flush(writer);
@@ -637,7 +637,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerUnsigned(unsignedIntData[j++]);
+					writer.writeIntegerUnsigned(unsignedIntData[j++], writer);
 				}
 			}
 			writer.flush(writer);
@@ -781,7 +781,7 @@ public class ReaderWriterPrimitiveTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			writer.writeTextASCII(stringData[i++]);
+			writer.writeTextASCII(stringData[i++], writer);
 		}
 		
 		writer.flush(writer);
@@ -825,7 +825,7 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeTextASCII(stringData[i]);
+					writer.writeTextASCII(stringData[i], writer);
 				}
 			}
 			writer.flush(writer);
@@ -859,8 +859,8 @@ public class ReaderWriterPrimitiveTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			writer.writeIntegerUnsigned(stringData[i].length());
-			writer.writeTextUTF(stringData[i++]);
+			writer.writeIntegerUnsigned(stringData[i].length(), writer);
+			writer.writeTextUTF(stringData[i++], writer);
 		}
 		
 		writer.flush(writer);
@@ -905,8 +905,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeIntegerUnsigned(stringData[i].length());
-					writer.writeTextUTF(stringData[i]);
+					writer.writeIntegerUnsigned(stringData[i].length(), writer);
+					writer.writeTextUTF(stringData[i], writer);
 				}
 			}
 			writer.flush(writer);
@@ -952,8 +952,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeIntegerUnsigned(stringData[i].length());
-					writer.writeTextUTF(stringData[i]);
+					writer.writeIntegerUnsigned(stringData[i].length(), writer);
+					writer.writeTextUTF(stringData[i], writer);
 				}
 			}
 			writer.flush(writer);
@@ -989,7 +989,7 @@ public class ReaderWriterPrimitiveTest {
 		int i = 0;
 		while (i<byteData.length) {
 			byte[] data = byteData[i++];
-			writer.writeByteArrayData(data, 0, data.length);
+			writer.writeByteArrayData(data, 0, data.length, writer);
 		}
 		
 		writer.flush(writer);
@@ -1028,7 +1028,7 @@ public class ReaderWriterPrimitiveTest {
 				i = 0;
 				while (i<byteData.length) {
 					byte[] data = byteData[i++];
-					writer.writeByteArrayData(data,0,data.length);
+					writer.writeByteArrayData(data,0,data.length, writer);
 				}
 			}
 			writer.flush(writer);
@@ -1064,7 +1064,7 @@ public class ReaderWriterPrimitiveTest {
 				i = 0;
 				while (i < byteData.length) {
 					byte[] data = byteData[i++];
-					writer.writeByteArrayData(data, 0, data.length);
+					writer.writeByteArrayData(data, 0, data.length, writer);
 				}
 			}
 			writer.flush(writer);

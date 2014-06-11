@@ -187,7 +187,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				writer.openPMap(pmapSize);
+				writer.openPMap(pmapSize, writer);
 			}
 			
 			int j = intTestData.length;
@@ -199,11 +199,11 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
                     value++;
                 }
                 
-                writer.writeIntegerSignedCopyOptional(value, idx, idx, wIntDictionary);
+                writer.writeIntegerSignedCopyOptional(value, idx, idx, wIntDictionary, writer);
 			}
 			
 			if (pmapSize>0) {
-				writer.closePMap();
+				writer.closePMap(writer);
 			}
 			
 			writer.flush(writer);
@@ -253,7 +253,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				writer.openPMap(pmapSize);
+				writer.openPMap(pmapSize, writer);
 			}
 			
 			int j = intTestData.length;
@@ -264,7 +264,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			}
 			
 			if (pmapSize>0) {
-				writer.closePMap();
+				writer.closePMap(writer);
 			}
 			
 			writer.flush(writer);
@@ -307,18 +307,18 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			//////////////////////////////////////////////////////////////////
 			
 			if (pmapSize>0) {
-				writer.openPMap(pmapSize);
+				writer.openPMap(pmapSize, writer);
 			}
 			
 			int j = intTestData.length;
 			while (--j>=0) {						
 				int idx = token & wIntInstanceMask;
 				
-				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx, idx, wIntDictionary);
+				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx, idx, wIntDictionary, writer);
 			}
 			
 			if (pmapSize>0) {
-				writer.closePMap();
+				writer.closePMap(writer);
 			}
 			
 			writer.flush(writer);

@@ -197,6 +197,11 @@ public final class FASTRingBuffer {
         assert (remPos.value <= addPos.value);
         removeCount.lazySet(remPos.value);
     }
+    
+    public void removeForward2(long pos) {
+        remPos.value = pos;
+        removeCount.lazySet(pos);
+    }
 
     //TODO: A: finish the field lookup so the constants need not be written to the loop! 
     //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value

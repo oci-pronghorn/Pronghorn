@@ -30,14 +30,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     
     
     protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
-        writer.openPMap(pmapMaxSize);
+        PrimitiveWriter.openPMap(pmapMaxSize, writer);
         PrimitiveWriter.writePMapBit((byte) 1, writer);
-        writer.closePMap();                                // TODO: A, this needs to be close but not sure this is the right location.
-        writer.writeIntegerUnsigned(templateId);
+        PrimitiveWriter.closePMap(writer);                                // TODO: A, this needs to be close but not sure this is the right location.
+        PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
     }
 
     protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer) {
-        writer.writeByteArrayData(preambleData, 0, preambleData.length);
+        PrimitiveWriter.writeByteArrayData(preambleData, 0, preambleData.length, writer);
     }
     
     protected void genWriteUTFTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -46,15 +46,15 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull(writer);
+                PrimitiveWriter.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeIntegerUnsigned(value.length() + 1);
-                writer.writeTextUTF(value);
+                PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
+                PrimitiveWriter.writeTextUTF(value, writer);
             }
         }
     }
@@ -64,8 +64,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length() + 1);
-            writer.writeTextUTF(value);
+            PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
+            PrimitiveWriter.writeTextUTF(value, writer);
             textHeap.set(idx, value, 0, value.length());
         }
     }
@@ -76,18 +76,18 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int tailCount = textHeap.countTailMatch(idx, value);
         if (headCount > tailCount) {
             int trimTail = textHeap.length(idx) - headCount; //+1 for optional
-            writer.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail, writer);
+            PrimitiveWriter.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail, writer);
             int length = (value.length() - headCount);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTFAfter(headCount, value);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
             textHeap.appendTail(idx, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTFBefore(value, valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeTextUTFBefore(value, valueSend, writer);
             textHeap.appendHead(idx, trimHead, value, valueSend);
         }
     }
@@ -99,16 +99,16 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteUTFTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value);
         int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail + 1);// plus 1 for optional
+        PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);// plus 1 for optional
         int length = (value.length() - headCount);
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTFAfter(headCount, value);
+        PrimitiveWriter.writeIntegerUnsigned(length, writer);
+        PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
         textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.length() + 1);
-        writer.writeTextUTF(value);
+        PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
+        PrimitiveWriter.writeTextUTF(value, writer);
     }
     
     protected void genWriteUTFTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -116,8 +116,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length());
-            writer.writeTextUTF(value);
+            PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
+            PrimitiveWriter.writeTextUTF(value, writer);
         }
     }
 
@@ -126,8 +126,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(value.length());
-            writer.writeTextUTF(value);
+            PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
+            PrimitiveWriter.writeTextUTF(value, writer);
             textHeap.set(idx, value, 0, value.length());
         }
     }
@@ -138,17 +138,17 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int tailCount = textHeap.countTailMatch(idx, value);
         if (headCount > tailCount) {
             int trimTail = textHeap.length(idx) - headCount;
-            writer.writeIntegerSigned(trimTail, writer);
-            writer.writeIntegerUnsigned(value.length() - headCount);
-            writer.writeTextUTFAfter(headCount, value);
+            PrimitiveWriter.writeIntegerSigned(trimTail, writer);
+            PrimitiveWriter.writeIntegerUnsigned(value.length() - headCount, writer);
+            PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
             textHeap.appendTail(idx, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTFBefore(value, valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeTextUTFBefore(value, valueSend, writer);
             textHeap.appendHead(idx, trimHead, value, valueSend);
         }
     }
@@ -156,16 +156,16 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteUTFTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value);
         int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail, writer);
         int length = (value.length() - headCount);
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTFAfter(headCount, value);
+        PrimitiveWriter.writeIntegerUnsigned(length, writer);
+        PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
         textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.length());
-        writer.writeTextUTF(value);
+        PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
+        PrimitiveWriter.writeTextUTF(value, writer);
     }
 
     protected void genWriteTextDefaultOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -174,14 +174,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull(writer);
+                PrimitiveWriter.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeTextASCII(value);
+                PrimitiveWriter.writeTextASCII(value, writer);
             }
         }
     }
@@ -192,14 +192,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeNull(writer);
+                PrimitiveWriter.writeNull(writer);
             }
         } else {
             if (textHeap.equals(idx, value)) {
                 PrimitiveWriter.writePMapBit((byte) 0, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
-                writer.writeTextASCII(value);
+                PrimitiveWriter.writeTextASCII(value, writer);
                 textHeap.set(idx, value, 0, value.length());
             }
         }
@@ -207,7 +207,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextDeltaOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
-            writer.writeIntegerSigned(0, writer);
+            PrimitiveWriter.writeIntegerSigned(0, writer);
         } else {
             // count matching front or back chars
             int headCount = textHeap.countHeadMatch(idx, value);
@@ -215,16 +215,16 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (headCount > tailCount) {
                 int trimTail = textHeap.length(idx) - headCount;
                 assert (trimTail >= 0);
-                writer.writeIntegerSigned(trimTail + 1, writer);// must add one because this
+                PrimitiveWriter.writeIntegerSigned(trimTail + 1, writer);// must add one because this
                                                         // is optional
-                writer.writeTextASCIIAfter(headCount, value);
+                PrimitiveWriter.writeTextASCIIAfter(headCount, value, writer);
                 textHeap.appendTail(idx, trimTail, headCount, value);
             } else {
                 int trimHead = textHeap.length(idx) - tailCount;
-                writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
+                PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
                 
                 int sentLen = value.length() - tailCount;
-                writer.writeTextASCIIBefore(value, sentLen);
+                PrimitiveWriter.writeTextASCIIBefore(value, sentLen, writer);
                 textHeap.appendHead(idx, trimHead, value, sentLen);
             }
         }
@@ -233,13 +233,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteTextTailOptional(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value);
         int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail + 1);
-        writer.writeTextASCIIAfter(headCount, value);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
+        PrimitiveWriter.writeTextASCIIAfter(headCount, value, writer);
         textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
     protected void genWriteNull(PrimitiveWriter writer) {
-        writer.writeNull(writer);
+        PrimitiveWriter.writeNull(writer);
     }
     
     protected void genWriteTextDefault(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -247,7 +247,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value);
+            PrimitiveWriter.writeTextASCII(value, writer);
         }
     }
 
@@ -257,7 +257,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             // System.err.println("char seq length:"+value.length());
-            writer.writeTextASCII(value);
+            PrimitiveWriter.writeTextASCII(value, writer);
             textHeap.set(idx, value, 0, value.length());
         }
     }
@@ -271,15 +271,15 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (trimTail < 0) {
                 throw new UnsupportedOperationException(trimTail + "");
             }
-            writer.writeIntegerSigned(trimTail, writer);
-            writer.writeTextASCIIAfter(headCount, value);
+            PrimitiveWriter.writeIntegerSigned(trimTail, writer);
+            PrimitiveWriter.writeTextASCIIAfter(headCount, value, writer);
             textHeap.appendTail(idx, trimTail, headCount, value);
         } else {
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             
             int sentLen = value.length() - tailCount;
-            writer.writeTextASCIIBefore(value, sentLen);
+            PrimitiveWriter.writeTextASCIIBefore(value, sentLen, writer);
             textHeap.appendHead(idx, trimHead, value, sentLen);
         }
     }
@@ -287,13 +287,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteTextTail(CharSequence value, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(idx, value);
         int trimTail = textHeap.length(idx) - headCount;
-        writer.writeIntegerUnsigned(trimTail);
-        writer.writeTextASCIIAfter(headCount, value);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail, writer);
+        PrimitiveWriter.writeTextASCIIAfter(headCount, value, writer);
         textHeap.appendTail(idx, trimTail, headCount, value);
     }
 
     protected void genWriteTextNone(CharSequence value, PrimitiveWriter writer) {
-        writer.writeTextASCII(value);
+        PrimitiveWriter.writeTextASCII(value, writer);
     }
     
     protected void genWriteTextUTFDefaultOptional(char[] value, int offset, int length, int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -301,8 +301,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length + 1);
-            writer.writeTextUTF(value, offset, length);
+            PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
         }
     }
 
@@ -311,8 +311,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length + 1);
-            writer.writeTextUTF(value, offset, length);
+            PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
             textHeap.set(idx, value, offset, length);
         }
     }
@@ -326,16 +326,16 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int valueSend = length - headCount;
             int startAfter = offset + headCount;
             textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-            writer.writeIntegerUnsigned(trimTail + 1);
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTF(value, startAfter, valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead, writer);
             int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeTextUTF(value, offset, len);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, len, writer);
             textHeap.appendHead(idx, trimHead, value, offset, len);
         }
     }
@@ -351,14 +351,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int startAfter = offset + headCount;
         textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         
-        writer.writeIntegerUnsigned(trimTail + 1);
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeTextUTF(value, startAfter, valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
     }
 
     protected void genWriteTextUTFNoneOptional(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length + 1);
-        writer.writeTextUTF(value, offset, length);
+        PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
+        PrimitiveWriter.writeTextUTF(value, offset, length, writer);
     }
 
     protected void genWriteTextUTFDefault(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
@@ -366,8 +366,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTF(value, offset, length);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
         }
     }
 
@@ -376,8 +376,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeTextUTF(value, offset, length);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
             textHeap.set(idx, value, offset, length);
         }
     }
@@ -392,17 +392,17 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int startAfter = offset + headCount + headCount;
             textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
             
-            writer.writeIntegerUnsigned(trimTail + 0);
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeTextUTF(value, startAfter, valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(trimHead == 0 ? 0 : -trimHead, writer);
             
             int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeTextUTF(value, offset, len);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, len, writer);
             
             textHeap.appendHead(idx, trimHead, value, offset, len);
         }
@@ -415,15 +415,15 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int startAfter = offset + headCount;
         textHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         
-        writer.writeIntegerUnsigned(trimTail + 0);
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeTextUTF(value, startAfter, valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
     }
 
     
     protected void genWriteTextUTFNone(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length);
-        writer.writeTextUTF(value, offset, length);
+        PrimitiveWriter.writeIntegerUnsigned(length, writer);
+        PrimitiveWriter.writeTextUTF(value, offset, length, writer);
     }
     
     protected void genWriteTextDefaultOptional(char[] value, int offset, int length, int constId, PrimitiveWriter writer, TextHeap textHeap) {
@@ -431,7 +431,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
+            PrimitiveWriter.writeTextASCII(value, offset, length, writer);
         }
     }
 
@@ -440,7 +440,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
+            PrimitiveWriter.writeTextASCII(value, offset, length, writer);
             textHeap.set(idx, value, offset, length);
         }
     }
@@ -455,23 +455,23 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
-            writer.writeIntegerSigned(trimTail + 1, writer); // cut off these from tail,
+            PrimitiveWriter.writeIntegerSigned(trimTail + 1, writer); // cut off these from tail,
                                                      // also add 1 because this
                                                      // is optional
    
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
         
-            writer.writeTextASCII(value, valueStart, valueSend);
+            PrimitiveWriter.writeTextASCII(value, valueStart, valueSend, writer);
             textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
         
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
+            PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
         
             int len = length - tailCount;
-            writer.writeTextASCII(value, offset, len);
+            PrimitiveWriter.writeTextASCII(value, offset, len, writer);
             textHeap.appendHead(idx, trimHead, value, offset, len);
         
         }
@@ -489,17 +489,17 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
                                                      // match from head.
         
-        writer.writeIntegerUnsigned(trimTail + 1); // cut off these from tail
+        PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer); // cut off these from tail
         
         int valueSend = length - headCount;
         int valueStart = offset + headCount;
         
-        writer.writeTextASCII(value, valueStart, valueSend);
+        PrimitiveWriter.writeTextASCII(value, valueStart, valueSend, writer);
         textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
     protected void genWriteTextNoneOptional(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeTextASCII(value, offset, length);
+        PrimitiveWriter.writeTextASCII(value, offset, length, writer);
     }
     
     protected void genWriteTextDefault2(int token, char[] value, int offset, int length, TextHeap textHeap, PrimitiveWriter writer) {
@@ -509,7 +509,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
+            PrimitiveWriter.writeTextASCII(value, offset, length, writer);
         }
     }
 
@@ -520,7 +520,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeTextASCII(value, offset, length);
+            PrimitiveWriter.writeTextASCII(value, offset, length, writer);
             textHeap.set(idx, value, offset, length);
         }
     }
@@ -535,21 +535,21 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(idx) - headCount; // head count is total
                                                          // that match from
                                                          // head.
-            writer.writeIntegerSigned(trimTail, writer); // cut off these from tail
+            PrimitiveWriter.writeIntegerSigned(trimTail, writer); // cut off these from tail
         
             int valueSend = length - headCount;
             int valueStart = offset + headCount;
         
-            writer.writeTextASCII(value, valueStart, valueSend);
+            PrimitiveWriter.writeTextASCII(value, valueStart, valueSend, writer);
             textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
         
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(idx) - tailCount;
-            writer.writeIntegerUnsigned(-trimHead);
+            PrimitiveWriter.writeIntegerUnsigned(-trimHead, writer);
         
             int len = length - tailCount;
-            writer.writeTextASCII(value, offset, len);
+            PrimitiveWriter.writeTextASCII(value, offset, len, writer);
         
             textHeap.appendHead(idx, trimHead, value, offset, len);
         }
@@ -560,17 +560,17 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int headCount = textHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = textHeap.length(idx) - headCount; // head count is total that
                                                      // match from head.
-        writer.writeIntegerUnsigned(trimTail); // cut off these from tail
+        PrimitiveWriter.writeIntegerUnsigned(trimTail, writer); // cut off these from tail
         
         int valueSend = length - headCount;
         int valueStart = offset + headCount;
         
-        writer.writeTextASCII(value, valueStart, valueSend);
+        PrimitiveWriter.writeTextASCII(value, valueStart, valueSend, writer);
         textHeap.appendTail(idx, trimTail, value, valueStart, valueSend);
     }
 
     protected void genWriteTextNone(char[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeTextASCII(value, offset, length);
+        PrimitiveWriter.writeTextASCII(value, offset, length, writer);
     }
     
     protected void genWriterBytesDefaultOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
@@ -585,8 +585,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (len<0) {
                 len = 0;
             }
-            writer.writeIntegerUnsigned(len+1);
-            writer.writeByteArrayData(value);
+            PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
+            PrimitiveWriter.writeByteArrayData(value, writer);
         }
     }
 
@@ -599,9 +599,9 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } 
         else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(value.remaining()+1);
+            PrimitiveWriter.writeIntegerUnsigned(value.remaining()+1, writer);
             byteHeap.set(idx, value);//position is NOT modified
-            writer.writeByteArrayData(value); //this moves the position in value
+            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
         }
     }
 
@@ -626,21 +626,21 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (trimTail<0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+1 : trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1 : trimTail, writer);
         
         int valueSend = value.remaining()-headCount;
         int startAfter = value.position()+headCount;
                 
-        writer.writeIntegerUnsigned(valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
         //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
     protected void genWriterBytesNoneOptional(ByteBuffer value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.remaining()+1);
-        writer.writeByteArrayData(value); //this moves the position in value
+        PrimitiveWriter.writeIntegerUnsigned(value.remaining()+1, writer);
+        PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
     }
 
     protected void genWriteBytesDefault(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
@@ -651,8 +651,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             value.position(value.limit());//skip over the data just like we wrote it.
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(value.remaining());
-            writer.writeByteArrayData(value); //this moves the position in value
+            PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
+            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
         }
     }
 
@@ -664,9 +664,9 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             value.position(value.limit());//skip over the data just like we wrote it.
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(value.remaining());
+            PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
             byteHeap.set(idx, value);//position is NOT modified
-            writer.writeByteArrayData(value); //this moves the position in value
+            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
         }
     }
 
@@ -681,24 +681,24 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (trimTail<0) {
                 throw new ArrayIndexOutOfBoundsException();
             }
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail);
+            PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail, writer);
             
             int valueSend = value.remaining()-headCount;
             int startAfter = value.position()+headCount;
                     
-            writer.writeIntegerUnsigned(valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
             //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
             byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-            writer.writeByteArrayData(value, startAfter, valueSend); //does not modify position
+            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer); //does not modify position
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
+            PrimitiveWriter.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
             
             int len = value.remaining() - tailCount;
             int offset = value.position();
-            writer.writeIntegerUnsigned(len);
-            writer.writeByteArrayData(value, offset, len);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
             byteHeap.appendHead(idx, trimHead, value, offset, len); //does not modify position
         }
         value.position(value.limit());//skip over the data just like we wrote it.
@@ -712,21 +712,21 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (trimTail<0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail, writer);
         
         int valueSend = value.remaining()-headCount;
         int startAfter = value.position()+headCount;
                 
-        writer.writeIntegerUnsigned(valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
         //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
     protected void genWriteBytesNone(ByteBuffer value, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(value.remaining());
-        writer.writeByteArrayData(value); //this moves the position in value
+        PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
+        PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
     }
     
     protected void genWriteBytesDefault(int token, byte[] value, int offset, int length, ByteHeap byteHeap, PrimitiveWriter writer) {
@@ -736,8 +736,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeByteArrayData(value,offset,length);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
         }
     }
 
@@ -749,8 +749,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         }
         else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(length);
-            writer.writeByteArrayData(value,offset,length);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
             byteHeap.set(idx, value, offset, length);
         }
     }
@@ -771,43 +771,43 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
         
         int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
         
         int valueSend = length-headCount;
         int startAfter = offset+headCount;
         
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
 
     protected void genWriteBytesNone(byte[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length);
-        writer.writeByteArrayData(value,offset,length);
+        PrimitiveWriter.writeIntegerUnsigned(length, writer);
+        PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
     }
     
     private void writeBytesHead(int idx, int tailCount, byte[] value, int offset, int length, int opt, PrimitiveWriter writer, ByteHeap byteHeap) {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
+        PrimitiveWriter.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
         
         int len = length - tailCount;
-        writer.writeIntegerUnsigned(len);
-        writer.writeByteArrayData(value, offset, len);
+        PrimitiveWriter.writeIntegerUnsigned(len, writer);
+        PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
         
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
     
    private void writeBytesTail(int idx, int headCount, byte[] value, int offset, int length, final int optional, PrimitiveWriter writer, ByteHeap byteHeap) {
         int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail, writer);
         
         int valueSend = length-headCount;
         int startAfter = offset+headCount;
         
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
     
@@ -816,8 +816,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(length+1);
-            writer.writeByteArrayData(value,offset,length);
+            PrimitiveWriter.writeIntegerUnsigned(length+1, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
         }
     }
 
@@ -826,8 +826,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeIntegerUnsigned(length+1);
-            writer.writeByteArrayData(value,offset,length);
+            PrimitiveWriter.writeIntegerUnsigned(length+1, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
             byteHeap.set(idx, value, offset, length);
         }
     }
@@ -838,22 +838,22 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
         if (headCount>tailCount) {
             int trimTail = byteHeap.length(idx)-headCount;
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail);
+            PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);
             
             int valueSend = length-headCount;
             int startAfter = offset+headCount;
             
-            writer.writeIntegerUnsigned(valueSend);
-            writer.writeByteArrayData(value, startAfter, valueSend);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
             byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 1: -trimHead, writer); 
+            PrimitiveWriter.writeIntegerSigned(trimHead==0? 1: -trimHead, writer); 
             
             int len = length - tailCount;
-            writer.writeIntegerUnsigned(len);
-            writer.writeByteArrayData(value, offset, len);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
             
             byteHeap.appendHead(idx, trimHead, value, offset, len);
         }
@@ -867,59 +867,59 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     public void genWriteBytesTailOptional(byte[] value, int offset, int length, int idx, PrimitiveWriter writer, ByteHeap byteHeap) {
         int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
         int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);
         
         int valueSend = length-headCount;
         int startAfter = offset+headCount;
         
-        writer.writeIntegerUnsigned(valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
 
     protected void genWriteBytesNoneOptional(byte[] value, int offset, int length, PrimitiveWriter writer) {
-        writer.writeIntegerUnsigned(length+1);
-        writer.writeByteArrayData(value,offset,length);
+        PrimitiveWriter.writeIntegerUnsigned(length+1, writer);
+        PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
     }
     
     protected void genWriteIntegerSignedDefault(int constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault, writer);
+        PrimitiveWriter.writeIntegerSignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault, writer);
     }
 
     protected void genWriteIntegerSignedIncrement(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
+        PrimitiveWriter.writeIntegerSignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerSignedCopy(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        PrimitiveWriter.writeIntegerSignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerSignedDelta(int target, int source, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
+        PrimitiveWriter.writeIntegerSignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerSignedNone(int target, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerSigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos), writer);
+        PrimitiveWriter.writeIntegerSigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos), writer);
     }
     
     protected void genWriteIntegerUnsignedDefault(int constDefault, int rbPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerUnsignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault);
+        PrimitiveWriter.writeIntegerUnsignedDefault(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), constDefault, writer);
     }
 
     protected void genWriteIntegerUnsignedIncrement( int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerUnsignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        PrimitiveWriter.writeIntegerUnsignedIncrement(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerUnsignedCopy(int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerUnsignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        PrimitiveWriter.writeIntegerUnsignedCopy(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerUnsignedDelta(int target, int source, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerUnsignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues);
+        PrimitiveWriter.writeIntegerUnsignedDelta(FASTRingBufferReader.readInt(rbRingBuffer, rbPos), target, source, intValues, writer);
     }
 
     protected void genWriteIntegerUnsignedNone(int target, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
-        writer.writeIntegerUnsigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos));
+        PrimitiveWriter.writeIntegerUnsigned(intValues[target] = FASTRingBufferReader.readInt(rbRingBuffer, rbPos), writer);
     }
 
     protected void genWriteIntegerSignedDefaultOptional(int source, int constDefault, int valueOfNull, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
@@ -928,7 +928,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
             } else {
-                writer.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault, writer);
+                PrimitiveWriter.writeIntegerSignedDefaultOptional(value>=0?value+1:value, constDefault, writer);
             }
         }
     }
@@ -940,7 +940,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else { 
                 int last = intValues[source];
-                writer.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last, writer);  
+                PrimitiveWriter.writeIntegerSignedIncrementOptional(intValues[target] = (value>=0?value+1:value), last, writer);  
             }
         }
     }
@@ -952,7 +952,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else {        
-                writer.writeIntegerSignedCopyOptional(value>=0?value+1:value, target, source, intValues);
+                PrimitiveWriter.writeIntegerSignedCopyOptional(value>=0?value+1:value, target, source, intValues, writer);
             }
         }   
     }
@@ -968,7 +968,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedDeltaOptional(value, target, source, intValues);
+                PrimitiveWriter.writeIntegerSignedDeltaOptional(value, target, source, intValues, writer);
             }
         }
     }
@@ -979,7 +979,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedOptional(value);
+                PrimitiveWriter.writeIntegerSignedOptional(value, writer);
             }
         }
     }
@@ -990,7 +990,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else { 
-                writer.writeIntegerUnsignedCopyOptional(value, target, source, intValues);
+                PrimitiveWriter.writeIntegerUnsignedCopyOptional(value, target, source, intValues, writer);
             }
         }
     }
@@ -1001,7 +1001,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
             } else {
-                writer.writeIntegerUnsignedDefaultOptional(value, constDefault);
+                PrimitiveWriter.writeIntegerUnsignedDefaultOptional(value, constDefault, writer);
             }
         }
     }
@@ -1012,7 +1012,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else { 
-                writer.writeIntegerUnsignedIncrementOptional(value, target, source, intValues);
+                PrimitiveWriter.writeIntegerUnsignedIncrementOptional(value, target, source, intValues, writer);
             }
         }
     }
@@ -1027,7 +1027,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
             StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerUnsignedDeltaOptional(value, target, source, intValues);
+                PrimitiveWriter.writeIntegerUnsignedDeltaOptional(value, target, source, intValues, writer);
             }
         }
     }
@@ -1038,7 +1038,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (valueOfNull == value) {
                 StaticGlue.nullNoPMapInt(writer, intValues, target);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerUnsigned(value + 1);
+                PrimitiveWriter.writeIntegerUnsigned(value + 1, writer);
             }
         }
     }
@@ -1053,8 +1053,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (exponentValueOfNull == exponentValue) {
             StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
         } else {
-            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault, writer);
-            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
+            PrimitiveWriter.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault, writer);
+            PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
         }
       }
     }
@@ -1066,8 +1066,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
-                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last, writer); 
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
+                PrimitiveWriter.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last, writer); 
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }   
         }
     }
@@ -1078,8 +1078,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else {        
-                writer.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
+                PrimitiveWriter.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues, writer);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1091,7 +1091,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer);        
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer);        
             }     
         }
     }
@@ -1102,8 +1102,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
+                PrimitiveWriter.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues, writer);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1114,8 +1114,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedOptional(exponentValue);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
+                PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos), writer); 
             }
         }
     }
@@ -1128,11 +1128,11 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (exponentValueOfNull == exponentValue) {
             StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
         } else {
-            writer.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault);
+            PrimitiveWriter.writeIntegerSignedDefaultOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentConstDefault);
             
-            //writer.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
+            //PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
             
-            writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+            PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
         }
       }
     }
@@ -1144,8 +1144,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
-                writer.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last); 
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                PrimitiveWriter.writeIntegerSignedIncrementOptional(intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue), last); 
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
             }   
         }
     }
@@ -1156,8 +1156,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else {        
-                writer.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                PrimitiveWriter.writeIntegerSignedCopyOptional(exponentValue>=0?exponentValue+1:exponentValue, exponentTarget, exponentSource, intValues);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
             }
         }
     }
@@ -1169,7 +1169,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos));        
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos));        
             }     
         }
     }
@@ -1180,8 +1180,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                PrimitiveWriter.writeIntegerSignedDeltaOptional(exponentValue, exponentTarget, exponentSource, intValues);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
             }
         }
     }
@@ -1192,8 +1192,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullNoPMapInt(writer, intValues, exponentTarget);// null for None and Delta (both do not use pmap)
             } else {
-                writer.writeIntegerSignedOptional(exponentValue);
-                writer.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
+                PrimitiveWriter.writeIntegerSignedOptional(exponentValue);
+                PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, rbPos)); 
             }
         }
     }
@@ -1210,39 +1210,39 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     ///////////////
     
     protected void genWriteLongUnsignedDefault(long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {        
-        writer.writeLongUnsignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
+        PrimitiveWriter.writeLongUnsignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault, writer);
     }
 
     protected void genWriteLongUnsignedIncrement(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongUnsignedIncrement(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues);
+        PrimitiveWriter.writeLongUnsignedIncrement(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues, writer);
     }
 
     protected void genWriteLongUnsignedCopy(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongUnsignedCopy(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues);
+        PrimitiveWriter.writeLongUnsignedCopy(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), target, source, longValues, writer);
     }
 
     protected void genWriteLongUnsignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSigned(value - longValues[source], writer);
+        PrimitiveWriter.writeLongSigned(value - longValues[source], writer);
         longValues[target] = value;
     }
 
     protected void genWriteLongUnsignedNone(int idx, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongUnsigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos));
+        PrimitiveWriter.writeLongUnsigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos), writer);
     }
     
     protected void genWriteLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        writer.writneLongUnsignedDefaultOptional(value, constDefault);
+        PrimitiveWriter.writneLongUnsignedDefaultOptional(value, constDefault, writer);
     }
 
     protected void genWriteLongUnsignedIncrementOptional(long value, int idx, int source, PrimitiveWriter writer, long[] longValues) {
-        writer.writeLongUnsignedIncrementOptional(value, idx, source, longValues);
+        PrimitiveWriter.writeLongUnsignedIncrementOptional(value, idx, source, longValues, writer);
     }
 
     protected void genWriteLongUnsignedCopyOptional(long value, int idx, int source, PrimitiveWriter writer, long[] longValues) {
         value++;// zero is held for null
         
-        writer.writeLongUnsignedCopyOptional(value, idx, source, longValues);
+        PrimitiveWriter.writeLongUnsignedCopyOptional(value, idx, source, longValues, writer);
     }
 
     protected void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
@@ -1250,47 +1250,47 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
-        writer.writeLongUnsigned(value + 1);
+        PrimitiveWriter.writeLongUnsigned(value + 1, writer);
     }
 
     protected void genWriteLongUnsignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         long delta = value - longValues[source];
-        writer.writeLongSigned(delta>=0 ? 1+delta : delta, writer);
+        PrimitiveWriter.writeLongSigned(delta>=0 ? 1+delta : delta, writer);
         longValues[target] = value;
     }
     
     protected void genWriteLongSignedDefault(long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault);
+        PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readLong(rbRingBuffer, rbPos), constDefault, writer);
     }
 
     protected void genWriteLongSignedIncrement(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSignedIncrement(value,  longValues[source], writer);
+        PrimitiveWriter.writeLongSignedIncrement(value,  longValues[source], writer);
         longValues[target] = value;
     }
 
     protected void genWriteLongSignedCopy(int idx, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSignedCopy(value, idx, source, longValues);
+        PrimitiveWriter.writeLongSignedCopy(value, idx, source, longValues, writer);
     }
 
     protected void genWriteLongSignedNone(int idx, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
-        writer.writeLongSigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos), writer);
+        PrimitiveWriter.writeLongSigned(longValues[idx] = FASTRingBufferReader.readLong(rbRingBuffer, rbPos), writer);
     }
 
     protected void genWriteLongSignedDelta(int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
-        writer.writeLongSigned(value - longValues[source], writer);
+        PrimitiveWriter.writeLongSigned(value - longValues[source], writer);
         longValues[target] = value;
     }
     
     protected void genWriteLongSignedOptional(long value, PrimitiveWriter writer) {
-        writer.writeLongSignedOptional(value);
+        PrimitiveWriter.writeLongSignedOptional(value, writer);
     }
 
     protected void genWriteLongSignedDeltaOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         long delta = value - longValues[source];
-        writer.writeLongSigned(((delta + (delta >>> 63)) + 1), writer);
+        PrimitiveWriter.writeLongSigned(((delta + (delta >>> 63)) + 1), writer);
         longValues[target] = value;
     }
 
@@ -1303,22 +1303,30 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedCopy(value, target, source, longValues);
+        PrimitiveWriter.writeLongSignedCopy(value, target, source, longValues, writer);
     }
 
     protected void genWriteLongSignedIncrementOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
         if (value >= 0) {
             value++;
         }
-        writer.writeLongSignedIncrementOptional(value, longValues[source], writer);
+        PrimitiveWriter.writeLongSignedIncrementOptional(value, longValues[source], writer);
         longValues[target] = value;
     }
 
     protected void genWriteLongSignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
+        
+       // long v =  (value>>63)-1;
+        
+        
         if (value >= 0) {
             value++;// room for null
         }
-        writer.writeLongSignedDefault(value, constDefault);
+        
+               
+        
+        
+        PrimitiveWriter.writeLongSignedDefault(value, constDefault, writer);
     }
 
     protected void genWriteDictionaryBytesReset(int idx, ByteHeap byteHeap) {
@@ -1338,11 +1346,11 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
     
     protected void genWriteClosePMap(PrimitiveWriter writer) {
-        writer.closePMap();
+        PrimitiveWriter.closePMap(writer);
     }
 
     protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTEncoder dispatch) {
-        writer.closePMap();
+        PrimitiveWriter.closePMap(writer);
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
@@ -1355,12 +1363,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     // must happen just before Group so the Group in question must always have
     // an outer group.
     protected void pushTemplate(int templateId, FASTEncoder dispatch, PrimitiveWriter writer) {
+        
         int top = dispatch.templateStack[dispatch.templateStackHead];
         if (top == templateId) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeIntegerUnsigned(templateId);
+            PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
             top = templateId;
         }
 
@@ -1373,13 +1382,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteOpenTemplatePMap(int templateId, int pmapSize, PrimitiveWriter writer) {
-        writer.openPMap(pmapSize);
+        PrimitiveWriter.openPMap(pmapSize, writer);
         // done here for safety to ensure it is always done at group open.
         pushTemplate(templateId, this, writer);
     }
     
     protected void genWriteOpenGroup(int pmapSize, PrimitiveWriter writer) {
-        writer.openPMap(pmapSize);
+        PrimitiveWriter.openPMap(pmapSize, writer);
     }
     
     public void genWriteNullPMap(PrimitiveWriter writer) {
@@ -1391,7 +1400,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
 
@@ -1401,13 +1410,13 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             dictionary[idx] = 0;
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
 
     public void genWriteNullNoPMapLong(PrimitiveWriter writer, long[] dictionary, int idx) {
         dictionary[idx] = 0;
-        writer.writeNull(writer);
+        PrimitiveWriter.writeNull(writer);
     }
     
     public void genWriteNullDefaultText(int idx, PrimitiveWriter writer, TextHeap textHeap) {
@@ -1415,7 +1424,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
 
@@ -1424,14 +1433,14 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
-            textHeap.setNull(idx, textHeap);
+            PrimitiveWriter.writeNull(writer);
+            TextHeap.setNull(idx, textHeap);
         }
     }
 
     public void genWriteNullNoPMapText(int idx, PrimitiveWriter writer, TextHeap textHeap) {
-        writer.writeNull(writer);
-        textHeap.setNull(idx, textHeap);
+        PrimitiveWriter.writeNull(writer);
+        TextHeap.setNull(idx, textHeap);
     }
     
     public void genWriteNullDefaultBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
@@ -1439,12 +1448,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
 
     public void genWriteNullNoPMapBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
-        writer.writeNull(writer);
+        PrimitiveWriter.writeNull(writer);
         byteHeap.setNull(token & instanceMask);
     }
 
@@ -1453,7 +1462,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
             byteHeap.setNull(idx);
         }
     }

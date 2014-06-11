@@ -208,8 +208,8 @@ public class StaticGlue {
         
         int len = value.remaining() - tailCount;
         int offset = value.position();
-        writer.writeIntegerUnsigned(len);
-        writer.writeByteArrayData(value, offset, len);
+        writer.writeIntegerUnsigned(len, writer);
+        writer.writeByteArrayData(value, offset, len, writer);
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
     public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, ByteHeap byteHeap, PrimitiveWriter writer) {
@@ -218,15 +218,15 @@ public class StaticGlue {
         if (trimTail<0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail);
+        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail, writer);
         
         int valueSend = value.remaining()-headCount;
         int startAfter = value.position()+headCount;
                 
-        writer.writeIntegerUnsigned(valueSend);
+        writer.writeIntegerUnsigned(valueSend, writer);
         //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend);
+        writer.writeByteArrayData(value, startAfter, valueSend, writer);
         
     }
     public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
