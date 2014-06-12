@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.loader.ClientConfig;
@@ -102,7 +101,7 @@ public class Test {
               int templateOffset = from.templateOffset;
               
               
-              //double duration = singleThreadedExample(readerDispatch, msgs, reactor);
+             // double duration = singleThreadedExample(readerDispatch, msgs, reactor);
               double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
               
@@ -167,33 +166,27 @@ public class Test {
             do {
                 ///TODO: we are checking on zero change way too often!!
                 //need to be notified of add count change? eg lock.
-                int limit = (int)(rb.addCount.intValue()-(rp+j));
+                int limit = (int)(FASTRingBuffer.readUpToPos(rb)-rp);
                 if (limit>0) {
                     while (--limit>=0 ) {
                            int x = FASTRingBufferReader.readInt(rb, j++);
-                       //    rb.removeForward(1);
-                         //   rb.dump(rb);
-//                           int k = 1000;
-//                           while (--k>=0) {
-//                          int z = x*7/3;
-//                          a+=z;
-//                           }
-    
+                           //read all the data
+                           rp++;    
                     }
-                    if (j>1024) {
-                        rp+=j;
+                    if (j>60) {//estimated field size
                         rb.removeForward2(rp);
                         j=0;
                     }
+                    
                 }
-                Thread.yield();
-                //These two threads must take turns.
             }while (!executor.isShutdown());
     
           
           double duration = System.nanoTime() - start;
         return duration;
     }
+
+    
 
     
     //must read fragment id!
@@ -239,64 +232,6 @@ public class Test {
           System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
                   + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + queuedBytes + " pct "
                   + (totalTestBytes / (float) queuedBytes) + " Messages:" + msgs);
-    }
-    
-    //TODO: A, Where does the lookup go?
-    public static int stepSizeInRingBuffer(int token) {
-        //TODO: C, Convert to array lookup
-        
-        int stepSize = 0;
-        if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
-            // 0????
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 00???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int
-                    stepSize = 1;
-                } else {
-                    // long
-                    stepSize = 2;
-                }
-            } else {
-                // 01???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int for text (takes up 2 slots)
-                    stepSize = 2;
-                } else {
-                    // 011??
-                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        // 0110? Decimal and DecimalOptional
-                        stepSize = 3;
-                    } else {
-                        // int for bytes
-                        stepSize = 2;
-                    }
-                }
-            }
-        } else {
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 10???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // 100??
-                    // Group Type, no others defined so no need to keep checking
-                    stepSize = 0;
-                } else {
-                    // 101??
-                    // Length Type, no others defined so no need to keep
-                    // checking
-                    // Only happens once before a node sequence so push it on
-                    // the count stack
-                    stepSize = 1;
-                }
-            } else {
-                // 11???
-                // Dictionary Type, no others defined so no need to keep
-                // checking
-                stepSize = 0;
-            }
-        }
-
-        return stepSize;
     }
     
     static FASTInputByteArray buildInputForTestingByteArray(File fileSource) {

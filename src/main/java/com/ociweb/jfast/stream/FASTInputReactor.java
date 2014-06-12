@@ -207,26 +207,7 @@ public final class FASTInputReactor {
     }
     
     
-//    
-//    //return ringbuffer id or -1 
-//    public boolean pump() {
-//
-//        if (decoder.decode(reader)) {     
-//            listener.fragment();
-//            return true;// has more to read
-//        } else {
-//            PrimitiveReader.closePMap(reader);            
-//            if (PrimitiveReader.isEOF(reader)) { 
-//                listener.fragment();
-//                return false;
-//            }
-//            //TODO: if there is no more data to pull, 
-//            
-//            hasMoreNextMessage(decoder, reader, listener);
-//            listener.fragment();
-//            return true;// finished reading full message
-//        }   
-//    }
+
     
     
     // TODO: B, Check support for group that may be optional

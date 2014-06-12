@@ -5,6 +5,7 @@ package com.ociweb.jfast.loader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.Set;
 import java.util.zip.GZIPInputStream;
@@ -41,8 +42,11 @@ public class TemplateCatalogConfig {
     private final int[] templateStartIdx; // TODO: X, these two arrays can be
                                          // shortened!
     private final int[] templateLimitIdx;
+    
+    public final int[] templateScriptEntries;
+    public final int[] templateScriptEntryLimits;
 
-    private final int[] scriptTokens;
+    final int[] scriptTokens;
     final int[] scriptFieldIds;
     private final String[] scriptFieldNames;
     private final int templatesInCatalog;
@@ -77,7 +81,9 @@ public class TemplateCatalogConfig {
         scriptFieldIds = new int[fullScriptLength];
         scriptFieldNames = new String[fullScriptLength];
         templatesInCatalog = PrimitiveReader.readIntegerUnsigned(reader);
-
+        templateScriptEntries = new int[templatesInCatalog];
+        templateScriptEntryLimits = new int[templatesInCatalog];
+        
         loadTemplateScripts(reader);
 
         int dictionaryCount = PrimitiveReader.readIntegerUnsigned(reader);
@@ -118,6 +124,8 @@ public class TemplateCatalogConfig {
         this.templateStartIdx=null;
         this.templateLimitIdx=null;
         this.scriptFieldNames=null;
+        this.templateScriptEntries=null;
+        this.templateScriptEntryLimits=null;
         this.scriptFieldIds=null;
         this.maxTemplatePMapSize = maxTemplatePMapSize;
         this.maxFieldId=-1;
@@ -158,9 +166,8 @@ public class TemplateCatalogConfig {
         while (--i >= 0) {
             // look up for script index given the templateId
             int templateId = PrimitiveReader.readIntegerUnsigned(reader);
-            getTemplateStartIdx()[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
-            getTemplateLimitIdx()[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
-            // System.err.println("templateId "+templateId);
+            templateScriptEntries[i] = templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            templateScriptEntryLimits[i] = templateLimitIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
         }
         // System.err.println("total:"+templatesInCatalog);
 

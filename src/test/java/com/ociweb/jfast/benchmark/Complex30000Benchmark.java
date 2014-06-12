@@ -73,35 +73,23 @@ public class Complex30000Benchmark extends Benchmark {
     }
 
 
-    private int fastCore(int result, FASTRingBuffer queue) {
-        int flag;
-        while (0 != (flag = reactor.select())) {
-            if (0 != (flag & 0x02)) {
-                result |= FASTRingBufferReader.readInt(queue, 0);// must do some
-                                                                 // real work or
-                                                                 // hot-spot may
-                                                                 // delete this
-                                                                 // loop.
-                FASTRingBuffer.dump(queue); // must dump values in buffer or we will hang when
-                              // reading.
-            }
+    private void fastCore(FASTRingBuffer queue) {
+        while (reactor.pump2()>=0) {
+            FASTRingBuffer.dump(queue); // must dump values in buffer
         }
-        return result;
     }
 
-    public int timeDecodeComplex30000(int reps) {
+    public void timeDecodeComplex30000(int reps) {
 
-        int result = 0;
         while (--reps >= 0) {
 
-            fastCore(result, queue);
+            fastCore(queue);
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
             readerDispatch.reset(this.catalog.dictionaryFactory());
 
         }
-        return result;
     }
 
     // public int timeDecodeComplex30000ResetOverhead(int reps) {

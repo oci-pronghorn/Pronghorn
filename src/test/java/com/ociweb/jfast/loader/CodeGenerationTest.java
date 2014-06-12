@@ -176,8 +176,8 @@ public class CodeGenerationTest {
         
         int errCount = 0;
         int i = 0;
-        while (reactor1.select() != 0 &&
-               reactor2.select() != 0) {
+        while (reactor1.pump2() >= 0 &&
+               reactor2.pump2() >= 0) {
 
             while (queue1.hasContent() && queue2.hasContent()) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);

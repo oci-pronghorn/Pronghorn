@@ -54,10 +54,17 @@ public final class FASTRingBuffer {
 
     final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
     public final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
-
+    long lastRead;
+    
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
-    private int[] fragStack; //TODO: B, first offset 0 points to the constants after the ring buffer.
+    //TODO: B, first offset 0 points to the constants after the ring buffer.
+    private int[] fragStack;
+    
+    //Need to know when the new template starts
+    //each fragment size must be known and looked up
+    
+    
 
     public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth) {
         assert (primaryBits >= 1);       
@@ -258,6 +265,11 @@ public final class FASTRingBuffer {
 
     public int contentRemaining() {
         return (int)(addPos.value - remPos.value);
+    }
+
+    public static long readUpToPos(FASTRingBuffer rb) {
+        Thread.yield();//let the writer update the count if possible
+        return rb.addCount.longValue();
     }
 
 
