@@ -57,8 +57,7 @@ public class FASTDynamicWriter {
                         idx++;
                     }
                     writerDispatch.writePreamble(preambleData, writer);
-                }
-                ;
+                };
 
                 // template processing (can these be nested?)
                 int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
@@ -101,13 +100,13 @@ public class FASTDynamicWriter {
                     }
 
                     needTemplate = false;
-                    idx += stepSizeInRingBuffer(token);
+                    idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
                     ringBuffer.removeForward(idx);
                     // System.err.println("yy "+idx);
                     return;
                 }
 
-                idx += stepSizeInRingBuffer(token);
+                idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
 
             } while (++writerDispatch.activeScriptCursor < writerDispatch.activeScriptLimit);
             needTemplate = true;
@@ -126,62 +125,6 @@ public class FASTDynamicWriter {
         if (clearData) {
             this.writerDispatch.reset();
         }
-    }
-
-    private int stepSizeInRingBuffer(int token) {
-        int stepSize = 0;
-        if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
-            // 0????
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 00???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int
-                    stepSize = 1;
-                } else {
-                    // long
-                    stepSize = 2;
-                }
-            } else {
-                // 01???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int for text (takes up 2 slots)
-                    stepSize = 2;
-                } else {
-                    // 011??
-                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        // 0110? Decimal and DecimalOptional
-                        stepSize = 3;
-                    } else {
-                        // int for bytes
-                        stepSize = 0;// BYTES ARE NOT IMPLEMENTED YET BUT WILL
-                                     // BE 2;
-                    }
-                }
-            }
-        } else {
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 10???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // 100??
-                    // Group Type, no others defined so no need to keep checking
-                    stepSize = 0;
-                } else {
-                    // 101??
-                    // Length Type, no others defined so no need to keep
-                    // checking
-                    // Only happens once before a node sequence so push it on
-                    // the count stack
-                    stepSize = 1;
-                }
-            } else {
-                // 11???
-                // Dictionary Type, no others defined so no need to keep
-                // checking
-                stepSize = 0;
-            }
-        }
-        // System.err.println("inc by:"+stepSize+" token "+TokenBuilder.tokenToString(token));
-        return stepSize;
     }
 
 }

@@ -100,13 +100,13 @@ public class TemplateCatalogConfig {
 
         dictionaryFactory = new DictionaryFactory(reader);
 
-        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
                 
         clientConfig = new ClientConfig(reader);
         
         
         //must be done after the client config construction
         from = new FieldReferenceOffsetManager(this);
+        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, (byte)9, (byte)8);
         
     }
     
@@ -132,18 +132,20 @@ public class TemplateCatalogConfig {
         this.dictionaryFactory = dcr;
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = new ClientConfig();
-        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength);
+        
+        this.from = new FieldReferenceOffsetManager(this);
+        
+        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, primaryRingBits, textRingBits);
         
         //must be done after the client config construction
-        from = new FieldReferenceOffsetManager(this);
     }
     
     
-    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length) {
+    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length, FieldReferenceOffsetManager from, int primaryRingBits, int textRingBits) {
         FASTRingBuffer[] buffers = new FASTRingBuffer[length];
         //TODO: simple imlementation needs adavanced controls.
         //TODO: A, must compute max frag depth in template parser.    
-        FASTRingBuffer rb = new FASTRingBuffer((byte)13,(byte)7,dFactory, 10); 
+        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, 10); //TODO: pass in max frag  depth?
         int i = length;
         while (--i>=0) {
             buffers[i]=rb;            
@@ -169,7 +171,10 @@ public class TemplateCatalogConfig {
             templateScriptEntries[i] = templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
             templateScriptEntryLimits[i] = templateLimitIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
         }
-        // System.err.println("total:"+templatesInCatalog);
+        
+        //Must be ordered in order to be useful 
+        Arrays.sort(templateScriptEntries);
+        Arrays.sort(templateScriptEntryLimits);
 
         StringBuilder builder = new StringBuilder();
         i = getScriptTokens().length;

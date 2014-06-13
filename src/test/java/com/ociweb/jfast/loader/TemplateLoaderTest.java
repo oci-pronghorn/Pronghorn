@@ -175,7 +175,7 @@ public class TemplateLoaderTest {
                     }
 
                     // find the next index after this token.
-                    bufferIdx += stepSizeInRingBuffer(token);
+                    bufferIdx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
 
                 }
                 totalBytesOut.addAndGet(4 * bufferIdx);
@@ -260,62 +260,6 @@ public class TemplateLoaderTest {
 
     private boolean isText(int token) {
         return 0x08 == (0x1F & (token >>> TokenBuilder.SHIFT_TYPE));
-    }
-
-    private int stepSizeInRingBuffer(int token) {
-        int stepSize = 0;
-        if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
-            // 0????
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 00???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int
-                    stepSize = 1;
-                } else {
-                    // long
-                    stepSize = 2;
-                }
-            } else {
-                // 01???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int for text (takes up 2 slots)
-                    stepSize = 2;
-                } else {
-                    // 011??
-                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        // 0110? Decimal and DecimalOptional
-                        stepSize = 3;
-                    } else {
-                        // int for bytes
-                        stepSize = 0;// BYTES ARE NOT IMPLEMENTED YET BUT WILL
-                                     // BE 2;
-                    }
-                }
-            }
-        } else {
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 10???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // 100??
-                    // Group Type, no others defined so no need to keep checking
-                    stepSize = 0;
-                } else {
-                    // 101??
-                    // Length Type, no others defined so no need to keep
-                    // checking
-                    // Only happens once before a node sequence so push it on
-                    // the count stack
-                    stepSize = 1;
-                }
-            } else {
-                // 11???
-                // Dictionary Type, no others defined so no need to keep
-                // checking
-                stepSize = 0;
-            }
-        }
-
-        return stepSize;
     }
 
     private FASTInputByteBuffer buildInputForTestingByteBuffer(File sourceDataFile) {

@@ -11,6 +11,13 @@ public class FieldReferenceOffsetManager {
     public final int preambleOffset; //-1 if there is no preamble
     public final int templateOffset;
     
+    private static final int SEQ = 0x10000000;
+    private static final int GRP = 0x20000000;
+    
+    public final int[] fragSize;
+    public final int[] fragJumps;
+    
+    
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
         
         //TODO: B, clientConfig must be able to skip reading the preamble,
@@ -23,170 +30,81 @@ public class FieldReferenceOffsetManager {
             preambleOffset = 0;
             templateOffset = (pb+3)>>2;
         }
-               
-        //TODO: must add the groups back in when they have no pmap?
+         
+        if (null==config || null == config.scriptTokens) {
+            fragSize = null;
+            fragJumps = null;
+        } else {
         
-        //TODO A. Do all this in a single pass.
-       /* 
-        //must build array of fragment sizes based on script
-        //must build jump points and rules from script
-        //must build the offset for each field as this is done for each point in script
-        //Put offests in map under "Name" and "Id"
-        
-        
-        //build the array of step size
-        int[] script = config.scriptFieldIds;
-        int[] scriptTokens = config.scriptTokens;
-        
-        //////////////////////////////////////////////////////////////////////////////
-        //TODO: new method here to buld this.
-         * loop on index
-         * check template 
-         * walk to end of template
-         * requries stack and should be modular walker that can be used to replace other usages.
-         * 
-        //at fragment location give size of fragment (for field positions give the summed offset)
-        //at fragment location give 2 possible next jump locations
-        //at fragment location give bit for how to jump.
-        ///////////////////////////////////////////////////////////////////////////////////////
-        
-        System.err.println(Arrays.toString(config.templateScriptEntries));
-        System.err.println(Arrays.toString(config.templateScriptEntryLimits));
-        
-   //     config.
-        
-        int len = script.length;
-        int[] fieldSizes    = new int[len];
-        int[] fragmentSizes = new int[len];
-        int[][] nextFrag    = new int[2][];
-        nextFrag[0] = new int[len];
-        nextFrag[1] = new int[len];
-                
-        int sum = 0;
-        int sumIdx = 0;
-        
-        int i = 0;
-        while (i<len) {
-        
-            int size = stepSizeInRingBuffer(scriptTokens[i]);
-            fieldSizes[i] =  size;
-            sum+=size;
-
-            if (TypeMask.Group == TokenBuilder.extractType(scriptTokens[i])) {
-                boolean isOpen = (0 == (scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-                if (isOpen) {
-                    sum = 0;
-                    sumIdx = i;
-                    System.err.println(i);
-                } else {
-                    fragmentSizes[sumIdx] = sum;   
-                    nextFrag[0][sumIdx] = i+1;
-//                    if (i+1<len) {
-//                     //   sum = 0;
-//                     //   sumIdx = i+1;
-//                        System.err.println(i+1);
-//                    }
-                }
-                
-                
-            } else {
-                int j = config.templateScriptEntries.length;
-                while (--j>=0) {
-                    if (config.templateScriptEntries[j]==i) {
-                        fragmentSizes[sumIdx] = sum;   
-                        nextFrag[0][sumIdx] = i+1;
-                        sum = 0;
-                        sumIdx = i;
-                    }
-                }
-                
-                
-            }
+            fragSize  = new int[config.scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
+            fragJumps = new int[config.scriptTokens.length];
             
-            
-//            else if (TypeMask.GroupLength == TokenBuilder.extractType(scriptTokens[i])) {
-//                sum = 0;
-//                sumIdx = i;
-//                System.err.println(i);
-//            }
-            
-            
-            
-            
-            i++;;
+            buildFragScript(config);
         }
-        
-        System.err.println("I:"+Arrays.toString(script));
-        
-        System.err.println("B:"+Arrays.toString(fieldSizes));
-        
-        System.err.println("C:"+Arrays.toString(fragmentSizes));
-        
-        System.err.println("D:"+Arrays.toString(nextFrag[0]));
-        System.err.println("E:"+Arrays.toString(nextFrag[1]));
-        
-        */
-        
-        
-        
     }
 
-    //TODO: A, Where does the lookup go?
-    public static int stepSizeInRingBuffer(int token) {
-        //TODO: C, Convert to array lookup
+    private void buildFragScript(TemplateCatalogConfig config) {
+        int[] scriptTokens = config.scriptTokens;
+        int scriptLength = scriptTokens.length;        
+        int[] tokenStops = config.templateScriptEntryLimits;
+        int tokenStopIdx = 0;
         
-        int stepSize = 0;
-        if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
-            // 0????
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 00???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int
-                    stepSize = 1;
-                } else {
-                    // long
-                    stepSize = 2;
+        int i = 0;
+        
+        //JUMPS:
+        //the next block immediatly follows or we jump over it in the script so all we need is the jump number in addition to our own size.
+        //add top bits for the 3 kinds of jumps at the top of the int.
+        //in the same int save the scirpt size of this fragment, when doing jump over just jump twice.
+        // use two arrays, one for the script size.
+        
+        boolean debug = false;
+
+        //TODO: A, DOES NOT SUPPORT NESTED GROUPS SO WE CAN EXCLUDE CHILDREN, REQURIES STACK CHANGE.
+        
+        int templateIdx=0;
+        
+        while (i<scriptLength) {            
+            //now past the end of the template so 
+            //close it because this index starts a new one
+            //first position is always part of a new template
+            boolean isStop = i==tokenStops[tokenStopIdx];
+            boolean isGroupOpen = (TypeMask.Group == TokenBuilder.extractType(config.scriptTokens[i])) &&
+                                   (0 == (config.scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+            if (i==0 || isStop || isGroupOpen) {
+                if (isStop) {
+                    tokenStopIdx++;
+                    //this is not an inner group but is really the templates pmap 
+                    if (TypeMask.Group == TokenBuilder.extractType(config.scriptTokens[i])) {
+                        //if is open then we must inc i            
+                    } 
                 }
-            } else {
-                // 01???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // int for text (takes up 2 slots)
-                    stepSize = 2;
-                } else {
-                    // 011??
-                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        // 0110? Decimal and DecimalOptional
-                        stepSize = 3;
-                    } else {
-                        // int for bytes
-                        stepSize = 2;
-                    }
+                if (debug) {
+                    System.err.println();
                 }
+                templateIdx = i;     
+                
+                if (isGroupOpen) {
+                    boolean isSeq = (0 == (config.scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
+                    fragJumps[templateIdx] = isSeq ? SEQ : GRP; //type base                      
+                }                
             }
-        } else {
-            if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-                // 10???
-                if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    // 100??
-                    // Group Type, no others defined so no need to keep checking
-                    stepSize = 0;
-                } else {
-                    // 101??
-                    // Length Type, no others defined so no need to keep
-                    // checking
-                    // Only happens once before a node sequence so push it on
-                    // the count stack
-                    stepSize = 1;
-                }
-            } else {
-                // 11???
-                // Dictionary Type, no others defined so no need to keep
-                // checking
-                stepSize = 0;
+            int token = config.scriptTokens[i];
+            int stepSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            fragSize[i]=fragSize[templateIdx]; //keep the individual offsets per field
+            fragSize[templateIdx]+=stepSize;   //keep the total for the template size 
+            
+            fragJumps[templateIdx]++;//jump for script position changes
+            if (debug) {
+                System.err.println(i+" "+TokenBuilder.tokenToString(scriptTokens[i]));
             }
+            
+            i++;
         }
-    
-        return stepSize;
+                
+        if (debug) {
+            System.err.println(Arrays.toString(fragSize));
+            System.err.println(Arrays.toString(fragJumps));
+        }
     }
 
 }
