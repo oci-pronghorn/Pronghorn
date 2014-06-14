@@ -106,7 +106,7 @@ public class TemplateCatalogConfig {
         
         //must be done after the client config construction
         from = new FieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, (byte)9, (byte)8);
+        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, (byte)9, (byte)8);
         
     }
     
@@ -133,20 +133,22 @@ public class TemplateCatalogConfig {
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = new ClientConfig();
         
-        this.from = new FieldReferenceOffsetManager(this);
+        this.from = new FieldReferenceOffsetManager(this); //TODO: needs max depth for all
         
-        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, primaryRingBits, textRingBits);
+        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx,
+                                            primaryRingBits, textRingBits);
         
         //must be done after the client config construction
     }
     
     
-    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int length, FieldReferenceOffsetManager from, int primaryRingBits, int textRingBits) {
-        FASTRingBuffer[] buffers = new FASTRingBuffer[length];
+    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
+                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, int primaryRingBits, int textRingBits) {
+        FASTRingBuffer[] buffers = new FASTRingBuffer[scriptLength];
         //TODO: simple imlementation needs adavanced controls.
         //TODO: A, must compute max frag depth in template parser.    
-        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, 10); //TODO: pass in max frag  depth?
-        int i = length;
+        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, scriptLength/*fragDepth*/, from, templateStartIdx);
+        int i = scriptLength;
         while (--i>=0) {
             buffers[i]=rb;            
         }        
@@ -176,7 +178,7 @@ public class TemplateCatalogConfig {
         Arrays.sort(templateScriptEntries);
         Arrays.sort(templateScriptEntryLimits);
 
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder = new StringBuilder();//TODO: B, this is now producing garbage! Temp space must be held by temp space owner!
         i = getScriptTokens().length;
         while (--i >= 0) {
             getScriptTokens()[i] = PrimitiveReader.readIntegerSigned(reader);
@@ -216,11 +218,11 @@ public class TemplateCatalogConfig {
 
         saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
 
-        writer.writeIntegerUnsigned(biggestId, writer);
+        PrimitiveWriter.writeIntegerUnsigned(biggestId, writer);
         // System.err.println("save pmap sizes "+maxTemplatePMap+" "+maxNonTemplatePMap);
-        writer.writeIntegerUnsigned(maxTemplatePMap, writer);
-        writer.writeIntegerUnsigned(maxNonTemplatePMap, writer);
-        writer.writeIntegerUnsigned(maxPMapDepth, writer);
+        PrimitiveWriter.writeIntegerUnsigned(maxTemplatePMap, writer);
+        PrimitiveWriter.writeIntegerUnsigned(maxNonTemplatePMap, writer);
+        PrimitiveWriter.writeIntegerUnsigned(maxPMapDepth, writer);
 
         df.save(writer);        
         clientConfig.save(writer);
@@ -230,14 +232,14 @@ public class TemplateCatalogConfig {
     private static void saveProperties(PrimitiveWriter writer, Properties properties) {
                 
         Set<String> keys = properties.stringPropertyNames();
-        writer.writeIntegerUnsigned(keys.size(), writer);
+        PrimitiveWriter.writeIntegerUnsigned(keys.size(), writer);
         for(String key: keys) {
-            writer.writeIntegerUnsigned(key.length(), writer);
-            writer.writeTextUTF(key, writer);
+            PrimitiveWriter.writeIntegerUnsigned(key.length(), writer);
+            PrimitiveWriter.writeTextUTF(key, writer);
             
             String prop = properties.getProperty(key);
-            writer.writeIntegerUnsigned(prop.length(), writer);
-            writer.writeTextUTF(prop, writer);
+            PrimitiveWriter.writeIntegerUnsigned(prop.length(), writer);
+            PrimitiveWriter.writeTextUTF(prop, writer);
         }
         
     }
@@ -245,16 +247,16 @@ public class TemplateCatalogConfig {
     private static void saveDictionaryMembers(PrimitiveWriter writer, int[][] tokenIdxMembers, int[] tokenIdxMemberHeads) {
         // save count of dictionaries
         int dictionaryCount = tokenIdxMembers.length;
-        writer.writeIntegerUnsigned(dictionaryCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(dictionaryCount, writer);
         //
         int d = dictionaryCount;
         while (--d >= 0) {
             int[] members = tokenIdxMembers[d];
             int h = tokenIdxMemberHeads[d];
-            writer.writeIntegerUnsigned(h, writer);// length of reset script (eg member
+            PrimitiveWriter.writeIntegerUnsigned(h, writer);// length of reset script (eg member
                                            // list)
             while (--h >= 0) {
-                writer.writeIntegerSigned(members[h], writer);
+                PrimitiveWriter.writeIntegerSigned(members[h], writer);
             }
         }
     }
@@ -307,37 +309,37 @@ public class TemplateCatalogConfig {
             tmp = tmp >> 1;
         }
         assert (pow < 32);
-        writer.writeIntegerUnsigned(pow, writer);// will be < 32
-        writer.writeIntegerUnsigned(scriptLength, writer);
+        PrimitiveWriter.writeIntegerUnsigned(pow, writer);// will be < 32
+        PrimitiveWriter.writeIntegerUnsigned(scriptLength, writer);
 
         // total number of templates are are defining here in the catalog
-        writer.writeIntegerUnsigned(uniqueTemplateIds, writer);
+        PrimitiveWriter.writeIntegerUnsigned(uniqueTemplateIds, writer);
         // write each template index
         int i = templateStartIdx.length;
         while (--i >= 0) {
             if (0 != templateStartIdx[i]) {
-                writer.writeIntegerUnsigned(i, writer);
-                writer.writeIntegerUnsigned(templateStartIdx[i] - 1, writer); // return
+                PrimitiveWriter.writeIntegerUnsigned(i, writer);
+                PrimitiveWriter.writeIntegerUnsigned(templateStartIdx[i] - 1, writer); // return
                                                                       // the
                                                                       // index
                                                                       // to its
                                                                       // original
                                                                       // value
                                                                       // (-1)
-                writer.writeIntegerUnsigned(templateLimitIdx[i], writer);
+                PrimitiveWriter.writeIntegerUnsigned(templateLimitIdx[i], writer);
             }
         }
 
         // write the scripts
         i = scriptLength;
         while (--i >= 0) {
-            writer.writeIntegerSigned(catalogScriptTokens[i], writer);
-            writer.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
+            PrimitiveWriter.writeIntegerSigned(catalogScriptTokens[i], writer);
+            PrimitiveWriter.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
             String name = catalogScriptFieldNames[i];
             int len = null==name?0:name.length();
-            writer.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
             if (len>0) {
-                writer.writeTextUTF(name, writer);
+                PrimitiveWriter.writeTextUTF(name, writer);
             }
         }
 

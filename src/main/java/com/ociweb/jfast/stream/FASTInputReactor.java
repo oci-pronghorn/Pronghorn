@@ -92,6 +92,7 @@ public final class FASTInputReactor {
 
             @Override
             public void detectedInputBlockage(int need, FASTInput input) {
+                //TODO: A, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
                 }                
@@ -291,7 +292,9 @@ public final class FASTInputReactor {
     
             // /////////////////
             // open message (special type of group)
-            int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);
+            
+            int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);            
+            
             readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
             
             listener.fragment(templateId, readerDispatch.ringBuffer(readerDispatch.activeScriptCursor));

@@ -62,8 +62,9 @@ public class FASTDynamicWriter {
                 // template processing (can these be nested?)
                 int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
                 idx++;
-
-                writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId, writer);
+                
+//NEW groups dont set this instead add 1 to pmap and write template after close??
+               writerDispatch.openMessage(catalog.maxTemplatePMapSize(), templateId, writer);
 
                 // tokens - reading
                 writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx()[templateId];

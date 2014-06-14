@@ -35,7 +35,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)

@@ -6,6 +6,7 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -68,8 +69,17 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         //TODO: A, must pass this in to each method so they need not look it up again. also must use this one before cursor moves!
         FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         
+        //TODO: A, hack until group stack is used in place of the limit SKIPS OVER ALL CLOSING GROUPS && NORMAL GROUPS THAT WE START WITH.
+        int token = fullScript[activeScriptCursor];
+        while ((TokenBuilder.extractType(token)==TypeMask.Group && ((0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) ||
+               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))))))
+               {
+            token = fullScript[++activeScriptCursor];
+        }
+        
+        
         do {
-            int token = fullScript[activeScriptCursor];
+            token = fullScript[activeScriptCursor];
             
             
             assert (gatherReadData(reader, activeScriptCursor, token));
@@ -130,7 +140,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         } else {
                             int idx = TokenBuilder.MAX_INSTANCE & token;
                             closeGroup(token,idx, reader);
-                            FASTRingBuffer.unBlockFragment(rbRingBuffer);
+                            FASTRingBuffer.unBlockFragment(rbRingBuffer); 
                             return sequenceCountStackHead>=0;//doSequence;
                         }
 

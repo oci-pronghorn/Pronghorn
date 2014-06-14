@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /**
@@ -63,10 +64,10 @@ public final class FASTRingBuffer {
     
     //Need to know when the new template starts
     //each fragment size must be known and looked up
-    
-    
+    FieldReferenceOffsetManager from;
+    int[] templateStartIdx;
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth, FieldReferenceOffsetManager from, int[] templateStartIdx) {
         assert (primaryBits >= 1);       
         
         this.fragStack = new int[maxFragDepth];
@@ -75,10 +76,8 @@ public final class FASTRingBuffer {
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
         
-
         this.buffer = new int[maxSize];      
         
-        //TODO: A, jump size along with fields are stored as constants relative to script postion (keep as much as possible in ring buffer)
 
         //TODO: A, use callback upon new class load to reset field offsets.
 
@@ -100,8 +99,7 @@ public final class FASTRingBuffer {
             this.constTextBuffer = null;
             this.constByteBuffer = null;
         }
-                
-        
+                        
         //single text and byte buffers because this is where the variable length data will go.
         
         this.maxCharSize = 1 << charBits;
@@ -111,6 +109,10 @@ public final class FASTRingBuffer {
         this.maxByteSize = maxCharSize;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
+        
+        this.from = from;
+        this.templateStartIdx = templateStartIdx;
+        
     }
 
     //TODO: AA, must add way of selecting what field to skip writing for the consumer.
@@ -128,15 +130,67 @@ public final class FASTRingBuffer {
 
     // adjust these from the offset of the biginning of the message.
 
-    public void release() {
+    int messageId = -1;
+    int cursor;
+    
+    public void moveNext() {
         // step forward and allow write to previous location.
+        if (messageId<0) {
+            //TODO: need to step over the preamble? but how?
+            messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
+            
+            //templateId -> scriptLocation
+            cursor = templateStartIdx[messageId];
+                                
+            //scriptLocation -> stepSize
+            int fragSize = from.fragSize[cursor];  //size of fragment in data
+            int fragJump = from.fragJumps[cursor]; //script jump 
+            
+            removeCount.addAndGet(fragSize);
+            cursor += fragJump;
+            
+            //TODO: set -1 if this is the end of the record
+            boolean isEndOfMessage = false;
+            if (isEndOfMessage) {
+                messageId=-1;
+            }
+            
+        } else {
+            
+            //TODO: A, skip over fragment.
+            boolean isSeq = false;
+            int len = 0;
+            
+            if (isSeq) {
+                if (0==len) {
+                    //TODO: must jump over this one on to the next
+                    
+                    int fragSize = from.fragSize[cursor];  //size of fragment in data
+                    int fragJump = from.fragJumps[cursor]; //script jump 
+                    
+                    removeCount.addAndGet(fragSize);
+                    cursor += fragJump;
+                                        
+                }                
+            }            
+            
+            int fragSize = from.fragSize[cursor];  //size of fragment in data
+            int fragJump = from.fragJumps[cursor]; //script jump 
+            
+            removeCount.addAndGet(fragSize);
+            cursor += fragJump;
+            
+            //TODO: set -1 if this is the end of the record
+            boolean isEndOfMessage = false;
+            if (isEndOfMessage) {
+                messageId=-1;
+            }
+            
+        }
+        
+        
     }
 
-    public void lockMessage() {
-        // step forward to next message or sequence?
-        // provide offset to the beginning of this message.
-
-    }
 
     // TODO: C, add map method which can take data from one ring buffer and
     // populate another.
@@ -195,6 +249,8 @@ public final class FASTRingBuffer {
  
 
     // fragment is ready for consumption
+    //Called once for every group close, even when nested
+    //TODO: AA, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
     public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
             ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
     }

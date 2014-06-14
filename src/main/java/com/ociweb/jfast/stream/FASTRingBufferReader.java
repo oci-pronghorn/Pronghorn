@@ -268,4 +268,14 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         
     }
 
+    public static void nextMessage(FASTRingBuffer rb) {
+        // TODO Auto-generated method stub
+        
+    }
+
+    public static void nextFragment(FASTRingBuffer rb) {
+        // TODO Auto-generated method stub
+        
+    }
+
 }

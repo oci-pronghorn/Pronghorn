@@ -164,6 +164,14 @@ public class Test {
             int j = 0;
             long rp = rb.remPos.value;
             do {
+                FASTRingBufferReader.nextMessage(rb);//ensures we are at the top of the next message. can skip sip in middle if unread at top stays put.
+                
+                
+                //inside switch is check for templateId so we know the full message
+                //then inside that would be the for loop arround the length of the segment
+                //at the top of the for loop will be
+                FASTRingBufferReader.nextFragment(rb);//move to next fragment
+                
                 ///TODO: we are checking on zero change way too often!!
                 //need to be notified of add count change? eg lock.
                 int limit = (int)(FASTRingBuffer.readUpToPos(rb)-rp);

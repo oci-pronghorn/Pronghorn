@@ -18,7 +18,7 @@ public class FASTRingBufferTest {
             byte primaryBits = 8;
             byte charBits = 7;
             
-            FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null, maxFragDepth);
+            FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  maxFragDepth, null, null);
             int rbMask = rb.mask;
             int[] rbB = rb.buffer;
             PaddedLong pos =rb.addPos;

@@ -17,14 +17,14 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
     
     public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer queue) {
         super(catalog, buildRingBuffers(queue, catalog.fullScript()));
     }
     
     private static FASTRingBuffer[] buildRingBuffers(FASTRingBuffer queue, int[] fullScript) {
-        int len = null==fullScript?1:fullScript.length;
+        int len = null==fullScript ? 1 : fullScript.length;
         
         FASTRingBuffer[] buffers = new FASTRingBuffer[len];
         int i = len;
