@@ -11,6 +11,6 @@ public interface FASTInput {
 	
 	boolean isEOF();
 
-    void block();
+    int blockingFill(int offset, int count);
     
 }

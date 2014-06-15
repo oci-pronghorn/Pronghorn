@@ -192,8 +192,9 @@ public class FASTInputMux implements FASTInput {
 	}
 
     @Override
-    public void block() {
-        // TODO Auto-generated method stub
+    public int blockingFill(int offset, int count) {
+        // TODO D, need to implement this for 3 inputs or delete the class
+        return fill(offset,count);
         
     }
 

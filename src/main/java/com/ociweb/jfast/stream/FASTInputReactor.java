@@ -66,14 +66,10 @@ public final class FASTInputReactor {
 
             @Override
             public void fragment(int templateId, FASTRingBuffer buffer) {
-                // TODO Auto-generated method stub
-                
             }
 
             @Override
             public void fragment() {
-                // TODO Auto-generated method stub
-                
             }};
         
     }

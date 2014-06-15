@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTInput;
 
@@ -32,16 +33,14 @@ public class FASTInputSocketChannel implements FASTInput {
 			//Only non-blocking socket channel is supported so this read call will
 			//return only the bytes that are immediately available.
 			int fetched = socketChannel.read(targetBuffer);
-			if (fetched<0) {
-				return 0;
-			} else {
-				return fetched;
-			}
+			
+			// mask is FFFF for pos and 0000 for neg       ((fetched>>31)-1)
+			//branched version is return fetched<0 ? 0 : fetched;
+			return fetched & ((fetched>>31)-1);
 			
 		} catch (IOException e) {
-			e.printStackTrace();
+		    throw new FASTException(e);
 		}
-		return 0;
 	}
 
 	@Override
@@ -55,9 +54,19 @@ public class FASTInputSocketChannel implements FASTInput {
 	}
 
     @Override
-    public void block() {
-        // TODO Auto-generated method stub
-        
+    public int blockingFill(int offset, int count) {
+       try {
+           socketChannel.configureBlocking(true);
+           return fill(offset, count);        
+        } catch (IOException e) {
+            throw new FASTException(e);
+        } finally {
+            try {
+                socketChannel.configureBlocking(false);
+            } catch (IOException e) {
+                throw new FASTException(e);
+            }            
+        }        
     }
 
 }

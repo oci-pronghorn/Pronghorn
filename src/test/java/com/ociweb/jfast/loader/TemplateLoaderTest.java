@@ -48,7 +48,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
-        assertEquals(679, catalogByteArray.length);
+        assertEquals(708, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -61,8 +61,8 @@ public class TemplateLoaderTest {
             assertEquals(3, catalog.templatesCount());
 
             script = catalog.fullScript();
-            assertEquals(48, script.length);
-            assertEquals(TypeMask.TextASCII, TokenBuilder.extractType(script[0]));// First
+            assertEquals(54, script.length);
+            assertEquals(TypeMask.Group, TokenBuilder.extractType(script[0]));// First
                                                                                   // Token
 
             // CMD:Group:010000/Close:PMap::010001/9
@@ -327,8 +327,11 @@ public class TemplateLoaderTest {
         // TODO: Z, force this error and add friendly message, when minimize
         // latency set to false these need to be much bigger?
         int writeBuffer = 2048;
-        int maxGroupCount = 3;// NOTE: may need to be VERY large if minimize
-                              // latency is turned off!!
+        
+        int maxGroupCount = catalog.getScriptTokens().length; //overkill but its fine for testing. 
+        // NOTE: may need to be VERY large if minimize
+        // latency is turned off!!
+        
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog,queue);
 

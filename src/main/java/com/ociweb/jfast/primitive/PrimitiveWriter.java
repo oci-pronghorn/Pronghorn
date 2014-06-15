@@ -24,7 +24,7 @@ public final class PrimitiveWriter {
     // TODO: X, the write to output is not implemented right it must send one
     // giant block when possible
     // TODO: X, we should have min and max block size? this may cover all cases.
-    private static final int BLOCK_SIZE = 512;// 4096;//128;// in bytes
+    private static final int BLOCK_SIZE = 256;//512;// 4096;//128;// in bytes
 
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE * 3) + (BLOCK_SIZE >> 1);
     private static final int POS_POS_SHIFT = 28;
@@ -855,8 +855,7 @@ public final class PrimitiveWriter {
             long posPos = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
             writer.pMapByteAccum = writer.buffer[(int) (posPos & POS_POS_MASK)];
             writer.pMapIdxWorking = (byte) (0xF & (posPos >> POS_POS_SHIFT));
-
-        }
+        } 
 
         // ensure low-latency for groups, or
         // if we can reset the safety stack and we have one block ready go ahead

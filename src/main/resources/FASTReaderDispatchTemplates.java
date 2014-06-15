@@ -396,8 +396,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, constAbsent);
                 
             } else {
-                FASTRingBuffer.addValue(rbB,rbMask,rbPos, value > 0 ? value - 1 : value);
-                
+                //FASTRingBuffer.addValue(rbB,rbMask,rbPos, value > 0 ? value - 1 : value);
+                FASTRingBuffer.addValue(rbB,rbMask,rbPos, ((value-1)+((value-1)>>31)));
             }
         }
     }
@@ -441,7 +441,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                     rbPos.value+=2;
                     return;
                 } else {
-                    FASTRingBuffer.addValue(rbB,rbMask,rbPos, (value > 0 ? value - 1 : value));
+                  //  FASTRingBuffer.addValue(rbB,rbMask,rbPos, (value > 0 ? value - 1 : value));
+                    FASTRingBuffer.addValue(rbB,rbMask,rbPos, ((value-1)+((value-1)>>31)));
                 }
             }            
             //Long signed default

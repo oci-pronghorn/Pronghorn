@@ -61,8 +61,7 @@ public class FASTInputByteArray implements FASTInput {
 	}
 
     @Override
-    public void block() {
-        // TODO Auto-generated method stub
-        
+    public int blockingFill(int offset, int count) {
+        return fill(offset,count);
     }
 }

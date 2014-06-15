@@ -22,6 +22,7 @@ public class FASTEncoder {
     public final int longInstanceMask;
     
     protected final int nonTemplatePMapSize;
+    protected final int templatePMapSize;
 
     protected int readFromIdx = -1;
 
@@ -48,18 +49,20 @@ public class FASTEncoder {
     
     public FASTEncoder(TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
-             catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
+             catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
              catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
     }
     
     
-    public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize,
+    public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
                                 int[][] dictionaryMembers, int[] fullScript, 
                                 int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;
+        
         this.nonTemplatePMapSize = nonTemplatePMapSize;
+        this.templatePMapSize = templatePMapSize;
 
         this.sequenceCountStack = new int[maxNestedGroupDepth];
 

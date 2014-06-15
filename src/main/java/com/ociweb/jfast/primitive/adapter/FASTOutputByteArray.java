@@ -36,7 +36,9 @@ public final class FASTOutputByteArray implements FASTOutput {
 	public void flush() {
 		
 		int size = dataTransfer.nextBlockSize();
+		//int iter = 0;
 		while (size>0) {
+		    //System.err.println("flush size:"+size+" "+(iter++));
 			//System.err.println("position "+position);
 			System.arraycopy(dataTransfer.rawBuffer(), 
 			         		 dataTransfer.nextOffset(), 

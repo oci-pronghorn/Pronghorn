@@ -29,8 +29,8 @@ public class FASTInputStream implements FASTInput {
 		try {
 			
 		    int avail = inst.available();
-		    if (avail>0) {
-		        len = Math.min(len,inst.available());
+		    if (avail>=0) {
+		        len = len<avail?len:avail;//TODO: AA, try branchless compute here.
 		    }
 			
 			//Only fill with the bytes avail.			
@@ -61,10 +61,19 @@ public class FASTInputStream implements FASTInput {
 	}
 
     @Override
-    public void block() {
-        
-        // TODO Auto-generated method stub
-        
+    public int blockingFill(int offset, int count) {
+        int result;
+        try {
+            result = inst.read(targetBuffer, offset, count);
+        } catch (IOException e) {
+            throw new FASTException(e);
+        }
+        if (result<0) {
+            eof = true;;
+            return 0;
+        }
+        total+=result;
+        return result;
     }
 	
 }

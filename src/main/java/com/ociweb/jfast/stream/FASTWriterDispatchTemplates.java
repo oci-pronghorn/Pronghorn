@@ -3,10 +3,13 @@ package com.ociweb.jfast.stream;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.loader.TemplateHandler;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
@@ -15,7 +18,8 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
         
         super(catalog.dictionaryFactory(), catalog.templatesCount(),
-              catalog.maxNonTemplatePMapSize(), catalog.dictionaryResetMembers(),
+              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), 
+              catalog.dictionaryResetMembers(),
               catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
         
     }    
@@ -28,13 +32,6 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.copy(source,target);
     }
     
-    
-    protected void genWriteOpenMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
-        PrimitiveWriter.openPMap(pmapMaxSize, writer);
-        PrimitiveWriter.writePMapBit((byte) 1, writer);
-        PrimitiveWriter.closePMap(writer);                                // TODO: A, this needs to be close but not sure this is the right location.
-        PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
-    }
 
     protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer) {
         PrimitiveWriter.writeByteArrayData(preambleData, 0, preambleData.length, writer);
@@ -1350,42 +1347,42 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTEncoder dispatch) {
+        //TODO: now that close happens at the end of the template every time it adds a LARGE latency that was not there when closing the PMap early.
         PrimitiveWriter.closePMap(writer);
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
 
-    protected void genWriteCloseTemplate(FASTEncoder dispatch) {
+    protected void genWriteCloseTemplate(PrimitiveWriter writer, FASTEncoder dispatch) {
+        PrimitiveWriter.closePMap(writer);                                // TODO: A, this needs to be close but not sure this is the right location.
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
     
     // must happen just before Group so the Group in question must always have
     // an outer group.
-    protected void pushTemplate(int templateId, FASTEncoder dispatch, PrimitiveWriter writer) {
+    protected void pushTemplate(int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
+
+        int templateId = FASTRingBufferReader.readInt(queue, fieldPos);
         
-        int top = dispatch.templateStack[dispatch.templateStackHead];
-        if (top == templateId) {
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
+     //   int top = dispatch.templateStack[dispatch.templateStackHead];
+//        if (top == templateId) {
+//            PrimitiveWriter.writePMapBit((byte) 0, writer);
+//        } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
-            top = templateId;
-        }
+      //      top = templateId;
+     //   }
 
-        dispatch.templateStack[dispatch.templateStackHead++] = top;
+        //dispatch.templateStack[dispatch.templateStackHead++] = top;
     }
     
-    protected void genWriteOpenTemplate(int templateId, PrimitiveWriter writer) {
-        // done here for safety to ensure it is always done at group open.
-        pushTemplate(templateId, this, writer);
-    }
 
-    protected void genWriteOpenTemplatePMap(int templateId, int pmapSize, PrimitiveWriter writer) {
-        PrimitiveWriter.openPMap(pmapSize, writer);
+    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
+        PrimitiveWriter.openPMap(pmapSize, writer);  //FASTRingBuffer queue, int fieldPos
         // done here for safety to ensure it is always done at group open.
-        pushTemplate(templateId, this, writer);
-    }
+        pushTemplate(fieldPos, writer, queue);
+     }
     
     protected void genWriteOpenGroup(int pmapSize, PrimitiveWriter writer) {
         PrimitiveWriter.openPMap(pmapSize, writer);

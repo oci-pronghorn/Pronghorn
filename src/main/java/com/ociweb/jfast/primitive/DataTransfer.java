@@ -25,11 +25,11 @@ public final class DataTransfer {
 	}
 	
 	public int nextBlockSize() {
-		return writer.nextBlockSize(writer);
+		return PrimitiveWriter.nextBlockSize(writer);
 	}
 	
 	public int nextOffset() {
-		return writer.nextOffset(writer);
+		return PrimitiveWriter.nextOffset(writer);
 	}
 	
 }

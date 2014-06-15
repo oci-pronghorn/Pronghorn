@@ -4,13 +4,8 @@
 package com.ociweb.jfast.primitive;
 
 import java.io.IOException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import com.ociweb.jfast.error.FASTError;
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.TokenBuilder;
 
 /**
  * PrimitiveReader
@@ -69,7 +64,7 @@ public final class PrimitiveReader {
   
      //only called when we need more data and the input is not providing any
      public static void setInputPolicy(InputBlockagePolicy is) {
-       blockagePolicy = is;
+       blockagePolicy = is; //TODO: this needs to be specific for this instance?
      }
         
     
@@ -150,32 +145,16 @@ public final class PrimitiveReader {
         need = fetchAvail(need, reader);        
         if (need > 0) {     
             reader.blockagePolicy.detectedInputBlockage(need, reader.input);
-            //TODO: A, change to blocking read here instead of spinning.
-            while (need > 0) { 
-                Thread.yield();
-                need = fetchAvail(need, reader);
-            }
+            int filled = reader.input.blockingFill(reader.limit, need);
             reader.blockagePolicy.resolvedInputBlockage(reader.input);
+            reader.totalReader += filled;
+            reader.limit += filled;
+            if (filled<need) {
+                throw new FASTException("Unexpected end of data.");
+            }
         }
     }
     
-    //Loop as fast as possible and move all the data on background thread
-    //if we have no input or output space block waiting for notify to continue.
-    //done via call back, once processed the caller can then call notify to continue processing.
-    
-    //Normal blocking the call can just notify to continue looping.
-    //Async, all the readers run in a thread pool, some stop and call listener
-    
-    
-    
-    //Non blocking read of the ringBuffers is supported! behind that it is a hybred.
-    
-    //caller is able to read current state.
-
-    
-
-    
-
     private static int fetchAvail(int need, PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
             reader.position = reader.limit = 0;
@@ -185,14 +164,8 @@ public final class PrimitiveReader {
             // fill remaining space if possible to reduce fetch later
             // but as we near the end prevent overflow by only getting what is needed.
             
-            int maxFill = remainingSpace;//
-        //    int maxFill = Math.max(remainingSpace>>2,need);  //This is causing utf-8 decode to break.
-            //TODO: C, how to do the above without conditional. High bits on in remaining space so shif it down with leading zeros?
-                        
-            
-            int filled = reader.input.fill(reader.limit, maxFill);
+            int filled = reader.input.fill(reader.limit, remainingSpace);
 
-            //
             reader.totalReader += filled;
             reader.limit += filled;
             //
@@ -213,10 +186,7 @@ public final class PrimitiveReader {
      */
     private static int noRoomOnFetch(int need, PrimitiveReader reader) {
         
-        int keep = 0;//10; //TODO: A, set this value based on largest step that may require roll back in the middle, what about text, get value from config?
-        
-        
-        int keepFromPosition = reader.position-keep;
+        int keepFromPosition = reader.position;
         
         // not enough room at end of buffer for the need
         int populated = reader.limit - keepFromPosition;
@@ -224,14 +194,12 @@ public final class PrimitiveReader {
 
         assert (reader.buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
                 + " bytes";
-
-
         
         System.arraycopy(reader.buffer, keepFromPosition, reader.buffer, 0, populated);
         // if possible fill
         int filled = reader.input.fill(populated, reader.buffer.length - populated);
 
-        reader.position = keep;
+        reader.position = 0;
         reader.totalReader += filled;
         reader.limit = populated + filled;
 

@@ -1225,33 +1225,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
     }
 
-    public void openGroup(int token, int templateId, int pmapSize, PrimitiveWriter writer) {
-        assert (token < 0);
-        assert (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-        assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
-        if (pmapSize > 0) {
-            genWriteOpenTemplatePMap(templateId, pmapSize, writer);
-        } else {
-            genWriteOpenTemplate(templateId, writer);
-        }
-    }
-
-
-
+    
+    
     public void closeGroup(int token, PrimitiveWriter writer) {
         assert (token < 0);
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
+            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) { //TODO: AA: note that we are using this flag in the close token!!
                 genWriteCloseTemplatePMap(writer, this);
             } else {
                 genWriteClosePMap(writer);
             }
         } else {
-            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
-                genWriteCloseTemplate(this);
+            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {//TODO: AA: note that we are using this flag in the close token!!
+                genWriteCloseTemplate(writer, this);
             }
         }
     }
@@ -1355,7 +1344,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         
                         int expoToken = token;
                         
-                        int exponent = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
+                        ///int exponent = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
                         long mantissa = FASTRingBufferReader.readLong(ringBuffers[activeScriptCursor], fieldPos + 1);
 
                         
@@ -1415,13 +1404,21 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // 100??
                     // Group Type, no others defined so no need to keep checking
                     if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
-
+                        
                         isSkippedSequence = false;
                         isFirstSequenceItem = false;
-                        // this is NOT a message/template so the non-template
-                        // pmapSize is used.
-                        // System.err.println("open group:"+TokenBuilder.tokenToString(token));
-                        openGroup(token, nonTemplatePMapSize, writer);
+
+                        boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+                        if (isTemplate && true) {
+                            openMessage(token, templatePMapSize, fieldPos-1, writer, ringBuffers[activeScriptCursor]);
+                                                        
+                        } else {
+                            // this is NOT a message/template so the non-template
+                            // pmapSize is used.
+                            // System.err.println("open group:"+TokenBuilder.tokenToString(token));
+                            openGroup(token, nonTemplatePMapSize, writer);
+                            
+                        }
 
                     } else {
                         // System.err.println("close group:"+TokenBuilder.tokenToString(token));
@@ -1582,10 +1579,19 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         return true;
     }
 
-    public void openMessage(int pmapMaxSize, int templateId, PrimitiveWriter writer) {
+    
+    public void openMessage(int token, int pmapSize, int fieldPos,  PrimitiveWriter writer, FASTRingBuffer queue) {
+        assert (token < 0);
+        assert (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+        assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
-        genWriteOpenMessage(pmapMaxSize, templateId, writer);
-
+        //add 1 bit to pmap and write the templateId
+        genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, queue);
+        if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
+            //group does not require PMap so we will close our 1 bit PMap now when we use it.
+            //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
+            genWriteClosePMap(writer);            
+        } 
     }
 
     public void writePreamble(byte[] preambleData, PrimitiveWriter writer) {
