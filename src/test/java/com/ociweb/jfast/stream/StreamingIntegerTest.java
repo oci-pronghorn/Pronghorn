@@ -204,12 +204,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 														
 				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f], reader);
+			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f], reader);
+						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -219,12 +219,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = fr.readInt(tokenLookup[f], reader);
+			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = fr.readInt(tokenLookup[f], reader);
+						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);

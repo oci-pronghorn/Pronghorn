@@ -109,7 +109,7 @@ public final class FASTInputReactor {
             public void run() {
                 int f;
                 int c = 0xFFF;
-                while ((f=pump2())>=0 && --c>=0) {
+                while ((f=pump())>=0 && --c>=0) {
                     
                 }
                 
@@ -129,7 +129,7 @@ public final class FASTInputReactor {
     
     int targetRingBufferId = -1;
     
-    public int pump2() {
+    public int pump() {
         // start new script or detect that the end of the data has been reached
         if (targetRingBufferId < 0) {
             // checking EOF first before checking for blocked queue
@@ -203,13 +203,11 @@ public final class FASTInputReactor {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
     }
     
-    
-
-    
+       
     
     // TODO: B, Check support for group that may be optional
     
-    //TODO: A, All data must be communicated throught the ring buffer to support threading however stream state is returned here.
+    //TODO: AA, delete select in favor of pump 
     //return states -1, 0 , 1 for NoDataToRead, Success, NoRoomToWrite
     public int select() {
         // start new script or detect that the end of the data has been reached
@@ -267,7 +265,6 @@ public final class FASTInputReactor {
                         
         int result;
         // must have room to store the new template
-        //TODO: AA, Must add PEEK method to PrimtiveReader to see what the template is and know which ringBuffer to theck!!
         FASTRingBuffer rb = readerDispatch.ringBuffer(0);//BIG HACK;
         int req = readerDispatch.preambleDataLength + 1;
         if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {

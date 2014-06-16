@@ -150,9 +150,9 @@ public final class FASTRingBuffer {
             cursor += fragJump;
             
             //TODO: set -1 if this is the end of the record
-            boolean isEndOfMessage = false; //when we have matching close id for the open message id?
+            boolean isEndOfMessage = cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END));
             if (isEndOfMessage) {
-                messageId=-1;
+                    messageId=-1;        
             }
             
         } else {
@@ -181,7 +181,7 @@ public final class FASTRingBuffer {
             cursor += fragJump;
             
             //TODO: set -1 if this is the end of the record
-            boolean isEndOfMessage = false;
+            boolean isEndOfMessage = cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END));
             if (isEndOfMessage) {
                 messageId=-1;
             }

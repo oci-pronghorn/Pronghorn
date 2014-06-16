@@ -191,12 +191,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f], reader);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f], reader);
+							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 							if (testConst!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testConst, value);
 							}
@@ -205,12 +205,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = fr.readLong(tokenLookup[f], reader);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = fr.readLong(tokenLookup[f], reader);
+							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
 							if (testData[f]!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testData[f], value);
 							}

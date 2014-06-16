@@ -302,10 +302,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // not optional
-            decoder.readLongSigned(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader);
+            decoder.readLongSigned(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         } else {
             // optional
-            decoder.readLongSignedOptional(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader);
+            decoder.readLongSignedOptional(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         }
         
         //must return what was written
@@ -330,10 +330,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
             // 00010 IntegerSigned
-            decoder.readIntegerSigned(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader);
+            decoder.readIntegerSigned(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         } else {
             // 00011 IntegerSignedOptional
-            decoder.readIntegerSignedOptional(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader);
+            decoder.readIntegerSignedOptional(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         }
         //NOTE: for testing we need to check what was written
         return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-1, ringBuffer.mask);

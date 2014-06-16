@@ -29,10 +29,9 @@ public class FASTInputStream implements FASTInput {
 		try {
 			
 		    int avail = inst.available();
-		    if (avail>=0) {
-		        len = len<avail?len:avail;//TODO: AA, try branchless compute here.
-		    }
-			
+		    //   len = len<avail?len:avail;
+		    len = len + ((avail-len) & (avail-len)>>31);//branchless
+					    
 			//Only fill with the bytes avail.			
 			int result = inst.read(targetBuffer, offset, len);
 			if (result<0) {

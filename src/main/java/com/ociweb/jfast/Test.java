@@ -78,9 +78,6 @@ public class Test {
                             
               FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
               
-              //TODO: A, Add api to get notification when items are added to these queues? cool for single threaded?
-              //for single thead can just consume queue then
-              //for multi thread can prioritize the queue to be processed  or ignore and round robin?
               
               System.gc();
               
@@ -127,7 +124,7 @@ public class Test {
           /////////////////////////////////////
           boolean ok = true;
           while (ok) {
-              switch (reactor.pump2()) {
+              switch (reactor.pump()) {
                   case -1:
                       ok = false;
                       break;

@@ -11,9 +11,9 @@ public class FieldReferenceOffsetManager {
     public final int preambleOffset; //-1 if there is no preamble
     public final int templateOffset;
     
-    private static final int SEQ     = 0;//0x10000000;
-    private static final int GRP     = 0;//0x20000000;
-    private static final int MSG_END = 0;//0x40000000;
+    public static final int SEQ     = 0x10000000;
+    public static final int GRP     = 0x20000000;
+    public static final int MSG_END = 0x40000000;
     
     public final int[] fragSize;
     public final int[] fragJumps;
@@ -68,25 +68,26 @@ public class FieldReferenceOffsetManager {
             //now past the end of the template so 
             //close it because this index starts a new one
             //first position is always part of a new template
-            boolean isStop = i==tokenStops[tokenStopIdx];
             
             //sequences and optional groups will always have group tags.
             boolean isGroup = TypeMask.Group == TokenBuilder.extractType(config.scriptTokens[i]);    
             boolean isGroupOpen = isGroup && (0 == (config.scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
             boolean isGroupClosed = isGroup && (0 != (config.scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
             
+            boolean isStop = i==tokenStops[tokenStopIdx];
+            
+                        
+            
             if (isGroupClosed) {
                 depth--;
             }
             
             //detected new token
-            if (i==0 || (isStop&& !isGroupClosed) || isGroupOpen) {
-                if (i==0) {
-                    scriptFragStartStack[depth]=i;
-                    depth++;
-                }
-                if (isStop) {
+            if (i==0 || (isStop && !isGroupClosed) || isGroupOpen) {
+
+                if (isStop) {                    
                     depth--;
+                    
                     tokenStopIdx++;
                     //this is not an inner group but is really the templates pmap 
                     if (TypeMask.Group == TokenBuilder.extractType(config.scriptTokens[i])) {

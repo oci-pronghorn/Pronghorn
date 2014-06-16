@@ -398,14 +398,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader);
+                        int idx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor));
                         if (!byteHeap.isNull(idx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, byteHeap.isNull(idx));
                         }
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f], reader);
+                            int textIdx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor));
 
                             byte[] tdc = testConst;
                             assertTrue("Error:" + TokenBuilder.tokenToString(token),
@@ -420,7 +420,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader);
+                        int idx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor));
                         if (!byteHeap.isNull(idx)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
                                     + byteHeap.length(idx), Boolean.TRUE, byteHeap.isNull(idx));
@@ -428,7 +428,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f], reader);
+                            int textIdx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor));
 
                             if ((1 & i) == 0) {
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"

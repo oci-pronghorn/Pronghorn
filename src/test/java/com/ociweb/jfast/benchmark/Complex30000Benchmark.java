@@ -74,7 +74,7 @@ public class Complex30000Benchmark extends Benchmark {
 
 
     private void fastCore(FASTRingBuffer queue) {
-        while (reactor.pump2()>=0) {
+        while (reactor.pump()>=0) {
             FASTRingBuffer.dump(queue); // must dump values in buffer
         }
     }

@@ -306,15 +306,15 @@ public final class PrimitiveReader {
         return (v<0) ? a | (v & 0x7Fl) : readLongSignedTail((a | v) << 7,reader);
     }
     
-    public static long readLongSigned(PrimitiveReader reader) {//TODO: AA, Invoked 100's of millions of times, must be tight.
-        
+    public static long readLongSigned(PrimitiveReader reader) {        
         if (reader.limit - reader.position >= 10) {// not near end so go fast.
             byte v = reader.buffer[reader.position++];
-            long accumulator = ((v & 0x40) == 0) ? 0l : 0xFFFFFFFFFFFFFF80l;            
+        //    long accumulator = ((v & 0x40) == 0) ? 0l : 0xFFFFFFFFFFFFFF80l;               
+            long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l; //branchless          
+            
             return (v < 0) ? accumulator |(v & 0x7F) : readLongSignedTail((accumulator | v) << 7,reader);
         }
         return readLongSignedSlow(reader);
-
     }
 
     private static long readLongSignedSlow(PrimitiveReader reader) {
@@ -385,10 +385,11 @@ public final class PrimitiveReader {
         return (v<0) ? a | (v & 0x7F) : readIntegerSignedTail((a | v) << 7,reader);
     }
     
-    public static int readIntegerSigned(PrimitiveReader reader) {//TODO: AA, Invoked 100's of millions of times, must be tight.
+    public static int readIntegerSigned(PrimitiveReader reader) {
           if (reader.limit - reader.position >= 10) {// not near end so go fast.
             byte v = reader.buffer[reader.position++];
-            int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;            
+         //   int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;         
+            int accumulator = (~(((v>>6)&1)-1))&0xFFFFFF80;  //branchless                
             return (v < 0) ? accumulator |(v & 0x7F) : readIntegerSignedTail((accumulator | v) << 7,reader);
         }
         return readIntegerSignedSlow(reader);
