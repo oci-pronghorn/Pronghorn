@@ -1820,7 +1820,4 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         rIntDictionary[target] = resetConst;
     }
 
-    //TODO: C, Need a way to stream to disk over gaps of time. Write FAST to a file and Write series of Dictionaries to another, this set is valid for 1 catalog.
-    
-    
 }

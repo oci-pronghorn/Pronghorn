@@ -54,10 +54,8 @@ public final class FASTInputReactor {
     private final PrimitiveReader reader;//the reader is non-blocking but awkward to use directly.
     private final FASTListener listener;
     
-    //TODO: single execution service must be used for all and passed in.
+    //TODO: single execution service must be used for all and passed in, it also needs extra paused threads for release later.
     //TODO: reactor will add its runnable to to the single service and remove upon dispose.
-    //TODO: runnable loops as long as there is data, no data then wait until feed in data.
-    //TODO: if the feed stops in the middle of the data must wait that thread till it gets in.
     
     public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader) {
         this.decoder=decoder;

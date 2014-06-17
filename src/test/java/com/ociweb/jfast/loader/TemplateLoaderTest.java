@@ -202,10 +202,21 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
             msgs.set(0);
             frags = 0;
-            int flag = 0; // same id needed for writer construction
-            while (0 != (flag = reactor.select())) {
-                              frags++;
+//            int flag = 0; // same id needed for writer construction
+//            while (0 != (flag = reactor.select())) {
+//                              frags++;
+//            }
+            
+            FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+            while (reactor.pump()>=0) {
+                rb.moveNext();
+                int templateId = rb.messageId();
+                if (templateId!=-1) {
+                    listener.fragment(templateId, rb);
+                }
             }
+            
+            
             //fastInput.reset();
             PrimitiveReader.reset(reader);
             readerDispatch.reset(catalog.dictionaryFactory());

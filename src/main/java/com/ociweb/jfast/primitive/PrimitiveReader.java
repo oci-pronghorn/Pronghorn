@@ -653,7 +653,7 @@ public final class PrimitiveReader {
 
     public static Appendable readTextUTF8(int charCount, Appendable target, PrimitiveReader reader) {
 
-        //TODO: B, need to count the bytes here instead of chars
+        //TODO: A, need to count the bytes here instead of chars
 
         while (--charCount >= 0) {
             if (reader.position >= reader.limit) {

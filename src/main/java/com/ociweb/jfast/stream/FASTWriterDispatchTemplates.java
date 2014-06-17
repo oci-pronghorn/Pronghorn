@@ -473,7 +473,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
         
         }
     }
-    //TODO: A, write templateId and dispatch instance in leading integer. If value is bad the dispatch can be reset.
+    
     
     protected void genWriteTextConstantOptional(PrimitiveWriter writer) {
         PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -933,7 +933,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteIntegerSignedIncrementOptional(int target, int source, int valueOfNull, PrimitiveWriter writer, int[] intValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer, rbPos);
-            if (valueOfNull == value) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+            if (valueOfNull == value) {
                 StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
             } else { 
                 int last = intValues[source];
@@ -1059,7 +1059,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues) {
         {
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
-            if (exponentValueOfNull == exponentValue) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+            if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
@@ -1137,7 +1137,7 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int rbPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
         {
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, rbPos);  
-            if (exponentValueOfNull == exponentValue) {//TODO: C, at generation time the valueOfNull can be replaced by constant so 0 optimization can take place
+            if (exponentValueOfNull == exponentValue) {
                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
@@ -1347,14 +1347,12 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteCloseTemplatePMap(PrimitiveWriter writer, FASTEncoder dispatch) {
-        //TODO: now that close happens at the end of the template every time it adds a LARGE latency that was not there when closing the PMap early.
         PrimitiveWriter.closePMap(writer);
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }
 
     protected void genWriteCloseTemplate(PrimitiveWriter writer, FASTEncoder dispatch) {
-        PrimitiveWriter.closePMap(writer);                                // TODO: A, this needs to be close but not sure this is the right location.
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }

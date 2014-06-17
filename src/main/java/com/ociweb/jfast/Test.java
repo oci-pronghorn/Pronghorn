@@ -205,7 +205,6 @@ public class Test {
     //need client stack of nestedd seq etc. to know when we switch to the next one.
     //at end of fragment length# will tell repeat for next sequence.
     /*//TODO: AA, need test for optional groups this is probably broken. 
-                      //TODO: API, AA need consistant way to know what kind of frament we have without data from select!!
                       
                       ## if the fragment id is always on the front of the fragment in ring buffer it will 
                          Be limited by the memory write speeds and more data will move

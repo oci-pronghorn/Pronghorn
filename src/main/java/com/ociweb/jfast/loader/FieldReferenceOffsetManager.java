@@ -12,12 +12,14 @@ public class FieldReferenceOffsetManager {
     public final int templateOffset;
     
     public static final int SEQ     = 0x10000000;
-    public static final int GRP     = 0x20000000;
-    public static final int MSG_END = 0x40000000;
+ //   public static final int GRP     = 0x20000000;
+  //  public static final int MSG_END = 0x40000000;
+    public static final int MSG_END = 0x80000000;
     
     public final int[] fragSize;
     public final int[] fragJumps;
-    
+    public final int[] tokens;
+    public final int[] starts;
     
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
         
@@ -43,6 +45,9 @@ public class FieldReferenceOffsetManager {
             
             buildFragScript(config);
         }
+        tokens = config.scriptTokens;
+        starts = config.getTemplateStartIdx();
+        
     }
 
     //TODO: C, move this into TemplateCatalog save?
@@ -102,7 +107,7 @@ public class FieldReferenceOffsetManager {
                 
                 if (isGroupOpen) {
                     boolean isSeq = (0 == (config.scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
-                    fragJumps[i] |= isSeq ? SEQ : GRP; //type base  
+                    fragJumps[i] |= isSeq ? SEQ : 0; //type base  
                     scriptFragStartStack[depth]=i;
                     depth++;
                 }      

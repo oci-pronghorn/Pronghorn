@@ -65,9 +65,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit; //TODO: AAAA, remvoe this by using the stackHead depth for all wrapping groups
 
-        
-        //TODO: A, must pass this in to each method so they need not look it up again. also must use this one before cursor moves!
-        FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
+        final FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         
         int token = fullScript[activeScriptCursor];
 //        //TODO: A, hack until group stack is used in place of the limit SKIPS OVER ALL CLOSING GROUPS && NORMAL GROUPS THAT WE START WITH.
@@ -111,7 +109,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     } else {
                         // 011??
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            decodeDecimal(reader, token, fullScript[++activeScriptCursor]); //pull second token);
+                            decodeDecimal(reader, token, fullScript[++activeScriptCursor],rbRingBuffer); //pull second token);
                         } else {
                             if (readFromIdx>=0) {
                                 int source = token & MAX_TEXT_INSTANCE_MASK;
@@ -190,7 +188,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         return sequenceCountStackHead>=0;//false;
     }
 
-    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken) {
+    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, FASTRingBuffer rbRingBuffer) {
         //The previous dictionary value will need to have two read from values 
         //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
         // 0110? Decimal and DecimalOptional
@@ -199,26 +197,26 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
             
-            readIntegerSigned(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader, ringBuffers[activeScriptCursor]);
+            readIntegerSigned(expoToken, rIntDictionary, MAX_INT_INSTANCE_MASK, readFromIdx, reader, rbRingBuffer);
             
             //exponent is NOT optional so do normal mantissa processing.
             if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
                 // not optional
-                readLongSigned(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader, ringBuffers[activeScriptCursor]);
+                readLongSigned(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader, rbRingBuffer);
             } else {
                 // optional
-                readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader, ringBuffers[activeScriptCursor]);
+                readLongSignedOptional(mantToken, rLongDictionary, MAX_LONG_INSTANCE_MASK, readFromIdx, reader, rbRingBuffer);
             }
             
         } else {
             //exponent is optional so the mantissa bit may be absent
-            decodeOptionalDecimal(reader, expoToken, mantToken);
+            decodeOptionalDecimal(reader, expoToken, mantToken, rbRingBuffer);
         }
         
         readFromIdx = -1; //reset for next field where it might be used. 
     }
 
-    private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken) {
+    private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken, FASTRingBuffer rbRingBuffer) {
               
        // System.err.println("decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
        //In this method we split out by exponent operator then call the specific method needed
@@ -232,7 +230,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     // none
                     int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
                     
-                    decodeOptionalDecimalNone(expoConstAbsent, mantToken, reader, ringBuffers[activeScriptCursor]);
+                    decodeOptionalDecimalNone(expoConstAbsent, mantToken, reader, rbRingBuffer);
                     
                 } else {
                     // delta
@@ -240,7 +238,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
                     int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
                     
-                    decodeOptionalDecimalDelta(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffers[activeScriptCursor]);
+                    decodeOptionalDecimalDelta(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
@@ -248,7 +246,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
                 int expoConstConst = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
-                decodeOptionalDecimalConstant(expoConstAbsent,expoConstConst,mantToken, reader, ringBuffers[activeScriptCursor]);
+                decodeOptionalDecimalConstant(expoConstAbsent,expoConstConst,mantToken, reader, rbRingBuffer);
                 
             }
         
@@ -262,7 +260,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
                     int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
                     
-                    decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffers[activeScriptCursor]);
+                    decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 } else {
                     // increment
@@ -270,7 +268,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
                     int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
                     
-                    decodeOptionalDecimalIncrement(expoTarget,expoSource,expoConstAbsent,mantToken, reader, ringBuffers[activeScriptCursor]);
+                    decodeOptionalDecimalIncrement(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
@@ -279,7 +277,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 int expoConstDefault = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK] == 0 ? expoConstAbsent
                         : rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
-                decodeOptionalDecimalDefault(expoConstAbsent,expoConstDefault,mantToken, reader, ringBuffers[activeScriptCursor]);
+                decodeOptionalDecimalDefault(expoConstAbsent,expoConstDefault,mantToken, reader, rbRingBuffer);
                 
             }
         }                        

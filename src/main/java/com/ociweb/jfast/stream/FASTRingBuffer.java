@@ -4,7 +4,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -56,6 +59,8 @@ public final class FASTRingBuffer {
     final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
     public final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
     long lastRead;
+    
+  //TODO: B, write templateId and dispatch instance in leading integer. If value is bad the dispatch can be reset.
     
     
     //TODO: A, use stack of offsets for each fragment until full message is completed.
@@ -130,65 +135,93 @@ public final class FASTRingBuffer {
 
     // adjust these from the offset of the biginning of the message.
 
+    public int messageId() {
+        return messageId;
+    }
+    
     int messageId = -1;
-    int cursor;
+    int cursor=0;
+    int[] seqStack = new int[10];//TODO: how deep is this?
+    int seqStackHead = -1;
+    final int JUMP_MASK = 0xFFFFF;
     
     public void moveNext() {
         // step forward and allow write to previous location.
         if (messageId<0) {
             //TODO: need to step over the preamble? but how?
             messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
-            
-            //templateId -> scriptLocation
-            cursor = templateStartIdx[messageId];
-                                
-            //scriptLocation -> stepSize
-            int fragSize = from.fragSize[cursor];  //size of fragment in data
-            int fragJump = from.fragJumps[cursor]; //script jump 
-            
-            removeCount.addAndGet(fragSize);
-            cursor += fragJump;
-            
-            //TODO: set -1 if this is the end of the record
-            boolean isEndOfMessage = cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END));
-            if (isEndOfMessage) {
-                    messageId=-1;        
-            }
-            
+            //start new message, can not be seq or optional group or end of message.
+            cursor = from.starts[messageId];
         } else {
             
-            //TODO: A, skip over fragment.
-            boolean isSeq = false;
-            int len = 0;
-            
-            if (isSeq) {
-                if (0==len) {
-                    //TODO: must jump over this one on to the next
-                    
-                    int fragSize = from.fragSize[cursor];  //size of fragment in data
-                    int fragJump = from.fragJumps[cursor]; //script jump 
-                    
-                    removeCount.addAndGet(fragSize);
-                    cursor += fragJump;
-                                        
-                }                
-            }            
-            
             int fragSize = from.fragSize[cursor];  //size of fragment in data
             int fragJump = from.fragJumps[cursor]; //script jump 
+            //int token    = from.tokens[cursor];    //field type and operator
             
             removeCount.addAndGet(fragSize);
-            cursor += fragJump;
+            cursor += (fragJump&JUMP_MASK);
+
+            ///TODO: add optional groups to this implementation
+            ///TODO: can we remove fragJump and use token?
             
-            //TODO: set -1 if this is the end of the record
-            boolean isEndOfMessage = cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END));
-            if (isEndOfMessage) {
-                messageId=-1;
-            }
+            //////////////
+            ////Never call these when we jump back for loop
+            //////////////
+            sequenceLengthDetector(fragJump&JUMP_MASK);
+            endOfMessageDetector();
             
         }
         
         
+    }
+
+    
+    //only called after moving foward.
+    private void sequenceLengthDetector(int jumpSize) {
+        if(cursor==0) {
+            return;
+        }
+        int endingToken = from.tokens[cursor-1];
+        //if last token of last fragment was length then begin new sequence
+        int type = TokenBuilder.extractType(endingToken);
+        if (TypeMask.GroupLength == type) {
+            int seqLength = FASTRingBufferReader.readInt(this, from.fragSize[cursor-jumpSize]-1); //length is always at the end of the fragment.
+            if (seqLength == 0) {
+                //do nothing and jump over the sequence
+                //there is no data in the ring buffer so do not adjust position
+                int fragJump = from.fragJumps[cursor]; //script jump 
+                cursor += (fragJump&JUMP_MASK);
+                //done so move to the next item
+                cursor++;
+            } else {
+                //push onto stack
+                seqStack[++seqStackHead]=seqLength;
+                //this is the first run so we are already positioned at the top                
+            }
+            return;   
+            
+        }
+        //if last token of last fragment was seq close then subtract and move back.
+        if (TypeMask.Group==type && 0 == (endingToken & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
+            //check top of the stack
+            if (--seqStack[seqStackHead]>0) {
+                //return to top 
+               cursor -= from.fragJumps[cursor-jumpSize]&JUMP_MASK;
+            } else {
+                //done
+                //already positioned to continue
+                seqStackHead--;
+                //done so move to the next item
+                cursor++;
+            }
+        }                       
+    }
+    
+    
+    private void endOfMessageDetector() {
+        if (cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END))) {
+                messageId=-1;        
+        }
     }
 
 
