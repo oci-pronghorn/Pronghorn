@@ -11,6 +11,9 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
+
+// TODO: B, Check support for group that may be optional
+
 /*
  * Implementations of read can use this object
  * to pull the most recent parsed values of any available fields.
@@ -52,7 +55,6 @@ public final class FASTInputReactor {
     
     private final FASTDecoder decoder; 
     private final PrimitiveReader reader;//the reader is non-blocking but awkward to use directly.
-    private final FASTListener listener;
     
     //TODO: single execution service must be used for all and passed in, it also needs extra paused threads for release later.
     //TODO: reactor will add its runnable to to the single service and remove upon dispose.
@@ -60,23 +62,7 @@ public final class FASTInputReactor {
     public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader) {
         this.decoder=decoder;
         this.reader=reader;
-        this.listener = new FASTListener(){
-
-            @Override
-            public void fragment(int templateId, FASTRingBuffer buffer) {
-            }
-
-            @Override
-            public void fragment() {
-            }};
         
-    }
-
-    
-    public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener) {
-        this.decoder=decoder;
-        this.reader=reader;
-        this.listener = listener;
     }
     
     public void start(final ThreadPoolExecutor executorService, PrimitiveReader reader) {
@@ -201,100 +187,5 @@ public final class FASTInputReactor {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
     }
     
-       
-    
-    // TODO: B, Check support for group that may be optional
-    
-    //TODO: AA, delete select in favor of pump 
-    //return states -1, 0 , 1 for NoDataToRead, Success, NoRoomToWrite
-    public int select() {
-        // start new script or detect that the end of the data has been reached
-        if (decoder.neededSpaceOrTemplate < 0) {
-            return beginNewTemplate(decoder, reader, listener);
-        }
-        return decode(decoder, reader, listener);
-    }
-
-
-    private static int beginNewTemplate(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener ) {
-        // checking EOF first before checking for blocked queue
-        if (PrimitiveReader.isEOF(reader)) { //REMOVE
-            //System.err.println(messageCount);
-            return 0;
-        }
-        int err = hasMoreNextMessage(decoder, reader, listener);
-        if (err!=0) {
-            return err;
-        }
-        return decode(decoder, reader, listener);
-    }
-
-    private static int decode(FASTDecoder decoder, PrimitiveReader reader, FASTListener listener) {
-
-        // returns true for end of sequence or group
-        if (decoder.decode(reader)) {     
-            listener.fragment();
-            return 1;// has more to read
-        } else {
-            listener.fragment();
-            // reached the end of the script so close and prep for the next one
-            decoder.neededSpaceOrTemplate = -1;
-            PrimitiveReader.closePMap(reader);
-            
-//            if (PrimitiveReader.isEOF(reader)) { //replaced with 30001==messageCount and found this method is NOT expensive
-//                //System.err.println(messageCount);
-//                return 0;
-//            }
-            
-            
-            return 2;// finished reading full message
-        }   
-        
-    }
-
-    private static int hasMoreNextMessage(FASTDecoder readerDispatch, PrimitiveReader reader, FASTListener listener) {
-
-        // get next token id then immediately start processing the script
-        // /read prefix bytes if any (only used by some implementations)
-        assert (readerDispatch.preambleDataLength != 0 && readerDispatch.gatherReadData(reader, "Preamble", 0));
-        //ring buffer is build on int32s so the implementation limits preamble to units of 4
-        assert ((readerDispatch.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
-        assert (readerDispatch.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
-                        
-        int result;
-        // must have room to store the new template
-        FASTRingBuffer rb = readerDispatch.ringBuffer(0);//BIG HACK;
-        int req = readerDispatch.preambleDataLength + 1;
-        if ( (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < req)) {
-            result = 0x80000000;
-        } else {
-        
-            
-            //Hold the preamble value here until we know the template and therefore the needed ring buffer.
-            int p = readerDispatch.preambleDataLength;
-            int a=0, b=0;
-            if (p>0) {
-                a = PrimitiveReader.readRawInt(reader);
-                 if (p>4) {
-                    b = PrimitiveReader.readRawInt(reader);
-                    assert(p==8) : "Unsupported large preamble";
-                }
-            }
-    
-            // /////////////////
-            // open message (special type of group)
-            
-            int templateId = PrimitiveReader.openMessage(readerDispatch.maxTemplatePMapSize, reader);            
-            
-            readerDispatch.neededSpaceOrTemplate = 0;//already read templateId do not read again
-            
-            listener.fragment(templateId, readerDispatch.ringBuffer(readerDispatch.activeScriptCursor));
-            
-            // write template id at the beginning of this message
-            result =  readerDispatch.requiredBufferSpace(templateId, a, b);
-        }
-        return result;
-
-    }
 
 }

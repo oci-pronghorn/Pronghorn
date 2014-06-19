@@ -114,8 +114,8 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-   //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+    //    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+        FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
         
@@ -139,80 +139,72 @@ public class TemplateLoaderTest {
         
         final AtomicLong totalBytesOut = new AtomicLong();
         final AtomicLong totalRingInts = new AtomicLong();
+
         
-        FASTListener listener = new FASTListener() {
-            
-            @Override
-            public void fragment(int templateId, FASTRingBuffer queue) {
-                msgs.incrementAndGet();
-
-                // this is a template message.
-                int bufferIdx = 0;
-                
-                if (preamble.length > 0) {
-                    int i = 0;
-                    int s = preamble.length;
-                    while (i < s) {
-                        FASTRingBufferReader.readInt(queue, bufferIdx);
-                        i += 4;
-                        bufferIdx++;
-                    }
-                }
-
-                int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
-                bufferIdx += 1;// point to first field
-                assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
-
-                int i = catalog.getTemplateStartIdx()[templateId];
-                int limit = catalog.getTemplateLimitIdx()[templateId];
-                // System.err.println("new templateId "+templateId);
-                while (i < limit) {
-                    int token = fullScript[i++];
-                    // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
-
-                    if (isText(token)) {
-                        totalBytesOut.addAndGet(4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
-                    }
-
-                    // find the next index after this token.
-                    bufferIdx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-
-                }
-                totalBytesOut.addAndGet(4 * bufferIdx);
-                totalRingInts.addAndGet(bufferIdx);
-
-                // must dump values in buffer or we will hang when reading.
-                // only dump at end of template not end of sequence.
-                // the removePosition must remain at the beginning until
-                // message is complete.
-                FASTRingBuffer.dump(queue);
-            }
-            
-            @Override
-            public void fragment() {
-            }
-            
-        };
-        
-        
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader,listener);
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
 
         
         int iter = warmup;
         while (--iter >= 0) {
             msgs.set(0);
             frags = 0;
-//            int flag = 0; // same id needed for writer construction
-//            while (0 != (flag = reactor.select())) {
-//                              frags++;
-//            }
-            
+
             FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+            rb.reset();
+         //   FASTRingBuffer.dump(rb);//common starting spot??
+            
+            
             while (reactor.pump()>=0) {
                 rb.moveNext();
                 int templateId = rb.messageId();
+             //   System.err.println(templateId);
                 if (templateId!=-1) {
-                    listener.fragment(templateId, rb);
+                    //TODO: AAA, this count is wrong it should only be 3000
+                    
+                    msgs.incrementAndGet();
+
+                    // this is a template message.
+                    int bufferIdx = 0;
+                    
+                    if (preamble.length > 0) {
+                        int i = 0;
+                        int s = preamble.length;
+                        while (i < s) {
+                            FASTRingBufferReader.readInt(queue, bufferIdx);
+                            i += 4;
+                            bufferIdx++;
+                        }
+                    }
+
+                    int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
+                    bufferIdx += 1;// point to first field
+                    assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
+
+                    int i = catalog.getTemplateStartIdx()[templateId];
+                    int limit = catalog.getTemplateLimitIdx()[templateId];
+                    // System.err.println("new templateId "+templateId);
+                    while (i < limit) {
+                        int token = fullScript[i++];
+                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
+
+                        if (isText(token)) {
+                            totalBytesOut.addAndGet(4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
+                        }
+
+                        // find the next index after this token.
+                        bufferIdx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+
+                    }
+                    totalBytesOut.addAndGet(4 * bufferIdx);
+                    totalRingInts.addAndGet(bufferIdx);
+
+                    // must dump values in buffer or we will hang when reading.
+                    // only dump at end of template not end of sequence.
+                    // the removePosition must remain at the beginning until
+                    // message is complete.
+                    
+                    //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
+                    //FASTRingBuffer.dump(queue);
                 }
             }
             
@@ -232,14 +224,23 @@ public class TemplateLoaderTest {
             }
             double start = System.nanoTime();
 
-            int flag;
-            while (0 != (flag = reactor.select())) {
-                if (flag < 0) {
-                    // negative flag indicates queue is backed up.
-                    // must dump values in buffer or we will hang when reading.
+            //FASTRingBufferReader.dump(queue);
+            
+            int bid; 
+            while ((bid = reactor.pump())>=0) {
+                FASTRingBuffer rb =  readerDispatch.ringBuffer(bid);
+                rb.moveNext();
+                //TODO: AAAAA, move next by its self should be enough!!
+                
+                int templateId = rb.messageId();
+                if (templateId!=-1) {
                     FASTRingBufferReader.dump(queue);
                 }
             }
+            
+//            while (reactor.pump()>=0) {
+//                FASTRingBufferReader.dump(queue);
+//            }
 
             double duration = System.nanoTime() - start;
             if ((0x7F & iter) == 0) {
@@ -328,7 +329,7 @@ public class TemplateLoaderTest {
             
         };
         
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader,listener);
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
         
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
@@ -375,13 +376,35 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
             msgs.set(0);
             grps = 0;
-            int flags = 0; // same id needed for writer construction
-            while (0 != (flags = reactor.select())) {
+            
+      //idea      
+//            int bid; 
+//            while ((bid = reactor.pump())>=0) {
+//                FASTRingBuffer rb =  readerDispatch.ringBuffer(bid);
+//                rb.moveNext();
+//                int templateId = rb.messageId();
+//                if (templateId!=-1) {
+//                    FASTRingBufferReader.dump(queue);
+//                }
+//            }
+            
+            while (reactor.pump()>=0) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
                 grps++;
             }
+            
+    //old delete        
+//            int flags = 0; // same id needed for writer construction
+//            while (0 != (flags = reactor.select())) {
+//                
+//                while (queue.hasContent()) {
+//                    dynamicWriter.write();
+//                }
+//                grps++;
+//                
+//            }
 
             queue.reset();
 
@@ -408,11 +431,13 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             double start = System.nanoTime();
-            while (0 != reactor.select()) {
+            
+            while (reactor.pump()>=0) {
                 while (queue.hasContent()) {
                     dynamicWriter.write();
                 }
             }
+            
             double duration = System.nanoTime() - start;
 
             if ((0x3F & iter) == 0) {

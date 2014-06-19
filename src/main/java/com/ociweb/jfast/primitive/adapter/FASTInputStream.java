@@ -29,8 +29,10 @@ public class FASTInputStream implements FASTInput {
 		try {
 			
 		    int avail = inst.available();
-		    //   len = len<avail?len:avail;
-		    len = len + ((avail-len) & (avail-len)>>31);//branchless
+		    if (avail>0) {
+		        //   len = len<avail?len:avail;
+		        len = len + ((avail-len) & (avail-len)>>31);//branchless
+		    }
 					    
 			//Only fill with the bytes avail.			
 			int result = inst.read(targetBuffer, offset, len);

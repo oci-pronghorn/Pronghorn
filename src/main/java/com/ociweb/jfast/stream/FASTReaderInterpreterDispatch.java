@@ -1169,6 +1169,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 genReadLengthDefault(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, reader, ringBuffer.mask, ringBuffer.addPos, this);
             }
         }
+        
+        if (ringBuffer.addPos.value<20) {
+            System.err.println("Wrote len:"+ringBuffer.buffer[(int)(ringBuffer.addPos.value-1)&ringBuffer.mask]+" at pos "+(ringBuffer.addPos.value-1));
+        }
     }
     
     public int readBytes(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {

@@ -12,11 +12,10 @@ public class FieldReferenceOffsetManager {
     public final int templateOffset;
     
     public static final int SEQ     = 0x10000000;
- //   public static final int GRP     = 0x20000000;
-  //  public static final int MSG_END = 0x40000000;
     public static final int MSG_END = 0x80000000;
     
-    public final int[] fragSize;
+    public final int[] fragDataSize;
+    public final int[] fragScriptSize;
     public final int[] fragJumps;
     public final int[] tokens;
     public final int[] starts;
@@ -36,12 +35,14 @@ public class FieldReferenceOffsetManager {
         }
          
         if (null==config || null == config.scriptTokens) {
-            fragSize = null;
+            fragDataSize = null;
             fragJumps = null;
+            fragScriptSize = null;
         } else {
         
-            fragSize  = new int[config.scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
+            fragDataSize  = new int[config.scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             fragJumps = new int[config.scriptTokens.length];
+            fragScriptSize = new int[config.scriptTokens.length];
             
             buildFragScript(config);
         }
@@ -58,7 +59,7 @@ public class FieldReferenceOffsetManager {
         int tokenStopIdx = 0;
         boolean debug = true;       
         int i = 0;      
-        int templateIdx=0;
+        int fragmentStartIdx=0;
         
         //when a group or sequence is absent in the buffer we need to jump over it and any internal structures in the script
         //all sequence counters must be incremented when an internal one increments
@@ -88,7 +89,9 @@ public class FieldReferenceOffsetManager {
             }
             
             //detected new token
-            if (i==0 || (isStop && !isGroupClosed) || isGroupOpen) {
+            if (i==0 ||               //first index must always be a fragment open
+         //       (isStop && !isGroupClosed) ||
+                isGroupOpen) {        //open groups(seq/grp/msg) cause previous fragment to close and new one to open
 
                 if (isStop) {                    
                     depth--;
@@ -103,11 +106,15 @@ public class FieldReferenceOffsetManager {
                     //end of message is here OR at end of script
                     fragJumps[i] |= MSG_END;
                 }
-                templateIdx = i;     
+                fragmentStartIdx = i;     
+                fragDataSize[fragmentStartIdx] =2;
                 
                 if (isGroupOpen) {
-                    boolean isSeq = (0 == (config.scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
+                    boolean isSeq = (0 != (config.scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
                     fragJumps[i] |= isSeq ? SEQ : 0; //type base  
+                    if (isSeq) {
+                        fragDataSize[fragmentStartIdx] = 0;
+                    }
                     scriptFragStartStack[depth]=i;
                     depth++;
                 }      
@@ -118,13 +125,17 @@ public class FieldReferenceOffsetManager {
                 
             }
             int token = config.scriptTokens[i];
-            int stepSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-            fragSize[i]=fragSize[templateIdx]; //keep the individual offsets per field
-            fragSize[templateIdx]+=stepSize;   //keep the total for the template size 
+            
+            fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
+            fragDataSize[fragmentStartIdx]+=TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            fragScriptSize[fragmentStartIdx]++;
+            
+            //TODO: using the above approch we need to total the length of the frag
+            
             
             int j = depth;
-            while (--j>=0) {
-                fragJumps[scriptFragStartStack[j]]++;
+            while (--j>=0) {//TODO: rename fragJumps as group jumps, this is already part of the group jump numbers!!!
+                fragJumps[scriptFragStartStack[j]]++; //TODO: these jumps are only needed for ? jumping over SEQ/GRP and all children when skipped?
             }
            // fragJumps[templateIdx]++;//jump for script position changes
             if (debug) {
@@ -135,7 +146,9 @@ public class FieldReferenceOffsetManager {
         }
                 
         if (debug) {
-            System.err.println(Arrays.toString(fragSize));
+            System.err.println(Arrays.toString(fragDataSize));
+            System.err.println(Arrays.toString(fragScriptSize));
+            
             System.err.println(Arrays.toString(fragJumps));
         }
     }

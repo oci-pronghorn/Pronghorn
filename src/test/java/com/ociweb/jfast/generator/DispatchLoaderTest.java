@@ -103,13 +103,13 @@ public class DispatchLoaderTest {
                    
                    if (records.intValue()==switchToCompiled1) {
                        decoder[0] = DispatchLoader.loadDispatchReader(catalog1);
-                       reactor[0] = new FASTInputReactor(decoder[0],reader, listener[0]);
+                       reactor[0] = new FASTInputReactor(decoder[0],reader);
                       // queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());
                    }
                    if (records.intValue()==switchToCompiled2) {
                        decoder[0] = DispatchLoader.loadDispatchReader(catalog2);
-                       reactor[0] = new FASTInputReactor(decoder[0],reader, listener[0]);
+                       reactor[0] = new FASTInputReactor(decoder[0],reader);
                      //  queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());
                    }
@@ -124,7 +124,7 @@ public class DispatchLoaderTest {
             
         };
         
-        reactor[0] = new FASTInputReactor(decoder[0], reader, listener[0]);
+        reactor[0] = new FASTInputReactor(decoder[0], reader);
                 
         //Removed test for now until API is finished changing
 //        records.set(0);

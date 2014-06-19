@@ -152,14 +152,22 @@ public final class FASTRingBuffer {
             messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
             //start new message, can not be seq or optional group or end of message.
             cursor = from.starts[messageId];
+            System.err.println("*******  new start at:"+cursor);
         } else {
             
-            int fragSize = from.fragSize[cursor];  //size of fragment in data
-            int fragJump = from.fragJumps[cursor]; //script jump 
+            
+            
+            int fragSize = from.fragDataSize[cursor];  //size of fragment in data
+            int fragStep = from.fragScriptSize[cursor]; //script jump 
             //int token    = from.tokens[cursor];    //field type and operator
             
-            removeCount.addAndGet(fragSize);
-            cursor += (fragJump&JUMP_MASK);
+//            int lastLen = FASTRingBufferReader.readInt(this, fragSize+1); //TODO: why is this here? it is off by 2?
+//            System.err.println("last len:"+lastLen+" at "+(this.removeCount.get()+(fragSize-1))+" cursor "+cursor+" fragStep "+fragStep );
+            
+            System.err.println("jump by frag size:"+fragSize+" from "+cursor);
+            
+            remPos.value = removeCount.addAndGet(fragSize);
+            cursor += fragStep;
 
             ///TODO: add optional groups to this implementation
             ///TODO: can we remove fragJump and use token?
@@ -167,8 +175,10 @@ public final class FASTRingBuffer {
             //////////////
             ////Never call these when we jump back for loop
             //////////////
-            sequenceLengthDetector(fragJump&JUMP_MASK);
-            endOfMessageDetector();
+            System.err.println("cursor "+cursor);
+            if (sequenceLengthDetector(fragStep)) {
+                endOfMessageDetector();
+            }
             
         }
         
@@ -177,50 +187,71 @@ public final class FASTRingBuffer {
 
     
     //only called after moving foward.
-    private void sequenceLengthDetector(int jumpSize) {
+    private boolean sequenceLengthDetector(int jumpSize) {
         if(cursor==0) {
-            return;
+            return false;
         }
         int endingToken = from.tokens[cursor-1];
         //if last token of last fragment was length then begin new sequence
         int type = TokenBuilder.extractType(endingToken);
         if (TypeMask.GroupLength == type) {
-            int seqLength = FASTRingBufferReader.readInt(this, from.fragSize[cursor-jumpSize]-1); //length is always at the end of the fragment.
+            int seqLength = FASTRingBufferReader.readInt(this, -1); //length is always at the end of the fragment.
+            
+            //TODO: off by 2 because 1 for token id and 1 for preamble which are not in the script!!!
+            System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1));
+            
             if (seqLength == 0) {
+                System.err.println("******************** jump over seq");
                 //do nothing and jump over the sequence
                 //there is no data in the ring buffer so do not adjust position
-                int fragJump = from.fragJumps[cursor]; //script jump 
+                int fragJump = from.fragScriptSize[cursor]; //script jump  //TODO: not sure this is right whenthey are nested?
                 cursor += (fragJump&JUMP_MASK);
                 //done so move to the next item
                 cursor++;
+                return true;
             } else {
+                System.err.println("new Seq at top");
                 //push onto stack
                 seqStack[++seqStackHead]=seqLength;
                 //this is the first run so we are already positioned at the top                
             }
-            return;   
+            return false;   
             
         }
         //if last token of last fragment was seq close then subtract and move back.
         if (TypeMask.Group==type && 0 == (endingToken & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
             //check top of the stack
             if (--seqStack[seqStackHead]>0) {
+                System.err.println("return to top for seq");
                 //return to top 
-               cursor -= from.fragJumps[cursor-jumpSize]&JUMP_MASK;
+               cursor -= from.fragScriptSize[cursor-jumpSize]&JUMP_MASK;
+               return false;
             } else {
+                System.err.println("done with seq");
                 //done
                 //already positioned to continue
                 seqStackHead--;
                 //done so move to the next item
                 cursor++;
+                return true;
             }
-        }                       
+        }                   
+        return true;
     }
     
     
     private void endOfMessageDetector() {
-        if (cursor>=from.fragJumps.length || (0!= (from.fragJumps[cursor]&FieldReferenceOffsetManager.MSG_END))) {
-                messageId=-1;        
+        if (cursor>=from.tokens.length) {
+            messageId = -1;
+            System.err.println("eom1 "+cursor);
+            return;
+        }
+        int token = from.tokens[cursor-1];
+        //TODO: need extra flag to distinguish from closig message and clossing optional group.
+        
+        if (TokenBuilder.extractType(token)==TypeMask.Group && 0!=(token & OperatorMask.Group_Bit_Close)) {
+            messageId = -1;
+            System.err.println("eom2 "+cursor);
         }
     }
 
@@ -291,11 +322,13 @@ public final class FASTRingBuffer {
     public void removeForward(int step) {
         remPos.value = removeCount.get() + step;
         assert (remPos.value <= addPos.value);
+        System.err.println("remove forward to "+remPos.value);
         removeCount.lazySet(remPos.value);
     }
     
     public void removeForward2(long pos) {
         remPos.value = pos;
+        System.err.println("reset remvoe forward2 to "+pos);
         removeCount.lazySet(pos);
     }
 
@@ -310,8 +343,7 @@ public final class FASTRingBuffer {
     public static void dump(FASTRingBuffer rb) {
                        
         // move the removePosition up to the addPosition
-        // System.err.println("resetup to "+addPos);
-        ;
+         new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
         rb.removeCount.lazySet(rb.remPos.value = rb.addPos.value);
     }
 

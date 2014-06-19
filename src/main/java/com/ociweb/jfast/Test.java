@@ -130,11 +130,10 @@ public class Test {
                       break;
                   default:
                       FASTRingBuffer rb = readerDispatch.ringBuffer(0);
-                      
                       //TODO: only if this is the beginning or end of a template!!
                       msgs.incrementAndGet();
                       
-                      FASTRingBuffer.dump(rb);
+                      FASTRingBuffer.dump(rb); 
                       break;
               }
               
