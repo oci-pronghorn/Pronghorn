@@ -1170,8 +1170,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             }
         }
         
-        if (ringBuffer.addPos.value<20) {
-            System.err.println("Wrote len:"+ringBuffer.buffer[(int)(ringBuffer.addPos.value-1)&ringBuffer.mask]+" at pos "+(ringBuffer.addPos.value-1));
+        if (ringBuffer.addPos.value<40) {
+            System.err.println("> Wrote len:"+ringBuffer.buffer[(int)(ringBuffer.addPos.value-1)&ringBuffer.mask]+" at pos "+(ringBuffer.addPos.value-1));
         }
     }
     

@@ -130,6 +130,7 @@ public final class FASTInputReactor {
         // returns true for end of sequence or group
         if (!decoder.decode(reader)) {  
             // reached the end of the script so close and prep for the next one
+            System.err.println("decode has cleared target find next message");
             targetRingBufferId = -1;
             PrimitiveReader.closePMap(reader);            
         }
@@ -176,6 +177,8 @@ public final class FASTInputReactor {
             }
         }                   
         
+    //    FASTRingBuffer.unBlockFragment(rb); //TODO: This seems like the better place to unblock?
+        
         p = decoder.preambleDataLength;
         if (p>0) {
             //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
@@ -184,6 +187,7 @@ public final class FASTInputReactor {
                 FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
             }
         }
+        System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
     }
     

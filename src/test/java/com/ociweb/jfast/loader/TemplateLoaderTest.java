@@ -176,7 +176,7 @@ public class TemplateLoaderTest {
                         }
                     }
 
-                    int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
+                   // int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
                     bufferIdx += 1;// point to first field
                     assertTrue("found " + templateId, 1 == templateId || 2 == templateId || 99 == templateId);
 

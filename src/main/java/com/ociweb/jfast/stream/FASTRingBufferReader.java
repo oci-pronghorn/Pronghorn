@@ -263,6 +263,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
 
     public static void dump(FASTRingBuffer queue) {
+        new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
         //dump everything up to where it it is still writing new fragments.
         queue.removeCount.lazySet(queue.remPos.value = queue.addCount.get());
         

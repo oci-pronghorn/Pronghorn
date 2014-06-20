@@ -71,6 +71,7 @@ public final class FASTRingBuffer {
     //each fragment size must be known and looked up
     FieldReferenceOffsetManager from;
     int[] templateStartIdx;
+    
 
     public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth, FieldReferenceOffsetManager from, int[] templateStartIdx) {
         assert (primaryBits >= 1);       
@@ -140,33 +141,32 @@ public final class FASTRingBuffer {
     }
     
     int messageId = -1;
-    int cursor=0;
+    int cursor=-1;
     int[] seqStack = new int[10];//TODO: how deep is this?
     int seqStackHead = -1;
     final int JUMP_MASK = 0xFFFFF;
     
     public void moveNext() {
+        
+        //before moving cursor move the data pointer
+        if (cursor>=0 && cursor<from.fragDataSize.length) {
+            remPos.value = removeCount.addAndGet(from.fragDataSize[cursor]);//this is the old cursor position
+        }
+        
+        System.err.println("                   moveNext reading from rb pos "+this.remPos.value);
         // step forward and allow write to previous location.
         if (messageId<0) {
+            //TODO: need to get messageId when its the only message and so not written to the ring buffer.
             //TODO: need to step over the preamble? but how?
             messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
+           
             //start new message, can not be seq or optional group or end of message.
             cursor = from.starts[messageId];
-            System.err.println("*******  new start at:"+cursor);
+            System.err.println("*******  new start at:"+cursor+" for messageId "+messageId+"  atPos "+(remPos.value+1));
+            
         } else {
-            
-            
-            
-            int fragSize = from.fragDataSize[cursor];  //size of fragment in data
+                                   
             int fragStep = from.fragScriptSize[cursor]; //script jump 
-            //int token    = from.tokens[cursor];    //field type and operator
-            
-//            int lastLen = FASTRingBufferReader.readInt(this, fragSize+1); //TODO: why is this here? it is off by 2?
-//            System.err.println("last len:"+lastLen+" at "+(this.removeCount.get()+(fragSize-1))+" cursor "+cursor+" fragStep "+fragStep );
-            
-            System.err.println("jump by frag size:"+fragSize+" from "+cursor);
-            
-            remPos.value = removeCount.addAndGet(fragSize);
             cursor += fragStep;
 
             ///TODO: add optional groups to this implementation
@@ -175,7 +175,7 @@ public final class FASTRingBuffer {
             //////////////
             ////Never call these when we jump back for loop
             //////////////
-            System.err.println("cursor "+cursor);
+            System.err.println("cursor "+cursor+" from step "+fragStep+" now at "+remPos.value+" vs "+removeCount.get());
             if (sequenceLengthDetector(fragStep)) {
                 endOfMessageDetector();
             }
@@ -198,7 +198,7 @@ public final class FASTRingBuffer {
             int seqLength = FASTRingBufferReader.readInt(this, -1); //length is always at the end of the fragment.
             
             //TODO: off by 2 because 1 for token id and 1 for preamble which are not in the script!!!
-            System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1));
+            System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1)+" "+(this.removeCount.get()-1));
             
             if (seqLength == 0) {
                 System.err.println("******************** jump over seq");
@@ -316,6 +316,9 @@ public final class FASTRingBuffer {
     //Called once for every group close, even when nested
     //TODO: AA, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
     public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
+        
+           System.err.println("                                            unblockfragment write pos "+ringBuffer.addCount.get()+" -> "+ringBuffer.addPos.value);
+     
             ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
     }
 
