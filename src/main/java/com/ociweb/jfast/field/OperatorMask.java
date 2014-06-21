@@ -14,8 +14,7 @@ public class OperatorMask {
     public static final int Field_Default = 0x03; // 0011 //open
     public static final int Field_Delta = 0x04; // 0100 //close
     public static final int Field_Increment = 0x05; // 0101 //close
-    // RESSERVED 2 spots for future int/decimal operator
-    // Because decimals only have 3 bits for operator of each part.
+
     public static final int Field_Tail = 0x08; // 1000 // NEVER NUMERIC
 
     public static final int Dictionary_Reset = 0x00; // 0000
@@ -36,6 +35,7 @@ public class OperatorMask {
     public static final int Group_Bit_Seq = 0x04; // use length field and use
                                                   // jump back logic
     public static final int Group_Bit_PMap = 0x08; // group requires a pmap
+    public static final int Group_Bit_Msg = 0x10;//TODO: should be used in building new tokens to help processing messages.
 
     // group, sequence, message or ...??
     // pmap is only in group or sequence never message

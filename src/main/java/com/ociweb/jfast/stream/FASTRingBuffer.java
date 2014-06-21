@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -132,6 +134,15 @@ public final class FASTRingBuffer {
         remPos.value = 0;
         removeCount.set(0);
         addCount.set(0);
+        
+        /////
+        
+        messageId = -1;
+        isNewMessage = false;
+        cursor=-1;
+        seqStack = new int[10];//TODO: how deep is this?
+        seqStackHead = -1;
+        activeFragmentDataSize = 0;
     }
 
     // adjust these from the offset of the biginning of the message.
@@ -140,51 +151,70 @@ public final class FASTRingBuffer {
         return messageId;
     }
     
+    public boolean isNewMessage() {
+        return isNewMessage;
+    }
+    
     int messageId = -1;
+    boolean isNewMessage = false;
     int cursor=-1;
     int[] seqStack = new int[10];//TODO: how deep is this?
     int seqStackHead = -1;
     final int JUMP_MASK = 0xFFFFF;
+    int activeFragmentDataSize = 0;
+    
     
     public void moveNext() {
         
-        //before moving cursor move the data pointer
-        if (cursor>=0 && cursor<from.fragDataSize.length) {
-            remPos.value = removeCount.addAndGet(from.fragDataSize[cursor]);//this is the old cursor position
-        }
-        
-        System.err.println("                   moveNext reading from rb pos "+this.remPos.value);
-        // step forward and allow write to previous location.
-        if (messageId<0) {
-            //TODO: need to get messageId when its the only message and so not written to the ring buffer.
-            //TODO: need to step over the preamble? but how?
-            messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
-           
-            //start new message, can not be seq or optional group or end of message.
-            cursor = from.starts[messageId];
-            System.err.println("*******  new start at:"+cursor+" for messageId "+messageId+"  atPos "+(remPos.value+1));
+        do {
             
-        } else {
-                                   
-            int fragStep = from.fragScriptSize[cursor]; //script jump 
-            cursor += fragStep;
-
-            ///TODO: add optional groups to this implementation
-            ///TODO: can we remove fragJump and use token?
-            
-            //////////////
-            ////Never call these when we jump back for loop
-            //////////////
-            System.err.println("cursor "+cursor+" from step "+fragStep+" now at "+remPos.value+" vs "+removeCount.get());
-            if (sequenceLengthDetector(fragStep)) {
-                endOfMessageDetector();
+            //must jump over the old fragment.
+            remPos.value = removeCount.addAndGet(activeFragmentDataSize);
+                        
+     //       System.err.println("                   moveNext reading from rb pos "+this.remPos.value+" ***** ADDED TO RB POS "+activeFragmentDataSize+" "+collector);
+            // step forward and allow write to previous location.
+            if (messageId<0) {
+                //TODO: need to get messageId when its the only message and so not written to the ring buffer.
+                //TODO: need to step over the preamble? but how?
+                messageId = FASTRingBufferReader.readInt(this,  1); //TODO: how do we know this is one?
+               
+                //start new message, can not be seq or optional group or end of message.
+                cursor = from.starts[messageId];
+             //   System.err.println("*******  new start at:"+cursor+" for messageId "+messageId+"  atPos "+(remPos.value+1));
+                activeFragmentDataSize = from.fragDataSize[cursor];//save the size of this new fragment we are about to read
+                isNewMessage = true;
+           //     System.err.println("a front of fragment is :"+cursor+"  "+TokenBuilder.tokenToString(from.tokens[cursor])+" dataSize "+activeFragmentDataSize);
+            } else {
+                isNewMessage = false;
+                int fragStep = from.fragScriptSize[cursor]; //script jump 
+                cursor += fragStep;
+    
+                ///TODO: add optional groups to this implementation
+                ///TODO: can we remove fragJump and use token?
+                
+                //////////////
+                ////Never call these when we jump back for loop
+                //////////////
+           //     System.err.println("cursor "+cursor+" from step "+fragStep+" now at "+remPos.value+" vs "+removeCount.get());
+                if (sequenceLengthDetector(fragStep)) {
+                    endOfMessageDetector();
+                }
+    
+                
+                //after alignment with front of fragment, may be zero because we need to find the next message?
+                activeFragmentDataSize = messageId<0 ? 0 : from.fragDataSize[cursor];//save the size of this new fragment we are about to read
+                
+            //    System.err.println("b front of fragment is :"+cursor+"  "+(cursor>=from.tokens.length?" _NONE_ ":TokenBuilder.tokenToString(from.tokens[cursor]))+" dataSize "+activeFragmentDataSize);
+                
             }
+                    
             
-        }
-        
+            
+        } while (-1==messageId && hasContent()); //stay here if we can read the next block
         
     }
 
+    //TODO: B, test is probably does not work with fields following closed sequence.
     
     //only called after moving foward.
     private boolean sequenceLengthDetector(int jumpSize) {
@@ -192,47 +222,51 @@ public final class FASTRingBuffer {
             return false;
         }
         int endingToken = from.tokens[cursor-1];
+        
         //if last token of last fragment was length then begin new sequence
         int type = TokenBuilder.extractType(endingToken);
         if (TypeMask.GroupLength == type) {
             int seqLength = FASTRingBufferReader.readInt(this, -1); //length is always at the end of the fragment.
             
             //TODO: off by 2 because 1 for token id and 1 for preamble which are not in the script!!!
-            System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1)+" "+(this.removeCount.get()-1));
+            //System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1)+" "+(this.removeCount.get()-1));
             
             if (seqLength == 0) {
-                System.err.println("******************** jump over seq");
+         //       System.err.println("******************** jump over seq");
                 //do nothing and jump over the sequence
                 //there is no data in the ring buffer so do not adjust position
                 int fragJump = from.fragScriptSize[cursor]; //script jump  //TODO: not sure this is right whenthey are nested?
                 cursor += (fragJump&JUMP_MASK);
                 //done so move to the next item
-                cursor++;
+                
                 return true;
             } else {
-                System.err.println("new Seq at top");
+      //          System.err.println("new Seq at top");
                 //push onto stack
                 seqStack[++seqStackHead]=seqLength;
-                //this is the first run so we are already positioned at the top                
+                //this is the first run so we are already positioned at the top   
             }
             return false;   
             
         }
+                
+        
         //if last token of last fragment was seq close then subtract and move back.
-        if (TypeMask.Group==type && 0 == (endingToken & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
+        if (TypeMask.Group==type && 
+            0 != (endingToken & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)) &&
+            0 != (endingToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))            
+                ) {
             //check top of the stack
             if (--seqStack[seqStackHead]>0) {
-                System.err.println("return to top for seq");
+      //          System.err.println("return to top for seq "+(TokenBuilder.MAX_INSTANCE&endingToken)+" ==== "+(from.fragScriptSize[cursor-jumpSize]&JUMP_MASK));
                 //return to top 
                cursor -= from.fragScriptSize[cursor-jumpSize]&JUMP_MASK;
                return false;
             } else {
-                System.err.println("done with seq");
+       //         System.err.println("done with seq");
                 //done
                 //already positioned to continue
-                seqStackHead--;
-                //done so move to the next item
-                cursor++;
+                seqStackHead--;                
                 return true;
             }
         }                   
@@ -241,17 +275,20 @@ public final class FASTRingBuffer {
     
     
     private void endOfMessageDetector() {
+        //TODO: this is a mistake and must loop back to top is possible before returning.
+        
         if (cursor>=from.tokens.length) {
             messageId = -1;
-            System.err.println("eom1 "+cursor);
+  //          System.err.println("eom1 "+cursor);
             return;
         }
-        int token = from.tokens[cursor-1];
-        //TODO: need extra flag to distinguish from closig message and clossing optional group.
-        
-        if (TokenBuilder.extractType(token)==TypeMask.Group && 0!=(token & OperatorMask.Group_Bit_Close)) {
+        int token = from.tokens[cursor];
+        //if we are pointed at a new message type then we must have closed the existing message.        
+        if (TokenBuilder.extractType(token)==TypeMask.Group &&
+            0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
+            0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER))) {
             messageId = -1;
-            System.err.println("eom2 "+cursor);
+   //         System.err.println("eom2 "+cursor+" on "+TokenBuilder.tokenToString(token));
         }
     }
 
@@ -311,13 +348,44 @@ public final class FASTRingBuffer {
 
     // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
-
+ List<Long> c2 = new ArrayList<Long>();
+ 
+    /*
+     * 
+2  12  Group:010000/Open:Seq:PMap::001100/22
+2  13  IntegerUnsigned:000000/Copy:000001/4
+2  14  IntegerUnsignedOptional:000001/Default:000011/5
+2  15  ASCII:001000/Copy:000001/4
+2  16  IntegerUnsignedOptional:000001/None:000000/6
+2  17  IntegerUnsigned:000000/Constant:000010/7
+2  18  IntegerUnsigned:000000/Copy:000001/8
+2  19  IntegerUnsigned:000000/Increment:000101/9
+2  20  Decimal:001100/Default:000011/10 //TODO: we are writing 1 decimal to the buffer  but the script shows 2 so THE SIZE OF THIS FRAGMENT IS WRONG
+2  21  Decimal:001100/Delta:000100/0 ///TODO: ADDING A BIT TO DISTINQUISH THESE WILL ALLOW FOR CORRECT ADDITION WITHOUT NEEDING CONTEXT!!
+2  22  IntegerUnsigned:000000/Copy:000001/11
+2  23  IntegerSignedOptional:000011/Delta:000100/12
+2  24  IntegerUnsignedOptional:000001/Delta:000100/13
+2  25  ASCIIOptional:001001/Default:000011/5
+2  26  DecimalOptional:001101/Default:000011/14
+2  27  Decimal:001100/Delta:000100/1
+2  28  IntegerUnsignedOptional:000001/Default:000011/15
+2  29  ASCIIOptional:001001/Default:000011/6
+2  30  ASCIIOptional:001001/Default:000011/7
+2  31  ASCIIOptional:001001/Default:000011/8
+2  32  IntegerUnsignedOptional:000001/Default:000011/16
+2  33  ASCIIOptional:001001/Default:000011/9
+1  34  Group:010000/Close:Seq:PMap::001101/22
+     * 
+     */
     // fragment is ready for consumption
     //Called once for every group close, even when nested
     //TODO: AA, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
     public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
         
-           System.err.println("                                            unblockfragment write pos "+ringBuffer.addCount.get()+" -> "+ringBuffer.addPos.value);
+           long stepSize = ringBuffer.addPos.value - ringBuffer.addCount.get();
+           ringBuffer.c2.add(stepSize);
+           
+        //   System.err.println("> Writer unblockfragment   pos "+ringBuffer.addCount.get()+" -> "+ringBuffer.addPos.value+"                                       "+ringBuffer.c2);
      
             ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
     }

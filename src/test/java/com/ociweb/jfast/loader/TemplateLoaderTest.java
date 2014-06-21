@@ -114,8 +114,8 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-    //    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-        FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
         
@@ -141,7 +141,7 @@ public class TemplateLoaderTest {
         final AtomicLong totalRingInts = new AtomicLong();
 
         
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        FASTInputReactor reactor;
 
         
         int iter = warmup;
@@ -149,6 +149,7 @@ public class TemplateLoaderTest {
             msgs.set(0);
             frags = 0;
 
+            reactor = new FASTInputReactor(readerDispatch,reader);
             FASTRingBuffer rb = readerDispatch.ringBuffer(0);
             rb.reset();
          //   FASTRingBuffer.dump(rb);//common starting spot??
@@ -156,12 +157,13 @@ public class TemplateLoaderTest {
             
             while (reactor.pump()>=0) {
                 rb.moveNext();
-                int templateId = rb.messageId();
              //   System.err.println(templateId);
-                if (templateId!=-1) {
+                if (rb.isNewMessage()) {
+                    int templateId = rb.messageId();
                     //TODO: AAA, this count is wrong it should only be 3000
                     
                     msgs.incrementAndGet();
+                    
 
                     // this is a template message.
                     int bufferIdx = 0;
@@ -208,6 +210,8 @@ public class TemplateLoaderTest {
                 }
             }
             
+            rb.reset();
+            
             
             //fastInput.reset();
             PrimitiveReader.reset(reader);
@@ -222,21 +226,20 @@ public class TemplateLoaderTest {
             if (Thread.interrupted()) {
                 System.exit(0);
             }
+            
+            reactor = new FASTInputReactor(readerDispatch,reader);
+            
             double start = System.nanoTime();
 
             //FASTRingBufferReader.dump(queue);
-            
+            FASTRingBuffer rb = null; 
             int bid; 
             while ((bid = reactor.pump())>=0) {
-                FASTRingBuffer rb =  readerDispatch.ringBuffer(bid);
+                rb =  readerDispatch.ringBuffer(bid);
                 rb.moveNext();
-                //TODO: AAAAA, move next by its self should be enough!!
-                
-                int templateId = rb.messageId();
-                if (templateId!=-1) {
-                    FASTRingBufferReader.dump(queue);
-                }
             }
+            rb.reset();
+            
             
 //            while (reactor.pump()>=0) {
 //                FASTRingBufferReader.dump(queue);

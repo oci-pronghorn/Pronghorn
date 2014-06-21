@@ -734,13 +734,17 @@ public class TemplateHandler extends DefaultHandler {
                 System.arraycopy(dTokens, 0, newDTokens, 0, dTokens.length);
             }
             int tokCount = count.getAndIncrement();
-            newDTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount,
-                    TokenBuilder.MASK_ABSENT_DEFAULT);
             
             //must do decimal resets as either int or long
-            int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType : 
-                             (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
-            
+            int saveAsType = (fieldType!=TypeMask.Decimal &&
+                    fieldType!=TypeMask.DecimalOptional) ? fieldType : 
+                        (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
+
+            //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
+            int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
+            newDTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount,
+                    TokenBuilder.MASK_ABSENT_DEFAULT);
+                        
             saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
             fieldTokensUnique++;
             
@@ -754,12 +758,17 @@ public class TemplateHandler extends DefaultHandler {
                 }
             } else {
                 int tokCount = count.getAndIncrement();
-                dTokens[activeDictionary] = token = TokenBuilder.buildToken(fieldType, fieldOperator, tokCount,
-                        TokenBuilder.MASK_ABSENT_DEFAULT);
                 
                 //must do decimal resets as either int or long
                 int saveAsType = (fieldType!=TypeMask.Decimal&&fieldType!=TypeMask.DecimalOptional) ? fieldType : 
-                                 (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
+                    (count==tokenBuilderLongCount ? TypeMask.LongSigned : TypeMask.IntegerSigned  );
+                
+                //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
+                int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
+                
+                dTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount,
+                        TokenBuilder.MASK_ABSENT_DEFAULT);
+                
                 
                 saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
                 fieldTokensUnique++;

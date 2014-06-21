@@ -40,14 +40,13 @@ public final class TypeMask {
                                                // an uint32
 
     public final static int Dictionary = 0x18;// 11000
-
     
-    public final static int[] ringBufferFieldSize = new int[] { 1, 1, 1, 1, 
-                                                          2, 2, 2, 2, 
-                                                          2, 2, 2, 2, 
-                                                          3, 3, 2, 2,
-                                                          0, 0, 0, 0,
-                                                          1, 0, 0, 0, 0};
+    public final static int[] ringBufferFieldSize = new int[] {   1, 1, 1, 1, 
+                                                                  2, 2, 2, 2, 
+                                                                  2, 2, 2, 2, 
+                                                                  1, 1, 2, 2,  //Decimal only counts exponent part
+                                                                  0, 0, 0, 0,
+                                                                  1, 0, 0, 0, 0};
 
     
     // TODO: T, build unit test to confirm by reflection that every generated

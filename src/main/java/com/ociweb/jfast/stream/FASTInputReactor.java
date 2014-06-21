@@ -73,6 +73,8 @@ public final class FASTInputReactor {
             @Override
             public void detectedInputBlockage(int need, FASTInput input) {
                 //TODO: A, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
+                //TODO: A, formalize this pattern in a new M:N ThreadPoolExecutor, send in the number of cores you wish to target for parsing not threads.
+                //TODO: A, once this threading is in place can the move next also be added to the same pool if we desire? This may give us locality across both calls!!
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
                 }                
@@ -130,7 +132,7 @@ public final class FASTInputReactor {
         // returns true for end of sequence or group
         if (!decoder.decode(reader)) {  
             // reached the end of the script so close and prep for the next one
-            System.err.println("decode has cleared target find next message");
+           // System.err.println("decode has cleared target find next message");
             targetRingBufferId = -1;
             PrimitiveReader.closePMap(reader);            
         }
@@ -187,7 +189,7 @@ public final class FASTInputReactor {
                 FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
             }
         }
-        System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
+        //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
     }
     

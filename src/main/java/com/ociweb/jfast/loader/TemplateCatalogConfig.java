@@ -146,6 +146,7 @@ public class TemplateCatalogConfig {
                                                      FieldReferenceOffsetManager from, int[] templateStartIdx, int primaryRingBits, int textRingBits) {
         FASTRingBuffer[] buffers = new FASTRingBuffer[scriptLength];
         //TODO: simple imlementation needs adavanced controls.
+        //TODO: A, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin read. 1Producer 1Consumer
         //TODO: A, must compute max frag depth in template parser.    
         FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, scriptLength/*fragDepth*/, from, templateStartIdx);
         int i = scriptLength;

@@ -41,7 +41,7 @@ public class TokenBuilder {
 
     public static final int MASK_OPER = 0x3F; // 6 bits
     public static final int MASK_OPER_DECIMAL_EX = 0x07; // 3 bits
-    public static final int SHIFT_OPER_DECIMAL_EX = 3;
+    public static final int SHIFT_OPER_DECIMAL_EX = 3; //TODO: AA, delete
 
     // sequence is stored as a length field type which appears in the stream
     // before the repeating children.

@@ -79,6 +79,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         do {
             token = fullScript[activeScriptCursor];
             
+//            if (rbRingBuffer.addPos.value<134) {
+//                System.err.println("> Wrote @"+(rbRingBuffer.addPos.value)+" "+TokenBuilder.tokenToString(token));
+//            }
             
             assert (gatherReadData(reader, activeScriptCursor, token));
             
@@ -109,6 +112,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     } else {
                         // 011??
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                            //Exponent token comes first and is of type Decimal, the Mantissa is second and is of type Long
                             decodeDecimal(reader, token, fullScript[++activeScriptCursor],rbRingBuffer); //pull second token);
                         } else {
                             if (readFromIdx>=0) {
@@ -135,6 +139,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
 //                            
 //                        } else {
 //                                                
+
                         
                             // 100??
                             // Group Type, no others defined so no need to keep
@@ -145,6 +150,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                 if (nonTemplatePMapSize > 0) {
                                     genReadGroupPMapOpen(nonTemplatePMapSize, reader);
                                 }
+                                
+                                
                             } else {
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
@@ -1169,10 +1176,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 genReadLengthDefault(constDefault, jumpToTarget, jumpToNext, ringBuffer.buffer, reader, ringBuffer.mask, ringBuffer.addPos, this);
             }
         }
-        
-        if (ringBuffer.addPos.value<40) {
-            System.err.println("> Wrote len:"+ringBuffer.buffer[(int)(ringBuffer.addPos.value-1)&ringBuffer.mask]+" at pos "+(ringBuffer.addPos.value-1));
-        }
+
     }
     
     public int readBytes(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
