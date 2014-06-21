@@ -65,6 +65,8 @@ public final class PrimitiveWriter {
     private int nextBlockOffset = -1; // position to begin copy data from
     private int pendingPosition = 0; // new position after the read
 
+    private boolean minimizeFlush = false;
+    
     public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 
         // NOTE: POS_POS_MASK can be shortened to only match the length of
@@ -860,19 +862,12 @@ public final class PrimitiveWriter {
         // ensure low-latency for groups, or
         // if we can reset the safety stack and we have one block ready go ahead
         // and flush
-        if (writer.minimizeLatency != 0 || (0 == writer.safetyStackDepth && (writer.limit - writer.position) > (BLOCK_SIZE_LAZY))) { // one
-                                                                                                         // block
-                                                                                                         // and
-                                                                                                         // a
-                                                                                                         // bit
-                                                                                                         // left
-                                                                                                         // over
-                                                                                                         // so
-                                                                                                         // we
-                                                                                                         // need
-                                                                                                         // bigger.
-            writer.output.flush();
-        }
+        if (!writer.minimizeFlush) { //TODO: this maximizes bandwith usage and helps find bugs earlier
+            if (writer.minimizeLatency != 0 ||
+                (0 == writer.safetyStackDepth && (writer.limit - writer.position) > (BLOCK_SIZE_LAZY))) { 
+                writer.output.flush();
+            }
+        } 
 
     }
 

@@ -98,8 +98,8 @@ public class Test {
               int templateOffset = from.templateOffset;
               
               
-             // double duration = singleThreadedExample(readerDispatch, msgs, reactor);
-              double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
+              double duration = singleThreadedExample(readerDispatch, msgs, reactor);
+              //double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
               
               
@@ -117,6 +117,8 @@ public class Test {
       }
 
     private double singleThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor) {
+        readerDispatch.ringBuffer(0).reset();
+        
         double start = System.nanoTime();
           
           /////////////////////////////////////
@@ -124,16 +126,19 @@ public class Test {
           /////////////////////////////////////
           boolean ok = true;
           while (ok) {
-              switch (reactor.pump()) {
+              switch (FASTInputReactor.pump(reactor)) {
                   case -1:
                       ok = false;
                       break;
                   default:
                       FASTRingBuffer rb = readerDispatch.ringBuffer(0);
-                      //TODO: only if this is the beginning or end of a template!!
-                      msgs.incrementAndGet();
                       
-                      FASTRingBuffer.dump(rb); 
+                      FASTRingBuffer.moveNext(rb);
+                      
+                      if (rb.isNewMessage) {
+                          msgs.incrementAndGet();
+                      }
+                      
                       break;
               }
               

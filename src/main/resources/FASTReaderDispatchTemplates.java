@@ -339,7 +339,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, constDefault);
         } else {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            FASTRingBuffer.addValue(rbB,rbMask,rbPos,  value == 0 ? constAbsent : (value > 0 ? value - 1 : value));
+            FASTRingBuffer.addValue(rbB,rbMask,rbPos,  value == 0 ? constAbsent : ((value-1)+((value-1)>>31)));
         }
     }
 
@@ -1567,13 +1567,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-            int len = (PrimitiveReader.readPMapBit(reader)!=0) ? StaticGlue.readASCIIToHeap(idx, reader, textHeap) : textHeap.valueLength(idx);
+            int len = (PrimitiveReader.readPMapBit(reader)==0) ? textHeap.valueLength(idx) : StaticGlue.readASCIIToHeap(idx, reader, textHeap);
             FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(idx, len, textHeap, rbRingBuffer));
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
     }
     
     protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-            int len = (PrimitiveReader.readPMapBit(reader) != 0) ? StaticGlue.readASCIIToHeap(idx, reader, textHeap) : textHeap.valueLength(idx);
+            int len = (PrimitiveReader.readPMapBit(reader) == 0) ? textHeap.valueLength(idx) : StaticGlue.readASCIIToHeap(idx, reader, textHeap);
             FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(idx, len, textHeap, rbRingBuffer));
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
     }

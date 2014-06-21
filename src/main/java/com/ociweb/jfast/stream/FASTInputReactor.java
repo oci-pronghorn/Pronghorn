@@ -93,9 +93,12 @@ public final class FASTInputReactor {
 
             @Override
             public void run() {
+  
+                //TODO: inline pump and quit early if we are on a message boundary with no data in the stream
+                
                 int f;
                 int c = 0xFFF;
-                while ((f=pump())>=0 && --c>=0) {
+                while ((f=pump(FASTInputReactor.this))>=0 && --c>=0) {
                     
                 }
                 
@@ -103,6 +106,7 @@ public final class FASTInputReactor {
                   //  System.err.println("pump");
                     executorService.execute(this);
                 } else {
+                    //TODO: REMOVE THIS, we should not be shuting down the service because stream has ended.
                     executorService.shutdown();
                 }
             }
@@ -115,16 +119,16 @@ public final class FASTInputReactor {
     
     int targetRingBufferId = -1;
     
-    public int pump() {
+    public static int pump(FASTInputReactor reactor) {
         // start new script or detect that the end of the data has been reached
-        if (targetRingBufferId < 0) {
+        if (reactor.targetRingBufferId < 0) {
             // checking EOF first before checking for blocked queue
-            if (PrimitiveReader.isEOF(reader)) { 
+            if (PrimitiveReader.isEOF(reactor.reader)) { 
                 return -1;
             }
-            pump2startTemplate();
+            reactor.pump2startTemplate();
         }        
-        return pump2decode();
+        return reactor.pump2decode();
     }
 
     private int pump2decode() {

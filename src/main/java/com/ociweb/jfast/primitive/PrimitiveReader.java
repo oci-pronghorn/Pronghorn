@@ -268,6 +268,7 @@ public final class PrimitiveReader {
         return k;
     }
 
+    //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
     public static byte readPMapBit(PrimitiveReader reader) {
         byte pidx = reader.pmapIdx; 
         if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0)) {

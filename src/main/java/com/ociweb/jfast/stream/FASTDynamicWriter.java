@@ -14,7 +14,6 @@ public class FASTDynamicWriter {
     private final FASTRingBuffer ringBuffer;
     private final PrimitiveWriter writer;
 
-    boolean needTemplate = true;
     final byte[] preambleData;
 
     public FASTDynamicWriter(PrimitiveWriter primitiveWriter, TemplateCatalogConfig catalog, FASTRingBuffer ringBuffer,
@@ -30,6 +29,7 @@ public class FASTDynamicWriter {
         this.preambleData = new byte[catalog.clientConfig().getPreableBytes()];
     }
 
+    int msg = 0;
     // non blocking write, returns if there is nothing to do.
     public void write() {
         // write from the the queue/ringBuffer
@@ -39,11 +39,13 @@ public class FASTDynamicWriter {
         // because writer does not move pointer up until full unit is ready to
         // go
         // we only need to check if data is available, not the size.
-        if (ringBuffer.hasContent()) {
+      //  if (ringBuffer.hasContent()) {
             int idx = 0;
-
-            if (needTemplate) {
-
+            
+            if (ringBuffer.isNewMessage) {
+                msg++;
+             //   System.err.println(msg);
+                
                 if (preambleData.length != 0) {
 
                     int i = 0;
@@ -60,63 +62,39 @@ public class FASTDynamicWriter {
                 };
 
                 // template processing (can these be nested?)
-                int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
+              //  int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
                 idx++;
                 
-
-                // tokens - reading
-                writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx()[templateId];
-                writerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx()[templateId];
-
-                if (0 == writerDispatch.activeScriptLimit && 0 == writerDispatch.activeScriptCursor) {
-                    throw new FASTException("Unknown template:" + templateId);
-                }
-                // System.err.println("tmpl "+ringBuffer.remPos+"  templateId:"+templateId+" script:"+activeScriptCursor+"_"+activeScriptLimit);
+//
+//                // tokens - reading
+//                writerDispatch.activeScriptCursor = catalog.getTemplateStartIdx()[templateId];
+//                writerDispatch.activeScriptLimit = catalog.getTemplateLimitIdx()[templateId];
+//
+//                if (0 == writerDispatch.activeScriptLimit && 0 == writerDispatch.activeScriptCursor) {
+//                    throw new FASTException("Unknown template:" + templateId);
+//                }
+//                // System.err.println("tmpl "+ringBuffer.remPos+"  templateId:"+templateId+" script:"+activeScriptCursor+"_"+activeScriptLimit);
 
             }
 
-            do {
-                int token = fullScript[writerDispatch.activeScriptCursor];
+            //TODO: must write one fragment then poll again.
+            int steps = ringBuffer.fragmentSteps();//-idx;
+        //    System.err.println("steps "+steps);
 
-                if (writerDispatch.dispatchWriteByToken(idx, writer)) {
+            int j = 0;
+            while (j<steps) {
+                int token = ringBuffer.from.tokens[ringBuffer.cursor+j];
+                writerDispatch.activeScriptCursor = ringBuffer.cursor+j;
+                j++;  
+                writerDispatch.dispatchWriteByToken(idx, writer);
+                    
+                idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];    //can look up directly from ringBuffer!                       
 
-                    if (writerDispatch.isSkippedSequence()) {
-                        int seqScriptLength = TokenBuilder.MAX_INSTANCE
-                                & fullScript[1 + writerDispatch.activeScriptCursor];
-                        // System.err.println("skipped foreward :"+seqScriptLength);
-                        // jump over sequence group in script
-                        writerDispatch.activeScriptCursor += seqScriptLength;
-                    } else if (!writerDispatch.isFirstSequenceItem()) {
-                        // jump back to top of this sequence in the script.
-                        int seqScriptLength = TokenBuilder.MAX_INSTANCE & fullScript[writerDispatch.activeScriptCursor];
-                        // System.err.println(TokenBuilder.tokenToString(fullScript[activeScriptCursor])+
-                        // " jump to "+TokenBuilder.tokenToString(fullScript[activeScriptCursor-seqScriptLength]));
-
-                        writerDispatch.activeScriptCursor -= seqScriptLength;
-
-                    } else {
-                        writerDispatch.activeScriptCursor++;
-                    }
-
-                    needTemplate = false;
-                    idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-                    ringBuffer.removeForward(idx);
-                    // System.err.println("yy "+idx);
-                    return;
-                }
-
-                idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-
-            } while (++writerDispatch.activeScriptCursor < writerDispatch.activeScriptLimit);
-            needTemplate = true;
-            ringBuffer.removeForward(idx);
-        }
+            }
 
     }
 
     public void reset(boolean clearData) {
-
-        needTemplate = true;
 
         writerDispatch.activeScriptCursor = 0;
         writerDispatch.activeScriptLimit = 0;

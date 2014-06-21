@@ -1220,6 +1220,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 == (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
+           // System.err.println("open pmap group");
             genWriteOpenGroup(pmapSize, writer);
         }
 
@@ -1234,13 +1235,16 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) { //TODO: AA: note that we are using this flag in the close token!!
+                //System.err.println("close group a");
                 genWriteCloseTemplatePMap(writer, this);
             } else {
                 genWriteClosePMap(writer);
+               // System.err.println("close group b");
             }
         } else {
             if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {//TODO: AA: note that we are using this flag in the close token!!
                 genWriteCloseTemplate(writer, this);
+               // System.err.println("close group c");
             }
         }
     }
@@ -1256,19 +1260,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         dictionaryFactory.reset(longValues);
         dictionaryFactory.reset(textHeap);
         dictionaryFactory.reset(byteHeap);
-        templateStackHead = 0;
-        sequenceCountStackHead = 0; 
     }
-
-    public boolean isFirstSequenceItem() {
-        return isFirstSequenceItem;
-    }
-
-    public boolean isSkippedSequence() {
-        return isSkippedSequence;
-    }
-
-    // long fieldCount = 0;
 
     public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
 
@@ -1404,37 +1396,22 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // 100??
                     // Group Type, no others defined so no need to keep checking
                     if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
-                        
-                        isSkippedSequence = false;
-                        isFirstSequenceItem = false;
 
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
                         if (isTemplate && true) {
+                            
                             openMessage(token, templatePMapSize, fieldPos-1, writer, ringBuffers[activeScriptCursor]);
                                                         
                         } else {
+                            
                             // this is NOT a message/template so the non-template
                             // pmapSize is used.
                             // System.err.println("open group:"+TokenBuilder.tokenToString(token));
                             openGroup(token, nonTemplatePMapSize, writer);
                             
                         }
-
-                    } else {
-                        // System.err.println("close group:"+TokenBuilder.tokenToString(token));
-                        closeGroup(token, writer);// closing this seq causing throw!!
-                        if (0 != (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))) {
-                            // must always pop because open will always push
-                            if (0 == --sequenceCountStack[sequenceCountStackHead]) {
-                                sequenceCountStackHead--;// pop sequence off
-                                                         // because they have
-                                                         // all been used.
-                                return false;// this sequence is done.
-                            } else {
-                                return true;// true if this sequence must be
-                                            // visited again.
-                            }
-                        }
+                    } else {                        
+                        closeGroup(token, writer);
                     }
 
                 } else {
@@ -1443,9 +1420,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     // checking
                     // Only happens once before a node sequence so push it on
                     // the count stack
-                    int length = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
-                    if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                                        // the work.
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                             acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
@@ -1453,6 +1428,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
                         }
                     } else {
+                        int length = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
                         if (length == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                             write(token, writer);
                         } else {
@@ -1468,14 +1444,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         }
                     }
 
-                    if (length == 0) {
-                        isFirstSequenceItem = false;
-                        isSkippedSequence = true;
-                    } else {
-                        isFirstSequenceItem = true;
-                        isSkippedSequence = false;
-                        sequenceCountStack[++sequenceCountStackHead] = length;
-                    }
                     return true;
                 }
             } else {
@@ -1586,12 +1554,16 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         //add 1 bit to pmap and write the templateId
+        System.err.println("open msg");
         genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, queue);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
             //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
-            genWriteClosePMap(writer);            
-        } 
+            genWriteClosePMap(writer); 
+            System.err.println("close msg");
+        } else {
+            System.err.println("********* must close later");
+        }
     }
 
     public void writePreamble(byte[] preambleData, PrimitiveWriter writer) {

@@ -48,7 +48,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
-        assertEquals(708, catalogByteArray.length);
+        assertEquals(709, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -127,7 +127,7 @@ public class TemplateLoaderTest {
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);      
 
         int warmup = 64;
-        int count = 512;
+        int count = 1024;
         int result = 0;
         final int[] fullScript = catalog.getScriptTokens();
         
@@ -155,11 +155,11 @@ public class TemplateLoaderTest {
          //   FASTRingBuffer.dump(rb);//common starting spot??
             
             
-            while (reactor.pump()>=0) {
-                rb.moveNext();
+            while (FASTInputReactor.pump(reactor)>=0) {
+                FASTRingBuffer.moveNext(rb);
              //   System.err.println(templateId);
-                if (rb.isNewMessage()) {
-                    int templateId = rb.messageId();
+                if (rb.isNewMessage) {
+                    int templateId = rb.messageId;
                     //TODO: AAA, this count is wrong it should only be 3000
                     
                     msgs.incrementAndGet();
@@ -229,22 +229,16 @@ public class TemplateLoaderTest {
             
             reactor = new FASTInputReactor(readerDispatch,reader);
             
-            double start = System.nanoTime();
-
-            //FASTRingBufferReader.dump(queue);
             FASTRingBuffer rb = null; 
-            int bid; 
-            while ((bid = reactor.pump())>=0) {
-                rb =  readerDispatch.ringBuffer(bid);
-                rb.moveNext();
-            }
+            rb =  readerDispatch.ringBuffer(0);
             rb.reset();
             
-            
-//            while (reactor.pump()>=0) {
-//                FASTRingBufferReader.dump(queue);
-//            }
+            double start = System.nanoTime();
 
+            while (FASTInputReactor.pump(reactor)>=0) {
+                FASTRingBuffer.moveNext(rb);
+            }
+            
             double duration = System.nanoTime() - start;
             if ((0x7F & iter) == 0) {
                 int ns = (int) duration;
@@ -347,7 +341,7 @@ public class TemplateLoaderTest {
         // NOTE: may need to be VERY large if minimize
         // latency is turned off!!
         
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, false);
         FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog,queue);
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
@@ -390,12 +384,24 @@ public class TemplateLoaderTest {
 //                    FASTRingBufferReader.dump(queue);
 //                }
 //            }
-            
-            while (reactor.pump()>=0) {
-                while (queue.hasContent()) {
-                    dynamicWriter.write();
-                }
-                grps++;
+            writerDispatch.reset();
+            while (FASTInputReactor.pump(reactor)>=0) {
+                
+                //TODO: AA, confirm that nextMessage blocks and does not continue when there is no data
+                //TODO: AA, confirm that moveNext write pattern is continued to be called when we have data.
+                
+//                while (queue.contentRemaining()>0) {
+                //    System.err.println("remain "+queue.contentRemaining());
+                    FASTRingBuffer.moveNext(queue);
+                    if (queue.messageId>=0) {
+                        
+                        //TODO: must confirm each write as it happens in order to find bugs when they happen.
+                        
+                        dynamicWriter.write();
+                       grps++;
+                       //System.err.println("grps "+grps);
+                   }
+  //              }
             }
             
     //old delete        
@@ -435,8 +441,8 @@ public class TemplateLoaderTest {
 
             double start = System.nanoTime();
             
-            while (reactor.pump()>=0) {
-                while (queue.hasContent()) {
+            while (FASTInputReactor.pump(reactor)>=0) {
+                while (FASTRingBuffer.contentRemaining(queue)>0) {
                     dynamicWriter.write();
                 }
             }
@@ -463,7 +469,7 @@ public class TemplateLoaderTest {
             readerDispatch.reset(catalog.dictionaryFactory());
 
             fastOutput.reset();
-            writer.reset(writer);
+            PrimitiveWriter.reset(writer);
             dynamicWriter.reset(true);
 
         }

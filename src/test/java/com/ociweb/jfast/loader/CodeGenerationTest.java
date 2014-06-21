@@ -176,10 +176,10 @@ public class CodeGenerationTest {
         
         int errCount = 0;
         int i = 0;
-        while (reactor1.pump() >= 0 &&
-               reactor2.pump() >= 0) {
+        while (FASTInputReactor.pump(reactor1) >= 0 &&
+                FASTInputReactor.pump(reactor2) >= 0) {
 
-            while (queue1.hasContent() && queue2.hasContent()) {
+            while (FASTRingBuffer.contentRemaining(queue1)>0 && FASTRingBuffer.contentRemaining(queue2)>0) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);
                 int int2 = FASTRingBufferReader.readInt(queue2, 1);
 
@@ -188,7 +188,7 @@ public class CodeGenerationTest {
 
                     if (errCount > 1) {
 
-                        System.err.println("back up  " + queue1.contentRemaining() + " fixed spots in ring buffer");
+                        System.err.println("back up  " + FASTRingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer");
 
                         int c = idx.get();
                         int j = keep;
@@ -205,8 +205,12 @@ public class CodeGenerationTest {
                         assertEquals(msg, int1, int2);
                     }
                 }
-                queue1.removeForward(1);
-                queue2.removeForward(1);
+                long newValue1 = queue1.removeCount.get() + 1;
+                assert (newValue1 <=queue1.addPos.value);
+                queue1.removeForward2(newValue1);
+                long newValue2 = queue2.removeCount.get() + 1;
+                assert (newValue2 <=queue2.addPos.value);
+                queue2.removeForward2(newValue2);
                 i++;
             }
         }

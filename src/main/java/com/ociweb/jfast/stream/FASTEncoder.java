@@ -29,10 +29,6 @@ public class FASTEncoder {
     protected final DictionaryFactory dictionaryFactory;
     protected final int[][] dictionaryMembers;
 
-    protected final int[] sequenceCountStack;
-    protected int sequenceCountStackHead = -1;
-    protected boolean isFirstSequenceItem = false;
-    protected boolean isSkippedSequence = false;
     protected DispatchObserver observer;
     protected int activeScriptCursor;
     protected int activeScriptLimit;
@@ -63,8 +59,6 @@ public class FASTEncoder {
         
         this.nonTemplatePMapSize = nonTemplatePMapSize;
         this.templatePMapSize = templatePMapSize;
-
-        this.sequenceCountStack = new int[maxNestedGroupDepth];
 
         this.intValues = dcr.integerDictionary();
         this.intInit = dcr.integerDictionary();
