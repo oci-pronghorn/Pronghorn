@@ -80,7 +80,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             token = fullScript[activeScriptCursor];
             
 //            if (rbRingBuffer.addPos.value<134) {
-//                System.err.println("> Wrote @"+(rbRingBuffer.addPos.value)+" "+TokenBuilder.tokenToString(token));
+ //               System.err.println("> Wrote @"+(rbRingBuffer.addPos.value)+" "+TokenBuilder.tokenToString(token));
 //            }
             
             assert (gatherReadData(reader, activeScriptCursor, token));

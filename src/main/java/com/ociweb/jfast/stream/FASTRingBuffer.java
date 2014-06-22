@@ -71,7 +71,7 @@ public final class FASTRingBuffer {
     
     //Need to know when the new template starts
     //each fragment size must be known and looked up
-    FieldReferenceOffsetManager from;
+    public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
     
 

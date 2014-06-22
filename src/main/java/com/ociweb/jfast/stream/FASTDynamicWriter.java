@@ -5,6 +5,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 public class FASTDynamicWriter {
 
@@ -81,18 +82,35 @@ public class FASTDynamicWriter {
             int steps = ringBuffer.fragmentSteps();//-idx;
         //    System.err.println("steps "+steps);
 
-            int j = 0;
-            while (j<steps) {
-                int token = ringBuffer.from.tokens[ringBuffer.cursor+j];
-                writerDispatch.activeScriptCursor = ringBuffer.cursor+j;
-                j++;  
+     //       System.err.println("write fragment at:"+ringBuffer.cursor);
+            
+            writerDispatch.activeScriptCursor = ringBuffer.cursor;
+            int stop = ringBuffer.cursor+steps;
+            while (writerDispatch.activeScriptCursor<stop) {
+                int token = ringBuffer.from.tokens[writerDispatch.activeScriptCursor];
                 writerDispatch.dispatchWriteByToken(idx, writer);
-                    
-                idx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];    //can look up directly from ringBuffer!                       
 
+
+                
+                int size = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            //    System.err.println(size+" for  "+TokenBuilder.tokenToString(token));
+                
+                //TODO: hack
+                if (TokenBuilder.extractType(token)==TypeMask.Decimal ||
+                    TokenBuilder.extractType(token)==TypeMask.DecimalOptional) {
+                //    System.err.println("cursor" +writerDispatch.activeScriptCursor);
+                    size+=2;//for the long we jumped over.
+                }
+                
+                idx += size;    //can look up directly from ringBuffer!                       
+
+                writerDispatch.activeScriptCursor++; 
             }
 
     }
+
+    
+
 
     public void reset(boolean clearData) {
 

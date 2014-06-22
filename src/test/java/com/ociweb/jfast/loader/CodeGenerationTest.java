@@ -132,14 +132,14 @@ public class CodeGenerationTest {
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
 
-        FASTInputByteArray fastInput1 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
+        FASTInputByteArray fastInput1 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer(0);
 
-        FASTInputByteArray fastInput2 = TemplateLoaderTest.buildInputForTestingByteArray(sourceDataFile);
+        FASTInputByteArray fastInput2 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, 33);
 
         FASTDecoder readerDispatch2 = null;

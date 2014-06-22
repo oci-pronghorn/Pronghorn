@@ -30,7 +30,7 @@ public class FASTEncoder {
     protected final int[][] dictionaryMembers;
 
     protected DispatchObserver observer;
-    protected int activeScriptCursor;
+    public int activeScriptCursor;
     protected int activeScriptLimit;
     protected final int[] fullScript;
     

@@ -24,14 +24,14 @@ public final class PrimitiveWriter {
     // TODO: X, the write to output is not implemented right it must send one
     // giant block when possible
     // TODO: X, we should have min and max block size? this may cover all cases.
-    private static final int BLOCK_SIZE = 256;//512;// 4096;//128;// in bytes
+    private static final int BLOCK_SIZE = 256;//256;//512;// 4096;//128;// in bytes
 
     private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE * 3) + (BLOCK_SIZE >> 1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; // top 4 are bit pos,
                                                        // bottom 28 are byte pos
 
-    private final FASTOutput output;
+    public final FASTOutput output;
     final byte[] buffer;
 
     private final int minimizeLatency;
@@ -46,7 +46,7 @@ public final class PrimitiveWriter {
 
     private int safetyStackDepth; // maximum depth of the stacks above
     private int position;
-    private int limit;
+    public int limit;
 
     // both bytes but class def likes int much better for alignment
     private int pMapIdxWorking = 7;
@@ -159,7 +159,8 @@ public final class PrimitiveWriter {
         ) {
 
             // keep accumulating
-            if (targetOffset != sourceOffset) {
+            if (targetOffset != sourceOffset) {  
+                //TODO: X, direct write without this move would help lower latency but this design helps throughput.
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
             // stop becomes start so we can build a contiguous block
@@ -195,6 +196,7 @@ public final class PrimitiveWriter {
             }
             // keep accumulating
             if (sourceOffset != targetOffset) {
+                //TODO: X, direct write without this move would help lower latency but this design helps throughput.
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
             writer.nextBlockSize = BLOCK_SIZE - (reqLength - flushRequest);
@@ -205,6 +207,7 @@ public final class PrimitiveWriter {
     private static void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength, PrimitiveWriter writer) {
         // more to flush than we need
         if (sourceOffset != targetOffset) {
+            //TODO: X, direct write without this move would help lower latency but this design helps throughput.
             System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, reqLength);
         }
         writer.nextBlockSize = BLOCK_SIZE;
@@ -794,7 +797,7 @@ public final class PrimitiveWriter {
 
             // NOTE: can inc pos pos because it will not overflow.
             long stackFrame = writer.safetyStackPosPos[s];
-            int idx = (int) stackFrame & POS_POS_MASK;
+            int idx = (int) stackFrame & POS_POS_MASK;                                    
             if (0 != (writer.buffer[idx] = (byte) writer.pMapByteAccum)) {
                 // set the last known non zero bit so we can avoid scanning for
                 // it.
@@ -821,13 +824,6 @@ public final class PrimitiveWriter {
 
     // called only at the end of a group.
     public static final void closePMap(PrimitiveWriter writer) {
-
-        // if (tempHead>=0) {
-        // System.arraycopy(temp, 0, buffer, tempIdx, tempHead+1);
-        // tempIdx = -1;
-        // tempHead = -1;
-        // }
-
         // ///
         // the PMap is ready for writing.
         // bit writes will go to previous bitmap location
@@ -874,7 +870,6 @@ public final class PrimitiveWriter {
     // called by ever field that needs to set a bit either 1 or 0
     // must be fast because it is frequently called.
     public static final void writePMapBit(byte bit, PrimitiveWriter writer) {
-
         if (0 == --writer.pMapIdxWorking) {
             // TODO: X, note we only corrupt the buffer cache line once every 7
             // bits but it must be less! what if we cached the buffer writes?
@@ -1043,7 +1038,7 @@ public final class PrimitiveWriter {
                     }
                     writer.buffer[writer.limit++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
                 } else {
-                    writer.encodeSingleCharSlow(c, writer);
+                    PrimitiveWriter.encodeSingleCharSlow(c, writer);
                 }
                 writer.buffer[writer.limit++] = (byte) (0x80 | ((c >> 6) & 0x3F));
             }

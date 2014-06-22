@@ -339,7 +339,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, constDefault);
         } else {
             int value = PrimitiveReader.readIntegerSigned(reader);
-            FASTRingBuffer.addValue(rbB,rbMask,rbPos,  value == 0 ? constAbsent : ((value-1)+((value-1)>>31)));
+            FASTRingBuffer.addValue(rbB,rbMask,rbPos,  value == 0 ? constAbsent : (value > 0 ? value - 1 : value));
         }
     }
 

@@ -13,6 +13,7 @@ import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
@@ -1220,7 +1221,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 == (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-           // System.err.println("open pmap group");
             genWriteOpenGroup(pmapSize, writer);
         }
 
@@ -1234,19 +1234,17 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) { //TODO: AA: note that we are using this flag in the close token!!
-                //System.err.println("close group a");
-                genWriteCloseTemplatePMap(writer, this);
-            } else {
+//            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) { //TODO: AA: note that we are using this flag in the close token!!
+//                genWriteCloseTemplatePMap(writer, this);
+//            } else {
                 genWriteClosePMap(writer);
-               // System.err.println("close group b");
-            }
-        } else {
-            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {//TODO: AA: note that we are using this flag in the close token!!
-                genWriteCloseTemplate(writer, this);
-               // System.err.println("close group c");
-            }
+      //      }
         }
+//        else {
+//            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {//TODO: AA: note that we are using this flag in the close token!!
+//                genWriteCloseTemplate(writer, this);
+//            }
+//        }
     }
 
 
@@ -1262,11 +1260,27 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         dictionaryFactory.reset(byteHeap);
     }
 
+    
+    private static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
+        
+        if (writer.output instanceof FASTOutputByteArrayEquals) {
+            FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;
+            testingOutput.recordPosition(writer.limit,activeScriptCursor);
+        }
+       
+        return true;
+    }
+    
+    
     public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
 
         int token = fullScript[activeScriptCursor];
+      //  System.err.println("write :"+TokenBuilder.tokenToString(token));
+        
+        
 
-        assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, ringBuffers[activeScriptCursor]));
+        FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
+        assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
 
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
@@ -1278,9 +1292,9 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
 
@@ -1288,23 +1302,23 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //TODO: B, Add lookup for value of absent/null instead of this constant.
                         int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
-                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);                            
+                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);                            
                         } else {        
-                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                         }
 
                     }
                 } else {
-                    long value = FASTRingBufferReader.readLong(ringBuffers[activeScriptCursor], fieldPos);
+                    long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
                     assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                     
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                                         // the work.
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptLongUnsigned(token, fieldPos, rbRingBuffer, writer);
                         } else {
-                            acceptLongSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptLongSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
                         if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
@@ -1322,12 +1336,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    int length = FASTRingBufferReader.readTextLength(ringBuffers[activeScriptCursor], fieldPos);
+                    int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
                     if (length < 0) {
                         write(token, writer);
                     } else {
-                        char[] buffer = ringBuffers[activeScriptCursor].readRingCharBuffer(fieldPos);
-                        write(token, ringCharSequence.set(buffer, ringBuffers[activeScriptCursor].readRingCharPos(fieldPos), ringBuffers[activeScriptCursor].readRingCharMask(), length),writer);
+                        char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
+                        write(token, ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length),writer);
                     }
                 } else {
                     // 011??
@@ -1337,27 +1351,35 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         int expoToken = token;
                         
                         ///int exponent = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
-                        long mantissa = FASTRingBufferReader.readLong(ringBuffers[activeScriptCursor], fieldPos + 1);
+                        long mantissa = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos + 1);
 
                         
                         //at runtime if the value is null for the exponent must not
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerSigned(expoToken, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerSigned(expoToken, fieldPos, rbRingBuffer, writer);
+                            
+                            //TODO: Must write mantissa.
+                            
                         } else {
                                     
                             //TODO: B, Add lookup for value of absent/null instead of this constant.
                             int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                                                         
-                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, rbRingBuffer, writer);
 
+                            //TODO: Might not write mantissa if the exponent is absent.
+                            
                         }
                         
-                        int mantToken = fullScript[++activeScriptCursor];
+                        //Must record the exponent write while we still have the values.
+                        assert(notifyFieldPositions(writer, activeScriptCursor));
+                        
+                        int mantToken = fullScript[++activeScriptCursor];//TODO: THIS is very bad and can not be supported!!
                         
                         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongSigned(mantToken, fieldPos + 1, ringBuffers[activeScriptCursor], writer);
+                            acceptLongSigned(mantToken, fieldPos + 1, rbRingBuffer, writer);
                         } else {
                             long valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                             
@@ -1400,13 +1422,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
                         if (isTemplate && true) {
                             
-                            openMessage(token, templatePMapSize, fieldPos-1, writer, ringBuffers[activeScriptCursor]);
+                            openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
                             
                             // this is NOT a message/template so the non-template
                             // pmapSize is used.
-                            // System.err.println("open group:"+TokenBuilder.tokenToString(token));
                             openGroup(token, nonTemplatePMapSize, writer);
                             
                         }
@@ -1423,12 +1444,12 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                         // not optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                         } else {
-                            acceptIntegerSigned(token, fieldPos, ringBuffers[activeScriptCursor], writer);
+                            acceptIntegerSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        int length = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
+                        int length = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
                         if (length == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
                             write(token, writer);
                         } else {
@@ -1437,13 +1458,14 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                             int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
-                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
+                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                             } else {
-                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, ringBuffers[activeScriptCursor], writer);
+                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                             }
                         }
                     }
 
+                    assert(notifyFieldPositions(writer, activeScriptCursor));
                     return true;
                 }
             } else {
@@ -1508,6 +1530,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             }
 
         }
+        assert(notifyFieldPositions(writer, activeScriptCursor));
         return false;
     }
 
@@ -1554,15 +1577,15 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         //add 1 bit to pmap and write the templateId
-        System.err.println("open msg");
+      //  System.err.println("open msg");
         genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, queue);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
             //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
             genWriteClosePMap(writer); 
-            System.err.println("close msg");
+       //     System.err.println("close msg");
         } else {
-            System.err.println("********* must close later");
+        //    System.err.println("********* must close later");
         }
     }
 

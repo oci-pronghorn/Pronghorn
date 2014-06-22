@@ -20,15 +20,18 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
+import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -110,7 +113,7 @@ public class TemplateLoaderTest {
                 catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
 
       
-        PrimitiveReader reader = new PrimitiveReader(buildBytesForTestingByteArray(sourceDataFile), maxPMapCountInBytes);
+        PrimitiveReader reader = new PrimitiveReader(buildInputArrayForTesting(sourceDataFile), maxPMapCountInBytes);
         
         FASTClassLoader.deleteFiles();
         
@@ -296,8 +299,9 @@ public class TemplateLoaderTest {
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
         long totalTestBytes = sourceDataFile.length();
+        final byte[] testBytesData = buildInputArrayForTesting(sourceDataFile);
 
-        FASTInputByteArray fastInput = buildInputForTestingByteArray(sourceDataFile);
+        FASTInputByteArray fastInput = new FASTInputByteArray(testBytesData);
 
         // New memory mapped solution. No need to cache because we warm up and
         // OS already has it.
@@ -311,27 +315,11 @@ public class TemplateLoaderTest {
         
         final AtomicInteger msgs = new AtomicInteger();
         
-        FASTListener listener = new FASTListener() {
-            
-            @Override
-            public void fragment(int templateId, FASTRingBuffer buffer) {
-                msgs.incrementAndGet();
-            }
-            
-            @Override
-            public void fragment() {
-                // TODO Auto-generated method stub
-                
-            }
-            
-        };
-        
         FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
         
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);
 
-        byte[] targetBuffer = new byte[(int) (totalTestBytes)];
-        FASTOutputByteArray fastOutput = new FASTOutputByteArray(targetBuffer);
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
 
         // TODO: Z, force this error and add friendly message, when minimize
         // latency set to false these need to be much bigger?
@@ -341,7 +329,7 @@ public class TemplateLoaderTest {
         // NOTE: may need to be VERY large if minimize
         // latency is turned off!!
         
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, false);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog,queue);
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
@@ -365,6 +353,7 @@ public class TemplateLoaderTest {
         
         int warmup = 20;// set much larger for profiler
         int count = 128;
+        
 
         long wroteSize = 0;
         msgs.set(0);
@@ -374,46 +363,31 @@ public class TemplateLoaderTest {
             msgs.set(0);
             grps = 0;
             
-      //idea      
-//            int bid; 
-//            while ((bid = reactor.pump())>=0) {
-//                FASTRingBuffer rb =  readerDispatch.ringBuffer(bid);
-//                rb.moveNext();
-//                int templateId = rb.messageId();
-//                if (templateId!=-1) {
-//                    FASTRingBufferReader.dump(queue);
-//                }
-//            }
+            //TODO: AA, confirm that nextMessage blocks and does not continue when there is no data
+            //TODO: AA, confirm that moveNext write pattern is continued to be called when we have data.
+
             writerDispatch.reset();
             while (FASTInputReactor.pump(reactor)>=0) {
-                
-                //TODO: AA, confirm that nextMessage blocks and does not continue when there is no data
-                //TODO: AA, confirm that moveNext write pattern is continued to be called when we have data.
-                
-//                while (queue.contentRemaining()>0) {
-                //    System.err.println("remain "+queue.contentRemaining());
+   
                     FASTRingBuffer.moveNext(queue);
-                    if (queue.messageId>=0) {
+                    if (queue.messageId>=0) { //skip if we are waiting for more content.
                         
-                        //TODO: must confirm each write as it happens in order to find bugs when they happen.
+                        if (queue.isNewMessage) {
+                            msgs.incrementAndGet();
+                        }
                         
-                        dynamicWriter.write();
-                       grps++;
-                       //System.err.println("grps "+grps);
+                         try{   
+                             dynamicWriter.write();
+                            } catch (FASTException e) {
+                                System.err.println("ERROR: cursor at "+writerDispatch.activeScriptCursor+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.activeScriptCursor]));
+                                throw e;
+                            }
+                            
+                            grps++;
                    }
-  //              }
+
             }
             
-    //old delete        
-//            int flags = 0; // same id needed for writer construction
-//            while (0 != (flags = reactor.select())) {
-//                
-//                while (queue.hasContent()) {
-//                    dynamicWriter.write();
-//                }
-//                grps++;
-//                
-//            }
 
             queue.reset();
 
@@ -432,20 +406,22 @@ public class TemplateLoaderTest {
             writerDispatch.setDispatchObserver(null);
         }
 
-        scanForMismatch(targetBuffer, fastInput.getSource(), reads);
         // Expected total read fields:2126101
         assertEquals("test file bytes", totalTestBytes, wroteSize);
 
         iter = count;
         while (--iter >= 0) {
 
+            writerDispatch.reset();
             double start = System.nanoTime();
             
-            while (FASTInputReactor.pump(reactor)>=0) {
-                while (FASTRingBuffer.contentRemaining(queue)>0) {
-                    dynamicWriter.write();
-                }
+            while (FASTInputReactor.pump(reactor)>=0) {  
+                    FASTRingBuffer.moveNext(queue);
+                    if (queue.messageId>=0) { //skip if we are waiting for more content.
+                            dynamicWriter.write();  
+                   }
             }
+            
             
             double duration = System.nanoTime() - start;
 
@@ -476,51 +452,6 @@ public class TemplateLoaderTest {
 
     }
 
-    private void scanForMismatch(byte[] targetBuffer, byte[] sourceBuffer, Map<Long, String> reads) {
-        int lookAhead = 11;
-        int maxDisplay = 31;
-        int nthErr = 1;
-
-        int i = 0;
-        int err = 0;
-        int displayed = 0;
-        while (i < sourceBuffer.length && displayed < maxDisplay) {
-            // Check data for mismatch
-            if (i + lookAhead < sourceBuffer.length && i + lookAhead < targetBuffer.length
-                    && sourceBuffer[i + lookAhead] != targetBuffer[i + lookAhead]) {
-                err++;
-                ;
-            }
-
-            if (err >= nthErr) {
-                displayed++;
-                StringBuilder builder = new StringBuilder();
-                builder.append(i).append(' ').append(" R").append(hex(sourceBuffer[i])).append(' ').append(" W")
-                        .append(hex(targetBuffer[i])).append(' ');
-
-                builder.append(" R").append(bin(sourceBuffer[i])).append(' ');
-                builder.append(" W").append(bin(targetBuffer[i])).append(' ');
-
-                if (sourceBuffer[i] != targetBuffer[i]) {
-                    builder.append(" ***ERROR***  decimals " + (0x7F & sourceBuffer[i]) + "  "
-                            + (0x7F & targetBuffer[i]) + " ascii "
-                            + Character.toString((char) (0x7F & sourceBuffer[i])) + "  "
-                            + Character.toString((char) (0x7F & targetBuffer[i])));
-                }
-
-                Long lng = Long.valueOf(i);
-                if (reads.containsKey(lng)) {
-                    builder.append(reads.get(lng)).append(' ');
-                } else {
-                    builder.append("                ");
-                }
-
-                System.err.println(builder);
-
-            }
-            i++;
-        }
-    }
 
     private String hex(int x) {
         String t = Integer.toHexString(0xFF & x);
@@ -541,27 +472,7 @@ public class TemplateLoaderTest {
 
     }
 
-    static FASTInputByteArray buildInputForTestingByteArray(File fileSource) {
-        byte[] fileData = null;
-        try {
-            // do not want to time file access so copy file to memory
-            fileData = new byte[(int) fileSource.length()];
-            FileInputStream inputStream = new FileInputStream(fileSource);
-            int readBytes = inputStream.read(fileData);
-            inputStream.close();
-            assertEquals(fileData.length, readBytes);
-
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        FASTInputByteArray fastInput = new FASTInputByteArray(fileData);
-        return fastInput;
-    }
-    
-    static byte[] buildBytesForTestingByteArray(File fileSource) {
+    static byte[] buildInputArrayForTesting(File fileSource) {
         byte[] fileData = null;
         try {
             // do not want to time file access so copy file to memory
@@ -578,6 +489,8 @@ public class TemplateLoaderTest {
         }
         return fileData;
     }
+    
+    
 
 //    private String hexString(byte[] targetBuffer) {
 //        StringBuilder builder = new StringBuilder();
