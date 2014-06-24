@@ -68,29 +68,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         final FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         
         int token = fullScript[activeScriptCursor];
-        //TODO: A, hack until group stack is used in place of the limit SKIPS OVER ALL CLOSING GROUPS && NORMAL GROUPS THAT WE START WITH.
-        while (
-             //   (TokenBuilder.extractType(token)==TypeMask.Group && ((0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) 
-             //   ||
-               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))))) &&
-               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) //remove all simple opens
-               
-                )
-               {
-            token = fullScript[++activeScriptCursor];
-        }
-        
-        
+
         do {
             token = fullScript[activeScriptCursor];
-            
-//            if (rbRingBuffer.addPos.value<134) {
- //               System.err.println("> Wrote @"+(rbRingBuffer.addPos.value)+" "+TokenBuilder.tokenToString(token));
-//            }
-            
+    
             assert (gatherReadData(reader, activeScriptCursor, token));
-            
-            //System.err.println("write to "+(ringBuffers[activeScriptCursor].mask &ringBuffers[activeScriptCursor].addPos)+" "+fieldNameScript[activeScriptCursor]+" token: "+TokenBuilder.tokenToString(token));
 
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
@@ -154,8 +136,64 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                 } else {
                                     //this IS a message requireing template
                                     
-                                    System.err.println("XXX");
-                                    genReadGroupPMapOpen(maxTemplatePMapSize,reader);                                  
+                                    //Do nothing because this is done by Reactor at this time.
+                                    
+                                    //genReadGroupPMapOpen(maxTemplatePMapSize,reader);     
+                                    if (FASTInputReactor.INLINED_TEMPLATE_OPEN) {
+                                        // get next token id then immediately start processing the script
+                                        // /read prefix bytes if any (only used by some implementations)
+                                        assert (this.preambleDataLength != 0 && this.gatherReadData(reader, "Preamble", 0));
+                                        //ring buffer is build on int32s so the implementation limits preamble to units of 4
+                                        assert ((this.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
+                                        assert (this.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
+                                        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
+                                        
+                                        
+                                        //break out into series of gen calls to save int somewhere. units of 4 only.
+                                        int p = this.preambleDataLength;
+                                        int a=0, b=0;
+                                        if (p>0) {
+                                            a = PrimitiveReader.readRawInt(reader);
+                                             if (p>4) {
+                                                b = PrimitiveReader.readRawInt(reader);
+                                                assert(p==8) : "Unsupported large preamble";
+                                            }
+                                        }
+                                        
+                                        // /////////////////
+                                        // open message (special type of group)
+                                        int templateId = PrimitiveReader.openMessage(this.maxTemplatePMapSize, reader);
+                                                    
+                                        // write template id at the beginning of this message
+                                        int neededSpace = 1 + this.preambleDataLength + this.requiredBufferSpace2(templateId, a, b);
+                                        this.ringBufferIdx = this.activeScriptCursor;
+                                        //we know the templateId so we now know which ring buffer to use.
+                                        FASTRingBuffer rb = this.ringBuffers[this.activeScriptCursor];
+                                        
+                                        if (neededSpace > 0) {
+                                            int size = rb.maxSize;
+                                            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                                                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                                                    //TODO: must call blocking policy on this, already committed to read.
+                                                  //  System.err.println("no room in ring buffer");
+                                                   Thread.yield();// rb.dump(rb);
+                                                }
+                                                
+                                            }
+                                        }                   
+                                                
+                                        //break out into second half of gen.
+                                        p = this.preambleDataLength;
+                                        if (p>0) {
+                                            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
+                                            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
+                                            if (p>4) {
+                                                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
+                                            }
+                                        }
+                                        //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
+                                        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+                                    }
                                     
                                 }                                
                                 

@@ -19,6 +19,7 @@ public abstract class FASTDecoder{
     private final int[] templateLimitIdx;
     
     public int activeScriptCursor; //needed by generated code to hold state between calls.
+    public int ringBufferIdx= -1;
     
     public final int maxTemplatePMapSize;
     
@@ -188,6 +189,63 @@ public abstract class FASTDecoder{
             }
         }   
         return 0;
+    }
+
+    static void pump2startTemplate(FASTDecoder dispatch, PrimitiveReader reader) {
+        // get next token id then immediately start processing the script
+        // /read prefix bytes if any (only used by some implementations)
+        assert (dispatch.preambleDataLength != 0 && dispatch.gatherReadData(reader, "Preamble", 0));
+        //ring buffer is build on int32s so the implementation limits preamble to units of 4
+        assert ((dispatch.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
+        assert (dispatch.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
+        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
+        
+        
+        //break out into custom gen method
+        int p = dispatch.preambleDataLength;
+        int a=0, b=0;
+        if (p>0) {
+            a = PrimitiveReader.readRawInt(reader);
+             if (p>4) {
+                b = PrimitiveReader.readRawInt(reader);
+                assert(p==8) : "Unsupported large preamble";
+            }
+        }
+        
+        // /////////////////
+        // open message (special type of group)
+        int templateId = PrimitiveReader.openMessage(dispatch.maxTemplatePMapSize, reader);
+                    
+        // write template id at the beginning of this message
+        int neededSpace = 1 + dispatch.preambleDataLength + dispatch.requiredBufferSpace2(templateId, a, b);
+        dispatch.ringBufferIdx = dispatch.activeScriptCursor;
+        //we know the templateId so we now know which ring buffer to use.
+        FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];
+        
+        if (neededSpace > 0) {
+            int size = rb.maxSize;
+            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                    //TODO: must call blocking policy on this, already committed to read.
+                  //  System.err.println("no room in ring buffer");
+                   Thread.yield();// rb.dump(rb);
+                }
+                
+            }
+        }                   
+                
+        //break out into second half of gen.
+        p = dispatch.preambleDataLength;
+        if (p>0) {
+            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
+            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
+            if (p>4) {
+                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
+            }
+        }
+        //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+        
     }
 
 }

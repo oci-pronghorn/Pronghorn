@@ -116,85 +116,40 @@ public final class FASTInputReactor {
         
     }
 
+        
+    boolean needTemplate = true;
     
-    int targetRingBufferId = -1;
+    static final boolean INLINED_TEMPLATE_OPEN = false; 
     
     public static int pump(FASTInputReactor reactor) {
         // start new script or detect that the end of the data has been reached
-        if (reactor.targetRingBufferId < 0) {
+        if (reactor.needTemplate) {
             // checking EOF first before checking for blocked queue
             if (PrimitiveReader.isEOF(reactor.reader)) { 
                 return -1;
             }
-            reactor.pump2startTemplate();
-        }        
-        return reactor.pump2decode();
-    }
-
-    private int pump2decode() {
-        int result = targetRingBufferId;
-        // returns true for end of sequence or group
-        if (!decoder.decode(reader)) {  
-            // reached the end of the script so close and prep for the next one
-           // System.err.println("decode has cleared target find next message");
-            targetRingBufferId = -1;
-           PrimitiveReader.closePMap(reader);            
-        }
-        return result;
-    }
-
-    private void pump2startTemplate() {
-        // get next token id then immediately start processing the script
-        // /read prefix bytes if any (only used by some implementations)
-        assert (decoder.preambleDataLength != 0 && decoder.gatherReadData(reader, "Preamble", 0));
-        //ring buffer is build on int32s so the implementation limits preamble to units of 4
-        assert ((decoder.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
-        assert (decoder.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
-        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
-        int p = decoder.preambleDataLength;
-        int a=0, b=0;
-        if (p>0) {
-            a = PrimitiveReader.readRawInt(reader);
-             if (p>4) {
-                b = PrimitiveReader.readRawInt(reader);
-                assert(p==8) : "Unsupported large preamble";
+            reactor.needTemplate = false;
+            if (!INLINED_TEMPLATE_OPEN) {
+                FASTDecoder.pump2startTemplate(reactor.decoder, reactor.reader);
+            }
+            // returns true for end of sequence or group
+            if (!reactor.decoder.decode(reactor.reader)) {  
+                // reached the end of the script so close and prep for the next one
+               // System.err.println("decode has cleared target find next message");
+                reactor.needTemplate=true;
+               PrimitiveReader.closePMap(reactor.reader);            
+            }
+            
+        } else {       
+            // returns true for end of sequence or group
+            if (!reactor.decoder.decode(reactor.reader)) {  
+                // reached the end of the script so close and prep for the next one
+               // System.err.println("decode has cleared target find next message");
+                reactor.needTemplate=true;
+               PrimitiveReader.closePMap(reactor.reader);            
             }
         }
-        
-        // /////////////////
-        // open message (special type of group)
-        int templateId = PrimitiveReader.openMessage(decoder.maxTemplatePMapSize, reader);
-        targetRingBufferId = decoder.activeScriptCursor;
-                    
-        // write template id at the beginning of this message
-        int neededSpace = 1 + decoder.preambleDataLength + decoder.requiredBufferSpace2(templateId, a, b);
-        //we know the templateId so we now know which ring buffer to use.
-        FASTRingBuffer rb = decoder.ringBuffers[decoder.activeScriptCursor];
-        
-        if (neededSpace > 0) {
-            int size = rb.maxSize;
-            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                    //TODO: must call blocking policy on this, already committed to read.
-                  //  System.err.println("no room in ring buffer");
-                   Thread.yield();// rb.dump(rb);
-                }
-                
-            }
-        }                   
-        
-        FASTRingBuffer.unBlockFragment(rb); //TODO: This seems like the better place to unblock?
-        
-        p = decoder.preambleDataLength;
-        if (p>0) {
-            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
-            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
-            if (p>4) {
-                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
-            }
-        }
-        //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+        return reactor.decoder.ringBufferIdx;
     }
     
 
