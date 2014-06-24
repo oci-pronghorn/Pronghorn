@@ -68,9 +68,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         final FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         
         int token = fullScript[activeScriptCursor];
-//        //TODO: A, hack until group stack is used in place of the limit SKIPS OVER ALL CLOSING GROUPS && NORMAL GROUPS THAT WE START WITH.
-        while ((TokenBuilder.extractType(token)==TypeMask.Group && ((0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) ||
-               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))))))
+        //TODO: A, hack until group stack is used in place of the limit SKIPS OVER ALL CLOSING GROUPS && NORMAL GROUPS THAT WE START WITH.
+        while (
+             //   (TokenBuilder.extractType(token)==TypeMask.Group && ((0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) 
+             //   ||
+               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER))))) &&
+               (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) //remove all simple opens
+               
+                )
                {
             token = fullScript[++activeScriptCursor];
         }
@@ -131,34 +136,37 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                     // 10???
                     if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                         
-//                        //group.
-//                        if ((TokenBuilder.extractType(token)==TypeMask.Group && ((0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))))) ||
-//                            (TokenBuilder.extractType(token)==TypeMask.Group && ((0 == (token & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)))))) {
-//                        
-//                            //TODO: hack to skip over these until we build in support.
-//                            
-//                        } else {
-//                                                
-
+                        //group.
                         
                             // 100??
                             // Group Type, no others defined so no need to keep
                             // checking
                             if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
-                                // this is NOT a message/template so the
-                                // non-template pmapSize is used.
-                                if (nonTemplatePMapSize > 0) {
-                                    genReadGroupPMapOpen(nonTemplatePMapSize, reader);
-                                }
+                                //Open group
                                 
+                                if (0==(token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {
+                                    
+                                    // this is NOT a message/template so the
+                                    // non-template pmapSize is used.
+                                    if (nonTemplatePMapSize > 0) {
+                                        genReadGroupPMapOpen(nonTemplatePMapSize, reader);
+                                    }
+                                } else {
+                                    //this IS a message requireing template
+                                    
+                                    System.err.println("XXX");
+                                    genReadGroupPMapOpen(maxTemplatePMapSize,reader);                                  
+                                    
+                                }                                
                                 
                             } else {
+                                //Close group
+                                
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
                                 FASTRingBuffer.unBlockFragment(rbRingBuffer); 
                                 return sequenceCountStackHead>=0;//doSequence;
                             }
-                 //       }
 
                     } else {
                         // 101??

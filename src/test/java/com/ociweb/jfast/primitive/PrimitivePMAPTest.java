@@ -33,27 +33,27 @@ public class PrimitivePMAPTest {
 
         PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
 
-        writer.openPMap(10, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.openPMap(10, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
 
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.closePMap(writer); // skip should be 7?
-        writer.flush(writer);
+        PrimitiveWriter.closePMap(writer); // skip should be 7?
+        PrimitiveWriter.flush(writer);
 
         byte[] data = baost.toByteArray();
         assertEquals("01010101", toBinaryString(data[0]));
@@ -70,41 +70,41 @@ public class PrimitivePMAPTest {
 
         PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
 
-        writer.openPMap(10, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.openPMap(10, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
         // push will save where we are so we can continue after pop
-        writer.openPMap(3, writer);
+        PrimitiveWriter.openPMap(3, writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
         // implied zero
 
         // continue with parent pmap
-        writer.closePMap(writer);
+        PrimitiveWriter.closePMap(writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
 
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.closePMap(writer);
-        writer.flush(writer);
+        PrimitiveWriter.closePMap(writer);
+        PrimitiveWriter.flush(writer);
 
         byte[] data = baost.toByteArray();
         assertEquals("01010101", toBinaryString(data[0]));
@@ -123,52 +123,52 @@ public class PrimitivePMAPTest {
 
         PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
 
-        writer.openPMap(3, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.openPMap(3, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
         // push will save where we are so we can continue after pop
-        writer.openPMap(3, writer);
+        PrimitiveWriter.openPMap(3, writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
 
-        writer.openPMap(4, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.closePMap(writer);
+        PrimitiveWriter.openPMap(4, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.closePMap(writer);
 
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
         // implied zero
 
         // continue with parent pmap
-        writer.closePMap(writer);
+        PrimitiveWriter.closePMap(writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
 
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.closePMap(writer);
-        writer.flush(writer);
+        PrimitiveWriter.closePMap(writer);
+        PrimitiveWriter.flush(writer);
 
         byte[] data = baost.toByteArray();
         assertEquals("01010101", toBinaryString(data[0]));
@@ -191,44 +191,44 @@ public class PrimitivePMAPTest {
 
         // pw.pushPMap(3);
 
-        writer.openPMap(10, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.openPMap(10, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
 
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
 
-        writer.closePMap(writer);
+        PrimitiveWriter.closePMap(writer);
 
         // push will save where we are so we can continue after pop
-        writer.openPMap(3, writer);
+        PrimitiveWriter.openPMap(3, writer);
 
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 0, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
-        writer.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 0, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
+        PrimitiveWriter.writePMapBit((byte) 1, writer);
         // implied zero
 
         // continue with parent pmap
-        writer.closePMap(writer);
+        PrimitiveWriter.closePMap(writer);
 
         // pw.popPMap();
 
-        writer.flush(writer);
+        PrimitiveWriter.flush(writer);
 
         byte[] data = baost.toByteArray();
         assertEquals("01010101", toBinaryString(data[0]));
@@ -524,7 +524,7 @@ public class PrimitivePMAPTest {
         while (--q >= 0) {
 
             output.reset();
-            writer.reset(writer);
+            PrimitiveWriter.reset(writer);
 
             int i = pmaps;
             try {
@@ -533,7 +533,7 @@ public class PrimitivePMAPTest {
                     byte[] pmapData = testPmaps[i];
                     // none of these are nested, we don't want to test nesting
                     // here.
-                    writer.openPMap(maxWrittenBytes, writer); // many are shorter but we
+                    PrimitiveWriter.openPMap(maxWrittenBytes, writer); // many are shorter but we
                                                   // want to test the trailing
                                                   // functionality
                     int j = pmapData.length;
@@ -548,24 +548,24 @@ public class PrimitivePMAPTest {
                         byte b = pmapData[j];
 
                         // put in first byte
-                        writer.writePMapBit((byte) (b & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 1) & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 2) & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 3) & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 4) & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 5) & 1), writer);
-                        writer.writePMapBit((byte) ((b >> 6) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) (b & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 1) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 2) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 3) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 4) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 5) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 6) & 1), writer);
                         // put in next byte
-                        writer.writePMapBit((byte) ((b >> 7) & 1), writer);
+                        PrimitiveWriter.writePMapBit((byte) ((b >> 7) & 1), writer);
                         // 6 zeros are assumed
 
                     }
-                    writer.closePMap(writer); // push/pop consumes 20% of the time.
+                    PrimitiveWriter.closePMap(writer); // push/pop consumes 20% of the time.
                 }
                 // single flush, this is the bandwidth optimized approach.
 
                 // NOTE: flush now takes 22% of pmap test
-                writer.flush(writer); // as of last test this only consumes 14% of the
+                PrimitiveWriter.flush(writer); // as of last test this only consumes 14% of the
                             // time
                 long duration = (System.nanoTime() - start);
 

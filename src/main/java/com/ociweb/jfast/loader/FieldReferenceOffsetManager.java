@@ -101,7 +101,6 @@ public class FieldReferenceOffsetManager {
             }
             
             int token = config.scriptTokens[i];
-            //todo: IF LAST TOKEN WAS DECIMAL?? TODO: AAA, the second of both decimals should be a long!!!!!
             
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             fragDataSize[fragmentStartIdx]+=TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];

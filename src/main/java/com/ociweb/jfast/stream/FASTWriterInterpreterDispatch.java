@@ -1234,17 +1234,8 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
         assert (0 != (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
-//            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) { //TODO: AA: note that we are using this flag in the close token!!
-//                genWriteCloseTemplatePMap(writer, this);
-//            } else {
                 genWriteClosePMap(writer);
-      //      }
         }
-//        else {
-//            if (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) {//TODO: AA: note that we are using this flag in the close token!!
-//                genWriteCloseTemplate(writer, this);
-//            }
-//        }
     }
 
 

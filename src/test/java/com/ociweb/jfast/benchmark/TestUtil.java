@@ -29,14 +29,6 @@ public class TestUtil {
     		int tokenType = types[typeIdx];
     		int tokenOpp = operators[opsIdx];
     		
-    		//When testing decimals the same operator is used for both exponent and mantissa.
-    		if (tokenType == TypeMask.Decimal || 
-    			tokenType == TypeMask.DecimalOptional) {
-    			
-    			tokenOpp |= tokenOpp<<TokenBuilder.SHIFT_OPER_DECIMAL_EX;
-    			
-    		}
-    		
     		lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
     				
     	}

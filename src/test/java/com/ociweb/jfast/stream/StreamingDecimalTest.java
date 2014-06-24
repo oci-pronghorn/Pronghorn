@@ -316,24 +316,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
-        
-        // This can be done in a similar way to how the token is adjusted in order to use the normal int processing.
-        
-        //Use Int exponent but we need to shift the bits first to move the operator
-        
-        int expoToken = token&
-                      ((TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE)| 
-                       (TokenBuilder.MASK_ABSENT<<TokenBuilder.SHIFT_ABSENT)|
-                       (TokenBuilder.MAX_INSTANCE));
-        expoToken |= (token>>TokenBuilder.SHIFT_OPER_DECIMAL_EX)&(TokenBuilder.MASK_OPER<<TokenBuilder.SHIFT_OPER);
-        expoToken |= 0x80000000;
-        
-        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+                
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // 00010 IntegerSigned
-            decoder.readIntegerSigned(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readIntegerSigned(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         } else {
             // 00011 IntegerSignedOptional
-            decoder.readIntegerSignedOptional(expoToken, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readIntegerSignedOptional(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
         }
         //NOTE: for testing we need to check what was written
         return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-1, ringBuffer.mask);

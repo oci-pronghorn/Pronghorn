@@ -50,13 +50,9 @@ public class Test {
                 
                   
           byte[] catBytes = buildRawCatalogData(clientConfig, templateSource);
+
           TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
-
-          // connect to file
-
-          //TODO: AA, API design flaw, most will not want to compute this mess.
-          int maxPMapCountInBytes = 2 + ((Math.max(
-                  catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());             
+          int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);             
           
           
           FASTClassLoader.deleteFiles();
@@ -92,14 +88,10 @@ public class Test {
               
               
               FieldReferenceOffsetManager from = catalog.getFROM();
+                           
               
-              //these two only happen at the beginning of a new template.
-              int preambleOffset = from.preambleOffset; 
-              int templateOffset = from.templateOffset;
-              
-              
-              double duration = singleThreadedExample(readerDispatch, msgs, reactor);
-              //double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
+              //double duration = singleThreadedExample(readerDispatch, msgs, reactor);
+              double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
               
               
@@ -195,37 +187,7 @@ public class Test {
         return duration;
     }
 
-    
-
-    
-    //must read fragment id!
-    //this is the position in the script
-    //if select returns the script location we can use that but what about threaded cases?
-    
-    //reader can walk a script on client side to know the state of the next fragment without adding it to ring buffer.
-    
-    //stack in ring buffer allows reading of fields still in ring
-    
-    //need client stack of nestedd seq etc. to know when we switch to the next one.
-    //at end of fragment length# will tell repeat for next sequence.
-    /*//TODO: AA, need test for optional groups this is probably broken. 
-                      
-                      ## if the fragment id is always on the front of the fragment in ring buffer it will 
-                         Be limited by the memory write speeds and more data will move
-                         Be easy to determine the fragment in the client
-                         
-                      ## if the id is passed back from select it will
-                         Make it difficult to code multithreaded setup.
-                         Be easy for single threaded app to read the fragment
-                         
-                      ## if the client side follows along with a helper script class
-                         A dedicated walker class will need to be written
-                         The decoder will not need to do more work.
-                         Every thread will be able to run at its own pace.
-                      
-                      TODO: AAA, URGENT change, Knowing the end of a template is discovered by having walked an by no other means.
-                      
-     */
+    //TODO: AA, need test for optional groups this is probably broken. 
 
     private boolean shouldPrint(int iter) {
         return (0x7F & iter) == 0;

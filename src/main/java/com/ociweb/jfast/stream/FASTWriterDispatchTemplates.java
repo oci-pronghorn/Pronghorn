@@ -1297,33 +1297,21 @@ public class FASTWriterDispatchTemplates extends FASTEncoder {
     
 
     protected void genWriteLongSignedCopyOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        if (value >= 0) {
-            value++;
-        }
-        PrimitiveWriter.writeLongSignedCopy(value, target, source, longValues, writer);
+        PrimitiveWriter.writeLongSignedCopy(value-((value>>63)-1), target, source, longValues, writer);
     }
 
     protected void genWriteLongSignedIncrementOptional(long value, int target, int source, PrimitiveWriter writer, long[] longValues) {
-        if (value >= 0) {
-            value++;
-        }
+        value-=((value>>63)-1);
         PrimitiveWriter.writeLongSignedIncrementOptional(value, longValues[source], writer);
         longValues[target] = value;
     }
 
+    //branched version replaced by  -((value>>63)-1)  
+    //        if (value >= 0) {
+    //            value++;// room for null
+    //        }
     protected void genWriteLongSignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        
-       // long v =  (value>>63)-1;
-        
-        
-        if (value >= 0) {
-            value++;// room for null
-        }
-        
-               
-        
-        
-        PrimitiveWriter.writeLongSignedDefault(value, constDefault, writer);
+        PrimitiveWriter.writeLongSignedDefault(value-((value>>63)-1), constDefault, writer);
     }
 
     protected void genWriteDictionaryBytesReset(int idx, ByteHeap byteHeap) {

@@ -130,7 +130,7 @@ public class TemplateLoaderTest {
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);      
 
         int warmup = 64;
-        int count = 1024;
+        int count = 512;
         int result = 0;
         final int[] fullScript = catalog.getScriptTokens();
         
@@ -163,7 +163,6 @@ public class TemplateLoaderTest {
              //   System.err.println(templateId);
                 if (rb.isNewMessage) {
                     int templateId = rb.messageId;
-                    //TODO: AAA, this count is wrong it should only be 3000
                     
                     msgs.incrementAndGet();
                     
@@ -294,6 +293,7 @@ public class TemplateLoaderTest {
     public void testDecodeEncodeComplex30000() {
         byte[] catBytes = buildRawCatalogData();
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+        int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);   
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -308,7 +308,7 @@ public class TemplateLoaderTest {
         // FASTInputByteBuffer fastInput =
         // buildInputForTestingByteBuffer(sourceDataFile);
 
-        PrimitiveReader reader = new PrimitiveReader(2048, fastInput, 32);
+        PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
@@ -376,14 +376,13 @@ public class TemplateLoaderTest {
                             msgs.incrementAndGet();
                         }
                         
-                         try{   
+                        try{   
                              dynamicWriter.write();
                             } catch (FASTException e) {
                                 System.err.println("ERROR: cursor at "+writerDispatch.activeScriptCursor+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.activeScriptCursor]));
                                 throw e;
-                            }
-                            
-                            grps++;
+                            }                            
+                        grps++;
                    }
 
             }

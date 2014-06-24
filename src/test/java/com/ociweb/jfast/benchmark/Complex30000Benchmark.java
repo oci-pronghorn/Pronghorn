@@ -49,7 +49,8 @@ public class Complex30000Benchmark extends Benchmark {
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File fileSource = new File(sourceData.getFile());
-
+        int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);   
+        
         try {
             // do not want to time file access so copy file to memory
             testData = new byte[(int) fileSource.length()];
@@ -59,7 +60,7 @@ public class Complex30000Benchmark extends Benchmark {
             assertEquals(testData.length, readBytes);
 
             fastInput = new FASTInputByteArray(testData);
-            reader = new PrimitiveReader(2048, fastInput, 32);
+            reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
             readerDispatch = new FASTReaderInterpreterDispatch(catalog);
             
             reactor = new FASTInputReactor(readerDispatch,reader);

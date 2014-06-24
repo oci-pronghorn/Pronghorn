@@ -84,6 +84,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         PrimitiveReader.closePMap(reader);
     }
     
+    protected void genReadGroupCloseMessage(PrimitiveReader reader) {
+        if (sequenceCountStackHead<0) { //TODO: do we really need this dynamic behavior?
+            PrimitiveReader.closePMap(reader);
+        }
+        
+    }
     
     //length methods
     

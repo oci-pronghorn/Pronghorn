@@ -127,20 +127,21 @@ public class CodeGenerationTest {
         // /////////
         byte[] catBytes = TemplateLoaderTest.buildRawCatalogData();
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+        int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog); 
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
 
         FASTInputByteArray fastInput1 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
-        final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, 32);
+        final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, maxPMapCountInBytes);
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
         FASTRingBuffer queue1 = readerDispatch1.ringBuffer(0);
 
         FASTInputByteArray fastInput2 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
-        final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, 33);
+        final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, maxPMapCountInBytes);
 
         FASTDecoder readerDispatch2 = null;
         try {

@@ -172,7 +172,7 @@ public final class FASTRingBuffer {
         int fragStep = ringBuffer.from.fragScriptSize[ringBuffer.cursor]; //script jump 
         ringBuffer.cursor += fragStep;
 
-        ///TODO: add optional groups to this implementation
+        ///TODO: B, add optional groups to this implementation
         
         //////////////
         ////Never call these when we jump back for loop

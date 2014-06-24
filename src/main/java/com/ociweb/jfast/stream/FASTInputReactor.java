@@ -138,7 +138,7 @@ public final class FASTInputReactor {
             // reached the end of the script so close and prep for the next one
            // System.err.println("decode has cleared target find next message");
             targetRingBufferId = -1;
-            PrimitiveReader.closePMap(reader);            
+           PrimitiveReader.closePMap(reader);            
         }
         return result;
     }
@@ -183,7 +183,7 @@ public final class FASTInputReactor {
             }
         }                   
         
-    //    FASTRingBuffer.unBlockFragment(rb); //TODO: This seems like the better place to unblock?
+        FASTRingBuffer.unBlockFragment(rb); //TODO: This seems like the better place to unblock?
         
         p = decoder.preambleDataLength;
         if (p>0) {
