@@ -30,10 +30,13 @@ public abstract class FASTDecoder{
     protected final int[] rIntDictionary;
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
-        
     
+    public int templateId=-1;
+    public int preambleA=0;
+    public int preambleB=0;
+            
     public final byte preambleDataLength;
-    protected final FASTRingBuffer[] ringBuffers;
+    public final FASTRingBuffer[] ringBuffers;
         
     public int neededSpaceOrTemplate = -1; //<0 need template, 0 need nothing, >0 need this many units in (which?) ring buffer.
 
@@ -143,53 +146,15 @@ public abstract class FASTDecoder{
 
     public int activeScriptLimit; //TODO: A, remvoe this once limit is removed from iterprister after stack is used for exit flag.
     
-    public int requiredBufferSpace2(int templateId, int a, int b) {
+    public int requiredBufferSpace2() {
         
         activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
         activeScriptLimit = templateLimitIdx[templateId];
 
-        return (activeScriptLimit - activeScriptCursor) << 2;
-        
+        return (activeScriptLimit - activeScriptCursor) << 2;        
         
     }
     
-        
-    public int requiredBufferSpace(int templateId, int a, int b) {
-        
-        activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
-        activeScriptLimit = templateLimitIdx[templateId];
-      
-        
-        
-        
-        //we know the templateId so we now know which ring buffer to use.
-        FASTRingBuffer rb = ringBuffers[activeScriptCursor];
-        int p = preambleDataLength;
-        if (p>0) {
-            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
-            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
-            if (p>4) {
-                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
-            }
-        }
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
-        
-
-        // Worst case scenario is that this is full of decimals which each need
-        // 3.
-        // but for easy math we will use 4, will require a little more empty
-        // space in buffer
-        // however we will not need a lookup table
-        int neededSpace =  (activeScriptLimit - activeScriptCursor) << 2;
-        
-        
-        if (neededSpace > 0) {
-            if (( rb.maxSize-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                return 0x80000000;
-            }
-        }   
-        return 0;
-    }
 
     static void pump2startTemplate(FASTDecoder dispatch, PrimitiveReader reader) {
         // get next token id then immediately start processing the script
@@ -214,10 +179,10 @@ public abstract class FASTDecoder{
         
         // /////////////////
         // open message (special type of group)
-        int templateId = PrimitiveReader.openMessage(dispatch.maxTemplatePMapSize, reader);
+        dispatch.templateId = PrimitiveReader.openMessage(dispatch.maxTemplatePMapSize, reader);
                     
         // write template id at the beginning of this message
-        int neededSpace = 1 + dispatch.preambleDataLength + dispatch.requiredBufferSpace2(templateId, a, b);
+        int neededSpace = 1 + dispatch.preambleDataLength + dispatch.requiredBufferSpace2();
         dispatch.ringBufferIdx = dispatch.activeScriptCursor;
         //we know the templateId so we now know which ring buffer to use.
         FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];
@@ -244,7 +209,7 @@ public abstract class FASTDecoder{
             }
         }
         //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.templateId);
         
     }
 

@@ -129,7 +129,17 @@ public final class FASTInputReactor {
                 return -1;
             }
             reactor.needTemplate = false;
+            
+            //TODO: call to decode assumes activescriptcursor and activeScriptLimit  already set
+            //this breaks both generated and interprited versions. where to call??
+            
+            //if cursor < 0 then startTemplate call?
+            //script already has that position but we dont know script location until tempate is known. so ?
+            
+            
             if (!INLINED_TEMPLATE_OPEN) {
+                //TODO: move this to decoder
+                //TODO: call in decode if activeScriptCursor<0, will need to generate new method 
                 FASTDecoder.pump2startTemplate(reactor.decoder, reactor.reader);
             }
             // returns true for end of sequence or group

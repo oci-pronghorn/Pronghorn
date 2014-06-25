@@ -29,6 +29,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTListener;
+import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
@@ -56,7 +57,8 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+   //       FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+          FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -90,8 +92,8 @@ public class Test {
               FieldReferenceOffsetManager from = catalog.getFROM();
                            
               
-              //double duration = singleThreadedExample(readerDispatch, msgs, reactor);
-              double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
+              double duration = singleThreadedExample(readerDispatch, msgs, reactor);
+             // double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
               
               

@@ -50,6 +50,47 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
 
+    protected void genReadTemplateId(PrimitiveReader reader, FASTDecoder dispatch) {
+        System.err.println("reading template ");
+        dispatch.templateId = PrimitiveReader.openMessage(dispatch.maxTemplatePMapSize, reader);                                                    
+        // write template id at the beginning of this message
+        int neededSpace = 1 + dispatch.preambleDataLength + dispatch.requiredBufferSpace2();
+        dispatch.ringBufferIdx = dispatch.activeScriptCursor;
+        //we know the templateId so we now know which ring buffer to use.
+        FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];                                        
+        if (neededSpace > 0) {
+            int size = rb.maxSize;
+            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                    //TODO: must call blocking policy on this, already committed to read.
+                  //  System.err.println("no room in ring buffer");
+                   Thread.yield();// rb.dump(rb);
+                }                                                
+            }
+        }
+    }
+
+    protected void genWriteTemplateId(FASTRingBuffer rb, FASTDecoder dispatch) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.templateId);
+    }
+
+    protected void genWritePreambleB(FASTRingBuffer rb, FASTDecoder dispatch) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleB);
+    }
+
+    protected void genWritePreambleA(FASTRingBuffer rb, FASTDecoder dispatch) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleA);
+    }
+
+    protected void genReadPreambleB(PrimitiveReader reader, FASTDecoder dispatch) {
+        dispatch.preambleB = PrimitiveReader.readRawInt(reader);
+    }
+
+    protected void genReadPreambleA(PrimitiveReader reader, FASTDecoder dispatch) {
+        dispatch.preambleA = PrimitiveReader.readRawInt(reader);
+    }
+    
+    
     protected void genReadCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);
     }

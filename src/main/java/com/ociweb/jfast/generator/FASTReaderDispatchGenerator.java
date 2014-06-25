@@ -414,8 +414,35 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     //TODO: C, Add API for getting class/source and for setting class file.
     
-   
+    @Override
+    protected void genReadTemplateId(PrimitiveReader reader, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
 
+    @Override
+    protected void genWriteTemplateId(FASTRingBuffer rb, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
+
+    @Override
+    protected void genWritePreambleB(FASTRingBuffer rb, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
+
+    @Override
+    protected void genWritePreambleA(FASTRingBuffer rb, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
+
+    @Override
+    protected void genReadPreambleB(PrimitiveReader reader, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
+
+    @Override
+    protected void genReadPreambleA(PrimitiveReader reader, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
     
     @Override
     protected void genReadSequenceClose(int backvalue, int topCursorPos, FASTDecoder dispatch) {

@@ -135,8 +135,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                     }
                                 } else {
                                     //this IS a message requireing template
-                                    
+                                   // System.err.println("xxx");
                                     //Do nothing because this is done by Reactor at this time.
+                                    
                                     
                                     //genReadGroupPMapOpen(maxTemplatePMapSize,reader);     
                                     if (FASTInputReactor.INLINED_TEMPLATE_OPEN) {
@@ -151,48 +152,35 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                         
                                         //break out into series of gen calls to save int somewhere. units of 4 only.
                                         int p = this.preambleDataLength;
-                                        int a=0, b=0;
                                         if (p>0) {
-                                            a = PrimitiveReader.readRawInt(reader);
+                                            genReadPreambleA(reader, this);
                                              if (p>4) {
-                                                b = PrimitiveReader.readRawInt(reader);
+                                                genReadPreambleB(reader, this);
                                                 assert(p==8) : "Unsupported large preamble";
                                             }
-                                        }
+                                        }                                        
+                                        
                                         
                                         // /////////////////
                                         // open message (special type of group)
-                                        int templateId = PrimitiveReader.openMessage(this.maxTemplatePMapSize, reader);
-                                                    
-                                        // write template id at the beginning of this message
-                                        int neededSpace = 1 + this.preambleDataLength + this.requiredBufferSpace2(templateId, a, b);
-                                        this.ringBufferIdx = this.activeScriptCursor;
-                                        //we know the templateId so we now know which ring buffer to use.
-                                        FASTRingBuffer rb = this.ringBuffers[this.activeScriptCursor];
+                                        genReadTemplateId(reader, this); 
                                         
-                                        if (neededSpace > 0) {
-                                            int size = rb.maxSize;
-                                            if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                                                while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                                                    //TODO: must call blocking policy on this, already committed to read.
-                                                  //  System.err.println("no room in ring buffer");
-                                                   Thread.yield();// rb.dump(rb);
-                                                }
-                                                
-                                            }
-                                        }                   
-                                                
+                                        
+                                        //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
                                         //break out into second half of gen.
+                                        FASTRingBuffer rb = this.ringBuffers[this.activeScriptCursor];  
                                         p = this.preambleDataLength;
                                         if (p>0) {
-                                            //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
-                                            FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, a);
+                                            genWritePreambleA(rb, this);
                                             if (p>4) {
-                                                FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, b);
+                                                genWritePreambleB(rb, this);
                                             }
                                         }
-                                        //System.err.println("> Wrote templateID:"+templateId+" at pos "+rb.addPos.value+" vs "+rb.addCount.get()); 
-                                        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, templateId);
+                                        genWriteTemplateId(rb, this);
+                                        
+                                        
+                                        
+                                        
                                     }
                                     
                                 }                                
@@ -240,6 +228,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         FASTRingBuffer.unBlockFragment(rbRingBuffer);
         return sequenceCountStackHead>=0;//false;
     }
+
 
     public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, FASTRingBuffer rbRingBuffer) {
         //The previous dictionary value will need to have two read from values 
