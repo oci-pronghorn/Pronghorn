@@ -334,21 +334,6 @@ public class TemplateLoaderTest {
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 
-        final Map<Long, String> reads = new HashMap<Long, String>();
-        readerDispatch.setDispatchObserver(new DispatchObserver() {
-
-            @Override
-            public void tokenItem(long absPos, int token, int cursor, String value) {
-                String msg = "\n    R_" + TokenBuilder.tokenToString(token) + " id:"
-                        + (cursor >= catalog.scriptFieldIds.length ? "ERR" : "" + catalog.scriptFieldIds[cursor])
-                        + " curs:" + cursor + " tok:" + token + " " + value;
-                if (reads.containsKey(absPos)) {
-                    msg = reads.get(absPos) + " " + msg;
-                }
-                reads.put(absPos, msg);
-            }
-        });
-
         System.gc();
         
         int warmup = 20;// set much larger for profiler
@@ -400,9 +385,6 @@ public class TemplateLoaderTest {
             PrimitiveWriter.reset(writer);
             dynamicWriter.reset(true);
 
-            // only need to collect data on the first run
-            readerDispatch.setDispatchObserver(null);
-            writerDispatch.setDispatchObserver(null);
         }
 
         // Expected total read fields:2126101

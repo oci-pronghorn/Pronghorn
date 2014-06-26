@@ -26,7 +26,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
     public final int byteInstanceMask; 
     public final int MAX_LONG_INSTANCE_MASK;
     public final int MAX_TEXT_INSTANCE_MASK;
+    
     public final int nonTemplatePMapSize;
+    public final int maxTemplatePMapSize;
+    public final byte preambleDataLength;
+    
     public final int[][] dictionaryMembers;
     
     //required for code generation and other documentation/debugging.
@@ -50,6 +54,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         this.rLongInit = catalog.dictionaryFactory().longDictionary();
         
         this.nonTemplatePMapSize = catalog.maxNonTemplatePMapSize();
+        this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
+        this.preambleDataLength = (byte)catalog.clientConfig().getPreableBytes();
+        
         this.dictionaryMembers = catalog.dictionaryResetMembers();
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
         this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
@@ -60,8 +67,56 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         
     }
 
-    public boolean decode(PrimitiveReader reader) {
+    protected void callBeginMessage(PrimitiveReader reader) {
+        beginMessage(reader);
+    }
+    
+    private void beginMessage(PrimitiveReader reader) {
+        // get next token id then immediately start processing the script
+        // /read prefix bytes if any (only used by some implementations)
+        //ring buffer is build on int32s so the implementation limits preamble to units of 4
+        assert ((this.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
+        assert (this.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
+        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
+        
+        
+        //break out into series of gen calls to save int somewhere. units of 4 only.
+        int p = this.preambleDataLength;
+        if (p>0) {
+            genReadPreambleA(reader, this);
+             if (p>4) {
+                genReadPreambleB(reader, this);
+                assert(p==8) : "Unsupported large preamble";
+            }
+        }                                        
+        
+        
+        // /////////////////
+        // open message (special type of group)
+        genReadTemplateId(preambleDataLength, maxTemplatePMapSize, reader, this); 
+        
+        
+        //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
+        //break out into second half of gen.
+        p = this.preambleDataLength;
+        if (p>0) {
+            genWritePreambleA(this);
+            if (p>4) {
+                genWritePreambleB(this);
+            }
+        }
+        genWriteTemplateId(this);
+    }
+    
+    public int decode(PrimitiveReader reader) {
 
+        if (activeScriptCursor<0) {
+            if (PrimitiveReader.isEOF(reader)) { 
+                return -1;
+            }  
+            beginMessage(reader); 
+        }
+        
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit; //TODO: AAAA, remvoe this by using the stackHead depth for all wrapping groups
 
@@ -72,8 +127,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         do {
             token = fullScript[activeScriptCursor];
     
-            assert (gatherReadData(reader, activeScriptCursor, token));
-
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
             if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
@@ -138,51 +191,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                    // System.err.println("xxx");
                                     //Do nothing because this is done by Reactor at this time.
                                     
-                                    
-                                    //genReadGroupPMapOpen(maxTemplatePMapSize,reader);     
-                                    if (FASTInputReactor.INLINED_TEMPLATE_OPEN) {
-                                        // get next token id then immediately start processing the script
-                                        // /read prefix bytes if any (only used by some implementations)
-                                        assert (this.preambleDataLength != 0 && this.gatherReadData(reader, "Preamble", 0));
-                                        //ring buffer is build on int32s so the implementation limits preamble to units of 4
-                                        assert ((this.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
-                                        assert (this.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
-                                        //Hold the preamble value here until we know the template and therefore the needed ring buffer.
-                                        
-                                        
-                                        //break out into series of gen calls to save int somewhere. units of 4 only.
-                                        int p = this.preambleDataLength;
-                                        if (p>0) {
-                                            genReadPreambleA(reader, this);
-                                             if (p>4) {
-                                                genReadPreambleB(reader, this);
-                                                assert(p==8) : "Unsupported large preamble";
-                                            }
-                                        }                                        
-                                        
-                                        
-                                        // /////////////////
-                                        // open message (special type of group)
-                                        genReadTemplateId(reader, this); 
-                                        
-                                        
-                                        //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
-                                        //break out into second half of gen.
-                                        FASTRingBuffer rb = this.ringBuffers[this.activeScriptCursor];  
-                                        p = this.preambleDataLength;
-                                        if (p>0) {
-                                            genWritePreambleA(rb, this);
-                                            if (p>4) {
-                                                genWritePreambleB(rb, this);
-                                            }
-                                        }
-                                        genWriteTemplateId(rb, this);
-                                        
-                                        
-                                        
-                                        
-                                    }
-                                    
                                 }                                
                                 
                             } else {
@@ -190,8 +198,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                                 
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
-                                FASTRingBuffer.unBlockFragment(rbRingBuffer); 
-                                return sequenceCountStackHead>=0;//doSequence;
+                                break;
+                                //FASTRingBuffer.unBlockFragment(rbRingBuffer); 
+                                //return sequenceCountStackHead>=0;//doSequence;
                             }
 
                     } else {
@@ -204,8 +213,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
                         readLength(token,jumpToTarget, readFromIdx, reader);
-                        FASTRingBuffer.unBlockFragment(rbRingBuffer);
-                        return sequenceCountStackHead>=0;
+                        break;
+                        //FASTRingBuffer.unBlockFragment(rbRingBuffer);
+                        //return sequenceCountStackHead>=0;
                         //return true;
 
                     }
@@ -226,9 +236,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
             }
         } while (++activeScriptCursor < limit);
         FASTRingBuffer.unBlockFragment(rbRingBuffer);
-        return sequenceCountStackHead>=0;//false;
+        
+        //TODO: B, on normal fixed closed this is not needed so the conditional can be skipped.
+        genReadGroupCloseMessage(reader, this); 
+        return ringBufferIdx;
     }
-
 
     public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, FASTRingBuffer rbRingBuffer) {
         //The previous dictionary value will need to have two read from values 

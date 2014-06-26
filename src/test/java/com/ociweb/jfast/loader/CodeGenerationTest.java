@@ -157,19 +157,7 @@ public class CodeGenerationTest {
         final int keep = 32;
         final int mask = keep - 1;
         final AtomicInteger idx = new AtomicInteger(0);
-        final String[] reads2 = new String[keep];
-        readerDispatch2.setDispatchObserver(new DispatchObserver() {
 
-            @Override
-            public void tokenItem(long absPos, int token, int cursor, String value) {
-                String msg = " " + (PrimitiveReader.totalRead(primitiveReader1) - PrimitiveReader.bytesReadyToParse(primitiveReader2)) + " R_"
-                        + TokenBuilder.tokenToString(token) + " id:"
-                        + (cursor >= catalog.scriptFieldIds.length ? "ERR" : "" + catalog.scriptFieldIds[cursor])
-                        + " curs:" + cursor + " tok:" + token + " " + value;
-
-                reads2[mask & idx.incrementAndGet()] = msg.trim();
-            }
-        });
 
         FASTInputReactor reactor1 = new FASTInputReactor(readerDispatch1, primitiveReader1);
         FASTInputReactor reactor2 = new FASTInputReactor(readerDispatch2, primitiveReader2);
@@ -192,10 +180,7 @@ public class CodeGenerationTest {
                         System.err.println("back up  " + FASTRingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer");
 
                         int c = idx.get();
-                        int j = keep;
-                        while (--j >= 0) {
-                            System.err.println(j + " " + reads2[mask & (c - j)]);
-                        }
+
                         System.err.println("From positions:"+queue1.remPos+" & "+queue2.remPos);
                                            
                         System.err.println("Intrp:" + Integer.toBinaryString(int1));

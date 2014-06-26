@@ -30,7 +30,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     private static final String FRAGMENT_METHOD_NAME = "fragment";    
     
-    private static final int COMPLEXITY_LIMITY_PER_METHOD = 25;//
+    private static final int COMPLEXITY_LIMITY_PER_METHOD = 10;//
     private static final String ENTRY_METHOD_NAME = "decode";
     
     SourceTemplates templates;
@@ -98,8 +98,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         fieldPrefix = Integer.toString(templateId);
         while (fieldPrefix.length()<4) {
             fieldPrefix = "0"+fieldPrefix;
-        }
-        
+        }        
         
         fieldPrefix = "m"+fieldPrefix;
     }
@@ -304,23 +303,27 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     private void generateGroupMethods(TemplateCatalogConfig catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
         
         //A Group may be a full message or sequence item or group.
+
+        //Common method for starting new template
+        builder.append(generateOpenTemplate());
+        
         
         int[] startCursor = catalog.getTemplateStartIdx();
         int[] limitCursor = catalog.getTemplateLimitIdx();
         int i = 0;
         while (i<startCursor.length) {
-            int cursor = startCursor[i];
+            int fragmentStart = startCursor[i];
             int limit = limitCursor[i++];
             
-            if (0==cursor && 0==limit) {
+            if (0==fragmentStart && 0==limit) {
                 continue;//skip this one it was not at an entry point
             }
             
-            doneScripts.add(cursor);
+            doneScripts.add(fragmentStart);
             
             String block;
             
-            block = generateSingleGroupMethod(i, cursor, limit, doneScriptsParas);
+            block = generateSingleGroupMethod(i, fragmentStart, limit, doneScriptsParas);
             
             builder.append("\n");
             builder.append(block);
@@ -340,30 +343,75 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
             }
         }
     }
-    private String generateSingleGroupMethod(int i, int cursor, int limit, List<String> doneScriptsParas) {
-        beginSingleGroupMethod(cursor,i-1);
-        activeScriptCursor = cursor;
+    private String generateSingleGroupMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas) {
+        beginSingleGroupMethod(fragmentStart,i-1);
+        activeScriptCursor = fragmentStart;
         activeScriptLimit = limit;
         try {
             decode(null);//Generate the code, if any method was missed a null pointer will result.
         } catch (NullPointerException npe) {
-            StackTraceElement[] stackTrace = npe.getStackTrace();
-            int j = 0;
-            while (j<stackTrace.length) {
-                //Check for programming error where the template was modified without overriding the method here.
-                String method = stackTrace[j++].getMethodName();
-                if (method.startsWith("gen")) {
-                    System.err.println("Must override: "+method+" to prevent running logic while generating.");
-                    System.exit(0);
-                }
-                
-            }
-            throw npe;
+            reportErrorDetails(npe);
         }
         return getSingleGroupMethod(doneScriptsParas);
     }
+
+
+    private void reportErrorDetails(NullPointerException npe) {
+        StackTraceElement[] stackTrace = npe.getStackTrace();
+        int j = 0;
+        while (j<stackTrace.length) {
+            //Check for programming error where the template was modified without overriding the method here.
+            String method = stackTrace[j++].getMethodName();
+            if (method.startsWith("gen")) {
+                System.err.println("Must override: "+method+" to prevent running logic while generating.");
+                System.exit(0);
+            }
+            
+        }
+        throw npe;
+    }
+    
+    private String generateOpenTemplate() {
+        fieldMethodBuilder.setLength(0);
+        groupMethodBuilder.setLength(0);
+        caseParaDefs.clear();
+        caseParaVals.clear();
+        
+        //each field method will start with the templateId for easy debugging later.
+        fieldPrefix = "t";
+        
+        try {
+            callBeginMessage(null);
+        } catch (NullPointerException npe) {
+            reportErrorDetails(npe);
+        }
+        
+        String paraDefs = caseParaDefs.toString().substring(1);
+        paraDefs = paraDefs.substring(0, paraDefs.length()-1);
+        
+        String paraVals = caseParaVals.toString().substring(1);
+        paraVals = paraVals.substring(0, paraVals.length()-1);
+        
+        StringBuilder signatureLine = new StringBuilder();
+        signatureLine.append("private static void ")
+                     .append("beginMessage")
+                     .append("(")
+                     .append(paraDefs)
+                     .append(") {\n");
+        
+       
+        return "\n"+signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
+        
+    }
+    
     
     private void generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder) throws IOException {
+        
+//        
+//        if (activeScriptCursor<0) {
+//            beginMessage(reader); 
+//        }
+//        
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int[] doneValues = new int[doneScripts.size()];
@@ -379,18 +427,28 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                                     .replace("rbMask", "rb.mask");
 
             int token = fullScript[activeScriptCursor];
-            doneCode[j] = "assert (gatherReadData(reader, x,"+token+"));\n\r"+
+            doneCode[j] = "\n\r"+
                           " rb=ringBuffers["+d+"];\n\r"+
                           FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public final boolean "+ENTRY_METHOD_NAME+"(PrimitiveReader reader) {\n");
+        builder.append("public final int "+ENTRY_METHOD_NAME+"(PrimitiveReader reader) {\n");
+        
+        //if this is the beginning of a new template we use this special logic to pull the template id
+        builder.append("    if (activeScriptCursor<0) {\n");
+        builder.append("        if (PrimitiveReader.isEOF(reader)) { \n");
+        builder.append("            return -1;\n");
+        builder.append("        } \n");
+        builder.append("        beginMessage(reader,this);\n");
+        builder.append("    }\n");
+        
+        //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
         builder.append("    FASTRingBuffer.unBlockFragment(rb);\n");
-        builder.append("    return sequenceCountStackHead>=0;\n"); 
+        builder.append("    return ringBufferIdx;\n"); 
         builder.append("}\n");
 
     }
@@ -411,26 +469,30 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         return target;
     }
 
+    @Override
+    protected void genReadGroupCloseMessage(PrimitiveReader reader, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace());
+    }
     
     //TODO: C, Add API for getting class/source and for setting class file.
     
     @Override
-    protected void genReadTemplateId(PrimitiveReader reader, FASTDecoder dispatch) {
+    protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {
+        generator(new Exception().getStackTrace(), preambleDataLength, maxTemplatePMapSize);
+    }
+
+    @Override
+    protected void genWriteTemplateId(FASTDecoder dispatch) {
         generator(new Exception().getStackTrace());
     }
 
     @Override
-    protected void genWriteTemplateId(FASTRingBuffer rb, FASTDecoder dispatch) {
+    protected void genWritePreambleB(FASTDecoder dispatch) {
         generator(new Exception().getStackTrace());
     }
 
     @Override
-    protected void genWritePreambleB(FASTRingBuffer rb, FASTDecoder dispatch) {
-        generator(new Exception().getStackTrace());
-    }
-
-    @Override
-    protected void genWritePreambleA(FASTRingBuffer rb, FASTDecoder dispatch) {
+    protected void genWritePreambleA(FASTDecoder dispatch) {
         generator(new Exception().getStackTrace());
     }
 

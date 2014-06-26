@@ -116,50 +116,10 @@ public final class FASTInputReactor {
         
     }
 
-        
-    boolean needTemplate = true;
-    
-    static final boolean INLINED_TEMPLATE_OPEN = false; 
+            
     
     public static int pump(FASTInputReactor reactor) {
-        // start new script or detect that the end of the data has been reached
-        if (reactor.needTemplate) {
-            // checking EOF first before checking for blocked queue
-            if (PrimitiveReader.isEOF(reactor.reader)) { 
-                return -1;
-            }
-            reactor.needTemplate = false;
-            
-            //TODO: call to decode assumes activescriptcursor and activeScriptLimit  already set
-            //this breaks both generated and interprited versions. where to call??
-            
-            //if cursor < 0 then startTemplate call?
-            //script already has that position but we dont know script location until tempate is known. so ?
-            
-            
-            if (!INLINED_TEMPLATE_OPEN) {
-                //TODO: move this to decoder
-                //TODO: call in decode if activeScriptCursor<0, will need to generate new method 
-                FASTDecoder.pump2startTemplate(reactor.decoder, reactor.reader);
-            }
-            // returns true for end of sequence or group
-            if (!reactor.decoder.decode(reactor.reader)) {  
-                // reached the end of the script so close and prep for the next one
-               // System.err.println("decode has cleared target find next message");
-                reactor.needTemplate=true;
-               PrimitiveReader.closePMap(reactor.reader);            
-            }
-            
-        } else {       
-            // returns true for end of sequence or group
-            if (!reactor.decoder.decode(reactor.reader)) {  
-                // reached the end of the script so close and prep for the next one
-               // System.err.println("decode has cleared target find next message");
-                reactor.needTemplate=true;
-               PrimitiveReader.closePMap(reactor.reader);            
-            }
-        }
-        return reactor.decoder.ringBufferIdx;
+        return reactor.decoder.decode(reactor.reader);
     }
     
 
