@@ -10,7 +10,7 @@ import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
-//TODO: A, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
+//TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
 //TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
 //TODO: B, set the default template for the case when it is undefined in catalog.
 //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
@@ -20,7 +20,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 //TODO: X, Send Amazon gift card to anyone who can supply another software based project, template, and example file that can run faster than this implementation. (One per project)
 
-//TODO: A, UTF-8 Takes bytes count not char count, MUST confirm this is implemented correctly.
+//TODO: AA, Remove UTF-8/ASCII/ByteVectors and use new common byte level class using the TextHeap as a template.
 
 //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
 
@@ -55,13 +55,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
             dispatch.templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);                                                    
             // write template id at the beginning of this message
-            int neededSpace = 1 + preambleDataLength + dispatch.requiredBufferSpace2();
+            int neededSpace = 1 + preambleDataLength + dispatch.requiredBufferSpace2()*2; //TODO: B, hack for now, this needed space is not adequate for fragments.
             dispatch.ringBufferIdx = dispatch.activeScriptCursor;
             //we know the templateId so we now know which ring buffer to use.
             FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];                                        
             if (neededSpace > 0) {
                 int size = rb.maxSize;
-                if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) { //TODO: AA, this needed space is not adequate for fragments.
+                if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
                     while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
                         //TODO: must call blocking policy on this, already committed to read.
                       //  System.err.println("no room in ring buffer");
@@ -136,7 +136,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
     
     protected void genReadGroupCloseMessage(PrimitiveReader reader, FASTDecoder dispatch) {
-        if (dispatch.sequenceCountStackHead<0) {
+        if (dispatch.sequenceCountStackHead<0) { 
             dispatch.activeScriptCursor = -1;
             PrimitiveReader.closePMap(reader);
         }
@@ -144,7 +144,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     //length methods
     
-    //TODO: A, the length metods are very rarely if ever(check) used by another dictionary field so they dont need the write back.
+    //TODO: B, (optimization) the length metods are very rarely if ever(check) used by another dictionary field so they dont need the write back.
     
     protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
         {
@@ -1714,9 +1714,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     
-    //TODO: C, perf problem. 6% in profiler, compiler should ONLY write back to heap IFF this field is read by another field.
-    //this block is no longer in use however the  performance did not show up. so....
-
     protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx);
@@ -1730,14 +1727,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.addCharPos);
                 rbRingBuffer.addCharPos+=lenTemp;                
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, lenTemp);
-                
-//                //TODO: AA: old code we only want if this default field is read from another, eg dictionary sharing.
+            }
+    }    
+//                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
 //                int len = StaticGlue.readASCIIToHeap(idx, reader, textHeap);
 //                FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(idx, len, textHeap, rbRingBuffer));
 //                FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-            }
-    }
-        
+     
+    
     protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
         FASTRingBuffer.addValue(rbB, rbMask, rbPos, constIdx);
         FASTRingBuffer.addValue(rbB, rbMask, rbPos, constLen);

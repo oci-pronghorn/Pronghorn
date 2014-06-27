@@ -57,8 +57,8 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-   //       FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-          FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);
+          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //      FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -75,35 +75,18 @@ public class Test {
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
                             
               FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
-              
-              
-              System.gc();
-              
-              msgs.set(0);
-              
-              //TODO: A, API bug, must be able to set the ring buffer size and fragment size check must establish minimum.
                             
-              //TODO: AA, API incomplete
-              
-              //should always look up the field constants once before usages but this also must be redone if template changes.
-              //int myField = catalog.lookupField("templateName","fieldName"); Only do this against known template
-              
-              
-              FieldReferenceOffsetManager from = catalog.getFROM();
-                           
+              msgs.set(0);                         
               
               double duration = singleThreadedExample(readerDispatch, msgs, reactor);
-             // double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
+            //  double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
-              
-              
+                            
               if (shouldPrint(iter)) {
                   printSummary(msgs.get(), queuedBytes, duration, fastInputStream.totalBytes()); 
               }
 
-              // //////
-              // reset the dictionary to run the test again.
-              // //////
+              //reset the dictionary to run the test again.
               readerDispatch.reset(catalog.dictionaryFactory());
 
           }
@@ -111,7 +94,6 @@ public class Test {
       }
 
     private double singleThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor) {
-        readerDispatch.ringBuffer(0).reset();
         
         double start = System.nanoTime();
           
@@ -119,19 +101,22 @@ public class Test {
           //Example of single threaded usage
           /////////////////////////////////////
           boolean ok = true;
+          int bufId;
           while (ok) {
-              switch (FASTInputReactor.pump(reactor)) {
+              switch (bufId = FASTInputReactor.pump(reactor)) {
                   case -1:
                       ok = false;
                       break;
                   default:
-                      FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+                      FASTRingBuffer rb = readerDispatch.ringBuffer(bufId);
                       
                       FASTRingBuffer.moveNext(rb);
                       
                       if (rb.isNewMessage) {
                           msgs.incrementAndGet();
                       }
+                      
+                      //your usage of these fields would go here.                      
                       
                       break;
               }
@@ -159,18 +144,19 @@ public class Test {
             int j = 0;
             long rp = rb.remPos.value;
             do {
-                FASTRingBufferReader.nextMessage(rb);//ensures we are at the top of the next message. can skip sip in middle if unread at top stays put.
                 
-                
-                //inside switch is check for templateId so we know the full message
-                //then inside that would be the for loop arround the length of the segment
-                //at the top of the for loop will be
-                FASTRingBufferReader.nextFragment(rb);//move to next fragment
+                //TODO: B, fix async use to ensure it does not get ahead of its self
+//                if (FASTRingBuffer.moveNext(rb)) {
+//                    int x = FASTRingBufferReader.readInt(rb, 0); //How much data is there to read? must read it
+//                    
+//                };
                 
                 ///TODO: we are checking on zero change way too often!!
                 //need to be notified of add count change? eg lock.
-                int limit = (int)(FASTRingBuffer.readUpToPos(rb)-rp);
+                int limit = (int)FASTRingBuffer.contentRemaining(rb);
                 if (limit>0) {
+                  //  FASTRingBuffer.moveNext(rb);
+
                     while (--limit>=0 ) {
                            int x = FASTRingBufferReader.readInt(rb, j++);
                            //read all the data
@@ -188,8 +174,7 @@ public class Test {
           double duration = System.nanoTime() - start;
         return duration;
     }
-
-    //TODO: AA, need test for optional groups this is probably broken. 
+    //TODO: C, need test for optional groups this is probably broken. 
 
     private boolean shouldPrint(int iter) {
         return (0x7F & iter) == 0;

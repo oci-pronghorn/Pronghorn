@@ -152,7 +152,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
 
     public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
@@ -204,12 +204,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 														
 				if (((token>>TokenBuilder.SHIFT_OPER)&TokenBuilder.MASK_OPER)==OperatorMask.Field_Constant) {
 					if (sendNulls && (i&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 						if (testConst!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testConst, value);
@@ -219,12 +219,12 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				} else {	
 				
 					if (sendNulls && (f&MASK)==0 && TokenBuilder.isOptional(token)) {
-			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+			     		int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 						if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT!=value) {
 							assertEquals(TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, value);
 						}
 					} else { 
-						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+						int value = TestHelper.readInt(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 						if (testData[f]!=value) {
 							System.err.println(TokenBuilder.tokenToString(tokenLookup[f]));
 							assertEquals(testData[f], value);

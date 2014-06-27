@@ -18,7 +18,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 //May drop interface if this causes a performance problem from virtual table 
 public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
     
     public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer queue) {
         super(catalog, buildRingBuffers(queue, catalog.fullScript()));

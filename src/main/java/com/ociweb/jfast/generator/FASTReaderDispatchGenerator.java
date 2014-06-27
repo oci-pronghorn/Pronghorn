@@ -381,6 +381,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         fieldPrefix = "t";
         
         try {
+            activeScriptCursor = 0;
             callBeginMessage(null);
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);

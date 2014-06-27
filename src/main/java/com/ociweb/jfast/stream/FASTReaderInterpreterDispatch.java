@@ -80,6 +80,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         //Hold the preamble value here until we know the template and therefore the needed ring buffer.
         
         
+        //TODO: redo to check for space before read so these values need not be saved in the base decoder class.
+        
         //break out into series of gen calls to save int somewhere. units of 4 only.
         int p = this.preambleDataLength;
         if (p>0) {
@@ -108,6 +110,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         genWriteTemplateId(this);
     }
     
+    //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
     public int decode(PrimitiveReader reader) {
 
         if (activeScriptCursor<0) {
@@ -118,7 +121,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         }
         
         // move everything needed in this tight loop to the stack
-        int limit = activeScriptLimit; //TODO: AAAA, remvoe this by using the stackHead depth for all wrapping groups
+        int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
 
         final FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         

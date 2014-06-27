@@ -70,7 +70,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
@@ -302,10 +302,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // not optional
-            decoder.readLongSigned(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readLongSigned(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(0));
         } else {
             // optional
-            decoder.readLongSignedOptional(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readLongSignedOptional(token, decoder.rLongDictionary, decoder.MAX_LONG_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(0));
         }
         
         //must return what was written
@@ -319,10 +319,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // 00010 IntegerSigned
-            decoder.readIntegerSigned(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readIntegerSigned(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(0));
         } else {
             // 00011 IntegerSignedOptional
-            decoder.readIntegerSignedOptional(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(decoder.activeScriptCursor));
+            decoder.readIntegerSignedOptional(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, decoder.ringBuffer(0));
         }
         //NOTE: for testing we need to check what was written
         return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-1, ringBuffer.mask);

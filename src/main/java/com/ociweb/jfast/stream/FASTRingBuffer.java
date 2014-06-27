@@ -61,13 +61,9 @@ public final class FASTRingBuffer {
     public final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
     public final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
     long lastRead;
-    
-  //TODO: B, write templateId and dispatch instance in leading integer. If value is bad the dispatch can be reset.
-    
-    
-    //TODO: A, use stack of offsets for each fragment until full message is completed.
+
+    //TODO: A, use stack of fragment start offsets for each fragment until full message is completed.
     //TODO: B, first offset 0 points to the constants after the ring buffer.
-    private int[] fragStack;
     
     //Need to know when the new template starts
     //each fragment size must be known and looked up
@@ -75,19 +71,15 @@ public final class FASTRingBuffer {
     int[] templateStartIdx;
     
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, int maxFragDepth, FieldReferenceOffsetManager from, int[] templateStartIdx) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx) {
         assert (primaryBits >= 1);       
-        
-        this.fragStack = new int[maxFragDepth];
-        
+                
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
         
         this.buffer = new int[maxSize];      
         
-
-        //TODO: A, use callback upon new class load to reset field offsets.
 
         //constant data will never change and is populated externally.
         if (null!=dcr) {
@@ -123,7 +115,7 @@ public final class FASTRingBuffer {
         
     }
 
-    //TODO: AA, must add way of selecting what field to skip writing for the consumer.
+    //TODO: B, must add way of selecting what field to skip writing for the consumer.
     
     /**
      * Empty and restore to original values.
@@ -151,20 +143,23 @@ public final class FASTRingBuffer {
     int seqStackHead = -1;
     final int JUMP_MASK = 0xFFFFF;
     int activeFragmentDataSize = 0;
+
+
+    //TODO: B, add method to skip rest of message up to  next message.
     
-    
-    public static void moveNext(FASTRingBuffer ringBuffer) { //TODO: convert to static call
-        
+    public static boolean moveNext(FASTRingBuffer ringBuffer) { 
+
         ringBuffer.remPos.value = ringBuffer.removeCount.addAndGet(ringBuffer.activeFragmentDataSize);
+        ringBuffer.activeFragmentDataSize = 0;
         if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
-            ringBuffer.activeFragmentDataSize = 0;
-            return;
+            return false;
         }
         if (ringBuffer.messageId<0) {
             beginNewMessage(ringBuffer);
         } else {
             beginFragment(ringBuffer);
         }
+        return true;
     }
 
     private static void beginFragment(FASTRingBuffer ringBuffer) {
@@ -323,13 +318,13 @@ public final class FASTRingBuffer {
         return p;
     }
 
-    // TODO: A, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
+    // TODO: D, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
 
     // fragment is ready for consumption
     //Called once for every group close, even when nested
-    //TODO: AA, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
     public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
+        //TODO: X, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
             ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
     }
 
@@ -338,7 +333,7 @@ public final class FASTRingBuffer {
         removeCount.lazySet(pos);
     }
 
-    //TODO: A: finish the field lookup so the constants need not be written to the loop! 
+    //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
     //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
     public static void addValue(int[] rbB, int rbMask, PaddedLong pos, int value) {
         long p = pos.value;
@@ -385,14 +380,8 @@ public final class FASTRingBuffer {
     }
 
 
-
     public static int contentRemaining(FASTRingBuffer rb) {
-        return (int)(rb.addPos.value - rb.remPos.value);
-    }
-
-    public static long readUpToPos(FASTRingBuffer rb) {
-        Thread.yield();//let the writer update the count if possible
-        return rb.addCount.longValue();
+        return (int)(rb.addCount.longValue() - rb.remPos.value); //must not go past add count because it is not release yet.
     }
 
     public int fragmentSteps() {

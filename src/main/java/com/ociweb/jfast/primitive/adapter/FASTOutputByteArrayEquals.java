@@ -158,7 +158,7 @@ public final class FASTOutputByteArrayEquals implements FASTOutput {
     private String tokenDetails(long position) {
         
         
-        position+=1;//TODO: BIG HACK for NOW, we can conpenssate for this by scanning and finding the best alignment with top high bits!!!
+        position+=1;//TODO: C, BIG HACK for NOW, we can conpenssate for this by scanning and finding the best alignment with top high bits!!!
         
         
         

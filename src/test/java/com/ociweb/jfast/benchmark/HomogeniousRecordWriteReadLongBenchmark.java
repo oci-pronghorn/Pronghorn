@@ -375,7 +375,7 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = longTestData.length;
 			while (--j>=0) {
-				result |= TestHelper.readLong(token, reader, staticReader.ringBuffer(staticReader.activeScriptCursor), staticReader);
+				result |= TestHelper.readLong(token, reader, staticReader.ringBuffer(0), staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
 			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);

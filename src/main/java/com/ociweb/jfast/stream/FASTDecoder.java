@@ -29,7 +29,7 @@ public abstract class FASTDecoder{
     protected final ByteHeap byteHeap;
     protected final TextHeap textHeap;
     
-    public int activeScriptCursor; //needed by generated code to hold state between calls.
+    public int activeScriptCursor=-1; //needed by generated code to hold state between calls.
     public int ringBufferIdx= -1; //must hold return value from beginning of fragment to the end.
     public int templateId=-1; //must hold between read (wait for space on queue) and write of templateId
     public int preambleA=0; //must hold between read (wait for space on queue) and write (if it happens)
@@ -87,6 +87,13 @@ public abstract class FASTDecoder{
             byteHeap.reset();
         }
         sequenceCountStackHead = -1;
+        
+        //reset all ringbuffers
+        int j = ringBuffers.length;
+        while (--j>=0) {
+            ringBuffers[j].reset();
+        }
+        
 
     }
 
@@ -100,7 +107,7 @@ public abstract class FASTDecoder{
     
     
 
-    public int activeScriptLimit; //TODO: A, remvoe this once limit is removed from iterprister after stack is used for exit flag.
+    public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
     
     //TODO: B, remove or change to static.
     public int requiredBufferSpace2() {

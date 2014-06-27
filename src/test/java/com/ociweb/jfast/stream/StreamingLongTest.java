@@ -35,7 +35,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, 10, null, null);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -191,12 +191,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 							if (testConst!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testConst, value);
 							}
@@ -205,12 +205,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(fr.activeScriptCursor), fr);
+							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
 							if (testData[f]!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testData[f], value);
 							}

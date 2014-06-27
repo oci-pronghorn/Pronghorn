@@ -236,6 +236,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 
                 int token = tokenLookup[f];
                 
+                fr.activeScriptCursor = 0;
                 fr.dispatchReadByTokenForText(tokenLookup[f], reader);
                 FASTRingBuffer.unBlockFragment(ringBuffer);
                 

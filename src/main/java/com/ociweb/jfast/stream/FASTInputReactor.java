@@ -72,9 +72,9 @@ public final class FASTInputReactor {
 
             @Override
             public void detectedInputBlockage(int need, FASTInput input) {
-                //TODO: A, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
-                //TODO: A, formalize this pattern in a new M:N ThreadPoolExecutor, send in the number of cores you wish to target for parsing not threads.
-                //TODO: A, once this threading is in place can the move next also be added to the same pool if we desire? This may give us locality across both calls!!
+                //TODO: C, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
+                //TODO: C, formalize this pattern in a new M:N ThreadPoolExecutor, send in the number of cores you wish to target for parsing not threads.
+                //TODO: C, once this threading is in place can the move next also be added to the same pool if we desire? This may give us locality across both calls
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
                 }                
@@ -96,9 +96,13 @@ public final class FASTInputReactor {
   
                 //TODO: inline pump and quit early if we are on a message boundary with no data in the stream
                 
-                int f;
+                int f=0;
                 int c = 0xFFF;
-                while ((f=pump(FASTInputReactor.this))>=0 && --c>=0) {
+                
+                //TODO: B, what happens when there is no room in ring buffer?                
+                while ( 
+                        (f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader))>=0 &&
+                        --c>=0) {
                     
                 }
                 

@@ -1242,7 +1242,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(dictionary[target] = value, writer);
+            writeLongUnsigned(dictionary[target] = value, writer);
         }
     }
 
@@ -1251,7 +1251,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(dictionary[target] = value, writer);
+            writeLongUnsigned(dictionary[target] = value, writer);
         }
     }
 
@@ -1260,7 +1260,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(value, writer);
+            writeLongUnsigned(value, writer);
         }
     }
 
@@ -1270,7 +1270,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(value, writer);
+            writeLongUnsigned(value, writer);
         }
     }
 
@@ -1282,7 +1282,7 @@ public final class PrimitiveWriter {
         } else {
             dictionary[target] = value;
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(value, writer);
+            writeLongUnsigned(value, writer);
         }
     }
 
@@ -1291,7 +1291,7 @@ public final class PrimitiveWriter {
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
-            writer.writeLongUnsigned(dictionary[target] = 1 + value, writer);
+            writeLongUnsigned(dictionary[target] = 1 + value, writer);
         }
     }
 

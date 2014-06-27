@@ -348,9 +348,6 @@ public class TemplateLoaderTest {
             msgs.set(0);
             grps = 0;
             
-            //TODO: AA, confirm that nextMessage blocks and does not continue when there is no data
-            //TODO: AA, confirm that moveNext write pattern is continued to be called when we have data.
-
             writerDispatch.reset();
             while (FASTInputReactor.pump(reactor)>=0) {
    
@@ -361,7 +358,11 @@ public class TemplateLoaderTest {
                             msgs.incrementAndGet();
                         }
                         
-                        try{   
+                        //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
+                        
+                        
+                        try{   //TODO: A, writer needs to be comipled
+                            //TODO: A, wirter needs to support decimals
                              dynamicWriter.write();
                             } catch (FASTException e) {
                                 System.err.println("ERROR: cursor at "+writerDispatch.activeScriptCursor+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.activeScriptCursor]));
