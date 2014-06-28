@@ -6,6 +6,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 public class FASTEncoder { 
     protected int templateStackHead = 0;
@@ -85,5 +86,16 @@ public class FASTEncoder {
 
     public void setDispatchObserver(DispatchObserver observer) {
         this.observer = observer;
+    }
+
+
+    static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
+        
+        if (writer.output instanceof FASTOutputByteArrayEquals) {
+            FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;
+            testingOutput.recordPosition(writer.limit,activeScriptCursor);
+        }
+    
+        return true;
     }
 }

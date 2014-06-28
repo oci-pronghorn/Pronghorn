@@ -362,7 +362,6 @@ public class TemplateLoaderTest {
                         
                         
                         try{   //TODO: A, writer needs to be comipled
-                            //TODO: A, wirter needs to support decimals
                              dynamicWriter.write();
                             } catch (FASTException e) {
                                 System.err.println("ERROR: cursor at "+writerDispatch.activeScriptCursor+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.activeScriptCursor]));

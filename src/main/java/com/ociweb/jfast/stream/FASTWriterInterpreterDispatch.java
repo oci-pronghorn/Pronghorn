@@ -13,10 +13,9 @@ import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 //May drop interface if this causes a performance problem from virtual table 
-public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
+public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
 
     FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
     
@@ -1252,17 +1251,6 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
     }
 
     
-    private static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
-        
-        if (writer.output instanceof FASTOutputByteArrayEquals) {
-            FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;
-            testingOutput.recordPosition(writer.limit,activeScriptCursor);
-        }
-       
-        return true;
-    }
-    
-    
     public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
 
         int token = fullScript[activeScriptCursor];
@@ -1349,41 +1337,20 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         //write the mantissa to the stream.
                         
                         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+                            //exponent not optional so mantissa will aLWAYS BE WRITTEN
                             acceptIntegerSigned(expoToken, fieldPos, rbRingBuffer, writer);
-                            
-                            //TODO: Must write mantissa.
-                            
-                        } else {
-                                    
-                            //TODO: B, Add lookup for value of absent/null instead of this constant.
-                            int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-                                                        
-                            acceptIntegerSignedOptional(expoToken, valueOfNull, fieldPos, rbRingBuffer, writer);
-
-                            //TODO: Might not write mantissa if the exponent is absent.
-                            
-                        }
-                        
-                        //Must record the exponent write while we still have the values.
-                        assert(notifyFieldPositions(writer, activeScriptCursor));
-                        
-                        int mantToken = fullScript[++activeScriptCursor];//TODO: THIS is very bad and can not be supported!!
-                        
-                        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) {
+                            //Must record the exponent write while we still have the values.
+                            assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
+                            int mantToken = fullScript[++activeScriptCursor];//TODO: A,  THIS is very bad and can not be supported!!
+                            assert(0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) : "Bad template, mantissa can not be optional";
                             acceptLongSigned(mantToken, fieldPos + 1, rbRingBuffer, writer);
+
                         } else {
-                            long valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
-                            
-                            if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG==mantissa) {
-                                int idx = mantToken & longInstanceMask; 
-                                
-                                //TODO: B, Must not write null if we have already done so above, but this must also be compiled.
-                                
-                                writeNullLong(mantToken, idx, writer, longValues); 
-                            } else {
-                                acceptLongSignedOptional(mantToken, valueOfNull, mantissa, rbRingBufferLocal, writer);
-                            }
+                            //exponent is optional so the mantissa may or may not be written.
+                            acceptOptionalDecimal(fieldPos, writer, expoToken, mantissa, fieldPos, rbRingBuffer);
                         }
+                        
+
                         
                         
                     } else {
@@ -1456,7 +1423,7 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
                         }
                     }
 
-                    assert(notifyFieldPositions(writer, activeScriptCursor));
+                    assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
                     return true;
                 }
             } else {
@@ -1521,8 +1488,256 @@ public final class FASTWriterInterpreterDispatch extends FASTWriterDispatchTempl
             }
 
         }
-        assert(notifyFieldPositions(writer, activeScriptCursor));
+        assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
         return false;
+    }
+
+    private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, long mantissa, int rbPos, FASTRingBuffer rbRingBuffer) {
+        //TODO: must call specific gen method.
+        
+        int mantissaToken = fullScript[1+activeScriptCursor];
+        int exponentValueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT; //TODO: B, neeed to inject
+        
+        int exponentTarget = (expoToken & intInstanceMask);
+        int exponentSource = readFromIdx > 0 ? readFromIdx & intInstanceMask : exponentTarget;
+        
+        int mantissaTarget = (mantissaToken & longInstanceMask);
+        int mantissaSource = readFromIdx > 0 ? readFromIdx & longInstanceMask : mantissaTarget;
+        
+  //      System.err.println(TokenBuilder.tokenToString(expoToken)+ " "+TokenBuilder.tokenToString(mantissaToken));
+        
+        if (0 == (expoToken & (1 << TokenBuilder.SHIFT_OPER))) {
+            // none, constant, delta
+            if (0 == (expoToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                // none, delta
+                if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // none
+
+                        if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                            // none, constant, delta
+                            if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                                // none, delta
+                                if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                    // none none
+                                    genWriteDecimalNoneOptionalNone(exponentTarget, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer, longValues);
+                                } else {
+                                    // none delta
+                                    genWriteDecimalNoneOptionalDelta(exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                                }
+                            } else {
+                                // none constant
+                                genWriteDecimalNoneOptionalConstant(exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+
+                        } else {
+                            // copy, default, increment
+                            if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                                // copy, increment
+                                if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                    // none copy
+                                    genWriteDecimalNoneOptionalCopy(exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                                } else {
+                                    // none increment
+                                    genWriteDecimalNoneOptionalIncrement(exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                                }
+                            } else {
+                                // none default
+                                long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                                genWriteDecimalNoneOptionalDefault(exponentTarget, mantissaTarget, exponentValueOfNull, mantissaConstDefault, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        }
+
+                } else {
+                    // delta 
+                    if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                        // none, constant, delta
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // none, delta
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // delta none
+                                genWriteDecimalDeltaOptionalNone(exponentTarget, mantissaTarget, exponentSource, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer, longValues);
+                            } else {
+                                // delta delta
+                                genWriteDecimalDeltaOptionalDelta(exponentTarget, mantissaSource, mantissaTarget, exponentSource, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // delta constant
+                            genWriteDecimalDeltaOptionalConstant(exponentTarget, mantissaSource, mantissaTarget, exponentSource, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                        }
+
+                    } else {
+                        // copy, default, increment
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // copy, increment
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // delta copy
+                                genWriteDecimalDeltaOptionalCopy(exponentTarget, mantissaSource, mantissaTarget, exponentSource, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            } else {
+                                // delta increment
+                                genWriteDecimalDeltaOptionalIncrement(exponentTarget, mantissaSource, mantissaTarget, exponentSource, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // delta default
+                            long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                            genWriteDecimalDeltaOptionalDefault(exponentTarget, mantissaTarget, exponentSource, exponentValueOfNull, mantissaConstDefault, rbPos, writer, intValues, rbRingBuffer);
+                        }
+                    }
+                    
+                }
+            } else {
+                // constant
+                if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                    // none, constant, delta
+                    if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                        // none, delta
+                        if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                            // constant none
+                            genWriteDecimalConstantOptionalNone(exponentValueOfNull, mantissaTarget, rbPos, writer, rbRingBuffer, longValues);
+                        } else {
+                            // constant delta
+                            genWriteDecimalConstantOptionalDelta(exponentValueOfNull, mantissaSource, mantissaTarget, rbPos, writer, rbRingBuffer);
+                        }
+                    } else {
+                        // constant constant
+                        genWriteDecimalConstantOptionalConstant(exponentValueOfNull, mantissaSource, mantissaTarget, rbPos, writer, rbRingBuffer);
+                    }
+
+                } else {
+                    // copy, default, increment
+                    if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                        // copy, increment
+                        if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                            // constant copy
+                            genWriteDecimalConstantOptionalCopy(exponentValueOfNull, mantissaSource, mantissaTarget, rbPos, writer, rbRingBuffer);
+                        } else {
+                            // constant increment
+                            genWriteDecimalConstantOptionalIncrement(exponentValueOfNull, mantissaSource, mantissaTarget, rbPos, writer, rbRingBuffer);
+                        }
+                    } else {
+                        // constant default
+                        long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                        genWriteDecimalConstantOptionalDefault(exponentValueOfNull, mantissaTarget, mantissaConstDefault, rbPos, writer, rbRingBuffer);
+                    }
+                }
+            }
+
+        } else {
+            // copy, default, increment
+            if (0 == (expoToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                // copy, increment
+                if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                    // copy
+                    if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                        // none, constant, delta
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // none, delta
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // copy none
+                                genWriteDecimalCopyOptionalNone(exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer, longValues);
+                            } else {
+                                // copy delta
+                                genWriteDecimalCopyOptionalDelta(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // copy constant
+                            genWriteDecimalCopyOptionalConstant(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                        }
+
+                    } else {
+                        // copy, default, increment
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // copy, increment
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // copy copy
+                                genWriteDecimalCopyOptionalCopy(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            } else {
+                                // copy increment
+                                genWriteDecimalCopyOptionalIncrement(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // copy default
+                            long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                            genWriteDecimalCopyOptionalDefault(exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, mantissaConstDefault, rbPos, writer, intValues, rbRingBuffer);
+                        }
+                    }
+                } else {
+                    // increment
+                    if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                        // none, constant, delta
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // none, delta
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // increment none
+                                genWriteDecimalIncrementOptionalNone(exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer, longValues);
+                            } else {
+                                // increment delta
+                                genWriteDecimalIncrementOptionalDelta(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // increment constant
+                            genWriteDecimalIncrementOptionalConstant(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                        }
+
+                    } else {
+                        // copy, default, increment
+                        if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                            // copy, increment
+                           // int target = (mantissaToken & longInstanceMask);
+                          //  int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
+                            if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                                // increment copy
+                                genWriteDecimalIncrementOptionalCopy(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            } else {
+                                // increment increment
+                                genWriteDecimalIncrementOptionalIncrement(exponentTarget, exponentSource, mantissaSource, mantissaTarget, exponentValueOfNull, rbPos, writer, intValues, rbRingBuffer);
+                            }
+                        } else {
+                            // increment default
+                            long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                            genWriteDecimalIncrementOptionalDefault(exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, mantissaConstDefault, rbPos, writer, intValues, rbRingBuffer);
+                        }
+                    }
+                }
+            } else {
+                // default
+                int exponentConstDefault = intValues[expoToken & intInstanceMask]; //this is a runtime constant so we look it up here
+                
+                if (0 == (mantissaToken & (1 << TokenBuilder.SHIFT_OPER))) {
+                    // none, constant, delta
+                    if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                        // none, delta
+                        if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                            // default none                            
+                            genWriteDecimalDefaultOptionalNone(exponentSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, rbPos, writer, rbRingBuffer, longValues, intValues);
+                        } else {
+                            
+                          // default delta
+                            genWriteDecimalDefaultOptionalDelta(exponentSource, mantissaSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, rbPos, writer, rbRingBuffer);
+                        }
+                    } else {
+                        // default constant
+                        genWriteDecimalDefaultOptionalConstant(exponentSource, mantissaSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, rbPos, writer, rbRingBuffer);
+                    }
+
+                } else {
+                    // copy, default, increment
+                    if (0 == (mantissaToken & (2 << TokenBuilder.SHIFT_OPER))) {
+                        // copy, increment
+                        if (0 == (mantissaToken & (4 << TokenBuilder.SHIFT_OPER))) {
+                            // default copy
+                            genWriteDecimalDefaultOptionalCopy(exponentSource, mantissaSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, rbPos, writer, rbRingBuffer);
+                        } else {
+                            // default increment
+                            genWriteDecimalDefaultOptionalIncrement(exponentSource, mantissaSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, rbPos, writer, rbRingBuffer);
+                        }
+                    } else {
+                        // default default
+                        long mantissaConstDefault = longValues[mantissaToken & longInstanceMask];//this is a runtime constant so we look it up here
+                        genWriteDecimalDefaultOptionalDefault(exponentSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, mantissaConstDefault, rbPos, writer, rbRingBuffer);
+                    }
+                }
+            }
+        }        
     }
 
 

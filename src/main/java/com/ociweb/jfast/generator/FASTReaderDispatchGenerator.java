@@ -22,7 +22,6 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
-    // TODO: X, look into core affinity
     // TODO: C, code does not support final in signatures, this would be nice to have
     
     private static final String END_FIELD_METHOD = "};\n";
@@ -65,7 +64,10 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     //This generator allows for refactoring of the NAME of these methods and the code generation will remain intact.
     
-    private String getSingleGroupMethod(List<String> doneScriptsParas) {
+    private static String getSingleGroupMethod(List<String> doneScriptsParas, 
+                                        List<String> caseParaDefs, 
+                                        List<String> caseParaVals,
+                                        int scriptPos, StringBuilder groupMethodBuilder, String caseTail, StringBuilder fieldMethodBuilder) {
         
         String paraDefs = caseParaDefs.toString().substring(1);
         paraDefs = paraDefs.substring(0, paraDefs.length()-1);
@@ -81,8 +83,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
                      .append("(")
                      .append(paraDefs)
                      .append(") {\n");
-        
-       
+          
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
     
@@ -352,7 +353,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
-        return getSingleGroupMethod(doneScriptsParas);
+        return getSingleGroupMethod(doneScriptsParas, caseParaDefs, caseParaVals, scriptPos, groupMethodBuilder, caseTail, fieldMethodBuilder);
     }
 
 
