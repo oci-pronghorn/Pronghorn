@@ -13,7 +13,7 @@ import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
-public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  {
+public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {
 
 
     //TODO: X, in this class we can determine when the pmap will switch to the next 7 bits and at runtime this is fixed and need not be computed.
@@ -67,7 +67,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
         
     }
 
-    protected void callBeginMessage(PrimitiveReader reader) {
+    public void callBeginMessage(PrimitiveReader reader) {
         beginMessage(reader);
     }
     
@@ -1547,6 +1547,39 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates  
                 }
             }
         }
+    }
+
+    //Common API for generator.
+    
+    @Override
+    public int getActiveScriptCursor() {
+        return activeScriptCursor;
+    }
+
+    @Override
+    public void setActiveScriptCursor(int cursor) {
+        activeScriptCursor = cursor;        
+    }
+
+    @Override
+    public void setActiveScriptLimit(int limit) {
+        activeScriptLimit = limit;
+        
+    }
+
+    @Override
+    public int getActiveToken() {
+        return fullScript[activeScriptCursor];
+    }
+
+    @Override
+    public int getActiveFieldId() {
+        return fieldIdScript[activeScriptCursor];
+    }
+
+    @Override
+    public String getActiveFieldName() {
+        return fieldNameScript[activeScriptCursor]; 
     }
 
 }

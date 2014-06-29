@@ -12,10 +12,11 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
-public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates { 
+public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
     FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
     
@@ -132,7 +133,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDeltaOptional(value, target, source, writer, longValues);
+                    genWriteLongSignedDeltaOptional(target, source, value, writer, longValues);
                 }
             } else {
                 // constant
@@ -150,17 +151,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopyOptional(value, target, source, writer, longValues);
+                    genWriteLongSignedCopyOptional(target, source, value, writer, longValues);
                 } else {
                     // increment
-                    genWriteLongSignedIncrementOptional(value, target, source, writer, longValues);
+                    genWriteLongSignedIncrementOptional(target, source, value, writer, longValues);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefaultOptional(value, constDefault, writer);
+                genWriteLongSignedDefaultOptional(constDefault, value, writer);
             }
         }
     }
@@ -245,7 +246,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    genWriteLongUnsignedDeltaOptional(value, target, source, writer, longValues);
+                    genWriteLongUnsignedDeltaOptional(target, source, value, writer, longValues);
                 }
             } else {
                 // constant
@@ -263,17 +264,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopyOptional(value, target, source, writer, longValues);
+                    genWriteLongUnsignedCopyOptional(target, source, value, writer, longValues);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrementOptional(value, target, source, writer, longValues);
+                    genWriteLongUnsignedIncrementOptional(target, source, value, writer, longValues);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefaultOptional(value, constDefault, writer);
+                genWriteLongUnsignedDefaultOptional(constDefault, value, writer);
             }
         }
     }
@@ -572,11 +573,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNoneOptional(value, offset, length, writer);
+                    genWriteBytesNoneOptional(offset, length, value, writer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTailOptional(value, offset, length, idx, writer, byteHeap);
+                    genWriteBytesTailOptional(idx, offset, length, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -587,7 +588,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDeltaOptional(value, offset, length, idx, writer, byteHeap);
+                    genWriteBytesDeltaOptional(idx, offset, length, value, writer, byteHeap);
                 }
             }
         } else {
@@ -597,12 +598,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & instanceBytesMask;
                 
-                genWriteBytesCopyOptional(value, offset, length, idx, writer, byteHeap);
+                genWriteBytesCopyOptional(idx, offset, length, value, writer, byteHeap);
             } else {
                 // default
                 int idx = token & instanceBytesMask;
                 idx = idx|INIT_VALUE_MASK;
-                genWriteBytesDefaultOptional(value, offset, length, idx, writer, byteHeap);
+                genWriteBytesDefaultOptional(idx, offset, length, value, writer, byteHeap);
             }
         }
     }
@@ -617,11 +618,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(value, offset, length, writer);
+                    genWriteBytesNone(offset, length, value, writer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTail(idx, value, offset, length, writer, byteHeap);
+                    genWriteBytesTail(idx, offset, length, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -632,7 +633,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDelta(value, offset, length, idx, writer, byteHeap);
+                    genWriteBytesDelta(idx, offset, length, value, writer, byteHeap);
                 }
             }
         } else {
@@ -640,10 +641,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token, value, offset, length, byteHeap, writer);
+                genWriteBytesCopy(token & instanceBytesMask, offset, length, value, byteHeap, writer);
             } else {
                 // default
-                genWriteBytesDefault(token, value, offset, length, byteHeap, writer);
+                genWriteBytesDefault(token & instanceBytesMask, offset, length, value, byteHeap, writer);
             }
         }
     }
@@ -686,7 +687,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriterBytesNoneOptional(value, writer);
                 } else {
                     // tail
-                    genWriterBytesTailOptional(token, value, writer, byteHeap);
+                    genWriterBytesTailOptional(token & instanceBytesMask, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -694,7 +695,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriteBytesConstantOptional(writer);
                 } else {
                     // delta
-                    genWriterBytesDeltaOptional(token, value, writer, byteHeap);
+                    genWriterBytesDeltaOptional(token & instanceBytesMask, value, writer, byteHeap);
                 }
             }
         } else {
@@ -702,10 +703,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriterBytesCopyOptional(token, value, writer, byteHeap);
+                genWriterBytesCopyOptional(token & instanceBytesMask, value, writer, byteHeap);
             } else {
                 // default
-                genWriterBytesDefaultOptional(token, value, writer, byteHeap);
+                genWriterBytesDefaultOptional(token & instanceBytesMask, value, writer, byteHeap);
             }
         }
     }
@@ -724,7 +725,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriteBytesNone(value, writer);
                 } else {
                     // tail
-                    genWriteBytesTail(token, value, writer, byteHeap);
+                    genWriteBytesTail(token & instanceBytesMask, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -733,7 +734,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     
                 } else {
                     // delta
-                    genWriteBytesDelta(token, value, writer, byteHeap);
+                    genWriteBytesDelta(token & instanceBytesMask, value, writer, byteHeap);
                 }
             }
         } else {
@@ -741,10 +742,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token, value, byteHeap, writer);
+                genWriteBytesCopy(token & instanceBytesMask, value, byteHeap, writer);
             } else {
                 // default
-                genWriteBytesDefault(token, value, writer, byteHeap);
+                genWriteBytesDefault(token & instanceBytesMask, value, writer, byteHeap);
             }
         }
     }
@@ -798,7 +799,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteUTFTextTailOptional(value, idx, writer, textHeap);
+                    genWriteUTFTextTailOptional(idx, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -809,7 +810,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteUTFTextDeltaOptional(value, idx, writer, textHeap);
+                    genWriteUTFTextDeltaOptional(idx, value, writer, textHeap);
                 }
             }
         } else {
@@ -819,12 +820,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteUTFTextCopyOptional(value, idx, writer, textHeap);
+                genWriteUTFTextCopyOptional(idx, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteUTFTextDefaultOptional(value, idx, writer, textHeap);
+                genWriteUTFTextDefaultOptional(idx, value, writer, textHeap);
             }
         }
     }
@@ -847,7 +848,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     int idx = token & TEXT_INSTANCE_MASK;
                     
                     
-                    genWriteUTFTextTail(value, idx, writer, textHeap);
+                    genWriteUTFTextTail(idx, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -858,7 +859,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteUTFTextDelta(value, idx, writer, textHeap);
+                    genWriteUTFTextDelta(idx, value, writer, textHeap);
                 }
             }
         } else {
@@ -868,12 +869,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 // System.err.println("AA");
-                genWriteUTFTextCopy(value, idx, writer, textHeap);
+                genWriteUTFTextCopy(idx, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteUTFTextDefault(value, idx, writer, textHeap);
+                genWriteUTFTextDefault(idx, value, writer, textHeap);
             }
         }
 
@@ -904,7 +905,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                             + TokenBuilder.tokenToString(token);
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextTailOptional(value, idx, writer, textHeap);
+                    genWriteTextTailOptional(idx, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -919,7 +920,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                             + TokenBuilder.tokenToString(token);
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextDeltaOptional(value, idx, writer, textHeap);
+                    genWriteTextDeltaOptional(idx, value, writer, textHeap);
 
                 }
             }
@@ -932,7 +933,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                         + TokenBuilder.tokenToString(token);
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopyOptional(value, idx, writer, textHeap);
+                genWriteTextCopyOptional(idx, value, writer, textHeap);
 
             } else {
                 // default
@@ -940,7 +941,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                         + TokenBuilder.tokenToString(token);
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextDefaultOptional(value, idx, writer, textHeap);
+                genWriteTextDefaultOptional(idx, value, writer, textHeap);
 
             }
         }
@@ -963,7 +964,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextTail(value, idx, writer, textHeap);
+                    genWriteTextTail(idx, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -974,7 +975,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextDelta(value, idx, writer, textHeap);
+                    genWriteTextDelta(idx, value, writer, textHeap);
                 }
             }
         } else {
@@ -984,12 +985,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopy(value, idx, writer, textHeap);
+                genWriteTextCopy(idx, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextDefault(value, idx, writer, textHeap);
+                genWriteTextDefault(idx, value, writer, textHeap);
             }
         }
 
@@ -1039,13 +1040,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextUTFNoneOptional(value, offset, length, writer);
+                    genWriteTextUTFNoneOptional(offset, length, value, writer);
 
                 } else {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextUTFTailOptional(value, offset, length, idx, writer, textHeap);
+                    genWriteTextUTFTailOptional(idx, offset, length, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1056,7 +1057,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextUTFDeltaOptional(value, offset, length, idx, writer, textHeap);
+                    genWriteTextUTFDeltaOptional(idx, offset, length, value, writer, textHeap);
                 }
             }
         } else {
@@ -1066,12 +1067,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextUTFCopyOptional(value, offset, length, idx, writer, textHeap);
+                genWriteTextUTFCopyOptional(idx, offset, length, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextUTFDefaultOptional(value, offset, length, idx, writer, textHeap);
+                genWriteTextUTFDefaultOptional(idx, offset, length, value, writer, textHeap);
             }
         }
 
@@ -1088,13 +1089,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextUTFNone(value, offset, length, writer);
+                    genWriteTextUTFNone(offset, length, value, writer);
 
                 } else {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextUTFTail(value, offset, length, idx, writer, textHeap);
+                    genWriteTextUTFTail(idx, offset, length, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1105,7 +1106,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextUTFDelta(value, offset, length, idx, writer, textHeap);
+                    genWriteTextUTFDelta(idx, offset, length, value, writer, textHeap);
                 }
             }
         } else {
@@ -1115,13 +1116,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextUTFCopy(value, offset, length, idx, writer, textHeap);
+                genWriteTextUTFCopy(idx, offset, length, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
                 
-                genWriteTextUTFDefault(value, offset, length, constId, writer, textHeap);
+                genWriteTextUTFDefault(constId, offset, length, value, writer, textHeap);
             }
         }
 
@@ -1140,7 +1141,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriteTextNoneOptional(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteTextTailOptional2(token, value, offset, length, writer, textHeap);
+                    genWriteTextTailOptional2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1149,7 +1150,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriteTextConstantOptional(writer);
                 } else {
                     // delta
-                    genWriteTextDeltaOptional2(token, value, offset, length, textHeap, writer);
+                    genWriteTextDeltaOptional2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
                 }
             }
         } else {
@@ -1159,14 +1160,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopyOptional(value, offset, length, idx, writer, textHeap);
+                genWriteTextCopyOptional(idx, offset, length, value, writer, textHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
                 int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
                 
-                genWriteTextDefaultOptional(value, offset, length, constId, writer, textHeap);
+                genWriteTextDefaultOptional(constId, offset, length, value, writer, textHeap);
             }
         }
 
@@ -1187,7 +1188,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     genWriteTextNone(value, offset, length, writer);
                 } else {
                     // tail
-                    genWriteTextTail2(token, value, offset, length, writer, textHeap);
+                    genWriteTextTail2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
                 }
             } else {
                 // constant delta
@@ -1196,7 +1197,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                     
                 } else {
                     // delta
-                    genWriteTextDelta2(token, value, offset, length, writer, textHeap);
+                    genWriteTextDelta2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
                 }
             }
         } else {
@@ -1204,10 +1205,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopy2(token, value, offset, length, textHeap, writer);
+                genWriteTextCopy2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
             } else {
                 // default
-                genWriteTextDefault2(token, value, offset, length, textHeap, writer);
+                genWriteTextDefault2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
             }
         }
     }
@@ -1803,11 +1804,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta (both do not use pmap)
-                genWriteNullNoPMapLong(writer, dictionary, idx);  
+                genWriteNullNoPMapLong(idx, writer, dictionary);  
                 // no pmap, yes change to last value
             } else {
                 // Copy and Increment
-                genWriteNullCopyIncLong(writer, dictionary, idx); // yes pmap, yes change to last value
+                genWriteNullCopyIncLong(idx, writer, dictionary); // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -1815,7 +1816,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 genWriteNullPMap(writer);
             } else {
                 // default
-                genWriteNullDefaultLong(writer, dictionary, idx); 
+                genWriteNullDefaultLong(idx, writer, dictionary); 
             }
         }
     }
@@ -1846,11 +1847,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
         if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
             if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
                 //None and Delta and Tail
-                genWriteNullNoPMapBytes(token, writer, byteHeap, instanceMask);              //no pmap, yes change to last value
+                genWriteNullNoPMapBytes(token & instanceMask, writer, byteHeap);              //no pmap, yes change to last value
             } else {
                 //Copy and Increment
                 int idx = token & instanceMask;
-                genWriteNullCopyIncBytes(writer, byteHeap, idx);  //yes pmap, yes change to last value 
+                genWriteNullCopyIncBytes(idx, writer, byteHeap);  //yes pmap, yes change to last value 
             }
         } else {
             if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
@@ -1858,10 +1859,55 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates {
                 genWriteNullPMap(writer);      
             } else {    
                 //default
-                genWriteNullDefaultBytes(token, writer, byteHeap, instanceMask);  //yes pmap,  no change to last value
+                genWriteNullDefaultBytes(token & instanceMask, writer, byteHeap);  //yes pmap,  no change to last value
             }   
         }
         
+    }
+
+    @Override
+    public int getActiveScriptCursor() {
+        return activeScriptCursor;
+    }
+
+    @Override
+    public void setActiveScriptCursor(int cursor) {
+       activeScriptCursor = cursor;
+    }
+
+    @Override
+    public void setActiveScriptLimit(int limit) {
+        activeScriptLimit = limit;
+    }
+
+    @Override
+    public void callBeginMessage(PrimitiveReader reader) {
+        // TODO: A, Auto-generated method stub
+        
+    }
+
+    @Override
+    public int decode(PrimitiveReader reader) {
+        // TODO: A, Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public int getActiveToken() {
+        // TODO: A, Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public int getActiveFieldId() {
+        // TODO: A, Auto-generated method stub
+        return 0;
+    }
+
+    @Override
+    public String getActiveFieldName() {
+        // TODO: A, Auto-generated method stub
+        return null;
     }
 
 
