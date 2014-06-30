@@ -168,10 +168,6 @@ public class GeneratorUtils {
     /**
      * Regardless of param order determine if the child method can find all the
      * arguments it needs from the parent.
-     * 
-     * @param curFieldParaValues
-     * @param lastFieldParaValues TODO
-     * @return
      */
     public static boolean lastMethodContainsParams(String curFieldParaValues, String lastFieldParaValues) {
         
@@ -222,7 +218,7 @@ public class GeneratorUtils {
         scriptor.setActiveScriptCursor(fragmentStart);
         scriptor.setActiveScriptLimit(limit); 
         try {
-            scriptor.decode(null);//Generate the code, if any method was missed a null pointer will result.
+            scriptor.runFromCursor();//Generate the code, if any method was missed a null pointer will result.
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
@@ -240,7 +236,7 @@ public class GeneratorUtils {
         
         try {
             scriptor.setActiveScriptCursor(0);
-            scriptor.callBeginMessage(null);
+            scriptor.runBeginMessage();
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }

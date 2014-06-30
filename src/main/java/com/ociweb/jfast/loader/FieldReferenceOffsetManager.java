@@ -53,7 +53,7 @@ public class FieldReferenceOffsetManager {
     private void buildFragScript(TemplateCatalogConfig config) {
         int[] scriptTokens = config.scriptTokens;
         int scriptLength = scriptTokens.length;        
-        boolean debug = true;       
+        boolean debug = false;       
         int i = 0;      
         int fragmentStartIdx=0;
         

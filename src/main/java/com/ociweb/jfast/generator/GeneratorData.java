@@ -29,9 +29,10 @@ public class GeneratorData {
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     static final String FRAGMENT_METHOD_NAME = "fragment";
 
-    public GeneratorData() {
+    public GeneratorData(byte[] catBytes) {
         
-        this(   new ArrayList<String>(), 
+        this(   catBytes,
+                new ArrayList<String>(), 
                 new ArrayList<String>(), 
                 "}\n", 
                 new HashSet<Integer>(), 0, "_",
@@ -39,9 +40,12 @@ public class GeneratorData {
         
     }
     
-    public GeneratorData(List<String> caseParaDefs, List<String> caseParaVals, String caseTail,
+    public GeneratorData(
+            byte[] catBytes,
+            List<String> caseParaDefs, List<String> caseParaVals, String caseTail,
             Set<Integer> sequenceStarts, int runningComplexity, String lastFieldParaValues,
             Map<String, AtomicInteger> usages) {
+        this.origCatBytes = catBytes;
         this.caseParaDefs = caseParaDefs;
         this.caseParaVals = caseParaVals;
         this.caseTail = caseTail;
@@ -49,5 +53,9 @@ public class GeneratorData {
         this.runningComplexity = runningComplexity;
         this.lastFieldParaValues = lastFieldParaValues;
         this.usages = usages;
+        this.templates = new SourceTemplates(FASTReaderDispatchTemplates.class);
+        this.fieldMethodBuilder = new StringBuilder();
+        this.groupMethodBuilder = new StringBuilder();
+        this.fieldMethodCount = 0;
     }
 }

@@ -55,7 +55,7 @@ import javax.tools.ToolProvider;
             }
             
             //if class is found and matches use it.
-            File classFile = targetFile("class");
+            File classFile = targetFile(SIMPLE_READER_NAME, "class");
             if (!forceCompile && classFile.exists()) {
                 Supervisor.log("Reading class from: "+classFile);
                 
@@ -78,13 +78,25 @@ import javax.tools.ToolProvider;
                                                 ));                
 
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
-                FASTReaderSourceFileObject sourceFileObject = new FASTReaderSourceFileObject(catBytes);
+                FASTReaderSourceFileObject sourceReaderFileObject = new FASTReaderSourceFileObject(catBytes);
+                FASTWriterSourceFileObject sourceWriterFileObject = new FASTWriterSourceFileObject(catBytes);
                 
                 if (exportSource) {          
-                    exportSourceToClassFolder(sourceFileObject);
+                    try {
+                        exportSourceToClassFolder(SIMPLE_READER_NAME,sourceReaderFileObject.getCharContent(false).toString());
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    try {
+                        exportSourceToClassFolder(SIMPLE_WRITER_NAME, sourceWriterFileObject.getCharContent(false).toString());
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
                 
-                toCompile.add(sourceFileObject);
+                toCompile.add(sourceReaderFileObject);
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 
                 if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
@@ -121,26 +133,28 @@ import javax.tools.ToolProvider;
         }
 
 
-        private void exportSourceToClassFolder(FASTReaderSourceFileObject sourceFileObject) {
+        private void exportSourceToClassFolder(String name, String content) {
             try {
-                File sourceFile = targetFile("java");
+                File sourceFile = targetFile(name, "java");
                 Supervisor.log("Wrote source to: "+sourceFile);
                 FileWriter out = new FileWriter(sourceFile);
-                out.write(sourceFileObject.getCharContent(false).toString());
+                out.write(content);
                 out.close();
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
         }
         
-        private static File targetFile(String ext) {
-            return new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+SIMPLE_READER_NAME+"."+ext);
+        private static File targetFile(String name, String ext) {
+            return new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+name+"."+ext);
         }
 
         public static void deleteFiles() {
-            targetFile("class").delete();
-            targetFile("java").delete();
+            targetFile(SIMPLE_READER_NAME,"class").delete();
+            targetFile(SIMPLE_READER_NAME,"java").delete();
             
+            targetFile(SIMPLE_WRITER_NAME,"class").delete();
+            targetFile(SIMPLE_WRITER_NAME,"java").delete(); 
         }
         
 

@@ -10,6 +10,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -20,8 +21,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
     
+    protected final int[] fieldIdScript;
+    protected final String[] fieldNameScript;
+    
     public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer queue) {
         super(catalog, buildRingBuffers(queue, catalog.fullScript()));
+        
+        this.fieldIdScript = catalog.fieldIdScript();
+        this.fieldNameScript = catalog.fieldNameScript();
     }
     
     private static FASTRingBuffer[] buildRingBuffers(FASTRingBuffer queue, int[] fullScript) {
@@ -1255,9 +1262,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
 
         int token = fullScript[activeScriptCursor];
-      //  System.err.println("write :"+TokenBuilder.tokenToString(token));
-        
-        
 
         FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
@@ -1342,7 +1346,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptIntegerSigned(expoToken, fieldPos, rbRingBuffer, writer);
                             //Must record the exponent write while we still have the values.
                             assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
-                            int mantToken = fullScript[++activeScriptCursor];//TODO: A,  THIS is very bad and can not be supported!!
+                            int mantToken = fullScript[++activeScriptCursor];
                             assert(0 == (mantToken & (1 << TokenBuilder.SHIFT_TYPE))) : "Bad template, mantissa can not be optional";
                             acceptLongSigned(mantToken, fieldPos + 1, rbRingBuffer, writer);
 
@@ -1350,9 +1354,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             //exponent is optional so the mantissa may or may not be written.
                             acceptOptionalDecimal(fieldPos, writer, expoToken, mantissa, fieldPos, rbRingBuffer);
                         }
-                        
-
-                        
+                                                
                         
                     } else {
                         // //0111? ByteArray
@@ -1876,44 +1878,35 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
     @Override
-    public void setActiveScriptLimit(int limit) {
+    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this?
         activeScriptLimit = limit;
     }
 
     @Override
-    public void callBeginMessage(PrimitiveReader reader) {
-        // TODO: A, Auto-generated method stub
-        
+    public void runBeginMessage() {    
+      //TODO: A, is this needed for encode?  callBeginMessage(null);
     }
 
     @Override
-    public int decode(PrimitiveReader reader) {
-        // TODO: A, Auto-generated method stub
-        return 0;
+    public void runFromCursor() {
+       dispatchWriteByToken(0, null);
     }
 
     @Override
     public int getActiveToken() {
-        // TODO: A, Auto-generated method stub
-        return 0;
+        return fullScript[activeScriptCursor];
     }
 
     @Override
     public int getActiveFieldId() {
-        // TODO: A, Auto-generated method stub
-        return 0;
+        return fieldIdScript[activeScriptCursor];
     }
 
     @Override
     public String getActiveFieldName() {
-        // TODO: A, Auto-generated method stub
-        return null;
+        return fieldNameScript[activeScriptCursor]; 
     }
-
-
-
-    
-    
     ///////////////////////
+
  
 }

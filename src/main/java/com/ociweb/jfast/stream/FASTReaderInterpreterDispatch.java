@@ -1582,4 +1582,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         return fieldNameScript[activeScriptCursor]; 
     }
 
+    @Override
+    public void runFromCursor() {
+        decode(null);
+    }
+
+    @Override
+    public void runBeginMessage() {
+        callBeginMessage(null);
+    }
+
 }

@@ -25,7 +25,9 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
+import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.generator.FASTReaderSourceFileObject;
+import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
 import com.ociweb.jfast.generator.SourceTemplates;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -49,7 +51,12 @@ public class CodeGenerationTest {
         FASTClassLoader.deleteFiles();//must always build fresh.
         System.out.println("**********************************************************************");
 
-        String srcPath = SourceTemplates.readerDispatchTemplateSourcePath();
+        copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTReaderDispatchTemplates.class));
+ //       copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTWriterDispatchTemplates.class));
+        
+    }
+
+    private static void copyTemplate(String srcPath) {
         File sourceFile = new File(srcPath);
         if (sourceFile.exists()) { //found source file so update resources
             String destinationString = srcPath.replaceFirst("java.com.ociweb.jfast.generator", "resources");
@@ -76,7 +83,7 @@ public class CodeGenerationTest {
         }
 
         //confirm that the templates are found and that runtime generation will be supported
-        SourceTemplates templates = new SourceTemplates();
+        SourceTemplates templates = new SourceTemplates(FASTReaderDispatchTemplates.class);
         if (null==templates.getRawSource()) {
             System.out.println("**** Warning, Runtime generation will not be supported because needed resources are not found.");
         } else {

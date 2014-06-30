@@ -17,18 +17,26 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
 public class SourceTemplates {
 
+    final Class clazz;
     String templateText;
+    
+    public SourceTemplates(Class clazz) {
+        this.clazz = clazz;
+        
+    }
+    
+    
 
     public String getRawSource() {
         if (null==templateText) {
-            templateText = templateSource();
+            templateText = templateSource(clazz);
         }
         return templateText;
     }
     
-    private String templateSource() {
+    private String templateSource(Class clazz) {
         
-        final String sourceFile = "/"+FASTReaderDispatchTemplates.class.getSimpleName()+".java";        
+        final String sourceFile = "/"+clazz.getSimpleName()+".java";        
         InputStream inputStream = SourceTemplates.class.getResourceAsStream(sourceFile);
         if (null!=inputStream) {
            
@@ -49,7 +57,7 @@ public class SourceTemplates {
         //When we are doing active development the file will be found here
         //This allows for interactive testing without having to complete the full release cycle.
         
-        File sourceDataFile = new File(readerDispatchTemplateSourcePath());
+        File sourceDataFile = new File(dispatchTemplateSourcePath(clazz));
         if (!sourceDataFile.exists()) {
             //when we are in production the file will be found here
              URL sourceData = getClass().getResource(sourceFile);              
@@ -145,11 +153,11 @@ public class SourceTemplates {
         return para;
     }
 
-    public static String readerDispatchTemplateSourcePath() {
+    public static String dispatchTemplateSourcePath(Class clazz) {
         File classFile;
         try {
-            String name = FASTReaderDispatchTemplates.class.getSimpleName() + ".class";
-            URL resource = FASTReaderDispatchTemplates.class.getResource(name);
+            String name = clazz.getSimpleName() + ".class";
+            URL resource = clazz.getResource(name);
             classFile = new File(resource.toURI());
             //assuming a maven directory structure the needed source file should be found here
             return classFile.getPath()

@@ -8,9 +8,9 @@ public interface GeneratorDriving {
     void setActiveScriptCursor(int cursor);
     
     void setActiveScriptLimit(int limit);
-    
-    void callBeginMessage(PrimitiveReader reader);
-    int decode(PrimitiveReader reader);
+        
+    void runBeginMessage();
+    void runFromCursor();
     
     int getActiveToken();
     int getActiveFieldId();

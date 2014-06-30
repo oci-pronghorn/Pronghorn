@@ -9,7 +9,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 public class FASTEncoder { 
-    protected int templateStackHead = 0;
+    public int templateStackHead = 0;
     protected final int[] templateStack;
 
     protected final int instanceBytesMask;
@@ -89,7 +89,7 @@ public class FASTEncoder {
     }
 
 
-    static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
+    protected static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
         
         if (writer.output instanceof FASTOutputByteArrayEquals) {
             FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;

@@ -364,7 +364,7 @@ public class TemplateLoaderTest {
                         try{   //TODO: A, writer needs to be comipled
                              dynamicWriter.write();
                             } catch (FASTException e) {
-                                System.err.println("ERROR: cursor at "+writerDispatch.activeScriptCursor+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.activeScriptCursor]));
+                                System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
                                 throw e;
                             }                            
                         grps++;

@@ -18,17 +18,11 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     private static final String ENTRY_METHOD_NAME = "decode";
     private final GeneratorData generatorData;
 
-
     public FASTWriterDispatchGenerator(byte[] catBytes) {
         super(new TemplateCatalogConfig(catBytes),null);
-         //TODO: A, is ring buffer needed it.
-        generatorData = new GeneratorData();
-        
-        generatorData.origCatBytes = catBytes;
-        generatorData.templates = new SourceTemplates();
-        generatorData.fieldMethodBuilder = new StringBuilder();
-        generatorData.groupMethodBuilder = new StringBuilder();
-        generatorData.fieldMethodCount = 0;
+
+        generatorData = new GeneratorData(catBytes);
+
     }
         
     

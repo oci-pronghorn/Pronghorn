@@ -1,16 +1,16 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.generator;
 
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.ByteHeap;
-import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
-import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.loader.TemplateHandler;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.stream.FASTEncoder;
+import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 
 public class FASTWriterDispatchTemplates extends FASTEncoder {
