@@ -310,7 +310,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); //TODO: A, need this insstance of catalog
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
         final AtomicInteger msgs = new AtomicInteger();
@@ -330,7 +330,15 @@ public class TemplateLoaderTest {
         // latency is turned off!!
         
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog,queue);
+        
+        //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.
+        FASTRingBuffer[] x = new FASTRingBuffer[catalog.ringBuffers().length];
+        int j = catalog.ringBuffers().length;
+        while (--j>=0) {
+            x[j] = queue;
+        }
+        
+        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog, x);//catalog.ringBuffers());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 

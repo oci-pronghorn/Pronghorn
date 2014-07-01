@@ -81,7 +81,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 
 		
 	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null,
-    64,8, 7, 4 ,4, 100 ), null);
+    64,8, 7, 4 ,4, 100 ));
 	
 	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);

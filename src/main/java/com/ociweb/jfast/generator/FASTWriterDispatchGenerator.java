@@ -19,9 +19,9 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     private final GeneratorData generatorData;
 
     public FASTWriterDispatchGenerator(byte[] catBytes) {
-        super(new TemplateCatalogConfig(catBytes),null);
+        super(new TemplateCatalogConfig(catBytes));
 
-        generatorData = new GeneratorData(catBytes);
+        generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
 
     }
         

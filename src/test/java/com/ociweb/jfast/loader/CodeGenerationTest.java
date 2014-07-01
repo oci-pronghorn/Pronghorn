@@ -51,12 +51,12 @@ public class CodeGenerationTest {
         FASTClassLoader.deleteFiles();//must always build fresh.
         System.out.println("**********************************************************************");
 
-        copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTReaderDispatchTemplates.class));
- //       copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTWriterDispatchTemplates.class));
+        copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTReaderDispatchTemplates.class), FASTReaderDispatchTemplates.class);
+        copyTemplate(SourceTemplates.dispatchTemplateSourcePath(FASTWriterDispatchTemplates.class), FASTWriterDispatchTemplates.class);
         
     }
 
-    private static void copyTemplate(String srcPath) {
+    private static void copyTemplate(String srcPath, Class clazz) {
         File sourceFile = new File(srcPath);
         if (sourceFile.exists()) { //found source file so update resources
             String destinationString = srcPath.replaceFirst("java.com.ociweb.jfast.generator", "resources");
@@ -83,7 +83,7 @@ public class CodeGenerationTest {
         }
 
         //confirm that the templates are found and that runtime generation will be supported
-        SourceTemplates templates = new SourceTemplates(FASTReaderDispatchTemplates.class);
+        SourceTemplates templates = new SourceTemplates(clazz);
         if (null==templates.getRawSource()) {
             System.out.println("**** Warning, Runtime generation will not be supported because needed resources are not found.");
         } else {

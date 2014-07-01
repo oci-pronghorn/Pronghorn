@@ -28,7 +28,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     public FASTReaderDispatchGenerator(byte[] catBytes) {
         super(new TemplateCatalogConfig(catBytes));
-        generatorData = new GeneratorData(catBytes);
+        generatorData = new GeneratorData(catBytes,FASTReaderDispatchTemplates.class);
 
     }
         

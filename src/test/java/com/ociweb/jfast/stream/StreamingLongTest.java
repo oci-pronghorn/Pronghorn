@@ -85,7 +85,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			int[] tokenLookup, DictionaryFactory dcr) {
 		
 		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dcr, 3, new int[0][0], null,
-        64,8, 7, 4 ,4, 100 ), null);
+        64,8, 7, 4 ,4, 100 ));
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

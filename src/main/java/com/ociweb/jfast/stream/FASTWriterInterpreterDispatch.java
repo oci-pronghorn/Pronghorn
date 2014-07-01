@@ -24,23 +24,20 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
     
-    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer queue) {
-        super(catalog, buildRingBuffers(queue, catalog.fullScript()));
-        
+    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog) {
+        super(catalog, catalog.ringBuffers());
+        this.fieldIdScript = catalog.fieldIdScript();
+        this.fieldNameScript = catalog.fieldNameScript();
+    } 
+    
+    
+    //Constructor is very useful for adding new message or dropping messages without any modification of messages.
+    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer[] buffers) {
+        super(catalog, buffers);
         this.fieldIdScript = catalog.fieldIdScript();
         this.fieldNameScript = catalog.fieldNameScript();
     }
     
-    private static FASTRingBuffer[] buildRingBuffers(FASTRingBuffer queue, int[] fullScript) {
-        int len = null==fullScript ? 1 : fullScript.length;
-        
-        FASTRingBuffer[] buffers = new FASTRingBuffer[len];
-        int i = len;
-        while (--i>=0) {
-            buffers[i]=queue;
-        }
-        return buffers;
-    }
 
     /**
      * Write null value, must only be used if the field id is one of optional

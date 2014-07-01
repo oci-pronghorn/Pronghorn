@@ -74,7 +74,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     static final long[] longTestData = new long[] { 0, 0, 1, 1, 2, 2, 2000, 2002, 10000, 10001 };
 
     static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null,
-    64,8, 7, 4 ,4, 100 ), null);
+    64,8, 7, 4 ,4, 100 ));
     
     
     static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,  8, 7, maxGroupCount * 10, 0, -1);
