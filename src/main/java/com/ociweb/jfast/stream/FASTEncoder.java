@@ -42,9 +42,9 @@ public class FASTEncoder {
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
 
-    protected final FASTRingBuffer[] ringBuffers;
+    protected final RingBuffers ringBuffers;
     
-    public FASTEncoder(TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
+    public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
              catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
@@ -53,7 +53,7 @@ public class FASTEncoder {
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
                                 int[][] dictionaryMembers, int[] fullScript, 
-                                int maxNestedGroupDepth, FASTRingBuffer[] ringBuffers) {
+                                int maxNestedGroupDepth, RingBuffers ringBuffers) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;

@@ -11,7 +11,9 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.GeneratorDriving;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class GeneratorUtils {
 
@@ -90,7 +92,7 @@ public class GeneratorUtils {
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
-                          " rb=ringBuffers["+d+"];\n\r"+
+                          " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n\r"+
                           GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
@@ -306,6 +308,11 @@ public class GeneratorUtils {
     static void generator(StackTraceElement[] trace, GeneratorData generatorData, GeneratorDriving scriptor, long ... values) {
         
         String templateMethodName = trace[0].getMethodName();
+        
+//        if (scriptor instanceof FASTWriterInterpreterDispatch) {
+//            System.err.println(templateMethodName);//TODO: A, this is missing a lot of calls.
+//        }
+        
         if (generatorData.usages.containsKey(templateMethodName)) {
             generatorData.usages.get(templateMethodName).incrementAndGet();
         } else {

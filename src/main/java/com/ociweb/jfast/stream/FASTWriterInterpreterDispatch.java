@@ -32,7 +32,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     
     //Constructor is very useful for adding new message or dropping messages without any modification of messages.
-    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, FASTRingBuffer[] buffers) {
+    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, RingBuffers buffers) {
         super(catalog, buffers);
         this.fieldIdScript = catalog.fieldIdScript();
         this.fieldNameScript = catalog.fieldNameScript();
@@ -1260,7 +1260,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         int token = fullScript[activeScriptCursor];
 
-        FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
+        FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
 
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
@@ -1886,7 +1886,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     @Override
     public void runFromCursor() {
-       dispatchWriteByToken(0, null);
+       //TODO A, this need to do the full fragment
+        dispatchWriteByToken(0, null);
     }
 
     @Override

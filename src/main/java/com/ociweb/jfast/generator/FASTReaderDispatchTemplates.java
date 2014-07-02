@@ -9,6 +9,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
+import com.ociweb.jfast.stream.RingBuffers;
 
 //TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
 //TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
@@ -58,7 +59,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int neededSpace = 1 + preambleDataLength + dispatch.requiredBufferSpace2()*2; //TODO: B, hack for now, this needed space is not adequate for fragments.
             dispatch.ringBufferIdx = dispatch.activeScriptCursor;
             //we know the templateId so we now know which ring buffer to use.
-            FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];                                        
+            FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);                                        
             if (neededSpace > 0) {
                 int size = rb.maxSize;
                 if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
@@ -74,21 +75,21 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 
     protected void genWriteTemplateId(FASTDecoder dispatch) {
         {
-        FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];  
+        FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.templateId);
         }
     }
 
     protected void genWritePreambleB(FASTDecoder dispatch) {
         {
-        FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];  
+        FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleB);
         }
     }
 
     protected void genWritePreambleA(FASTDecoder dispatch) {
         {
-        FASTRingBuffer rb = dispatch.ringBuffers[dispatch.activeScriptCursor];  
+        FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleA);
         }
     }

@@ -15,6 +15,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
 
@@ -54,7 +55,7 @@ public class TemplateCatalogConfig {
     
     private final int[][] dictionaryMembers;
 
-    private final FASTRingBuffer[] ringBuffers;
+    private final RingBuffers ringBuffers;
 
     private final FieldReferenceOffsetManager from;
     
@@ -142,22 +143,23 @@ public class TemplateCatalogConfig {
     }
     
     
-    private static FASTRingBuffer[] buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
+    private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
                                                      FieldReferenceOffsetManager from, int[] templateStartIdx, int primaryRingBits, int textRingBits) {
         FASTRingBuffer[] buffers = new FASTRingBuffer[scriptLength];
         //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
-   
+        //Move this method into RingBuffers as satic?
+        
         FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, from, templateStartIdx);
         int i = scriptLength;
         while (--i>=0) {
             buffers[i]=rb;            
         }        
-        return buffers;
+        return new RingBuffers(buffers);
         
         //TODO: B, build  null ring buffer to drop messages.
     }
     
-    public FASTRingBuffer[] ringBuffers() {
+    public RingBuffers ringBuffers() {
         return ringBuffers;
     }
     

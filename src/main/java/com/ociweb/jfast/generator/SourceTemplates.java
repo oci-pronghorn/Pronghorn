@@ -113,14 +113,7 @@ public class SourceTemplates {
     
     public String imports() {
         String source = getRawSource();
-        return source.substring(source.indexOf("import"), 
-                                source.indexOf("public abstract class "+FASTReaderDispatchTemplates.class.getSimpleName()));
-    }
-    
-    public String constructor() {
-        String source = getRawSource();
-        int startIdx = source.indexOf("public "+FASTReaderDispatchTemplates.class.getSimpleName());
-        return source.substring(startIdx,source.indexOf('}',startIdx)+1);
+        return source.substring(source.indexOf("import"), source.indexOf("public abstract class "+clazz.getSimpleName()));
     }
     
     public String[] params(String methodName) {

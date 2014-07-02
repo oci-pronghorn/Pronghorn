@@ -331,14 +331,8 @@ public class TemplateLoaderTest {
         
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
-        //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.
-        FASTRingBuffer[] x = new FASTRingBuffer[catalog.ringBuffers().length];
-        int j = catalog.ringBuffers().length;
-        while (--j>=0) {
-            x[j] = queue;
-        }
-        
-        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog, x);//catalog.ringBuffers());
+        //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
+        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
 

@@ -21,7 +21,7 @@ public abstract class FASTDecoder{
     public final int[] sequenceCountStack;
     
     //private ring buffers for writing content into
-    public final FASTRingBuffer[] ringBuffers;
+    public final RingBuffers ringBuffers;
     
     //dictionary data
     protected final long[] rLongDictionary;
@@ -51,7 +51,7 @@ public abstract class FASTDecoder{
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, int maxPMapCountInBytes,
             int[] templateStartIdx, int[] templateLimitIdx,
-            int maxTemplatePMapSize, int preambleDataLength, FASTRingBuffer[] ringBuffers) {
+            int maxTemplatePMapSize, int preambleDataLength, RingBuffers ringBuffers) {
 
         this.textHeap = dcr.charDictionary();
         this.byteHeap = dcr.byteDictionary();
@@ -88,23 +88,17 @@ public abstract class FASTDecoder{
         }
         sequenceCountStackHead = -1;
         
-        //reset all ringbuffers
-        int j = ringBuffers.length;
-        while (--j>=0) {
-            ringBuffers[j].reset();
-        }
-        
+        RingBuffers.reset(ringBuffers);        
 
     }
 
     public FASTRingBuffer ringBuffer(int idx) {
-        return ringBuffers[idx];
+        return RingBuffers.get(ringBuffers,idx);
     }
     
     public abstract int decode(PrimitiveReader reader);
         
-
-    
+  
     
 
     public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.

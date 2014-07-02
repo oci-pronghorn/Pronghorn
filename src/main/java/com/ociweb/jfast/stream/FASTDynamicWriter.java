@@ -86,7 +86,7 @@ public class FASTDynamicWriter {
             
             writerDispatch.activeScriptCursor = ringBuffer.cursor;
             int stop = ringBuffer.cursor+steps;
-            while (writerDispatch.activeScriptCursor<stop) {
+            while (writerDispatch.activeScriptCursor<stop) { //TODO: A, this loop should be in dispatch same as the reader.
                 int token = ringBuffer.from.tokens[writerDispatch.activeScriptCursor];
                 writerDispatch.dispatchWriteByToken(idx, writer);
 
@@ -95,7 +95,7 @@ public class FASTDynamicWriter {
                 int size = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
             //    System.err.println(size+" for  "+TokenBuilder.tokenToString(token));
                 
-                //TODO: hack
+                //TODO: A, remove hack and integrate the idx position into writerDispatch.
                 if (TokenBuilder.extractType(token)==TypeMask.Decimal ||
                     TokenBuilder.extractType(token)==TypeMask.DecimalOptional) {
                 //    System.err.println("cursor" +writerDispatch.activeScriptCursor);

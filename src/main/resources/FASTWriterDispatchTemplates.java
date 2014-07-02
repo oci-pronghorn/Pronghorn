@@ -11,19 +11,19 @@ import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
 
 
-public class FASTWriterDispatchTemplates extends FASTEncoder {
+public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
-    public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, FASTRingBuffer[] ringBuffers) {
-        
-        super(catalog.dictionaryFactory(), catalog.templatesCount(),
-              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), 
-              catalog.dictionaryResetMembers(),
-              catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
-        
+    public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog) {
+        super(catalog,catalog.ringBuffers());
     }    
     
+    public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
+        super(catalog,ringBuffers);
+    }    
+   
     protected void genWriteCopyText(int source, int target, TextHeap textHeap) {
         textHeap.copy(source,target);
     }

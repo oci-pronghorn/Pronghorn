@@ -123,7 +123,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
 
-        final FASTRingBuffer rbRingBuffer = ringBuffers[activeScriptCursor];
+        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
         
         int token = fullScript[activeScriptCursor];
 
@@ -611,10 +611,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         // 0111?
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             // 01110 ByteArray
-            readByteArray(token, reader, ringBuffers[activeScriptCursor]);
+            readByteArray(token, reader, RingBuffers.get(ringBuffers,activeScriptCursor));
         } else {
             // 01111 ByteArrayOptional
-            readByteArrayOptional(token, reader, ringBuffers[activeScriptCursor]);
+            readByteArrayOptional(token, reader, RingBuffers.get(ringBuffers,activeScriptCursor));
         }
         
     }
@@ -672,24 +672,25 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     void dispatchReadByTokenForText(int token, PrimitiveReader reader) {
         // System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
 
+        FASTRingBuffer rb = ringBuffer(activeScriptCursor);
         // 010??
         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
             // 0100?
             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                 // 01000 TextASCII
-                readTextASCII(token, reader, ringBuffers[activeScriptCursor]);
+                readTextASCII(token, reader, rb);
             } else {
                 // 01001 TextASCIIOptional
-                readTextASCIIOptional(token, reader, ringBuffers[activeScriptCursor]);
+                readTextASCIIOptional(token, reader, rb);
             }
         } else {
             // 0101?
             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                 // 01010 TextUTF8
-                readTextUTF8(token, reader, ringBuffers[activeScriptCursor]);
+                readTextUTF8(token, reader, rb);
             } else {
                 // 01011 TextUTF8Optional
-                readTextUTF8Optional(token, reader, ringBuffers[activeScriptCursor]);
+                readTextUTF8Optional(token, reader, rb);
             }
         }
     }
@@ -1179,7 +1180,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
         //because the generator hacks this boolean return value it is not helpful here.
         int jumpToNext = activeScriptCursor+1;
-        FASTRingBuffer ringBuffer = ringBuffers[activeScriptCursor];
+        FASTRingBuffer ringBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {

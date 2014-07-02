@@ -15,7 +15,7 @@ import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     
-    private static final String ENTRY_METHOD_NAME = "decode";
+    private static final String ENTRY_METHOD_NAME = "encode";
     private final GeneratorData generatorData;
 
     public FASTWriterDispatchGenerator(byte[] catBytes) {
@@ -30,8 +30,10 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        GeneratorUtils.generateHead(generatorData.templates, generatorData.origCatBytes, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
+        GeneratorUtils.generateHead(generatorData.templates, generatorData.origCatBytes, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
         GeneratorUtils.generateGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
+        
+        //TODO: A, need custom write method here.
         GeneratorUtils.generateEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME);
         GeneratorUtils.generateTail(target);
         

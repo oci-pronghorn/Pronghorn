@@ -88,12 +88,13 @@ import javax.tools.ToolProvider;
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
-//                    try {
-//                        exportSourceToClassFolder(SIMPLE_WRITER_NAME, sourceWriterFileObject.getCharContent(false).toString());
-//                    } catch (IOException e) {
-//                        // TODO Auto-generated catch block
-//                        e.printStackTrace();
-//                    }
+                    
+                    try {
+                        exportSourceToClassFolder(SIMPLE_WRITER_NAME, sourceWriterFileObject.getCharContent(false).toString());
+                    } catch (Throwable e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
                 
                 toCompile.add(sourceReaderFileObject);
