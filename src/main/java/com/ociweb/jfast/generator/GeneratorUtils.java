@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
@@ -76,8 +77,12 @@ public class GeneratorUtils {
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
 
-    public static void generateEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName) throws IOException {
+    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName, Class primClass) throws IOException {
     
+        boolean isReader = PrimitiveReader.class==primClass;
+        String primVarName = isReader ? "reader" : "writer";
+        
+        
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int[] doneValues = new int[doneScripts.size()];
@@ -97,15 +102,17 @@ public class GeneratorUtils {
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public final int "+entryMethodName+"(PrimitiveReader reader) {\n");
+        builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+") {\n");
         
         //if this is the beginning of a new template we use this special logic to pull the template id
-        builder.append("    if (activeScriptCursor<0) {\n");
-        builder.append("        if (PrimitiveReader.isEOF(reader)) { \n");
-        builder.append("            return -1;\n");
-        builder.append("        } \n");
-        builder.append("        beginMessage(reader,this);\n");
-        builder.append("    }\n");
+        if (isReader) {
+            builder.append("    if (activeScriptCursor<0) {\n");
+            builder.append("        if (PrimitiveReader.isEOF("+primVarName+")) { \n");
+            builder.append("            return -1;\n");
+            builder.append("        } \n");
+            builder.append("        beginMessage("+primVarName+",this);\n");
+            builder.append("    }\n");
+        }
         
         //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
@@ -122,9 +129,12 @@ public class GeneratorUtils {
         int j = 0;
         while (j<stackTrace.length) {
             //Check for programming error where the template was modified without overriding the method here.
+            String className = stackTrace[j].getClassName();
             String method = stackTrace[j++].getMethodName();
-            if (method.startsWith("gen")) {
-                System.err.println("Must override: "+method+" to prevent running logic while generating.");
+            if (method.startsWith("gen") &&
+                !method.startsWith("generate") &&
+                !GeneratorUtils.class.getSimpleName().equals(className)) {
+                System.err.println("Must override: "+className+"."+method+" to prevent running logic while generating.");
                 System.exit(0);
             }
             
@@ -215,7 +225,7 @@ public class GeneratorUtils {
         
     }
 
-    public static String generateSingleGroupMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData) {
+    public static String buildSingleGroupMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData) {
         beginSingleGroupMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         scriptor.setActiveScriptLimit(limit); 
@@ -261,7 +271,7 @@ public class GeneratorUtils {
         
     }
 
-    public static void generateGroupMethods(TemplateCatalogConfig catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData) throws IOException {
+    public static void buildGroupMethods(TemplateCatalogConfig catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData) throws IOException {
         
         //A Group may be a full message or sequence item or group.
     
@@ -284,7 +294,7 @@ public class GeneratorUtils {
             
             String block;
             
-            block = generateSingleGroupMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
+            block = buildSingleGroupMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
             
             builder.append("\n");
             builder.append(block);
@@ -295,7 +305,7 @@ public class GeneratorUtils {
                 if (!doneScripts.contains(seqStart)) {
                     doneScripts.add(seqStart);
                     
-                    block = generateSingleGroupMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
+                    block = buildSingleGroupMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
                     
                     builder.append("\n");
                     builder.append(block);

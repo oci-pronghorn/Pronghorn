@@ -31,10 +31,10 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         List<String> doneScriptsParas = new ArrayList<String>();
         
         GeneratorUtils.generateHead(generatorData.templates, generatorData.origCatBytes, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
-        GeneratorUtils.generateGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
+        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
         
         //TODO: A, need custom write method here.
-        GeneratorUtils.generateEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME);
+        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class);
         GeneratorUtils.generateTail(target);
         
         return target;

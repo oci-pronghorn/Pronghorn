@@ -13,7 +13,7 @@ public class FASTDynamicWriter {
     private final TemplateCatalogConfig catalog;
     private final int[] fullScript;
     private final FASTRingBuffer ringBuffer;
-    private final PrimitiveWriter writer;
+    final PrimitiveWriter writer;
 
     final byte[] preambleData;
 
@@ -79,37 +79,15 @@ public class FASTDynamicWriter {
             }
 
             //TODO: must write one fragment then poll again.
-            int steps = ringBuffer.fragmentSteps();//-idx;
-        //    System.err.println("steps "+steps);
-
-     //       System.err.println("write fragment at:"+ringBuffer.cursor);
-            
-            writerDispatch.activeScriptCursor = ringBuffer.cursor;
+            int steps = ringBuffer.fragmentSteps();
             int stop = ringBuffer.cursor+steps;
-            while (writerDispatch.activeScriptCursor<stop) { //TODO: A, this loop should be in dispatch same as the reader.
-                int token = ringBuffer.from.tokens[writerDispatch.activeScriptCursor];
-                writerDispatch.dispatchWriteByToken(idx, writer);
-
-
-                
-                int size = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-            //    System.err.println(size+" for  "+TokenBuilder.tokenToString(token));
-                
-                //TODO: A, remove hack and integrate the idx position into writerDispatch.
-                if (TokenBuilder.extractType(token)==TypeMask.Decimal ||
-                    TokenBuilder.extractType(token)==TypeMask.DecimalOptional) {
-                //    System.err.println("cursor" +writerDispatch.activeScriptCursor);
-                    size+=2;//for the long we jumped over.
-                }
-                
-                idx += size;    //can look up directly from ringBuffer!                       
-
-                writerDispatch.activeScriptCursor++; 
-            }
+            writerDispatch.setActiveScriptCursor(ringBuffer.cursor);
+            writerDispatch.setActiveScriptLimit(stop);
+            writerDispatch.encode(idx, this);
 
     }
 
-    
+
 
 
     public void reset(boolean clearData) {

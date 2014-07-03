@@ -16,6 +16,8 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
+import com.ociweb.jfast.error.FASTException;
+
     public class FASTClassLoader extends ClassLoader{
 
         public static final String GENERATED_PACKAGE = "com.ociweb.jfast.generator";
@@ -85,15 +87,13 @@ import javax.tools.ToolProvider;
                     try {
                         exportSourceToClassFolder(SIMPLE_READER_NAME,sourceReaderFileObject.getCharContent(false).toString());
                     } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+                        throw new FASTException(e);
                     }
                     
                     try {
                         exportSourceToClassFolder(SIMPLE_WRITER_NAME, sourceWriterFileObject.getCharContent(false).toString());
                     } catch (Throwable e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
+                        throw new FASTException(e);
                     }
                 }
                 

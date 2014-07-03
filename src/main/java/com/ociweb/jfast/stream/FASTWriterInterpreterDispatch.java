@@ -1256,7 +1256,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
     
-    public boolean dispatchWriteByToken(int fieldPos, PrimitiveWriter writer) {
+    
+    private boolean dispatchWriteByToken(PrimitiveWriter writer) {
 
         int token = fullScript[activeScriptCursor];
 
@@ -1289,6 +1290,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         }
 
                     }
+                    fieldPos+=1;
                 } else {
                     long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
                     assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -1313,17 +1315,19 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             }
                         }
                     }
+                    fieldPos+=2;
                 }
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                     int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
                     if (length < 0) {
-                        write(token, writer);
+                        write(token, writer);//TODO: A, not sure this is right because it should be 2 ints?
                     } else {
                         char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
                         write(token, ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length),writer);
                     }
+                    fieldPos+=2;
                 } else {
                     // 011??
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -1352,7 +1356,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptOptionalDecimal(fieldPos, writer, expoToken, mantissa, fieldPos, rbRingBuffer);
                         }
                                                 
-                        
+                        fieldPos+=3;
                     } else {
                         // //0111? ByteArray
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -1366,6 +1370,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             // write(token,queue); TODO: B, copy the text
                             // implementation
                         }
+                        fieldPos+=2;
                     }
                 }
             }
@@ -1422,7 +1427,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             }
                         }
                     }
-
+                    fieldPos+=1;
                     assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
                     return true;
                 }
@@ -1886,8 +1891,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     @Override
     public void runFromCursor() {
-       //TODO A, this need to do the full fragment
-        dispatchWriteByToken(0, null);
+        encode(0, null);
     }
 
     @Override
@@ -1905,6 +1909,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         return fieldNameScript[activeScriptCursor]; 
     }
     ///////////////////////
+
+
+    public int fieldPos=-1;
+    
+
+    //TODO: A, must be abstract in base and created by the compiler.
+    void encode(int fieldPos, FASTDynamicWriter fastDynamicWriter) {
+        PrimitiveWriter writer = null==fastDynamicWriter? null: fastDynamicWriter.writer;
+        int stop = activeScriptLimit;
+        this.fieldPos = fieldPos;
+        while (activeScriptCursor<stop) { 
+            dispatchWriteByToken(writer);
+            activeScriptCursor++; 
+        }
+    }
 
  
 }
