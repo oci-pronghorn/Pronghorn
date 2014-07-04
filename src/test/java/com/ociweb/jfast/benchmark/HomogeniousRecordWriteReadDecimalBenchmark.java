@@ -311,7 +311,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
                         staticWriter.writeNullLong(token, idx, writer, staticWriter.longValues);
                     } else {
-                        staticWriter.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbRingBufferLocal, writer);
+                        staticWriter.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbPos+1, rbRingBufferLocal, writer);
                     }
                 }
             }

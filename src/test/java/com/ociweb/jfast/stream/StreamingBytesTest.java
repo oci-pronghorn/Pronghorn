@@ -325,7 +325,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if ((i & 1) == 0) {
                             testContByteBuffer.mark();
@@ -340,7 +340,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     }
                 } else {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if ((i & 1) == 0) {
                             // first failing test

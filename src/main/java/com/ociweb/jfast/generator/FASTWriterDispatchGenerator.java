@@ -32,8 +32,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         
         GeneratorUtils.generateHead(generatorData.templates, generatorData.origCatBytes, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
-        
-        //TODO: A, need custom write method here.
+               
         GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class);
         GeneratorUtils.generateTail(target);
         
@@ -1040,46 +1039,46 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteLongUnsignedDefaultOptional(long constDefault, long value, PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, constDefault); 
+    protected void genWriteLongUnsignedDefaultOptional(long valueOfNull, int target, long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, constDefault); 
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedIncrementOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, value, target);
+    protected void genWriteLongUnsignedIncrementOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target);
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedCopyOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source);
+    protected void genWriteLongUnsignedCopyOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source);
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedConstantOptional(PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    protected void genWriteLongUnsignedConstantOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target);
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedNoneOptional(long value, PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target);
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedDeltaOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source);
+    protected void genWriteLongUnsignedDeltaOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source);
         
     }
 
@@ -1125,45 +1124,45 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteLongSignedOptional(long value, PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    protected void genWriteLongSignedOptional(long valueOfNull, int target,  PrimitiveWriter writer, int rbPos, FASTRingBuffer ringBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target);
         
     }
 
     @Override
-    protected void genWriteLongSignedDeltaOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
+    protected void genWriteLongSignedDeltaOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedConstantOptional(PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    protected void genWriteLongSignedConstantOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedCopyOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
+    protected void genWriteLongSignedCopyOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedIncrementOptional(int target, int source, long value, PrimitiveWriter writer,
-            long[] longValues) {
+    protected void genWriteLongSignedIncrementOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues,
+            int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedDefaultOptional(long constDefault, long value, PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, constDefault);
+    protected void genWriteLongSignedDefaultOptional(long valueOfNull, int target, long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, constDefault);
         
     }
 

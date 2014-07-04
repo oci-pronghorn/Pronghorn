@@ -11,6 +11,7 @@ import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
+import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
@@ -353,5 +354,80 @@ public abstract class BaseStreamingTest {
 		}
 		return target;
 	}
+
+
+    /**
+     * Write null value, must only be used if the field id is one of optional
+     * type.
+     * @param fw TODO
+     */
+    public static void write(int token, PrimitiveWriter writer, FASTWriterInterpreterDispatch fw) {
+    
+        // only optional field types can use this method.
+        assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))); 
+       // TODO: T, in testing assert(failOnBadArg())
+    
+        // select on type, each dictionary will need to remember the null was
+        // written
+        if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
+            // int long
+            if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
+                // int
+                int idx = token & fw.intInstanceMask;
+                
+                //temp solution as the ring buffer is introduce into all the APIs
+                FASTRingBuffer.dump(fw.rbRingBufferLocal);
+                FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                FASTRingBuffer.unBlockFragment(fw.rbRingBufferLocal);
+                int rbPos = 0;
+    
+                // hack until all the classes no longer need this method.
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                } else {
+                    fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                }
+            } else {
+                // long
+                int idx = token & fw.longInstanceMask;
+                
+                fw.writeNullLong(token, idx, writer, fw.longValues);
+            }
+        } else {
+            // text decimal bytes
+            if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
+                // text
+                int idx = token & fw.TEXT_INSTANCE_MASK;
+                
+                fw.writeNullText(token, idx, writer, fw.textHeap);
+            } else {
+                // decimal bytes
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    // decimal
+                    int idx = token & fw.intInstanceMask;
+                    
+                    //temp solution as the ring buffer is introduce into all the APIs     
+                    FASTRingBuffer.dump(fw.rbRingBufferLocal);
+                    FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    FASTRingBuffer.unBlockFragment(fw.rbRingBufferLocal);
+                    int rbPos = 0;
+                                        // hack until all the classes no longer need this method.
+                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                        fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                    } else {
+                        fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                    } 
+    
+                    int idx1 = token & fw.longInstanceMask;
+                    
+                    fw.writeNullLong(token, idx1, writer, fw.longValues);
+                } else {
+                    // byte
+                    fw.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask);
+                }
+            }
+        }
+    
+    }
 	
 }

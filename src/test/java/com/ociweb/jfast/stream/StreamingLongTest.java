@@ -107,13 +107,13 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token, writer);//nothing
+						BaseStreamingTest.write(token, writer, fw);//nothing
 					} else {
 						writeLong(fw, token, testConst, writer); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						fw.write(token, writer);
+						BaseStreamingTest.write(token, writer, fw);
 					} else {
 					    writeLong(fw, token, testData[f], writer); 
 					}
@@ -149,13 +149,13 @@ public class StreamingLongTest extends BaseStreamingTest {
             }
         } else {
             if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
-                fw.write(token, writer);
+                BaseStreamingTest.write(token, writer, fw);
             } else {
                 // optional
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    fw.acceptLongUnsignedOptional(token, value, writer);
+                    fw.acceptLongUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbPos, rbRingBufferLocal, writer);
                 } else {
-                    fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
+                    fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbPos, rbRingBufferLocal, writer);
                 }
             }
         }

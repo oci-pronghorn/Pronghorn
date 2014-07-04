@@ -163,7 +163,7 @@ public class StreamingTextTest extends BaseStreamingTest {
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (testNullString(i, token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if (testCharSequence(i)) {
                             fw.write(token, testConstSeq, writer);
@@ -174,7 +174,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                     }
                 } else {
                     if (testNullString(f, token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if (testCharSequence(i)) {
                             fw.write(token, testData[f], writer);

@@ -98,7 +98,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -121,12 +121,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
-                            fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, testMantConst, rbRingBufferLocal, writer);
+                            fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, testMantConst, rbPos+1, rbRingBufferLocal, writer);
                         }
                     }
                 } else {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                        fw.write(token, writer);
+                        BaseStreamingTest.write(token, writer, fw);
                     } else {
                         long mantissa = testData[f];
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
@@ -156,7 +156,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                                 
                                 fw.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
-                                fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbRingBufferLocal, writer);
+                                fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbPos+1, rbRingBufferLocal, writer);
                             }
                         }
                     }

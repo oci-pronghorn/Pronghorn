@@ -112,6 +112,9 @@ public class GeneratorUtils {
             builder.append("        } \n");
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
+        } else {
+            //TODO: A, need custom write method here.
+            
         }
         
         //now that the cursor position / template id is known do normal processing

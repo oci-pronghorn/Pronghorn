@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.field.ByteHeap;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -19,7 +20,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
+    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
     
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
@@ -39,90 +40,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     
 
-    /**
-     * Write null value, must only be used if the field id is one of optional
-     * type.
-     */
-    public void write(int token, PrimitiveWriter writer) {
-
-        // only optional field types can use this method.
-        assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))); 
-       // TODO: T, in testing assert(failOnBadArg())
-
-        // select on type, each dictionary will need to remember the null was
-        // written
-        if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
-            // int long
-            if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                // int
-                int idx = token & intInstanceMask;
-                
-                //temp solution as the ring buffer is introduce into all the APIs
-                FASTRingBuffer.dump(rbRingBufferLocal);
-                FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
-                int rbPos = 0;
-
-                // hack until all the classes no longer need this method.
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
-                } else {
-                    acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
-                }
-            } else {
-                // long
-                int idx = token & longInstanceMask;
-                
-                writeNullLong(token, idx, writer, longValues);
-            }
-        } else {
-            // text decimal bytes
-            if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                // text
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                writeNullText(token, idx, writer, textHeap);
-            } else {
-                // decimal bytes
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    // decimal
-                    int idx = token & intInstanceMask;
-                    
-                    //temp solution as the ring buffer is introduce into all the APIs     
-                    FASTRingBuffer.dump(rbRingBufferLocal);
-                    FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                    FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
-                    int rbPos = 0;
-                                        // hack until all the classes no longer need this method.
-                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
-                    } else {
-                        acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
-                    } 
-
-                    int idx1 = token & longInstanceMask;
-                    
-                    writeNullLong(token, idx1, writer, longValues);
-                } else {
-                    // byte
-                    writeNullBytes(token, writer, byteHeap, instanceBytesMask);
-                }
-            }
+    public void acceptLongSignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        if (value == valueOfNull) {
+            writeNullLong(token, token & longInstanceMask, writer, longValues); //TODO: A, this is wrong and must be gens
         }
-
-    }
-
-
-
-    public void acceptLongSignedOptional(int token, long valueOfNull, long value, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
-        
-//      ////    //temp solution as the ring buffer is introduce into all the APIs
-      FASTRingBuffer.dump(rbRingBuffer);            
-      FASTRingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos,(int) (value >>> 32));
-      FASTRingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos,(int) (value & 0xFFFFFFFF)); 
-      FASTRingBuffer.unBlockFragment(rbRingBuffer);
-      int rbPos = 0;
-        
+        int target = (token & longInstanceMask);
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -130,42 +53,62 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongSignedOptional(value, writer);
+                    //
+                    //dictionary[target] = 0; //for none and delta
+                    //PrimitiveWriter.writeNull(writer);
+                    genWriteLongSignedOptional(valueOfNull, target,  writer, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
-                    int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    
-                    genWriteLongSignedDeltaOptional(target, source, value, writer, longValues);
+                    //dictionary[target] = 0; //for none and delta
+                    //PrimitiveWriter.writeNull(writer);
+                    genWriteLongSignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                
-                genWriteLongSignedConstantOptional(writer);
+                //StaticGlue.nullPMap(writer);  // null for const optional
+                genWriteLongSignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                
+                //for copy and inc
+//              if (0 == dictionary[target]) { // stored value was null;
+//                  PrimitiveWriter.writePMapBit((byte) 0, writer);
+//              } else {
+//                  dictionary[target] = 0;
+//                  PrimitiveWriter.writePMapBit((byte) 1, writer);
+//                  PrimitiveWriter.writeNull(writer);
+//              }
+                
                 // copy, increment
-                int target = (token & longInstanceMask);
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopyOptional(target, source, value, writer, longValues);
+                    genWriteLongSignedCopyOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongSignedIncrementOptional(target, source, value, writer, longValues);
+                    genWriteLongSignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
+                
+//                if (dictionary[target] == 0) { // stored value was null; //for default
+//                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+//                } else {
+//                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+//                    PrimitiveWriter.writeNull(writer);
+//                }
+                
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefaultOptional(constDefault, value, writer);
+                genWriteLongSignedDefaultOptional(valueOfNull, target, constDefault, writer, rbPos, rbRingBuffer);
             }
         }
     }
@@ -237,25 +180,36 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
 
-    void acceptLongUnsignedOptional(int token, long value, PrimitiveWriter writer) {
+    void acceptLongUnsignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        if (value == valueOfNull) {
+            writeNullLong(token, token & longInstanceMask, writer, longValues); //TODO: A, this is wrong and must be gens
+        }
+        
+        int target = token & longInstanceMask;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongUnsignedNoneOptional(value, writer);
+                    //dictionary[target] = 0; //for none and delta
+                    //PrimitiveWriter.writeNull(writer);
+                    genWriteLongUnsignedNoneOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
-                    int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    genWriteLongUnsignedDeltaOptional(target, source, value, writer, longValues);
+                    //dictionary[target] = 0; //for none and delta
+                    //PrimitiveWriter.writeNull(writer);
+                    genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteLongUnsignedConstantOptional(writer);
+                // StaticGlue.nullPMap(writer);  // null for const optional
+                genWriteLongUnsignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -263,22 +217,38 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                 
+                //for copy and inc
+//                if (0 == dictionary[target]) { // stored value was null;
+//                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+//                } else {
+//                    dictionary[target] = 0;
+//                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+//                    PrimitiveWriter.writeNull(writer);
+//                }
+                
                 // copy, increment
-                int target = (token & longInstanceMask);
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopyOptional(target, source, value, writer, longValues);
+                    genWriteLongUnsignedCopyOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrementOptional(target, source, value, writer, longValues);
+                    genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // default
+                
+//              if (dictionary[target] == 0) { // stored value was null; //for default
+//              PrimitiveWriter.writePMapBit((byte) 0, writer);
+//          } else {
+//              PrimitiveWriter.writePMapBit((byte) 1, writer);
+//              PrimitiveWriter.writeNull(writer);
+//          }
+                
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefaultOptional(constDefault, value, writer);
+                genWriteLongUnsignedDefaultOptional(valueOfNull, target, constDefault, writer, rbPos, rbRingBuffer);
             }
         }
     }
@@ -1304,16 +1274,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptLongSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
-                            write(token, writer);
+                        //TODO: B, Add lookup for value of absent/null instead of this constant.
+                        long valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+
+                        // optional
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                            acceptLongUnsignedOptional(token, valueOfNull, value, fieldPos, rbRingBuffer, writer);
                         } else {
-                            // optional
-                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                                acceptLongUnsignedOptional(token, value, writer);
-                            } else {
-                                acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbRingBufferLocal, writer);
-                            }
+                            acceptLongSignedOptional(token, valueOfNull, value, fieldPos, rbRingBuffer, writer);
                         }
+
                     }
                     fieldPos+=2;
                 }
@@ -1322,7 +1292,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                     int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
                     if (length < 0) {
-                        write(token, writer);//TODO: A, not sure this is right because it should be 2 ints?
+                        writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap);
                     } else {
                         char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
                         write(token, ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length),writer);
@@ -1412,19 +1382,15 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptIntegerSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        int length = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
-                        if (length == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT) {
-                            write(token, writer);
+
+                        // optional
+                        //TODO: B, Add lookup for value of absent/null instead of this constant.
+                        int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                        
+                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
+                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                         } else {
-                            // optional
-                            //TODO: B, Add lookup for value of absent/null instead of this constant.
-                            int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-                            
-                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
-                                acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
-                            } else {
-                                acceptIntegerSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
-                            }
+                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                         }
                     }
                     fieldPos+=1;
@@ -1804,6 +1770,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         genWritePreamble(preambleData, writer);
     }
 
+    //TODO: A, delete null method and its gen methods.
     public void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
