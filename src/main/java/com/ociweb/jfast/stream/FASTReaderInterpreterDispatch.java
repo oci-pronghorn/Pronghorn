@@ -1235,7 +1235,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
-        // System.out.println("reading "+TokenBuilder.tokenToString(token));
+         System.out.println("reading "+TokenBuilder.tokenToString(token));
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.

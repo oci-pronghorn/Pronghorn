@@ -5,7 +5,7 @@ package com.ociweb.jfast.loader;
 
 import java.util.Arrays;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -297,7 +297,7 @@ public class DictionaryFactory {
     }
 
     TextHeap textHeap;
-    ByteHeap byteHeap;    
+    LocalHeap byteHeap;    
     
     public TextHeap charDictionary() {
         if (charCount == 0) {
@@ -311,12 +311,12 @@ public class DictionaryFactory {
         return textHeap;
     }
 
-    public ByteHeap byteDictionary() {
+    public LocalHeap byteDictionary() {
         if (bytesCount == 0) {
             return null;
         }
         if (null==byteHeap) {
-            byteHeap = new ByteHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
+            byteHeap = new LocalHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
                     byteInitIndex, byteInitValue);
             byteHeap.reset();
         }
@@ -352,7 +352,7 @@ public class DictionaryFactory {
         }
     }
 
-    public void reset(ByteHeap heap) {
+    public void reset(LocalHeap heap) {
         if (null != heap) {
             heap.reset();
         }

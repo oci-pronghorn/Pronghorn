@@ -2,7 +2,7 @@ package com.ociweb.jfast.generator;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
@@ -28,7 +28,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         textHeap.copy(source,target);
     }
 
-    protected void genWriteCopyBytes(int source, int target, ByteHeap byteHeap) {
+    protected void genWriteCopyBytes(int source, int target, LocalHeap byteHeap) {
         byteHeap.copy(source,target);
     }
     
@@ -565,7 +565,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeTextASCII(value, offset, length, writer);
     }
     
-    protected void genWriterBytesDefaultOptional(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriterBytesDefaultOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
         
         if (byteHeap.equals(target|INIT_VALUE_MASK, value)) {
             PrimitiveWriter.writePMapBit((byte)0, writer); 
@@ -581,7 +581,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriterBytesCopyOptional(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriterBytesCopyOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
 
         if (byteHeap.equals(target, value)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -595,7 +595,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriterBytesDeltaOptional(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriterBytesDeltaOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
 
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value);
@@ -608,7 +608,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriterBytesTailOptional(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriterBytesTailOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
 
         int headCount = byteHeap.countHeadMatch(target, value);
         int trimTail = byteHeap.length(target)-headCount;
@@ -632,7 +632,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
     }
 
-    protected void genWriteBytesDefault(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriteBytesDefault(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
         
         if (byteHeap.equals(target|INIT_VALUE_MASK, value)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -644,7 +644,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesCopy(int target, ByteBuffer value, ByteHeap byteHeap, PrimitiveWriter writer) {
+    protected void genWriteBytesCopy(int target, ByteBuffer value, LocalHeap byteHeap, PrimitiveWriter writer) {
 
         if (byteHeap.equals(target, value)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -657,7 +657,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesDelta(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriteBytesDelta(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
         
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value);
@@ -690,7 +690,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         value.position(value.limit());//skip over the data just like we wrote it.
     }
 
-    protected void genWriteBytesTail(int target, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    protected void genWriteBytesTail(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
 
         int headCount = byteHeap.countHeadMatch(target, value);
                 
@@ -715,7 +715,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
     }
     
-    protected void genWriteBytesDefault(int target, int offset, int length, byte[] value, ByteHeap byteHeap, PrimitiveWriter writer) {
+    protected void genWriteBytesDefault(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer) {
         
         if (byteHeap.equals(target|INIT_VALUE_MASK, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -726,7 +726,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesCopy(int target, int offset, int length, byte[] value, ByteHeap byteHeap, PrimitiveWriter writer) {
+    protected void genWriteBytesCopy(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer) {
         
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -739,7 +739,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDelta(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesDelta(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
@@ -750,7 +750,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesTail(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesTail(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         
         int trimTail = byteHeap.length(target)-headCount;
@@ -769,7 +769,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
     }
     
-    private void writeBytesHead(int target, int tailCount, int offset, int length, int opt, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    private void writeBytesHead(int target, int tailCount, int offset, int length, int opt, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(target)-tailCount;
@@ -782,7 +782,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.appendHead(target, trimHead, value, offset, len);
     }
     
-   private void writeBytesTail(int target, int headCount, int offset, int length, final int optional, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+   private void writeBytesTail(int target, int headCount, int offset, int length, final int optional, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         int trimTail = byteHeap.length(target)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+optional: trimTail, writer);
         
@@ -794,7 +794,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
     }
     
-    public void genWriteBytesDefaultOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesDefaultOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -804,7 +804,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesCopyOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesCopyOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -815,7 +815,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDeltaOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesDeltaOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
@@ -847,7 +847,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //the writeNull will take care of the rest.
     }
 
-    public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int trimTail = byteHeap.length(target)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);
@@ -1646,16 +1646,44 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteLongUnsignedDefaultOptional(long valueOfNull, int target, long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            if (longValues[target] == 0) { // stored value was null; //for default
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+          }
         PrimitiveWriter.writneLongUnsignedDefaultOptional(value, constDefault, writer);
     }
 
     protected void genWriteLongUnsignedIncrementOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        //for copy and inc
+        if (value == valueOfNull) {
+            if (0 == longValues[target]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                longValues[target] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+        }
         PrimitiveWriter.writeLongUnsignedIncrementOptional(value, target, source, longValues, writer);
     }
 
     protected void genWriteLongUnsignedCopyOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        //for copy and inc
+        if (value == valueOfNull) {
+            if (0 == longValues[target]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                longValues[target] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+        }
         value++;// zero is held for null
         
         PrimitiveWriter.writeLongUnsignedCopyOptional(value, target, source, longValues, writer);
@@ -1663,6 +1691,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedConstantOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            StaticGlue.nullPMap(writer);  // null for const optional
+        }
         //TODO: A, must check against the value of null.
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
@@ -1670,13 +1701,21 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 //        if (valueffNull==value) {
 //            genWriteNullNoPMapLong(idx, writer, dictionary);  
 //        }
-    protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            longValues[target] = 0; //for none and delta
+            PrimitiveWriter.writeNull(writer);
+        }
         PrimitiveWriter.writeLongUnsigned(value + 1, writer);
     }
 
     protected void genWriteLongUnsignedDeltaOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            longValues[target] = 0; //for none and delta
+            PrimitiveWriter.writeNull(writer);
+        }
         long delta = value - longValues[source];
         PrimitiveWriter.writeLongSigned(delta>=0 ? 1+delta : delta, writer);
         longValues[target] = value;
@@ -1707,13 +1746,21 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         longValues[target] = value;
     }
     
-    protected void genWriteLongSignedOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteLongSignedOptional(long valueOfNull, int target, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            longValues[target] = 0; //for none and delta
+            PrimitiveWriter.writeNull(writer);
+        }
         PrimitiveWriter.writeLongSignedOptional(value, writer);
     }
 
     protected void genWriteLongSignedDeltaOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        if (value == valueOfNull) {
+            longValues[target] = 0; //for none and delta
+            PrimitiveWriter.writeNull(writer);
+        }
         long delta = value - longValues[source];
         PrimitiveWriter.writeLongSigned(((delta + (delta >>> 63)) + 1), writer);
         longValues[target] = value;
@@ -1721,17 +1768,46 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedConstantOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        
+        if (value == valueOfNull) {
+            StaticGlue.nullPMap(writer);  // null for const optional
+        }
+        
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
     
 
     protected void genWriteLongSignedCopyOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        
+        
+        //for copy and inc
+        if (value == valueOfNull) {
+            if (0 == longValues[target]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                longValues[target] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+        }
+
         PrimitiveWriter.writeLongSignedCopy(value-((value>>63)-1), target, source, longValues, writer);
     }
 
     protected void genWriteLongSignedIncrementOptional(long valueOfNull, int target, int source, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        
+        if (value == valueOfNull) {
+            if (0 == longValues[target]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                longValues[target] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+        }
+        
         value-=((value>>63)-1);
         PrimitiveWriter.writeLongSignedIncrementOptional(value, longValues[source], writer);
         longValues[target] = value;
@@ -1743,11 +1819,22 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     //        }
     protected void genWriteLongSignedDefaultOptional(long valueOfNull, int target, long constDefault, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
+        
+        if (value == valueOfNull) {
+            if (0 == longValues[target]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                longValues[target] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }
+          }
+        
         PrimitiveWriter.writeLongSignedDefault(value-((value>>63)-1), constDefault, writer);
     }
 
-    protected void genWriteDictionaryBytesReset(int target, ByteHeap byteHeap) {
-        byteHeap.setNull(target);
+    protected void genWriteDictionaryBytesReset(int target, LocalHeap byteHeap) {
+        LocalHeap.setNull(target, byteHeap);
     }
 
     protected void genWriteDictionaryTextReset(int target, TextHeap textHeap) {
@@ -1858,7 +1945,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         TextHeap.setNull(target, textHeap);
     }
     
-    public void genWriteNullDefaultBytes(int target, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteNullDefaultBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (byteHeap.isNull(target)) { //stored value was null;
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
@@ -1867,18 +1954,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteNullNoPMapBytes(int target, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteNullNoPMapBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
         PrimitiveWriter.writeNull(writer);
-        byteHeap.setNull(target);
+        LocalHeap.setNull(target, byteHeap);
     }
 
-    public void genWriteNullCopyIncBytes(int target, PrimitiveWriter writer, ByteHeap byteHeap) {
+    public void genWriteNullCopyIncBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (byteHeap.isNull(target)) { //stored value was null;
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeNull(writer);
-            byteHeap.setNull(target);
+            LocalHeap.setNull(target, byteHeap);
         }
     }
 }

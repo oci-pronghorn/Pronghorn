@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -54,6 +54,7 @@ public final class FASTRingBuffer {
     final byte[] byteBuffer;
     int addBytePos = 0;
     
+    //TODO: A, only have 1 of these just the bytes,
     final char[] constTextBuffer; //defined externally and never changes
     final byte[] constByteBuffer;
 
@@ -89,7 +90,7 @@ public final class FASTRingBuffer {
             } else {
                 this.constTextBuffer = null;
             }
-            ByteHeap byteHeap = dcr.byteDictionary();
+            LocalHeap byteHeap = dcr.byteDictionary();
             if (null!=byteHeap) {
                 this.constByteBuffer = byteHeap.rawInitAccess();            
             } else {
@@ -310,10 +311,10 @@ public final class FASTRingBuffer {
         return p;
     }
 
-    public static int writeBytesToRingBuffer(int heapId, int len, ByteHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public static int writeBytesToRingBuffer(int heapId, int len, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         final int p = rbRingBuffer.addBytePos;
         if (len > 0) {
-            rbRingBuffer.addBytePos = byteHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask);
+            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
         return p;
     }

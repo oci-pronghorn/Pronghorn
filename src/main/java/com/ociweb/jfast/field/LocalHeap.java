@@ -3,29 +3,42 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import com.ociweb.jfast.error.FASTException;
+
 /**
- * Manage all the text (byte sequences) for all the fields. * Must maintain a
- * minimum count of pointers to reduce GC overhead. * Must be garbage free and
- * not release objects/arrays unless reporting an error. * Must work within the
- * fixed size given or throw. * Must support all the dynamic behavior needed by
- * the operators. * Must support constant time access to each block of text.
+ * Arena memory pattern where we allocate a single block large enough for all the
+ * dynamic fields needs when encoding or decoding.  The dynamic fields are those who's 
+ * size is not always the same like ASCII/UTF-8 text or the byte vector fields.
  * 
+ * Data is moved as needed to make room.  This should be rare because it is expected that
+ * we have enough padding between each field to compensate for regular work.
+ * 
+ * Other "transformations" of these bytes may and should be done at read time.  This allows
+ * decoding to skip this work and it allows the data to be stored in smaller format.  If the
+ * data is never used then the translation need not be done.  Some examples are the conversion of
+ * bytes to chars via the ASCII and UTF-8 encodings.
+ *  
+ *  TODO: D, may want to back this class with ByteBuffer instead of array.
+ *  
  * @author Nathan Tippy
  * 
  */
-public class ByteHeap {
+public class LocalHeap { //TODO: A, delete this class
 
-    private int totalContent = 0; // total bytes consumed by current text.
+    //TODO: B, Modify to a set of static methods with no member methods, do the same in  byteHeap.
+    
+    private int totalContent = 0; // total chars consumed by current text.
     private int totalWorkspace = 0; // working space around each text.
 
-    private final byte[] data;
+    public final byte[] data;
     private final int gapCount;
     private final int dataLength;
     private final int tatLength;
 
-    private final int[] initTat;
+    public final int[] initTat;
     private final byte[] initBuffer;
 
     // remain true unless memory gets low and it has to give up any margin
@@ -33,31 +46,37 @@ public class ByteHeap {
     private final int itemCount;
 
     // text allocation table
-    private final int[] tat;
+    public final int[] tat;
+    public static final int INIT_VALUE_MASK = 0x80000000;
 
-    // 4 ints per text body.
+    // 4 ints per each in ring buffer.
     // start index position (inclusive)
     // stop index limit (exclusive)
     // max prefix append
     // max postfix append
 
-    public ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
+    public LocalHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount) {
         this(singleTextSize, singleGapSize, fixedTextItemCount, 0, new int[0], new byte[0][]);
     }
 
-    public ByteHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, int byteInitTotalLength,
-            int[] byteInitIndex, byte[][] byteInitValue) {
+    public LocalHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, int charInitTotalLength, //TODO: A, rename vars.
+            int[] charInitIndex, byte[][] charInitValue) {
 
+        if (singleTextSize<1) {
+            throw new UnsupportedOperationException("Text length must be 1 or more.");
+        }
+        
         itemCount = fixedTextItemCount;
 
         gapCount = fixedTextItemCount + 1;
         dataLength = (singleGapSize * gapCount) + (singleTextSize * fixedTextItemCount);
-        data = new byte[dataLength];
         tatLength = (fixedTextItemCount << 2);
         tat = new int[tatLength + 1];// plus 1 to get dataLength without
                                      // conditional
         tat[tatLength] = dataLength;
         initTat = new int[fixedTextItemCount << 1];
+
+        data = new byte[dataLength];
 
         int i = tatLength;
         int j = dataLength + (singleTextSize >> 1);
@@ -69,53 +88,50 @@ public class ByteHeap {
             tat[i] = idx;
         }
 
-        if (null == byteInitValue || byteInitValue.length == 0) {
+        if (null == charInitValue || charInitValue.length == 0) {
             initBuffer = null;
         } else {
-            initBuffer = new byte[byteInitTotalLength];
+            initBuffer = new byte[charInitTotalLength];
 
-            int stopIdx = byteInitTotalLength;
+            int stopIdx = charInitTotalLength;
             int startIdx = stopIdx;
 
-            i = byteInitValue.length;
+            i = charInitValue.length;
             while (--i >= 0) {
-                int len = null == byteInitValue[i] ? 0 : byteInitValue[i].length;
+                int len = null == charInitValue[i] ? 0 : charInitValue[i].length;
                 startIdx -= len;
                 if (len > 0) {
-                    System.arraycopy(byteInitValue[i], 0, initBuffer, startIdx, len);
+                    System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, len);
                 }
                 // will be zero zero for values without constants.
-                int offset = byteInitIndex[i] << 1;
+                int offset = charInitIndex[i] << 1;
                 initTat[offset] = startIdx;
                 initTat[offset + 1] = stopIdx;
 
                 stopIdx = startIdx;
             }
         }
+
+        // TODO: T, confirm new constructed LocalHeap matches reset.
+
     }
 
     public void reset() {
 
         int i = itemCount;
         while (--i >= 0) {
-            int b = i << 1;
-
-            if (initTat[b] == initTat[b + 1]) {
-                setNull(i);
-            } else {
-                set(i, initBuffer, initTat[b], initTat[b + 1] - initTat[b]);
-            }
+            setNull(i, this);
         }
     }
 
-    void setZeroLength(int idx) {
+    public static void setZeroLength(int idx, LocalHeap textHeap) {
         int offset = idx << 2;
-        tat[offset + 1] = tat[offset];
+        textHeap.tat[offset + 1] = textHeap.tat[offset];
     }
 
-    public void setNull(int idx) {
+    public static void setNull(int idx, LocalHeap textHeap) {
         int offset = idx << 2;
-        tat[offset + 1] = tat[offset] - 1;
+        textHeap.tat[offset + 1] = textHeap.tat[offset] - 1;
     }
 
     public boolean isNull(int idx) {
@@ -123,20 +139,7 @@ public class ByteHeap {
         return tat[offset + 1] == tat[offset] - 1;
     }
 
-    public int initStartOffset(int idx) {
-        return initTat[idx << 1];
-    }
-    
-    public byte[] rawInitAccess() { //TODO: C, should not be public 
-        return initBuffer;
-    }
-
-    //TODO: C, should not be public
-    public byte[] rawAccess() {
-        return data;
-    }
-
-    //TODO: C, should not be public
+//TODO: A, change these to static.
     public int allocate(int idx, int sourceLen) {
 
         int offset = idx << 2;
@@ -174,7 +177,6 @@ public class ByteHeap {
         return target < 0 ? 0 : target;
     }
 
-  //TODO: C, should not be public 
     public void set(int idx, byte[] source, int startFrom, int copyLength) {
         int offset = idx << 2;
 
@@ -185,8 +187,7 @@ public class ByteHeap {
 
         System.arraycopy(source, startFrom, data, target, copyLength);
     }
-
-    //TODO: C, should not be public 
+    
     public void set(int idx, ByteBuffer source) {
         int offset = idx << 2;
 
@@ -209,9 +210,7 @@ public class ByteHeap {
             totalDesired = makeRoomAfterFirst(offsetNeedingRoom, totalDesired);
         }
         if (totalDesired > 0) {
-            throw new RuntimeException("Must be initialized with more memory for required text. TotalWorkspace:"
-                    + totalWorkspace + " TotalContent:" + totalContent + " DataLength:" + dataLength + " Count:"
-                    + itemCount + " need " + totalDesired);
+            throw new RuntimeException("LocalHeap must be initialized with more ram for required text");
         }
     }
 
@@ -257,9 +256,6 @@ public class ByteHeap {
             int leftBound = 0;
             int rightBound = 0;
             int textLength = tat[offset + 1] - tat[offset];
-            if (textLength < 0) {
-                textLength = 0;
-            }
             int totalNeed = textLength;
 
             if (preserveWorkspace) {
@@ -343,6 +339,9 @@ public class ByteHeap {
             }
 
             int newStart = dataIdx - (rightBound + textLength);
+            if (newStart < 0) {
+                newStart = 0;// will leave more on totalDesired.
+            }
             StringBuilder builder = new StringBuilder();
             inspectHeap(builder);
             // System.err.println("before:"+builder.toString());
@@ -381,28 +380,36 @@ public class ByteHeap {
             i++;
         }
         target.append(']');
+
+    }
+    
+
+    public void appendTail(int idx, int trimTail, int startFrom, ByteBuffer source) {
+        // if not room make room checking after first because thats where we
+        // want to copy the tail.
+        source.mark();
+        source.get(data,  makeSpaceForAppend(idx, trimTail, source.remaining() - startFrom), source.remaining());
+        source.reset();    
+
     }
 
-    // append bytes on to the end of the text after applying trim
+    public void appendTail(int idx, int trimTail, ByteBuffer source, int sourcePos, int sourceLen) {
+        // if not room make room checking after first because thats where we
+        // want to copy the tail.
+        source.mark();
+        source.position(sourcePos);
+        source.get(data,  makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
+        source.reset();    
+
+    }
+    
+    // append chars on to the end of the text after applying trim
     // may need to move existing text or following texts
     // if there is no room after moving everything throws
-  //TODO: C, should not be public
     public void appendTail(int idx, int trimTail, byte[] source, int sourceIdx, int sourceLen) {
         // if not room make room checking after first because thats where we
         // want to copy the tail.
         System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
-    }
-
-    //TODO: C, should not be public.
-    public void appendTail(int idx, int trimTail, ByteBuffer source, int sourceIdx, int sourceLen) {
-        // if not room make room checking after first because thats where we
-        // want to copy the tail.
-        int targetIdx = makeSpaceForAppend(idx, trimTail, sourceLen);
-
-        int stop = sourceIdx + sourceLen;
-        while (sourceIdx < stop) {
-            data[targetIdx++] = source.get(sourceIdx++);
-        }
     }
 
     // never call without calling setZeroLength first then a sequence of these
@@ -437,8 +444,8 @@ public class ByteHeap {
 
     }
 
-    //TODO: C, should not be public
-    public int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
+    //Must remain package protected and never public
+   public int makeSpaceForAppend(int idx, int trimTail, int sourceLen) {
         int textLen = (sourceLen - trimTail);
 
         int offset = idx << 2;
@@ -470,7 +477,8 @@ public class ByteHeap {
         }
     }
 
-    void makeSpaceForAppend(int offset, int textLen) {
+    void makeSpaceForAppend(int offset, int textLen) { 
+
         int floor = offset - 3 >= 0 ? tat[offset - 3] : 0;
         int need = tat[offset + 1] + textLen - tat[offset];
 
@@ -484,32 +492,39 @@ public class ByteHeap {
         tat[offset + 1] = floor + len;
     }
 
-    // append bytes on to the front of the text after applying trim
+    // append chars on to the front of the text after applying trim
     // may need to move existing text or previous texts
     // if there is no room after moving everything throws
-  //TODO: C, should not be public
     public void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen) {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
     }
 
-    //TODO: C, should  not be public
-    public void appendHead(int idx, int trimHead, ByteBuffer source, int sourceIdx, int sourceLen) {
-        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
-
-        int i = sourceLen;
-        while (--i >= 0) {
-            data[targetIdx + i] = source.get(sourceIdx + i);
-        }
+    public void appendHead(int idx, int trimHead, ByteBuffer source) {
+        int targetIdx = makeSpaceForPrepend(idx, trimHead, source.remaining());
+        
+        source.mark();
+        source.get(data, targetIdx, source.remaining());
+        source.reset();   
 
     }
 
+    public void appendHead(int idx, int trimHead, ByteBuffer source, int sourcePos, int sourceLen) {
+        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
+        
+        source.mark();
+        source.position(sourcePos);
+        source.get(data, targetIdx, sourceLen);
+        source.reset();   
+
+    }
+    
     void appendHead(int idx, byte value) {
 
         // everything is now ready to trim and copy.
         data[makeSpaceForPrepend(idx, 0, 1)] = value;
     }
 
-    //TODO: C, should not be public
+  //Must remain package protected and never public
     public int makeSpaceForPrepend(int idx, int trimHead, int sourceLen) {
         int textLength = sourceLen - trimHead;
         if (textLength < 0) {
@@ -530,6 +545,9 @@ public class ByteHeap {
 
         // everything is now ready to trim and copy.
         int newStart = tat[offset] - textLength;
+        if (newStart < 0) {
+            newStart = 0;
+        }
         tat[offset] = newStart;
         return newStart;
     }
@@ -541,6 +559,16 @@ public class ByteHeap {
         }
 
         int start = tat[offset] - textLength;
+
+        if (start < 0) {
+            // must move this right first.
+            makeRoomBeforeFirst(offset, textLength);
+            start = tat[offset] - textLength;
+        }
+        if (start < 0) {
+            start = 0;
+        }
+
         int limit = offset - 3 < 0 ? 0 : tat[offset - 3];
 
         if (start < limit) {
@@ -566,8 +594,36 @@ public class ByteHeap {
     // ////////
     // ////////
 
-    public byte getChar(int idx, int index) {
-        return data[tat[idx << 2] + index];
+    // for ring buffer only where the length was already known
+    public static int copyToRingBuffer(int idx, byte[] target, final int targetIdx, final int targetMask, LocalHeap localHeap) {//Invoked 100's of millions of times, must be tight.
+        // Does not support init values
+        assert (idx > 0);
+
+        final int offset = idx << 2;
+        final int pos = localHeap.tat[offset];
+        final int len = localHeap.tat[offset + 1] - pos;
+
+        int tStart = targetIdx & targetMask;
+        if (1 == len) {
+            // simplification because 1 char can not loop around ring buffer.
+            target[tStart] = localHeap.data[pos];
+        } else {
+            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart, localHeap.data);
+        }
+        return targetIdx + len;
+    }
+
+    private static void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
+            final int len, int tStart, byte[] data) {
+        int tStop = (targetIdx + len) & targetMask;
+        if (tStop > tStart) {
+            System.arraycopy(data, pos, target, tStart, len);
+        } else {
+            // done as two copies
+            int firstLen = 1+ targetMask - tStart;
+            System.arraycopy(data, pos, target, tStart, firstLen);
+            System.arraycopy(data, pos + firstLen, target, 0, len - firstLen);
+        }
     }
 
     public int get(int idx, byte[] target, int targetIdx) {
@@ -586,208 +642,107 @@ public class ByteHeap {
 
             int pos = tat[offset];
             int len = tat[offset + 1] - pos;
-
             System.arraycopy(data, pos, target, targetIdx, len);
             return len;
         }
     }
 
-    public boolean equals(int idx, byte[] target, int targetIdx, int length) {
+    public byte byteAt(int idx, int at) {
+        if (idx < 0) {
+            int offset = idx << 1; // this shift left also removes the top bit!
+                                   // sweet.
+            return initBuffer[initTat[offset] + at];
+        } else {
+            int offset = idx << 2;
+            return data[tat[offset] + at];
+        }
+    }
 
+
+
+    public boolean equals(int idx, ByteBuffer value) {
         int pos;
         int lim;
         byte[] buf;
-        if (idx < 0) {
-            int offset = idx << 1;
-
-            pos = initTat[offset];
-            lim = initTat[offset + 1];
-            buf = initBuffer;
-
-        } else {
-            int offset = idx << 2;
-
-            pos = tat[offset];
-            lim = tat[offset + 1];
-            buf = data;
-        }
-
-        int len = lim - pos;
-        if (len < 0 && length == 0) {
-            return true;
-        }
-
-        int i = length;
-        if (len != i) {
-            return false;
-        }
-
-        while (--i >= 0) {
-            if (target[targetIdx + i] != buf[pos + i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public boolean equals(int idx, ByteBuffer target) {
-
-        int targetIdx = target.position();
-        int length = target.limit() - target.position();
-
-        int pos;
-        int lim;
-        byte[] buf;
-        if (idx < 0) {
-            int offset = idx << 1;
-
-            pos = initTat[offset];
-            lim = initTat[offset + 1];
-            buf = initBuffer;
-
-        } else {
-            int offset = idx << 2;
-
-            pos = tat[offset];
-            lim = tat[offset + 1];
-            buf = data;
-        }
-
-        int len = lim - pos;
-        if (len < 0 && length == 0) {
-            return true;
-        }
-
-        int i = length;
-        if (len != i) {
-            return false;
-        }
-
-        while (--i >= 0) {
-            if (target.get(targetIdx + i) != buf[pos + i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
-        int offset = idx << 2;
-
-        int pos = tat[offset];
-        int limit = tat[offset + 1] - pos;
-        if (sourceLength < limit) {
-            limit = sourceLength;
-        }
-        int i = 0;
-        while (i < limit && data[pos + i] == source[sourceIdx + i]) {
-            i++;
-        }
-        return i;
-    }
-
-    public int countHeadMatch(int idx, ByteBuffer source) {
-        int offset = idx << 2;
-
-        int sourceLength = source.remaining();
-        int sourceIdx = source.position();
-
-        int pos = tat[offset];
-        int limit = tat[offset + 1] - pos;
-        if (sourceLength < limit) {
-            limit = sourceLength;
-        }
-        int i = 0;
-        while (i < limit && data[pos + i] == source.get(sourceIdx + i)) {
-            i++;
-        }
-        return i;
-    }
-
-    public int countTailMatch(int idx, byte[] source, int sourceLength, int sourceLast) {
-        int offset = idx << 2;
-
-        int pos = tat[offset];
-        int lim = tat[offset + 1];
-
-        int limit = Math.min(sourceLength, lim - pos);
-        int i = 1;
-        while (i <= limit && data[lim - i] == source[sourceLast - i]) {
-            i++;
-        }
-        return i - 1;
-    }
-
-    public int countTailMatch(int idx, ByteBuffer source) {
-        int offset = idx << 2;
-
-        int sourceLength = source.remaining();
-        int sourceLast = source.limit();
-
-        int pos = tat[offset];
-        int lim = tat[offset + 1];
-
-        int limit = Math.min(sourceLength, lim - pos);
-        int i = 1;
-        while (i <= limit && data[lim - i] == source.get(sourceLast - i)) {
-            i++;
-        }
-        return i - 1;
-    }
-
-    public int itemCount() {
-        return tatLength >> 2;
-    }
-
-    public int length(int idx) {
-        int result;
-        if (idx < 0) {
-            result = initLength(idx);
-        } else {
-            result = valueLength(idx);
-        }
-        return result < 0 ? 0 : result;
-    }
-
-    public int valueLength(int idx) {
-        int result;
-        int offset = idx << 2;
-        result = tat[offset + 1] - tat[offset];
-        return result;
-    }
-
-    public int initLength(int idx) {
-        int result;
-        int offset = idx << 1; // this shift left also removes the top bit!
-                               // sweet.
-        result = initTat[offset + 1] - initTat[offset];
-        return result;
-    }
-
-    public void copy(int sourceIdx, int targetIdx) {
         int len;
-        int startFrom;
-        byte[] buffer;
-        if (sourceIdx < 0) {
-            int offset = sourceIdx << 1; // this shift left also removes the top
-                                         // bit! sweet.
-            startFrom = initTat[offset];
-            len = initTat[offset + 1] - startFrom;
-            buffer = initBuffer;
+
+        if (idx < 0) {
+            int offset = idx << 1;
+
+            pos = initTat[offset];
+            lim = initTat[offset + 1];
+            buf = initBuffer;
+            len = lim - pos;
         } else {
-            int offset = sourceIdx << 2;
-            startFrom = tat[offset];
-            len = tat[offset + 1] - startFrom;
-            buffer = data;
+            int offset = idx << 2;
+
+            pos = tat[offset];
+            lim = tat[offset + 1];
+            buf = data;
+            len = lim - pos;
         }
         if (len < 0) {
-            setNull(targetIdx);
-            return;
+            if (null == value) {
+                return true;
+            }
+            len = 0;
         }
-        set(targetIdx, buffer, startFrom, length(sourceIdx));
+        int i = value.remaining();
+        if (len != i) {
+            return false;
+        }
+
+        int position = value.position();
+
+        while (--i >= 0) {
+            if ( value.get(position+i) != buf[pos + i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    public int getIntoRing(int idx, int[] target, int targetIdx, int targetMask) {
+    public boolean equals(int idx, byte[] target, int targetIdx, int length) {
+       // System.err.println(idx +"  "+length);
+        if (idx < 0) {
+            int offset = idx << 1;
+            return eq(target, targetIdx, length, initTat[offset], initTat[offset + 1], initBuffer);
+        } else {
+            int offset = idx << 2;
+            return eq(target, targetIdx, length, tat[offset], tat[offset + 1], data);
+        }
+    }
+
+    private boolean eq(byte[] target, int targetIdx, int length, int pos, int lim, byte[] buf) {
+        int len = lim - pos;
+        if (len != length) {
+            return false;
+        }
+        if (len>0) {
+            int i = length;
+            while (--i >= 0) {
+                if (target[targetIdx + i] != buf[pos + i]) {
+              //      System.err.println(len+" and "+length);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    
+    //TODO: A, ring buffer will only have 1 inner ring of bytes.
+    //TODO: need UTF8 write to ringBuffer and UTF8 read from ring buffer.
+
+        
+    /**
+     * Primary method for copying data out of the local heap.  This is build for writing
+     * into the ring buffer.  Once there it can be consumed by the client and translated
+     * as needed into UTF8 chars etc.
+     * 
+     */
+    public int getIntoRing(int idx, byte[] target, int targetIdx, int targetMask) {
         byte[] buf;
         int len;
         int pos;
@@ -809,57 +764,202 @@ public class ByteHeap {
         }
 
         int i = len;
-        int j = 4;
-        int v = 0;
-        int k = (len + 3) >>> 2;
-        while (--i >= 0) {// NOTE: may want to unroll if this becomes a problem.
-            // int value = Integer.
-            if (--j >= 0) {
-                v = (v << 8) | buf[pos + i];
-            }
-            if (j == 0) {
-                target[(targetMask) & (targetIdx + k)] = v;
-                k--;
-                j = 4;
-            }
-
-        }
-        if (j != 4) {
-            target[(targetMask) & (targetIdx + k)] = v;
+        while (--i >= 0) {
+            target[(targetMask) & (targetIdx + i)] = buf[pos + i];
         }
 
         return len;
+
+    }
+    
+    public String toString(int idx) {
+        byte[] buf;
+        int len;
+        int pos;
+        if (idx < 0) {
+            int offset = idx << 1; // this shift left also removes the top bit!
+                                   // sweet.
+
+            pos = initTat[offset];
+            len = initTat[offset + 1] - pos;
+            buf = initBuffer;
+
+        } else {
+
+            int offset = idx << 2;
+
+            pos = tat[offset];
+            len = tat[offset + 1] - pos;
+            buf = data;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        
+        
+        int i = len;
+        while (--i >= 0) {
+            builder.append(',').append(buf[pos++]);
+        }
+
+        return builder.toString();
     }
 
-    public int copyToRingBuffer(int idx, byte[] target, final int targetIdx, final int targetMask) {
-        // Does not support init values
-        assert (idx > 0);
+    public int countHeadMatch(int idx, ByteBuffer source) {
+        int offset = idx << 2;
 
+        int sourceLength = source.remaining();
+        int sourceIdx = source.position();
+
+        int pos = tat[offset];
+        int limit = tat[offset + 1] - pos;
+        if (sourceLength < limit) {
+            limit = sourceLength;
+        }
+        int i = 0;
+        while (i < limit && data[pos + i] == source.get(sourceIdx + i)) {
+            i++;
+        }
+        return i;
+    }
+
+    public int countTailMatch(int idx, ByteBuffer source) {
+        int offset = idx << 2;
+
+        int sourceLength = source.remaining();
+        int sourceLast = source.limit();
+
+        int pos = tat[offset];
+        int lim = tat[offset + 1];
+
+        int limit = Math.min(sourceLength, lim - pos);
+        int i = 1;
+        while (i <= limit && data[lim - i] == source.get(sourceLast - i)) {
+            i++;
+        }
+        return i - 1;
+    }
+    
+    public int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int limit = tat[offset + 1] - pos;
+        if (sourceLength < limit) {
+            limit = sourceLength;
+        }
+        int i = 0;
+        while (i < limit && data[pos + i] == source[sourceIdx + i]) {
+            i++;
+        }
+        return i;
+    }
+
+    public int countTailMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int lim = tat[offset + 1];
+
+        int limit = Math.min(sourceLength, lim - pos);
+        int i = 1;
+        while (i <= limit && data[lim - i] == source[sourceIdx - i]) {
+            i++;
+        }
+        return i - 1;
+    }
+
+    public int itemCount() {
+        return tatLength >> 2;
+    }
+
+    public int initStartOffset(int idx) {
+        return initTat[idx << 1];
+    }
+
+    public int length(int idx) {
+        int result = (idx < 0 ? initLength(idx) : valueLength(idx));
+        return result < 0 ? 0 : result;
+    }
+
+    public int valueLength(int idx) {
+        int offset = idx << 2;
+        return tat[offset + 1] - tat[offset];
+    }
+
+    public static int valueLength(int idx, int[] tat) {
+        int offset = idx << 2;
+        return tat[offset + 1] - tat[offset];
+    }
+
+    public int initLength(int idx) {
+        int offset = idx << 1; // this shift left also removes the top bit!
+                               // sweet.
+        return initTat[offset + 1] - initTat[offset];
+    }
+
+    public static int initLength(int idx, int[] initTat) {
+        int offset = idx << 1; // this shift left also removes the top bit!
+                               // sweet.
+        return initTat[offset + 1] - initTat[offset];
+    }
+
+    public void copy(int sourceIdx, int targetIdx) {
+        int len;
+        int startFrom;
+        byte[] buffer;
+        if (sourceIdx < 0) {
+            int offset = sourceIdx << 1; // this shift left also removes the top
+                                         // bit! sweet.
+            startFrom = initTat[offset];
+            len = initTat[offset + 1] - startFrom;
+            buffer = initBuffer;
+        } else {
+            int offset = sourceIdx << 2;
+            startFrom = tat[offset];
+            len = tat[offset + 1] - startFrom;
+            buffer = data;
+        }
+        if (len < 0) {
+            setNull(targetIdx, this);
+            return;
+        }
+        set(targetIdx, buffer, startFrom, length(sourceIdx));
+    }
+
+    public int start(int offset) {
+        return tat[offset];
+    }
+
+    public int stop(int offset) {
+        return tat[offset + 1];
+    }
+
+    public void reset(int idx) {
+        int offset = idx << 1; // this shift left also removes the top bit!
+                               // sweet.
+        int startFrom = initTat[offset];
+        int len = initTat[offset + 1] - startFrom;
+        set(idx, initBuffer, startFrom, len);
+
+    }
+
+    public static void setSingleByte(byte b, int idx, LocalHeap textHeap) {
+        // This implementation assumes that all text can always support length of 1. Enforced in constructor.
         final int offset = idx << 2;
-        final int pos = tat[offset];
-        final int len = tat[offset + 1] - pos;
+                
+        int targIndex = textHeap.tat[offset]; // because we have zero length
 
-        int tStart = targetIdx & targetMask;
-        if (1 == len) {
-            // simplification because 1 char can not loop around ring buffer.
-            target[tStart] = data[pos];
-        } else {
-            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart);
-        }
-        return targetIdx + len;
+        textHeap.data[targIndex] = b;
+        textHeap.tat[offset + 1] = 1 + targIndex;
     }
 
-    private void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
-            final int len, int tStart) {
-        int tStop = (targetIdx + len) & targetMask;
-        if (tStop > tStart) {
-            System.arraycopy(data, pos, target, tStart, len);
-        } else {
-            // done as two copies
-            int firstLen = targetMask - tStart;
-            System.arraycopy(data, pos, target, tStart, firstLen);
-            System.arraycopy(data, pos + firstLen, target, 0, len - firstLen);
-        }
+    public byte[] rawAccess() {
+        return data;
     }
+
+    public byte[] rawInitAccess() {
+        return initBuffer;
+    }
+
 
 }

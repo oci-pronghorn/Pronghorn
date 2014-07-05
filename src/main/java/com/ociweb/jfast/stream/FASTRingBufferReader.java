@@ -55,6 +55,12 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
     }
 
+    //TODO: A, 1. read as UTF and ASCII
+    //TODO: A, 2. write as UTF dnd ASCII
+    //TODO: A, 3. remove byte heap.
+    //TODO: A, 4. remove text heap.
+    
+    
     public static Appendable readText(FASTRingBuffer ring, int idx, Appendable target) {
         int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readTextLength(ring, idx);

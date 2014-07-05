@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -145,7 +145,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
 
     @Override
-    protected void genReadCopyBytes(int source, int target, ByteHeap byteHeap) {
+    protected void genReadCopyBytes(int source, int target, LocalHeap byteHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, source, target);
     }
     
@@ -499,49 +499,49 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDefault(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx,defIdx, defLen, optOff);
     }
     
     @Override
-    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, ByteHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesCopy(int idx, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx, optOff);
     }
     
     @Override
-    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDeltaOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTailOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesDelta(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesTail(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNoneOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, ByteHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    protected void genReadBytesNone(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
 
     // dictionary reset
     
     @Override
-    protected void genReadDictionaryBytesReset(int idx, ByteHeap byteHeap) {
+    protected void genReadDictionaryBytesReset(int idx, LocalHeap byteHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     

@@ -7,13 +7,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -63,9 +64,18 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     @Test
     public void bytesTest() {
-        int[] types = new int[] { TypeMask.ByteArray, TypeMask.ByteArrayOptional, };
-        int[] operators = new int[] { OperatorMask.Field_None, OperatorMask.Field_Constant, OperatorMask.Field_Copy,
-                OperatorMask.Field_Default, OperatorMask.Field_Delta, OperatorMask.Field_Tail, };
+        int[] types = new int[] { 
+                TypeMask.ByteArray,
+                TypeMask.ByteArrayOptional,
+                };
+        int[] operators = new int[] { 
+                OperatorMask.Field_None, 
+             //   OperatorMask.Field_Constant, 
+                OperatorMask.Field_Copy,
+             //   OperatorMask.Field_Default, 
+                OperatorMask.Field_Delta, 
+                OperatorMask.Field_Tail, 
+                };
 
         byteTester(types, operators, "Bytes");
     }
@@ -81,7 +91,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int singleGapSize = 8;
         int fixedTextItemCount = 16; // must be power of two
 
-        ByteHeap dictionaryWriter = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
+        LocalHeap dictionaryWriter = new LocalHeap(singleSize, singleGapSize, fixedTextItemCount);
 
         int token = TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_Tail, 0,
                 TokenBuilder.MASK_ABSENT_DEFAULT);
@@ -102,7 +112,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         FASTInput input = new FASTInputByteArray(buffer);
         PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
 
-        ByteHeap dictionaryReader = new ByteHeap(singleSize, singleGapSize, fixedTextItemCount);
+        LocalHeap dictionaryReader = new LocalHeap(singleSize, singleGapSize, fixedTextItemCount);
         int byteInstanceMask = null == dictionaryReader ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,
         dictionaryReader.itemCount() - 1);
 
@@ -137,7 +147,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     }
 
-    private int readBytesTail(int idx, PrimitiveReader reader, ByteHeap byteHeap) {
+    private int readBytesTail(int idx, PrimitiveReader reader, LocalHeap byteHeap) {
         int id;
         int trim = PrimitiveReader.readIntegerUnsigned(reader);
         int length = PrimitiveReader.readIntegerUnsigned(reader);
@@ -150,7 +160,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     
-    private int readBytesDefault(int idx3, PrimitiveReader reader, ByteHeap byteHeap) {
+    private int readBytesDefault(int idx3, PrimitiveReader reader, LocalHeap byteHeap) {
         int id;
         int result;
         if (PrimitiveReader.readPMapBit(reader) == 0) {
@@ -165,7 +175,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         return id;
     }
 
-    private int readBytesDelta(int idx1, PrimitiveReader reader, ByteHeap byteHeap) {
+    private int readBytesDelta(int idx1, PrimitiveReader reader, LocalHeap byteHeap) {
         int id;
         int trim = PrimitiveReader.readIntegerSigned(reader);
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
@@ -180,7 +190,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         return id;
     }
 
-    private void writeBytesDefault(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+    private void writeBytesDefault(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
@@ -192,7 +202,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         }
     }
 
-    private void writeBytesCopy(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+    private void writeBytesCopy(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         
         if (byteHeap.equals(idx, value, offset, length)) {
@@ -209,7 +219,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     private void writeBytesConstant() {
     }
 
-    private void writeBytesDelta(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+    private void writeBytesDelta(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         
         //count matching front or back chars
@@ -238,7 +248,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         }
     }
 
-    private void writeBytesTail(PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
+    private void writeBytesTail(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
         
@@ -372,7 +382,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         PrimitiveReader.reset(reader);
         TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 7, maxGroupCount * 10, 0, -1);
         FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
-        ByteHeap byteHeap = fr.byteHeap;
+        LocalHeap byteHeap = fr.byteHeap;
 
         int token = 0;
         int prevToken = 0;
@@ -407,9 +417,16 @@ public class StreamingBytesTest extends BaseStreamingTest {
                         try {
                             int textIdx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(0));
 
-                            byte[] tdc = testConst;
-                            assertTrue("Error:" + TokenBuilder.tokenToString(token),
-                                    byteHeap.equals(textIdx, tdc, 0, tdc.length));
+                            byte[] tdc = testConst;                           
+                            
+                            assertEquals(tdc.length, byteHeap.length(textIdx));
+                            
+                            if (0!=tdc.length) {
+                                assertTrue("Error:" + TokenBuilder.tokenToString(token)+ 
+                                           "\n " + Arrays.toString(tdc) +
+                                           " vs \n" + byteHeap.toString(textIdx),
+                                        byteHeap.equals(textIdx, tdc, 0, tdc.length));
+                            }
 
                         } catch (Exception e) {
                             System.err.println("expected text; " + testData[f]);

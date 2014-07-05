@@ -17,7 +17,7 @@ import com.ociweb.jfast.error.FASTException;
  * @author Nathan Tippy
  * 
  */
-public class TextHeap {
+public class TextHeap { //TODO: A, delete this class
 
     //TODO: B, Modify to a set of static methods with no member methods, do the same in  byteHeap.
     

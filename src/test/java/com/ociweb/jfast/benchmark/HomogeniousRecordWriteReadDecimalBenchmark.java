@@ -19,6 +19,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
+import com.ociweb.jfast.stream.BaseStreamingTest;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
@@ -309,7 +310,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                         int idx = token & staticWriter.longInstanceMask;
 
-                        staticWriter.writeNullLong(token, idx, writer, staticWriter.longValues);
+                        BaseStreamingTest.writeNullLong(token, idx, writer, staticWriter.longValues);
                     } else {
                         staticWriter.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbPos+1, rbRingBufferLocal, writer);
                     }

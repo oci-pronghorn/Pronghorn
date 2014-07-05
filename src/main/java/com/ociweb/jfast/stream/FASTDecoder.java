@@ -1,6 +1,6 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -26,7 +26,7 @@ public abstract class FASTDecoder{
     //dictionary data
     protected final long[] rLongDictionary;
     protected final int[] rIntDictionary;
-    protected final ByteHeap byteHeap;
+    protected final LocalHeap byteHeap;
     protected final TextHeap textHeap;
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.

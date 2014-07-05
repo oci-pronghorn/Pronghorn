@@ -9,6 +9,7 @@ import java.nio.MappedByteBuffer;
 
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
@@ -356,6 +357,41 @@ public abstract class BaseStreamingTest {
 	}
 
 
+    //TODO: A, delete null method and its gen methods.
+    public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
+        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                // None and Delta (both do not use pmap)
+                dictionary[idx] = 0;
+                PrimitiveWriter.writeNull(writer);  
+                // no pmap, yes change to last value
+            } else {
+                // Copy and Increment
+                if (0 == dictionary[idx]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    dictionary[idx] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } // yes pmap, yes change to last value
+            }
+        } else {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                StaticGlue.nullPMap(writer);  // null for const optional
+            } else {
+                // default
+                if (dictionary[idx] == 0) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } 
+            }
+        }
+    }
+
+
     /**
      * Write null value, must only be used if the field id is one of optional
      * type.
@@ -391,7 +427,7 @@ public abstract class BaseStreamingTest {
                 // long
                 int idx = token & fw.longInstanceMask;
                 
-                fw.writeNullLong(token, idx, writer, fw.longValues);
+                BaseStreamingTest.writeNullLong(token, idx, writer, fw.longValues);
             }
         } else {
             // text decimal bytes
@@ -420,7 +456,7 @@ public abstract class BaseStreamingTest {
     
                     int idx1 = token & fw.longInstanceMask;
                     
-                    fw.writeNullLong(token, idx1, writer, fw.longValues);
+                    BaseStreamingTest.writeNullLong(token, idx1, writer, fw.longValues);
                 } else {
                     // byte
                     fw.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask);

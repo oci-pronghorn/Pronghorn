@@ -200,7 +200,7 @@ public class StaticGlue {
     }
 
     //byte methods
-    public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, ByteHeap byteHeap, PrimitiveWriter writer) {
+    public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, LocalHeap byteHeap, PrimitiveWriter writer) {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(idx)-tailCount;
@@ -212,7 +212,7 @@ public class StaticGlue {
         writer.writeByteArrayData(value, offset, len, writer);
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
-    public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, ByteHeap byteHeap, PrimitiveWriter writer) {
+    public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, LocalHeap byteHeap, PrimitiveWriter writer) {
                    
         int trimTail = byteHeap.length(idx)-headCount;
         if (trimTail<0) {

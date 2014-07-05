@@ -154,7 +154,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
                                 int idx = token & fw.longInstanceMask;
                                 
-                                fw.writeNullLong(token, idx, writer, fw.longValues);
+                                BaseStreamingTest.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
                                 fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbPos+1, rbRingBufferLocal, writer);
                             }

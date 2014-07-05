@@ -5,7 +5,7 @@ package com.ociweb.jfast.stream;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.jfast.field.ByteHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
@@ -42,9 +42,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     public void acceptLongSignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         
-        if (value == valueOfNull) {
-            writeNullLong(token, token & longInstanceMask, writer, longValues); //TODO: A, this is wrong and must be gens
-        }
         int target = (token & longInstanceMask);
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -53,22 +50,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    //
-                    //dictionary[target] = 0; //for none and delta
-                    //PrimitiveWriter.writeNull(writer);
-                    genWriteLongSignedOptional(valueOfNull, target,  writer, rbPos, rbRingBuffer);
+                    genWriteLongSignedOptional(valueOfNull, target,  writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    //dictionary[target] = 0; //for none and delta
-                    //PrimitiveWriter.writeNull(writer);
                     genWriteLongSignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                //StaticGlue.nullPMap(writer);  // null for const optional
                 genWriteLongSignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
@@ -76,15 +67,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                
-                //for copy and inc
-//              if (0 == dictionary[target]) { // stored value was null;
-//                  PrimitiveWriter.writePMapBit((byte) 0, writer);
-//              } else {
-//                  dictionary[target] = 0;
-//                  PrimitiveWriter.writePMapBit((byte) 1, writer);
-//                  PrimitiveWriter.writeNull(writer);
-//              }
                 
                 // copy, increment
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
@@ -96,17 +78,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     genWriteLongSignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
-                // default
-                
-//                if (dictionary[target] == 0) { // stored value was null; //for default
-//                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-//                } else {
-//                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-//                    PrimitiveWriter.writeNull(writer);
-//                }
+                // default              
                 
                 int idx = token & longInstanceMask;
-                long constDefault = longValues[idx];
+                long constDefault = longValues[idx];                
                 
                 genWriteLongSignedDefaultOptional(valueOfNull, target, constDefault, writer, rbPos, rbRingBuffer);
             }
@@ -181,11 +156,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
     void acceptLongUnsignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
-        
-        if (value == valueOfNull) {
-            writeNullLong(token, token & longInstanceMask, writer, longValues); //TODO: A, this is wrong and must be gens
-        }
-        
+
         int target = token & longInstanceMask;
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -194,21 +165,18 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    //dictionary[target] = 0; //for none and delta
-                    //PrimitiveWriter.writeNull(writer);
-                    genWriteLongUnsignedNoneOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedNoneOptional(valueOfNull, target, writer, longValues, rbPos, rbRingBuffer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    //dictionary[target] = 0; //for none and delta
-                    //PrimitiveWriter.writeNull(writer);
+
                     genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                // StaticGlue.nullPMap(writer);  // null for const optional
+
                 genWriteLongUnsignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
@@ -216,15 +184,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         } else {
             // copy, default, increment
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-                
-                //for copy and inc
-//                if (0 == dictionary[target]) { // stored value was null;
-//                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-//                } else {
-//                    dictionary[target] = 0;
-//                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-//                    PrimitiveWriter.writeNull(writer);
-//                }
                 
                 // copy, increment
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
@@ -236,14 +195,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
                 }
             } else {
-                // default
-                
-//              if (dictionary[target] == 0) { // stored value was null; //for default
-//              PrimitiveWriter.writePMapBit((byte) 0, writer);
-//          } else {
-//              PrimitiveWriter.writePMapBit((byte) 1, writer);
-//              PrimitiveWriter.writeNull(writer);
-//          }
+                // default               
                 
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
@@ -583,7 +535,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    private void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, ByteHeap byteHeap) {
+    private void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -649,7 +601,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
     }
 
-    private void acceptByteBufferOptional(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    private void acceptByteBufferOptional(int token, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -687,7 +639,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
 
-    private void acceptByteBuffer(int token, ByteBuffer value, PrimitiveWriter writer, ByteHeap byteHeap) {
+    private void acceptByteBuffer(int token, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1290,13 +1242,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
-                    if (length < 0) {
-                        writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap);
-                    } else {
-                        char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
-                        write(token, ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length),writer);
-                    }
+                    acceptText(writer, token, rbRingBuffer);
                     fieldPos+=2;
                 } else {
                     // 011??
@@ -1461,6 +1407,46 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
         return false;
+    }
+
+
+    private void acceptText(PrimitiveWriter writer, int token, FASTRingBuffer rbRingBuffer) {
+        assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
+        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+
+        int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
+        if (length < 0) {
+            writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes.
+        } else {
+            char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
+            CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length);
+            
+            if (readFromIdx>=0) {
+                int source = token & TEXT_INSTANCE_MASK;
+                int target = readFromIdx & TEXT_INSTANCE_MASK;
+                genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
+                readFromIdx = -1; //reset for next field where it might be used.
+            }
+            
+            if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                // the work.
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    // ascii
+                    acceptCharSequenceASCII(token, value, writer, textHeap);
+                } else {
+                    // utf8
+                    acceptCharSequenceUTF8(token, value, writer);
+                }
+            } else {
+                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    // ascii optional
+                    acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
+                } else {
+                    // utf8 optional
+                    acceptCharSequenceUTF8Optional(token, value, writer);
+                }
+            }
+        }
     }
 
     private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, long mantissa, int rbPos, FASTRingBuffer rbRingBuffer) {
@@ -1770,28 +1756,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         genWritePreamble(preambleData, writer);
     }
 
-    //TODO: A, delete null method and its gen methods.
-    public void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta (both do not use pmap)
-                genWriteNullNoPMapLong(idx, writer, dictionary);  
-                // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-                genWriteNullCopyIncLong(idx, writer, dictionary); // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                genWriteNullPMap(writer);
-            } else {
-                // default
-                genWriteNullDefaultLong(idx, writer, dictionary); 
-            }
-        }
-    }
-    
     public void writeNullText(int token, int idx, PrimitiveWriter writer, TextHeap textHeap) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -1813,7 +1777,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    public void writeNullBytes(int token, PrimitiveWriter writer, ByteHeap byteHeap, int instanceMask) {
+    public void writeNullBytes(int token, PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask) {
         
         if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
             if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
