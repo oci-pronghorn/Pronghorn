@@ -52,7 +52,7 @@ public final class FASTRingBuffer {
     final int maxByteSize;
     final int byteMask;
     final byte[] byteBuffer;
-    int addBytePos = 0;
+    public int addBytePos = 0;
     
     //TODO: A, only have 1 of these just the bytes,
     final char[] constTextBuffer; //defined externally and never changes

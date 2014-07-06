@@ -70,9 +70,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 };
         int[] operators = new int[] { 
                 OperatorMask.Field_None, 
-             //   OperatorMask.Field_Constant, 
+                OperatorMask.Field_Constant, 
                 OperatorMask.Field_Copy,
-             //   OperatorMask.Field_Default, 
+                OperatorMask.Field_Default,
                 OperatorMask.Field_Delta, 
                 OperatorMask.Field_Tail, 
                 };
@@ -103,11 +103,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
         writeBytesDelta(writer, dictionaryWriter, instanceMask, token, value, offset, length);
         writeBytesConstant();
 
-        writer.openPMap(1, writer);
+        PrimitiveWriter.openPMap(1, writer);
         writeBytesCopy(writer, dictionaryWriter, instanceMask, token, value, offset, length);
         writeBytesDefault(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        writer.closePMap(writer);
-        writer.flush(writer);
+        PrimitiveWriter.closePMap(writer);
+        PrimitiveWriter.flush(writer);
 
         FASTInput input = new FASTInputByteArray(buffer);
         PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -194,11 +194,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int idx = token & instanceMask;
         
         if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+            PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
-        	writer.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length, writer);
-        	writer.writeByteArrayData(value,offset,length, writer);
+            PrimitiveWriter.writePMapBit((byte)1, writer);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
         }
     }
 
@@ -206,12 +206,12 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int idx = token & instanceMask;
         
         if (byteHeap.equals(idx, value, offset, length)) {
-        	writer.writePMapBit((byte)0, writer);
+            PrimitiveWriter.writePMapBit((byte)0, writer);
         }
         else {
-        	writer.writePMapBit((byte)1, writer);
-        	writer.writeIntegerUnsigned(length, writer);
-        	writer.writeByteArrayData(value,offset,length, writer);
+            PrimitiveWriter.writePMapBit((byte)1, writer);
+            PrimitiveWriter.writeIntegerUnsigned(length, writer);
+            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
         	byteHeap.set(idx, value, offset, length);
         }
     }
@@ -227,22 +227,22 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
         if (headCount>tailCount) {
         	int trimTail = byteHeap.length(idx)-headCount;
-            writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
+        	PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
             
             int valueSend = length-headCount;
             int startAfter = offset+headCount+headCount;
             
-            writer.writeIntegerUnsigned(valueSend, writer);
-            writer.writeByteArrayData(value, startAfter, valueSend, writer);
+            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
             byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
         } else {
         	//replace head, tail matches to tailCount
             int trimHead = byteHeap.length(idx)-tailCount;
-            writer.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
+            PrimitiveWriter.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
             
             int len = length - tailCount;
-            writer.writeIntegerUnsigned(len, writer);
-            writer.writeByteArrayData(value, offset, len, writer);
+            PrimitiveWriter.writeIntegerUnsigned(len, writer);
+            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
             
             byteHeap.appendHead(idx, trimHead, value, offset, len);
         }
@@ -253,13 +253,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
         
         int trimTail = byteHeap.length(idx)-headCount;
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
         
         int valueSend = length-headCount;
         int startAfter = offset+headCount;
         
-        writer.writeIntegerUnsigned(valueSend, writer);
-        writer.writeByteArrayData(value, startAfter, valueSend, writer);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
     }
 
@@ -445,16 +445,18 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(0));
+                            int heapIdx = fr.readBytes(tokenLookup[f], reader, fr.ringBuffer(0));
 
                             if ((1 & i) == 0) {
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
-                                        + TokenBuilder.tokenToString(prevToken), byteHeap.equals(textIdx, testData[f]));
+                                        + TokenBuilder.tokenToString(prevToken), byteHeap.equals(heapIdx, testData[f]));
                             } else {
                                 byte[] tdc = testDataBytes[f];
-                                assertTrue("Error:" + TokenBuilder.tokenToString(token),
-                                        byteHeap.equals(textIdx, tdc, 0, tdc.length));
-
+                                assertEquals(tdc.length, byteHeap.length(heapIdx));
+                                if (tdc.length>0) { //TODO: B, FIX equals does not work with zero length, need unit test
+                                    assertTrue("Error:" + TokenBuilder.tokenToString(token)+ " length "+tdc.length,
+                                            byteHeap.equals(heapIdx, tdc, 0, tdc.length));
+                                }
                             }
 
                         } catch (Exception e) {
@@ -494,12 +496,12 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     public long totalWritten() {
-        return writer.totalWritten(writer);
+        return PrimitiveWriter.totalWritten(writer);
     }
 
     protected void resetOutputWriter() {
         output.reset();
-        writer.reset(writer);
+        PrimitiveWriter.reset(writer);
     }
 
     protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {

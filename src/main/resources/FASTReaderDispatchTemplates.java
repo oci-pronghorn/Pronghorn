@@ -1843,17 +1843,27 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadBytesNoneOptional(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
+        
+        if (length<0) {
+            //LocalHeap.setNull(target, byteHeap);
+            FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addBytePos);
+            FASTRingBuffer.addValue(rbB, rbMask, rbPos, length);
+            return;
+        }
+        
+        
         PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.allocate(target, length), length, reader);
-        int len = byteHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeBytesToRingBuffer(target, len, byteHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
+     //   int len = byteHeap.valueLength(target);
+        
+        FASTRingBuffer.addValue(rbB, rbMask, rbPos, FASTRingBuffer.writeBytesToRingBuffer(target, length, byteHeap, rbRingBuffer));
+        FASTRingBuffer.addValue(rbB, rbMask, rbPos, length);
     }
 
     protected void genReadBytesNone(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PaddedLong rbPos, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 0;
         PrimitiveReader.readByteData(byteHeap.rawAccess(), byteHeap.allocate(target, length), length, reader);
         int len = byteHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeBytesToRingBuffer(target, len, byteHeap, rbRingBuffer));
+        FASTRingBuffer.addValue(rbB, rbMask,rbPos, FASTRingBuffer.writeBytesToRingBuffer(target, len, byteHeap, rbRingBuffer));
         FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
     }
 

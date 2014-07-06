@@ -240,7 +240,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                 fr.dispatchReadByTokenForText(tokenLookup[f], reader);
                 FASTRingBuffer.unBlockFragment(ringBuffer);
                 
-                int len = FASTRingBufferReader.readTextLength(ringBuffer, 0);
+                int len = FASTRingBufferReader.readDataLength(ringBuffer, 0);
                 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     

@@ -212,6 +212,7 @@ public final class PrimitiveReader {
         if (reader.limit - reader.position < length) {
             fetch(length, reader);
         }
+       // System.err.println("reading length:"+length+" from "+offset);
         System.arraycopy(reader.buffer, reader.position, target, offset, length);
         reader.position += length;
     }

@@ -192,7 +192,7 @@ public class TemplateLoaderTest {
                         // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 
                         if (isText(token)) {
-                            totalBytesOut.addAndGet(4 * FASTRingBufferReader.readTextLength(queue, bufferIdx));
+                            totalBytesOut.addAndGet(4 * FASTRingBufferReader.readDataLength(queue, bufferIdx));
                         }
 
                         // find the next index after this token.

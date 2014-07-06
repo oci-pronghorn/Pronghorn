@@ -1414,7 +1414,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
-        int length = FASTRingBufferReader.readTextLength(rbRingBuffer, fieldPos);
+        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
         if (length < 0) {
             writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes.
         } else {
@@ -1717,7 +1717,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
             } else if (type == TypeMask.TextASCII || type == TypeMask.TextASCIIOptional || type == TypeMask.TextUTF8
                     || type == TypeMask.TextUTF8Optional) {
-                value = "<len:" + FASTRingBufferReader.readTextLength(queue, fieldPos) + ">";
+                value = "<len:" + FASTRingBufferReader.readDataLength(queue, fieldPos) + ">";
             }
 
             // TotalWritten is updated each time the pump pulls more bytes to
