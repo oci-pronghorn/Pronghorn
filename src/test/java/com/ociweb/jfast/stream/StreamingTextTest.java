@@ -169,7 +169,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                             fw.write(token, testConstSeq, writer);
                         } else {
                             char[] array = testConst;
-                            fw.write(token, array, 0, array.length, writer);
+                            StreamingTextTest.write(token, array, 0, array.length, writer, fw);
                         }
                     }
                 } else {
@@ -180,7 +180,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                             fw.write(token, testData[f], writer);
                         } else {
                             char[] array = testDataChars[f];
-                            fw.write(token, array, 0, array.length, writer);
+                            StreamingTextTest.write(token, array, 0, array.length, writer, fw);
                         }
                     }
                 }
@@ -277,7 +277,13 @@ public class StreamingTextTest extends BaseStreamingTest {
                     } else {
                         try {
                            
-                            if (!FASTRingBufferReader.eqText(ringBuffer, 0, testData[f])) {
+                            if (!FASTRingBufferReader.eqText(ringBuffer, 0, testData[f]) //TODO: A, remove once migration is complete.
+                                &&
+                                !FASTRingBufferReader.eqASCII(ringBuffer, 0, testData[f])
+                                &&
+                                !FASTRingBufferReader.eqUTF8(ringBuffer, 0, testData[f])
+                                    
+                                    ) {
                                 assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]),
                                         testData[f],
                                         FASTRingBufferReader.readText(ringBuffer, 0, new StringBuilder()).toString());
@@ -355,6 +361,31 @@ public class StreamingTextTest extends BaseStreamingTest {
     protected void buildInputReader(int maxGroupCount, byte[] writtenData, int writtenBytes) {
         input = new FASTInputByteArray(writtenData, writtenBytes);
         reader = new PrimitiveReader(writtenData.length, input, maxGroupCount);
+    }
+
+    private static void write(int token, char[] value, int offset, int length, PrimitiveWriter writer, FASTWriterInterpreterDispatch dispatch) {
+    
+        assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
+        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+    
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                            // the work.
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                // ascii
+                dispatch.acceptCharArrayASCII(token, value, offset, length, writer);
+            } else {
+                // utf8
+                dispatch.acceptCharArrayUTF8(token, value, offset, length, writer);
+            }
+        } else {
+            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                // ascii optional
+                dispatch.acceptCharArrayASCIIOptional(token, value, offset, length, writer);
+            } else {
+                // utf8 optional
+                dispatch.acceptCharArrayUTF8Optional(token, value, offset, length, writer);
+            }
+        }
     }
 
 }

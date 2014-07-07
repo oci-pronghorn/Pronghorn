@@ -771,8 +771,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     genWriteUTFTextNone(value, writer);
                 } else {
                     // tail
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
+                    int idx = token & TEXT_INSTANCE_MASK;                    
                     
                     genWriteUTFTextTail(idx, value, writer, textHeap);
                 }
@@ -923,40 +922,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-
-    public void write(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
-
-        assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-        
-        if (readFromIdx>=0) {
-            int source = token & TEXT_INSTANCE_MASK;
-            int target = readFromIdx & TEXT_INSTANCE_MASK;
-            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
-            readFromIdx = -1; //reset for next field where it might be used.
-        }
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                            // the work.
-            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                // ascii
-                acceptCharArrayASCII(token, value, offset, length, writer);
-            } else {
-                // utf8
-                acceptCharArrayUTF8(token, value, offset, length, writer);
-            }
-        } else {
-            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                // ascii optional
-                acceptCharArrayASCIIOptional(token, value, offset, length, writer);
-            } else {
-                // utf8 optional
-                acceptCharArrayUTF8Optional(token, value, offset, length, writer);
-            }
-        }
-    }
-
-    private void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
+    public void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1006,7 +972,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
 
-    private void acceptCharArrayUTF8(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
+    public void acceptCharArrayUTF8(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1014,12 +980,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                                                                 // all the work.
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
+                    // none             
+                    
+                    
                     genWriteTextUTFNone(offset, length, value, writer);
 
                 } else {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
+                    
+                    //Where to we convert the chars into bytes?
                     
                     genWriteTextUTFTail(idx, offset, length, value, writer, textHeap);
                 }
@@ -1055,7 +1025,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    private void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
+    public void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1101,7 +1071,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
 
-    private void acceptCharArrayASCII(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
+    public void acceptCharArrayASCII(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.

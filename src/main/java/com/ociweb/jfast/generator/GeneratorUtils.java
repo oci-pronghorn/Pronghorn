@@ -18,6 +18,9 @@ import com.ociweb.jfast.stream.RingBuffers;
 
 public class GeneratorUtils {
 
+  //TODO: A, need histogram class with configurable slots, must support 1024 or more slots.
+    //Must time the entry method and each fragment and each field.
+    
     public static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target, String name, String base) throws IOException {
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");

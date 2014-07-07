@@ -1046,6 +1046,15 @@ public final class PrimitiveReader {
         return 5;
     }
 
+    
+//    while (--charCount >= 0) {
+//    if ((b = reader.buffer[reader.position++]) >= 0) {
+//        // code point 7
+//        target[offset++] = (char) b;
+//    } else {
+//        decodeUTF8Fast(target, offset++, b, reader);// untested?? why
+//    }
+// }
     private static int decodeUTF8Fast(char[] target, int targetIdx, byte b, PrimitiveReader reader) {
         
         byte[] source = reader.buffer;

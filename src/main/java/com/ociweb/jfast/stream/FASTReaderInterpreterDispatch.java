@@ -1393,10 +1393,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadUTF8None(idx,1, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    genReadBytesNoneOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
+                    
                 } else {
                     // tail
-                    genReadUTF8TailOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    genReadBytesTailOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
+                    
                 }
             } else {
                 // constant delta
@@ -1406,10 +1408,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
                     
                     int constValue = idx;
-                    genReadTextConstantOptional(constInit, constValue, textHeap.initLength(constId), textHeap.initLength(constValue), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.addPos);
+                   
+                    genReadBytesConstantOptional(constInit, byteHeap.initLength(constId), constValue, byteHeap.initLength(constValue), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.addPos);
+                                
                 } else {
-                    // delta
-                    genReadUTF8DeltaOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    // delta   
+                    genReadBytesDeltaOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
+                    
                 }
             }
         } else {
@@ -1417,13 +1422,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genReadUTF8Copy(idx,1, rbRingBuffer.buffer, rbRingBuffer.mask, reader, textHeap, rbRingBuffer.addPos, rbRingBuffer);
+                genReadBytesCopy(idx,1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
             } else {
                 // default
                 int initId = TextHeap.INIT_VALUE_MASK | idx;
                 int initIdx = textHeap.initStartOffset(initId)|TextHeap.INIT_VALUE_MASK;
                 
-                genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 1, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                genReadBytesDefault(idx, initIdx, textHeap.initLength(initId), 1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos , rbRingBuffer);
+                
             }
         }
     }
@@ -1481,10 +1487,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genReadUTF8None(idx,0, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    genReadBytesNone(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
+         
                 } else {
                     // tail
-                    genReadUTF8Tail(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    genReadBytesTail(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -1493,10 +1500,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     int constId = idx | TextHeap.INIT_VALUE_MASK;
                     int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
                     
-                    genReadTextConstant(constInit, textHeap.initLength(constId), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos);
+                    genReadBytesConstant(constInit, byteHeap.initLength(constId), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos);
+                    
                 } else {
-                    // delta
-                    genReadUTF8Delta(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                    // delta 
+                    genReadBytesDelta(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
                 }
             }
         } else {
@@ -1504,13 +1512,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genReadUTF8Copy(idx,0, rbRingBuffer.buffer, rbRingBuffer.mask, reader, textHeap, rbRingBuffer.addPos, rbRingBuffer);
+                genReadBytesCopy(idx,0, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
+                
             } else {
                 // default
                 int initId = TextHeap.INIT_VALUE_MASK | idx;
                 int initIdx = textHeap.initStartOffset(initId)|TextHeap.INIT_VALUE_MASK;
                 
-                genReadUTF8Default(idx, initIdx, textHeap.initLength(initId), 0, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos , rbRingBuffer);
+                genReadBytesDefault(idx, initIdx, textHeap.initLength(initId), 0, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos , rbRingBuffer);
+                
             }
         }
     }

@@ -400,27 +400,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
 
     // text methods.
 
-    
-    @Override
-    protected void genReadUTF8None(int idx, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx, optOff);
-    }
-    
-    @Override
-    protected void genReadUTF8TailOptional(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
-    }
-    
-    @Override
-    protected void genReadUTF8DeltaOptional(int idx, int[] is, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
-    }
-    
-    @Override
-    protected void genReadUTF8Delta(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
-    }
-    
     @Override
     protected void genReadASCIITail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
@@ -439,21 +418,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     @Override
     protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
-    }
-    
-    @Override
-    protected void genReadUTF8Tail(int idx, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
-    }
-    
-    @Override
-    protected void genReadUTF8Copy(int idx, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx, optOff);
-    }
-    
-    @Override
-    protected void genReadUTF8Default(int idx, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, idx,defIdx, defLen, optOff);
     }
     
     @Override

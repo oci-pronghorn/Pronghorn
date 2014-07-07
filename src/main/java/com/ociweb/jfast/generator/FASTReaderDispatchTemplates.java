@@ -1558,48 +1558,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     // text methods.
-
-    
-    protected void genReadUTF8None(int target, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.allocateAndCopyUTF8(target, textHeap, reader, PrimitiveReader.readIntegerUnsigned(reader) - optOff);
-        int len = textHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-
-    protected void genReadUTF8TailOptional(int target, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        int trim = PrimitiveReader.readIntegerUnsigned(reader);
-        if (trim == 0) {
-            TextHeap.setNull(target, textHeap);
-        } else {
-            int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-            int t = trim - 1;
-            StaticGlue.allocateAndAppendUTF8(target, textHeap, reader, utfLength, t);
-        }
-        int len = textHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-
-    protected void genReadUTF8DeltaOptional(int target, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        int trim = PrimitiveReader.readIntegerSigned(reader);
-        if (0 == trim) {
-            TextHeap.setNull(target, textHeap);
-        } else {
-            StaticGlue.allocateAndDeltaUTF8(target, textHeap, reader, trim>0?trim-1:trim);
-        }
-        int len = textHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-    
-    protected void genReadUTF8Delta(int target, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        StaticGlue.allocateAndDeltaUTF8(target, textHeap, reader, PrimitiveReader.readIntegerSigned(reader));
-        int len = textHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-    
+   
     protected void genReadASCIITail(int target, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         StaticGlue.readASCIITail(target, textHeap, reader, PrimitiveReader.readIntegerUnsigned(reader));
         int len = textHeap.valueLength(target);
@@ -1634,38 +1593,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int len = (PrimitiveReader.readPMapBit(reader) == 0) ? textHeap.valueLength(target) : StaticGlue.readASCIIToHeap(target, reader, textHeap);
             FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-
-    protected void genReadUTF8Tail(int target, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-            int trim = PrimitiveReader.readIntegerSigned(reader);
-            int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-            
-            StaticGlue.allocateAndAppendUTF8(target, textHeap, reader, utfLength, trim);
-            int len = textHeap.valueLength(target);
-            FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-            FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-
-
-    protected void genReadUTF8Copy(int target, int optOff, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        if (PrimitiveReader.readPMapBit(reader) != 0) {
-            StaticGlue.allocateAndCopyUTF8(target, textHeap, reader, PrimitiveReader.readIntegerUnsigned(reader) - optOff);
-        }
-        int len = textHeap.valueLength(target);
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-        FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-    }
-
-    protected void genReadUTF8Default(int target, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, TextHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        if (0 == PrimitiveReader.readPMapBit(reader)) {
-            FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx);
-            FASTRingBuffer.addValue(rbB, rbMask, rbPos, defLen);
-        } else {
-            StaticGlue.allocateAndCopyUTF8(target, textHeap, reader, PrimitiveReader.readIntegerUnsigned(reader) - optOff);
-            int len = textHeap.valueLength(target);
-            FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, textHeap, rbRingBuffer));
-            FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-        }
     }
 
     protected void genReadASCIINone(int target, int[] rbB, int rbMask, PrimitiveReader reader, TextHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {

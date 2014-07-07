@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /**
  * Public interface for applications desiring to consume data from a FAST feed.
@@ -11,6 +12,9 @@ import com.ociweb.jfast.error.FASTException;
  *
  */
 public class FASTRingBufferReader {//TODO: B, build another static reader that does auto convert to the requested type.
+    
+    
+    
 
     static double[] powd = new double[] {1.0E-64,1.0E-63,1.0E-62,1.0E-61,1.0E-60,1.0E-59,1.0E-58,1.0E-57,1.0E-56,1.0E-55,1.0E-54,1.0E-53,1.0E-52,1.0E-51,1.0E-50,1.0E-49,1.0E-48,1.0E-47,1.0E-46,
         1.0E-45,1.0E-44,1.0E-43,1.0E-42,1.0E-41,1.0E-40,1.0E-39,1.0E-38,1.0E-37,1.0E-36,1.0E-35,1.0E-34,1.0E-33,1.0E-32,1.0E-31,1.0E-30,1.0E-29,1.0E-28,1.0E-27,1.0E-26,1.0E-25,1.0E-24,1.0E-23,1.0E-22,
@@ -228,6 +232,103 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         }
     }
     
+  //TODO: A, make use of this in equals.
+  /**
+   * Convert bytes into chars using UTF-8.
+   * 
+   *  High 32   BytePosition
+   *  Low  32   Char (caller can cast response to char to get the decoded value)  
+   * 
+   */
+  private static long decodeUTF8Fast(byte[] source, long charAndPos) { //pass in long of last position?
+      
+    int sourcePos = (int)(charAndPos >> 32); 
+      
+    byte b;   
+    if ((b = source[sourcePos++]) >= 0) {
+        // code point 7
+        return (((long)sourcePos)<<32) | b;
+    } 
+    
+      int result;
+      if (((byte) (0xFF & (b << 2))) >= 0) {
+          if ((b & 0x40) == 0) {
+              ++sourcePos;
+              return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+          }
+          // code point 11
+          result = (b & 0x1F);
+      } else {
+          if (((byte) (0xFF & (b << 3))) >= 0) {
+              // code point 16
+              result = (b & 0x0F);
+          } else {
+              if (((byte) (0xFF & (b << 4))) >= 0) {
+                  // code point 21
+                  result = (b & 0x07);
+              } else {
+                  if (((byte) (0xFF & (b << 5))) >= 0) {
+                      // code point 26
+                      result = (b & 0x03);
+                  } else {
+                      if (((byte) (0xFF & (b << 6))) >= 0) {
+                          // code point 31
+                          result = (b & 0x01);
+                      } else {
+                          sourcePos += 5;
+                          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                      }
+
+                      if ((source[sourcePos] & 0xC0) != 0x80) {
+                          sourcePos += 5;
+                          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                      }
+                      result = (result << 6) | (source[sourcePos++] & 0x3F);
+                  }
+                  if ((source[sourcePos] & 0xC0) != 0x80) {
+                      sourcePos += 4;
+                      return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                  }
+                  result = (result << 6) | (source[sourcePos++] & 0x3F);
+              }
+              if ((source[sourcePos] & 0xC0) != 0x80) {
+                  sourcePos += 3;
+                  return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+              }
+              result = (result << 6) | (source[sourcePos++] & 0x3F);
+          }
+          if ((source[sourcePos] & 0xC0) != 0x80) {
+              sourcePos += 2;
+              return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+          }
+          result = (result << 6) | (source[sourcePos++] & 0x3F);
+      }
+      if ((source[sourcePos] & 0xC0) != 0x80) {
+          sourcePos += 1;
+          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+      }
+       
+      return (((long)sourcePos)<<32) | ((result << 6) | (source[sourcePos++] & 0x3F));
+  }
+    
+    
+    public static boolean eqUTF8(FASTRingBuffer ring, int idx, CharSequence seq) {
+        int len = FASTRingBufferReader.readDataLength(ring, idx);
+        if (0==len && seq.length()==0) {
+            return true;
+        }
+        //char count is not comparable to byte count for UTF8 of length greater than zero.
+        //must convert one to the other before comparison.
+        
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)]; //TODO: A, build UTF8 conversion here.
+        if (pos < 0) {
+            return eqASCIIConst(ring,len,seq,0x7FFFFFFF & pos);
+        } else {
+            return eqASCIIRing(ring,len,seq,pos);
+        }
+    }
+    
+    
     public static boolean eqASCII(FASTRingBuffer ring, int idx, CharSequence seq) {
         int len = FASTRingBufferReader.readDataLength(ring, idx);
         if (len!=seq.length()) {
@@ -382,5 +483,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         queue.removeCount.lazySet(queue.remPos.value = queue.addCount.get());
         
     }
+
+
 
 }
