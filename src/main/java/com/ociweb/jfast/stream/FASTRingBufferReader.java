@@ -176,6 +176,21 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         };
     }
     
+    private static void readUTF8Const(FASTRingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
+        
+        long charAndPos = ((long)ringPos)<<32;
+        
+        int i = targetIdx;
+        int chars = target.length;
+        while (--chars>=0) {
+            
+            charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, ring.byteMask);            
+            target[i++] = (char)charAndPos;
+  
+        }
+               
+    }
+    
     @Deprecated
     private static void readTextRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
             char[] buffer = ring.charBuffer;
@@ -193,6 +208,17 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         }
     }
     
+    private static void readUTF8Ring(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
+        
+        
+//        byte[] buffer = ring.byteBuffer;
+//        int mask = ring.byteMask;
+//        while (--len >= 0) {
+//            target[targetIdx]=(char)buffer[mask & pos++];
+//        }
+    }
+        
+    @Deprecated
     public static void readText(FASTRingBuffer ring, int idx, char[] target, int targetOffset, int targetMask) {
         int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         int len = FASTRingBufferReader.readDataLength(ring, idx);
@@ -203,6 +229,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         }
     }
     
+    @Deprecated
     private static void readTextConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int targetMask, int pos) {
             char[] buffer = ring.constTextBuffer;
             while (--len >= 0) {
@@ -210,6 +237,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             };
     }
 
+    @Deprecated
     private static void readTextRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int targetMask, int pos) {
             char[] buffer = ring.charBuffer;
             int mask = ring.charMask;
@@ -240,12 +268,12 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
    *  Low  32   Char (caller can cast response to char to get the decoded value)  
    * 
    */
-  private static long decodeUTF8Fast(byte[] source, long charAndPos) { //pass in long of last position?
+  private static long decodeUTF8Fast(byte[] source, long charAndPos, int mask) { //pass in long of last position?
       
     int sourcePos = (int)(charAndPos >> 32); 
       
     byte b;   
-    if ((b = source[sourcePos++]) >= 0) {
+    if ((b = source[mask&sourcePos++]) >= 0) {
         // code point 7
         return (((long)sourcePos)<<32) | b;
     } 
@@ -253,8 +281,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
       int result;
       if (((byte) (0xFF & (b << 2))) >= 0) {
           if ((b & 0x40) == 0) {
-              ++sourcePos;
-              return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+              return (((long)++sourcePos)<<32) | 0xFFFD; // Bad data replacement char
           }
           // code point 11
           result = (b & 0x1F);
@@ -279,36 +306,36 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
                           return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                       }
 
-                      if ((source[sourcePos] & 0xC0) != 0x80) {
+                      if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                           sourcePos += 5;
                           return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                       }
                       result = (result << 6) | (source[sourcePos++] & 0x3F);
                   }
-                  if ((source[sourcePos] & 0xC0) != 0x80) {
+                  if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                       sourcePos += 4;
                       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                   }
                   result = (result << 6) | (source[sourcePos++] & 0x3F);
               }
-              if ((source[sourcePos] & 0xC0) != 0x80) {
+              if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                   sourcePos += 3;
                   return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
               }
               result = (result << 6) | (source[sourcePos++] & 0x3F);
           }
-          if ((source[sourcePos] & 0xC0) != 0x80) {
+          if ((source[mask&sourcePos] & 0xC0) != 0x80) {
               sourcePos += 2;
               return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
           }
           result = (result << 6) | (source[sourcePos++] & 0x3F);
       }
-      if ((source[sourcePos] & 0xC0) != 0x80) {
+      if ((source[mask&sourcePos] & 0xC0) != 0x80) {
           sourcePos += 1;
           return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
       }
        
-      return (((long)sourcePos)<<32) | ((result << 6) | (source[sourcePos++] & 0x3F));
+      return (((long)sourcePos)<<32) | ((result << 6) | (source[mask&sourcePos++] & 0x3F));
   }
     
     
@@ -322,9 +349,9 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         
         int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)]; //TODO: A, build UTF8 conversion here.
         if (pos < 0) {
-            return eqASCIIConst(ring,len,seq,0x7FFFFFFF & pos);
+            return eqUTF8Const(ring,len,seq,0x7FFFFFFF & pos);
         } else {
-            return eqASCIIRing(ring,len,seq,pos);
+            return eqUTF8Ring(ring,len,seq,pos);
         }
     }
     
@@ -367,32 +394,104 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return true;
     }
     
-    @Deprecated
-    private static boolean eqTextRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
-            char[] buffer = ring.charBuffer;
-            int mask = ring.charMask;
-            int i = 0;
-            while (--len >= 0) {
-                if (seq.charAt(i++)!=buffer[mask & pos++]) {
-                    System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
-                    return false;
-                }
+    
+    /**
+     * checks equals without moving buffer cursor.
+     * 
+     * @param ring
+     * @param bytesLen
+     * @param seq
+     * @param ringPos
+     * @return
+     */
+    private static boolean eqUTF8Const(FASTRingBuffer ring, int bytesLen, CharSequence seq, int ringPos) {
+        
+        long charAndPos = ((long)ringPos)<<32;
+        
+        int i = 0;
+        int chars = seq.length();
+        while (--chars>=0) {
+            
+            charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, Integer.MAX_VALUE);
+            
+            if (seq.charAt(i++) != (char)charAndPos) {
+                return false;
             }
-            return true;
+            
+        }
+                
+        return true;
     }
     
-    private static boolean eqASCIIRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
-        byte[] buffer = ring.byteBuffer;
-        int mask = ring.byteMask;
+    @Deprecated
+    private static boolean eqTextRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
+            
+        char[] buffer = ring.charBuffer;
+        
+        int mask = ring.charMask;
         int i = 0;
         while (--len >= 0) {
             if (seq.charAt(i++)!=buffer[mask & pos++]) {
-                System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
+                //System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
                 return false;
             }
         }
         return true;
-}
+    }
+    
+    private static boolean eqASCIIRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
+        
+        byte[] buffer = ring.byteBuffer;
+        
+        int mask = ring.byteMask;
+        int i = 0;
+        while (--len >= 0) {
+            if (seq.charAt(i++)!=buffer[mask & pos++]) {
+                //System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    private static boolean eqUTF8Ring(FASTRingBuffer ring, int len, CharSequence seq, int ringPos) {
+        
+        
+        long charAndPos = ((long)ringPos)<<32;
+        int mask = ring.byteMask;
+        int i = 0;
+        int chars = seq.length();
+        while (--chars>=0) {
+            
+            charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, mask);
+            
+            if (seq.charAt(i++) != (char)charAndPos) {
+                return false;
+            }
+            
+        }
+                
+        return true;
+        
+        
+//        byte[] buffer = ring.byteBuffer;
+//        
+//        int mask = ring.byteMask;
+//        int i = 0;
+//        while (--len >= 0) {
+//            
+//            
+//            
+//            if (seq.charAt(i++)!=buffer[mask & pos++]) {
+//                //System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
+//                return false;
+//            }
+//        }
+//        
+//        return true;
+        
+    }   
+    
     
     //Bytes
     
