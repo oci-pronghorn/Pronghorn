@@ -15,6 +15,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
 
@@ -28,6 +29,8 @@ public class GeneratorUtils {
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
         target.append("\n");
+        target.append("Stats stats = new Stats(1000000,1000000,30000000); ");
+        target.append("\n");        
         target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
         target.append("public "+name+"() {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
@@ -273,7 +276,9 @@ public class GeneratorUtils {
                      .append(") {\n");
         
     
-        return "\n"+signatureLine.toString()+generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
+        return "\n"+signatureLine.toString()+
+                generatorData.statsBuilder.toString()+
+                generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
         
     }
 
@@ -321,6 +326,8 @@ public class GeneratorUtils {
         }
     }
 
+    static Set<String> statsNames = new HashSet<String>();
+    
     static void generator(StackTraceElement[] trace, GeneratorData generatorData, GeneratorDriving scriptor, long ... values) {
         
         String templateMethodName = trace[0].getMethodName();
@@ -341,6 +348,18 @@ public class GeneratorUtils {
         String[] paraDefs = generatorData.templates.defs(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
         
+        String statsName = templateMethodName+"Stats"; 
+        
+        //debug stats gathering
+        if (!statsNames.contains(statsName)) {
+            statsNames.add(statsName);
+            generatorData.statsBuilder.append("Stats "+statsName+" = new Stats(1000000,1000000,30000000);\n");
+        }
+        
+        //target.append("\n");
+        //target.append("Stats stats = new Stats(1000000,1000000,30000000); ");
+        
+        
         //template details to add as comments
         int token = scriptor.getActiveToken();
         int fieldId = scriptor.getActiveFieldId(); 
@@ -350,7 +369,7 @@ public class GeneratorUtils {
         
         //replace variables with constants
         String template = generatorData.templates.template(methodNameKey);
-    
+        
     
         long[] data = values;
         int i = data.length;

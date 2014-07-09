@@ -499,7 +499,7 @@ public final class PrimitiveReader {
         return target;
     }
 
-    public static final int readTextASCIIIntoRing(char[] target, int targetOffset, int mask, PrimitiveReader reader) {
+    public static final int readTextASCIIIntoRing(byte[] target, int targetOffset, int mask, PrimitiveReader reader) {
 
         if (reader.limit - reader.position > mask) {
             int p = reader.position;
@@ -517,10 +517,10 @@ public final class PrimitiveReader {
             } else {
                 int idx = targetOffset;
                 while (v >= 0) {
-                    target[mask&idx++] = (char) (buffer[p++]);
+                    target[mask&idx++] = (byte) (buffer[p++]);
                     v= buffer[p];
                 }
-                target[mask&idx++] = (char) (0x7F & v);
+                target[mask&idx++] = (byte) (0x7F & v);
                 reader.position = p+1;
                 return idx - targetOffset;// length of string
             }
@@ -528,7 +528,7 @@ public final class PrimitiveReader {
         return readTextASCIIIntoRingSlow(target, targetOffset, mask, reader);
     }
 
-    private static int readTextASCIIIntoRingSlow(char[] target, int targetOffset, int mask, PrimitiveReader reader) {
+    private static int readTextASCIIIntoRingSlow(byte[] target, int targetOffset, int mask, PrimitiveReader reader) {
         if (reader.limit - reader.position < 2) {
             fetch(2, reader);
         }
@@ -546,13 +546,13 @@ public final class PrimitiveReader {
         } else {
             int idx = targetOffset;
             while (v >= 0) {
-                target[mask&idx++] = (char) (reader.buffer[reader.position++]);
+                target[mask&idx++] = (byte) (reader.buffer[reader.position++]);
                 if (reader.position >= reader.limit) {
                     fetch(1, reader); // CAUTION: may change value of position
                 }
                 v= reader.buffer[reader.position];
             }
-            target[mask&idx++] = (char) (0x7F & v); 
+            target[mask&idx++] = (byte) (0x7F & v); 
             reader.position++;
             return idx - targetOffset;// length of string
 

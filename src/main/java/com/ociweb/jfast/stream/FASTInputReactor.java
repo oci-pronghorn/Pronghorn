@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.util.Stats;
 
 
 // TODO: B, Check support for group that may be optional
@@ -120,10 +121,8 @@ public final class FASTInputReactor {
         
     }
 
-            
-    
     public static int pump(FASTInputReactor reactor) {
-        return reactor.decoder.decode(reactor.reader);
+            return reactor.decoder.decode(reactor.reader);
     }
     
 

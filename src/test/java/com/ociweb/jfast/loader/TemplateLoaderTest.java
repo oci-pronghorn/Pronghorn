@@ -41,6 +41,7 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.util.Stats;
 
 public class TemplateLoaderTest {
 
@@ -121,7 +122,7 @@ public class TemplateLoaderTest {
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
-        
+        Stats stats = new Stats(1000000,1000000,30000000);    
         
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
@@ -144,7 +145,7 @@ public class TemplateLoaderTest {
         final AtomicLong totalRingInts = new AtomicLong();
 
         
-        FASTInputReactor reactor;
+        FASTInputReactor reactor=null;
 
         
         int iter = warmup;
@@ -218,6 +219,10 @@ public class TemplateLoaderTest {
             //fastInput.reset();
             PrimitiveReader.reset(reader);
             readerDispatch.reset(catalog.dictionaryFactory());
+            
+            
+  //          System.err.println(reactor.stats.toString()+" ns");
+            
         }
 
         totalBytesOut.set(totalBytesOut.longValue()/warmup);
@@ -242,8 +247,11 @@ public class TemplateLoaderTest {
             }
             
             double duration = System.nanoTime() - start;
+            
+            stats.sample((long)duration);
+            
             if ((0x7F & iter) == 0) {
-                int ns = (int) duration;
+                int ns = (int) stats.valueAtPercent(.60);//duration;
                 float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
                 float nsPerByte = (ns / (float) totalTestBytes);
                 int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
@@ -266,7 +274,9 @@ public class TemplateLoaderTest {
             readerDispatch.reset(catalog.dictionaryFactory());
 
         }
+        System.err.println(stats.toString()+" ns  total:"+stats.total());
 
+        
     }
 
     private boolean isText(int token) {

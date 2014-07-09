@@ -1388,7 +1388,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         if (length < 0) {
             writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes.
         } else {
-            char[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
+            byte[] buffer = rbRingBuffer.readRingCharBuffer(fieldPos);
             CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingCharMask(), length);
             
             if (readFromIdx>=0) {

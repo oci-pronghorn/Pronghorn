@@ -3,12 +3,15 @@ package com.ociweb.jfast.stream;
 public class RingCharSequence implements CharSequence {
 
 	int length;
-	char[] charBuffer;
+	byte[] charBuffer;
 	int pos;
 	int mask;
 	
-	public CharSequence set(char[] buffer, int pos, int mask, int length) {
+	public CharSequence set(byte[] buffer, int pos, int mask, int length) {
 		
+	    if (null==buffer) {
+	        throw new NullPointerException();
+	    }
 		this.length = length;
 		this.charBuffer = buffer;
 		this.pos = pos;
@@ -24,7 +27,7 @@ public class RingCharSequence implements CharSequence {
 
 	@Override
 	public char charAt(int at) {
-		return charBuffer[(pos+at)&mask];
+		return (char)charBuffer[(pos+at)&mask];
 	}
 
 	@Override

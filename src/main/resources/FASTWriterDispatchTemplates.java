@@ -12,6 +12,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.jfast.util.Stats;
 
 
 public abstract class FASTWriterDispatchTemplates extends FASTEncoder {

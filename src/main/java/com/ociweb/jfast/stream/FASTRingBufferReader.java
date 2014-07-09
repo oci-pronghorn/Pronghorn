@@ -67,14 +67,9 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     
     @Deprecated
     public static Appendable readText(FASTRingBuffer ring, int idx, Appendable target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
-        int len = FASTRingBufferReader.readDataLength(ring, idx);
-     //   System.err.println("** read text pos:"+(ring.mask & (ring.remPos + idx))+" pos "+ (0x7FFFFFFF&pos) +" len "+len);
-        if (pos < 0) {
-            return readTextConst(ring,len,target,0x7FFFFFFF & pos);
-        } else {
-            return readTextRing(ring,len,target,pos);
-        }
+        
+        return readASCII(ring, idx, target);
+
     }
     
     public static Appendable readASCII(FASTRingBuffer ring, int idx, Appendable target) {
@@ -88,18 +83,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         }
     }
     
-    @Deprecated
-    private static Appendable readTextConst(FASTRingBuffer ring, int len, Appendable target, int pos) {
-        try {
-            char[] buffer = ring.constTextBuffer;
-            while (--len >= 0) {
-                target.append(buffer[pos++]);
-            }
-        } catch (IOException e) {
-           throw new FASTException(e);
-        }
-        return target;
-    }
     
     private static Appendable readASCIIConst(FASTRingBuffer ring, int len, Appendable target, int pos) {
         try {
@@ -113,19 +96,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return target;
     }
     
-    @Deprecated
-    private static Appendable readTextRing(FASTRingBuffer ring, int len, Appendable target, int pos) {
-        try {
-            char[] buffer = ring.charBuffer;
-            int mask = ring.charMask;
-            while (--len >= 0) {
-                target.append(buffer[mask & pos++]);
-            }
-        } catch (IOException e) {
-           throw new FASTException(e);
-        }
-        return target;
-    }
     
     private static Appendable readASCIIRing(FASTRingBuffer ring, int len, Appendable target, int pos) {
         try {
@@ -142,13 +112,8 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     
     @Deprecated
     public static void readText(FASTRingBuffer ring, int idx, char[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
-        int len = FASTRingBufferReader.readDataLength(ring, idx);
-        if (pos < 0) {
-            readTextConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
-        } else {
-            readTextRing(ring,len,target, targetOffset,pos);
-        }
+        readASCII(ring,idx,target,targetOffset);
+
     }
     
     public static void readASCII(FASTRingBuffer ring, int idx, char[] target, int targetOffset) {
@@ -161,13 +126,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         }
     }
     
-    @Deprecated
-    private static void readTextConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
-            char[] buffer = ring.constTextBuffer;
-            while (--len >= 0) {
-                target[targetIdx++]=buffer[pos++];
-            };
-    }
 
     private static void readASCIIConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
         byte[] buffer = ring.constByteBuffer;
@@ -193,11 +151,8 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     
     @Deprecated
     private static void readTextRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
-            char[] buffer = ring.charBuffer;
-            int mask = ring.charMask;
-            while (--len >= 0) {
-                target[targetIdx]=buffer[mask & pos++];
-            }
+        readASCIIRing(ring,len,target,targetIdx,pos);
+
     }
     
     private static void readASCIIRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
@@ -217,47 +172,13 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 //            target[targetIdx]=(char)buffer[mask & pos++];
 //        }
     }
-        
-    @Deprecated
-    public static void readText(FASTRingBuffer ring, int idx, char[] target, int targetOffset, int targetMask) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
-        int len = FASTRingBufferReader.readDataLength(ring, idx);
-        if (pos < 0) {
-            readTextConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
-        } else {
-            readTextRing(ring,len,target, targetOffset,targetMask, pos);
-        }
-    }
-    
-    @Deprecated
-    private static void readTextConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int targetMask, int pos) {
-            char[] buffer = ring.constTextBuffer;
-            while (--len >= 0) {
-                target[targetMask & targetIdx++]=buffer[pos++];
-            };
-    }
 
-    @Deprecated
-    private static void readTextRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int targetMask, int pos) {
-            char[] buffer = ring.charBuffer;
-            int mask = ring.charMask;
-            while (--len >= 0) {
-                target[targetMask & targetIdx]=buffer[mask & pos++];
-            }
-    }
     
     @Deprecated
     public static boolean eqText(FASTRingBuffer ring, int idx, CharSequence seq) {
-        int len = FASTRingBufferReader.readDataLength(ring, idx);
-        if (len!=seq.length()) {
-            return false;
-        }
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
-        if (pos < 0) {
-            return eqTextConst(ring,len,seq,0x7FFFFFFF & pos);
-        } else {
-            return eqTextRing(ring,len,seq,pos);
-        }
+        
+        return eqASCII(ring, idx, seq);
+        
     }
     
   //TODO: A, make use of this in equals.
@@ -368,20 +289,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             return eqASCIIRing(ring,len,seq,pos);
         }
     }
-    
-    //TODO: A, is UTF8 decode or encode faster? use the faster one for UTF8 equals method.
-    
-    @Deprecated
-    private static boolean eqTextConst(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
-            char[] buffer = ring.constTextBuffer;
-            int i = 0;
-            while (--len >= 0) {
-                if (seq.charAt(i++)!=buffer[pos++]) {
-                    return false;
-                }
-            }
-            return true;
-    }
 
     private static boolean eqASCIIConst(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
         byte[] buffer = ring.constByteBuffer;
@@ -426,17 +333,8 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     @Deprecated
     private static boolean eqTextRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
             
-        char[] buffer = ring.charBuffer;
+        return eqASCIIRing(ring,len,seq,pos);
         
-        int mask = ring.charMask;
-        int i = 0;
-        while (--len >= 0) {
-            if (seq.charAt(i++)!=buffer[mask & pos++]) {
-                //System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
-                return false;
-            }
-        }
-        return true;
     }
     
     private static boolean eqASCIIRing(FASTRingBuffer ring, int len, CharSequence seq, int pos) {
@@ -519,7 +417,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 
     private static ByteBuffer readBytesRing(FASTRingBuffer ring, int len, ByteBuffer target, int pos) {
         byte[] buffer = ring.byteBuffer;
-        int mask = ring.charMask;
+        int mask = ring.byteMask;
         while (--len >= 0) {
             target.put(buffer[mask & pos++]);
         }
@@ -545,7 +443,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 
     private static void readBytesRing(FASTRingBuffer ring, int len, byte[] target, int targetIdx, int pos) {
             byte[] buffer = ring.byteBuffer;
-            int mask = ring.charMask;
+            int mask = ring.byteMask;
             while (--len >= 0) {
                 target[targetIdx]=buffer[mask & pos++];
             }
@@ -570,7 +468,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 
     private static void readBytesRing(FASTRingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
             byte[] buffer = ring.byteBuffer;
-            int mask = ring.charMask;
+            int mask = ring.byteMask;
             while (--len >= 0) {
                 target[targetMask & targetIdx]=buffer[mask & pos++];
             }

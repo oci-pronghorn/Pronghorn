@@ -10,6 +10,7 @@ import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.jfast.util.Stats;
 
 //TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
 //TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
@@ -1648,12 +1649,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defLen);
             } else {
                 
-                int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer,
-                                                                    rbRingBuffer.addCharPos, 
-                                                                    rbRingBuffer.charMask,
+                int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.byteBuffer,
+                                                                    rbRingBuffer.addBytePos, 
+                                                                    rbRingBuffer.byteMask,
                                                                     reader);
-                FASTRingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.addCharPos);
-                rbRingBuffer.addCharPos+=lenTemp;                
+                FASTRingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.addBytePos);
+                rbRingBuffer.addBytePos+=lenTemp;                
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, lenTemp);
             }
     }    

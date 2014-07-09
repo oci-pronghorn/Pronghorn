@@ -122,6 +122,7 @@ public class Test {
               }
               
           }
+          //System.err.println(".");
           //////////////////////////////////
           //End of single threaded example
           //////////////////////////////////

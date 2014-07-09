@@ -12,6 +12,7 @@ public class GeneratorData {
     public SourceTemplates templates;
     public StringBuilder fieldMethodBuilder;
     public StringBuilder groupMethodBuilder;
+    public StringBuilder statsBuilder;
     public List<String> caseParaDefs;
     public List<String> caseParaVals;
     public int scriptPos;
@@ -56,6 +57,7 @@ public class GeneratorData {
         this.templates = new SourceTemplates(clazz);
         this.fieldMethodBuilder = new StringBuilder();
         this.groupMethodBuilder = new StringBuilder();
+        this.statsBuilder = new StringBuilder();
         this.fieldMethodCount = 0;
     }
 }

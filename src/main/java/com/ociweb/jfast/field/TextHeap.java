@@ -130,8 +130,13 @@ public class TextHeap { //TODO: A, delete this class
         return tat[offset + 1] == tat[offset] - 1;
     }
 
-   public char[] rawInitAccess() { //TODO: C, should not be public 
-        return initBuffer;
+   public byte[] rawInitAccess() { //TODO: A, hack til we remove this class.
+       byte[] temp = new byte[initBuffer.length];
+       int i = initBuffer.length;
+       while (--i>=0) {
+           temp[i] = (byte)initBuffer[i];
+       }
+       return temp;
     }
 
    //TODO: B, Remove raw access.
@@ -582,7 +587,7 @@ public class TextHeap { //TODO: A, delete this class
     // ////////
 
     // for ring buffer only where the length was already known
-    public static int copyToRingBuffer(int idx, char[] target, final int targetIdx, final int targetMask, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
+    public static int copyToRingBuffer(int idx, byte[] target, final int targetIdx, final int targetMask, TextHeap textHeap) {//Invoked 100's of millions of times, must be tight.
         // Does not support init values
         assert (idx > 0);
 
@@ -593,23 +598,32 @@ public class TextHeap { //TODO: A, delete this class
         int tStart = targetIdx & targetMask;
         if (1 == len) {
             // simplification because 1 char can not loop around ring buffer.
-            target[tStart] = textHeap.data[pos];
+            target[tStart] = (byte)textHeap.data[pos];
         } else {
             copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart, textHeap.data);
         }
         return targetIdx + len;
     }
 
-    private static void copyToRingBuffer(char[] target, final int targetIdx, final int targetMask, final int pos,
+    private static void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
             final int len, int tStart, char[] data) {
         int tStop = (targetIdx + len) & targetMask;
         if (tStop > tStart) {
-            System.arraycopy(data, pos, target, tStart, len);
+            int i = len;
+            while (--i>=0) {
+                target[i+tStart] = (byte)data[i+pos];
+            }
         } else {
             // done as two copies
             int firstLen = 1+ targetMask - tStart;
-            System.arraycopy(data, pos, target, tStart, firstLen);
-            System.arraycopy(data, pos + firstLen, target, 0, len - firstLen);
+            int i = firstLen;
+            while (--i>=0) {
+                target[i+tStart] = (byte)data[i+pos];
+            }
+            i = len-firstLen;
+            while (--i>=0) {
+                target[i] = (byte)data[i+pos+firstLen];
+            }
         }
     }
 

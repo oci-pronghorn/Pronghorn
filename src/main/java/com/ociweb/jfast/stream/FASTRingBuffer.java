@@ -1,8 +1,5 @@
 package com.ociweb.jfast.stream;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.jfast.field.LocalHeap;
@@ -12,7 +9,6 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
-import com.ociweb.jfast.primitive.PrimitiveReader;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -44,18 +40,12 @@ public final class FASTRingBuffer {
     
     public final int maxSize;
 
-    public final int maxCharSize;
-    public final int charMask;
-    public final char[] charBuffer;
-    public int addCharPos = 0;
-
     final int maxByteSize;
-    final int byteMask;
-    final byte[] byteBuffer;
+    public final int byteMask;
+    public final byte[] byteBuffer;
     public int addBytePos = 0;
     
-    //TODO: A, only have 1 of these just the bytes,
-    final char[] constTextBuffer; //defined externally and never changes
+    //defined externally and never changes
     final byte[] constByteBuffer;
 
 
@@ -86,28 +76,24 @@ public final class FASTRingBuffer {
         if (null!=dcr) {
             TextHeap textHeap = dcr.charDictionary();
             if (null!=textHeap) {
-                this.constTextBuffer = textHeap.rawInitAccess();            
-            } else {
-                this.constTextBuffer = null;
-            }
-            LocalHeap byteHeap = dcr.byteDictionary();
-            if (null!=byteHeap) {
-                this.constByteBuffer = byteHeap.rawInitAccess();            
+                          
+                this.constByteBuffer = textHeap.rawInitAccess();  
             } else {
                 this.constByteBuffer = null;
             }
+//            LocalHeap byteHeap = dcr.byteDictionary();
+//            if (null!=byteHeap) {
+//                this.constByteBuffer = byteHeap.rawInitAccess();            
+//            } else {
+//                this.constByteBuffer = null;
+//            }
         } else {
-            this.constTextBuffer = null;
             this.constByteBuffer = null;
         }
                         
         //single text and byte buffers because this is where the variable length data will go.
-        
-        this.maxCharSize = 1 << charBits;
-        this.charMask = maxCharSize - 1;
-        this.charBuffer = new char[maxCharSize];
 
-        this.maxByteSize = maxCharSize;
+        this.maxByteSize =  1 << charBits;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
         
@@ -122,7 +108,6 @@ public final class FASTRingBuffer {
      * Empty and restore to original values.
      */
     public void reset() {
-        addCharPos = 0;
         addPos.value = 0;
         remPos.value = 0;
         removeCount.set(0);
@@ -293,22 +278,12 @@ public final class FASTRingBuffer {
 
     public static int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
         if (len > 0) {
-            final int p = rbRingBuffer.addCharPos;
-            rbRingBuffer.addCharPos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.charBuffer, p, rbRingBuffer.charMask, textHeap);
+            final int p = rbRingBuffer.addBytePos;
+            rbRingBuffer.addBytePos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, textHeap);
             return p;
         } else {
             return 0;//should never read from here anyway so zero is safe
         }
-    }
-    
-    public static int writeTextToRingBuffer(int len, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
-        final int p = rbRingBuffer.addCharPos;
-        if (len > 0) {
-            
-            int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.charBuffer, p, rbRingBuffer.charMask, reader);
-            rbRingBuffer.addCharPos+=lenTemp;// = TextHeap.copyToRingBuffer(heapId, charBuffer, p, charMask,textHeap);
-        }
-        return p;
     }
 
     public static int writeBytesToRingBuffer(int heapId, int len, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
@@ -349,20 +324,6 @@ public final class FASTRingBuffer {
         rb.removeCount.lazySet(rb.remPos.value = rb.addPos.value);
     }
 
-    // this is for fast direct WRITE TO target
-    public void readChars(int idx, char[] target, int targetIdx, TextHeap textHeap) {
-        int ref1 = buffer[(int)(mask & (remPos.value + idx))];
-        if (ref1 < 0) {
-            textHeap.get(ref1, target, targetIdx);
-        } else {
-            int len = buffer[(int)(mask & (remPos.value + idx + 1))];
-            // copy into target but may need to loop from text buffer
-            while (--len >= 0) {
-                target[targetIdx + len] = charBuffer[(ref1 + len) & charMask];
-            }
-        }
-    }
-
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
     public int readRingCharPos(int fieldPos) {
@@ -371,13 +332,13 @@ public final class FASTRingBuffer {
         return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
     }
 
-    public char[] readRingCharBuffer(int fieldPos) {
+    public byte[] readRingCharBuffer(int fieldPos) { //TODO: A, rename
         // constant from heap or dynamic from char ringBuffer
-        return buffer[(int)(mask & (remPos.value + fieldPos))] < 0 ? constTextBuffer : this.charBuffer;
+        return buffer[(int)(mask & (remPos.value + fieldPos))] < 0 ? constByteBuffer : byteBuffer;
     }
 
-    public int readRingCharMask() {
-        return charMask;
+    public int readRingCharMask() { //TODO: A, rename
+        return byteMask;
     }
 
 
