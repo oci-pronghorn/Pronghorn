@@ -7,6 +7,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class StaticGlue {
 
@@ -168,21 +169,63 @@ public class StaticGlue {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, trim, utfLength),
-                    utfLength, reader);
+            int offset = textHeap.makeSpaceForAppend(idx, trim, utfLength);
+            { 
+                byte[] temp = new byte[utfLength];//TODO: A, hack remove
+                
+                PrimitiveReader.readByteData(temp,0,utfLength,reader);
+                
+                long charAndPos = 0;        
+                while (charAndPos>>32 < utfLength  ) {
+                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    textHeap.rawAccess()[offset++]=(char)charAndPos;
+                }
+            }
         } else {
             // append to head
-            PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForPrepend(idx, -trim, utfLength),
-                    utfLength, reader);
+            int offset = textHeap.makeSpaceForPrepend(idx, -trim, utfLength);
+            { 
+                byte[] temp = new byte[utfLength];//TODO: A, hack remove
+                
+                PrimitiveReader.readByteData(temp,0,utfLength,reader);
+                
+                long charAndPos = 0;        
+                while (charAndPos>>32 < utfLength  ) {
+                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    textHeap.rawAccess()[offset++]=(char)charAndPos;
+                }
+            }
         }
     }
     
     public static void allocateAndCopyUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int length) {
-        PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.allocate(idx, length), length, reader);
+        int offset = textHeap.allocate(idx, length);
+        { 
+            byte[] temp = new byte[length];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,length,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < length  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                textHeap.rawAccess()[offset++]=(char)charAndPos;
+            }
+        }
     }
 
     public static void allocateAndAppendUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int utfLength, int t) {
-        PrimitiveReader.readTextUTF8(textHeap.rawAccess(), textHeap.makeSpaceForAppend(idx, t, utfLength), utfLength, reader);
+        int offset = textHeap.makeSpaceForAppend(idx, t, utfLength);
+        { 
+            byte[] temp = new byte[utfLength];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,utfLength,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < utfLength  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                textHeap.rawAccess()[offset++]=(char)charAndPos;
+            }
+        }
     }
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
         byte val = PrimitiveReader.readTextASCIIByte(reader);  

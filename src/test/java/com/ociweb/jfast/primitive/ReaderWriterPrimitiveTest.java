@@ -11,18 +11,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.NetworkChannel;
-import java.nio.channels.Pipe;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.nio.channels.spi.SelectorProvider;
 import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
-import java.net.StandardSocketOptions;
 
 import org.junit.Test;
 
@@ -34,6 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class ReaderWriterPrimitiveTest {
 
@@ -219,7 +213,7 @@ public class ReaderWriterPrimitiveTest {
 							speedWriteTest(i++);
 						}
 					}
-					writer.flush(writer);
+					PrimitiveWriter.flush(writer);
 					writeDurationIOSpeed =  min(writeDurationIOSpeed, (System.nanoTime()-start)/(float)bytesWritten);
 				}
 			}
@@ -282,7 +276,7 @@ public class ReaderWriterPrimitiveTest {
 					speedWriteTest(i++);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			long duration = System.nanoTime()-start;
 			totalBytesWritten = baost.toByteArray().length;
 			writeDurationIOSpeed =  min(writeDurationIOSpeed, duration/(float)totalBytesWritten);
@@ -333,7 +327,7 @@ public class ReaderWriterPrimitiveTest {
 					speedWriteTest(i++);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			long duration = System.nanoTime()-start;
 			totalBytesWritten = baost.toByteArray().length;
 			writeDurationIOSpeed =  min(writeDurationIOSpeed, duration/(float)totalBytesWritten);
@@ -341,7 +335,7 @@ public class ReaderWriterPrimitiveTest {
 			//must reset bytes back to beginning
 			byteArrayInput.reset();
 			
-			pr.reset(pr);
+			PrimitiveReader.reset(pr);
 			
 			start = System.nanoTime();
 			 p = passes;
@@ -370,10 +364,10 @@ public class ReaderWriterPrimitiveTest {
 
 
 	private final void speedWriteTest(int i) {
-		writer.openPMap(10, writer);
-		writer.writeLongUnsigned(unsignedLongData[i], writer);
-		writer.writeLongSigned(-unsignedLongData[i], writer);		
-		writer.closePMap(writer);
+		PrimitiveWriter.openPMap(10, writer);
+		PrimitiveWriter.writeLongUnsigned(unsignedLongData[i], writer);
+		PrimitiveWriter.writeLongSigned(-unsignedLongData[i], writer);		
+		PrimitiveWriter.closePMap(writer);
 	}
 	
 	
@@ -397,7 +391,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		int i = 0;
 		while (i<nullLoops) {
-			writer.writeNull(writer);
+			PrimitiveWriter.writeNull(writer);
 			i++;
 		}
 		
@@ -429,7 +423,7 @@ public class ReaderWriterPrimitiveTest {
 
 			int j = tp;
 			while (--j>=0) {				
-				writer.writeNull(writer);				
+				PrimitiveWriter.writeNull(writer);				
 			}
 
 			PrimitiveWriter.flush(writer);
@@ -467,30 +461,30 @@ public class ReaderWriterPrimitiveTest {
 		
 		int i = 0;
 		while (i<unsignedLongData.length) {
-			writer.writeLongUnsigned(unsignedLongData[i], writer);
-			writer.writeLongSigned(unsignedLongData[i], writer);
-			writer.writeLongSigned(-unsignedLongData[i], writer);
+			PrimitiveWriter.writeLongUnsigned(unsignedLongData[i], writer);
+			PrimitiveWriter.writeLongSigned(unsignedLongData[i], writer);
+			PrimitiveWriter.writeLongSigned(-unsignedLongData[i], writer);
 			
-			writer.writeLongSignedOptional(unsignedLongData[i], writer);
+			PrimitiveWriter.writeLongSignedOptional(unsignedLongData[i], writer);
 			if (0!=unsignedLongData[i]) {
-				writer.writeLongSignedOptional(-unsignedLongData[i], writer);
+				PrimitiveWriter.writeLongSignedOptional(-unsignedLongData[i], writer);
 			}
 			i++;
 		}
 		i=0;
 		while (i<unsignedIntData.length) {	
-			writer.writeIntegerSigned(unsignedIntData[i], writer);
-			writer.writeIntegerSigned(-unsignedIntData[i], writer);			
-			writer.writeIntegerUnsigned(unsignedIntData[i], writer);
+			PrimitiveWriter.writeIntegerSigned(unsignedIntData[i], writer);
+			PrimitiveWriter.writeIntegerSigned(-unsignedIntData[i], writer);			
+			PrimitiveWriter.writeIntegerUnsigned(unsignedIntData[i], writer);
 			
-			writer.writeIntegerSignedOptional(unsignedIntData[i], writer);
+			PrimitiveWriter.writeIntegerSignedOptional(unsignedIntData[i], writer);
 			if (0!=unsignedIntData[i]) {
-				writer.writeIntegerSignedOptional(-unsignedIntData[i], writer);
+				PrimitiveWriter.writeIntegerSignedOptional(-unsignedIntData[i], writer);
 			}
 			i++;
 		}
 		
-		writer.flush(writer);
+		PrimitiveWriter.flush(writer);
 		buffer.flip();
 		
 		FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
@@ -537,10 +531,10 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongUnsigned(unsignedLongData[i++], writer);
+					PrimitiveWriter.writeLongUnsigned(unsignedLongData[i++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			start = System.nanoTime();
@@ -569,10 +563,10 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongSigned(-unsignedLongData[i++], writer);
+					PrimitiveWriter.writeLongSigned(-unsignedLongData[i++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			
@@ -602,10 +596,10 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = 0;
 				while (i<unsignedLongData.length) {
-					writer.writeLongSigned(unsignedLongData[i++], writer);
+					PrimitiveWriter.writeLongSigned(unsignedLongData[i++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			
@@ -637,10 +631,10 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerUnsigned(unsignedIntData[j++], writer);
+					PrimitiveWriter.writeIntegerUnsigned(unsignedIntData[j++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			
 			buffer.flip();
@@ -667,16 +661,16 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
-			writer.reset(writer);
+			PrimitiveWriter.reset(writer);
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(-unsignedIntData[j++], writer);
+					PrimitiveWriter.writeIntegerSigned(-unsignedIntData[j++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			PrimitiveReader.reset(reader);
@@ -701,16 +695,16 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
-			writer.reset(writer);
+			PrimitiveWriter.reset(writer);
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(unsignedIntData[j++], writer);
+					PrimitiveWriter.writeIntegerSigned(unsignedIntData[j++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			PrimitiveReader.reset(reader);
@@ -736,16 +730,16 @@ public class ReaderWriterPrimitiveTest {
 		cycles = testCycles;
 		while (--cycles>=0) {
 			buffer.clear();
-			writer.reset(writer);
+			PrimitiveWriter.reset(writer);
 			long start = System.nanoTime();
 			int p = passes;
 			while (--p>=0) {
 				int j = 0;
 				while (j<unsignedIntData.length) {
-					writer.writeIntegerSigned(unsignedIntData[j++], writer);
+					PrimitiveWriter.writeIntegerSigned(unsignedIntData[j++], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)buffer.position());
 			buffer.flip();
 			PrimitiveReader.reset(reader);
@@ -781,14 +775,14 @@ public class ReaderWriterPrimitiveTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			writer.writeTextASCII(stringData[i++], writer);
+			PrimitiveWriter.writeTextASCII(stringData[i++], writer);
 		}
 		
-		writer.flush(writer);
+		PrimitiveWriter.flush(writer);
 		
 		
 		byte[] byteArray = baost.toByteArray();
-		assertEquals(writer.totalWritten(writer),byteArray.length);
+		assertEquals(PrimitiveWriter.totalWritten(writer),byteArray.length);
 		
 		FASTInputByteArray input = new FASTInputByteArray(byteArray);
 		final PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -825,10 +819,10 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeTextASCII(stringData[i], writer);
+					PrimitiveWriter.writeTextASCII(stringData[i], writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			
 			//new bigger byte array for all the passes.
@@ -859,15 +853,16 @@ public class ReaderWriterPrimitiveTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			writer.writeIntegerUnsigned(stringData[i].length(), writer);
-			writer.writeTextUTF(stringData[i++], writer);
+			PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
+			CharSequence temp = stringData[i++];
+			PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
 		}
 		
-		writer.flush(writer);
+		PrimitiveWriter.flush(writer);
 		
 		
 		byte[] byteArray = baost.toByteArray();
-		assertEquals(writer.totalWritten(writer),byteArray.length);
+		assertEquals(PrimitiveWriter.totalWritten(writer),byteArray.length);
 		
 		FASTInputByteArray input = new FASTInputByteArray(byteArray);
 		final PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -876,8 +871,19 @@ public class ReaderWriterPrimitiveTest {
 		StringBuilder builder = new StringBuilder();
 		while (i<stringData.length) {
 			builder.setLength(0);
-			int charCount = PrimitiveReader.readIntegerUnsigned(reader);
-			PrimitiveReader.readTextUTF8(charCount, builder, reader);
+			int len = PrimitiveReader.readIntegerUnsigned(reader);
+            {
+                byte[] temp = new byte[len];//TODO: A, hack remove
+                
+                PrimitiveReader.readByteData(temp,0,len,reader);
+                
+                long charAndPos = 0;        
+                while (charAndPos>>32 < len  ) {
+                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    builder.append((char)charAndPos);
+
+                }
+            }
 			assertEquals(stringData[i++],builder.toString());
 		}
 		
@@ -905,11 +911,12 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeIntegerUnsigned(stringData[i].length(), writer);
-					writer.writeTextUTF(stringData[i], writer);
+					PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
+					CharSequence temp = stringData[i];
+					PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			
 			//new bigger byte array for all the passes.
@@ -920,8 +927,19 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					int charCount = PrimitiveReader.readIntegerUnsigned(reader);
-					PrimitiveReader.readTextUTF8(target, 0, charCount, reader);
+					int len = PrimitiveReader.readIntegerUnsigned(reader);
+                    int offset = 0;
+					{ 
+                        byte[] temp = new byte[len];//TODO: A, hack remove
+                        
+                        PrimitiveReader.readByteData(temp,0,len,reader);
+                        
+                        long charAndPos = 0;        
+                        while (charAndPos>>32 < len  ) {
+                            charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                            target[offset++]=(char)charAndPos;
+                        }
+                    }
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
@@ -932,7 +950,7 @@ public class ReaderWriterPrimitiveTest {
 		//////////////////////////////////
 		input.reset();
 		PrimitiveReader.reset(reader);
-		writer.reset(writer);
+		PrimitiveWriter.reset(writer);
 		
 		writeDuration = Float.MAX_VALUE;
 		readDuration = Float.MAX_VALUE;
@@ -952,11 +970,12 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					writer.writeIntegerUnsigned(stringData[i].length(), writer);
-					writer.writeTextUTF(stringData[i], writer);
+					PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
+					CharSequence temp = stringData[i];
+					PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			
 			//new bigger byte array for all the passes.
@@ -967,8 +986,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					int charCount = PrimitiveReader.readIntegerUnsigned(reader);
-					PrimitiveReader.readSkipByLengthUTF(charCount, reader);
+					int len = PrimitiveReader.readIntegerUnsigned(reader);
+					PrimitiveReader.readSkipByLengthByt(len, reader);
 				}
 			}
 			readDuration = min(readDuration, (System.nanoTime()-start)/(float)baost.size());
@@ -989,10 +1008,10 @@ public class ReaderWriterPrimitiveTest {
 		int i = 0;
 		while (i<byteData.length) {
 			byte[] data = byteData[i++];
-			writer.writeByteArrayData(data, 0, data.length, writer);
+			PrimitiveWriter.writeByteArrayData(data, 0, data.length, writer);
 		}
 		
-		writer.flush(writer);
+		PrimitiveWriter.flush(writer);
 		
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
 		final PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
@@ -1028,10 +1047,10 @@ public class ReaderWriterPrimitiveTest {
 				i = 0;
 				while (i<byteData.length) {
 					byte[] data = byteData[i++];
-					writer.writeByteArrayData(data,0,data.length, writer);
+					PrimitiveWriter.writeByteArrayData(data,0,data.length, writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration =  min(writeDuration, (System.nanoTime()-start)/(float)baost.size());
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 			
@@ -1049,7 +1068,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		///////////////////////////////////
 		//////////////////////////////////
-		writer.reset(writer);
+		PrimitiveWriter.reset(writer);
 		PrimitiveReader.reset(reader);
 		
 		writeDuration = Float.MAX_VALUE;
@@ -1064,10 +1083,10 @@ public class ReaderWriterPrimitiveTest {
 				i = 0;
 				while (i < byteData.length) {
 					byte[] data = byteData[i++];
-					writer.writeByteArrayData(data, 0, data.length, writer);
+					PrimitiveWriter.writeByteArrayData(data, 0, data.length, writer);
 				}
 			}
-			writer.flush(writer);
+			PrimitiveWriter.flush(writer);
 			writeDuration = min(writeDuration, (System.nanoTime() - start) / (float) baost.size());
 			input.replaceStream(new ByteArrayInputStream(baost.toByteArray()));
 

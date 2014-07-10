@@ -9,6 +9,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 /**
  * Holds count of how many of each type of field is required and what the
@@ -127,7 +128,18 @@ public class DictionaryFactory {
             charInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
             int len = PrimitiveReader.readIntegerUnsigned(reader);
             char[] value = new char[len];
-            PrimitiveReader.readTextUTF8(value, 0, len, reader);
+            int offset = 0;
+            { 
+                byte[] temp = new byte[len];//TODO: A, hack remove
+                
+                PrimitiveReader.readByteData(temp,0,len,reader);
+                
+                long charAndPos = 0;        
+                while (charAndPos>>32 < len  ) {
+                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    value[offset++]=(char)charAndPos;
+                }
+            }
             charInitValue[c] = value;
         }
         this.charInitTotalLength = PrimitiveReader.readIntegerUnsigned(reader);
@@ -174,7 +186,7 @@ public class DictionaryFactory {
             writer.writeIntegerUnsigned(charInitIndex[c], writer);
             char[] value = charInitValue[c];
             writer.writeIntegerUnsigned(value.length, writer);
-            writer.writeTextUTF(value, 0, value.length, writer);
+            writer.writeTextUTF(value, 0, value.length, value.length, writer);
         }
         writer.writeIntegerUnsigned(charInitTotalLength, writer);
 

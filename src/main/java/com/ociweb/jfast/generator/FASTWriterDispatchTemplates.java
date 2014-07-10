@@ -52,7 +52,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
                 PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-                PrimitiveWriter.writeTextUTF(value, writer);
+                PrimitiveWriter.writeTextUTF(value, value.length(), writer);
             }
         }
     }
@@ -63,7 +63,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, writer);
+            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
             textHeap.set(target, value, 0, value.length());
         }
     }
@@ -77,7 +77,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail, writer);
             int length = (value.length() - headCount);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
+            PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
             textHeap.appendTail(target, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
@@ -85,7 +85,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTFBefore(value, valueSend, writer);
+            PrimitiveWriter.writeTextUTFBefore(value, value.length(), valueSend, writer);
             textHeap.appendHead(target, trimHead, value, valueSend);
         }
     }
@@ -100,13 +100,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);// plus 1 for optional
         int length = (value.length() - headCount);
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
+        PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
         textHeap.appendTail(target, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-        PrimitiveWriter.writeTextUTF(value, writer);
+        PrimitiveWriter.writeTextUTF(value, value.length(), writer);
     }
     
     protected void genWriteUTFTextDefault(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -115,7 +115,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-            PrimitiveWriter.writeTextUTF(value, writer);
+            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
         }
     }
 
@@ -125,7 +125,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-            PrimitiveWriter.writeTextUTF(value, writer);
+            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
             textHeap.set(target, value, 0, value.length());
         }
     }
@@ -138,7 +138,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(target) - headCount;
             PrimitiveWriter.writeIntegerSigned(trimTail, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length() - headCount, writer);
-            PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
+            PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
             textHeap.appendTail(target, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
@@ -146,7 +146,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTFBefore(value, valueSend, writer);
+            PrimitiveWriter.writeTextUTFBefore(value, value.length(), valueSend, writer);
             textHeap.appendHead(target, trimHead, value, valueSend);
         }
     }
@@ -157,13 +157,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeIntegerUnsigned(trimTail, writer);
         int length = (value.length() - headCount);
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTFAfter(headCount, value, writer);
+        PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
         textHeap.appendTail(target, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-        PrimitiveWriter.writeTextUTF(value, writer);
+        PrimitiveWriter.writeTextUTF(value, value.length(), writer);
     }
 
     protected void genWriteTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -300,7 +300,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
         }
     }
 
@@ -310,7 +310,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
             textHeap.set(target, value, offset, length);
         }
     }
@@ -326,14 +326,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             textHeap.appendTail(target, trimTail, value, startAfter, valueSend);
             PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
+            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(target) - tailCount;
             PrimitiveWriter.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead, writer);
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, len, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, len, len, writer);
             textHeap.appendHead(target, trimHead, value, offset, len);
         }
     }
@@ -351,12 +351,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
+        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
     }
 
     protected void genWriteTextUTFNoneOptional(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-        PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+        PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
     }
 
     protected void genWriteTextUTFDefault(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -365,7 +365,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
         }
     }
 
@@ -375,7 +375,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
             textHeap.set(target, value, offset, length);
         }
     }
@@ -392,7 +392,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
+            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(target) - tailCount;
@@ -400,7 +400,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, len, writer);
+            PrimitiveWriter.writeTextUTF(value, offset, len, len, writer);
             
             textHeap.appendHead(target, trimHead, value, offset, len);
         }
@@ -415,13 +415,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, writer);
+        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
     }
 
     
     protected void genWriteTextUTFNone(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTF(value, offset, length, writer);
+        PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
     }
     
     protected void genWriteTextDefaultOptional(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {

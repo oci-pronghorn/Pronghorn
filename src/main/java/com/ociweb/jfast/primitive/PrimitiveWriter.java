@@ -6,6 +6,7 @@ package com.ociweb.jfast.primitive;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 /**
  * PrimitiveWriter
@@ -986,96 +987,81 @@ public final class PrimitiveWriter {
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
     }
 
-    public static void writeTextUTF(CharSequence value, PrimitiveWriter writer) {
+    //TODO: A, inline
+    public static void writeTextUTF(CharSequence value, int bytesLen, PrimitiveWriter writer) {
+        
+        ensureSpace(bytesLen,writer);
+        
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
         int len = value.length();
         int c = 0;
         while (c < len) {
-            encodeSingleChar(value.charAt(c++), writer);
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
         }
+        writer.limit = limit;
     }
 
-    public static void writeTextUTFBefore(CharSequence value, int stop, PrimitiveWriter writer) {
+    //TODO: A, inline
+    public static void writeTextUTFBefore(CharSequence value, int bytesLen, int stop, PrimitiveWriter writer) {
+        
+        ensureSpace(bytesLen,writer);
+        
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
         int c = 0;
         while (c < stop) {
-            encodeSingleChar(value.charAt(c++), writer);
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
         }
+        writer.limit = limit;
     }
 
-    public static void writeTextUTFAfter(int start, CharSequence value, PrimitiveWriter writer) {
+    //TODO: A, inline
+    public static void writeTextUTFAfter(int start, CharSequence value, int bytesLen, PrimitiveWriter writer) {
+        
+        ensureSpace(bytesLen,writer);
+        
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
         int len = value.length();
         int c = start;
         while (c < len) {
-            encodeSingleChar(value.charAt(c++), writer);
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
         }
+        writer.limit = limit;
     }
 
-    public static void writeTextUTF(char[] value, int offset, int length, PrimitiveWriter writer) {
+    //TODO: A, inline
+    public static void writeTextUTF(char[] value, int offset, int length, int bytesLen, PrimitiveWriter writer) {
+        
+        ensureSpace(bytesLen,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
+                
         while (--length >= 0) {
-            encodeSingleChar(value[offset++], writer);
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
         }
+        writer.limit = limit;
+    }
+    
+    public static void ensureSpace(int bytes, PrimitiveWriter writer) {
+        
+        if (writer.limit > writer.buffer.length - bytes) {
+            writer.output.flush();
+        }
+        
     }
 
-    private static void encodeSingleChar(int c, PrimitiveWriter writer) {
+    
 
-        if (c <= 0x007F) {
-            // code point 7
-            if (writer.limit > writer.buffer.length - 1) {
-                writer.output.flush();
-            }
-            writer.buffer[writer.limit++] = (byte) c;
-        } else {
-            if (c <= 0x07FF) {
-                // code point 11
-                if (writer.limit > writer.buffer.length - 2) {
-                    writer.output.flush();
-                }
-                writer.buffer[writer.limit++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-            } else {
-                if (c <= 0xFFFF) {
-                    // code point 16
-                    if (writer.limit > writer.buffer.length - 3) {
-                        writer.output.flush();
-                    }
-                    writer.buffer[writer.limit++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                } else {
-                    PrimitiveWriter.encodeSingleCharSlow(c, writer);
-                }
-                writer.buffer[writer.limit++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-            }
-            writer.buffer[writer.limit++] = (byte) (0x80 | ((c) & 0x3F));
-        }
-    }
-
-    protected static void encodeSingleCharSlow(int c, PrimitiveWriter writer) {
-        if (c < 0x1FFFFF) {
-            // code point 21
-            if (writer.limit > writer.buffer.length - 4) {
-                writer.output.flush();
-            }
-            writer.buffer[writer.limit++] = (byte) (0xF0 | ((c >> 18) & 0x07));
-        } else {
-            if (c < 0x3FFFFFF) {
-                // code point 26
-                if (writer.limit > writer.buffer.length - 5) {
-                    writer.output.flush();
-                }
-                writer.buffer[writer.limit++] = (byte) (0xF8 | ((c >> 24) & 0x03));
-            } else {
-                if (c < 0x7FFFFFFF) {
-                    // code point 31
-                    if (writer.limit > writer.buffer.length - 6) {
-                        writer.output.flush();
-                    }
-                    writer.buffer[writer.limit++] = (byte) (0xFC | ((c >> 30) & 0x01));
-                } else {
-                    throw new UnsupportedOperationException("can not encode char with value: " + c);
-                }
-                writer.buffer[writer.limit++] = (byte) (0x80 | ((c >> 24) & 0x3F));
-            }
-            writer.buffer[writer.limit++] = (byte) (0x80 | ((c >> 18) & 0x3F));
-        }
-        writer.buffer[writer.limit++] = (byte) (0x80 | ((c >> 12) & 0x3F));
-    }
+    
 
     // //////////////////////////
     // //////////////////////////

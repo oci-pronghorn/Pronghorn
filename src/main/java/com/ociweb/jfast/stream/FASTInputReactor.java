@@ -122,6 +122,7 @@ public final class FASTInputReactor {
     }
 
     public static int pump(FASTInputReactor reactor) {
+ //       Thread.yield();//TODO: add these between feelds for profile?
             return reactor.decoder.decode(reactor.reader);
     }
     

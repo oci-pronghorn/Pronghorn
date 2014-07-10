@@ -189,9 +189,9 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
    *  Low  32   Char (caller can cast response to char to get the decoded value)  
    * 
    */
-  private static long decodeUTF8Fast(byte[] source, long charAndPos, int mask) { //pass in long of last position?
+  public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
       
-    int sourcePos = (int)(charAndPos >> 32); 
+    int sourcePos = (int)(posAndChar >> 32); 
       
     byte b;   
     if ((b = source[mask&sourcePos++]) >= 0) {
@@ -199,64 +199,67 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return (((long)sourcePos)<<32) | b;
     } 
     
-      int result;
-      if (((byte) (0xFF & (b << 2))) >= 0) {
-          if ((b & 0x40) == 0) {
-              return (((long)++sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-          }
-          // code point 11
-          result = (b & 0x1F);
-      } else {
-          if (((byte) (0xFF & (b << 3))) >= 0) {
-              // code point 16
-              result = (b & 0x0F);
-          } else {
-              if (((byte) (0xFF & (b << 4))) >= 0) {
-                  // code point 21
-                  result = (b & 0x07);
-              } else {
-                  if (((byte) (0xFF & (b << 5))) >= 0) {
-                      // code point 26
-                      result = (b & 0x03);
-                  } else {
-                      if (((byte) (0xFF & (b << 6))) >= 0) {
-                          // code point 31
-                          result = (b & 0x01);
-                      } else {
-                          sourcePos += 5;
-                          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                      }
+    int result;
+    if (((byte) (0xFF & (b << 2))) >= 0) {
+        if ((b & 0x40) == 0) {
+            ++sourcePos;
+            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+        }
+        // code point 11
+        result = (b & 0x1F);
+    } else {
+        if (((byte) (0xFF & (b << 3))) >= 0) {
+            // code point 16
+            result = (b & 0x0F);
+        } else {
+            if (((byte) (0xFF & (b << 4))) >= 0) {
+                // code point 21
+                result = (b & 0x07);
+            } else {
+                if (((byte) (0xFF & (b << 5))) >= 0) {
+                    // code point 26
+                    result = (b & 0x03);
+                } else {
+                    if (((byte) (0xFF & (b << 6))) >= 0) {
+                        // code point 31
+                        result = (b & 0x01);
+                    } else {
+                        // System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
+                        // the high bit should never be set
+                        sourcePos += 5;
+                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                    }
 
-                      if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                          sourcePos += 5;
-                          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                      }
-                      result = (result << 6) | (source[sourcePos++] & 0x3F);
-                  }
-                  if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                      sourcePos += 4;
-                      return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                  }
-                  result = (result << 6) | (source[sourcePos++] & 0x3F);
-              }
-              if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                  sourcePos += 3;
-                  return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-              }
-              result = (result << 6) | (source[sourcePos++] & 0x3F);
-          }
-          if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-              sourcePos += 2;
-              return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-          }
-          result = (result << 6) | (source[sourcePos++] & 0x3F);
-      }
-      if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-          sourcePos += 1;
-          return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-      }
-       
-      return (((long)sourcePos)<<32) | ((result << 6) | (source[mask&sourcePos++] & 0x3F));
+                    if ((source[sourcePos] & 0xC0) != 0x80) {
+                        sourcePos += 5;
+                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                    }
+                    result = (result << 6) | (source[sourcePos++] & 0x3F);
+                }
+                if ((source[sourcePos] & 0xC0) != 0x80) {
+                    sourcePos += 4;
+                    return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+                }
+                result = (result << 6) | (source[sourcePos++] & 0x3F);
+            }
+            if ((source[sourcePos] & 0xC0) != 0x80) {
+                sourcePos += 3;
+                return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+            }
+            result = (result << 6) | (source[sourcePos++] & 0x3F);
+        }
+        if ((source[sourcePos] & 0xC0) != 0x80) {
+            sourcePos += 2;
+            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+        }
+        result = (result << 6) | (source[sourcePos++] & 0x3F);
+    }
+    if ((source[sourcePos] & 0xC0) != 0x80) {
+        sourcePos += 1;
+        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+    }
+    int chr = ((result << 6) | (source[sourcePos++] & 0x3F));
+    return (((long)sourcePos)<<32) | chr;
   }
     
     
@@ -372,22 +375,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return true;
         
         
-//        byte[] buffer = ring.byteBuffer;
-//        
-//        int mask = ring.byteMask;
-//        int i = 0;
-//        while (--len >= 0) {
-//            
-//            
-//            
-//            if (seq.charAt(i++)!=buffer[mask & pos++]) {
-//                //System.err.println("text match failure on:"+seq.charAt(i-1)+" pos "+pos+" mask "+mask);
-//                return false;
-//            }
-//        }
-//        
-//        return true;
-        
     }   
     
     
@@ -479,6 +466,46 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         //dump everything up to where it it is still writing new fragments.
         queue.removeCount.lazySet(queue.remPos.value = queue.addCount.get());
         
+    }
+
+    public static int encodeSingleChar(int c, byte[] buffer, int pos) {
+        if (c <= 0x007F) {
+            // code point 7
+            buffer[pos++] = (byte) c;
+        } else {
+            if (c <= 0x07FF) {
+                // code point 11
+                buffer[pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+            } else {
+                if (c <= 0xFFFF) {
+                    // code point 16
+                    buffer[pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+                } else {
+                    if (c < 0x1FFFFF) {
+                        // code point 21
+                        buffer[pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
+                    } else {
+                        if (c < 0x3FFFFFF) {
+                            // code point 26
+                            buffer[pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
+                        } else {
+                            if (c < 0x7FFFFFFF) {
+                                // code point 31
+                                buffer[pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
+                            } else {
+                                throw new UnsupportedOperationException("can not encode char with value: " + c);
+                            }
+                            buffer[pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
+                        }
+                        buffer[pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
+                    }
+                    buffer[pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
+                }
+                buffer[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+            }
+            buffer[pos++] = (byte) (0x80 | ((c) & 0x3F));
+        }
+        return pos;
     }
 
 

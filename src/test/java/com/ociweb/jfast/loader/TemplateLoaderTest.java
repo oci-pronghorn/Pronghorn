@@ -122,7 +122,7 @@ public class TemplateLoaderTest {
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
-        Stats stats = new Stats(1000000,1000000,30000000);    
+        Stats stats = new Stats(100000,13000000);    
         
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
@@ -131,7 +131,7 @@ public class TemplateLoaderTest {
         FASTRingBuffer queue = readerDispatch.ringBuffer(0);      
 
         int warmup = 64;
-        int count = 512;
+        int count = 1024;
         int result = 0;
         final int[] fullScript = catalog.getScriptTokens();
         
@@ -228,7 +228,7 @@ public class TemplateLoaderTest {
         totalBytesOut.set(totalBytesOut.longValue()/warmup);
         totalRingInts.set(totalRingInts.longValue()/warmup);
         
-        iter = count;
+        iter = count+warmup;
         while (--iter >= 0) {
             if (Thread.interrupted()) {
                 System.exit(0);
@@ -248,22 +248,24 @@ public class TemplateLoaderTest {
             
             double duration = System.nanoTime() - start;
             
-            stats.sample((long)duration);
-            
-            if ((0x7F & iter) == 0) {
-                int ns = (int) stats.valueAtPercent(.60);//duration;
-                float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
-                float nsPerByte = (ns / (float) totalTestBytes);
-                int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
+            if (iter<count) {
+                stats.sample((long)duration);
                 
-                float mfieldPerSec = (totalRingInts.longValue()* (float) 1000l / ns);
-
-                System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
-                        + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + totalBytesOut + " cmpr:"
-                        + (1f-(totalTestBytes / (float) totalBytesOut.longValue())) + " Messages:" + msgs + " Frags:" + frags
-                        + " RingInts:"+totalRingInts+ " mfps "+mfieldPerSec 
-                        ); // Phrases/Clauses
-                // Helps let us kill off the job.
+                if ((0x7F & iter) == 0) {
+                    int ns = (int) stats.valueAtPercent(.60);//duration;
+                    float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
+                    float nsPerByte = (ns / (float) totalTestBytes);
+                    int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
+                    
+                    float mfieldPerSec = (totalRingInts.longValue()* (float) 1000l / ns);
+    
+                    System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
+                            + " " + mbps + "mbps " + " In:" + totalTestBytes + " Out:" + totalBytesOut + " cmpr:"
+                            + (1f-(totalTestBytes / (float) totalBytesOut.longValue())) + " Messages:" + msgs + " Frags:" + frags
+                            + " RingInts:"+totalRingInts+ " mfps "+mfieldPerSec 
+                            ); // Phrases/Clauses
+                    // Helps let us kill off the job.
+                }
             }
 
             // //////

@@ -28,8 +28,6 @@ public class GeneratorUtils {
         target.append(templates.imports()); //imports
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
-        target.append("\n");
-        target.append("Stats stats = new Stats(1000000,1000000,30000000); ");
         target.append("\n");        
         target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
@@ -350,11 +348,11 @@ public class GeneratorUtils {
         
         String statsName = templateMethodName+"Stats"; 
         
-        //debug stats gathering
-        if (!statsNames.contains(statsName)) {
-            statsNames.add(statsName);
-            generatorData.statsBuilder.append("Stats "+statsName+" = new Stats(1000000,1000000,30000000);\n");
-        }
+//        //debug stats gathering
+//        if (!statsNames.contains(statsName)) {
+//            statsNames.add(statsName);
+//            generatorData.statsBuilder.append("Stats "+statsName+" = new Stats(1000000,1200000);\n");
+//        }
         
         //target.append("\n");
         //target.append("Stats stats = new Stats(1000000,1000000,30000000); ");

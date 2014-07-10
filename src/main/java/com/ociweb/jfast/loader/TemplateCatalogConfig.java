@@ -15,6 +15,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
@@ -189,7 +190,20 @@ public class TemplateCatalogConfig {
             String name ="";
             if (len>0) {
                 builder.setLength(0);
-                name = PrimitiveReader.readTextUTF8(len, builder, reader).toString();
+                {
+                    byte[] temp1 = new byte[len];//TODO: A, hack remove
+                    
+                    PrimitiveReader.readByteData(temp1,0,len,reader);
+                    
+                    long charAndPos = 0;        
+                    while (charAndPos>>32 < len  ) {
+                        charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp1, charAndPos, Integer.MAX_VALUE);
+                        builder.append((char)charAndPos);
+
+                    }
+                }
+                Appendable temp = builder;
+                name = temp.toString();
             }
             scriptFieldNames[i] = name;
         }
@@ -237,11 +251,11 @@ public class TemplateCatalogConfig {
         PrimitiveWriter.writeIntegerUnsigned(keys.size(), writer);
         for(String key: keys) {
             PrimitiveWriter.writeIntegerUnsigned(key.length(), writer);
-            PrimitiveWriter.writeTextUTF(key, writer);
+            PrimitiveWriter.writeTextUTF(key, key.length(), writer);
             
             String prop = properties.getProperty(key);
             PrimitiveWriter.writeIntegerUnsigned(prop.length(), writer);
-            PrimitiveWriter.writeTextUTF(prop, writer);
+            PrimitiveWriter.writeTextUTF(prop, prop.length(), writer);
         }
         
     }
@@ -341,7 +355,7 @@ public class TemplateCatalogConfig {
             int len = null==name?0:name.length();
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
             if (len>0) {
-                PrimitiveWriter.writeTextUTF(name, writer);
+                PrimitiveWriter.writeTextUTF(name, name.length(), writer);
             }
         }
 

@@ -6,16 +6,19 @@ package com.ociweb.jfast.field;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class UTF8EncodeDecodeTest {
 
@@ -36,7 +39,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
-		writer.writeTextUTF(unicodeTestString, writer);
+		writer.writeTextUTF(unicodeTestString, data.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -49,7 +52,7 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
-		writer.writeTextUTF(unicodeTestString, writer);
+		writer.writeTextUTF(unicodeTestString, data.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -63,7 +66,7 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length, writer);
+		writer.writeTextUTF(temp,0,temp.length, data.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -77,7 +80,7 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length, writer);
+		writer.writeTextUTF(temp,0,temp.length, data.length, writer);
 		writer.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
@@ -98,8 +101,20 @@ public class UTF8EncodeDecodeTest {
 		char[] target = new char[unicodeTestString.length()];
 		
 		PrimitiveReader reader = new PrimitiveReader(2048, new FASTInputByteArray(paddedData), 32);
-		PrimitiveReader.fetch(reader);//required to preload the data to make it call the faster side of the implementation.
-		PrimitiveReader.readTextUTF8(target, 0, unicodeTestString.length(), reader);
+		PrimitiveReader.fetch(reader);
+        int offset = 0;
+        int byteCount = data.length;//required to preload the data to make it call the faster side of the implementation.
+		{ 
+            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < byteCount  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                target[offset++]=(char)charAndPos;
+            }
+        }
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
@@ -113,7 +128,19 @@ public class UTF8EncodeDecodeTest {
 		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
-		PrimitiveReader.readTextUTF8(target, 0, unicodeTestString.length(), reader);
+        int offset = 0;
+        int byteCount = data.length;
+		{ 
+            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < byteCount  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                target[offset++]=(char)charAndPos;
+            }
+        }
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
@@ -133,7 +160,25 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveReader reader = new PrimitiveReader(2048, new FASTInputByteArray(paddedData), 32);
 		PrimitiveReader.fetch(reader);
-		String target = PrimitiveReader.readTextUTF8(unicodeTestString.length(), new StringBuilder(), reader).toString();
+        int byteCount = data.length;
+        Appendable target1 = new StringBuilder();
+        {
+            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < byteCount  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                try{
+                    target1.append((char)charAndPos);
+                } catch (IOException e) {
+                    throw new FASTException(e);
+                }
+            }
+        }
+		Appendable readTextUTF8 = target1;
+        String target = readTextUTF8.toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	
 		
@@ -146,7 +191,25 @@ public class UTF8EncodeDecodeTest {
 		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
-		String target = PrimitiveReader.readTextUTF8(/*data.length*/ unicodeTestString.length(), new StringBuilder(), reader).toString();
+        int byteCount = data.length;
+        Appendable target1 = new StringBuilder();
+        {
+            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            
+            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            
+            long charAndPos = 0;        
+            while (charAndPos>>32 < byteCount  ) {
+                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                try{
+                    target1.append((char)charAndPos);
+                } catch (IOException e) {
+                    throw new FASTException(e);
+                }
+            }
+        }
+		Appendable readTextUTF8 = target1;
+        String target = readTextUTF8.toString();
 		
 		assertEquals("chars do not match "+unicodeTestString+" vs "+target, unicodeTestString, target);	
 		

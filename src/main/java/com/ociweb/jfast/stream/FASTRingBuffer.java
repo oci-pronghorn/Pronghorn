@@ -35,7 +35,7 @@ public final class FASTRingBuffer {
     
     public final int[] buffer;
     public final int mask;
-    public final PaddedLong addPos = new PaddedLong();
+    public final PaddedLong addPos = new PaddedLong();//TODO B, test different cache line solutions here grouping head and caches?
     public final PaddedLong remPos = new PaddedLong();
     
     public final int maxSize;
@@ -302,6 +302,8 @@ public final class FASTRingBuffer {
     public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
         //TODO: X, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
             ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
+            
+          //TODO: B, write padding message if this unblock is the only fragment in the queue.
     }
 
     public void removeForward2(long pos) {
@@ -315,7 +317,8 @@ public final class FASTRingBuffer {
         long p = pos.value;
         rbB[rbMask & (int)p] = value;
         pos.value = p+1;
-    }
+    } //TODO: B, back off write if with in cache line distance of tail (full queue case)
+    
     
     public static void dump(FASTRingBuffer rb) {
                        

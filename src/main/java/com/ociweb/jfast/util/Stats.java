@@ -10,7 +10,11 @@ public class Stats {
     private long step;
     private long total;
     private int compactions;
-    private long x;
+    private long accum;
+    private long maxValue = Long.MIN_VALUE;
+    private long maxValueIdx;
+    private long minValue = Long.MAX_VALUE;
+    private long minValueIdx;
     
     /**
      * 
@@ -18,19 +22,25 @@ public class Stats {
      * @param lowEst May grow lower with additional data
      * @param highEst May grow larger with additional data
      */
-    public Stats(int bucketsCount, long lowEst, long highEst) {//TODO: A, add hard limits and start with estmated avg, record max and min.
+    public Stats(int bucketsCount, long expectedAvg) {//TODO: A, add hard limits, record max and min.
         buckets = new long[bucketsCount<<1];//must be divisible by two
-        min = lowEst;
-        max = highEst;
-        step = (max-min)/buckets.length;
-        if (step<1) {
-            step = 1;
-        }
+        step = 1;
+        min = expectedAvg - (bucketsCount>>1);
         max = min + (step*buckets.length);
     }
     
     public void sample(long value) {
-        x +=value;
+        
+        if (value>maxValue) {
+            maxValue = value;
+            maxValueIdx = total;
+        }
+        if (value<minValue) {
+            minValue = value;
+            minValueIdx = total;
+        }
+        
+        accum +=value;
         
         //System.err.println("sample :"+value);
         total++;
@@ -43,9 +53,6 @@ public class Stats {
             newMin();
         }
         int bIdx = (int)((value-min)/step);
-        
-  //      System.err.println(bIdx+"  "+value+" "+min+" "+step+"  "+max);
-        
         
         if (++buckets[bIdx]>COMPACT_LIMIT) {
             //compact
@@ -112,12 +119,15 @@ public class Stats {
     }
     
     public String toString() {
-        double avg = (x/(float)total);
+        double avg = (accum/(float)total);
         return "50%["+valueAtPercent(.5)+"] "
+                + "80%["+valueAtPercent(.99)+"] "
                 + "99%["+valueAtPercent(.99)+"] "
                 + "99.9%["+valueAtPercent(.999)+"] "
                 + "99.99%["+valueAtPercent(.9999)+"] "
-                + "99.999%["+valueAtPercent(.99999)+"] avg:"+avg;
+                        + " avg:"+avg+" "
+                + "Max:"+maxValue+"@"+maxValueIdx+" "
+                + "Min:"+minValue+"@"+minValueIdx;
     }
     
     
