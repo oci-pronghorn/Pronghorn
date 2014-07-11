@@ -356,8 +356,6 @@ public abstract class BaseStreamingTest {
 		return target;
 	}
 
-
-    //TODO: A, delete null method and its gen methods.
     public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -395,7 +393,6 @@ public abstract class BaseStreamingTest {
     /**
      * Write null value, must only be used if the field id is one of optional
      * type.
-     * @param fw TODO
      */
     public static void write(int token, PrimitiveWriter writer, FASTWriterInterpreterDispatch fw) {
     
@@ -414,7 +411,8 @@ public abstract class BaseStreamingTest {
                 //temp solution as the ring buffer is introduce into all the APIs
                 FASTRingBuffer.dump(fw.rbRingBufferLocal);
                 FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                FASTRingBuffer.unBlockFragment(fw.rbRingBufferLocal);
+                FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
+                FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
@@ -445,7 +443,8 @@ public abstract class BaseStreamingTest {
                     //temp solution as the ring buffer is introduce into all the APIs     
                     FASTRingBuffer.dump(fw.rbRingBufferLocal);
                     FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                    FASTRingBuffer.unBlockFragment(fw.rbRingBufferLocal);
+                    FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
+                    FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
                     int rbPos = 0;
                                         // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {

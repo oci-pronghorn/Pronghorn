@@ -136,7 +136,7 @@ public class StreamingLongTest extends BaseStreamingTest {
         FASTRingBuffer.dump(rbRingBufferLocal);            
         FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (value >>> 32));
         FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (value & 0xFFFFFFFF)); 
-        FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
+        FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
         int rbPos = 0;                    
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
@@ -191,12 +191,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				
 				if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
 						if (sendNulls && (i&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]), none, value);
 							}
 						} else { 
-							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
+							long value = TestHelper.readLong(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
 							if (testConst!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testConst, value);
 							}
@@ -205,12 +205,12 @@ public class StreamingLongTest extends BaseStreamingTest {
 				} else {
 				
 						if (sendNulls && (f&0xF)==0 && TokenBuilder.isOptional(token)) {
-				     		long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
+				     		long value = TestHelper.readLong(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
 							if (none!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),none, value);
 							}
 						} else { 
-							long value = TestHelper.readLong(tokenLookup[f], reader, fr.ringBuffer(0), fr);
+							long value = TestHelper.readLong(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0), fr);
 							if (testData[f]!=value) {
 								assertEquals(TokenBuilder.tokenToString(tokenLookup[f]),testData[f], value);
 							}

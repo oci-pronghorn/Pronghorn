@@ -10,6 +10,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.util.Profile;
 import com.ociweb.jfast.util.Stats;
 
 
@@ -122,8 +123,12 @@ public final class FASTInputReactor {
     }
 
     public static int pump(FASTInputReactor reactor) {
- //       Thread.yield();//TODO: add these between feelds for profile?
+//        int tmp = Profile.version.get();
+//        try {
             return reactor.decoder.decode(reactor.reader);
+//        } finally {
+//            Profile.count+=(Profile.version.get()-tmp);
+//        }
     }
     
 

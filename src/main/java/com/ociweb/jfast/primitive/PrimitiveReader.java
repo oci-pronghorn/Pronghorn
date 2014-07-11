@@ -7,6 +7,7 @@ import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.util.Profile;
 
 /**
  * PrimitiveReader
@@ -50,6 +51,27 @@ public final class PrimitiveReader {
 
     // both bytes but class def likes int much better for alignment
     private byte pmapIdx = -1;
+//    private byte a0;
+//    private byte a1;
+//    private byte a2;
+//    private byte a3;
+//    private byte a4;
+//    private byte a5;
+//    private byte a6;
+//    private byte a7;
+//    private byte a8;
+//    private byte a9;    
+//    private byte b0;
+//    private byte b1;
+//    private byte b2;
+//    private byte b3;
+//    private byte b4;
+//    private byte b5;
+//    private byte b6;
+//    private byte b7;
+//    private byte b8;
+//    private byte b9; 
+    
     private byte bitBlock = 0;
     
     
@@ -264,14 +286,23 @@ public final class PrimitiveReader {
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
     public static byte readPMapBit(PrimitiveReader reader) {
-        byte pidx = reader.pmapIdx; 
-        if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0)) {
-            // Frequent, 6 out of every 7 plus the last bit block
-            reader.pmapIdx = (byte) (pidx - 1);
-            return (byte) (1 & (reader.bitBlock >>> pidx));
-        } else {
-            return (pidx < 0 ? 0 :popPMapBitLow(reader.bitBlock, reader)); //detect next byte or continue with zeros.
-        }
+            
+//        int tmp = Profile.version.get();
+//        try {
+            
+            byte pidx = reader.pmapIdx; 
+            if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0 )) {
+                // Frequent, 6 out of every 7 plus the last bit block
+                reader.pmapIdx = (byte) (pidx - 1);
+                return (byte) (1 & (reader.bitBlock >>> pidx));
+                                
+            } else {
+                return (pidx < 0 ? 0 :popPMapBitLow(reader.bitBlock, reader)); //detect next byte or continue with zeros.
+            }
+            
+//        } finally  {
+//            Profile.count+=(Profile.version.get()-tmp);
+//        }
     }
 
     private static byte popPMapBitLow(byte bb, PrimitiveReader reader) {

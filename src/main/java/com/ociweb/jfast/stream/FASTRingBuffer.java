@@ -9,6 +9,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.util.Profile;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -30,13 +31,16 @@ import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
 public final class FASTRingBuffer {
 
     public static class PaddedLong {
-        public long value = 0, padding1, padding2, padding3, padding4;
+        public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
     
     public final int[] buffer;
     public final int mask;
-    public final PaddedLong addPos = new PaddedLong();//TODO B, test different cache line solutions here grouping head and caches?
+    public final PaddedLong addPos = new PaddedLong();
     public final PaddedLong remPos = new PaddedLong();
+
+    public final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
+    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
     
     public final int maxSize;
 
@@ -49,8 +53,6 @@ public final class FASTRingBuffer {
     final byte[] constByteBuffer;
 
 
-    public final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
-    public final AtomicLong addCount = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
     long lastRead;
 
     //TODO: A, use stack of fragment start offsets for each fragment until full message is completed.
@@ -111,7 +113,7 @@ public final class FASTRingBuffer {
         addPos.value = 0;
         remPos.value = 0;
         removeCount.set(0);
-        addCount.set(0);
+        headPos.set(0);
         
         /////
         
@@ -127,7 +129,7 @@ public final class FASTRingBuffer {
     int cursor=-1;
     int[] seqStack = new int[10];//TODO: how deep is this?
     int seqStackHead = -1;
-    final int JUMP_MASK = 0xFFFFF;
+    static final int JUMP_MASK = 0xFFFFF;
     int activeFragmentDataSize = 0;
 
 
@@ -160,9 +162,10 @@ public final class FASTRingBuffer {
         //////////////
         if (ringBuffer.sequenceLengthDetector(fragStep)) {
             //detecting end of message
-            if ((ringBuffer.cursor>=ringBuffer.from.tokens.length) || (TokenBuilder.extractType(ringBuffer.from.tokens[ringBuffer.cursor])==TypeMask.Group &&
-            0==(ringBuffer.from.tokens[ringBuffer.cursor] & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
-            0!=(ringBuffer.from.tokens[ringBuffer.cursor] & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
+            int token = ringBuffer.from.tokens[ringBuffer.cursor];
+            if ((ringBuffer.cursor>=ringBuffer.from.tokens.length) || (TokenBuilder.extractType(token)==TypeMask.Group &&
+            0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
+            0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 
                 //must read message after more data is added to the ringBuffer
                 if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
@@ -297,14 +300,7 @@ public final class FASTRingBuffer {
     // TODO: D, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
 
-    // fragment is ready for consumption
-    //Called once for every group close, even when nested
-    public static final void unBlockFragment(FASTRingBuffer ringBuffer) {
-        //TODO: X, Will want to add local cache of atomic in order to not lazy set twice because it is called for every close.
-            ringBuffer.addCount.lazySet(ringBuffer.addPos.value);
-            
-          //TODO: B, write padding message if this unblock is the only fragment in the queue.
-    }
+
 
     public void removeForward2(long pos) {
         remPos.value = pos;
@@ -313,11 +309,40 @@ public final class FASTRingBuffer {
 
     //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
     //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
-    public static void addValue(int[] rbB, int rbMask, PaddedLong pos, int value) {
-        long p = pos.value;
-        rbB[rbMask & (int)p] = value;
-        pos.value = p+1;
-    } //TODO: B, back off write if with in cache line distance of tail (full queue case)
+    //TODO: B, back off write if with in cache line distance of tail (full queue case)
+
+   
+    //we are only allowed 12% of the time or so for doing this write.
+    //this pushes only ~5gbs but if we had 100% it would scale to 45gbs
+    //so this is not the real bottleneck and given the compression ratio of the test data
+    //we can push 1gbs more of compressed data for each 10% of cpu freed up.
+    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value) {
+        
+
+        
+      //  int tmp = Profile.version.get();
+        
+       
+        long p = headCache.value; //TODO: code gen may want to replace this
+        //int idx = rbMask * (int)p;
+        buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
+
+        headCache.value = p+1;
+        
+        
+      //  Profile.count+=(Profile.version.get()-tmp);
+
+    } 
+    
+    // fragment is ready for consumption
+    public static final void unBlockFragment(AtomicLong head, PaddedLong headCache) {
+     
+        head.lazySet(headCache.value);
+    }
+    
+    //TODO: X, Will want to add local cache of atomic in unBlock in order to not lazy set twice because it is called for every close.
+    //Called once for every group close, even when nested
+    //TODO: B, write padding message if this unblock is the only fragment in the queue.
     
     
     public static void dump(FASTRingBuffer rb) {
@@ -335,18 +360,18 @@ public final class FASTRingBuffer {
         return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
     }
 
-    public byte[] readRingCharBuffer(int fieldPos) { //TODO: A, rename
+    public byte[] readRingByteBuffer(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
         return buffer[(int)(mask & (remPos.value + fieldPos))] < 0 ? constByteBuffer : byteBuffer;
     }
 
-    public int readRingCharMask() { //TODO: A, rename
+    public int readRingByteMask() {
         return byteMask;
     }
 
 
     public static int contentRemaining(FASTRingBuffer rb) {
-        return (int)(rb.addCount.longValue() - rb.remPos.value); //must not go past add count because it is not release yet.
+        return (int)(rb.headPos.longValue() - rb.remPos.value); //must not go past add count because it is not release yet.
     }
 
     public int fragmentSteps() {

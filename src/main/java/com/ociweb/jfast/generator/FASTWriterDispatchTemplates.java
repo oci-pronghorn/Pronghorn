@@ -38,6 +38,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeByteArrayData(preambleData, 0, preambleData.length, writer);
     }
     
+    //TODO: A, Finish converting utf8 chars over to bytes
+    //TODO: A, Replace both heaps with sigular heap.
+    
     protected void genWriteUTFTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
@@ -52,7 +55,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writePMapBit((byte) 1, writer);
                 PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-                PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+                PrimitiveWriter.ensureSpace(value.length(),writer);
+                
+                //convert from chars to bytes
+                //writeByteArrayData()
+                int len = value.length();
+                byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+                int limit = writer.limit;
+                int c = 0;
+                while (c < len) {
+                    limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+                }
+                writer.limit = limit;
             }
         }
     }
@@ -63,7 +77,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+            PrimitiveWriter.ensureSpace(value.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            int len = value.length();
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int c = 0;
+            while (c < len) {
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.set(target, value, 0, value.length());
         }
     }
@@ -77,7 +102,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(trimTail >= 0 ? trimTail + 1 : trimTail, writer);
             int length = (value.length() - headCount);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
+            PrimitiveWriter.ensureSpace(value.length(), writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int len = value.length();
+            int c = headCount;
+            while (c < len) {            
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.appendTail(target, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
@@ -85,7 +121,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 1 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTFBefore(value, value.length(), valueSend, writer);
+            PrimitiveWriter.ensureSpace(value.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int c = 0;
+            while (c < valueSend) {            
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.appendHead(target, trimHead, value, valueSend);
         }
     }
@@ -100,13 +146,35 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);// plus 1 for optional
         int length = (value.length() - headCount);
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
+        PrimitiveWriter.ensureSpace(value.length(), writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+        int len = value.length();
+        int c = headCount;
+        while (c < len) {            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
         textHeap.appendTail(target, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
-        PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+        PrimitiveWriter.ensureSpace(value.length(),writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        int len = value.length();
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+        int c = 0;
+        while (c < len) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
     }
     
     protected void genWriteUTFTextDefault(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -115,7 +183,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+            PrimitiveWriter.ensureSpace(value.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            int len = value.length();
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int c = 0;
+            while (c < len) {
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
         }
     }
 
@@ -125,7 +204,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-            PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+            PrimitiveWriter.ensureSpace(value.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            int len = value.length();
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int c = 0;
+            while (c < len) {
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.set(target, value, 0, value.length());
         }
     }
@@ -138,7 +228,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int trimTail = textHeap.length(target) - headCount;
             PrimitiveWriter.writeIntegerSigned(trimTail, writer);
             PrimitiveWriter.writeIntegerUnsigned(value.length() - headCount, writer);
-            PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
+            PrimitiveWriter.ensureSpace(value.length(), writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int len = value.length();
+            int c = headCount;
+            while (c < len) {            
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.appendTail(target, trimTail, headCount, value);
         } else {
             // replace head, tail matches to tailCount
@@ -146,7 +247,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
             int valueSend = value.length() - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTFBefore(value, value.length(), valueSend, writer);
+            PrimitiveWriter.ensureSpace(value.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+            int c = 0;
+            while (c < valueSend) {            
+                limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.appendHead(target, trimHead, value, valueSend);
         }
     }
@@ -157,13 +268,35 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeIntegerUnsigned(trimTail, writer);
         int length = (value.length() - headCount);
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTFAfter(headCount, value, value.length(), writer);
+        PrimitiveWriter.ensureSpace(value.length(), writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+        int len = value.length();
+        int c = headCount;
+        while (c < len) {            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
         textHeap.appendTail(target, trimTail, headCount, value);
     }
 
     protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
-        PrimitiveWriter.writeTextUTF(value, value.length(), writer);
+        PrimitiveWriter.ensureSpace(value.length(),writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        int len = value.length();
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+        int c = 0;
+        while (c < len) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
     }
 
     protected void genWriteTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -300,7 +433,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+            PrimitiveWriter.ensureSpace(length,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+            }
+            writer.limit = limit;
         }
     }
 
@@ -310,7 +454,20 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+            int offset1 = offset;
+            int length1 = length;
+            PrimitiveWriter.ensureSpace(length,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length1 >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset1++], buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.set(target, value, offset, length);
         }
     }
@@ -326,14 +483,38 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             textHeap.appendTail(target, trimTail, value, startAfter, valueSend);
             PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
+            PrimitiveWriter.ensureSpace(valueSend,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--valueSend >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[startAfter++], buffer, limit);
+            }
+            writer.limit = limit;
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(target) - tailCount;
             PrimitiveWriter.writeIntegerSigned(trimHead == 0 ? 1 : -trimHead, writer);
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, len, len, writer);
+            int offset1 = offset;
+            int length1 = len;
+            PrimitiveWriter.ensureSpace(len,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length1 >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset1++], buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.appendHead(target, trimHead, value, offset, len);
         }
     }
@@ -351,12 +532,34 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 1, writer);
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
+        PrimitiveWriter.ensureSpace(valueSend,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+                
+        while (--valueSend >= 0) {
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value[startAfter++], buffer, limit);
+        }
+        writer.limit = limit;
     }
 
     protected void genWriteTextUTFNoneOptional(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
-        PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+        PrimitiveWriter.ensureSpace(length,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+                
+        while (--length >= 0) {
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+        }
+        writer.limit = limit;
     }
 
     protected void genWriteTextUTFDefault(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
@@ -365,7 +568,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+            PrimitiveWriter.ensureSpace(length,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+            }
+            writer.limit = limit;
         }
     }
 
@@ -375,7 +589,20 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+            int offset1 = offset;
+            int length1 = length;
+            PrimitiveWriter.ensureSpace(length,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length1 >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset1++], buffer, limit);
+            }
+            writer.limit = limit;
             textHeap.set(target, value, offset, length);
         }
     }
@@ -392,7 +619,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
+            PrimitiveWriter.ensureSpace(valueSend,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--valueSend >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[startAfter++], buffer, limit);
+            }
+            writer.limit = limit;
         } else {
             // replace head, tail matches to tailCount
             int trimHead = textHeap.length(target) - tailCount;
@@ -400,7 +638,20 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeTextUTF(value, offset, len, len, writer);
+            int offset1 = offset;
+            int length1 = len;
+            PrimitiveWriter.ensureSpace(len,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length1 >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset1++], buffer, limit);
+            }
+            writer.limit = limit;
             
             textHeap.appendHead(target, trimHead, value, offset, len);
         }
@@ -415,13 +666,35 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         PrimitiveWriter.writeIntegerUnsigned(trimTail + 0, writer);
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeTextUTF(value, startAfter, valueSend, valueSend, writer);
+        PrimitiveWriter.ensureSpace(valueSend,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+                
+        while (--valueSend >= 0) {
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value[startAfter++], buffer, limit);
+        }
+        writer.limit = limit;
     }
 
     
     protected void genWriteTextUTFNone(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
-        PrimitiveWriter.writeTextUTF(value, offset, length, length, writer);
+        PrimitiveWriter.ensureSpace(length,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        int limit = writer.limit;
+                
+        while (--length >= 0) {
+            
+            limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+        }
+        writer.limit = limit;
     }
     
     protected void genWriteTextDefaultOptional(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {

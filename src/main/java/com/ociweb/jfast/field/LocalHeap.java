@@ -26,7 +26,7 @@ import com.ociweb.jfast.error.FASTException;
  * @author Nathan Tippy
  * 
  */
-public class LocalHeap { //TODO: A, delete this class
+public class LocalHeap {
 
     //TODO: B, Modify to a set of static methods with no member methods, do the same in  byteHeap.
     
@@ -59,8 +59,8 @@ public class LocalHeap { //TODO: A, delete this class
         this(singleTextSize, singleGapSize, fixedTextItemCount, 0, new int[0], new byte[0][]);
     }
 
-    public LocalHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, int charInitTotalLength, //TODO: A, rename vars.
-            int[] charInitIndex, byte[][] charInitValue) {
+    public LocalHeap(int singleTextSize, int singleGapSize, int fixedTextItemCount, int byteInitTotalLength,
+            int[] byteInitIndex, byte[][] byteInitValue) {
 
         if (singleTextSize<1) {
             throw new UnsupportedOperationException("Text length must be 1 or more.");
@@ -88,23 +88,23 @@ public class LocalHeap { //TODO: A, delete this class
             tat[i] = idx;
         }
 
-        if (null == charInitValue || charInitValue.length == 0) {
+        if (null == byteInitValue || byteInitValue.length == 0) {
             initBuffer = null;
         } else {
-            initBuffer = new byte[charInitTotalLength];
+            initBuffer = new byte[byteInitTotalLength];
 
-            int stopIdx = charInitTotalLength;
+            int stopIdx = byteInitTotalLength;
             int startIdx = stopIdx;
 
-            i = charInitValue.length;
+            i = byteInitValue.length;
             while (--i >= 0) {
-                int len = null == charInitValue[i] ? 0 : charInitValue[i].length;
+                int len = null == byteInitValue[i] ? 0 : byteInitValue[i].length;
                 startIdx -= len;
                 if (len > 0) {
-                    System.arraycopy(charInitValue[i], 0, initBuffer, startIdx, len);
+                    System.arraycopy(byteInitValue[i], 0, initBuffer, startIdx, len);
                 }
                 // will be zero zero for values without constants.
-                int offset = charInitIndex[i] << 1;
+                int offset = byteInitIndex[i] << 1;
                 initTat[offset] = startIdx;
                 initTat[offset + 1] = stopIdx;
 
@@ -730,10 +730,6 @@ public class LocalHeap { //TODO: A, delete this class
         }
         return true;
     }
-
-    
-    //TODO: A, ring buffer will only have 1 inner ring of bytes.
-    //TODO: need UTF8 write to ringBuffer and UTF8 read from ring buffer.
 
         
     /**

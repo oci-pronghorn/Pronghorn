@@ -18,9 +18,6 @@ import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
-
-  //TODO: A, need histogram class with configurable slots, must support 1024 or more slots.
-    //Must time the entry method and each fragment and each field.
     
     public static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target, String name, String base) throws IOException {
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
@@ -125,7 +122,7 @@ public class GeneratorUtils {
         builder.append("    int x = activeScriptCursor;\n");
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
-        builder.append("    FASTRingBuffer.unBlockFragment(rb);\n");
+        builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.addPos);\n");
         builder.append("    return ringBufferIdx;\n"); 
         builder.append("}\n");
     
@@ -329,10 +326,6 @@ public class GeneratorUtils {
     static void generator(StackTraceElement[] trace, GeneratorData generatorData, GeneratorDriving scriptor, long ... values) {
         
         String templateMethodName = trace[0].getMethodName();
-        
-//        if (scriptor instanceof FASTWriterInterpreterDispatch) {
-//            System.err.println(templateMethodName);//TODO: A, this is missing a lot of calls.
-//        }
         
         if (generatorData.usages.containsKey(templateMethodName)) {
             generatorData.usages.get(templateMethodName).incrementAndGet();

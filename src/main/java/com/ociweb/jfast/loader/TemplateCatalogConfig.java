@@ -251,11 +251,36 @@ public class TemplateCatalogConfig {
         PrimitiveWriter.writeIntegerUnsigned(keys.size(), writer);
         for(String key: keys) {
             PrimitiveWriter.writeIntegerUnsigned(key.length(), writer);
-            PrimitiveWriter.writeTextUTF(key, key.length(), writer);
+            PrimitiveWriter.ensureSpace(key.length(),writer);
+            
+            {
+                //convert from chars to bytes
+                //writeByteArrayData()
+                int len = key.length();
+                int limit = writer.limit;
+                int c = 0;
+                while (c < len) {
+                    limit = FASTRingBufferReader.encodeSingleChar((int) key.charAt(c++), writer.buffer, limit);
+                }
+                writer.limit = limit;
+            }
             
             String prop = properties.getProperty(key);
             PrimitiveWriter.writeIntegerUnsigned(prop.length(), writer);
-            PrimitiveWriter.writeTextUTF(prop, prop.length(), writer);
+            PrimitiveWriter.ensureSpace(prop.length(),writer);
+            
+            {
+                //convert from chars to bytes
+                //writeByteArrayData()
+                int len = prop.length();
+                int limit = writer.limit;
+                int c = 0;
+                while (c < len) {
+                    limit = FASTRingBufferReader.encodeSingleChar((int) prop.charAt(c++), writer.buffer, limit);
+                }
+                writer.limit = limit;
+            }
+            
         }
         
     }
@@ -355,7 +380,17 @@ public class TemplateCatalogConfig {
             int len = null==name?0:name.length();
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
             if (len>0) {
-                PrimitiveWriter.writeTextUTF(name, name.length(), writer);
+                PrimitiveWriter.ensureSpace(name.length(),writer);
+                
+                //convert from chars to bytes
+                //writeByteArrayData()
+                int len1 = name.length();
+                int limit = writer.limit;
+                int c = 0;
+                while (c < len1) {
+                    limit = FASTRingBufferReader.encodeSingleChar((int) name.charAt(c++), writer.buffer, limit);
+                }
+                writer.limit = limit;
             }
         }
 

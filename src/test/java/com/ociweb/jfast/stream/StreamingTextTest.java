@@ -216,7 +216,7 @@ public class StreamingTextTest extends BaseStreamingTest {
         TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, 8, 9, maxGroupCount * 10, 0, -1);
         FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
         
-        FASTRingBuffer ringBuffer = fr.ringBuffer(0);
+        FASTRingBuffer ringBuffer = RingBuffers.get(fr.ringBuffers,0);
 
         long start = System.nanoTime();
         int i = operationIters;
@@ -238,7 +238,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                 
                 fr.activeScriptCursor = 0;
                 fr.dispatchReadByTokenForText(tokenLookup[f], reader);
-                FASTRingBuffer.unBlockFragment(ringBuffer);
+                FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
                 
                 int len = FASTRingBufferReader.readDataLength(ringBuffer, 0);
                 

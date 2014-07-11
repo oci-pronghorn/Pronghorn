@@ -161,44 +161,57 @@ public class DictionaryFactory {
 
     public void save(PrimitiveWriter writer) {
 
-        writer.writeIntegerUnsigned(integerCount, writer);
-        writer.writeIntegerUnsigned(longCount, writer);
-        writer.writeIntegerUnsigned(charCount, writer);
-        writer.writeIntegerUnsigned(bytesCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(integerCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(longCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(charCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(bytesCount, writer);
 
-        writer.writeIntegerUnsigned(integerInitCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(integerInitCount, writer);
         int c = integerInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(integerInitIndex[c], writer);
-            writer.writeIntegerSigned(integerInitValue[c], writer);
+            PrimitiveWriter.writeIntegerUnsigned(integerInitIndex[c], writer);
+            PrimitiveWriter.writeIntegerSigned(integerInitValue[c], writer);
         }
 
-        writer.writeIntegerUnsigned(longInitCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(longInitCount, writer);
         c = longInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(longInitIndex[c], writer);
-            writer.writeLongSigned(longInitValue[c], writer);
+            PrimitiveWriter.writeIntegerUnsigned(longInitIndex[c], writer);
+            PrimitiveWriter.writeLongSigned(longInitValue[c], writer);
         }
 
-        writer.writeIntegerUnsigned(charInitCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(charInitCount, writer);
         c = charInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(charInitIndex[c], writer);
+            PrimitiveWriter.writeIntegerUnsigned(charInitIndex[c], writer);
             char[] value = charInitValue[c];
-            writer.writeIntegerUnsigned(value.length, writer);
-            writer.writeTextUTF(value, 0, value.length, value.length, writer);
+            PrimitiveWriter.writeIntegerUnsigned(value.length, writer);
+            int offset = 0;
+            int length = value.length;
+            PrimitiveWriter.ensureSpace(value.length,writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            int limit = writer.limit;
+                    
+            while (--length >= 0) {
+                
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+            }
+            writer.limit = limit;
         }
-        writer.writeIntegerUnsigned(charInitTotalLength, writer);
+        PrimitiveWriter.writeIntegerUnsigned(charInitTotalLength, writer);
 
-        writer.writeIntegerUnsigned(byteInitCount, writer);
+        PrimitiveWriter.writeIntegerUnsigned(byteInitCount, writer);
         c = byteInitCount;
         while (--c >= 0) {
-            writer.writeIntegerUnsigned(byteInitIndex[c], writer);
+            PrimitiveWriter.writeIntegerUnsigned(byteInitIndex[c], writer);
             byte[] value = byteInitValue[c];
-            writer.writeIntegerUnsigned(value.length, writer);
-            writer.writeByteArrayData(value, 0, value.length, writer);
+            PrimitiveWriter.writeIntegerUnsigned(value.length, writer);
+            PrimitiveWriter.writeByteArrayData(value, 0, value.length, writer);
         }
-        writer.writeIntegerUnsigned(byteInitTotalLength, writer);
+        PrimitiveWriter.writeIntegerUnsigned(byteInitTotalLength, writer);
 
         /*
          * Fastest searialize deserialize however its more verbose and there is

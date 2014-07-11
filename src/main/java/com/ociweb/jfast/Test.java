@@ -32,6 +32,7 @@ import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class Test {
 
@@ -108,7 +109,7 @@ public class Test {
                       ok = false;
                       break;
                   default:
-                      FASTRingBuffer rb = readerDispatch.ringBuffer(bufId);
+                      FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,bufId);
                       
                       FASTRingBuffer.moveNext(rb);
                       
@@ -141,7 +142,7 @@ public class Test {
           
             reactor.start(executor, reader);
             
-            FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+            FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
             int j = 0;
             long rp = rb.remPos.value;
             do {

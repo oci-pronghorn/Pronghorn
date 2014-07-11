@@ -247,12 +247,12 @@ public class StaticGlue {
         
         //replace head, tail matches to tailCount
         int trimHead = byteHeap.length(idx)-tailCount;
-        writer.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
+        PrimitiveWriter.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
         
         int len = value.remaining() - tailCount;
         int offset = value.position();
-        writer.writeIntegerUnsigned(len, writer);
-        writer.writeByteArrayData(value, offset, len, writer);
+        PrimitiveWriter.writeIntegerUnsigned(len, writer);
+        PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
         byteHeap.appendHead(idx, trimHead, value, offset, len);
     }
     public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, LocalHeap byteHeap, PrimitiveWriter writer) {
@@ -261,20 +261,20 @@ public class StaticGlue {
         if (trimTail<0) {
             throw new ArrayIndexOutOfBoundsException();
         }
-        writer.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail, writer);
+        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail, writer);
         
         int valueSend = value.remaining()-headCount;
         int startAfter = value.position()+headCount;
                 
-        writer.writeIntegerUnsigned(valueSend, writer);
+        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
         //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
         byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        writer.writeByteArrayData(value, startAfter, valueSend, writer);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
         
     }
     public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
         dictionary[idx] = 0;
-        writer.writeNull(writer);
+        PrimitiveWriter.writeNull(writer);
     }
     public static void nullCopyIncInt(PrimitiveWriter writer, int[] dictionary, int source, int target) {
         if (0 == dictionary[source]) { // stored value was null;
@@ -282,7 +282,7 @@ public class StaticGlue {
         } else {
             dictionary[target] = 0;
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
     public static void nullPMap(PrimitiveWriter writer) {
@@ -293,7 +293,7 @@ public class StaticGlue {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            writer.writeNull(writer);
+            PrimitiveWriter.writeNull(writer);
         }
     }
     public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {

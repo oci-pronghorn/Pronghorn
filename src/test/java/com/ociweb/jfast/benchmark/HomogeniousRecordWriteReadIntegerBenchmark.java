@@ -19,6 +19,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.stream.StreamingIntegerTest;
 import com.ociweb.jfast.stream.TestHelper;
 
@@ -649,7 +650,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = intTestData.length;
 			while (--j>=0) {
-				result |= TestHelper.readInt(token, reader, staticReader.ringBuffer(staticReader.activeScriptCursor), staticReader);
+				result |= TestHelper.readInt(token, reader, RingBuffers.get(staticReader.ringBuffers,staticReader.activeScriptCursor), staticReader);
 			}
 			int idx = TokenBuilder.MAX_INSTANCE & groupToken;
 			staticReader.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER),idx, reader);

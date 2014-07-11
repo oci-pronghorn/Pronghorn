@@ -23,6 +23,7 @@ import com.ociweb.jfast.stream.BaseStreamingTest;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
@@ -294,7 +295,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                 FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,1);
                 FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (mantissa >>> 32));
                 FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (mantissa & 0xFFFFFFFF)); 
-                FASTRingBuffer.unBlockFragment(rbRingBufferLocal);
+                FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                 int rbPos = 0;
 
                 if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -331,7 +332,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             j = intTestData.length;
             while (--j >= 0) {
                 
-                staticReader.decodeDecimal(reader,token,token, staticReader.ringBuffer(0));
+                staticReader.decodeDecimal(reader,token,token, RingBuffers.get(staticReader.ringBuffers,0));
                 result |= j;
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;

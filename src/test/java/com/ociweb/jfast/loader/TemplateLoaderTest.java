@@ -41,6 +41,8 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.jfast.util.Profile;
 import com.ociweb.jfast.util.Stats;
 
 public class TemplateLoaderTest {
@@ -95,7 +97,7 @@ public class TemplateLoaderTest {
         return builder.toString();
     }
 
-    
+
     
     @Test
     public void testDecodeComplex30000() {
@@ -128,7 +130,7 @@ public class TemplateLoaderTest {
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
-        FASTRingBuffer queue = readerDispatch.ringBuffer(0);      
+        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
 
         int warmup = 64;
         int count = 1024;
@@ -154,7 +156,7 @@ public class TemplateLoaderTest {
             frags = 0;
 
             reactor = new FASTInputReactor(readerDispatch,reader);
-            FASTRingBuffer rb = readerDispatch.ringBuffer(0);
+            FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
          //   FASTRingBuffer.dump(rb);//common starting spot??
             
@@ -224,9 +226,12 @@ public class TemplateLoaderTest {
   //          System.err.println(reactor.stats.toString()+" ns");
             
         }
-
-        totalBytesOut.set(totalBytesOut.longValue()/warmup);
-        totalRingInts.set(totalRingInts.longValue()/warmup);
+        if (warmup>0) {
+            totalBytesOut.set(totalBytesOut.longValue()/warmup);
+            totalRingInts.set(totalRingInts.longValue()/warmup);
+        }
+        
+        Profile.start();
         
         iter = count+warmup;
         while (--iter >= 0) {
@@ -237,13 +242,22 @@ public class TemplateLoaderTest {
             reactor = new FASTInputReactor(readerDispatch,reader);
             
             FASTRingBuffer rb = null; 
-            rb =  readerDispatch.ringBuffer(0);
+            rb =  RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
             
             double start = System.nanoTime();
 
-            while (FASTInputReactor.pump(reactor)>=0) {
-                FASTRingBuffer.moveNext(rb);
+            //TODO: A, this should work to have extra data1
+//            FASTInputReactor.pump(reactor);
+//            FASTInputReactor.pump(reactor);
+//            FASTInputReactor.pump(reactor);
+//            FASTInputReactor.pump(reactor);
+            
+            while (FASTInputReactor.pump(reactor)>=0) { //72-88
+             //   FASTRingBuffer.dump(rb);
+                //int tmp = Profile.version.get();
+                FASTRingBuffer.moveNext(rb); //11
+                //Profile.count += (Profile.version.get()-tmp);
             }
             
             double duration = System.nanoTime() - start;
@@ -277,6 +291,8 @@ public class TemplateLoaderTest {
 
         }
         System.err.println(stats.toString()+" ns  total:"+stats.total());
+        
+        System.err.println(Profile.results());
 
         
     }
@@ -329,7 +345,7 @@ public class TemplateLoaderTest {
         
         FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
         
-        FASTRingBuffer queue = readerDispatch.ringBuffer(0);
+        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
         FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
 

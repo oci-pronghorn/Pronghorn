@@ -39,8 +39,19 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
-		writer.writeTextUTF(unicodeTestString, data.length, writer);
-		writer.flush(writer);
+		PrimitiveWriter.ensureSpace(data.length,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        int len = unicodeTestString.length();
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
+        int c = 0;
+        while (c < len) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
+		PrimitiveWriter.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -52,8 +63,19 @@ public class UTF8EncodeDecodeTest {
 		byte[] myData = new byte[data.length];
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
-		writer.writeTextUTF(unicodeTestString, data.length, writer);
-		writer.flush(writer);
+		PrimitiveWriter.ensureSpace(data.length,writer);
+        
+        //convert from chars to bytes
+        //writeByteArrayData()
+        int len = unicodeTestString.length();
+        byte[] buffer = writer.buffer;
+        int limit = writer.limit;
+        int c = 0;
+        while (c < len) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, limit);
+        }
+        writer.limit = limit;
+		PrimitiveWriter.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -66,8 +88,18 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length, data.length, writer);
-		writer.flush(writer);
+        int offset = 0;
+        int length = temp.length;
+		PrimitiveWriter.ensureSpace(data.length,writer);
+        
+        //convert from chars to bytes
+        int limit = writer.limit;
+                
+        while (--length >= 0) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) temp[offset++], writer.buffer, limit);
+        }
+        writer.limit = limit;
+        PrimitiveWriter.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}
@@ -80,8 +112,18 @@ public class UTF8EncodeDecodeTest {
 		
 		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
 		char[] temp = unicodeTestString.toCharArray();
-		writer.writeTextUTF(temp,0,temp.length, data.length, writer);
-		writer.flush(writer);
+        int offset = 0;
+        int length = temp.length;
+		PrimitiveWriter.ensureSpace(data.length,writer);
+        
+        //convert from chars to bytes
+        int limit = writer.limit;
+                
+        while (--length >= 0) {
+            limit = FASTRingBufferReader.encodeSingleChar((int) temp[offset++], writer.buffer, limit);
+        }
+        writer.limit = limit;
+		PrimitiveWriter.flush(writer);
 				
 		assertTrue("bytes do not match",Arrays.equals(data, myData));
 	}

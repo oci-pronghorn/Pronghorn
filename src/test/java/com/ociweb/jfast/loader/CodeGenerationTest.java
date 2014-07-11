@@ -38,6 +38,7 @@ import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class CodeGenerationTest {
 
@@ -145,7 +146,7 @@ public class CodeGenerationTest {
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTRingBuffer queue1 = readerDispatch1.ringBuffer(0);
+        FASTRingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
 
         FASTInputByteArray fastInput2 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, maxPMapCountInBytes);
@@ -159,7 +160,7 @@ public class CodeGenerationTest {
         } catch (SecurityException e) {
             fail(e.getMessage());
         }
-        FASTRingBuffer queue2 = readerDispatch2.ringBuffer(0);
+        FASTRingBuffer queue2 = RingBuffers.get(readerDispatch2.ringBuffers,0);
 
         final int keep = 32;
         final int mask = keep - 1;

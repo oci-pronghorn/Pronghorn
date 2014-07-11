@@ -238,7 +238,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 }
             }
         } while (++activeScriptCursor < limit);
-        FASTRingBuffer.unBlockFragment(rbRingBuffer);
+        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.addPos);
         
         //TODO: B, on normal fixed closed this is not needed so the conditional can be skipped.
         genReadGroupCloseMessage(reader, this); 
@@ -672,7 +672,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     void dispatchReadByTokenForText(int token, PrimitiveReader reader) {
         // System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
 
-        FASTRingBuffer rb = ringBuffer(activeScriptCursor);
+        FASTRingBuffer rb = RingBuffers.get(ringBuffers,activeScriptCursor);
         // 010??
         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
             // 0100?

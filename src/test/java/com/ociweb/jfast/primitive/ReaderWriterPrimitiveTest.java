@@ -855,7 +855,17 @@ public class ReaderWriterPrimitiveTest {
 		while (i<stringData.length) {
 			PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
 			CharSequence temp = stringData[i++];
-			PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
+			PrimitiveWriter.ensureSpace(temp.length(),writer);
+            
+            //convert from chars to bytes
+            //writeByteArrayData()
+            int len = temp.length();
+            int limit = writer.limit;
+            int c = 0;
+            while (c < len) {
+                limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+            }
+            writer.limit = limit;
 		}
 		
 		PrimitiveWriter.flush(writer);
@@ -875,8 +885,10 @@ public class ReaderWriterPrimitiveTest {
             {
                 byte[] temp = new byte[len];//TODO: A, hack remove
                 
+                //read bytes into temp array
                 PrimitiveReader.readByteData(temp,0,len,reader);
                 
+                //convert bytes into chars
                 long charAndPos = 0;        
                 while (charAndPos>>32 < len  ) {
                     charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
@@ -913,7 +925,17 @@ public class ReaderWriterPrimitiveTest {
 				while (--i>=0) {
 					PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
 					CharSequence temp = stringData[i];
-					PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
+					PrimitiveWriter.ensureSpace(temp.length(),writer);
+                    
+                    //convert from chars to bytes
+                    //writeByteArrayData()
+                    int len = temp.length();
+                    int limit = writer.limit;
+                    int c = 0;
+                    while (c < len) {
+                        limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                    }
+                    writer.limit = limit;
 				}
 			}
 			PrimitiveWriter.flush(writer);
@@ -972,7 +994,17 @@ public class ReaderWriterPrimitiveTest {
 				while (--i>=0) {
 					PrimitiveWriter.writeIntegerUnsigned(stringData[i].length(), writer);
 					CharSequence temp = stringData[i];
-					PrimitiveWriter.writeTextUTF(temp, temp.length(), writer);
+					PrimitiveWriter.ensureSpace(temp.length(),writer);
+                    
+                    //convert from chars to bytes
+                    //writeByteArrayData()
+                    int len = temp.length();
+                    int limit = writer.limit;
+                    int c = 0;
+                    while (c < len) {
+                        limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                    }
+                    writer.limit = limit;
 				}
 			}
 			PrimitiveWriter.flush(writer);

@@ -22,7 +22,7 @@ public class Stats {
      * @param lowEst May grow lower with additional data
      * @param highEst May grow larger with additional data
      */
-    public Stats(int bucketsCount, long expectedAvg) {//TODO: A, add hard limits, record max and min.
+    public Stats(int bucketsCount, long expectedAvg) {//TODO: A, add hard limits
         buckets = new long[bucketsCount<<1];//must be divisible by two
         step = 1;
         min = expectedAvg - (bucketsCount>>1);
@@ -112,10 +112,16 @@ public class Stats {
         long topDownTarget = total-(long)(pct*total);
         int i = buckets.length;
         long sum = 0;
-        while (sum<topDownTarget && --i>=0) {
-            sum += buckets[i];
+        int lastValidBucket = -1;
+        while (((lastValidBucket<0) ||
+                (sum<topDownTarget)) && --i>=0) {
+            long count = buckets[i];
+            if (count>0) {
+                lastValidBucket=i;
+            }
+            sum += count;
         }
-        return min+(step*i);        
+        return min+(step*lastValidBucket);        
     }
     
     public String toString() {
@@ -126,8 +132,8 @@ public class Stats {
                 + "99.9%["+valueAtPercent(.999)+"] "
                 + "99.99%["+valueAtPercent(.9999)+"] "
                         + " avg:"+avg+" "
-                + "Max:"+maxValue+"@"+maxValueIdx+" "
-                + "Min:"+minValue+"@"+minValueIdx;
+                + "Min:"+minValue+"@"+minValueIdx+" "
+                + "Max:"+maxValue+"@"+maxValueIdx+" ";
     }
     
     

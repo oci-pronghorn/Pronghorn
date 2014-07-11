@@ -59,12 +59,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
     }
 
-    //TODO: A, 1. read as UTF and ASCII
-    //TODO: A, 2. write as UTF dnd ASCII
-    //TODO: A, 3. remove byte heap.
-    //TODO: A, 4. remove text heap.
-    
-    
     @Deprecated
     public static Appendable readText(FASTRingBuffer ring, int idx, Appendable target) {
         
@@ -181,7 +175,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         
     }
     
-  //TODO: A, make use of this in equals.
   /**
    * Convert bytes into chars using UTF-8.
    * 
@@ -464,7 +457,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     public static void dump(FASTRingBuffer queue) {
         new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
         //dump everything up to where it it is still writing new fragments.
-        queue.removeCount.lazySet(queue.remPos.value = queue.addCount.get());
+        queue.removeCount.lazySet(queue.remPos.value = queue.headPos.get());
         
     }
 

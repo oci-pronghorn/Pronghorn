@@ -33,7 +33,7 @@ public final class PrimitiveWriter {
                                                        // bottom 28 are byte pos
 
     public final FASTOutput output;
-    final byte[] buffer;
+    public final byte[] buffer;
 
     private final int minimizeLatency;
     private final long[] safetyStackPosPos;// low 28, location where the last
@@ -987,79 +987,13 @@ public final class PrimitiveWriter {
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
     }
 
-    //TODO: A, inline
-    public static void writeTextUTF(CharSequence value, int bytesLen, PrimitiveWriter writer) {
-        
-        ensureSpace(bytesLen,writer);
-        
-        byte[] buffer = writer.buffer;
-        int limit = writer.limit;
-        int len = value.length();
-        int c = 0;
-        while (c < len) {
-            
-            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
-        }
-        writer.limit = limit;
-    }
-
-    //TODO: A, inline
-    public static void writeTextUTFBefore(CharSequence value, int bytesLen, int stop, PrimitiveWriter writer) {
-        
-        ensureSpace(bytesLen,writer);
-        
-        byte[] buffer = writer.buffer;
-        int limit = writer.limit;
-        int c = 0;
-        while (c < stop) {
-            
-            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
-        }
-        writer.limit = limit;
-    }
-
-    //TODO: A, inline
-    public static void writeTextUTFAfter(int start, CharSequence value, int bytesLen, PrimitiveWriter writer) {
-        
-        ensureSpace(bytesLen,writer);
-        
-        byte[] buffer = writer.buffer;
-        int limit = writer.limit;
-        int len = value.length();
-        int c = start;
-        while (c < len) {
-            
-            limit = FASTRingBufferReader.encodeSingleChar((int) value.charAt(c++), buffer, limit);
-        }
-        writer.limit = limit;
-    }
-
-    //TODO: A, inline
-    public static void writeTextUTF(char[] value, int offset, int length, int bytesLen, PrimitiveWriter writer) {
-        
-        ensureSpace(bytesLen,writer);
-        
-        //convert from chars to bytes
-        //writeByteArrayData()
-        byte[] buffer = writer.buffer;
-        int limit = writer.limit;
-                
-        while (--length >= 0) {
-            
-            limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
-        }
-        writer.limit = limit;
-    }
-    
     public static void ensureSpace(int bytes, PrimitiveWriter writer) {
         
         if (writer.limit > writer.buffer.length - bytes) {
             writer.output.flush();
         }
         
-    }
-
-    
+    }    
 
     
 

@@ -32,6 +32,7 @@ import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class Complex30000Benchmark extends Benchmark {
 
@@ -64,7 +65,7 @@ public class Complex30000Benchmark extends Benchmark {
             readerDispatch = new FASTReaderInterpreterDispatch(catalog);
             
             reactor = new FASTInputReactor(readerDispatch,reader);
-            queue = readerDispatch.ringBuffer(0);
+            queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

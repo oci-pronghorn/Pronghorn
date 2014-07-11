@@ -27,7 +27,7 @@ public abstract class FASTDecoder{
     protected final long[] rLongDictionary;
     protected final int[] rIntDictionary;
     protected final LocalHeap byteHeap;
-    protected final TextHeap textHeap;
+    protected final TextHeap textHeap;//TODO: A, remove
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.
     public int ringBufferIdx= -1; //must hold return value from beginning of fragment to the end.
@@ -92,10 +92,6 @@ public abstract class FASTDecoder{
 
     }
 
-    public FASTRingBuffer ringBuffer(int idx) {
-        return RingBuffers.get(ringBuffers,idx);
-    }
-    
     public abstract int decode(PrimitiveReader reader);
         
   

@@ -23,6 +23,7 @@ import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 
@@ -448,23 +449,23 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
     public int readText(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder) {
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-        FASTRingBuffer rbRingBuffer = decoder.ringBuffer(0);
+        FASTRingBuffer rbRingBuffer = RingBuffers.get(decoder.ringBuffers,0);
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
-                decoder.readTextASCII(token, reader, decoder.ringBuffer(0));
+                decoder.readTextASCII(token, reader, RingBuffers.get(decoder.ringBuffers,0));
             } else {
                 // utf8
-                decoder.readTextUTF8(token, reader, decoder.ringBuffer(0));
+                decoder.readTextUTF8(token, reader, RingBuffers.get(decoder.ringBuffers,0));
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
-                decoder.readTextASCIIOptional(token, reader, decoder.ringBuffer(0));
+                decoder.readTextASCIIOptional(token, reader, RingBuffers.get(decoder.ringBuffers,0));
             } else {
                 // utf8 optional
-                decoder.readTextUTF8Optional(token, reader, decoder.ringBuffer(0));
+                decoder.readTextUTF8Optional(token, reader, RingBuffers.get(decoder.ringBuffers,0));
             }
         }
         
