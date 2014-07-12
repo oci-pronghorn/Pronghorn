@@ -191,19 +191,17 @@ public class TemplateCatalogConfig {
             if (len>0) {
                 builder.setLength(0);
                 {
-                    byte[] temp1 = new byte[len];//TODO: A, hack remove
+                    byte[] tmp = new byte[len];                    
+                    PrimitiveReader.readByteData(tmp,0,len,reader); //read bytes into array
                     
-                    PrimitiveReader.readByteData(temp1,0,len,reader);
-                    
-                    long charAndPos = 0;        
-                    while (charAndPos>>32 < len  ) {
-                        charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp1, charAndPos, Integer.MAX_VALUE);
+                    long charAndPos = 0;  //convert bytes to chars
+                    while (charAndPos>>32 < len  ) { 
+                        charAndPos = FASTRingBufferReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
                         builder.append((char)charAndPos);
 
                     }
                 }
-                Appendable temp = builder;
-                name = temp.toString();
+                name = builder.toString();
             }
             scriptFieldNames[i] = name;
         }

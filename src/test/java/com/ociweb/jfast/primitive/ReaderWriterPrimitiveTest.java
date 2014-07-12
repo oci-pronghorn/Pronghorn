@@ -883,10 +883,10 @@ public class ReaderWriterPrimitiveTest {
 			builder.setLength(0);
 			int len = PrimitiveReader.readIntegerUnsigned(reader);
             {
-                byte[] temp = new byte[len];//TODO: A, hack remove
+                byte[] temp = new byte[len];
                 
                 //read bytes into temp array
-                PrimitiveReader.readByteData(temp,0,len,reader);
+                PrimitiveReader.readByteData(temp,0,len,reader);//read bytes
                 
                 //convert bytes into chars
                 long charAndPos = 0;        
@@ -952,12 +952,12 @@ public class ReaderWriterPrimitiveTest {
 					int len = PrimitiveReader.readIntegerUnsigned(reader);
                     int offset = 0;
 					{ 
-                        byte[] temp = new byte[len];//TODO: A, hack remove
+                        byte[] temp = new byte[len];
                         
-                        PrimitiveReader.readByteData(temp,0,len,reader);
+                        PrimitiveReader.readByteData(temp,0,len,reader); //read bytes
                         
                         long charAndPos = 0;        
-                        while (charAndPos>>32 < len  ) {
+                        while (charAndPos>>32 < len  ) {//convert bytes to chars
                             charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                             target[offset++]=(char)charAndPos;
                         }

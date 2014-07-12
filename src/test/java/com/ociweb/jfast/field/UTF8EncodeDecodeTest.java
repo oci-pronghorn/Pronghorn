@@ -147,11 +147,11 @@ public class UTF8EncodeDecodeTest {
         int offset = 0;
         int byteCount = data.length;//required to preload the data to make it call the faster side of the implementation.
 		{ 
-            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            byte[] temp = new byte[byteCount];
             
-            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            PrimitiveReader.readByteData(temp,0,byteCount,reader); //read bytes
             
-            long charAndPos = 0;        
+            long charAndPos = 0;        //convert bytes to chars
             while (charAndPos>>32 < byteCount  ) {
                 charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 target[offset++]=(char)charAndPos;
@@ -173,11 +173,11 @@ public class UTF8EncodeDecodeTest {
         int offset = 0;
         int byteCount = data.length;
 		{ 
-            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            byte[] temp = new byte[byteCount];
             
-            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            PrimitiveReader.readByteData(temp,0,byteCount,reader); //read bytes
             
-            long charAndPos = 0;        
+            long charAndPos = 0;   //convert bytes to chars     
             while (charAndPos>>32 < byteCount  ) {
                 charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 target[offset++]=(char)charAndPos;
@@ -205,11 +205,11 @@ public class UTF8EncodeDecodeTest {
         int byteCount = data.length;
         Appendable target1 = new StringBuilder();
         {
-            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            byte[] temp = new byte[byteCount];
             
-            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            PrimitiveReader.readByteData(temp,0,byteCount,reader);//read bytes
             
-            long charAndPos = 0;        
+            long charAndPos = 0;        //convert bytes to chars
             while (charAndPos>>32 < byteCount  ) {
                 charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 try{
@@ -219,8 +219,7 @@ public class UTF8EncodeDecodeTest {
                 }
             }
         }
-		Appendable readTextUTF8 = target1;
-        String target = readTextUTF8.toString();
+        String target = target1.toString();
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+target, Arrays.equals(unicodeTestString.toCharArray(), target.toCharArray()));	
 		
@@ -236,12 +235,12 @@ public class UTF8EncodeDecodeTest {
         int byteCount = data.length;
         Appendable target1 = new StringBuilder();
         {
-            byte[] temp = new byte[byteCount];//TODO: A, hack remove
+            byte[] temp = new byte[byteCount];
             
-            PrimitiveReader.readByteData(temp,0,byteCount,reader);
+            PrimitiveReader.readByteData(temp,0,byteCount,reader); //read bytes
             
             long charAndPos = 0;        
-            while (charAndPos>>32 < byteCount  ) {
+            while (charAndPos>>32 < byteCount  ) {//convert bytes to chars
                 charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 try{
                     target1.append((char)charAndPos);
@@ -250,8 +249,7 @@ public class UTF8EncodeDecodeTest {
                 }
             }
         }
-		Appendable readTextUTF8 = target1;
-        String target = readTextUTF8.toString();
+        String target = target1.toString();
 		
 		assertEquals("chars do not match "+unicodeTestString+" vs "+target, unicodeTestString, target);	
 		

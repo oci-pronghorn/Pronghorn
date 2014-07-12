@@ -124,7 +124,7 @@ public class TemplateLoaderTest {
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
-        Stats stats = new Stats(100000,13000000);    
+        Stats stats = new Stats(100000,13000000,1000000,100000000);    
         
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
@@ -134,7 +134,6 @@ public class TemplateLoaderTest {
 
         int warmup = 64;
         int count = 1024;
-        int result = 0;
         final int[] fullScript = catalog.getScriptTokens();
         
         
@@ -338,7 +337,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); //TODO: A, need this insstance of catalog
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
         final AtomicInteger msgs = new AtomicInteger();

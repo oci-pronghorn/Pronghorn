@@ -160,7 +160,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         writer.limit = limit;
         textHeap.appendTail(target, trimTail, headCount, value);
     }
-
+    
     protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
         PrimitiveWriter.ensureSpace(value.length(),writer);
@@ -1968,13 +1968,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         if (value == valueOfNull) {
             StaticGlue.nullPMap(writer);  // null for const optional
         }
-        //TODO: A, must check against the value of null.
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
-//        if (valueffNull==value) {
-//            genWriteNullNoPMapLong(idx, writer, dictionary);  
-//        }
+
     protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, PrimitiveWriter writer, long[] longValues, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         if (value == valueOfNull) {

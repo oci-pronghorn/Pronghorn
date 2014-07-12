@@ -264,7 +264,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         //char count is not comparable to byte count for UTF8 of length greater than zero.
         //must convert one to the other before comparison.
         
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)]; //TODO: A, build UTF8 conversion here.
+        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
         if (pos < 0) {
             return eqUTF8Const(ring,len,seq,0x7FFFFFFF & pos);
         } else {

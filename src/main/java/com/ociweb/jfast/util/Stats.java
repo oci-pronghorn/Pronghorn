@@ -5,6 +5,12 @@ public class Stats {
     private final long[] buckets;
     private final long COMPACT_LIMIT = Long.MAX_VALUE>>1;//room for the double up process 
     
+    //These are set to sane limits and should not be used for restricting the results
+    //because they will invalidate the results at both ends of the spectrum.
+    private final long hardMin; //These hard limits are here to protect against unbounded 
+    private final long hardMax; //growth which may lead to memory issues.
+    
+    
     private long min;
     private long max;
     private long step;
@@ -22,11 +28,17 @@ public class Stats {
      * @param lowEst May grow lower with additional data
      * @param highEst May grow larger with additional data
      */
-    public Stats(int bucketsCount, long expectedAvg) {//TODO: A, add hard limits
-        buckets = new long[bucketsCount<<1];//must be divisible by two
-        step = 1;
-        min = expectedAvg - (bucketsCount>>1);
-        max = min + (step*buckets.length);
+    public Stats(int bucketsCount, long expectedAvg, long hardMin, long hardMax) {
+        this.hardMin=hardMin;
+        this.hardMax=hardMax;
+        this.buckets = new long[bucketsCount<<1];//must be divisible by two
+        this.step = 1;
+        this.min = expectedAvg - (bucketsCount>>1);
+        if (this.min<hardMin) {
+            this.min = hardMin;
+        }
+        //max is allowed be larger than hardMax
+        this.max = this.min + (this.step*this.buckets.length);        
     }
     
     public void sample(long value) {
@@ -41,23 +53,37 @@ public class Stats {
         }
         
         accum +=value;
-        
-        //System.err.println("sample :"+value);
         total++;
-        while (value>max) {
-            //grow up
-            newMax();
+        
+        int bIdx;
+        if (value>hardMax) {
+            //do not grow but do count this one
+            //values too large will end up pooling in the last bucket
+            bIdx = buckets.length-1;            
+        } else {
+            if (value<hardMin) {
+                //do not grow but do count this one
+                //values too small will end up pooling in the first bucket
+                bIdx = 0;
+            } else {
+                while (value>max) {
+                    //grow up
+                    newMax();
+                }
+                while (value<min) {
+                    //grow down
+                    newMin();
+                }
+                bIdx = (int)((value-min)/step);
+            }
         }
-        while (value<min) {
-            //grow down
-            newMin();
-        }
-        int bIdx = (int)((value-min)/step);
         
         if (++buckets[bIdx]>COMPACT_LIMIT) {
             //compact
             compact();
         }
+        
+        
     }
 
     private void newMax() {        

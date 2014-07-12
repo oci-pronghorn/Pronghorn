@@ -139,7 +139,6 @@ public class TextHeap { //TODO: A, delete this class
        return temp;
     }
 
-   //TODO: B, Remove raw access.
     char[] rawAccess() {
         return data;
     }

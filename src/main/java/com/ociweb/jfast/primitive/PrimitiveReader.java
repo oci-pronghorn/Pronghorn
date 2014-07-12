@@ -49,30 +49,11 @@ public final class PrimitiveReader {
     private int position; 
     private int limit;
 
-    // both bytes but class def likes int much better for alignment
-    private byte pmapIdx = -1;
-//    private byte a0;
-//    private byte a1;
-//    private byte a2;
-//    private byte a3;
-//    private byte a4;
-//    private byte a5;
-//    private byte a6;
-//    private byte a7;
-//    private byte a8;
-//    private byte a9;    
-//    private byte b0;
-//    private byte b1;
-//    private byte b2;
-//    private byte b3;
-//    private byte b4;
-//    private byte b5;
-//    private byte b6;
-//    private byte b7;
-//    private byte b8;
-//    private byte b9; 
     
-    private byte bitBlock = 0;
+    private int pmapIdxBitBlock = -1; //idx high
+    // both bytes but class def likes int much better for alignment
+//    private byte pmapIdx = -1;
+//    private byte bitBlock = 0;
     
     
     private static InputBlockagePolicy blockagePolicy = new InputBlockagePolicy(){ //   blockagePolicy
@@ -142,7 +123,8 @@ public final class PrimitiveReader {
         reader.totalReader = 0;
         reader.position = 0;
         reader.limit = reader.resetLimit;
-        reader.pmapIdx = -1;
+       // reader.pmapIdx = -1;
+        reader.pmapIdxBitBlock = -1;
         reader.invPmapStackDepth = reader.invPmapStack.length - 2;
 
     }
@@ -248,15 +230,18 @@ public final class PrimitiveReader {
             fetch(1, reader);
         }
         // push the old index for resume
-        reader.invPmapStack[reader.invPmapStackDepth - 1] = (byte) reader.pmapIdx;
+        reader.invPmapStack[reader.invPmapStackDepth - 1] = (byte) (reader.pmapIdxBitBlock>>16);  //reader.pmapIdx;
 
         int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
-        reader.bitBlock = reader.buffer[reader.position];
+//        reader.bitBlock = reader.buffer[reader.position];
+        
+        reader.pmapIdxBitBlock = (6<<16)|(0xFF&reader.buffer[reader.position]);
+        
         k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader, reader.buffer);
         reader.invPmapStack[k] = (byte) (3 + pmapMaxSize + (reader.invPmapStackDepth - k));
 
         // set next bit to read
-        reader.pmapIdx = 6;
+ //       reader.pmapIdx = 6;
     }
 
     private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader, byte[] buffer) {
@@ -290,14 +275,13 @@ public final class PrimitiveReader {
 //        int tmp = Profile.version.get();
 //        try {
             
-            byte pidx = reader.pmapIdx; 
-            if (pidx > 0 || (pidx == 0 && reader.bitBlock < 0 )) {
-                // Frequent, 6 out of every 7 plus the last bit block
-                reader.pmapIdx = (byte) (pidx - 1);
-                return (byte) (1 & (reader.bitBlock >>> pidx));
-                                
+            int pidx = reader.pmapIdxBitBlock>>16;
+            if (pidx > 0 || (pidx == 0 && ((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 )) {
+                // Frequent, 6 out of every 7 plus the last bit block                
+                reader.pmapIdxBitBlock -= (1<<16);                
+                return (byte) (1 & (reader.pmapIdxBitBlock >>> pidx));                                
             } else {
-                return (pidx < 0 ? 0 :popPMapBitLow(reader.bitBlock, reader)); //detect next byte or continue with zeros.
+                return (pidx < 0 ? 0 :popPMapBitLow((byte)(0xFF&reader.pmapIdxBitBlock), reader)); //detect next byte or continue with zeros.
             }
             
 //        } finally  {
@@ -308,8 +292,10 @@ public final class PrimitiveReader {
     private static byte popPMapBitLow(byte bb, PrimitiveReader reader) {
         // SOMETIMES one of 7 we need to move up to the next byte
         // System.err.println(invPmapStackDepth);
-        reader.pmapIdx = 6;
-        reader.bitBlock = reader.invPmapStack[++reader.invPmapStackDepth]; //TODO: X, Set both bytes togheter? may speed up
+        
+        reader.pmapIdxBitBlock = (6<<16)|(0xFF&reader.invPmapStack[++reader.invPmapStackDepth]);
+        //reader.pmapIdx = 6;
+        //reader.bitBlock = reader.invPmapStack[++reader.invPmapStackDepth]; //TODO: X, Set both bytes togheter? may speed up
         return (byte) (1 & bb);
     }
 
@@ -317,9 +303,12 @@ public final class PrimitiveReader {
     public static final void closePMap(PrimitiveReader reader) {
         // assert(bitBlock<0);
         assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
-        reader.bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
-        reader.pmapIdx = reader.invPmapStack[reader.invPmapStackDepth - 1];
-
+//        reader.bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
+//        reader.pmapIdx = reader.invPmapStack[reader.invPmapStackDepth - 1];
+        byte bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
+        byte pmapIdx = reader.invPmapStack[reader.invPmapStackDepth - 1];
+        reader.pmapIdxBitBlock = (pmapIdx<<16)|(0xFF&bitBlock );
+        
     }
 
     // ///////////////////////////////////

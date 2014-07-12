@@ -277,8 +277,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                     } else {
                         try {
                            
-                            if (!FASTRingBufferReader.eqText(ringBuffer, 0, testData[f]) //TODO: A, remove once migration is complete.
-                                &&
+                            if (
                                 !FASTRingBufferReader.eqASCII(ringBuffer, 0, testData[f])
                                 &&
                                 !FASTRingBufferReader.eqUTF8(ringBuffer, 0, testData[f])

@@ -68,6 +68,9 @@ public class DictionaryFactory {
     int gapTextSize=8;
     int singleBytesSize=46; 
     int gapBytesSize=8;
+    
+    TextHeap textHeap;
+    LocalHeap byteHeap;    
 
     public DictionaryFactory() {
 
@@ -132,9 +135,9 @@ public class DictionaryFactory {
             { 
                 byte[] temp = new byte[len];//TODO: A, hack remove
                 
-                PrimitiveReader.readByteData(temp,0,len,reader);
+                PrimitiveReader.readByteData(temp,0,len,reader); //read bytes into array
                 
-                long charAndPos = 0;        
+                long charAndPos = 0;//convert bytes into chars        
                 while (charAndPos>>32 < len  ) {
                     charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                     value[offset++]=(char)charAndPos;
@@ -190,14 +193,11 @@ public class DictionaryFactory {
             int length = value.length;
             PrimitiveWriter.ensureSpace(value.length,writer);
             
-            //convert from chars to bytes
-            //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
             int limit = writer.limit;
                     
             while (--length >= 0) {
                 
-                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], buffer, limit);
+                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], writer.buffer, limit);
             }
             writer.limit = limit;
         }
@@ -321,8 +321,6 @@ public class DictionaryFactory {
         return array;
     }
 
-    TextHeap textHeap;
-    LocalHeap byteHeap;    
     
     public TextHeap charDictionary() {
         if (charCount == 0) {

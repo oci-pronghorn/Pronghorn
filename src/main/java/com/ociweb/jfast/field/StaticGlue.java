@@ -165,13 +165,14 @@ public class StaticGlue {
     //These methods are here for package access to the needed methods.
     ///////////////////
     
+    @Deprecated
     public static void allocateAndDeltaUTF8(final int idx, TextHeap textHeap, PrimitiveReader reader, int trim) {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
             int offset = textHeap.makeSpaceForAppend(idx, trim, utfLength);
             { 
-                byte[] temp = new byte[utfLength];//TODO: A, hack remove
+                byte[] temp = new byte[utfLength];
                 
                 PrimitiveReader.readByteData(temp,0,utfLength,reader);
                 
@@ -185,7 +186,7 @@ public class StaticGlue {
             // append to head
             int offset = textHeap.makeSpaceForPrepend(idx, -trim, utfLength);
             { 
-                byte[] temp = new byte[utfLength];//TODO: A, hack remove
+                byte[] temp = new byte[utfLength];
                 
                 PrimitiveReader.readByteData(temp,0,utfLength,reader);
                 
@@ -198,10 +199,22 @@ public class StaticGlue {
         }
     }
     
+    public static void allocateAndDeltaUTF8(final int idx, LocalHeap heap, PrimitiveReader reader, int trim) {
+        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
+        if (trim >= 0) {
+            // append to tail
+            PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForAppend(idx, trim, utfLength),utfLength,reader);
+        } else {
+            // append to head
+            PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForPrepend(idx, -trim, utfLength),utfLength,reader);
+        }
+    }
+    
+    @Deprecated
     public static void allocateAndCopyUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int length) {
         int offset = textHeap.allocate(idx, length);
         { 
-            byte[] temp = new byte[length];//TODO: A, hack remove
+            byte[] temp = new byte[length];
             
             PrimitiveReader.readByteData(temp,0,length,reader);
             
@@ -212,11 +225,18 @@ public class StaticGlue {
             }
         }
     }
+    
+    public static void allocateAndCopyUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int length) {
 
+        PrimitiveReader.readByteData(heap.rawAccess(),heap.allocate(idx, length),length,reader);
+        
+    }
+
+    @Deprecated
     public static void allocateAndAppendUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int utfLength, int t) {
         int offset = textHeap.makeSpaceForAppend(idx, t, utfLength);
         { 
-            byte[] temp = new byte[utfLength];//TODO: A, hack remove
+            byte[] temp = new byte[utfLength];
             
             PrimitiveReader.readByteData(temp,0,utfLength,reader);
             
@@ -227,6 +247,15 @@ public class StaticGlue {
             }
         }
     }
+    
+    public static void allocateAndAppendUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int utfLength, int t) {
+        
+        PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForAppend(idx, t, utfLength),utfLength,reader);
+    } 
+    
+    
+    
+    
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
         byte val = PrimitiveReader.readTextASCIIByte(reader);  
         int tmp = 0x7F & val;
