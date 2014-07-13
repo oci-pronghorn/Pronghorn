@@ -362,7 +362,9 @@ public class StreamingTextTest extends BaseStreamingTest {
         reader = new PrimitiveReader(writtenData.length, input, maxGroupCount);
     }
 
-    private static void write(int token, char[] value, int offset, int length, PrimitiveWriter writer, FASTWriterInterpreterDispatch dispatch) {
+    private static void write(int token, char[] value, int offset,
+                              int length, PrimitiveWriter writer, 
+                              FASTWriterInterpreterDispatch dispatch) {
     
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));

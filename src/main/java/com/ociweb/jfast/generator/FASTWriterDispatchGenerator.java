@@ -513,7 +513,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap) {
+            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }

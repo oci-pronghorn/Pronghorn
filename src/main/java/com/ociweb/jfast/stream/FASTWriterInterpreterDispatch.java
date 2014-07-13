@@ -470,7 +470,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    public void write(int token, byte[] value, int offset, int length, PrimitiveWriter writer) {
+    public void write(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
 
         assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -486,11 +486,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
             acceptByteArray(token, value, offset, length, writer, byteHeap);
         } else {
-            acceptByteArrayOptional(token, value, offset, length, writer);
+            acceptByteArrayOptional(token, value, offset, length, writer, rbPos, rbRingBuffer);
         }
     }
 
-    private void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer) {
+    private void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -503,7 +503,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTailOptional(idx, offset, length, value, writer, byteHeap);
+                    genWriteBytesTailOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -695,7 +695,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
                 acceptCharSequenceASCII(token, value, writer, textHeap);
-            } else {
+            } else {                                
                 // utf8
                 acceptCharSequenceUTF8(token, value, writer);
             }
@@ -710,6 +710,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
     }
 
+    @Deprecated
     private void acceptCharSequenceUTF8Optional(int token, CharSequence value, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
@@ -757,7 +758,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-
+    @Deprecated
     private void acceptCharSequenceUTF8(int token, CharSequence value, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
@@ -1212,7 +1213,44 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                    acceptText(writer, token, rbRingBuffer);
+                    //TODO: A, this text call sould really be bytes?
+                    assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                    assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                    
+                    int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
+                    if (length < 0) {
+                        writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes. still used?
+                    } else 
+                    {
+                        byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
+                        CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingByteMask(), length);
+                        
+                        if (readFromIdx>=0) {
+                            int source = token & TEXT_INSTANCE_MASK;
+                            int target = readFromIdx & TEXT_INSTANCE_MASK;
+                            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
+                            readFromIdx = -1; //reset for next field where it might be used.
+                        }
+                        
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                            // the work.
+                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                                // ascii
+                                acceptCharSequenceASCII(token, value, writer, textHeap);
+                            } else {
+                                // utf8
+                                acceptCharSequenceUTF8(token, value, writer);
+                            }
+                        } else {
+                            if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                                // ascii optional
+                                acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
+                            } else {
+                                // utf8 optional
+                                acceptCharSequenceUTF8Optional(token, value, writer);
+                            }
+                        }
+                    } 
                     fieldPos+=2;
                 } else {
                     // 011??
@@ -1247,13 +1285,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         // //0111? ByteArray
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                             // 01110 ByteArray
+                            //TODO: A, urgent build
+                            
                             // queue.selectByteSequence(fieldPos);
-                            // write(token,queue); TODO: B, copy the text
+                            // write(token,queue); 
                             // implementation
                         } else {
                             // 01111 ByteArrayOptional
+                            //TODO: A, urgent build
+                            
                             // queue.selectByteSequence(fieldPos);
-                            // write(token,queue); TODO: B, copy the text
+                            // write(token,queue); 
                             // implementation
                         }
                         fieldPos+=2;

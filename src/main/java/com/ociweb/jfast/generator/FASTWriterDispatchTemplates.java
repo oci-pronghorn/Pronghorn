@@ -41,6 +41,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     //TODO: A, Finish converting utf8 chars over to bytes
     //TODO: A, Replace both heaps with sigular heap.
     
+    @Deprecated
     protected void genWriteUTFTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         if (null == value) {
             if (textHeap.isNull(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK)) {
@@ -60,7 +61,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 //convert from chars to bytes
                 //writeByteArrayData()
                 int len = value.length();
-                byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+                byte[] buffer = writer.buffer;
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
@@ -71,6 +72,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteUTFTextCopyOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target, value)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -82,7 +84,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             //convert from chars to bytes
             //writeByteArrayData()
             int len = value.length();
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
@@ -93,6 +95,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteUTFTextDeltaOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
         int headCount = textHeap.countHeadMatch(target, value);
@@ -106,7 +109,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int len = value.length();
             int c = headCount;
@@ -125,7 +128,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int c = 0;
             while (c < valueSend) {            
@@ -136,10 +139,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
     
+    @Deprecated
     protected void genWriteUTFTextConstantOptional(PrimitiveWriter writer) {
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
+    @Deprecated
     protected void genWriteUTFTextTailOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(target, value);
         int trimTail = textHeap.length(target) - headCount;
@@ -150,7 +155,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
         int len = value.length();
         int c = headCount;
@@ -161,6 +166,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         textHeap.appendTail(target, trimTail, headCount, value);
     }
     
+    @Deprecated
     protected void genWriteUTFTextNoneOptional(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length() + 1, writer);
         PrimitiveWriter.ensureSpace(value.length(),writer);
@@ -168,7 +174,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //convert from chars to bytes
         //writeByteArrayData()
         int len = value.length();
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
         int c = 0;
         while (c < len) {
@@ -177,6 +183,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         writer.limit = limit;
     }
     
+    @Deprecated
     protected void genWriteUTFTextDefault(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -188,7 +195,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             //convert from chars to bytes
             //writeByteArrayData()
             int len = value.length();
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
@@ -198,6 +205,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteUTFTextCopy(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target, value)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -209,7 +217,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             //convert from chars to bytes
             //writeByteArrayData()
             int len = value.length();
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
@@ -220,6 +228,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteUTFTextDelta(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
         int headCount = textHeap.countHeadMatch(target, value);
@@ -232,7 +241,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int len = value.length();
             int c = headCount;
@@ -251,7 +260,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
             int c = 0;
             while (c < valueSend) {            
@@ -262,6 +271,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteUTFTextTail(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(target, value);
         int trimTail = textHeap.length(target) - headCount;
@@ -272,7 +282,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
         int len = value.length();
         int c = headCount;
@@ -283,6 +293,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         textHeap.appendTail(target, trimTail, headCount, value);
     }
 
+    @Deprecated
     protected void genWriteUTFTextNone(CharSequence value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(value.length(), writer);
         PrimitiveWriter.ensureSpace(value.length(),writer);
@@ -290,7 +301,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //convert from chars to bytes
         //writeByteArrayData()
         int len = value.length();
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
         int c = 0;
         while (c < len) {
@@ -427,6 +438,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeTextASCII(value, writer);
     }
     
+    @Deprecated
     protected void genWriteTextUTFDefaultOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -437,7 +449,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length >= 0) {
@@ -448,6 +460,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFCopyOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -460,7 +473,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length1 >= 0) {
@@ -472,6 +485,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFDeltaOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
         int headCount = textHeap.countHeadMatch(target, value, offset, length);
@@ -487,7 +501,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--valueSend >= 0) {
@@ -507,7 +521,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length1 >= 0) {
@@ -519,10 +533,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFConstantOptional(PrimitiveWriter writer) {
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
 
+    @Deprecated
     protected void genWriteTextUTFTailOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(target, value, offset, length);
         int trimTail = textHeap.length(target) - headCount;
@@ -536,7 +552,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
                 
         while (--valueSend >= 0) {
@@ -546,13 +562,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         writer.limit = limit;
     }
 
+    @Deprecated
     protected void genWriteTextUTFNoneOptional(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length + 1, writer);
         PrimitiveWriter.ensureSpace(length,writer);
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
                 
         while (--length >= 0) {
@@ -562,6 +579,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         writer.limit = limit;
     }
 
+    @Deprecated
     protected void genWriteTextUTFDefault(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -572,7 +590,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length >= 0) {
@@ -583,6 +601,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFCopy(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -595,7 +614,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length1 >= 0) {
@@ -607,6 +626,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFDelta(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         // count matching front or back chars
         int headCount = textHeap.countHeadMatch(target, value, offset, length);
@@ -623,7 +643,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--valueSend >= 0) {
@@ -644,7 +664,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             //convert from chars to bytes
             //writeByteArrayData()
-            byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+            byte[] buffer = writer.buffer;
             int limit = writer.limit;
                     
             while (--length1 >= 0) {
@@ -657,6 +677,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    @Deprecated
     protected void genWriteTextUTFTail(int target, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         int headCount = textHeap.countHeadMatch(target, value, offset, length);
         int trimTail = textHeap.length(target) - headCount;
@@ -670,7 +691,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
                 
         while (--valueSend >= 0) {
@@ -680,14 +701,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         writer.limit = limit;
     }
 
-    
+    @Deprecated
     protected void genWriteTextUTFNone(int offset, int length, char[] value, PrimitiveWriter writer) {
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
         PrimitiveWriter.ensureSpace(length,writer);
         
         //convert from chars to bytes
         //writeByteArrayData()
-        byte[] buffer = writer.buffer;//TODO: A, do not expose this and use byte array
+        byte[] buffer = writer.buffer;
         int limit = writer.limit;
                 
         while (--length >= 0) {
@@ -696,6 +717,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
         writer.limit = limit;
     }
+    
     
     protected void genWriteTextDefaultOptional(int constId, int offset, int length, char[] value, PrimitiveWriter writer, TextHeap textHeap) {
         if (textHeap.equals(constId, value, offset, length)) {
@@ -1121,7 +1143,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //the writeNull will take care of the rest.
     }
 
-    public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int trimTail = byteHeap.length(target)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);

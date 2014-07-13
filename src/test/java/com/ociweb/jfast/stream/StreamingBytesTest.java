@@ -345,7 +345,15 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                         } else {
                             byte[] array = testConst;
-                            fw.write(token, array, 0, array.length, writer);
+                                                        
+                            FASTRingBuffer rbRingBuffer = new FASTRingBuffer((byte)7,(byte)7,null,null,null);
+                            
+                            //rbRingBuffer.addValue(buffer, rbMask, headCache, value);
+                            //TODO: A, must write data into buffer??? how
+                            //        rbRingBuffer.writeBytesToRingBuffer(heapId, len, byteHeap, rbRingBuffer)
+                            
+                            
+                            fw.write(token, array, 0, array.length, writer, 0, rbRingBuffer);
                         }
                     }
                 } else {
@@ -359,7 +367,16 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             testData[f].reset();
                         } else {
                             byte[] array = testDataBytes[f];
-                            fw.write(token, array, 0, array.length, writer);
+                            
+                            FASTRingBuffer rbRingBuffer = new FASTRingBuffer((byte)7,(byte)7,null,null,null);
+                            
+                            //rbRingBuffer.addValue(buffer, rbMask, headCache, value);
+                            //TODO: A, must write data into buffer??? how
+                            //        rbRingBuffer.writeBytesToRingBuffer(heapId, len, byteHeap, rbRingBuffer)
+                            //rbRingBuffer.byteBuffer
+                            
+                            
+                            fw.write(token, array, 0, array.length, writer, 0, rbRingBuffer);
                         }
                     }
                 }
