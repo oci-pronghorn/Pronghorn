@@ -1,7 +1,5 @@
 package com.ociweb.jfast.generator;
 
-import java.nio.ByteBuffer;
-
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
@@ -861,158 +859,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeTextASCII(value, offset, length, writer);
     }
     
-    protected void genWriterBytesDefaultOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-        
-        if (byteHeap.equals(target|INIT_VALUE_MASK, value)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer); 
-            value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            int len = value.remaining();
-            if (len<0) {
-                len = 0;
-            }
-            PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
-            PrimitiveWriter.writeByteArrayData(value, writer);
-        }
-    }
-
-    protected void genWriterBytesCopyOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-
-        if (byteHeap.equals(target, value)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-            value.position(value.limit());//skip over the data just like we wrote it.
-        } 
-        else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeIntegerUnsigned(value.remaining()+1, writer);
-            byteHeap.set(target, value);//position is NOT modified
-            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
-        }
-    }
-
-    protected void genWriterBytesDeltaOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(target, value);
-        int tailCount = byteHeap.countTailMatch(target, value);
-        if (headCount>tailCount) {
-            StaticGlue.writeBytesTail(target, headCount, value, 1, byteHeap, writer); //does not modify position
-        } else {
-            StaticGlue.writeBytesHead(target, tailCount, value, 1, byteHeap, writer); //does not modify position
-        }
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    protected void genWriterBytesTailOptional(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-
-        int headCount = byteHeap.countHeadMatch(target, value);
-        int trimTail = byteHeap.length(target)-headCount;
-        if (trimTail<0) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1 : trimTail, writer);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-                
-        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    protected void genWriterBytesNoneOptional(ByteBuffer value, PrimitiveWriter writer) {
-        PrimitiveWriter.writeIntegerUnsigned(value.remaining()+1, writer);
-        PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
-    }
-
-    protected void genWriteBytesDefault(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-        
-        if (byteHeap.equals(target|INIT_VALUE_MASK, value)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-            value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
-            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
-        }
-    }
-
-    protected void genWriteBytesCopy(int target, ByteBuffer value, LocalHeap byteHeap, PrimitiveWriter writer) {
-
-        if (byteHeap.equals(target, value)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-            value.position(value.limit());//skip over the data just like we wrote it.
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
-            byteHeap.set(target, value);//position is NOT modified
-            PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
-        }
-    }
-
-    protected void genWriteBytesDelta(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-        
-        //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(target, value);
-        int tailCount = byteHeap.countTailMatch(target, value);
-        if (headCount>tailCount) {
-            int trimTail = byteHeap.length(target)-headCount;
-            if (trimTail<0) {
-                throw new ArrayIndexOutOfBoundsException();
-            }
-            PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail, writer);
-            
-            int valueSend = value.remaining()-headCount;
-            int startAfter = value.position()+headCount;
-                    
-            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-            byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
-            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer); //does not modify position
-        } else {
-            //replace head, tail matches to tailCount
-            int trimHead = byteHeap.length(target)-tailCount;
-            PrimitiveWriter.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
-            
-            int len = value.remaining() - tailCount;
-            int offset = value.position();
-            PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
-            byteHeap.appendHead(target, trimHead, value, offset, len); //does not modify position
-        }
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    protected void genWriteBytesTail(int target, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-
-        int headCount = byteHeap.countHeadMatch(target, value);
-                
-        int trimTail = byteHeap.length(target)-headCount;
-        if (trimTail<0) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0 : trimTail, writer);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-                
-        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        value.position(value.limit());//skip over the data just like we wrote it.
-    }
-
-    protected void genWriteBytesNone(ByteBuffer value, PrimitiveWriter writer) {
-        PrimitiveWriter.writeIntegerUnsigned(value.remaining(), writer);
-        PrimitiveWriter.writeByteArrayData(value, writer); //this moves the position in value
-    }
-    
-    protected void genWriteBytesDefault(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer) {
-        
+   
+    // if (byteHeap.equals(target|INIT_VALUE_MASK, value, offset, length)) {
+    protected void genWriteBytesDefault(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+      
+      //  length = rbRingBuffer.readRingByteLen(rbPos);
+    //    if (byteHeap.equals(target|INIT_VALUE_MASK, rbRingBuffer.byteBuffer, rbRingBuffer.readRingBytePos(rbPos), rbRingBuffer.readRingByteLen(rbPos), rbRingBuffer.byteMask)) {
         if (byteHeap.equals(target|INIT_VALUE_MASK, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -1022,8 +874,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesCopy(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer) {
-        
+    protected void genWriteBytesCopy(int target, int offset, int length, byte[] value, LocalHeap byteHeap, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         }
@@ -1035,7 +887,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDelta(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesDelta(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
@@ -1046,7 +898,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesTail(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesTail(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         
         int trimTail = byteHeap.length(target)-headCount;
@@ -1060,7 +912,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
     }
 
-    protected void genWriteBytesNone(int offset, int length, byte[] value, PrimitiveWriter writer) {
+    protected void genWriteBytesNone(int offset, int length, byte[] value, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        
+//        length = rbRingBuffer.readRingByteLen(rbPos);
+//        System.err.println("len:"+length);
+        
         PrimitiveWriter.writeIntegerUnsigned(length, writer);
         PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
     }
@@ -1090,7 +946,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
     }
     
-    public void genWriteBytesDefaultOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesDefaultOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -1100,7 +956,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesCopyOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesCopyOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (byteHeap.equals(target, value, offset, length)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -1111,7 +967,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDeltaOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap) {
+    public void genWriteBytesDeltaOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         //count matching front or back chars
         int headCount = byteHeap.countHeadMatch(target, value, offset, length);
         int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
@@ -1156,7 +1012,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
     }
 
-    protected void genWriteBytesNoneOptional(int offset, int length, byte[] value, PrimitiveWriter writer) {
+    protected void genWriteBytesNoneOptional(int offset, int length, byte[] value, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+        
+        byte[] vals = rbRingBuffer.readRingByteBuffer(rbPos);
+        
+        
         PrimitiveWriter.writeIntegerUnsigned(length+1, writer);
         PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
     }

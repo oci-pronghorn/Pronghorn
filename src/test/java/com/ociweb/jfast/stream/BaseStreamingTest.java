@@ -63,6 +63,25 @@ public abstract class BaseStreamingTest {
 		
 	}
 	
+	@Deprecated
+	public static byte[] byteMe(char[] chars) {
+	    int i = chars.length;
+	    byte[] result = new byte[i];
+	    while (--i>=0) {
+	        result[i] = (byte)chars[i];
+	    }
+	    return result;
+	}
+	
+   @Deprecated
+    public static byte[] byteMe(CharSequence chars) {
+        int i = chars.length();
+        byte[] result = new byte[i];
+        while (--i>=0) {
+            result[i] = (byte)chars.charAt(i);
+        }
+        return result;
+    }
 	
 	protected long emptyLoop(int iterations, int fields, int fieldsPerGroup) {
 		

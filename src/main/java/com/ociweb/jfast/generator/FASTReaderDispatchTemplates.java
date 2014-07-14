@@ -1547,7 +1547,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            if (0==value) {
+            if (0==value) { //TODO: make branchless or move to client side for all cases.
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (constAbsent >>> 32)); 
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (constAbsent & 0xFFFFFFFF));
             } else {

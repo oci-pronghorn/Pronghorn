@@ -297,6 +297,14 @@ public final class FASTRingBuffer {
         return p;
     }
 
+    public static int writeBytesToRingBuffer(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
+        final int p = rbRingBuffer.addBytePos;
+        if (sourceLen > 0) {
+            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceIdx, sourceLen, source);
+        }
+        return p;
+    }
+    
     // TODO: D, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
 
@@ -324,9 +332,7 @@ public final class FASTRingBuffer {
         
        
         long p = headCache.value; //TODO: code gen may want to replace this
-        //int idx = rbMask * (int)p;
         buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
-
         headCache.value = p+1;
         
         
@@ -354,10 +360,15 @@ public final class FASTRingBuffer {
 
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
-    public int readRingCharPos(int fieldPos) {
+    public int readRingBytePos(int fieldPos) {
         // constant from heap or dynamic from char ringBuffer
         int ref1 = buffer[(int)(mask & (remPos.value + fieldPos))];
         return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
+    }
+    
+    //TODO: A, make static
+    public int readRingByteLen(int fieldPos) {
+        return buffer[mask & (int)(remPos.value + fieldPos + 1)];// second int is always the length
     }
 
     public byte[] readRingByteBuffer(int fieldPos) {

@@ -469,28 +469,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
     }
 
-
-    public void write(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
-
-        assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-        
-        if (readFromIdx>=0) {
-            int source = token & instanceBytesMask;
-            int target = readFromIdx & instanceBytesMask;
-            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
-            readFromIdx = -1; //reset for next field where it might be used.
-        }
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-            acceptByteArray(token, value, offset, length, writer, byteHeap);
-        } else {
-            acceptByteArrayOptional(token, value, offset, length, writer, rbPos, rbRingBuffer);
-        }
-    }
-
-    private void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -499,7 +478,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNoneOptional(offset, length, value, writer);
+                    genWriteBytesNoneOptional(offset, length, value, writer, rbPos, rbRingBuffer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
@@ -514,7 +493,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDeltaOptional(idx, offset, length, value, writer, byteHeap);
+                    genWriteBytesDeltaOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             }
         } else {
@@ -524,18 +503,18 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy
                 int idx = token & instanceBytesMask;
                 
-                genWriteBytesCopyOptional(idx, offset, length, value, writer, byteHeap);
+                genWriteBytesCopyOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
             } else {
                 // default
                 int idx = token & instanceBytesMask;
                 idx = idx|INIT_VALUE_MASK;
-                genWriteBytesDefaultOptional(idx, offset, length, value, writer, byteHeap);
+                genWriteBytesDefaultOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
             }
         }
     }
 
 
-    private void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, LocalHeap byteHeap) {
+    void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -544,11 +523,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(offset, length, value, writer);
+                    genWriteBytesNone(offset, length, value, writer, rbPos, rbRingBuffer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTail(idx, offset, length, value, writer, byteHeap);
+                    genWriteBytesTail(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -559,7 +538,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDelta(idx, offset, length, value, writer, byteHeap);
+                    genWriteBytesDelta(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             }
         } else {
@@ -567,118 +546,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token & instanceBytesMask, offset, length, value, byteHeap, writer);
+                genWriteBytesCopy(token & instanceBytesMask, offset, length, value, byteHeap, writer, rbPos, rbRingBuffer);
             } else {
                 // default
-                genWriteBytesDefault(token & instanceBytesMask, offset, length, value, byteHeap, writer);
-            }
-        }
-    }
-
-
-    // TODO: Z, add writeDup(int id) for repeating the last value sent,
-    // this can avoid string check for copy operation if its already known that
-    // we are sending the same value.
-
-    public void write(int token, ByteBuffer buffer, PrimitiveWriter writer) {
-
-        assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-
-        if (readFromIdx>=0) {
-            int source = token & instanceBytesMask;
-            int target = readFromIdx & instanceBytesMask;
-            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
-            readFromIdx = -1; //reset for next field where it might be used.
-        }
-        
-        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                            // the work.
-            acceptByteBuffer(token, buffer, writer, byteHeap);
-        } else {
-            acceptByteBufferOptional(token, buffer, writer, byteHeap);
-        }
-    }
-
-    private void acceptByteBufferOptional(int token, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriterBytesNoneOptional(value, writer);
-                } else {
-                    // tail
-                    genWriterBytesTailOptional(token & instanceBytesMask, value, writer, byteHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    genWriteBytesConstantOptional(writer);
-                } else {
-                    // delta
-                    genWriterBytesDeltaOptional(token & instanceBytesMask, value, writer, byteHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                genWriterBytesCopyOptional(token & instanceBytesMask, value, writer, byteHeap);
-            } else {
-                // default
-                genWriterBytesDefaultOptional(token & instanceBytesMask, value, writer, byteHeap);
+                genWriteBytesDefault(token & instanceBytesMask, offset, length, value, byteHeap, writer, rbPos, rbRingBuffer);
             }
         }
     }
 
 
 
-    private void acceptByteBuffer(int token, ByteBuffer value, PrimitiveWriter writer, LocalHeap byteHeap) {
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteBytesNone(value, writer);
-                } else {
-                    // tail
-                    genWriteBytesTail(token & instanceBytesMask, value, writer, byteHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    
-                } else {
-                    // delta
-                    genWriteBytesDelta(token & instanceBytesMask, value, writer, byteHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                genWriteBytesCopy(token & instanceBytesMask, value, byteHeap, writer);
-            } else {
-                // default
-                genWriteBytesDefault(token & instanceBytesMask, value, writer, byteHeap);
-            }
-        }
-    }
-
-
-
-    public void write(int token, CharSequence value, PrimitiveWriter writer) {
+    public void write(int token, CharSequence value, PrimitiveWriter writer, int pos, FASTRingBuffer ringBuffer) {
 
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -694,17 +572,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
-                acceptCharSequenceASCII(token, value, writer, textHeap);
+              //TODO: replace with bytes array
+                acceptCharSequenceASCII(token, value, writer, textHeap, pos, ringBuffer);
             } else {                                
                 // utf8
+                //TODO: replace with bytes array
                 acceptCharSequenceUTF8(token, value, writer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
-                acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
+              //TODO: replace with bytes array
+                acceptCharSequenceASCIIOptional(token, value, writer, textHeap, pos, ringBuffer);
             } else {
                 // utf8 optional
+                //TODO: replace with bytes array
                 acceptCharSequenceUTF8Optional(token, value, writer);
             }
         }
@@ -807,9 +689,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
+    @Deprecated
+    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
-    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
-
+        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
+        byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -874,9 +759,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     }
 
+    @Deprecated
+    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
-    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
+        byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
 
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1213,6 +1102,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             } else {
                 // 01???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
+                    
+                    //text is written to the ring buffer encoded as ascii or utf8
+                    //this code must write the bytes to the stream,
+                    //     ascii bytes need a trailing high bit set
+                    //     utf8 bytes need a leading length int
+                    
+                    
+                    
                     //TODO: A, this text call sould really be bytes?
                     assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                     assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -1223,7 +1120,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     } else 
                     {
                         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
-                        CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingByteMask(), length);
+                        CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingBytePos(fieldPos), rbRingBuffer.readRingByteMask(), length);
                         
                         if (readFromIdx>=0) {
                             int source = token & TEXT_INSTANCE_MASK;
@@ -1236,17 +1133,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                                                                             // the work.
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 // ascii
-                                acceptCharSequenceASCII(token, value, writer, textHeap);
+                              //TODO: A, use byte array here
+                                acceptCharSequenceASCII(token, value, writer, textHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8
+                                //TODO: A, use byte array here
                                 acceptCharSequenceUTF8(token, value, writer);
                             }
                         } else {
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 // ascii optional
-                                acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
+                              //TODO: A, use byte array here
+                                acceptCharSequenceASCIIOptional(token, value, writer, textHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8 optional
+                                //TODO: A, use byte array here
                                 acceptCharSequenceUTF8Optional(token, value, writer);
                             }
                         }
@@ -1282,9 +1183,18 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                                                 
                         fieldPos+=3;
                     } else {
+                        
+                        if (readFromIdx>=0) {
+                            int source = token & instanceBytesMask;
+                            int target = readFromIdx & instanceBytesMask;
+                            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
+                            readFromIdx = -1; //reset for next field where it might be used.
+                        }
+                        
                         // //0111? ByteArray
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                             // 01110 ByteArray
+                           // accept
                             //TODO: A, urgent build
                             
                             // queue.selectByteSequence(fieldPos);
@@ -1421,46 +1331,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         return false;
     }
 
-
-    private void acceptText(PrimitiveWriter writer, int token, FASTRingBuffer rbRingBuffer) {
-        assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-
-        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
-        if (length < 0) {
-            writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes. still used?
-        } else 
-        {
-            byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
-            CharSequence value = ringCharSequence.set(buffer, rbRingBuffer.readRingCharPos(fieldPos), rbRingBuffer.readRingByteMask(), length);
-            
-            if (readFromIdx>=0) {
-                int source = token & TEXT_INSTANCE_MASK;
-                int target = readFromIdx & TEXT_INSTANCE_MASK;
-                genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
-                readFromIdx = -1; //reset for next field where it might be used.
-            }
-            
-            if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
-                                                                // the work.
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    // ascii
-                    acceptCharSequenceASCII(token, value, writer, textHeap);
-                } else {
-                    // utf8
-                    acceptCharSequenceUTF8(token, value, writer);
-                }
-            } else {
-                if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    // ascii optional
-                    acceptCharSequenceASCIIOptional(token, value, writer, textHeap);
-                } else {
-                    // utf8 optional
-                    acceptCharSequenceUTF8Optional(token, value, writer);
-                }
-            }
-        }
-    }
 
     private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, long mantissa, int rbPos, FASTRingBuffer rbRingBuffer) {
         //TODO: must call specific gen method.

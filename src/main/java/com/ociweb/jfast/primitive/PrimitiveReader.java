@@ -262,7 +262,7 @@ public final class PrimitiveReader {
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
     public static byte readPMapBit(PrimitiveReader reader) {
-
+            //TODO: X, first 7 bits can be hard coded shifts by compiled decoder so this if can be eliminated
             if (reader.pmapIdxBitBlock >= 0 ) {    
                 // Frequent, 6 out of every 7 plus the last bit block 
                     int shft = reader.pmapIdxBitBlock>>16;

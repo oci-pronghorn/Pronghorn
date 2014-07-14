@@ -19,6 +19,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
+import com.ociweb.jfast.stream.BaseStreamingTest;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -404,7 +405,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null, null);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;
@@ -422,7 +423,13 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			staticWriter.openGroup(groupToken, pmapSize, writer);
 			int j = textTestData.length;
 			while (--j>=0) {
-				staticWriter.write(token,textTestData[j], writer);
+			    
+                FASTRingBuffer.dump(rbRingBufferLocal);
+                byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
+                FASTRingBuffer.writeBytesToRingBuffer(data, 0, data.length, rbRingBufferLocal);
+                FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+			    
+				staticWriter.write(token,textTestData[j], writer, 0, rbRingBufferLocal);
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			staticWriter.flush(writer);

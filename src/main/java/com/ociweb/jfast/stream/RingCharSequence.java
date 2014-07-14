@@ -35,4 +35,7 @@ public class RingCharSequence implements CharSequence {
 		throw new UnsupportedOperationException();
 	}
 
+	public String toString() {
+	    return new String(charBuffer,pos,length);
+	}
 }

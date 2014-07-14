@@ -13,6 +13,7 @@ import org.junit.Test;
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TextHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -135,6 +136,8 @@ public class StreamingTextTest extends BaseStreamingTest {
 
     }
 
+    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null, null);
+    
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
             int[] tokenLookup, DictionaryFactory dcr) {
@@ -166,7 +169,13 @@ public class StreamingTextTest extends BaseStreamingTest {
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if (testCharSequence(i)) {
-                            fw.write(token, testConstSeq, writer);
+                            
+                            FASTRingBuffer.dump(rbRingBufferLocal);
+                            byte[] data = BaseStreamingTest.byteMe(testConstSeq);
+                            FASTRingBuffer.writeBytesToRingBuffer(data, 0, data.length, rbRingBufferLocal);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            
+                            fw.write(token, testConstSeq, writer, 0, rbRingBufferLocal);
                         } else {
                             char[] array = testConst;
                             StreamingTextTest.write(token, array, 0, array.length, writer, fw);
@@ -177,7 +186,15 @@ public class StreamingTextTest extends BaseStreamingTest {
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
                         if (testCharSequence(i)) {
-                            fw.write(token, testData[f], writer);
+                            
+                            FASTRingBuffer.dump(rbRingBufferLocal);
+                            
+                            byte[] data = BaseStreamingTest.byteMe(testData[f]);
+                            assertEquals(testData[f].length(),data.length);
+                            FASTRingBuffer.writeBytesToRingBuffer(data, 0, data.length, rbRingBufferLocal);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            
+                            fw.write(token, testData[f], writer, 0, rbRingBufferLocal);
                         } else {
                             char[] array = testDataChars[f];
                             StreamingTextTest.write(token, array, 0, array.length, writer, fw);

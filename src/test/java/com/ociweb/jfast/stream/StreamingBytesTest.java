@@ -48,6 +48,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     public static final int INIT_VALUE_MASK = 0x80000000;
 
+    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null, null);
+    
     @AfterClass
     public static void cleanup() {
         System.gc();
@@ -337,46 +339,55 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
-                        if ((i & 1) == 0) {
-                            testContByteBuffer.mark();
-                            fw.write(token, testContByteBuffer, writer); // write byte
-                                                                 // buffer
-                            testContByteBuffer.reset();
-
-                        } else {
+                        {
                             byte[] array = testConst;
                                                         
-                            FASTRingBuffer rbRingBuffer = new FASTRingBuffer((byte)7,(byte)7,null,null,null);
+                            FASTRingBuffer.dump(rbRingBufferLocal);
+                            FASTRingBuffer.writeBytesToRingBuffer(array, 0, array.length, rbRingBufferLocal);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            int length = array.length;
+                                               
+//                            assertTrue(
+//                                    fw.byteHeap.equals(token|INIT_VALUE_MASK, 
+//                                                       rbRingBufferLocal.byteBuffer, 
+//                                                       rbRingBufferLocal.readRingBytePos(0), 
+//                                                       rbRingBufferLocal.readRingByteLen(0), 
+//                                                       rbRingBufferLocal.byteMask));
                             
-                            //rbRingBuffer.addValue(buffer, rbMask, headCache, value);
-                            //TODO: A, must write data into buffer??? how
-                            //        rbRingBuffer.writeBytesToRingBuffer(heapId, len, byteHeap, rbRingBuffer)
                             
                             
-                            fw.write(token, array, 0, array.length, writer, 0, rbRingBuffer);
+                            assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
+                            assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                            assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                            
+                            if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                                fw.acceptByteArray(token, array, 0, length, writer, fw.byteHeap, 0, rbRingBufferLocal);
+                            } else {
+                                fw.acceptByteArrayOptional(token, array, 0, length, writer, 0, rbRingBufferLocal);
+                            }
                         }
                     }
                 } else {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
-                        if ((i & 1) == 0) {
-                            // first failing test
-                            testData[f].mark();
-                            fw.write(token, testData[f], writer); // write byte buffer
-                            testData[f].reset();
-                        } else {
+                        {
                             byte[] array = testDataBytes[f];
                             
-                            FASTRingBuffer rbRingBuffer = new FASTRingBuffer((byte)7,(byte)7,null,null,null);
+                            FASTRingBuffer.dump(rbRingBufferLocal);
+                            FASTRingBuffer.writeBytesToRingBuffer(array, 0, array.length, rbRingBufferLocal);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            int length = array.length;
+                                                        
+                            assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
+                            assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                            assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                             
-                            //rbRingBuffer.addValue(buffer, rbMask, headCache, value);
-                            //TODO: A, must write data into buffer??? how
-                            //        rbRingBuffer.writeBytesToRingBuffer(heapId, len, byteHeap, rbRingBuffer)
-                            //rbRingBuffer.byteBuffer
-                            
-                            
-                            fw.write(token, array, 0, array.length, writer, 0, rbRingBuffer);
+                            if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
+                                fw.acceptByteArray(token, array, 0, length, writer, fw.byteHeap, 0, rbRingBufferLocal);
+                            } else {
+                                fw.acceptByteArrayOptional(token, array, 0, length, writer, 0, rbRingBufferLocal);
+                            }
                         }
                     }
                 }
@@ -464,9 +475,10 @@ public class StreamingBytesTest extends BaseStreamingTest {
                         try {
                             int heapIdx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
 
-                            if ((1 & i) == 0) {
+                            if ((1 & i) == 0) {                              
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
-                                        + TokenBuilder.tokenToString(prevToken), byteHeap.equals(heapIdx, testData[f]));
+                                        + TokenBuilder.tokenToString(prevToken),
+                                        byteHeap.equals(heapIdx, testDataBytes[f], 0, testDataBytes[f].length));
                             } else {
                                 byte[] tdc = testDataBytes[f];
                                 assertEquals(tdc.length, byteHeap.length(heapIdx));

@@ -602,15 +602,20 @@ public class LocalHeap {
         final int offset = idx << 2;
         final int pos = localHeap.tat[offset];
         final int len = localHeap.tat[offset + 1] - pos;
+        final byte[] source = localHeap.data;
 
+        return copyToRingBuffer(target, targetIdx, targetMask, pos, len, source);
+    }
+
+    public static int copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int sourceIdx, final int sourceLen, final byte[] source) {
         int tStart = targetIdx & targetMask;
-        if (1 == len) {
+        if (1 == sourceLen) {
             // simplification because 1 char can not loop around ring buffer.
-            target[tStart] = localHeap.data[pos];
+            target[tStart] = source[sourceIdx];
         } else {
-            copyToRingBuffer(target, targetIdx, targetMask, pos, len, tStart, localHeap.data);
+            copyToRingBuffer(target, targetIdx, targetMask, sourceIdx, sourceLen, tStart, source);
         }
-        return targetIdx + len;
+        return targetIdx + sourceLen;
     }
 
     private static void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
@@ -714,8 +719,11 @@ public class LocalHeap {
         }
     }
 
-    private boolean eq(byte[] target, int targetIdx, int length, int pos, int lim, byte[] buf) {
+    private static boolean eq(byte[] target, int targetIdx, int length, int pos, int lim, byte[] buf) {
         int len = lim - pos;
+        if (len<0) {
+            len = 0;
+        }
         if (len != length) {
             return false;
         }
@@ -723,7 +731,6 @@ public class LocalHeap {
             int i = length;
             while (--i >= 0) {
                 if (target[targetIdx + i] != buf[pos + i]) {
-              //      System.err.println(len+" and "+length);
                     return false;
                 }
             }
@@ -731,7 +738,37 @@ public class LocalHeap {
         return true;
     }
 
+    public boolean equals(int idx, byte[] target, int targetIdx, int targetLen, int targetMask) {
+        // System.err.println(idx +"  "+length);
+         if (idx < 0) {
+             int offset = idx << 1;
+             return eq(target, targetIdx, targetLen, targetMask, initTat[offset], initTat[offset + 1], initBuffer);
+         } else {
+             int offset = idx << 2;
+             return eq(target, targetIdx, targetLen, targetMask, tat[offset], tat[offset + 1], data);
+         }
+     }
         
+    private static boolean eq(byte[] target, int targetIdx, int length, int targetMask, int pos, int lim, byte[] buf) {
+        int len = lim - pos;
+        if (len<0) {
+            len = 0;
+        }
+        if (len != length) {
+            return false;
+        }
+        if (len>0) {
+            int i = length;
+            while (--i >= 0) {
+                if (target[targetMask&(targetIdx + i)] != buf[pos + i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    
     /**
      * Primary method for copying data out of the local heap.  This is build for writing
      * into the ring buffer.  Once there it can be consumed by the client and translated
