@@ -278,33 +278,36 @@ public final class FASTRingBuffer {
     // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
-
-    public static int writeTextToRingBuffer(int heapId, int len, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
-        if (len > 0) {
-            final int p = rbRingBuffer.addBytePos;
+@Deprecated
+    public static void writeTextToRingBuffer(int heapId, int sourceLen, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
+        final int p = rbRingBuffer.addBytePos;
+        if (sourceLen > 0) {
             rbRingBuffer.addBytePos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, textHeap);
-            return p;
-        } else {
-            return 0;//should never read from here anyway so zero is safe
         }
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);        
     }
 
-    public static int writeBytesToRingBuffer(int heapId, int len, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         final int p = rbRingBuffer.addBytePos;
-        if (len > 0) {
+        if (sourceLen > 0) {
             rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
-        return p;
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);
     }
 
-    public static int writeBytesToRingBuffer(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
+    public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
         final int p = rbRingBuffer.addBytePos;
         if (sourceLen > 0) {
             rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceIdx, sourceLen, source);
         }
-        return p;
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);
     }
     
+    
+
     // TODO: D, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
  
 
@@ -326,19 +329,21 @@ public final class FASTRingBuffer {
     //we can push 1gbs more of compressed data for each 10% of cpu freed up.
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value) {
         
-
-        
-      //  int tmp = Profile.version.get();
-        
-       
         long p = headCache.value; //TODO: code gen may want to replace this
         buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
         headCache.value = p+1;
         
-        
-      //  Profile.count+=(Profile.version.get()-tmp);
-
     } 
+    
+    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2) {
+        
+        long p = headCache.value; 
+        buffer[rbMask & (int)p] = value1; //TODO: code gen replace rbMask with constant may help remove check
+        buffer[rbMask & (int)(p+1)] = value2; //TODO: code gen replace rbMask with constant may help remove check
+        headCache.value = p+2;
+        
+    } 
+    
     
     // fragment is ready for consumption
     public static final void unBlockFragment(AtomicLong head, PaddedLong headCache) {

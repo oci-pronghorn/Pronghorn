@@ -172,7 +172,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                             
                             FASTRingBuffer.dump(rbRingBufferLocal);
                             byte[] data = BaseStreamingTest.byteMe(testConstSeq);
-                            FASTRingBuffer.writeBytesToRingBuffer(data, 0, data.length, rbRingBufferLocal);
+                            FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                             
                             fw.write(token, testConstSeq, writer, 0, rbRingBufferLocal);
@@ -191,7 +191,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                             
                             byte[] data = BaseStreamingTest.byteMe(testData[f]);
                             assertEquals(testData[f].length(),data.length);
-                            FASTRingBuffer.writeBytesToRingBuffer(data, 0, data.length, rbRingBufferLocal);
+                            FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                             
                             fw.write(token, testData[f], writer, 0, rbRingBufferLocal);

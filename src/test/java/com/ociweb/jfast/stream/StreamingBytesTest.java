@@ -343,7 +343,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             byte[] array = testConst;
                                                         
                             FASTRingBuffer.dump(rbRingBufferLocal);
-                            FASTRingBuffer.writeBytesToRingBuffer(array, 0, array.length, rbRingBufferLocal);
+                            FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                             int length = array.length;
                                                
@@ -375,7 +375,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             byte[] array = testDataBytes[f];
                             
                             FASTRingBuffer.dump(rbRingBufferLocal);
-                            FASTRingBuffer.writeBytesToRingBuffer(array, 0, array.length, rbRingBufferLocal);
+                            FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                             int length = array.length;
                                                         

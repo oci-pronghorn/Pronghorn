@@ -478,7 +478,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNoneOptional(offset, length, value, writer, rbPos, rbRingBuffer);
+                    genWriteBytesNoneOptional(writer, rbPos, rbRingBuffer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
@@ -508,7 +508,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 // default
                 int idx = token & instanceBytesMask;
                 idx = idx|INIT_VALUE_MASK;
-                genWriteBytesDefaultOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                genWriteBytesDefaultOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
             }
         }
     }
@@ -523,7 +523,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(offset, length, value, writer, rbPos, rbRingBuffer);
+                    genWriteBytesNone(writer, rbPos, rbRingBuffer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
@@ -549,7 +549,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 genWriteBytesCopy(token & instanceBytesMask, offset, length, value, byteHeap, writer, rbPos, rbRingBuffer);
             } else {
                 // default
-                genWriteBytesDefault(token & instanceBytesMask, offset, length, value, byteHeap, writer, rbPos, rbRingBuffer);
+                genWriteBytesDefault(token & instanceBytesMask, byteHeap, writer, rbPos, rbRingBuffer);
             }
         }
     }
@@ -811,7 +811,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
 
     }
 
-
+    @Deprecated
     public void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
@@ -861,7 +861,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
     }
 
 
-
+    @Deprecated
     public void acceptCharArrayUTF8(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -914,7 +914,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
 
     }
 
-
+    @Deprecated
     public void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -960,7 +960,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
     }
 
 
-
+    @Deprecated
     public void acceptCharArrayASCII(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all

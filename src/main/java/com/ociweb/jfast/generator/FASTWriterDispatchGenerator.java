@@ -371,8 +371,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteBytesDefault(int target, int offset, int length, byte[] value, LocalHeap byteHeap,
-            PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesDefault(int target, LocalHeap byteHeap, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -403,15 +402,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteBytesNone(int offset, int length, byte[] value, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesNone(PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
         
     }
 
 
     @Override
-    public void genWriteBytesDefaultOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDefaultOptional(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -449,7 +447,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteBytesNoneOptional(int offset, int length, byte[] value, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesNoneOptional(PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
         
     }

@@ -274,6 +274,21 @@ public final class PrimitiveWriter {
         System.arraycopy(data, offset, writer.buffer, writer.limit, length);
         writer.limit += length;
     }
+    
+    public static final void writeByteArrayData(byte[] data, int offset, int length, int mask, PrimitiveWriter writer) {
+        if (writer.limit > writer.buffer.length - length) {
+            writer.output.flush();
+        }
+        
+        int i = 0;
+        while (i<length) {
+            writer.buffer[writer.limit+i]=data[mask&(i+offset)];
+            i++;
+        }
+        
+        //System.arraycopy(data, offset, writer.buffer, writer.limit, length);
+        writer.limit += length;
+    }
 
     // data position is modified
     public static final void writeByteArrayData(ByteBuffer data, PrimitiveWriter writer) {

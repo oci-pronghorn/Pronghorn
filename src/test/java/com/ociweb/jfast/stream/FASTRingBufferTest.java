@@ -1,11 +1,51 @@
 package com.ociweb.jfast.stream;
 
+import static org.junit.Assert.*;
+
 import org.junit.Test;
 
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTRingBufferTest {
 
+    @Test
+    public void bytesWriteRead() {
+        
+        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  null, null);
+        
+        byte[] source = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
+        
+        //clear out the ring buffer
+        FASTRingBuffer.dump(rb);
+        
+        //write one integer to the ring buffer
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos,7);
+        
+        //write array of bytes to ring buffer
+        FASTRingBuffer.addByteArray(source, 0, source.length, rb);             
+        
+        //unblock for reading
+        FASTRingBuffer.unBlockFragment(rb.headPos, rb.addPos);
+                
+        //read one integer back
+        assertEquals(7, rb.readRingBytePos(0));                     
+        
+        //read back the array
+        byte[] data = rb.readRingByteBuffer(1);
+        int i = 0;
+        while (i<source.length) {            
+            assertEquals("index:"+i,source[i],data[i]);                       
+            i++;
+        }        
+        
+        //assertEquals(source,data);
+        
+        assertEquals(source.length, rb.readRingByteLen(1));
+                        
+        
+    }
+    
+    
     @Test
     public void arrayWrite() {
         int size = 1<<11;
