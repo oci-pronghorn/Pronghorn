@@ -503,7 +503,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 // copy
                 int idx = token & instanceBytesMask;
                 
-                genWriteBytesCopyOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                genWriteBytesCopyOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
             } else {
                 // default
                 int idx = token & instanceBytesMask;
@@ -546,7 +546,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token & instanceBytesMask, offset, length, value, byteHeap, writer, rbPos, rbRingBuffer);
+                genWriteBytesCopy(token & instanceBytesMask, byteHeap, writer, rbPos, rbRingBuffer);
             } else {
                 // default
                 genWriteBytesDefault(token & instanceBytesMask, byteHeap, writer, rbPos, rbRingBuffer);

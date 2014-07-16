@@ -188,6 +188,20 @@ public class LocalHeap {
         System.arraycopy(source, startFrom, data, target, copyLength);
     }
     
+    public void set(int idx, byte[] source, int startFrom, int copyLength, int sourceMask) {
+        int offset = idx << 2;
+
+        totalContent += (copyLength - (tat[offset + 1] - tat[offset]));
+        int target = makeRoom(offset, copyLength);
+        tat[offset] = target;
+        tat[offset + 1] = target + copyLength;
+
+        int i = copyLength;
+        while (--i>=0) {
+            data[target+i] = source[sourceMask&(startFrom+i)];
+        }   
+    }
+    
     public void set(int idx, ByteBuffer source) {
         int offset = idx << 2;
 
