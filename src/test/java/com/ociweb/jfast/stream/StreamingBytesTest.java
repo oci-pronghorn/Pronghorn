@@ -345,25 +345,15 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             FASTRingBuffer.dump(rbRingBufferLocal);
                             FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
-                            int length = array.length;
-                                               
-//                            assertTrue(
-//                                    fw.byteHeap.equals(token|INIT_VALUE_MASK, 
-//                                                       rbRingBufferLocal.byteBuffer, 
-//                                                       rbRingBufferLocal.readRingBytePos(0), 
-//                                                       rbRingBufferLocal.readRingByteLen(0), 
-//                                                       rbRingBufferLocal.byteMask));
-                            
-                            
                             
                             assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                             
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                                fw.acceptByteArray(token, array, 0, length, writer, fw.byteHeap, 0, rbRingBufferLocal);
+                                fw.acceptByteArray(token, writer, fw.byteHeap, 0, rbRingBufferLocal);
                             } else {
-                                fw.acceptByteArrayOptional(token, array, 0, length, writer, 0, rbRingBufferLocal);
+                                fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, rbRingBufferLocal);
                             }
                         }
                     }
@@ -377,16 +367,15 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             FASTRingBuffer.dump(rbRingBufferLocal);
                             FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
                             FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
-                            int length = array.length;
                                                         
                             assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                             
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                                fw.acceptByteArray(token, array, 0, length, writer, fw.byteHeap, 0, rbRingBufferLocal);
+                                fw.acceptByteArray(token, writer, fw.byteHeap, 0, rbRingBufferLocal);
                             } else {
-                                fw.acceptByteArrayOptional(token, array, 0, length, writer, 0, rbRingBufferLocal);
+                                fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, rbRingBufferLocal);
                             }
                         }
                     }

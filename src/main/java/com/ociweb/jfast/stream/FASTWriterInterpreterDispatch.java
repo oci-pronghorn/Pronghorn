@@ -469,7 +469,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
     }
 
-void acceptByteArrayOptional(int token, byte[] value, int offset, int length, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
+    void acceptByteArrayOptional(int token, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -482,7 +482,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTailOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesTailOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -493,7 +493,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDeltaOptional(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesDeltaOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             }
         } else {
@@ -514,7 +514,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
     }
 
 
-    void acceptByteArray(int token, byte[] value, int offset, int length, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    void acceptByteArray(int token, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -527,7 +527,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTail(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesTail(idx, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -537,8 +537,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                 } else {
                     // delta
                     int idx = token & instanceBytesMask;
-                    
-                    genWriteBytesDelta(idx, offset, length, value, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesDelta(idx, writer, byteHeap, rbPos, rbRingBuffer);
                 }
             }
         } else {
@@ -555,7 +554,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
     }
 
 
-
+    @Deprecated
     public void write(int token, CharSequence value, PrimitiveWriter writer, int pos, FASTRingBuffer ringBuffer) {
 
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -1137,8 +1136,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                                 acceptCharSequenceASCII(token, value, writer, textHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8
-                                //TODO: A, use byte array here
-                                acceptCharSequenceUTF8(token, value, writer);
+                                acceptByteArray(token, writer, byteHeap, fieldPos, rbRingBuffer);
                             }
                         } else {
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -1147,8 +1145,7 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                                 acceptCharSequenceASCIIOptional(token, value, writer, textHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8 optional
-                                //TODO: A, use byte array here
-                                acceptCharSequenceUTF8Optional(token, value, writer);
+                                acceptByteArrayOptional(token, writer, byteHeap, fieldPos, rbRingBuffer);
                             }
                         }
                     } 
@@ -1194,6 +1191,10 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                         // //0111? ByteArray
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                             // 01110 ByteArray
+                            acceptByteArray(token, writer, byteHeap, fieldPos, rbRingBuffer);
+                            
+                            //token, value, writer, textHeap, fieldPos, rbRingBuffer);
+                            
                            // accept
                             //TODO: A, urgent build
                             
@@ -1202,6 +1203,8 @@ void acceptByteArrayOptional(int token, byte[] value, int offset, int length, Pr
                             // implementation
                         } else {
                             // 01111 ByteArrayOptional
+                            acceptByteArrayOptional(token, writer, byteHeap, fieldPos, rbRingBuffer);
+                            
                             //TODO: A, urgent build
                             
                             // queue.selectByteSequence(fieldPos);

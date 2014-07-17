@@ -889,13 +889,15 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDelta(int target, int offset, int length2, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDelta(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int length = rbRingBuffer.readRingByteLen(rbPos);
-       // int offset = rbRingBuffer.readRingBytePos(rbPos);
+        int offset = rbRingBuffer.readRingBytePos(rbPos);
+        int mask = rbRingBuffer.byteMask;
+        byte[] value = rbRingBuffer.byteBuffer;
         
         //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(target, value, offset, length);
-        int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
+        int headCount = byteHeap.countHeadMatch(target, rbRingBuffer.byteBuffer, offset, length, rbRingBuffer.byteMask);
+        int tailCount = byteHeap.countTailMatch(target, rbRingBuffer.byteBuffer, offset+length, length, rbRingBuffer.byteMask);
         if (headCount>tailCount) {
             int trimTail = byteHeap.length(target)-headCount;
             PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
@@ -904,8 +906,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int startAfter = offset+headCount+headCount;
             
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-            byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
+            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, mask, writer);
+            byteHeap.appendTail(target, trimTail, value, startAfter, valueSend, mask);
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(target)-tailCount;
@@ -913,14 +915,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);            
-            byteHeap.appendHead(target, trimHead, value, offset, len);
+            PrimitiveWriter.writeByteArrayData(value, offset, len, mask, writer);            
+            byteHeap.appendHead(target, trimHead, value, offset, len, mask);
         }
     }
 
-    public void genWriteBytesTail(int target, int offset, int length2, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTail(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int length = rbRingBuffer.readRingByteLen(rbPos);
-        int headCount = byteHeap.countHeadMatch(target, value, offset, length);
+        int offset = rbRingBuffer.readRingBytePos(rbPos);
+        int mask = rbRingBuffer.byteMask;
+        byte[] value = rbRingBuffer.byteBuffer;
+        
+        int headCount = byteHeap.countHeadMatch(target, rbRingBuffer.byteBuffer, offset, length, rbRingBuffer.byteMask);
         
         int trimTail = byteHeap.length(target)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
@@ -929,8 +935,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         int startAfter = offset+headCount;
         
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, mask, writer);
+        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend, mask);
     }
 
     protected void genWriteBytesNone(PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
@@ -966,12 +972,15 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesDeltaOptional(int target, int offset, int length2, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDeltaOptional(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int length = rbRingBuffer.readRingByteLen(rbPos);
-        
+        int offset = rbRingBuffer.readRingBytePos(rbPos);
+        int mask = rbRingBuffer.byteMask;
+        byte[] value = rbRingBuffer.byteBuffer;
+
         //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(target, value, offset, length);
-        int tailCount = byteHeap.countTailMatch(target, value, offset+length, length);
+        int headCount = byteHeap.countHeadMatch(target, rbRingBuffer.byteBuffer, offset, length, rbRingBuffer.byteMask);
+        int tailCount = byteHeap.countTailMatch(target, rbRingBuffer.byteBuffer, offset+length, length, rbRingBuffer.byteMask);
         if (headCount>tailCount) {
             int trimTail = byteHeap.length(target)-headCount;
             PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);
@@ -980,8 +989,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int startAfter = offset+headCount;
             
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-            byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
+            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, mask, writer);
+            byteHeap.appendTail(target, trimTail, value, startAfter, valueSend, mask);
         } else {
             //replace head, tail matches to tailCount
             int trimHead = byteHeap.length(target)-tailCount;
@@ -989,9 +998,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             
             int len = length - tailCount;
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
+            PrimitiveWriter.writeByteArrayData(value, offset, len, mask, writer);
             
-            byteHeap.appendHead(target, trimHead, value, offset, len);
+            byteHeap.appendHead(target, trimHead, value, offset, len, mask);
         }
     }
 
@@ -1000,11 +1009,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //the writeNull will take care of the rest.
     }
 
-    public void genWriteBytesTailOptional(int target, int offset, int length2, byte[] value, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTailOptional(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         int length = rbRingBuffer.readRingByteLen(rbPos);
-      //  int offset = rbRingBuffer.readRingBytePos(rbPos);
-        
-        int headCount = byteHeap.countHeadMatch(target, value, offset, length);
+        int offset = rbRingBuffer.readRingBytePos(rbPos);
+        int mask = rbRingBuffer.byteMask;
+        byte[] value = rbRingBuffer.byteBuffer;
+                
+        int headCount = byteHeap.countHeadMatch(target, rbRingBuffer.byteBuffer, offset, length, rbRingBuffer.byteMask);
         int trimTail = byteHeap.length(target)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+1: trimTail, writer);
         
@@ -1012,8 +1023,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         int startAfter = offset+headCount;
         
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend);
+        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, mask, writer);
+        byteHeap.appendTail(target, trimTail, value, startAfter, valueSend, mask);
     }
 
     protected void genWriteBytesNoneOptional(PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {

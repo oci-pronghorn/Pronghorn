@@ -385,16 +385,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    public void genWriteBytesDelta(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDelta(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    public void genWriteBytesTail(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTail(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -422,8 +420,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    public void genWriteBytesDeltaOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDeltaOptional(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -437,8 +434,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    public void genWriteBytesTailOptional(int target, int offset, int length, byte[] value, PrimitiveWriter writer,
-            LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTailOptional(int target, PrimitiveWriter writer, LocalHeap byteHeap, int rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }

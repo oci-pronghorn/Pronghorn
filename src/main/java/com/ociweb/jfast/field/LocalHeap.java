@@ -425,6 +425,19 @@ public class LocalHeap {
         // want to copy the tail.
         System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
     }
+    
+    public void appendTail(int idx, int trimTail, byte[] source, int sourceIdx, int sourceLen, int sourceMask) {
+        // if not room make room checking after first because thats where we
+        // want to copy the tail.
+        
+        //System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
+        int targetIdx =  makeSpaceForAppend(idx, trimTail, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = source[sourceMask&(sourceIdx+i)];            
+        }
+        
+    }
 
     // never call without calling setZeroLength first then a sequence of these
     // never call without calling offset() for first argument
@@ -511,6 +524,14 @@ public class LocalHeap {
     // if there is no room after moving everything throws
     public void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen) {
         System.arraycopy(source, sourceIdx, data, makeSpaceForPrepend(idx, trimHead, sourceLen), sourceLen);
+    }
+    
+    public void appendHead(int idx, int trimHead, byte[] source, int sourceIdx, int sourceLen, int sourceMask) {
+        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = source[sourceMask&(sourceIdx+i)];
+        }
     }
 
     public void appendHead(int idx, int trimHead, ByteBuffer source) {
@@ -900,6 +921,21 @@ public class LocalHeap {
         }
         return i;
     }
+    
+    public int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength, int sourceMask) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int limit = tat[offset + 1] - pos;
+        if (sourceLength < limit) {
+            limit = sourceLength;
+        }
+        int i = 0;
+        while (i < limit && data[pos + i] == source[sourceMask & (sourceIdx + i)]) {
+            i++;
+        }
+        return i;
+    }
 
     public int countTailMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
         int offset = idx << 2;
@@ -910,6 +946,20 @@ public class LocalHeap {
         int limit = Math.min(sourceLength, lim - pos);
         int i = 1;
         while (i <= limit && data[lim - i] == source[sourceIdx - i]) {
+            i++;
+        }
+        return i - 1;
+    }
+    
+    public int countTailMatch(int idx, byte[] source, int sourceIdx, int sourceLength, int sourceMask) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int lim = tat[offset + 1];
+
+        int limit = Math.min(sourceLength, lim - pos);
+        int i = 1;
+        while (i <= limit && data[lim - i] == source[sourceMask & (sourceIdx - i)]) {
             i++;
         }
         return i - 1;
