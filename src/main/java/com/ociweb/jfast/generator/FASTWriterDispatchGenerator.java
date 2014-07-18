@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTDecoder;
@@ -40,7 +40,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteCopyText(int source, int target, TextHeap textHeap) {
+    protected void genWriteCopyText(int source, int target, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, source, target);
     }
 
@@ -58,19 +58,19 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteUTFTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
     }
 
 
     @Override
-    protected void genWriteUTFTextCopyOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextCopyOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
     }
 
 
     @Override
-    protected void genWriteUTFTextDeltaOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextDeltaOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -84,7 +84,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteUTFTextTailOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextTailOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -98,28 +98,28 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteUTFTextDefault(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextDefault(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteUTFTextCopy(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextCopy(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteUTFTextDelta(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextDelta(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteUTFTextTail(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteUTFTextTail(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -133,28 +133,28 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextDefaultOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextCopyOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextCopyOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextDeltaOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextDeltaOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextTailOptional(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextTailOptional(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -168,28 +168,28 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteTextDefault(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextDefault(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextCopy(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextCopy(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextDelta(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextDelta(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextTail(int target, CharSequence value, PrimitiveWriter writer, TextHeap textHeap) {
+    protected void genWriteTextTail(int target, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -204,7 +204,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFDefaultOptional(int target, int offset, int length, char[] value,
-            PrimitiveWriter writer, TextHeap textHeap) {
+            PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -212,7 +212,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFCopyOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -220,7 +220,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFDeltaOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -235,7 +235,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFTailOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -250,7 +250,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFDefault(int constId, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, constId);
         
     }
@@ -258,7 +258,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFCopy(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -266,7 +266,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFDelta(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -274,7 +274,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextUTFTail(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
         
     }
@@ -289,21 +289,21 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextDefaultOptional(int constId, int offset, int length, char[] value,
-            PrimitiveWriter writer, TextHeap textHeap) {
+            PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, constId);
         
     }
     
     @Override
     protected void genWriteTextCopyOptional(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    protected void genWriteTextDeltaOptional2(int target, int offset, int length, char[] value, TextHeap textHeap,
+    protected void genWriteTextDeltaOptional2(int target, int offset, int length, char[] value, LocalHeap textHeap,
             PrimitiveWriter writer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
     }
@@ -318,7 +318,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextTailOptional2(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -332,7 +332,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteTextDefault2(int target, int offset, int length, char[] value, TextHeap textHeap,
+    protected void genWriteTextDefault2(int target, int offset, int length, char[] value, LocalHeap textHeap,
             PrimitiveWriter writer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
@@ -340,7 +340,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteTextCopy2(int target, int offset, int length, char[] value, TextHeap textHeap,
+    protected void genWriteTextCopy2(int target, int offset, int length, char[] value, LocalHeap textHeap,
             PrimitiveWriter writer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
@@ -349,7 +349,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextDelta2(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -357,7 +357,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteTextTail2(int target, int offset, int length, char[] value, PrimitiveWriter writer,
-            TextHeap textHeap) {
+            LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -1096,7 +1096,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteDictionaryTextReset(int target, TextHeap textHeap) {
+    protected void genWriteDictionaryTextReset(int target, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
@@ -1180,21 +1180,21 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    public void genWriteNullDefaultText(int target, PrimitiveWriter writer, TextHeap textHeap) {
+    public void genWriteNullDefaultText(int target, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    public void genWriteNullCopyIncText(int target, PrimitiveWriter writer, TextHeap textHeap) {
+    public void genWriteNullCopyIncText(int target, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
 
     @Override
-    public void genWriteNullNoPMapText(int target, PrimitiveWriter writer, TextHeap textHeap) {
+    public void genWriteNullNoPMapText(int target, PrimitiveWriter writer, LocalHeap textHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }

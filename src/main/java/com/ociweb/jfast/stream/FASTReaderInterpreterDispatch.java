@@ -4,7 +4,7 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
@@ -1289,7 +1289,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 genReadBytesCopy(idx, 0, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
             } else {
                 // default
-                int initId = TextHeap.INIT_VALUE_MASK | idx;
+                int initId = LocalHeap.INIT_VALUE_MASK | idx;
                 int idLength = byteHeap.length(initId);
                 int initIdx = byteHeap.initStartOffset(initId);
                 
@@ -1319,9 +1319,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId =    idx | TextHeap.INIT_VALUE_MASK;
+                    int constId =    idx | LocalHeap.INIT_VALUE_MASK;
                     int constInitLen = byteHeap.length(constId);
-                    int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| LocalHeap.INIT_VALUE_MASK;
                     
                     int constValue =    idx;
                     int constValueLen = byteHeap.length(constValue);
@@ -1342,10 +1342,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             } else {
                 // default
                 int constValue =    token & byteInstanceMask;
-                int initId = TextHeap.INIT_VALUE_MASK | constValue;
+                int initId = LocalHeap.INIT_VALUE_MASK | constValue;
                 
                 int constValueLen = byteHeap.length(initId);
-                int initIdx = textHeap.initStartOffset(initId)|TextHeap.INIT_VALUE_MASK;
+                int initIdx = textHeap.initStartOffset(initId)|LocalHeap.INIT_VALUE_MASK;
                 
                 genReadBytesDefault(constValue,initIdx, constValueLen,1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
             }
@@ -1404,8 +1404,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = (idx) | TextHeap.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
+                    int constId = (idx) | LocalHeap.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| LocalHeap.INIT_VALUE_MASK;
                     
                     int constValue = idx;
                    
@@ -1425,8 +1425,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 genReadBytesCopy(idx,1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
             } else {
                 // default
-                int initId = TextHeap.INIT_VALUE_MASK | idx;
-                int initIdx = textHeap.initStartOffset(initId)|TextHeap.INIT_VALUE_MASK;
+                int initId = LocalHeap.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|LocalHeap.INIT_VALUE_MASK;
                 
                 genReadBytesDefault(idx, initIdx, textHeap.initLength(initId), 1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos , rbRingBuffer);
                 
@@ -1453,8 +1453,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = idx | TextHeap.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
+                    int constId = idx | LocalHeap.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| LocalHeap.INIT_VALUE_MASK;
                     
                     genReadTextConstant(constInit, textHeap.initLength(constId), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos); //always fixed length
                 } else {
@@ -1470,8 +1470,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 genReadASCIICopy(idx, rbRingBuffer.mask, rbRingBuffer.buffer, reader, textHeap, rbRingBuffer.addPos, rbRingBuffer); //always dynamic
             } else {
                 // default
-                int initId = TextHeap.INIT_VALUE_MASK|idx;
-                int initIdx = textHeap.initStartOffset(initId) |TextHeap.INIT_VALUE_MASK;
+                int initId = LocalHeap.INIT_VALUE_MASK|idx;
+                int initIdx = textHeap.initStartOffset(initId) |LocalHeap.INIT_VALUE_MASK;
                 genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbRingBuffer.mask, rbRingBuffer.buffer, reader, textHeap, rbRingBuffer.addPos, rbRingBuffer); //dynamic or constant
             }
         }
@@ -1497,8 +1497,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int constId = idx | TextHeap.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
+                    int constId = idx | LocalHeap.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| LocalHeap.INIT_VALUE_MASK;
                     
                     genReadBytesConstant(constInit, byteHeap.initLength(constId), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos);
                     
@@ -1516,8 +1516,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 
             } else {
                 // default
-                int initId = TextHeap.INIT_VALUE_MASK | idx;
-                int initIdx = textHeap.initStartOffset(initId)|TextHeap.INIT_VALUE_MASK;
+                int initId = LocalHeap.INIT_VALUE_MASK | idx;
+                int initIdx = textHeap.initStartOffset(initId)|LocalHeap.INIT_VALUE_MASK;
                 
                 genReadBytesDefault(idx, initIdx, textHeap.initLength(initId), 0, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos , rbRingBuffer);
                 
@@ -1540,8 +1540,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     genReadASCIIDeltaOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
                 } else {
-                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | TextHeap.INIT_VALUE_MASK;
-                    int constInit = textHeap.initStartOffset(constId)| TextHeap.INIT_VALUE_MASK;
+                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | LocalHeap.INIT_VALUE_MASK;
+                    int constInit = textHeap.initStartOffset(constId)| LocalHeap.INIT_VALUE_MASK;
                     
                     //TODO: B, redo text to avoid copy and have usage counter in text heap and, not sure we know which array to read from.
                     int constValue = token & MAX_TEXT_INSTANCE_MASK; 
@@ -1552,8 +1552,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     genReadASCIICopyOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, textHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
                 } else {
                     // for ASCII we don't need special behavior for optional
-                    int initId = TextHeap.INIT_VALUE_MASK|idx;
-                    int initIdx = textHeap.initStartOffset(initId) |TextHeap.INIT_VALUE_MASK;
+                    int initId = LocalHeap.INIT_VALUE_MASK|idx;
+                    int initIdx = textHeap.initStartOffset(initId) |LocalHeap.INIT_VALUE_MASK;
                     genReadASCIIDefault(idx, initIdx, textHeap.initLength(initId), rbRingBuffer.mask, rbRingBuffer.buffer, reader, textHeap, rbRingBuffer.addPos, rbRingBuffer);
                 }
             }

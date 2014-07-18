@@ -590,7 +590,7 @@ public final class PrimitiveReader {
         }
     }
 
-    public static final int readTextASCII2(char[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
+    public static final int readTextASCII2(byte[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
 
         int countDown = targetLimit - targetOffset;
         if (reader.limit - reader.position >= countDown) {
@@ -600,10 +600,10 @@ public final class PrimitiveReader {
             // data.
             int idx = targetOffset;
             while (reader.buffer[reader.position] >= 0 && --countDown >= 0) {
-                target[idx++] = (char) (reader.buffer[reader.position++]);
+                target[idx++] = (byte) (reader.buffer[reader.position++]);
             }
             if (--countDown >= 0) {
-                target[idx++] = (char) (0x7F & reader.buffer[reader.position++]);
+                target[idx++] = (byte) (0x7F & reader.buffer[reader.position++]);
                 return idx - targetOffset;// length of string
             } else {
                 return targetOffset - idx;// neg length of string if hit max
@@ -613,7 +613,7 @@ public final class PrimitiveReader {
         }
     }
 
-    private static int readAsciiText2Slow(char[] target, int targetOffset, int countDown, PrimitiveReader reader) {
+    private static int readAsciiText2Slow(byte[] target, int targetOffset, int countDown, PrimitiveReader reader) {
         if (reader.limit - reader.position < 2) {
             fetch(2, reader);
         }
@@ -622,13 +622,13 @@ public final class PrimitiveReader {
         // however the position can not be incremented or fetch may drop data.
         int idx = targetOffset;
         while (reader.buffer[reader.position] >= 0 && --countDown >= 0) {
-            target[idx++] = (char) (reader.buffer[reader.position++]);
+            target[idx++] = (byte) (reader.buffer[reader.position++]);
             if (reader.position >= reader.limit) {
                 fetch(1, reader); // CAUTION: may change value of position
             }
         }
         if (--countDown >= 0) {
-            target[idx++] = (char) (0x7F & reader.buffer[reader.position++]);
+            target[idx++] = (byte) (0x7F & reader.buffer[reader.position++]);
             return idx - targetOffset;// length of string
         } else {
             return targetOffset - idx;// neg length of string if hit max

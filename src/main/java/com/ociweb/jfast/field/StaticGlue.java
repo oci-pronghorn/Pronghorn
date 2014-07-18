@@ -2,7 +2,7 @@ package com.ociweb.jfast.field;
 
 import java.nio.ByteBuffer;
 
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -12,12 +12,12 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 public class StaticGlue {
 
     //May want to move to dispatch, used in 4 places.
-    public static int readASCIIToHeapNone(int idx, byte val, TextHeap textHeap, PrimitiveReader reader) {
+    public static int readASCIIToHeapNone(int idx, byte val, LocalHeap textHeap, PrimitiveReader reader) {
         // 0x80 is a null string.
         // 0x00, 0x80 is zero length string
         if (0 == val) {
             // almost never happens
-            TextHeap.setZeroLength(idx, textHeap);
+            LocalHeap.setZeroLength(idx, textHeap);
             // must move cursor off the second byte
             val = PrimitiveReader.readTextASCIIByte(reader); // < .1%
             // at least do a validation because we already have what we need
@@ -25,23 +25,23 @@ public class StaticGlue {
             return 0;//length
         } else {
             // happens rarely when it equals 0x80
-            TextHeap.setNull(idx, textHeap);
+            LocalHeap.setNull(idx, textHeap);
             return -1;//length
         }
     }
     //May want to move to dispatch, used in 3 places.
-    public static int readASCIIToHeapValue(int idx, byte val, int chr, TextHeap textHeap,
+    public static int readASCIIToHeapValue(int idx, byte val, int chr, LocalHeap textHeap,
             PrimitiveReader primitiveReader) {
 
         if (val < 0) {
-            TextHeap.setSingleCharText((char) chr, idx, textHeap);
+            LocalHeap.setSingleByte((byte) chr, idx, textHeap);
             return 1;
         } else {
             readASCIIToHeapValueLong(val, idx, textHeap, primitiveReader);
             return textHeap.valueLength(idx);
         }
     }
-    private static void readASCIIToHeapValueLong(byte val, int idx, TextHeap textHeap, PrimitiveReader primitiveReader) {
+    private static void readASCIIToHeapValueLong(byte val, int idx, LocalHeap textHeap, PrimitiveReader primitiveReader) {
         final int offset = idx << 2;
         int targIndex = textHeap.tat[offset]; // because we have zero length
 
@@ -66,8 +66,8 @@ public class StaticGlue {
 
 
     private static int fastHeapAppendLong(byte val, final int offset, final int off4, int nextLimit, int targIndex,
-            TextHeap textHeap, PrimitiveReader reader) {
-        textHeap.rawAccess()[targIndex++] = (char) val;
+            LocalHeap textHeap, PrimitiveReader reader) {
+        textHeap.rawAccess()[targIndex++] = (byte) val;
 
         int len;
         do {
@@ -85,7 +85,7 @@ public class StaticGlue {
     }
 
 
-    public static int readASCIIHead(final int idx, int trim, TextHeap textHeap, PrimitiveReader reader) {
+    public static int readASCIIHead(final int idx, int trim, LocalHeap textHeap, PrimitiveReader reader) {
         
 
         if (trim < 0) {
@@ -98,23 +98,23 @@ public class StaticGlue {
 
         if (trim >= 0) {
             while (value >= 0) {
-                nextLimit = textHeap.appendTail(offset, nextLimit, (char) value);
+                nextLimit = textHeap.appendTail(offset, nextLimit, value);
                 value = PrimitiveReader.readTextASCIIByte(reader);
             }
-            textHeap.appendTail(offset, nextLimit, (char) (value & 0x7F));
+            textHeap.appendTail(offset, nextLimit, (byte)(value & 0x7F));
         } else {
             while (value >= 0) {
-                textHeap.appendHead(offset, (char) value);
+                textHeap.appendHead(offset, value);
                 value = PrimitiveReader.readTextASCIIByte(reader);
             }
-            textHeap.appendHead(offset, (char) (value & 0x7F));
+            textHeap.appendHead(offset, (byte) (value & 0x7F));
         }
 
         return idx;
     }
 
 
-    public static int readASCIITail(final int idx, TextHeap textHeap, PrimitiveReader reader, int tail) {
+    public static int readASCIITail(final int idx, LocalHeap textHeap, PrimitiveReader reader, int tail) {
         textHeap.trimTail(idx, tail);       
         byte val = PrimitiveReader.readTextASCIIByte(reader);
         if (val == 0) {
@@ -126,10 +126,10 @@ public class StaticGlue {
         } else {
             if (val == (byte) 0x80) {
                 // nothing to append
-                TextHeap.setNull(idx, textHeap);
+                LocalHeap.setNull(idx, textHeap);
             } else {
                 if (textHeap.isNull(idx)) {
-                    TextHeap.setZeroLength(idx, textHeap);
+                    LocalHeap.setZeroLength(idx, textHeap);
                 }
                 fastHeapAppend(idx, val, textHeap, reader);
             }
@@ -137,7 +137,7 @@ public class StaticGlue {
         return idx;
     }
     
-    private static void fastHeapAppend(int idx, byte val, TextHeap textHeap, PrimitiveReader primitiveReader) {
+    private static void fastHeapAppend(int idx, byte val, LocalHeap textHeap, PrimitiveReader primitiveReader) {
         final int offset = idx << 2;
         final int off4 = offset + 4;
         final int off1 = offset + 1;
@@ -147,12 +147,14 @@ public class StaticGlue {
         if (targIndex >= nextLimit) {
             textHeap.makeSpaceForAppend(offset, 2); // also space for last char
             targIndex = textHeap.tat[off1];
+            assert(targIndex>=0);
             nextLimit = textHeap.tat[off4];
         }
-
+        assert(targIndex>=0);
+        
         if (val < 0) {
             // heap.setSingleCharText((char)(0x7F & val), targIndex);
-            textHeap.rawAccess()[targIndex++] = (char) (0x7F & val);
+            textHeap.rawAccess()[targIndex++] = (byte) (0x7F & val);
         } else {
             targIndex = StaticGlue.fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, textHeap,
                     primitiveReader);
@@ -165,39 +167,6 @@ public class StaticGlue {
     //These methods are here for package access to the needed methods.
     ///////////////////
     
-    @Deprecated
-    public static void allocateAndDeltaUTF8(final int idx, TextHeap textHeap, PrimitiveReader reader, int trim) {
-        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-        if (trim >= 0) {
-            // append to tail
-            int offset = textHeap.makeSpaceForAppend(idx, trim, utfLength);
-            { 
-                byte[] temp = new byte[utfLength];
-                
-                PrimitiveReader.readByteData(temp,0,utfLength,reader);
-                
-                long charAndPos = 0;        
-                while (charAndPos>>32 < utfLength  ) {
-                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
-                    textHeap.rawAccess()[offset++]=(char)charAndPos;
-                }
-            }
-        } else {
-            // append to head
-            int offset = textHeap.makeSpaceForPrepend(idx, -trim, utfLength);
-            { 
-                byte[] temp = new byte[utfLength];
-                
-                PrimitiveReader.readByteData(temp,0,utfLength,reader);
-                
-                long charAndPos = 0;        
-                while (charAndPos>>32 < utfLength  ) {
-                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
-                    textHeap.rawAccess()[offset++]=(char)charAndPos;
-                }
-            }
-        }
-    }
     
     public static void allocateAndDeltaUTF8(final int idx, LocalHeap heap, PrimitiveReader reader, int trim) {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
@@ -209,45 +178,13 @@ public class StaticGlue {
             PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForPrepend(idx, -trim, utfLength),utfLength,reader);
         }
     }
-    
-    @Deprecated
-    public static void allocateAndCopyUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int length) {
-        int offset = textHeap.allocate(idx, length);
-        { 
-            byte[] temp = new byte[length];
-            
-            PrimitiveReader.readByteData(temp,0,length,reader);
-            
-            long charAndPos = 0;        
-            while (charAndPos>>32 < length  ) {
-                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
-                textHeap.rawAccess()[offset++]=(char)charAndPos;
-            }
-        }
-    }
-    
+       
     public static void allocateAndCopyUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int length) {
 
         PrimitiveReader.readByteData(heap.rawAccess(),heap.allocate(idx, length),length,reader);
         
     }
-
-    @Deprecated
-    public static void allocateAndAppendUTF8(int idx, TextHeap textHeap, PrimitiveReader reader, int utfLength, int t) {
-        int offset = textHeap.makeSpaceForAppend(idx, t, utfLength);
-        { 
-            byte[] temp = new byte[utfLength];
-            
-            PrimitiveReader.readByteData(temp,0,utfLength,reader);
-            
-            long charAndPos = 0;        
-            while (charAndPos>>32 < utfLength  ) {
-                charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
-                textHeap.rawAccess()[offset++]=(char)charAndPos;
-            }
-        }
-    }
-    
+   
     public static void allocateAndAppendUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int utfLength, int t) {
         
         PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForAppend(idx, t, utfLength),utfLength,reader);
@@ -256,7 +193,7 @@ public class StaticGlue {
     
     
     
-    public static int readASCIIToHeap(int idx, PrimitiveReader reader, TextHeap textHeap) {
+    public static int readASCIIToHeap(int idx, PrimitiveReader reader, LocalHeap textHeap) {
         byte val = PrimitiveReader.readTextASCIIByte(reader);  
         int tmp = 0x7F & val;
         return (0 != tmp) ?

@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -76,7 +76,7 @@ public final class FASTRingBuffer {
 
         //constant data will never change and is populated externally.
         if (null!=dcr) {
-            TextHeap textHeap = dcr.charDictionary();
+            LocalHeap textHeap = dcr.charDictionary();
             if (null!=textHeap) {
                           
                 this.constByteBuffer = textHeap.rawInitAccess();  
@@ -277,16 +277,6 @@ public final class FASTRingBuffer {
     // TODO: Z, add consumer/Iterator to go from ring buffer to Object stream
     // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
-
-@Deprecated
-    public static void writeTextToRingBuffer(int heapId, int sourceLen, TextHeap textHeap, FASTRingBuffer rbRingBuffer) {//Invoked 100's of millions of times, must be tight.
-        final int p = rbRingBuffer.addBytePos;
-        if (sourceLen > 0) {
-            rbRingBuffer.addBytePos = TextHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, textHeap);
-        }
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);        
-    }
 
     public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         final int p = rbRingBuffer.addBytePos;

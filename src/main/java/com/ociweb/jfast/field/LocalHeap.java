@@ -187,6 +187,37 @@ public class LocalHeap {
 
         System.arraycopy(source, startFrom, data, target, copyLength);
     }
+
+    @Deprecated
+    public void set(int idx, char[] source, int startFrom, int copyLength) {
+        int offset = idx << 2;
+
+        totalContent += (copyLength - (tat[offset + 1] - tat[offset]));
+        int target = makeRoom(offset, copyLength);
+        tat[offset] = target;
+        tat[offset + 1] = target + copyLength;
+
+        int i = copyLength;
+        while (--i>=0) {
+            data[target+i] = (byte)source[startFrom+i];   
+        }
+    }
+    
+    @Deprecated
+    public void set(int idx, CharSequence source) {
+        int offset = idx << 2;
+
+        int copyLength = source.length();
+        totalContent += (copyLength - (tat[offset + 1] - tat[offset]));
+        int target = makeRoom(offset, copyLength);
+        tat[offset] = target;
+        tat[offset + 1] = target + copyLength;
+
+        int i = copyLength;
+        while (--i>=0) {
+            data[target+i] = (byte)source.charAt(i);   
+        }
+    }
     
     public void set(int idx, byte[] source, int startFrom, int copyLength, int sourceMask) {
         int offset = idx << 2;
@@ -439,6 +470,34 @@ public class LocalHeap {
         
     }
 
+    @Deprecated
+    public void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
+        // if not room make room checking after first because thats where we
+        // want to copy the tail.
+        
+        //System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
+        int targetIdx =  makeSpaceForAppend(idx, trimTail, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = (byte)source[sourceIdx+i];            
+        }
+        
+    }
+    
+    @Deprecated
+    public void appendTail(int idx, int trimTail, int sourceLen, CharSequence source) {
+        // if not room make room checking after first because thats where we
+        // want to copy the tail.
+        
+        //System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
+        int targetIdx =  makeSpaceForAppend(idx, trimTail, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = (byte)source.charAt(i);            
+        }
+        
+    }
+    
     // never call without calling setZeroLength first then a sequence of these
     // never call without calling offset() for first argument
     int appendTail(int offset, int nextLimit, byte value) {
@@ -534,6 +593,24 @@ public class LocalHeap {
         }
     }
 
+    @Deprecated
+    public void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
+        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = (byte)source[sourceIdx+i];
+        }
+    }
+    
+    @Deprecated
+    public void appendHead(int idx, int trimHead, CharSequence source, int sourceLen) {
+        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
+        int i = sourceLen;
+        while (--i>=0) {
+            data[targetIdx+i] = (byte)source.charAt(i);
+        }
+    }
+    
     public void appendHead(int idx, int trimHead, ByteBuffer source) {
         int targetIdx = makeSpaceForPrepend(idx, trimHead, source.remaining());
         
@@ -687,6 +764,77 @@ public class LocalHeap {
         }
     }
 
+    @Deprecated
+    public int get(int idx, char[] target, int targetIdx) {
+        if (idx < 0) {
+            int offset = idx << 1; // this shift left also removes the top bit!
+                                   // sweet.
+
+            int pos = initTat[offset];
+            int len = initTat[offset + 1] - pos;
+            
+            int i = len;
+            while (--i>=0) {
+                target[targetIdx+i]=(char)initBuffer[pos+i];
+            }
+            return len;
+
+        } else {
+
+            int offset = idx << 2;
+
+            int pos = tat[offset];
+            int len = tat[offset + 1] - pos;
+            
+            int i = len;
+            while (--i>=0) {
+                target[targetIdx+i]=(char)data[pos+i];
+            }
+            return len;
+        }
+    }
+    
+    @Deprecated
+    public int get(int idx, Appendable target) {
+        if (idx < 0) {
+            int offset = idx << 1; // this shift left also removes the top bit!
+                                   // sweet.
+
+            int pos = initTat[offset];
+            int len = initTat[offset + 1] - pos;
+            
+            int i = 0;
+            while (i<len) {
+                try {
+                    target.append((char)initBuffer[pos+i]);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                i++;
+            }
+            return len;
+
+        } else {
+
+            int offset = idx << 2;
+
+            int pos = tat[offset];
+            int len = tat[offset + 1] - pos;
+            
+            int i = 0;
+            while (i<len) {
+                try {
+                    char ch = (char)data[pos+i];
+                    target.append(ch);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                i++;
+            }
+            return len;
+        }
+    }
+    
     public byte byteAt(int idx, int at) {
         if (idx < 0) {
             int offset = idx << 1; // this shift left also removes the top bit!
@@ -743,6 +891,78 @@ public class LocalHeap {
         return true;
     }
 
+    public boolean equals(int idx, CharSequence value) {
+        int pos;
+        int lim;
+        byte[] buf;
+        int len;
+
+        if (idx < 0) {
+            int offset = idx << 1;
+
+            pos = initTat[offset];
+            lim = initTat[offset + 1];
+            buf = initBuffer;
+            len = lim - pos;
+        } else {
+            int offset = idx << 2;
+
+            pos = tat[offset];
+            lim = tat[offset + 1];
+            buf = data;
+            len = lim - pos;
+        }
+        if (len < 0) {
+            if (null == value) {
+                return true;
+            }
+            len = 0;
+        }
+        int i = value.length();
+        if (len != i) {
+            return false;
+        }
+
+        while (--i >= 0) {
+            if ( ((byte)value.charAt(i)) != buf[pos + i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    
+    @Deprecated
+    public boolean equals(int idx, char[] target, int targetIdx, int length) {
+        // System.err.println(idx +"  "+length);
+         if (idx < 0) {
+             int offset = idx << 1;
+             return eq(target, targetIdx, length, initTat[offset], initTat[offset + 1], initBuffer);
+         } else {
+             int offset = idx << 2;
+             return eq(target, targetIdx, length, tat[offset], tat[offset + 1], data);
+         }
+     }
+
+    private static boolean eq(char[] target, int targetIdx, int length, int pos, int lim, byte[] buf) {
+        int len = lim - pos;
+        if (len<0) {
+            len = 0;
+        }
+        if (len != length) {
+            return false;
+        }
+        if (len>0) {
+            int i = length;
+            while (--i >= 0) {
+                if (target[targetIdx + i] != buf[pos + i]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
     public boolean equals(int idx, byte[] target, int targetIdx, int length) {
        // System.err.println(idx +"  "+length);
         if (idx < 0) {
@@ -907,6 +1127,24 @@ public class LocalHeap {
         return i - 1;
     }
     
+    @Deprecated
+    public int countTailMatch(int idx, CharSequence source) {
+        int offset = idx << 2;
+
+        int sourceLength = source.length();
+        int sourceLast = source.length();
+
+        int pos = tat[offset];
+        int lim = tat[offset + 1];
+
+        int limit = Math.min(sourceLength, lim - pos);
+        int i = 1;
+        while (i <= limit && data[lim - i] == source.charAt(sourceLast - i)) {
+            i++;
+        }
+        return i - 1;
+    }
+    
     public int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength) {
         int offset = idx << 2;
 
@@ -917,6 +1155,38 @@ public class LocalHeap {
         }
         int i = 0;
         while (i < limit && data[pos + i] == source[sourceIdx + i]) {
+            i++;
+        }
+        return i;
+    }
+
+    @Deprecated
+    public int countHeadMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int limit = tat[offset + 1] - pos;
+        if (sourceLength < limit) {
+            limit = sourceLength;
+        }
+        int i = 0;
+        while (i < limit && data[pos + i] == (byte)source[sourceIdx + i]) {
+            i++;
+        }
+        return i;
+    }
+    
+    @Deprecated
+    public int countHeadMatch(int idx, CharSequence source) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int limit = tat[offset + 1] - pos;
+        if (source.length() < limit) {
+            limit = source.length();
+        }
+        int i = 0;
+        while (i < limit && data[pos + i] == (byte)source.charAt(i)) {
             i++;
         }
         return i;
@@ -950,6 +1220,22 @@ public class LocalHeap {
         }
         return i - 1;
     }
+
+    @Deprecated
+    public int countTailMatch(int idx, char[] source, int sourceIdx, int sourceLength) {
+        int offset = idx << 2;
+
+        int pos = tat[offset];
+        int lim = tat[offset + 1];
+
+        int limit = Math.min(sourceLength, lim - pos);
+        int i = 1;
+        while (i <= limit && data[lim - i] == (byte)source[sourceIdx - i]) {
+            i++;
+        }
+        return i - 1;
+    }
+
     
     public int countTailMatch(int idx, byte[] source, int sourceIdx, int sourceLength, int sourceMask) {
         int offset = idx << 2;

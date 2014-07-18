@@ -6,7 +6,7 @@ package com.ociweb.jfast.loader;
 import java.util.Arrays;
 
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -55,13 +55,12 @@ public class DictionaryFactory {
 
     private int charInitCount;
     private int[] charInitIndex;
-    private char[][] charInitValue;
+    private byte[][] charInitValue;
     private int charInitTotalLength;
 
     private int byteInitCount;
     private int[] byteInitIndex;
     private byte[][] byteInitValue;
-
     private int byteInitTotalLength;
     
     int singleTextSize=64;
@@ -69,7 +68,7 @@ public class DictionaryFactory {
     int singleBytesSize=46; 
     int gapBytesSize=8;
     
-    TextHeap textHeap;
+    LocalHeap textHeap;
     LocalHeap byteHeap;    
 
     public DictionaryFactory() {
@@ -84,7 +83,7 @@ public class DictionaryFactory {
 
         this.charInitCount = 0;
         this.charInitIndex = new int[INIT_GROW_STEP];
-        this.charInitValue = new char[INIT_GROW_STEP][];
+        this.charInitValue = new byte[INIT_GROW_STEP][];
 
         this.byteInitCount = 0;
         this.byteInitIndex = new int[INIT_GROW_STEP];
@@ -125,24 +124,13 @@ public class DictionaryFactory {
 
         this.charInitCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.charInitIndex = new int[charInitCount];
-        this.charInitValue = new char[charInitCount][];
+        this.charInitValue = new byte[charInitCount][];
         c = charInitCount;
         while (--c >= 0) {
             charInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
             int len = PrimitiveReader.readIntegerUnsigned(reader);
-            char[] value = new char[len];
-            int offset = 0;
-            { 
-                byte[] temp = new byte[len];//TODO: A, hack remove
-                
-                PrimitiveReader.readByteData(temp,0,len,reader); //read bytes into array
-                
-                long charAndPos = 0;//convert bytes into chars        
-                while (charAndPos>>32 < len  ) {
-                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
-                    value[offset++]=(char)charAndPos;
-                }
-            }
+            byte[] value = new byte[len];
+            PrimitiveReader.readByteData(value,0,len,reader); //read bytes into array
             charInitValue[c] = value;
         }
         this.charInitTotalLength = PrimitiveReader.readIntegerUnsigned(reader);
@@ -187,7 +175,7 @@ public class DictionaryFactory {
         c = charInitCount;
         while (--c >= 0) {
             PrimitiveWriter.writeIntegerUnsigned(charInitIndex[c], writer);
-            char[] value = charInitValue[c];
+            byte[] value = charInitValue[c];
             PrimitiveWriter.writeIntegerUnsigned(value.length, writer);
             int offset = 0;
             int length = value.length;
@@ -257,7 +245,7 @@ public class DictionaryFactory {
 
     }
 
-    public void addInit(int idx, char[] value) {
+    public void addInitTxt(int idx, byte[] value) {
 
         charInitIndex[charInitCount] = idx;
         charInitValue[charInitCount] = value;
@@ -265,7 +253,7 @@ public class DictionaryFactory {
         if (++charInitCount >= charInitValue.length) {
             int newLength = charInitValue.length + INIT_GROW_STEP;
             int[] temp1 = new int[newLength];
-            char[][] temp2 = new char[newLength][];
+            byte[][] temp2 = new byte[newLength][];
             System.arraycopy(charInitIndex, 0, temp1, 0, charInitValue.length);
             System.arraycopy(charInitValue, 0, temp2, 0, charInitValue.length);
             charInitIndex = temp1;
@@ -322,12 +310,12 @@ public class DictionaryFactory {
     }
 
     
-    public TextHeap charDictionary() {
+    public LocalHeap charDictionary() {
         if (charCount == 0) {
             return null;
         }
         if (null==textHeap) {
-            textHeap = new TextHeap(singleTextSize, gapTextSize, nextPowerOfTwo(charCount), charInitTotalLength,
+            textHeap = new LocalHeap(singleTextSize, gapTextSize, nextPowerOfTwo(charCount), charInitTotalLength,
                     charInitIndex, charInitValue);
             textHeap.reset();
         }
@@ -366,12 +354,6 @@ public class DictionaryFactory {
         i = longInitCount;
         while (--i >= 0) {
             values[longInitIndex[i]] = longInitValue[i];
-        }
-    }
-
-    public void reset(TextHeap heap) {
-        if (null != heap) {
-            heap.reset();
         }
     }
 

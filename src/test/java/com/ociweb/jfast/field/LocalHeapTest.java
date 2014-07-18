@@ -10,7 +10,7 @@ import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-public class TextHeapTest {
+public class LocalHeapTest {
 
 	
 	@AfterClass
@@ -25,11 +25,11 @@ public class TextHeapTest {
 			"a","b","c","hello","world"	
 		};
 		
-		TextHeap th = new TextHeap(6,6, testData.length);
+		LocalHeap th = new LocalHeap(6,6, testData.length);
 		
 		int i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(i, data, 0, data.length);
 		}
 		
@@ -44,8 +44,8 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 			assertTrue(th.equals(i, testData[i]));
@@ -60,12 +60,12 @@ public class TextHeapTest {
 			"a","b","c","hello","world"	
 		};
 		
-		TextHeap th = new TextHeap(6,6, testData.length);
+		LocalHeap th = new LocalHeap(6,6, testData.length);
 		
 		int i = testData.length;
 		while (--i>=0) {
-			CharSequence charSequence = testData[i];
-			th.set(i, charSequence, 0, charSequence.length());
+			CharSequence byteSequence = testData[i];
+			th.set(i, byteSequence);
 		}
 		
 		i = testData.length;
@@ -79,8 +79,8 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 			assertTrue(th.equals(i, testData[i]));
@@ -95,18 +95,18 @@ public class TextHeapTest {
 			"a","b","c","hello","world","string"	
 		};
 		
-		TextHeap th = new TextHeap(6,6, testData.length);
+		LocalHeap th = new LocalHeap(6,6, testData.length);
 		
 		//write each test value into the heap
 		int i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(testData.length-(i+1), data, 0, data.length);
 		}
 		//now replace each backwards so they have something shorter or longer
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(i, data, 0, data.length);
 		}
 		
@@ -122,8 +122,8 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 			assertTrue(th.equals(i, testData[i]));
@@ -138,19 +138,19 @@ public class TextHeapTest {
 			"a","b","c","hello","world","string"	
 		};
 		
-		TextHeap th = new TextHeap(6,6, testData.length);
+		LocalHeap th = new LocalHeap(6,6, testData.length);
 		
 		//write each test value into the heap
 		int i = testData.length;
 		while (--i>=0) {
-			CharSequence charSequence = testData[i];
-			th.set(testData.length-(i+1), charSequence, 0, charSequence.length());
+			CharSequence byteSequence = testData[i];
+			th.set(testData.length-(i+1), byteSequence);
 		}
 		//now replace each backwards so they have something shorter or longer
 		i = testData.length;
 		while (--i>=0) {
-			CharSequence charSequence = testData[i];
-			th.set(i, charSequence, 0, charSequence.length());
+			CharSequence byteSequence = testData[i];
+			th.set(i, byteSequence);
 		}
 		
 		
@@ -165,8 +165,8 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 			assertTrue(th.equals(i, testData[i]));
@@ -177,19 +177,19 @@ public class TextHeapTest {
 	@Test
 	public void modifyTailTest() {
 		
-		TextHeap th = new TextHeap(8,8, 10);
+		LocalHeap th = new LocalHeap(8,8, 10);
 		String root = "hello";
 		String suffix = "world";
 		String replace = "everyone";
 		
-		char[] data = (root+suffix).toCharArray();
+		byte[] data = (root+suffix).getBytes();
 		th.set(2, data, 0, data.length);
 		//
 		StringBuilder builder = new StringBuilder();
 		th.get(2, builder);
 		assertEquals(root+suffix,builder.toString());
 		//
-		char[] tail = replace.toCharArray();
+		byte[] tail = replace.getBytes();
 		th.appendTail(2, suffix.length(), tail, 0, tail.length);
 		//
 		builder.setLength(0);
@@ -203,19 +203,19 @@ public class TextHeapTest {
 	@Test
 	public void modifyHeadTestString() {
 		
-		TextHeap th = new TextHeap(8,8, 10);
+		LocalHeap th = new LocalHeap(8,8, 10);
 		String prefix = "hello";
 		String replace = "goodbye";
 		String root = "world";
 		
-		char[] data = (prefix+root).toCharArray();
+		byte[] data = (prefix+root).getBytes();
 		th.set(2, data, 0, data.length);
 		//
 		StringBuilder builder = new StringBuilder();
 		th.get(2, builder);
 		assertEquals(prefix+root,builder.toString());
 		//
-		char[] tail = replace.toCharArray();
+		byte[] tail = replace.getBytes();
 		th.appendHead(2, prefix.length(), tail, 0, tail.length);
 		//
 		builder.setLength(0);
@@ -230,12 +230,12 @@ public class TextHeapTest {
 	@Test
 	public void modifyHeadTestChar() {
 		
-		TextHeap th = new TextHeap(8,8, 10);
+		LocalHeap th = new LocalHeap(8, 8, 10);
 		String prefix = "hello";
 		String replace = "goodbye";
 		String root = "world";
 		
-		char[] data = (prefix+root).toCharArray();
+		byte[] data = (prefix+root).getBytes();
 		th.set(2, data, 0, data.length);
 		//
 		StringBuilder builder = new StringBuilder();
@@ -256,12 +256,12 @@ public class TextHeapTest {
 	@Test
 	public void modifyHeadTestSingleChar() {
 		
-		TextHeap th = new TextHeap(8,8, 10);
+		LocalHeap th = new LocalHeap(8,8, 10);
 		String prefix = "hello";
 		String replace = "g";
 		String root = "world";
 		
-		char[] data = (prefix+root).toCharArray();
+		byte[] data = (prefix+root).getBytes();
 		th.set(2, data, 0, data.length);
 		//
 		StringBuilder builder = new StringBuilder();
@@ -269,7 +269,7 @@ public class TextHeapTest {
 		assertEquals(prefix+root,builder.toString());
 		//
 		th.trimHead(2, prefix.length());
-		th.appendHead(2, replace.charAt(0));
+		th.appendHead(2, (byte)replace.charAt(0));
 		//
 		builder.setLength(0);
 		th.get(2, builder);
@@ -281,13 +281,13 @@ public class TextHeapTest {
 	}
 	
 	private static final String[] buildTestData = new String[] {"abcd","efgh","ijkl","mnop"};
-	private TextHeap buildTestHeap() {
-		//each string is 4 chars with 4 chars between each
-		TextHeap th = new TextHeap(4, 4, 4);
+	private LocalHeap buildTestHeap() {
+		//each string is 4 bytes with 4 bytes between each
+		LocalHeap th = new LocalHeap(4, 4, 4);
 		
 		int i = buildTestData.length;
 		while (--i>=0) {
-			char[] temp = buildTestData[i].toCharArray();
+			byte[] temp = buildTestData[i].getBytes();
 			th.set(i, temp, 0, temp.length);
 		}
 		// test the data
@@ -304,10 +304,10 @@ public class TextHeapTest {
 	@Test
 	public void replaceAndMoveRightTest() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String bigString = "abcdefghijkl";
-		char[] bigData = bigString.toCharArray();
+		byte[] bigData = bigString.getBytes();
 		
 		th.set(0, bigData, 0, bigData.length);
 		
@@ -332,10 +332,10 @@ public class TextHeapTest {
 	@Test
 	public void replaceAndMoveLeftTest() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String bigString = "abcdefghijkl";
-		char[] bigData = bigString.toCharArray();
+		byte[] bigData = bigString.getBytes();
 		
 		th.set(3, bigData, 0, bigData.length);
 		
@@ -360,10 +360,10 @@ public class TextHeapTest {
 	@Test
 	public void replaceMiddleAndMoveBothTest() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String bigString = "abcdefghijklmo";
-		char[] bigData = bigString.toCharArray();
+		byte[] bigData = bigString.getBytes();
 		
 		th.set(1, bigData, 0, bigData.length);
 		
@@ -388,10 +388,10 @@ public class TextHeapTest {
 	@Test
 	public void tailAndMoveRightTest() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String tail = "qrstuv";
-		char[] tailData = tail.toCharArray();
+		byte[] tailData = tail.getBytes();
 		
 		th.appendTail(0, 1, tailData, 0, tailData.length);
 				
@@ -416,10 +416,10 @@ public class TextHeapTest {
 	@Test
 	public void headAndMoveLeftTestChar() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String headString = "abcdef";
-		char[] headData = headString.toCharArray();
+		byte[] headData = headString.getBytes();
 		
 		th.appendHead(3, 1, headData, 0, headData.length);
 				
@@ -444,7 +444,7 @@ public class TextHeapTest {
 	@Test
 	public void headAndMoveLeftTestString() {
 		//Need to test move right and move left.
-		TextHeap th = buildTestHeap();
+		LocalHeap th = buildTestHeap();
 		//
 		String headString = "abcdef";
 		
@@ -477,11 +477,11 @@ public class TextHeapTest {
 			"abc","def","ghi","jkl","mno"	
 		};
 		
-		TextHeap th = new TextHeap(3, 0, testData.length);
+		LocalHeap th = new LocalHeap(3, 0, testData.length);
 		
 		int i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(i, data, 0, data.length);
 		}
 		
@@ -495,14 +495,14 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 		}
 		
 		try {
-			char[] biggerString = "abcd".toCharArray();
+			byte[] biggerString = "abcd".getBytes();
 			th.set(0, biggerString, 0, biggerString.length);
 			fail("expected exception no more room in heap.");
 		} catch (Throwable t) {
@@ -519,11 +519,11 @@ public class TextHeapTest {
 			"abc","def","ghi","jkl","mn"	
 		};
 		
-		TextHeap th = new TextHeap(3, 0, testData.length);
+		LocalHeap th = new LocalHeap(3, 0, testData.length);
 		
 		int i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(i, data, 0, data.length);
 		}
 		
@@ -537,14 +537,14 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 		}
 		
 		//should be room enough for this.
-		char[] biggerString = "abcd".toCharArray();
+		byte[] biggerString = "abcd".getBytes();
 		th.set(0, biggerString, 0, biggerString.length);	
 		
 	}
@@ -556,11 +556,11 @@ public class TextHeapTest {
 			"bc","def","ghi","jkl","mno"	
 		};
 		
-		TextHeap th = new TextHeap(3, 0, testData.length);
+		LocalHeap th = new LocalHeap(3, 0, testData.length);
 		
 		int i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
+			byte[] data = testData[i].getBytes();
 			th.set(i, data, 0, data.length);
 		}
 		
@@ -574,14 +574,14 @@ public class TextHeapTest {
 		
 		i = testData.length;
 		while (--i>=0) {
-			char[] data = testData[i].toCharArray();
-			char[] target = new char[data.length];
+			byte[] data = testData[i].getBytes();
+			byte[] target = new byte[data.length];
 			th.get(i,target, 0);
 			assertTrue(Arrays.equals(data,target));
 		}
 		
 		//should be room enough for this.
-		char[] biggerString = "abcd".toCharArray();
+		byte[] biggerString = "abcd".getBytes();
 		th.set(4, biggerString, 0, biggerString.length);
 
 	}

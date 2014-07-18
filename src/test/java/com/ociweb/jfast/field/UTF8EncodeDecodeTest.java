@@ -13,7 +13,7 @@ import java.util.Arrays;
 import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;

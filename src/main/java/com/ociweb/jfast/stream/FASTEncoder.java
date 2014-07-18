@@ -1,7 +1,7 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
@@ -35,7 +35,7 @@ public class FASTEncoder {
     protected int activeScriptLimit;
     protected final int[] fullScript;
     
-    protected TextHeap textHeap;
+    protected LocalHeap textHeap;
     protected LocalHeap byteHeap;
 
     protected RingCharSequence ringCharSequence = new RingCharSequence();

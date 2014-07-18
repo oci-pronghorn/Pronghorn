@@ -505,7 +505,7 @@ public class TemplateHandler extends DefaultHandler {
                 int idx = token & TokenBuilder.MAX_INSTANCE;
                // System.err.println("default value for "+fieldId+" "+fieldName+"  is "+fieldOperatorValue+" at "+idx+" pos "+catalogTemplateScriptIdx);
                 
-                defaultConstValues.addInit(idx, fieldOperatorValue.toCharArray());
+                defaultConstValues.addInitTxt(idx, fieldOperatorValue.getBytes());
             }
             fieldOperatorValue = null;
 

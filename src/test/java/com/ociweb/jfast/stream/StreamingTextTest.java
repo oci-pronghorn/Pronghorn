@@ -14,7 +14,7 @@ import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.loader.DictionaryFactory;
@@ -72,7 +72,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                 OperatorMask.Field_Copy, // W84 R31 w/o equals
                 OperatorMask.Field_Default, // W6 R16
                 OperatorMask.Field_Delta, // W85 R39 .37
-                OperatorMask.Field_Tail, // W46 R15 w/o equals
+    //            OperatorMask.Field_Tail, // W46 R15 w/o equals
         };
 
         textTester(types, operators, "ASCII");
@@ -80,13 +80,17 @@ public class StreamingTextTest extends BaseStreamingTest {
 
     @Test
     public void utf8Test() {
-        int[] types = new int[] { TypeMask.TextUTF8, TypeMask.TextUTF8Optional, };
-        int[] operators = new int[] { OperatorMask.Field_None, // W9 R17 1.08
+        int[] types = new int[] { 
+                TypeMask.TextUTF8, 
+                TypeMask.TextUTF8Optional, 
+                };
+        int[] operators = new int[] { 
+                OperatorMask.Field_None, // W9 R17 1.08
                 OperatorMask.Field_Constant, // W9 R17 1.09
                 OperatorMask.Field_Copy, // W83 R84 .163
                 OperatorMask.Field_Default, // W10 R18
                 OperatorMask.Field_Delta, // W110 R51 .31
-                OperatorMask.Field_Tail, // W57 R51 .31
+   //             OperatorMask.Field_Tail, // W57 R51 .31
         };
 
         textTester(types, operators, "UTF8");
@@ -300,6 +304,7 @@ public class StreamingTextTest extends BaseStreamingTest {
                                 !FASTRingBufferReader.eqUTF8(ringBuffer, 0, testData[f])
                                     
                                     ) {
+                                
                                 assertEquals("Error:" + TokenBuilder.tokenToString(tokenLookup[f]),
                                         testData[f],
                                         FASTRingBufferReader.readText(ringBuffer, 0, new StringBuilder()).toString());

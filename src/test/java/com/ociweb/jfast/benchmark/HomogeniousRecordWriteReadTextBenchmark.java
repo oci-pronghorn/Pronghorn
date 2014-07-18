@@ -290,7 +290,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	
 	@Test
 	public void testThis() {
-		assertTrue(0==timeStaticTextUTF8DeltaOptional(20));
+		assertTrue(0==timeStaticTextASCIIDelta(20));
 	}
 	
 	

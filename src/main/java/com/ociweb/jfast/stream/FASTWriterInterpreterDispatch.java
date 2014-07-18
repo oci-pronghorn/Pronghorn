@@ -8,7 +8,7 @@ import java.nio.ByteBuffer;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
-import com.ociweb.jfast.field.TextHeap;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
@@ -560,13 +560,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
-        if (readFromIdx>=0) {
-            int source = token & TEXT_INSTANCE_MASK;
-            int target = readFromIdx & TEXT_INSTANCE_MASK;
-            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
-            readFromIdx = -1; //reset for next field where it might be used.
-        }
-        
+       
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -575,8 +569,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 acceptCharSequenceASCII(token, value, writer, textHeap, pos, ringBuffer);
             } else {                                
                 // utf8
-                //TODO: replace with bytes array
-                acceptCharSequenceUTF8(token, value, writer);
+                acceptByteArray(token, writer, textHeap, pos, ringBuffer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -585,111 +578,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 acceptCharSequenceASCIIOptional(token, value, writer, textHeap, pos, ringBuffer);
             } else {
                 // utf8 optional
-                //TODO: replace with bytes array
-                acceptCharSequenceUTF8Optional(token, value, writer);
-            }
-        }
-    }
-
-    @Deprecated
-    private void acceptCharSequenceUTF8Optional(int token, CharSequence value, PrimitiveWriter writer) {
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteUTFTextNoneOptional(value, writer);
-                } else {
-                    // tail
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteUTFTextTailOptional(idx, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    genWriteUTFTextConstantOptional(writer);
-                } else {
-                    // delta
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteUTFTextDeltaOptional(idx, value, writer, textHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteUTFTextCopyOptional(idx, value, writer, textHeap);
-            } else {
-                // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteUTFTextDefaultOptional(idx, value, writer, textHeap);
+                acceptByteArrayOptional(token, writer, textHeap, pos, ringBuffer);
             }
         }
     }
 
 
     @Deprecated
-    private void acceptCharSequenceUTF8(int token, CharSequence value, PrimitiveWriter writer) {
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteUTFTextNone(value, writer);
-                } else {
-                    // tail
-                    int idx = token & TEXT_INSTANCE_MASK;                    
-                    
-                    genWriteUTFTextTail(idx, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    
-                } else {
-                    // delta
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteUTFTextDelta(idx, value, writer, textHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                // System.err.println("AA");
-                genWriteUTFTextCopy(idx, value, writer, textHeap);
-            } else {
-                // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteUTFTextDefault(idx, value, writer, textHeap);
-            }
-        }
-
-    }
-
-
-    @Deprecated
-    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
+    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
         int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
@@ -759,7 +655,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
     @Deprecated
-    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, TextHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
+    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
         int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
@@ -1034,6 +930,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         dictionaryFactory.reset(longValues);
         dictionaryFactory.reset(textHeap);
         dictionaryFactory.reset(byteHeap);
+        
     }
 
     
@@ -1642,7 +1539,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         genWritePreamble(preambleData, writer);
     }
 
-    public void writeNullText(int token, int idx, PrimitiveWriter writer, TextHeap textHeap) {
+    public void writeNullText(int token, int idx, PrimitiveWriter writer, LocalHeap textHeap) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta and Tail
