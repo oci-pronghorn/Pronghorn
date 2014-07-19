@@ -66,7 +66,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
 	static final DictionaryFactory dictionaryFactory = new DictionaryFactory();
 	static {
-		dictionaryFactory.setTypeCounts(fields,fields,fields,fields);
+		dictionaryFactory.setTypeCounts(fields,fields,fields);
 	}
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 	

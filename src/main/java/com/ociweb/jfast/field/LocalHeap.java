@@ -124,14 +124,14 @@ public class LocalHeap {
         }
     }
 
-    public static void setZeroLength(int idx, LocalHeap textHeap) {
+    public static void setZeroLength(int idx, LocalHeap byteHeap) {
         int offset = idx << 2;
-        textHeap.tat[offset + 1] = textHeap.tat[offset];
+        byteHeap.tat[offset + 1] = byteHeap.tat[offset];
     }
 
-    public static void setNull(int idx, LocalHeap textHeap) {
+    public static void setNull(int idx, LocalHeap byteHeap) {
         int offset = idx << 2;
-        textHeap.tat[offset + 1] = textHeap.tat[offset] - 1;
+        byteHeap.tat[offset + 1] = byteHeap.tat[offset] - 1;
     }
 
     public boolean isNull(int idx) {
@@ -1326,14 +1326,14 @@ public class LocalHeap {
 
     }
 
-    public static void setSingleByte(byte b, int idx, LocalHeap textHeap) {
+    public static void setSingleByte(byte b, int idx, LocalHeap byteHeap) {
         // This implementation assumes that all text can always support length of 1. Enforced in constructor.
         final int offset = idx << 2;
                 
-        int targIndex = textHeap.tat[offset]; // because we have zero length
+        int targIndex = byteHeap.tat[offset]; // because we have zero length
 
-        textHeap.data[targIndex] = b;
-        textHeap.tat[offset + 1] = 1 + targIndex;
+        byteHeap.data[targIndex] = b;
+        byteHeap.tat[offset + 1] = 1 + targIndex;
     }
 
     public byte[] rawAccess() {

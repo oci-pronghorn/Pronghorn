@@ -1001,6 +1001,21 @@ public final class PrimitiveWriter {
         }
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
     }
+    
+    public static void writeTextASCII(byte[] value, int offset, int length, PrimitiveWriter writer) {
+
+        if (0 == length) {
+            encodeZeroLengthASCII(writer);
+            return;
+        } else if (writer.limit > writer.buffer.length - length) {
+            // if it was not zero and was too long flush
+            writer.output.flush();
+        }
+        while (--length > 0) {
+            writer.buffer[writer.limit++] = (byte) value[offset++];
+        }
+        writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
+    }
 
     public static void ensureSpace(int bytes, PrimitiveWriter writer) {
         

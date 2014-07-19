@@ -12,12 +12,12 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 public class StaticGlue {
 
     //May want to move to dispatch, used in 4 places.
-    public static int readASCIIToHeapNone(int idx, byte val, LocalHeap textHeap, PrimitiveReader reader) {
+    public static int readASCIIToHeapNone(int idx, byte val, LocalHeap byteHeap, PrimitiveReader reader) {
         // 0x80 is a null string.
         // 0x00, 0x80 is zero length string
         if (0 == val) {
             // almost never happens
-            LocalHeap.setZeroLength(idx, textHeap);
+            LocalHeap.setZeroLength(idx, byteHeap);
             // must move cursor off the second byte
             val = PrimitiveReader.readTextASCIIByte(reader); // < .1%
             // at least do a validation because we already have what we need
@@ -25,58 +25,58 @@ public class StaticGlue {
             return 0;//length
         } else {
             // happens rarely when it equals 0x80
-            LocalHeap.setNull(idx, textHeap);
+            LocalHeap.setNull(idx, byteHeap);
             return -1;//length
         }
     }
     //May want to move to dispatch, used in 3 places.
-    public static int readASCIIToHeapValue(int idx, byte val, int chr, LocalHeap textHeap,
+    public static int readASCIIToHeapValue(int idx, byte val, int chr, LocalHeap byteHeap,
             PrimitiveReader primitiveReader) {
 
         if (val < 0) {
-            LocalHeap.setSingleByte((byte) chr, idx, textHeap);
+            LocalHeap.setSingleByte((byte) chr, idx, byteHeap);
             return 1;
         } else {
-            readASCIIToHeapValueLong(val, idx, textHeap, primitiveReader);
-            return textHeap.valueLength(idx);
+            readASCIIToHeapValueLong(val, idx, byteHeap, primitiveReader);
+            return byteHeap.valueLength(idx);
         }
     }
-    private static void readASCIIToHeapValueLong(byte val, int idx, LocalHeap textHeap, PrimitiveReader primitiveReader) {
+    private static void readASCIIToHeapValueLong(byte val, int idx, LocalHeap byteHeap, PrimitiveReader primitiveReader) {
         final int offset = idx << 2;
-        int targIndex = textHeap.tat[offset]; // because we have zero length
+        int targIndex = byteHeap.tat[offset]; // because we have zero length
 
         int nextLimit;
         int off4;
 
         // ensure there is enough space for the text
-        if (targIndex >= (nextLimit = textHeap.tat[off4 = offset + 4])) {
-            textHeap.tat[offset + 1] = textHeap.tat[offset];// set to zero
+        if (targIndex >= (nextLimit = byteHeap.tat[off4 = offset + 4])) {
+            byteHeap.tat[offset + 1] = byteHeap.tat[offset];// set to zero
                                                             // length
-            textHeap.makeSpaceForAppend(offset, 2); // also space for last char
-            targIndex = textHeap.tat[offset + 1];
-            nextLimit = textHeap.tat[off4];
+            byteHeap.makeSpaceForAppend(offset, 2); // also space for last char
+            targIndex = byteHeap.tat[offset + 1];
+            nextLimit = byteHeap.tat[off4];
         }
 
         // copy all the text into the heap
-        textHeap.tat[offset + 1] = textHeap.tat[offset];// set to zero length
-        textHeap.tat[offset + 1] = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, textHeap,
+        byteHeap.tat[offset + 1] = byteHeap.tat[offset];// set to zero length
+        byteHeap.tat[offset + 1] = fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, byteHeap,
                 primitiveReader);
     }
     
 
 
     private static int fastHeapAppendLong(byte val, final int offset, final int off4, int nextLimit, int targIndex,
-            LocalHeap textHeap, PrimitiveReader reader) {
-        textHeap.rawAccess()[targIndex++] = (byte) val;
+            LocalHeap byteHeap, PrimitiveReader reader) {
+        byteHeap.rawAccess()[targIndex++] = (byte) val;
 
         int len;
         do {
-            len = PrimitiveReader.readTextASCII2(textHeap.rawAccess(), targIndex, nextLimit, reader);
+            len = PrimitiveReader.readTextASCII2(byteHeap.rawAccess(), targIndex, nextLimit, reader);
             if (len < 0) {
                 targIndex -= len;
-                textHeap.makeSpaceForAppend(offset, 2); // also space for last
+                byteHeap.makeSpaceForAppend(offset, 2); // also space for last
                                                         // char
-                nextLimit = textHeap.tat[off4];
+                nextLimit = byteHeap.tat[off4];
             } else {
                 targIndex += len;
             }
@@ -85,37 +85,37 @@ public class StaticGlue {
     }
 
 
-    public static int readASCIIHead(final int idx, int trim, LocalHeap textHeap, PrimitiveReader reader) {
+    public static int readASCIIHead(final int idx, int trim, LocalHeap byteHeap, PrimitiveReader reader) {
         
 
         if (trim < 0) {
-            textHeap.trimHead(idx, -trim);
+            byteHeap.trimHead(idx, -trim);
         }
 
         byte value = PrimitiveReader.readTextASCIIByte(reader);
         int offset = idx << 2;
-        int nextLimit = textHeap.tat[offset + 4];
+        int nextLimit = byteHeap.tat[offset + 4];
 
         if (trim >= 0) {
             while (value >= 0) {
-                nextLimit = textHeap.appendTail(offset, nextLimit, value);
+                nextLimit = byteHeap.appendTail(offset, nextLimit, value);
                 value = PrimitiveReader.readTextASCIIByte(reader);
             }
-            textHeap.appendTail(offset, nextLimit, (byte)(value & 0x7F));
+            byteHeap.appendTail(offset, nextLimit, (byte)(value & 0x7F));
         } else {
             while (value >= 0) {
-                textHeap.appendHead(offset, value);
+                byteHeap.appendHead(offset, value);
                 value = PrimitiveReader.readTextASCIIByte(reader);
             }
-            textHeap.appendHead(offset, (byte) (value & 0x7F));
+            byteHeap.appendHead(offset, (byte) (value & 0x7F));
         }
 
         return idx;
     }
 
 
-    public static int readASCIITail(final int idx, LocalHeap textHeap, PrimitiveReader reader, int tail) {
-        textHeap.trimTail(idx, tail);       
+    public static int readASCIITail(final int idx, LocalHeap byteHeap, PrimitiveReader reader, int tail) {
+        byteHeap.trimTail(idx, tail);       
         byte val = PrimitiveReader.readTextASCIIByte(reader);
         if (val == 0) {
             // nothing to append
@@ -126,40 +126,40 @@ public class StaticGlue {
         } else {
             if (val == (byte) 0x80) {
                 // nothing to append
-                LocalHeap.setNull(idx, textHeap);
+                LocalHeap.setNull(idx, byteHeap);
             } else {
-                if (textHeap.isNull(idx)) {
-                    LocalHeap.setZeroLength(idx, textHeap);
+                if (byteHeap.isNull(idx)) {
+                    LocalHeap.setZeroLength(idx, byteHeap);
                 }
-                fastHeapAppend(idx, val, textHeap, reader);
+                fastHeapAppend(idx, val, byteHeap, reader);
             }
         }
         return idx;
     }
     
-    private static void fastHeapAppend(int idx, byte val, LocalHeap textHeap, PrimitiveReader primitiveReader) {
+    private static void fastHeapAppend(int idx, byte val, LocalHeap byteHeap, PrimitiveReader primitiveReader) {
         final int offset = idx << 2;
         final int off4 = offset + 4;
         final int off1 = offset + 1;
-        int nextLimit = textHeap.tat[off4];
-        int targIndex = textHeap.tat[off1];
+        int nextLimit = byteHeap.tat[off4];
+        int targIndex = byteHeap.tat[off1];
 
         if (targIndex >= nextLimit) {
-            textHeap.makeSpaceForAppend(offset, 2); // also space for last char
-            targIndex = textHeap.tat[off1];
+            byteHeap.makeSpaceForAppend(offset, 2); // also space for last char
+            targIndex = byteHeap.tat[off1];
             assert(targIndex>=0);
-            nextLimit = textHeap.tat[off4];
+            nextLimit = byteHeap.tat[off4];
         }
         assert(targIndex>=0);
         
         if (val < 0) {
             // heap.setSingleCharText((char)(0x7F & val), targIndex);
-            textHeap.rawAccess()[targIndex++] = (byte) (0x7F & val);
+            byteHeap.rawAccess()[targIndex++] = (byte) (0x7F & val);
         } else {
-            targIndex = StaticGlue.fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, textHeap,
+            targIndex = StaticGlue.fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, byteHeap,
                     primitiveReader);
         }
-        textHeap.tat[off1] = targIndex;
+        byteHeap.tat[off1] = targIndex;
     }
 
     
@@ -193,12 +193,12 @@ public class StaticGlue {
     
     
     
-    public static int readASCIIToHeap(int idx, PrimitiveReader reader, LocalHeap textHeap) {
+    public static int readASCIIToHeap(int idx, PrimitiveReader reader, LocalHeap byteHeap) {
         byte val = PrimitiveReader.readTextASCIIByte(reader);  
         int tmp = 0x7F & val;
         return (0 != tmp) ?
-               readASCIIToHeapValue(idx, val, tmp, textHeap, reader) :
-               readASCIIToHeapNone(idx, val, textHeap, reader);
+               readASCIIToHeapValue(idx, val, tmp, byteHeap, reader) :
+               readASCIIToHeapNone(idx, val, byteHeap, reader);
     }
     
     public static void readLongSignedDeltaOptional(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask,

@@ -566,29 +566,31 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii
               //TODO: replace with bytes array
-                acceptCharSequenceASCII(token, value, writer, textHeap, pos, ringBuffer);
+                acceptCharSequenceASCII(token, value, writer, byteHeap, pos, ringBuffer);
             } else {                                
                 // utf8
-                acceptByteArray(token, writer, textHeap, pos, ringBuffer);
+                acceptByteArray(token, writer, byteHeap, pos, ringBuffer);
             }
         } else {
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                 // ascii optional
               //TODO: replace with bytes array
-                acceptCharSequenceASCIIOptional(token, value, writer, textHeap, pos, ringBuffer);
+                acceptCharSequenceASCIIOptional(token, value, writer, byteHeap, pos, ringBuffer);
             } else {
                 // utf8 optional
-                acceptByteArrayOptional(token, writer, textHeap, pos, ringBuffer);
+                acceptByteArrayOptional(token, writer, byteHeap, pos, ringBuffer);
             }
         }
     }
 
 
     @Deprecated
-    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
+    private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, LocalHeap byteHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
         int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
+        int offset = rbRingBuffer.readRingBytePos(fieldPos);
         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
+        
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -600,10 +602,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "
                             + TokenBuilder.tokenToString(token);
+                    
                     if (null == value) {
                         genWriteNull(writer);
                     } else {
-                        genWriteTextNone(value, writer);
+                        genWriteTextNone(offset, length, buffer, writer);
                     }
                 } else {
                     // tail
@@ -611,7 +614,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             + TokenBuilder.tokenToString(token);
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextTailOptional(idx, value, writer, textHeap);
+                    genWriteTextTailOptional(idx, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -626,7 +629,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             + TokenBuilder.tokenToString(token);
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextDeltaOptional(idx, value, writer, textHeap);
+                    genWriteTextDeltaOptional(idx, value, writer, byteHeap);
 
                 }
             }
@@ -639,7 +642,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         + TokenBuilder.tokenToString(token);
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopyOptional(idx, value, writer, textHeap);
+                genWriteTextCopyOptional(idx, value, writer, byteHeap);
 
             } else {
                 // default
@@ -647,7 +650,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         + TokenBuilder.tokenToString(token);
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextDefaultOptional(idx, value, writer, textHeap);
+                genWriteTextDefaultOptional(idx, value, writer, byteHeap);
 
             }
         }
@@ -655,9 +658,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
     @Deprecated
-    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, LocalHeap textHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
+    private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, LocalHeap byteHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
         int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
+        int offset = rbRingBuffer.readRingBytePos(fieldPos);
         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
 
         
@@ -669,12 +673,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNone(value, writer);
+                    genWriteTextNone(offset, length, buffer, writer); //TODO: A, ring buffer and field position.
                 } else {
                     // tail
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextTail(idx, value, writer, textHeap);
+                    genWriteTextTail(idx, value, writer, byteHeap);
                 }
             } else {
                 // constant delta
@@ -685,7 +689,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // delta
                     int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextDelta(idx, value, writer, textHeap);
+                    genWriteTextDelta(idx, value, writer, byteHeap);
                 }
             }
         } else {
@@ -695,205 +699,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopy(idx, value, writer, textHeap);
+                genWriteTextCopy(idx, value, writer, byteHeap);
             } else {
                 // default
                 int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextDefault(idx, value, writer, textHeap);
+                genWriteTextDefault(idx, value, writer, byteHeap);
             }
         }
 
     }
-
-    @Deprecated
-    public void acceptCharArrayUTF8Optional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteTextUTFNoneOptional(offset, length, value, writer);
-
-                } else {
-                    // tail
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteTextUTFTailOptional(idx, offset, length, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    genWriteTextUTFConstantOptional(writer);
-                } else {
-                    // delta
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteTextUTFDeltaOptional(idx, offset, length, value, writer, textHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextUTFCopyOptional(idx, offset, length, value, writer, textHeap);
-            } else {
-                // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextUTFDefaultOptional(idx, offset, length, value, writer, textHeap);
-            }
-        }
-
-    }
-
-
-    @Deprecated
-    public void acceptCharArrayUTF8(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none             
-                    
-                    
-                    genWriteTextUTFNone(offset, length, value, writer);
-
-                } else {
-                    // tail
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    //Where to we convert the chars into bytes?
-                    
-                    genWriteTextUTFTail(idx, offset, length, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    
-                } else {
-                    // delta
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteTextUTFDelta(idx, offset, length, value, writer, textHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextUTFCopy(idx, offset, length, value, writer, textHeap);
-            } else {
-                // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
-                
-                genWriteTextUTFDefault(constId, offset, length, value, writer, textHeap);
-            }
-        }
-
-    }
-
-    @Deprecated
-    public void acceptCharArrayASCIIOptional(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteTextNoneOptional(value, offset, length, writer);
-                } else {
-                    // tail
-                    genWriteTextTailOptional2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    genWriteTextConstantOptional(writer);
-                } else {
-                    // delta
-                    genWriteTextDeltaOptional2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextCopyOptional(idx, offset, length, value, writer, textHeap);
-            } else {
-                // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                int constId = idx | FASTWriterInterpreterDispatch.INIT_VALUE_MASK;
-                
-                genWriteTextDefaultOptional(constId, offset, length, value, writer, textHeap);
-            }
-        }
-
-    }
-
-
-    @Deprecated
-    public void acceptCharArrayASCII(int token, char[] value, int offset, int length, PrimitiveWriter writer) {
-
-        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
-                                                            // the work.
-            // none constant delta tail
-            if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // none tail
-                if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
-                    // none
-                    genWriteTextNone(value, offset, length, writer);
-                } else {
-                    // tail
-                    genWriteTextTail2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
-                }
-            } else {
-                // constant delta
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
-                    // constant
-                    
-                } else {
-                    // delta
-                    genWriteTextDelta2(token & TEXT_INSTANCE_MASK, offset, length, value, writer, textHeap);
-                }
-            }
-        } else {
-            // copy default
-            if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
-                                                                // all the work.
-                // copy
-                genWriteTextCopy2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
-            } else {
-                // default
-                genWriteTextDefault2(token & TEXT_INSTANCE_MASK, offset, length, value, textHeap, writer);
-            }
-        }
-    }
-
 
 
     public void openGroup(int token, int pmapSize, PrimitiveWriter writer) {
@@ -928,7 +743,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         dictionaryFactory.reset(intValues);
         dictionaryFactory.reset(longValues);
-        dictionaryFactory.reset(textHeap);
+        dictionaryFactory.reset(byteHeap);
         dictionaryFactory.reset(byteHeap);
         
     }
@@ -1012,7 +827,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     
                     int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
                     if (length < 0) {
-                        writeNullText(token, token & TEXT_INSTANCE_MASK, writer, textHeap); //TODO: A, must be integrated into the writes. still used?
+                        writeNullText(token, token & TEXT_INSTANCE_MASK, writer, byteHeap); //TODO: A, must be integrated into the writes. still used?
                     } else 
                     {
                         byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
@@ -1021,7 +836,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         if (readFromIdx>=0) {
                             int source = token & TEXT_INSTANCE_MASK;
                             int target = readFromIdx & TEXT_INSTANCE_MASK;
-                            genWriteCopyText(source, target, textHeap); //NOTE: may find better way to suppor this with text, requires research.
+                            genWriteCopyText(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
                             readFromIdx = -1; //reset for next field where it might be used.
                         }
                         
@@ -1030,7 +845,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 // ascii
                               //TODO: A, use byte array here
-                                acceptCharSequenceASCII(token, value, writer, textHeap, fieldPos, rbRingBuffer);
+                                acceptCharSequenceASCII(token, value, writer, byteHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8
                                 acceptByteArray(token, writer, byteHeap, fieldPos, rbRingBuffer);
@@ -1039,7 +854,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                                 // ascii optional
                               //TODO: A, use byte array here
-                                acceptCharSequenceASCIIOptional(token, value, writer, textHeap, fieldPos, rbRingBuffer);
+                                acceptCharSequenceASCIIOptional(token, value, writer, byteHeap, fieldPos, rbRingBuffer);
                             } else {
                                 // utf8 optional
                                 acceptByteArrayOptional(token, writer, byteHeap, fieldPos, rbRingBuffer);
@@ -1089,24 +904,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                             // 01110 ByteArray
                             acceptByteArray(token, writer, byteHeap, fieldPos, rbRingBuffer);
-                            
-                            //token, value, writer, textHeap, fieldPos, rbRingBuffer);
-                            
-                           // accept
-                            //TODO: A, urgent build
-                            
-                            // queue.selectByteSequence(fieldPos);
-                            // write(token,queue); 
-                            // implementation
                         } else {
                             // 01111 ByteArrayOptional
                             acceptByteArrayOptional(token, writer, byteHeap, fieldPos, rbRingBuffer);
-                            
-                            //TODO: A, urgent build
-                            
-                            // queue.selectByteSequence(fieldPos);
-                            // write(token,queue); 
-                            // implementation
                         }
                         fieldPos+=2;
                     }
@@ -1199,8 +999,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                                 if (0 == (idx & 4)) {
                                     // text
                                     while (m < limit && (idx = members[m++]) >= 0) {
-                                        if (null!=textHeap) {
-                                            genWriteDictionaryTextReset(idx, textHeap);
+                                        if (null!=byteHeap) {
+                                            genWriteDictionaryTextReset(idx, byteHeap);
                                         }
                                     }
                                 } else {
@@ -1539,14 +1339,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         genWritePreamble(preambleData, writer);
     }
 
-    public void writeNullText(int token, int idx, PrimitiveWriter writer, LocalHeap textHeap) {
+    public void writeNullText(int token, int idx, PrimitiveWriter writer, LocalHeap byteHeap) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta and Tail
-                genWriteNullNoPMapText(idx, writer, textHeap); // no pmap, yes change to last value
+                genWriteNullNoPMapText(idx, writer, byteHeap); // no pmap, yes change to last value
             } else {
                 // Copy and Increment
-                genWriteNullCopyIncText(idx, writer, textHeap); // yes pmap, yes change to last value
+                genWriteNullCopyIncText(idx, writer, byteHeap); // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -1554,7 +1354,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 genWriteNullPMap(writer);
             } else {
                 // default
-                genWriteNullDefaultText(idx, writer, textHeap); // yes pmap, no change to last value
+                genWriteNullDefaultText(idx, writer, byteHeap); // yes pmap, no change to last value
             }
         }
     }

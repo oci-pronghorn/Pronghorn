@@ -76,10 +76,10 @@ public final class FASTRingBuffer {
 
         //constant data will never change and is populated externally.
         if (null!=dcr) {
-            LocalHeap textHeap = dcr.charDictionary();
-            if (null!=textHeap) {
+            LocalHeap byteHeap = dcr.byteDictionary();
+            if (null!=byteHeap) {
                           
-                this.constByteBuffer = textHeap.rawInitAccess();  
+                this.constByteBuffer = byteHeap.rawInitAccess();  
             } else {
                 this.constByteBuffer = null;
             }
@@ -278,13 +278,14 @@ public final class FASTRingBuffer {
     // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
     // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
 
-    public static void addLocalHeapValue(int heapId, int sourceLen, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+        //int rbMask, int[] rbB  PaddedLong rbPos
         final int p = rbRingBuffer.addBytePos;
         if (sourceLen > 0) {
             rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);
+        addValue(rbB, rbMask, rbPos, p);
+        addValue(rbB, rbMask, rbPos, sourceLen);
     }
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
@@ -361,9 +362,8 @@ public final class FASTRingBuffer {
         return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
     }
     
-    //TODO: A, make static
-    public int readRingByteLen(int fieldPos) {
-        return buffer[mask & (int)(remPos.value + fieldPos + 1)];// second int is always the length
+    public static int readRingByteLen(int fieldPos, FASTRingBuffer rb) {
+        return rb.buffer[rb.mask & (int)(rb.remPos.value + fieldPos + 1)];// second int is always the length
     }
 
     public byte[] readRingByteBuffer(int fieldPos) {

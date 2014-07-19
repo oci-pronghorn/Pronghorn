@@ -287,14 +287,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
         // test the writing performance.
         // ////////////////////////////
 
-        long byteCount = performanceWriteTest(fields, fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes,
+        long byteCount = performanceWriteTest(fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes,
                 operationIters, warmup, sampleSize, writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
         // /////////////////////////////
         // test the reading performance.
         // ////////////////////////////
 
-        performanceReadTest(fields, fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters,
+        performanceReadTest(fields, fields, singleBytesLength, fieldsPerGroup, maxMPapBytes, operationIters,
                 warmup, sampleSize, readLabel, streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 
         int i = 0;

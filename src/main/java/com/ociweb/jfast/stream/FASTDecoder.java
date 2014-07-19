@@ -27,7 +27,6 @@ public abstract class FASTDecoder{
     protected final long[] rLongDictionary;
     protected final int[] rIntDictionary;
     protected final LocalHeap byteHeap;
-    protected final LocalHeap textHeap;//TODO: A, remove
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.
     public int ringBufferIdx= -1; //must hold return value from beginning of fragment to the end.
@@ -53,7 +52,6 @@ public abstract class FASTDecoder{
             int[] templateStartIdx, int[] templateLimitIdx,
             int maxTemplatePMapSize, int preambleDataLength, RingBuffers ringBuffers) {
 
-        this.textHeap = dcr.charDictionary();
         this.byteHeap = dcr.byteDictionary();
         
         this.sequenceCountStack = new int[maxNestedGroupDepth];
@@ -69,9 +67,6 @@ public abstract class FASTDecoder{
         assert (TokenBuilder.isPowerOfTwo(rIntDictionary.length));
         assert (rLongDictionary.length < TokenBuilder.MAX_INSTANCE);
         assert (TokenBuilder.isPowerOfTwo(rLongDictionary.length));
-        assert(null==textHeap || textHeap.itemCount()<TokenBuilder.MAX_INSTANCE);
-        assert(null==textHeap || TokenBuilder.isPowerOfTwo(textHeap.itemCount()));
-
     }
     
     
@@ -80,9 +75,6 @@ public abstract class FASTDecoder{
         // clear all previous values to un-set
         dictionaryFactory.reset(rIntDictionary);
         dictionaryFactory.reset(rLongDictionary);
-        if (null != textHeap) {
-            textHeap.reset();
-        }
         if (null!=byteHeap) {
             byteHeap.reset();
         }

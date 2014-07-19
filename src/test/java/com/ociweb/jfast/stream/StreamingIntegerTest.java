@@ -56,7 +56,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 OperatorMask.Field_Default
                 };
 				
-		tester(types, operators, "UnsignedInteger",0 ,0);
+		tester(types, operators, "UnsignedInteger", 0);
 	}
 	
 	@Test
@@ -74,7 +74,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 OperatorMask.Field_Constant, 
                 OperatorMask.Field_Default
                 };
-		tester(types, operators, "SignedInteger",0 ,0);
+		tester(types, operators, "SignedInteger",0);
 	}
 
 	@Test
@@ -96,7 +96,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
                 };
 		int repeat = 1;//bump up for profiler
 		while (--repeat>=0) {
-			tester(types, operators, "SignedInteger",0 ,0);
+			tester(types, operators, "SignedInteger",0);
 		}
 	}
 

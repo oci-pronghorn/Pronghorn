@@ -31,7 +31,7 @@ public abstract class BaseStreamingTest {
 	protected final int ID_TOKEN_TOGGLE = 0x1;
 	protected int maxGroupCount;
 	
-	protected void tester(int[] types, int[] operators, String label, int charFields, int byteFields) {	
+	protected void tester(int[] types, int[] operators, String label, int byteFields) {	
 		
 		int operationIters = 7;
 		int warmup         = 10000;
@@ -51,14 +51,14 @@ public abstract class BaseStreamingTest {
 		//test the writing performance.
 		//////////////////////////////
 		
-		long byteCount = performanceWriteTest(fields, charFields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
+		long byteCount = performanceWriteTest(fields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize,
 				writeLabel, streamByteSize, maxGroupCount, tokenLookup, writeBuffer);
 
 		///////////////////////////////
 		//test the reading performance.
 		//////////////////////////////
 		
-		performanceReadTest(fields, charFields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
+		performanceReadTest(fields, byteFields, singleCharLength, fieldsPerGroup, maxMPapBytes, operationIters, warmup, sampleSize, readLabel,
 				streamByteSize, maxGroupCount, tokenLookup, byteCount, writeBuffer);
 		
 	}
@@ -206,7 +206,7 @@ public abstract class BaseStreamingTest {
 
 
 	
-	protected void performanceReadTest(int fields, int charFields, int byteFields,  int singleCharLength, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
+	protected void performanceReadTest(int fields, int byteFields,  int singleCharLength, int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup, int sampleSize,
 			String label, int streamByteSize, int maxGroupCount, int[] tokenLookup,
 			 long byteCount, byte[] writtenData) {
 
@@ -234,7 +234,7 @@ public abstract class BaseStreamingTest {
 					while (--w>=0) {
 			    
 					    dcr = new DictionaryFactory();
-			            dcr.setTypeCounts(fields, fields, charFields, byteFields);
+			            dcr.setTypeCounts(fields, fields, byteFields);
 
 						resetInputReader();
 						
@@ -282,7 +282,7 @@ public abstract class BaseStreamingTest {
 			DictionaryFactory dcr);
 
 	
-	protected long performanceWriteTest(int fields, int charFields, int byteFields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
+	protected long performanceWriteTest(int fields, int byteFields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
@@ -305,7 +305,7 @@ public abstract class BaseStreamingTest {
 					while (--w>=0) {
 					
 					    DictionaryFactory dcr = new DictionaryFactory();
-					    dcr.setTypeCounts(fields, fields, charFields, byteFields);
+					    dcr.setTypeCounts(fields, fields, byteFields);
 					    
 						resetOutputWriter();
 						
@@ -452,7 +452,7 @@ public abstract class BaseStreamingTest {
                 // text
                 int idx = token & fw.TEXT_INSTANCE_MASK;
                 
-                fw.writeNullText(token, idx, writer, fw.textHeap);
+                fw.writeNullText(token, idx, writer, fw.byteHeap);
             } else {
                 // decimal bytes
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {

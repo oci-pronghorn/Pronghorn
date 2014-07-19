@@ -40,7 +40,7 @@ public class FASTRingBufferTest {
         
         //assertEquals(source,data);
         
-        assertEquals(source.length, rb.readRingByteLen(1));
+        assertEquals(source.length, rb.readRingByteLen(1,rb));
                         
         
     }

@@ -66,7 +66,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final int[] tokenLookup = buildTokens(fields, types, operators);
 	static final DictionaryFactory dictionaryFactory = new DictionaryFactory();
 	static {
-		dictionaryFactory.setTypeCounts(fields,fields,fields,fields);
+		dictionaryFactory.setTypeCounts(fields,fields,fields);
 	}
 	
 	static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(internalBufferSize);
@@ -478,7 +478,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
         
         //NOTE: for testing we need to check what was written
         int value = FASTRingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.addPos.value-2, rbRingBuffer.mask);
-        //if the value is positive it no longer points to the textHeap so we need
+        //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
         return value<0? value : token & decoder.MAX_TEXT_INSTANCE_MASK;
     }

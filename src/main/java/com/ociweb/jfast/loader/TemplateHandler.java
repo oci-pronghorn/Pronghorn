@@ -114,7 +114,6 @@ public class TemplateHandler extends DefaultHandler {
     // dictionary.
     AtomicInteger tokenBuilderIntCount = new AtomicInteger(0);
     AtomicInteger tokenBuilderLongCount = new AtomicInteger(0);
-    AtomicInteger tokenBuilderTextCount = new AtomicInteger(0);
     AtomicInteger tokenBuilderByteCount = new AtomicInteger(0);
 
     // groups can be nested and need a stack, this includes sequence and
@@ -497,7 +496,7 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("string")) {
 
-            int token = buildToken(tokenBuilderTextCount);
+            int token = buildToken(tokenBuilderByteCount);
 
             // only set if the value was given
             if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
@@ -505,7 +504,7 @@ public class TemplateHandler extends DefaultHandler {
                 int idx = token & TokenBuilder.MAX_INSTANCE;
                // System.err.println("default value for "+fieldId+" "+fieldName+"  is "+fieldOperatorValue+" at "+idx+" pos "+catalogTemplateScriptIdx);
                 
-                defaultConstValues.addInitTxt(idx, fieldOperatorValue.getBytes());
+                defaultConstValues.addInit(idx, fieldOperatorValue.getBytes());
             }
             fieldOperatorValue = null;
 
@@ -855,7 +854,6 @@ public class TemplateHandler extends DefaultHandler {
         defaultConstValues
                 .setTypeCounts(tokenBuilderIntCount.intValue(), 
                                tokenBuilderLongCount.intValue(),
-                               tokenBuilderTextCount.intValue(),
                                tokenBuilderByteCount.intValue());
 
         // write catalog data.

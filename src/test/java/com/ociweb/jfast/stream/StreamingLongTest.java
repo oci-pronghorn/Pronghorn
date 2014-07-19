@@ -58,7 +58,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Field_Default
                 };
 				
-		tester(types, operators, "UnsignedLong",0 ,0);
+		tester(types, operators, "UnsignedLong" ,0);
 	}
 	
 	@Test
@@ -76,7 +76,7 @@ public class StreamingLongTest extends BaseStreamingTest {
                 OperatorMask.Field_Constant, 
                 OperatorMask.Field_Default
                 };
-		tester(types, operators, "SignedLong",0 ,0);
+		tester(types, operators, "SignedLong" ,0);
 	}
 	
 

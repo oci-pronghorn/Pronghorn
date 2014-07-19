@@ -140,7 +140,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // copy methods
     
     @Override
-    protected void genReadCopyText(int source, int target, LocalHeap textHeap) {
+    protected void genReadCopyText(int source, int target, LocalHeap byteHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, source, target);
     }
 
@@ -401,7 +401,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // text methods.
 
     @Override
-    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, LocalHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIITail(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
@@ -411,27 +411,27 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, LocalHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDelta(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopy(int idx, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadASCIINone(int idx, int[] rbB, int rbMask, PrimitiveReader reader, LocalHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIINone(int idx, int[] rbB, int rbMask, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, LocalHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIITailOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadASCIIDeltaOptional(int idx, int[] rbB, int rbMask, LocalHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDeltaOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
@@ -441,12 +441,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, LocalHeap textHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIICopyOptional(int idx, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     
     @Override
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap textHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,idx, defIdx, defLen);
     }
     
@@ -510,7 +510,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadDictionaryTextReset(int idx, LocalHeap textHeap) {
+    protected void genReadDictionaryTextReset(int idx, LocalHeap byteHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, idx);
     }
     

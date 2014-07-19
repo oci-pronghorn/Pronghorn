@@ -35,7 +35,6 @@ public class FASTEncoder {
     protected int activeScriptLimit;
     protected final int[] fullScript;
     
-    protected LocalHeap textHeap;
     protected LocalHeap byteHeap;
 
     protected RingCharSequence ringCharSequence = new RingCharSequence();
@@ -73,10 +72,9 @@ public class FASTEncoder {
         assert (TokenBuilder.isPowerOfTwo(longValues.length));
         this.longInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (longValues.length - 1));
         
-        this.textHeap = dcr.charDictionary();
         this.byteHeap = dcr.byteDictionary();
 
-        this.TEXT_INSTANCE_MASK = null == textHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (textHeap.itemCount() - 1));
+        this.TEXT_INSTANCE_MASK = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount() - 1));
         this.instanceBytesMask = null==byteHeap? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount()-1));
 
         this.templateStack = new int[maxTemplates];

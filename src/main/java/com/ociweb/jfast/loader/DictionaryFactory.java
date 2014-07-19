@@ -42,7 +42,6 @@ public class DictionaryFactory {
 
     private int integerCount;
     private int longCount;
-    private int charCount;
     private int bytesCount;
 
     private int integerInitCount;
@@ -52,11 +51,6 @@ public class DictionaryFactory {
     private int longInitCount;
     private int[] longInitIndex;
     private long[] longInitValue;
-
-    private int charInitCount;
-    private int[] charInitIndex;
-    private byte[][] charInitValue;
-    private int charInitTotalLength;
 
     private int byteInitCount;
     private int[] byteInitIndex;
@@ -68,7 +62,6 @@ public class DictionaryFactory {
     int singleBytesSize=46; 
     int gapBytesSize=8;
     
-    LocalHeap textHeap;
     LocalHeap byteHeap;    
 
     public DictionaryFactory() {
@@ -81,19 +74,14 @@ public class DictionaryFactory {
         this.longInitIndex = new int[INIT_GROW_STEP];
         this.longInitValue = new long[INIT_GROW_STEP];
 
-        this.charInitCount = 0;
-        this.charInitIndex = new int[INIT_GROW_STEP];
-        this.charInitValue = new byte[INIT_GROW_STEP][];
-
         this.byteInitCount = 0;
         this.byteInitIndex = new int[INIT_GROW_STEP];
         this.byteInitValue = new byte[INIT_GROW_STEP][];
     }
 
-    public void setTypeCounts(int integerCount, int longCount, int charCount, int bytesCount) {
+    public void setTypeCounts(int integerCount, int longCount, int bytesCount) {
         this.integerCount = integerCount;
         this.longCount = longCount;
-        this.charCount = charCount;
         this.bytesCount = bytesCount;
     }
 
@@ -101,7 +89,6 @@ public class DictionaryFactory {
 
         this.integerCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.longCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.charCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.bytesCount = PrimitiveReader.readIntegerUnsigned(reader);
 
         this.integerInitCount = PrimitiveReader.readIntegerUnsigned(reader);
@@ -122,18 +109,6 @@ public class DictionaryFactory {
             longInitValue[c] = PrimitiveReader.readLongSigned(reader);
         }
 
-        this.charInitCount = PrimitiveReader.readIntegerUnsigned(reader);
-        this.charInitIndex = new int[charInitCount];
-        this.charInitValue = new byte[charInitCount][];
-        c = charInitCount;
-        while (--c >= 0) {
-            charInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
-            int len = PrimitiveReader.readIntegerUnsigned(reader);
-            byte[] value = new byte[len];
-            PrimitiveReader.readByteData(value,0,len,reader); //read bytes into array
-            charInitValue[c] = value;
-        }
-        this.charInitTotalLength = PrimitiveReader.readIntegerUnsigned(reader);
 
         this.byteInitCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.byteInitIndex = new int[byteInitCount];
@@ -154,7 +129,6 @@ public class DictionaryFactory {
 
         PrimitiveWriter.writeIntegerUnsigned(integerCount, writer);
         PrimitiveWriter.writeIntegerUnsigned(longCount, writer);
-        PrimitiveWriter.writeIntegerUnsigned(charCount, writer);
         PrimitiveWriter.writeIntegerUnsigned(bytesCount, writer);
 
         PrimitiveWriter.writeIntegerUnsigned(integerInitCount, writer);
@@ -170,26 +144,6 @@ public class DictionaryFactory {
             PrimitiveWriter.writeIntegerUnsigned(longInitIndex[c], writer);
             PrimitiveWriter.writeLongSigned(longInitValue[c], writer);
         }
-
-        PrimitiveWriter.writeIntegerUnsigned(charInitCount, writer);
-        c = charInitCount;
-        while (--c >= 0) {
-            PrimitiveWriter.writeIntegerUnsigned(charInitIndex[c], writer);
-            byte[] value = charInitValue[c];
-            PrimitiveWriter.writeIntegerUnsigned(value.length, writer);
-            int offset = 0;
-            int length = value.length;
-            PrimitiveWriter.ensureSpace(value.length,writer);
-            
-            int limit = writer.limit;
-                    
-            while (--length >= 0) {
-                
-                limit = FASTRingBufferReader.encodeSingleChar((int) value[offset++], writer.buffer, limit);
-            }
-            writer.limit = limit;
-        }
-        PrimitiveWriter.writeIntegerUnsigned(charInitTotalLength, writer);
 
         PrimitiveWriter.writeIntegerUnsigned(byteInitCount, writer);
         c = byteInitCount;
@@ -245,23 +199,6 @@ public class DictionaryFactory {
 
     }
 
-    public void addInitTxt(int idx, byte[] value) {
-
-        charInitIndex[charInitCount] = idx;
-        charInitValue[charInitCount] = value;
-        charInitTotalLength += value.length;
-        if (++charInitCount >= charInitValue.length) {
-            int newLength = charInitValue.length + INIT_GROW_STEP;
-            int[] temp1 = new int[newLength];
-            byte[][] temp2 = new byte[newLength][];
-            System.arraycopy(charInitIndex, 0, temp1, 0, charInitValue.length);
-            System.arraycopy(charInitValue, 0, temp2, 0, charInitValue.length);
-            charInitIndex = temp1;
-            charInitValue = temp2;
-        }
-        // System.err.println("default   "+idx+" is "+new String(value));
-    }
-
     public void addInit(int idx, byte[] value) {
 
         byteInitIndex[byteInitCount] = idx;
@@ -308,20 +245,7 @@ public class DictionaryFactory {
         }
         return array;
     }
-
     
-    public LocalHeap charDictionary() {
-        if (charCount == 0) {
-            return null;
-        }
-        if (null==textHeap) {
-            textHeap = new LocalHeap(singleTextSize, gapTextSize, nextPowerOfTwo(charCount), charInitTotalLength,
-                    charInitIndex, charInitValue);
-            textHeap.reset();
-        }
-        return textHeap;
-    }
-
     public LocalHeap byteDictionary() {
         if (bytesCount == 0) {
             return null;

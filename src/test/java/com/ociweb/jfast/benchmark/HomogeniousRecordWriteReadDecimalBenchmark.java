@@ -62,7 +62,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
 
     static final DictionaryFactory dictionaryFactory = new DictionaryFactory();
     static {
-        dictionaryFactory.setTypeCounts(fields, fields, fields, fields);
+        dictionaryFactory.setTypeCounts(fields, fields, fields);
     }
     static final ByteBuffer directBuffer = ByteBuffer.allocateDirect(4096);
 

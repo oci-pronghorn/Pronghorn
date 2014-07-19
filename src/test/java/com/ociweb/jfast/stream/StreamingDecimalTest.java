@@ -66,7 +66,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         int i = 1;// set to large value for profiling
         while (--i >= 0) {
 
-            tester(types, operators, "Decimal", 0, 0);
+            tester(types, operators, "Decimal", 0);
         }
 
     }
