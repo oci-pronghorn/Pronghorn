@@ -140,11 +140,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     // copy methods
     
     @Override
-    protected void genReadCopyText(int source, int target, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, source, target);
-    }
-
-    @Override
     protected void genReadCopyBytes(int source, int target, LocalHeap byteHeap) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, source, target);
     }

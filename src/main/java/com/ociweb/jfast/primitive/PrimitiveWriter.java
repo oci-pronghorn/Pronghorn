@@ -923,26 +923,7 @@ public final class PrimitiveWriter {
         }
     }
 
-    public static final void writeTextASCII(CharSequence value, PrimitiveWriter writer) {
-
-        int length = value.length();
-        if (0 == length) {
-            encodeZeroLengthASCII(writer);
-            return;
-        } else if (writer.limit > writer.buffer.length - length) {
-            assert (length < writer.buffer.length) : "Internal buffer is only: " + writer.buffer.length
-                    + "B but this text requires a length of: " + length + "B";
-            // if it was not zero and was too long then flush
-            writer.output.flush();
-        }
-        int c = 0;
-        while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value.charAt(c++);
-        }
-        writer.buffer[writer.limit++] = (byte) (0x80 | value.charAt(c));
-
-    }
-
+    @Deprecated
     public static final void writeTextASCIIAfter(int start, CharSequence value, PrimitiveWriter writer) {
 
         int length = value.length() - start;
@@ -961,6 +942,7 @@ public final class PrimitiveWriter {
 
     }
 
+    @Deprecated
     public static final void writeTextASCIIBefore(CharSequence value, int stop, PrimitiveWriter writer) {
 
         int length = stop;
@@ -976,6 +958,24 @@ public final class PrimitiveWriter {
             writer.buffer[writer.limit++] = (byte) value.charAt(c++);
         }
         writer.buffer[writer.limit++] = (byte) (0x80 | value.charAt(c));
+
+    }
+    
+    public static final void writeTextASCIIBefore(byte[] buffer2, int offset2, int length2, int mask, int stop, PrimitiveWriter writer) {
+
+        int len = stop;
+        if (0 == len) {
+            encodeZeroLengthASCII(writer);
+            return;
+        } else if (writer.limit > writer.buffer.length - len) {
+            // if it was not zero and was too long flush
+            writer.output.flush();
+        }
+        int c = offset2;
+        while (--len > 0) {
+            writer.buffer[writer.limit++] = (byte) buffer2[mask & c++];
+        }
+        writer.buffer[writer.limit++] = (byte) (0x80 | buffer2[mask & c]);
 
     }
 
@@ -1015,6 +1015,21 @@ public final class PrimitiveWriter {
             writer.buffer[writer.limit++] = (byte) value[offset++];
         }
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
+    }
+    
+    public static void writeTextASCII(byte[] value, int offset, int length, int mask,  PrimitiveWriter writer) {
+
+        if (0 == length) {
+            encodeZeroLengthASCII(writer);
+            return;
+        } else if (writer.limit > writer.buffer.length - length) {
+            // if it was not zero and was too long flush
+            writer.output.flush();
+        }
+        while (--length > 0) {
+            writer.buffer[writer.limit++] = (byte) value[mask & offset++];
+        }
+        writer.buffer[writer.limit++] = (byte) (0x80 | value[mask & offset]);
     }
 
     public static void ensureSpace(int bytes, PrimitiveWriter writer) {

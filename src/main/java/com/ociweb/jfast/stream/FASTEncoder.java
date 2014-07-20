@@ -74,8 +74,8 @@ public class FASTEncoder {
         
         this.byteHeap = dcr.byteDictionary();
 
-        this.TEXT_INSTANCE_MASK = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount() - 1));
-        this.instanceBytesMask = null==byteHeap? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (byteHeap.itemCount()-1));
+        this.TEXT_INSTANCE_MASK = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (LocalHeap.itemCount(byteHeap) - 1));
+        this.instanceBytesMask = null==byteHeap? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (LocalHeap.itemCount(byteHeap)-1));
 
         this.templateStack = new int[maxTemplates];
         this.dictionaryMembers = dictionaryMembers;

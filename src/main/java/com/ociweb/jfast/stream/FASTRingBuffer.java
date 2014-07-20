@@ -79,7 +79,7 @@ public final class FASTRingBuffer {
             LocalHeap byteHeap = dcr.byteDictionary();
             if (null!=byteHeap) {
                           
-                this.constByteBuffer = byteHeap.rawInitAccess();  
+                this.constByteBuffer = LocalHeap.rawInitAccess(byteHeap);  
             } else {
                 this.constByteBuffer = null;
             }

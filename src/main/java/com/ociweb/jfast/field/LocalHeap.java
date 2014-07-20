@@ -139,26 +139,26 @@ public class LocalHeap {
         return tat[offset + 1] == tat[offset] - 1;
     }
 
-//TODO: A, change these to static.
-    public int allocate(int idx, int sourceLen) {
-
+    public static int allocate(int idx, int sourceLen, LocalHeap heap) {
         int offset = idx << 2;
 
-        int target = makeRoom(offset, sourceLen);
+        int target = heap.makeRoom(offset, sourceLen);
 
         int limit = target + sourceLen;
-        if (limit > dataLength) {
-            target = dataLength - sourceLen;
+        if (limit > heap.dataLength) {
+            target = heap.dataLength - sourceLen;
         }
 
         // full replace
-        totalContent += (sourceLen - (tat[offset + 1] - tat[offset]));
-        tat[offset] = target;
-        tat[offset + 1] = limit;
+        heap.totalContent += (sourceLen - (heap.tat[offset + 1] - heap.tat[offset]));
+        heap.tat[offset] = target;
+        heap.tat[offset + 1] = limit;
 
         return target;
     }
 
+//TODO: A, change the public ones to static.
+    
     private int makeRoom(int offset, int sourceLen) {
         int prevTextStop = offset == 0 ? 0 : tat[offset - 3];
         int nextTextStart = tat[offset + 4];
@@ -466,36 +466,7 @@ public class LocalHeap {
         int i = sourceLen;
         while (--i>=0) {
             data[targetIdx+i] = source[sourceMask&(sourceIdx+i)];            
-        }
-        
-    }
-
-    @Deprecated
-    public void appendTail(int idx, int trimTail, char[] source, int sourceIdx, int sourceLen) {
-        // if not room make room checking after first because thats where we
-        // want to copy the tail.
-        
-        //System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
-        int targetIdx =  makeSpaceForAppend(idx, trimTail, sourceLen);
-        int i = sourceLen;
-        while (--i>=0) {
-            data[targetIdx+i] = (byte)source[sourceIdx+i];            
-        }
-        
-    }
-    
-    @Deprecated
-    public void appendTail(int idx, int trimTail, int sourceLen, CharSequence source) {
-        // if not room make room checking after first because thats where we
-        // want to copy the tail.
-        
-        //System.arraycopy(source, sourceIdx, data, makeSpaceForAppend(idx, trimTail, sourceLen), sourceLen);
-        int targetIdx =  makeSpaceForAppend(idx, trimTail, sourceLen);
-        int i = sourceLen;
-        while (--i>=0) {
-            data[targetIdx+i] = (byte)source.charAt(i);            
-        }
-        
+        }        
     }
     
     // never call without calling setZeroLength first then a sequence of these
@@ -592,16 +563,7 @@ public class LocalHeap {
             data[targetIdx+i] = source[sourceMask&(sourceIdx+i)];
         }
     }
-
-    @Deprecated
-    public void appendHead(int idx, int trimHead, char[] source, int sourceIdx, int sourceLen) {
-        int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
-        int i = sourceLen;
-        while (--i>=0) {
-            data[targetIdx+i] = (byte)source[sourceIdx+i];
-        }
-    }
-    
+   
     @Deprecated
     public void appendHead(int idx, int trimHead, CharSequence source, int sourceLen) {
         int targetIdx = makeSpaceForPrepend(idx, trimHead, sourceLen);
@@ -891,6 +853,7 @@ public class LocalHeap {
         return true;
     }
 
+    @Deprecated
     public boolean equals(int idx, CharSequence value) {
         int pos;
         int lim;
@@ -1251,22 +1214,22 @@ public class LocalHeap {
         return i - 1;
     }
 
-    public int itemCount() {
-        return tatLength >> 2;
+    public static int itemCount(LocalHeap heap) {
+        return heap.tatLength >> 2;
     }
 
-    public int initStartOffset(int idx) {
-        return initTat[idx << 1];
+    public static int initStartOffset(int idx, LocalHeap heap) {
+        return heap.initTat[idx << 1];
     }
 
-    public int length(int idx) {
-        int result = (idx < 0 ? initLength(idx) : valueLength(idx));
+    public static int length(int idx, LocalHeap heap) {
+        int result = (idx < 0 ? LocalHeap.initLength(idx, heap) : LocalHeap.valueLength(idx,heap));
         return result < 0 ? 0 : result;
     }
 
-    public int valueLength(int idx) {
+    public static int valueLength(int idx, LocalHeap heap) {
         int offset = idx << 2;
-        return tat[offset + 1] - tat[offset];
+        return heap.tat[offset + 1] - heap.tat[offset];
     }
 
     public static int valueLength(int idx, int[] tat) {
@@ -1274,55 +1237,55 @@ public class LocalHeap {
         return tat[offset + 1] - tat[offset];
     }
 
-    public int initLength(int idx) {
+    public static int initLength(int idx, LocalHeap heap) {
         int offset = idx << 1; // this shift left also removes the top bit!
                                // sweet.
-        return initTat[offset + 1] - initTat[offset];
+        return heap.initTat[offset + 1] - heap.initTat[offset];
     }
-
+    
     public static int initLength(int idx, int[] initTat) {
         int offset = idx << 1; // this shift left also removes the top bit!
                                // sweet.
         return initTat[offset + 1] - initTat[offset];
     }
 
-    public void copy(int sourceIdx, int targetIdx) {
+    public static void copy(int sourceIdx, int targetIdx, LocalHeap heap) {
         int len;
         int startFrom;
         byte[] buffer;
         if (sourceIdx < 0) {
             int offset = sourceIdx << 1; // this shift left also removes the top
                                          // bit! sweet.
-            startFrom = initTat[offset];
-            len = initTat[offset + 1] - startFrom;
-            buffer = initBuffer;
+            startFrom = heap.initTat[offset];
+            len = heap.initTat[offset + 1] - startFrom;
+            buffer = heap.initBuffer;
         } else {
             int offset = sourceIdx << 2;
-            startFrom = tat[offset];
-            len = tat[offset + 1] - startFrom;
-            buffer = data;
+            startFrom = heap.tat[offset];
+            len = heap.tat[offset + 1] - startFrom;
+            buffer = heap.data;
         }
         if (len < 0) {
-            setNull(targetIdx, this);
+            setNull(targetIdx, heap);
             return;
         }
-        set(targetIdx, buffer, startFrom, length(sourceIdx));
+        heap.set(targetIdx, buffer, startFrom, LocalHeap.length(sourceIdx,heap));
     }
 
-    public int start(int offset) {
+    private int start(int offset) {
         return tat[offset];
     }
 
-    public int stop(int offset) {
+    private int stop(int offset) {
         return tat[offset + 1];
     }
 
-    public void reset(int idx) {
+    public static void reset(int idx, LocalHeap heap) {
         int offset = idx << 1; // this shift left also removes the top bit!
                                // sweet.
-        int startFrom = initTat[offset];
-        int len = initTat[offset + 1] - startFrom;
-        set(idx, initBuffer, startFrom, len);
+        int startFrom = heap.initTat[offset];
+        int len = heap.initTat[offset + 1] - startFrom;
+        heap.set(idx, heap.initBuffer, startFrom, len);
 
     }
 
@@ -1336,13 +1299,13 @@ public class LocalHeap {
         byteHeap.tat[offset + 1] = 1 + targIndex;
     }
 
-    public byte[] rawAccess() {
-        return data;
+    public static byte[] rawAccess(LocalHeap heap) {
+        return heap.data;
     }
-
-    public byte[] rawInitAccess() {
-        return initBuffer;
+    
+    public static byte[] rawInitAccess(LocalHeap heap) {
+        return heap.initBuffer;
     }
-
-
+    
+    
 }

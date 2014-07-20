@@ -38,7 +38,7 @@ public class StaticGlue {
             return 1;
         } else {
             readASCIIToHeapValueLong(val, idx, byteHeap, primitiveReader);
-            return byteHeap.valueLength(idx);
+            return LocalHeap.valueLength(idx,byteHeap);
         }
     }
     private static void readASCIIToHeapValueLong(byte val, int idx, LocalHeap byteHeap, PrimitiveReader primitiveReader) {
@@ -67,11 +67,11 @@ public class StaticGlue {
 
     private static int fastHeapAppendLong(byte val, final int offset, final int off4, int nextLimit, int targIndex,
             LocalHeap byteHeap, PrimitiveReader reader) {
-        byteHeap.rawAccess()[targIndex++] = (byte) val;
+        LocalHeap.rawAccess(byteHeap)[targIndex++] = (byte) val;
 
         int len;
         do {
-            len = PrimitiveReader.readTextASCII2(byteHeap.rawAccess(), targIndex, nextLimit, reader);
+            len = PrimitiveReader.readTextASCII2(LocalHeap.rawAccess(byteHeap), targIndex, nextLimit, reader);
             if (len < 0) {
                 targIndex -= len;
                 byteHeap.makeSpaceForAppend(offset, 2); // also space for last
@@ -154,7 +154,7 @@ public class StaticGlue {
         
         if (val < 0) {
             // heap.setSingleCharText((char)(0x7F & val), targIndex);
-            byteHeap.rawAccess()[targIndex++] = (byte) (0x7F & val);
+            LocalHeap.rawAccess(byteHeap)[targIndex++] = (byte) (0x7F & val);
         } else {
             targIndex = StaticGlue.fastHeapAppendLong(val, offset, off4, nextLimit, targIndex, byteHeap,
                     primitiveReader);
@@ -172,22 +172,22 @@ public class StaticGlue {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForAppend(idx, trim, utfLength),utfLength,reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForAppend(idx, trim, utfLength),utfLength,reader);
         } else {
             // append to head
-            PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForPrepend(idx, -trim, utfLength),utfLength,reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForPrepend(idx, -trim, utfLength),utfLength,reader);
         }
     }
        
     public static void allocateAndCopyUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int length) {
 
-        PrimitiveReader.readByteData(heap.rawAccess(),heap.allocate(idx, length),length,reader);
+        PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),LocalHeap.allocate(idx, length, heap),length,reader);
         
     }
    
     public static void allocateAndAppendUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int utfLength, int t) {
         
-        PrimitiveReader.readByteData(heap.rawAccess(),heap.makeSpaceForAppend(idx, t, utfLength),utfLength,reader);
+        PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForAppend(idx, t, utfLength),utfLength,reader);
     } 
     
     
@@ -212,7 +212,7 @@ public class StaticGlue {
     public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, LocalHeap byteHeap, PrimitiveWriter writer) {
         
         //replace head, tail matches to tailCount
-        int trimHead = byteHeap.length(idx)-tailCount;
+        int trimHead = LocalHeap.length(idx,byteHeap)-tailCount;
         PrimitiveWriter.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
         
         int len = value.remaining() - tailCount;
@@ -223,7 +223,7 @@ public class StaticGlue {
     }
     public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, LocalHeap byteHeap, PrimitiveWriter writer) {
                    
-        int trimTail = byteHeap.length(idx)-headCount;
+        int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
         if (trimTail<0) {
             throw new ArrayIndexOutOfBoundsException();
         }

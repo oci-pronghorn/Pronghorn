@@ -59,6 +59,9 @@ public class ReaderWriterPrimitiveTest {
 																  buildString("j",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK+2),
 																  buildString("k",ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*2)};
 	
+	public final static byte[][] stringDataBytes = flatASCII(stringData); 
+	
+	
 	public final static byte[][] byteData =  new byte[][] {new byte[]{},new byte[]{1},new byte[]{1,2},new byte[]{1,2,3,4},
 		                                                       new byte[]{1,2,3,4,5,6,7,8},
 		                                                       new byte[]{1,2,3,4,5,6,7,8,9},
@@ -355,7 +358,23 @@ public class ReaderWriterPrimitiveTest {
 	}
 
 
-	private final void speedReadTest(PrimitiveReader reader) {
+	private static byte[][] flatASCII(CharSequence[] stringdata) {
+	    int i = stringdata.length;
+	    byte[][] result = new byte[i][];
+	    while (--i>=0) {
+	        int j = stringdata[i].length();
+	        byte[] temp = new byte[stringdata[i].length()];
+	        while (--j>=0) {
+	            temp[j]=(byte)(stringdata[i].charAt(j));
+	        }
+	        result[i] = temp;	        
+	        
+	    }
+	    return result;
+    }
+
+
+    private final void speedReadTest(PrimitiveReader reader) {
 	    PrimitiveReader.openPMap(10, reader);
 	    PrimitiveReader.readLongUnsigned(reader);
 	    PrimitiveReader.readLongSigned(reader);
@@ -775,7 +794,8 @@ public class ReaderWriterPrimitiveTest {
 	
 		int i = 0;
 		while (i<stringData.length) {
-			PrimitiveWriter.writeTextASCII(stringData[i++], writer);
+		    byte[] value = stringDataBytes[i++];
+			PrimitiveWriter.writeTextASCII(value, 0, value.length, writer);
 		}
 		
 		PrimitiveWriter.flush(writer);
@@ -819,7 +839,8 @@ public class ReaderWriterPrimitiveTest {
 			while (--p>=0) {
 				i = trunkTestLimit;
 				while (--i>=0) {
-					PrimitiveWriter.writeTextASCII(stringData[i], writer);
+					byte[] value = stringDataBytes[i];
+		            PrimitiveWriter.writeTextASCII(value, 0, value.length, writer);
 				}
 			}
 			PrimitiveWriter.flush(writer);

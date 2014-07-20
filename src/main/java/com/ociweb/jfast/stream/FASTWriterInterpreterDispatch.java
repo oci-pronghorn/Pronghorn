@@ -587,11 +587,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     @Deprecated
     private void acceptCharSequenceASCIIOptional(int token, CharSequence value, PrimitiveWriter writer, LocalHeap byteHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
 
-        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
-        int offset = rbRingBuffer.readRingBytePos(fieldPos);
-        byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
-        
-        
+        int idx = token & TEXT_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -606,15 +602,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     if (null == value) {
                         genWriteNull(writer);
                     } else {
-                        genWriteTextNone(offset, length, buffer, writer);
+                        genWriteTextNone(writer, fieldPos, rbRingBuffer);
                     }
                 } else {
                     // tail
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextTailOptional(idx, value, writer, byteHeap);
+                    genWriteTextTailOptional(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -627,9 +622,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // delta
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    int idx = token & TEXT_INSTANCE_MASK;
                     
-                    genWriteTextDeltaOptional(idx, value, writer, byteHeap);
+                    genWriteTextDeltaOptional(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
 
                 }
             }
@@ -640,17 +634,15 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "
                         + TokenBuilder.tokenToString(token);
-                int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextCopyOptional(idx, value, writer, byteHeap);
+                genWriteTextCopyOptional(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
 
             } else {
                 // default
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "
                         + TokenBuilder.tokenToString(token);
-                int idx = token & TEXT_INSTANCE_MASK;
                 
-                genWriteTextDefaultOptional(idx, value, writer, byteHeap);
+                genWriteTextDefaultOptional(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
 
             }
         }
@@ -659,11 +651,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     @Deprecated
     private void acceptCharSequenceASCII(int token, CharSequence value, PrimitiveWriter writer, LocalHeap byteHeap, int fieldPos, FASTRingBuffer rbRingBuffer) {
-
-        int length = FASTRingBufferReader.readDataLength(rbRingBuffer, fieldPos);
-        int offset = rbRingBuffer.readRingBytePos(fieldPos);
-        byte[] buffer = rbRingBuffer.readRingByteBuffer(fieldPos);
-
+       
+        int idx = token & TEXT_INSTANCE_MASK;
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -673,12 +662,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNone(offset, length, buffer, writer); //TODO: A, ring buffer and field position.
+                    genWriteTextNone(writer, fieldPos, rbRingBuffer); //TODO: A, ring buffer and field position.
                 } else {
-                    // tail
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteTextTail(idx, value, writer, byteHeap);
+                    // tail                    
+                    genWriteTextTail(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -687,9 +674,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     
                 } else {
                     // delta
-                    int idx = token & TEXT_INSTANCE_MASK;
-                    
-                    genWriteTextDelta(idx, value, writer, byteHeap);
+                    genWriteTextDelta(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
                 }
             }
         } else {
@@ -697,14 +682,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextCopy(idx, value, writer, byteHeap);
+                genWriteTextCopy(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
             } else {
                 // default
-                int idx = token & TEXT_INSTANCE_MASK;
-                
-                genWriteTextDefault(idx, value, writer, byteHeap);
+                genWriteTextDefault(idx, value, writer, byteHeap, fieldPos, rbRingBuffer);
             }
         }
 
@@ -836,7 +817,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         if (readFromIdx>=0) {
                             int source = token & TEXT_INSTANCE_MASK;
                             int target = readFromIdx & TEXT_INSTANCE_MASK;
-                            genWriteCopyText(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
+                            genWriteCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
                             readFromIdx = -1; //reset for next field where it might be used.
                         }
                         
