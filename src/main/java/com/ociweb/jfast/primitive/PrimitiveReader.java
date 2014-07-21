@@ -262,7 +262,7 @@ public final class PrimitiveReader {
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
     public static byte readPMapBit(PrimitiveReader reader) {
-            //TODO: X, first 7 bits can be hard coded shifts by compiled decoder so this if can be eliminated
+            //TODO: B, first 7 bits can be hard coded shifts by compiled decoder so this if can be eliminated
             if (reader.pmapIdxBitBlock >= 0 ) {    
                 // Frequent, 6 out of every 7 plus the last bit block 
                     int shft = reader.pmapIdxBitBlock>>16;
@@ -551,7 +551,7 @@ public final class PrimitiveReader {
     
     public static final int readTextASCII(char[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
 
-        // TODO: Z, speed up textASCII, by add fast copy by fetch of limit, then
+        // TODO: C, speed up textASCII, by add fast copy by fetch of limit, then
         // return error when limit is reached? Do not call fetch on limit we do
         // not know that we need them.
 

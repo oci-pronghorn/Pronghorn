@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import java.nio.MappedByteBuffer;
 
 import com.ociweb.jfast.benchmark.TestUtil;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -375,6 +376,49 @@ public abstract class BaseStreamingTest {
 		return target;
 	}
 
+    public static void writeNullBytes(int token, PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, FASTWriterInterpreterDispatch disp) {
+        
+        if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
+            if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+                //None and Delta and Tail
+                disp.genWriteNullNoPMapBytes(token & instanceMask, writer, byteHeap);              //no pmap, yes change to last value
+            } else {
+                //Copy and Increment
+                int idx = token & instanceMask;
+                disp.genWriteNullCopyIncBytes(idx, writer, byteHeap);  //yes pmap, yes change to last value 
+            }
+        } else {
+            if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
+                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                disp.genWriteNullPMap(writer);      
+            } else {    
+                //default
+                disp.genWriteNullDefaultBytes(token & instanceMask, writer, byteHeap);  //yes pmap,  no change to last value
+            }   
+        }
+        
+    }
+
+    public static void writeNullText(int token, int idx, PrimitiveWriter writer, LocalHeap byteHeap, FASTWriterInterpreterDispatch disp) {
+        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                // None and Delta and Tail
+                disp.genWriteNullNoPMapText(idx, writer, byteHeap); // no pmap, yes change to last value
+            } else {
+                // Copy and Increment
+                disp.genWriteNullCopyIncText(idx, writer, byteHeap); // yes pmap, yes change to last value
+            }
+        } else {
+            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                disp.genWriteNullPMap(writer);
+            } else {
+                // default
+                disp.genWriteNullDefaultText(idx, writer, byteHeap); // yes pmap, no change to last value
+            }
+        }
+    }
+
     public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -452,7 +496,7 @@ public abstract class BaseStreamingTest {
                 // text
                 int idx = token & fw.TEXT_INSTANCE_MASK;
                 
-                fw.writeNullText(token, idx, writer, fw.byteHeap);
+                BaseStreamingTest.writeNullText(token, idx, writer, fw.byteHeap, fw);
             } else {
                 // decimal bytes
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -477,7 +521,7 @@ public abstract class BaseStreamingTest {
                     BaseStreamingTest.writeNullLong(token, idx1, writer, fw.longValues);
                 } else {
                     // byte
-                    fw.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask);
+                    BaseStreamingTest.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask, fw);
                 }
             }
         }

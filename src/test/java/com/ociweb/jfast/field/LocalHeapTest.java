@@ -5,6 +5,7 @@ package com.ociweb.jfast.field;
 
 import static org.junit.Assert.*;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import org.junit.AfterClass;
@@ -30,63 +31,26 @@ public class LocalHeapTest {
 		int i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(i, data, 0, data.length);
+			LocalHeap.set(i,data,0,data.length,0xFFFFFFFF,th);
 		}
 		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
+		localHeapMatchesTestData(testData, th);				
 	}
+
+    private void localHeapMatchesTestData(String[] testData, LocalHeap th) {
+        int i;
+        i = testData.length;
+		while (--i>=0) {
+		    int len = LocalHeap.length(i, th);
+		    assertEquals(testData[i].length(),len); //only valid for ASCII		    
+		    byte[] target = new byte[len];	    
+		    LocalHeap.copyToRingBuffer(i, target, 0, 0xFFFFFFFF, th);		    
+		    //Don't trust equals because that is part of what we are testing
+		    assertTrue(LocalHeap.equals(i,testData[i].getBytes(),0,len, th));	   
+			assertTrue(Arrays.equals(testData[i].getBytes(), target));
+		}
+    }
 	
-	@Test
-	public void simpleStringWriteReadTest() {
-		
-		String[] testData = new String[] {
-			"a","b","c","hello","world"	
-		};
-		
-		LocalHeap th = new LocalHeap(6,6, testData.length);
-		
-		int i = testData.length;
-		while (--i>=0) {
-			CharSequence byteSequence = testData[i];
-			th.set(i, byteSequence);
-		}
-		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
-	}
 	
 	@Test
 	public void simpleReplacementTest() {
@@ -101,33 +65,16 @@ public class LocalHeapTest {
 		int i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(testData.length-(i+1), data, 0, data.length);
+			LocalHeap.set(testData.length-(i+1),data,0,data.length,0xFFFFFFFF,th);
 		}
 		//now replace each backwards so they have something shorter or longer
 		i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(i, data, 0, data.length);
+			LocalHeap.set(i,data,0,data.length,0xFFFFFFFF,th);
 		}
-		
-		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-			assertTrue(th.equals(i, testData[i]));
-		}
+				
+		localHeapMatchesTestData(testData, th); 
 		
 	}
 	
@@ -143,34 +90,16 @@ public class LocalHeapTest {
 		//write each test value into the heap
 		int i = testData.length;
 		while (--i>=0) {
-			CharSequence byteSequence = testData[i];
-			th.set(testData.length-(i+1), byteSequence);
+			LocalHeap.set(testData.length-(i+1),testData[i].getBytes(),0,testData[i].length(),0xFFFFFFFF,th);
 		}
 		//now replace each backwards so they have something shorter or longer
 		i = testData.length;
 		while (--i>=0) {
-			CharSequence byteSequence = testData[i];
-			th.set(i, byteSequence);
+			LocalHeap.set(i,testData[i].getBytes(),0,testData[i].length(),0xFFFFFFFF,th);
 		}
 		
 		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-			assertTrue(th.equals(i, testData[i]));
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-			assertTrue(th.equals(i, testData[i]));
-		}
+		localHeapMatchesTestData(testData, th); 
 		
 	}
 	
@@ -183,21 +112,22 @@ public class LocalHeapTest {
 		String replace = "everyone";
 		
 		byte[] data = (root+suffix).getBytes();
-		th.set(2, data, 0, data.length);
+		LocalHeap.set(2,data,0,data.length,0xFFFFFFFF,th);
 		//
 		StringBuilder builder = new StringBuilder();
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(root+suffix,builder.toString());
 		//
 		byte[] tail = replace.getBytes();
-		th.appendTail(2, suffix.length(), tail, 0, tail.length);
+		LocalHeap.appendTail(2,suffix.length(),tail,0,tail.length,0xFFFFFFFF,th);
 		//
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(root+replace,builder.toString());
-		assertTrue(th.equals(2, root+replace));
-		assertEquals(root.length(), th.countHeadMatch(2, root));
-		assertEquals(replace.length(), th.countTailMatch(2, replace));
+		String temp = root+replace;
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
+		assertEquals(root.length(), LocalHeap.countHeadMatch(2,root.getBytes(),0,root.length(),0xFFFFFFFF,th));
+		assertEquals(replace.length(), LocalHeap.countTailMatch(2,replace.getBytes(),replace.length(),replace.length(),0xFFFFFFFF,th));
 	}
 	
 	@Test
@@ -209,22 +139,23 @@ public class LocalHeapTest {
 		String root = "world";
 		
 		byte[] data = (prefix+root).getBytes();
-		th.set(2, data, 0, data.length);
+		LocalHeap.set(2,data,0,data.length,0xFFFFFFFF,th);
 		//
 		StringBuilder builder = new StringBuilder();
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(prefix+root,builder.toString());
 		//
 		byte[] tail = replace.getBytes();
-		th.appendHead(2, prefix.length(), tail, 0, tail.length);
+		LocalHeap.appendHead(2,prefix.length(),tail,0,tail.length,0xFFFFFFFF,th);
 		//
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
-		assertTrue(th.equals(2, replace+root));
-		assertFalse(th.equals(2, replace));
-		assertEquals(replace.length(), th.countHeadMatch(2, replace));
-		assertEquals(root.length(), th.countTailMatch(2, root));
+		String temp = replace+root;
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
+		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}
 	
 	@Test
@@ -236,21 +167,22 @@ public class LocalHeapTest {
 		String root = "world";
 		
 		byte[] data = (prefix+root).getBytes();
-		th.set(2, data, 0, data.length);
+		LocalHeap.set(2,data,0,data.length,0xFFFFFFFF,th);
 		//
 		StringBuilder builder = new StringBuilder();
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(prefix+root,builder.toString());
 		//
-		th.appendHead(2, prefix.length(), replace, replace.length());
+		LocalHeap.appendHead(2,prefix.length(),replace.getBytes(),0,replace.length(),0xFFFFFFFF,th);
 		//
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
-		assertTrue(th.equals(2, replace+root));
-		assertFalse(th.equals(2, replace));
-		assertEquals(replace.length(), th.countHeadMatch(2, replace));
-		assertEquals(root.length(), th.countTailMatch(2, root));
+		String temp = replace+root;
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
+		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}
 	
 	@Test
@@ -262,22 +194,23 @@ public class LocalHeapTest {
 		String root = "world";
 		
 		byte[] data = (prefix+root).getBytes();
-		th.set(2, data, 0, data.length);
+		LocalHeap.set(2,data,0,data.length,0xFFFFFFFF,th);
 		//
 		StringBuilder builder = new StringBuilder();
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(prefix+root,builder.toString());
 		//
 		th.trimHead(2, prefix.length());
-		th.appendHead(2, (byte)replace.charAt(0));
+		LocalHeap.appendHead(2,(byte)replace.charAt(0),th);
 		//
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
-		assertTrue(th.equals(2, replace+root));
-		assertFalse(th.equals(2, replace));
-		assertEquals(replace.length(), th.countHeadMatch(2, replace));
-		assertEquals(root.length(), th.countTailMatch(2, root));
+		String temp = replace+root;
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
+		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}
 	
 	private static final String[] buildTestData = new String[] {"abcd","efgh","ijkl","mnop"};
@@ -288,16 +221,10 @@ public class LocalHeapTest {
 		int i = buildTestData.length;
 		while (--i>=0) {
 			byte[] temp = buildTestData[i].getBytes();
-			th.set(i, temp, 0, temp.length);
+			LocalHeap.set(i,temp,0,temp.length,0xFFFFFFFF,th);
 		}
 		// test the data
-		StringBuilder builder = new StringBuilder();
-		i = buildTestData.length;
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(buildTestData[i],builder.toString());
-		}
+		localHeapMatchesTestData(buildTestData, th); 
 		return th;
 	}
 	
@@ -309,23 +236,23 @@ public class LocalHeapTest {
 		String bigString = "abcdefghijkl";
 		byte[] bigData = bigString.getBytes();
 		
-		th.set(0, bigData, 0, bigData.length);
+		LocalHeap.set(0,bigData,0,bigData.length,0xFFFFFFFF,th);
 		
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals(bigString,builder.toString());
 		
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(buildTestData[1],builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(buildTestData[3],builder.toString());
 	}
 	
@@ -337,23 +264,23 @@ public class LocalHeapTest {
 		String bigString = "abcdefghijkl";
 		byte[] bigData = bigString.getBytes();
 		
-		th.set(3, bigData, 0, bigData.length);
+		LocalHeap.set(3,bigData,0,bigData.length,0xFFFFFFFF,th);
 		
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(bigString,builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(buildTestData[1],builder.toString());
 		
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals(buildTestData[0],builder.toString());
 	}
 	
@@ -365,23 +292,23 @@ public class LocalHeapTest {
 		String bigString = "abcdefghijklmo";
 		byte[] bigData = bigString.getBytes();
 		
-		th.set(1, bigData, 0, bigData.length);
+		LocalHeap.set(1,bigData,0,bigData.length,0xFFFFFFFF,th);
 		
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(bigString,builder.toString());
 		
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals(buildTestData[0],builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(buildTestData[3],builder.toString());
 	}
 	
@@ -393,23 +320,23 @@ public class LocalHeapTest {
 		String tail = "qrstuv";
 		byte[] tailData = tail.getBytes();
 		
-		th.appendTail(0, 1, tailData, 0, tailData.length);
+		LocalHeap.appendTail(0,1,tailData,0,tailData.length,0xFFFFFFFF,th);
 				
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals("abc"+tail,builder.toString());
 		
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(buildTestData[1],builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(buildTestData[3],builder.toString());
 	}
 	
@@ -421,23 +348,23 @@ public class LocalHeapTest {
 		String headString = "abcdef";
 		byte[] headData = headString.getBytes();
 		
-		th.appendHead(3, 1, headData, 0, headData.length);
+		LocalHeap.appendHead(3,1,headData,0,headData.length,0xFFFFFFFF,th);
 				
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(headString+"nop",builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(buildTestData[1],builder.toString());
 		
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals(buildTestData[0],builder.toString());
 	}
 	
@@ -448,23 +375,23 @@ public class LocalHeapTest {
 		//
 		String headString = "abcdef";
 		
-		th.appendHead(3, 1, headString, headString.length());
+		LocalHeap.appendHead(3,1,headString.getBytes(),0,headString.length(),0xFFFFFFFF,th);
 				
 		StringBuilder builder = new StringBuilder();
 		builder.setLength(0);
-		th.get(3, builder);
+		LocalHeapTest.get(3,builder,th);
 		assertEquals(headString+"nop",builder.toString());
 		
 		builder.setLength(0);
-		th.get(2, builder);
+		LocalHeapTest.get(2,builder,th);
 		assertEquals(buildTestData[2],builder.toString());
 		
 		builder.setLength(0);
-		th.get(1, builder);
+		LocalHeapTest.get(1,builder,th);
 		assertEquals(buildTestData[1],builder.toString());
 		
 		builder.setLength(0);
-		th.get(0, builder);
+		LocalHeapTest.get(0,builder,th);
 		assertEquals(buildTestData[0],builder.toString());
 	}
 	//private static final String[] buildTestData = new String[] {"abcd","efgh","ijkl","mnop"};
@@ -482,28 +409,14 @@ public class LocalHeapTest {
 		int i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(i, data, 0, data.length);
+			LocalHeap.set(i,data,0,data.length,0xFFFFFFFF,th);
 		}
 		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-		}
+		localHeapMatchesTestData(testData, th); 
 		
 		try {
 			byte[] biggerString = "abcd".getBytes();
-			th.set(0, biggerString, 0, biggerString.length);
+			LocalHeap.set(0,biggerString,0,biggerString.length,0xFFFFFFFF,th);
 			fail("expected exception no more room in heap.");
 		} catch (Throwable t) {
 			//expected
@@ -524,28 +437,14 @@ public class LocalHeapTest {
 		int i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(i, data, 0, data.length);
+			LocalHeap.set(i,data,0,data.length,0xFFFFFFFF,th);
 		}
 		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-		}
+		localHeapMatchesTestData(testData, th); 
 		
 		//should be room enough for this.
 		byte[] biggerString = "abcd".getBytes();
-		th.set(0, biggerString, 0, biggerString.length);	
+		LocalHeap.set(0,biggerString,0,biggerString.length,0xFFFFFFFF,th);	
 		
 	}
 	
@@ -561,29 +460,30 @@ public class LocalHeapTest {
 		int i = testData.length;
 		while (--i>=0) {
 			byte[] data = testData[i].getBytes();
-			th.set(i, data, 0, data.length);
+			LocalHeap.set(i,data,0,data.length,0xFFFFFFFF,th);
 		}
 		
-		i = testData.length;
-		StringBuilder builder = new StringBuilder();
-		while (--i>=0) {
-			builder.setLength(0);
-			th.get(i,builder);
-			assertEquals(testData[i],builder.toString());
-		}
-		
-		i = testData.length;
-		while (--i>=0) {
-			byte[] data = testData[i].getBytes();
-			byte[] target = new byte[data.length];
-			th.get(i,target, 0);
-			assertTrue(Arrays.equals(data,target));
-		}
+		localHeapMatchesTestData(testData, th); 
 		
 		//should be room enough for this.
 		byte[] biggerString = "abcd".getBytes();
-		th.set(4, biggerString, 0, biggerString.length);
+		LocalHeap.set(4,biggerString,0,biggerString.length,0xFFFFFFFF,th);
 
 	}
+
+    public static int get(int idx, Appendable target, LocalHeap heap) {
+        
+        int textLen = (idx < 0 ? LocalHeap.initLength(idx, heap) : LocalHeap.valueLength(idx, heap));
+        int i = 0;
+        while (i<textLen) {
+            try {
+                target.append((char)LocalHeap.byteAt(idx, i++, heap));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }            
+        }
+        return textLen;
+    
+    }
 	
 }

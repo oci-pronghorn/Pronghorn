@@ -83,7 +83,8 @@ public class FASTDynamicWriter {
             int stop = ringBuffer.cursor+steps;
             writerDispatch.setActiveScriptCursor(ringBuffer.cursor);
             writerDispatch.setActiveScriptLimit(stop);
-            writerDispatch.encode(idx, this);
+            writerDispatch.fieldPos = idx;
+            writerDispatch.encode(writer);
 
     }
 

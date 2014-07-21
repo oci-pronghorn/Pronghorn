@@ -28,10 +28,12 @@ public class FASTRingBufferTest {
         FASTRingBuffer.unBlockFragment(rb.headPos, rb.addPos);
                 
         //read one integer back
-        assertEquals(7, rb.readRingBytePos(0));                     
+        assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb)));
+        // constant from heap or dynamic from char ringBuffer
+        int rawPos = FASTRingBuffer.readRingByteRawPos(1,rb);                     
         
         //read back the array
-        byte[] data = rb.readRingByteBuffer(1);
+        byte[] data = FASTRingBuffer.readRingByteBuffers(rawPos, rb);
         int i = 0;
         while (i<source.length) {            
             assertEquals("index:"+i,source[i],data[i]);                       

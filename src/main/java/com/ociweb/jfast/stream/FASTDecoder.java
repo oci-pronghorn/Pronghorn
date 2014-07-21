@@ -76,7 +76,7 @@ public abstract class FASTDecoder{
         dictionaryFactory.reset(rIntDictionary);
         dictionaryFactory.reset(rLongDictionary);
         if (null!=byteHeap) {
-            byteHeap.reset();
+            LocalHeap.reset(byteHeap);
         }
         sequenceCountStackHead = -1;
         

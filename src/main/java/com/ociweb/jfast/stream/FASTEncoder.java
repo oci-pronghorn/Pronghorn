@@ -8,7 +8,7 @@ import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
-public class FASTEncoder { 
+public abstract class FASTEncoder { 
     public int templateStackHead = 0;
     protected final int[] templateStack;
 
@@ -35,13 +35,19 @@ public class FASTEncoder {
     protected int activeScriptLimit;
     protected final int[] fullScript;
     
-    protected LocalHeap byteHeap;
+    public final LocalHeap byteHeap;
 
     protected RingCharSequence ringCharSequence = new RingCharSequence();
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
 
     protected final RingBuffers ringBuffers;
+    
+    public FASTEncoder(TemplateCatalogConfig catalog) {
+        this(catalog.dictionaryFactory(), catalog.templatesCount(),
+             catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
+             catalog.fullScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers());
+    }
     
     public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
@@ -96,4 +102,25 @@ public class FASTEncoder {
     
         return true;
     }
+    
+    public abstract int encode(PrimitiveWriter writer);
+    
+    // must happen just before Group so the Group in question must always have
+    // an outer group.
+    protected static void pushTemplate(int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
+
+        int templateId = FASTRingBufferReader.readInt(queue, fieldPos);
+        
+     //   int top = dispatch.templateStack[dispatch.templateStackHead];
+//        if (top == templateId) {
+//            PrimitiveWriter.writePMapBit((byte) 0, writer);
+//        } else {
+            PrimitiveWriter.writePMapBit((byte) 1, writer);
+            PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
+      //      top = templateId;
+     //   }
+
+        //dispatch.templateStack[dispatch.templateStackHead++] = top;
+    }
+    
 }

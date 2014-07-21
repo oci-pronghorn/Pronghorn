@@ -122,14 +122,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int id;
         int idx = token & byteInstanceMask;
         id = readBytesTail(idx, reader, dictionaryReader);
-        assertTrue(dictionaryReader.equals(id, value, offset, length));
+        assertTrue(LocalHeap.equals(id,value,offset,length, dictionaryReader));
         int idx1 = token & byteInstanceMask;
 
         id = readBytesDelta(idx1, reader, dictionaryReader);
-        assertTrue(dictionaryReader.equals(id, value, offset, length));
+        assertTrue(LocalHeap.equals(id,value,offset,length, dictionaryReader));
 
         id = token & byteInstanceMask;
-        assertTrue(dictionaryReader.equals(id, value, offset, length));
+        assertTrue(LocalHeap.equals(id,value,offset,length, dictionaryReader));
 
         PrimitiveReader.openPMap(1, reader);
         int idx2 = token & byteInstanceMask;
@@ -139,11 +139,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
         }
 
         id = idx2;
-        assertTrue(dictionaryReader.equals(id, value, offset, length));
+        assertTrue(LocalHeap.equals(id,value,offset,length, dictionaryReader));
         int idx3 = token & byteInstanceMask;
 
         id = readBytesDefault(idx3, reader, dictionaryReader);
-        assertTrue(dictionaryReader.equals(id, value, offset, length));
+        assertTrue(LocalHeap.equals(id,value,offset,length, dictionaryReader));
 
         PrimitiveReader.closePMap(reader);
 
@@ -155,7 +155,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int length = PrimitiveReader.readIntegerUnsigned(reader);
         
         // append to tail
-        int targetOffset = byteHeap.makeSpaceForAppend(idx, trim, length);
+        int targetOffset = LocalHeap.makeSpaceForAppend(idx,trim,length,byteHeap);
         PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), targetOffset, length, reader);
         id = idx;
         return id;
@@ -183,10 +183,10 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForAppend(idx1, trim, utfLength), utfLength, reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(idx1,trim,utfLength,byteHeap), utfLength, reader);
         } else {
             // append to head
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForPrepend(idx1, -trim, utfLength), utfLength, reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForPrepend(idx1,-trim,utfLength,byteHeap), utfLength, reader);
         }
         id = idx1;
         return id;
@@ -195,7 +195,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
     private void writeBytesDefault(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         
-        if (byteHeap.equals(idx|INIT_VALUE_MASK, value, offset, length)) {
+        if (LocalHeap.equals(idx|INIT_VALUE_MASK,value,offset,length, byteHeap)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
@@ -207,14 +207,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
     private void writeBytesCopy(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
         
-        if (byteHeap.equals(idx, value, offset, length)) {
+        if (LocalHeap.equals(idx,value,offset,length, byteHeap)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         }
         else {
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(length, writer);
             PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
-        	byteHeap.set(idx, value, offset, length);
+        	LocalHeap.set(idx,value,offset,length,0xFFFFFFFF,byteHeap);
         }
     }
 
@@ -225,8 +225,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int idx = token & instanceMask;
         
         //count matching front or back chars
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
-        int tailCount = byteHeap.countTailMatch(idx, value, offset+length, length);
+        int headCount = LocalHeap.countHeadMatch(idx,value,offset,length,0xFFFFFFFF,byteHeap);
+        int tailCount = LocalHeap.countTailMatch(idx,value,offset+length,length,0xFFFFFFFF,byteHeap);
         if (headCount>tailCount) {
         	int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
         	PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
@@ -236,7 +236,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
             
             PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
             PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-            byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+            LocalHeap.appendTail(idx,trimTail,value,startAfter,valueSend,0xFFFFFFFF,byteHeap);
         } else {
         	//replace head, tail matches to tailCount
             int trimHead = LocalHeap.length(idx,byteHeap)-tailCount;
@@ -246,13 +246,13 @@ public class StreamingBytesTest extends BaseStreamingTest {
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
             PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
             
-            byteHeap.appendHead(idx, trimHead, value, offset, len);
+            LocalHeap.appendHead(idx,trimHead,value,offset,len,0xFFFFFFFF,byteHeap);
         }
     }
 
     private void writeBytesTail(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
         int idx = token & instanceMask;
-        int headCount = byteHeap.countHeadMatch(idx, value, offset, length);
+        int headCount = LocalHeap.countHeadMatch(idx,value,offset,length,0xFFFFFFFF,byteHeap);
         
         int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
         PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
@@ -262,7 +262,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         
         PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
         PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
+        LocalHeap.appendTail(idx,trimTail,value,startAfter,valueSend,0xFFFFFFFF,byteHeap);
     }
 
     private void byteTester(int[] types, int[] operators, String label) {
@@ -426,8 +426,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
                         int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
-                        if (!byteHeap.isNull(idx)) {
-                            assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, byteHeap.isNull(idx));
+                        if (!LocalHeap.isNull(idx,byteHeap)) {
+                            assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
                         }
 
                     } else {
@@ -442,7 +442,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                                 assertTrue("Error:" + TokenBuilder.tokenToString(token)+ 
                                            "\n " + Arrays.toString(tdc) +
                                            " vs \n" + byteHeap.toString(textIdx),
-                                        byteHeap.equals(textIdx, tdc, 0, tdc.length));
+                                        LocalHeap.equals(textIdx,tdc,0,tdc.length, byteHeap));
                             }
 
                         } catch (Exception e) {
@@ -455,9 +455,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
                         int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
-                        if (!byteHeap.isNull(idx)) {
+                        if (!LocalHeap.isNull(idx,byteHeap)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
-                                    + LocalHeap.length(idx,byteHeap), Boolean.TRUE, byteHeap.isNull(idx));
+                                    + LocalHeap.length(idx,byteHeap), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
                         }
 
                     } else {
@@ -467,14 +467,12 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             if ((1 & i) == 0) {                              
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
                                         + TokenBuilder.tokenToString(prevToken),
-                                        byteHeap.equals(heapIdx, testDataBytes[f], 0, testDataBytes[f].length));
+                                        LocalHeap.equals(heapIdx,testDataBytes[f],0,testDataBytes[f].length, byteHeap));
                             } else {
                                 byte[] tdc = testDataBytes[f];
                                 assertEquals(tdc.length, LocalHeap.length(heapIdx,byteHeap));
-                                if (tdc.length>0) { //TODO: B, FIX equals does not work with zero length, need unit test
-                                    assertTrue("Error:" + TokenBuilder.tokenToString(token)+ " length "+tdc.length,
-                                            byteHeap.equals(heapIdx, tdc, 0, tdc.length));
-                                }
+                                assertTrue("Error:" + TokenBuilder.tokenToString(token)+ " length "+tdc.length,
+                                            LocalHeap.equals(heapIdx,tdc,0,tdc.length, byteHeap));
                             }
 
                         } catch (Exception e) {

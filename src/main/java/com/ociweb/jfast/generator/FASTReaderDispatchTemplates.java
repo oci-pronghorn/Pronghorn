@@ -21,8 +21,6 @@ import com.ociweb.jfast.util.Stats;
 
 //TODO: X, Send Amazon gift card to anyone who can supply another software based project, template, and example file that can run faster than this implementation. (One per project)
 
-//TODO: AA, Remove UTF-8/ASCII/ByteVectors and use new common byte level class using the LocalHeap as a template.
-
 //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
 
 public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
@@ -1698,9 +1696,9 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             }        
             int utfLength = PrimitiveReader.readIntegerUnsigned(reader);        
             if (trim >= 0) {
-                PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForAppend(target, trim, utfLength), utfLength, reader);
+                PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(target,trim,utfLength,byteHeap), utfLength, reader);
             } else {
-                PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForPrepend(target, -trim, utfLength), utfLength, reader);
+                PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForPrepend(target,-trim,utfLength,byteHeap), utfLength, reader);
             }
         }
         int len = LocalHeap.valueLength(target,byteHeap);
@@ -1715,7 +1713,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             trim--;
             int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
             // append to tail
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForAppend(target, trim, utfLength), utfLength, reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(target,trim,utfLength,byteHeap), utfLength, reader);
         }
         int len = LocalHeap.valueLength(target,byteHeap);
         FASTRingBuffer.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
@@ -1727,10 +1725,10 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
         if (trim >= 0) {
             // append to tail
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForAppend(target, trim, utfLength), utfLength, reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(target,trim,utfLength,byteHeap), utfLength, reader);
         } else {
             // append to head
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), byteHeap.makeSpaceForPrepend(target, -trim, utfLength), utfLength, reader);
+            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForPrepend(target,-trim,utfLength,byteHeap), utfLength, reader);
         }
         int len = LocalHeap.valueLength(target,byteHeap);
         FASTRingBuffer.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
@@ -1742,7 +1740,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         int length = PrimitiveReader.readIntegerUnsigned(reader);
         
         // append to tail
-        int targetOffset = byteHeap.makeSpaceForAppend(target, trim, length);
+        int targetOffset = LocalHeap.makeSpaceForAppend(target,trim,length,byteHeap);
         PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), targetOffset, length, reader);
         int len = LocalHeap.valueLength(target,byteHeap);
         FASTRingBuffer.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);

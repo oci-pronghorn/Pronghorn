@@ -253,7 +253,7 @@ public class DictionaryFactory {
         if (null==byteHeap) {
             byteHeap = new LocalHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
                     byteInitIndex, byteInitValue);
-            byteHeap.reset();
+            LocalHeap.reset(byteHeap);
         }
         
         return byteHeap;
@@ -283,7 +283,7 @@ public class DictionaryFactory {
 
     public void reset(LocalHeap heap) {
         if (null != heap) {
-            heap.reset();
+            LocalHeap.reset(heap);
         }
     }
 

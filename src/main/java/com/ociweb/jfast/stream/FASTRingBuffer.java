@@ -51,7 +51,7 @@ public final class FASTRingBuffer {
     
     //defined externally and never changes
     final byte[] constByteBuffer;
-
+    final byte[][] bufferLookup;
 
     long lastRead;
 
@@ -83,12 +83,6 @@ public final class FASTRingBuffer {
             } else {
                 this.constByteBuffer = null;
             }
-//            LocalHeap byteHeap = dcr.byteDictionary();
-//            if (null!=byteHeap) {
-//                this.constByteBuffer = byteHeap.rawInitAccess();            
-//            } else {
-//                this.constByteBuffer = null;
-//            }
         } else {
             this.constByteBuffer = null;
         }
@@ -98,6 +92,7 @@ public final class FASTRingBuffer {
         this.maxByteSize =  1 << charBits;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
+        this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
         
         this.from = from;
         this.templateStartIdx = templateStartIdx;
@@ -291,7 +286,7 @@ public final class FASTRingBuffer {
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
         final int p = rbRingBuffer.addBytePos;
         if (sourceLen > 0) {
-            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceIdx, sourceLen, source);
+            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(source, sourceIdx, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceLen);
         }
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);
@@ -356,20 +351,23 @@ public final class FASTRingBuffer {
 
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
-    public int readRingBytePos(int fieldPos) {
-        // constant from heap or dynamic from char ringBuffer
-        int ref1 = buffer[(int)(mask & (remPos.value + fieldPos))];
-        return ref1 < 0 ? ref1&0x7FFFFFFF : ref1;
-    }
-    
+
     public static int readRingByteLen(int fieldPos, FASTRingBuffer rb) {
         return rb.buffer[rb.mask & (int)(rb.remPos.value + fieldPos + 1)];// second int is always the length
     }
+    
+    public static int readRingBytePosition(int rawPos) {
+        return rawPos&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
+    }    
 
-    public byte[] readRingByteBuffer(int fieldPos) {
-        // constant from heap or dynamic from char ringBuffer
-        return buffer[(int)(mask & (remPos.value + fieldPos))] < 0 ? constByteBuffer : byteBuffer;
+    public static byte[] readRingByteBuffers(int rawPos, FASTRingBuffer rbRingBuffer) {
+        return rbRingBuffer.bufferLookup[1&(rawPos>>31)];
     }
+
+    public static int readRingByteRawPos(int fieldPos, FASTRingBuffer rbRingBuffer) {
+        return rbRingBuffer.buffer[(int)(rbRingBuffer.mask & (rbRingBuffer.remPos.value + fieldPos))];
+    }
+    
 
     public int readRingByteMask() {
         return byteMask;

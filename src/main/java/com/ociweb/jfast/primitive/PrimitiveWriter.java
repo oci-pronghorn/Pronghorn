@@ -923,10 +923,9 @@ public final class PrimitiveWriter {
         }
     }
 
-    @Deprecated
-    public static final void writeTextASCIIAfter(int start, CharSequence value, PrimitiveWriter writer) {
+    public static final void writeTextASCIIAfter(int start, byte[] value, int offset, int len, int mask, PrimitiveWriter writer) {
 
-        int length = value.length() - start;
+        int length = len - start;
         if (0 == length) {
             encodeZeroLengthASCII(writer);
             return;
@@ -934,16 +933,16 @@ public final class PrimitiveWriter {
             // if it was not zero and was too long flush
             writer.output.flush();
         }
-        int c = start;
+        int c = start+offset;
         while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value.charAt(c++);
+            writer.buffer[writer.limit++] = (byte) value[mask&c++];
         }
-        writer.buffer[writer.limit++] = (byte) (0x80 | value.charAt(c));
+        writer.buffer[writer.limit++] = (byte) (0x80 | value[mask&c]);
 
     }
-
-    @Deprecated
-    public static final void writeTextASCIIBefore(CharSequence value, int stop, PrimitiveWriter writer) {
+    
+   
+    public static final void writeTextASCIIBefore(byte[] value, int valueOffset, int valueMask, int stop, PrimitiveWriter writer) {
 
         int length = stop;
         if (0 == length) {
@@ -953,29 +952,11 @@ public final class PrimitiveWriter {
             // if it was not zero and was too long flush
             writer.output.flush();
         }
-        int c = 0;
+        int c = valueOffset;
         while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value.charAt(c++);
+            writer.buffer[writer.limit++] = (byte) value[valueMask&c++];
         }
-        writer.buffer[writer.limit++] = (byte) (0x80 | value.charAt(c));
-
-    }
-    
-    public static final void writeTextASCIIBefore(byte[] buffer2, int offset2, int length2, int mask, int stop, PrimitiveWriter writer) {
-
-        int len = stop;
-        if (0 == len) {
-            encodeZeroLengthASCII(writer);
-            return;
-        } else if (writer.limit > writer.buffer.length - len) {
-            // if it was not zero and was too long flush
-            writer.output.flush();
-        }
-        int c = offset2;
-        while (--len > 0) {
-            writer.buffer[writer.limit++] = (byte) buffer2[mask & c++];
-        }
-        writer.buffer[writer.limit++] = (byte) (0x80 | buffer2[mask & c]);
+        writer.buffer[writer.limit++] = (byte) (0x80 | value[valueMask&c]);
 
     }
 

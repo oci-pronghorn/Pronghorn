@@ -246,17 +246,21 @@ public class TemplateLoaderTest {
             
             double start = System.nanoTime();
 
-            //TODO: A, this should work to have extra data1
-//            FASTInputReactor.pump(reactor);
-//            FASTInputReactor.pump(reactor);
-//            FASTInputReactor.pump(reactor);
-//            FASTInputReactor.pump(reactor);
-            
+            //Preload the ringBuffer with a few pumps to ensure we
+            //are not testing against an always empty buffer.
+            int few = 4;
+            while (--few>=0) {
+                FASTInputReactor.pump(reactor);
+            }               
             while (FASTInputReactor.pump(reactor)>=0) { //72-88
              //   FASTRingBuffer.dump(rb);
                 //int tmp = Profile.version.get();
                 FASTRingBuffer.moveNext(rb); //11
                 //Profile.count += (Profile.version.get()-tmp);
+            }
+            //the buffer has extra records in it so we must clean them out here.
+            while (FASTRingBuffer.contentRemaining(rb)>0) {
+                FASTRingBuffer.moveNext(rb); 
             }
             
             double duration = System.nanoTime() - start;

@@ -1,7 +1,5 @@
 package com.ociweb.jfast.field;
 
-import java.nio.ByteBuffer;
-
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -104,10 +102,10 @@ public class StaticGlue {
             byteHeap.appendTail(offset, nextLimit, (byte)(value & 0x7F));
         } else {
             while (value >= 0) {
-                byteHeap.appendHead(offset, value);
+                LocalHeap.appendHead(offset,value,byteHeap);
                 value = PrimitiveReader.readTextASCIIByte(reader);
             }
-            byteHeap.appendHead(offset, (byte) (value & 0x7F));
+            LocalHeap.appendHead(offset,(byte) (value & 0x7F),byteHeap);
         }
 
         return idx;
@@ -128,7 +126,7 @@ public class StaticGlue {
                 // nothing to append
                 LocalHeap.setNull(idx, byteHeap);
             } else {
-                if (byteHeap.isNull(idx)) {
+                if (LocalHeap.isNull(idx,byteHeap)) {
                     LocalHeap.setZeroLength(idx, byteHeap);
                 }
                 fastHeapAppend(idx, val, byteHeap, reader);
@@ -168,31 +166,6 @@ public class StaticGlue {
     ///////////////////
     
     
-    public static void allocateAndDeltaUTF8(final int idx, LocalHeap heap, PrimitiveReader reader, int trim) {
-        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-        if (trim >= 0) {
-            // append to tail
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForAppend(idx, trim, utfLength),utfLength,reader);
-        } else {
-            // append to head
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForPrepend(idx, -trim, utfLength),utfLength,reader);
-        }
-    }
-       
-    public static void allocateAndCopyUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int length) {
-
-        PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),LocalHeap.allocate(idx, length, heap),length,reader);
-        
-    }
-   
-    public static void allocateAndAppendUTF8(int idx, LocalHeap heap, PrimitiveReader reader, int utfLength, int t) {
-        
-        PrimitiveReader.readByteData(LocalHeap.rawAccess(heap),heap.makeSpaceForAppend(idx, t, utfLength),utfLength,reader);
-    } 
-    
-    
-    
-    
     public static int readASCIIToHeap(int idx, PrimitiveReader reader, LocalHeap byteHeap) {
         byte val = PrimitiveReader.readTextASCIIByte(reader);  
         int tmp = 0x7F & val;
@@ -208,36 +181,7 @@ public class StaticGlue {
         FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng & 0xFFFFFFFF));
     }
 
-    //byte methods
-    public static void writeBytesHead(int idx, int tailCount, ByteBuffer value, int opt, LocalHeap byteHeap, PrimitiveWriter writer) {
-        
-        //replace head, tail matches to tailCount
-        int trimHead = LocalHeap.length(idx,byteHeap)-tailCount;
-        PrimitiveWriter.writeIntegerSigned(trimHead==0? opt: -trimHead, writer); 
-        
-        int len = value.remaining() - tailCount;
-        int offset = value.position();
-        PrimitiveWriter.writeIntegerUnsigned(len, writer);
-        PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
-        byteHeap.appendHead(idx, trimHead, value, offset, len);
-    }
-    public static void writeBytesTail(int idx, int headCount, ByteBuffer value, final int optional, LocalHeap byteHeap, PrimitiveWriter writer) {
-                   
-        int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
-        if (trimTail<0) {
-            throw new ArrayIndexOutOfBoundsException();
-        }
-        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+optional : trimTail, writer);
-        
-        int valueSend = value.remaining()-headCount;
-        int startAfter = value.position()+headCount;
-                
-        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        //System.err.println("tail send:"+valueSend+" for headCount "+headCount);
-        byteHeap.appendTail(idx, trimTail, value, startAfter, valueSend);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        
-    }
+
     public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
         dictionary[idx] = 0;
         PrimitiveWriter.writeNull(writer);

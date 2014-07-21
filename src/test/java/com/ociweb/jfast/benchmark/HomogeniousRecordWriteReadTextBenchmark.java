@@ -429,7 +429,28 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                 FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
                 FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
 			    
-				staticWriter.write(token,textTestData[j], writer, 0, rbRingBufferLocal);
+				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
+                assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+                
+                
+                if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                                    // the work.
+                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                        // ascii
+                        staticWriter.acceptCharSequenceASCII(token, writer, staticWriter.byteHeap, 0, rbRingBufferLocal);
+                    } else {                                
+                        // utf8
+                        staticWriter.acceptByteArray(token, writer, staticWriter.byteHeap, 0, rbRingBufferLocal);
+                    }
+                } else {
+                    if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                        // ascii optional
+                        staticWriter.acceptCharSequenceASCIIOptional(token, writer, staticWriter.byteHeap, 0, rbRingBufferLocal);
+                    } else {
+                        // utf8 optional
+                        staticWriter.acceptByteArrayOptional(token, writer, staticWriter.byteHeap, 0, rbRingBufferLocal);
+                    }
+                }
 			}
 			staticWriter.closeGroup(groupToken|(OperatorMask.Group_Bit_Close<<TokenBuilder.SHIFT_OPER), writer);
 			staticWriter.flush(writer);
