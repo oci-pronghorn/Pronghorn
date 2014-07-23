@@ -27,11 +27,11 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
         
-        GeneratorUtils.generateHead(generatorData.templates, generatorData.origCatBytes, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
+        GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
                
         GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class);
-        GeneratorUtils.generateTail(target);
+        GeneratorUtils.generateTail(generatorData, target);
         
         return target;
     }
@@ -345,7 +345,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteIntegerUnsignedDefaultOptional(int source, int valueOfNull, int constDefault,
             PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer, int[] intValues) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, source, valueOfNull);
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, source, valueOfNull, constDefault);
         
     }
 

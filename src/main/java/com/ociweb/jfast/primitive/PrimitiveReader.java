@@ -272,6 +272,13 @@ public final class PrimitiveReader {
                 return needMoreData(reader);               
             }
     }
+    
+    //TODO: A, if this is the first 7 bits in the fragment then use this method not the one above
+    public static byte readPMapBitFirstSeven(PrimitiveReader reader) {
+        int shft = reader.pmapIdxBitBlock>>16;
+        reader.pmapIdxBitBlock -= (1<<16);                
+        return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
+    }
 
     private static byte needMoreData(PrimitiveReader reader) {
         if (((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 ) {

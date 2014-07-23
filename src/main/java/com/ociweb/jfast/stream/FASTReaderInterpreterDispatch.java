@@ -601,8 +601,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             }
         }
     }
-    
-    
+        
     //TODO: B, generator must track previous read from for text etc and  generator must track if previous is not used then do not write to dictionary.
     //TODO: B, add new genCopy for each dictionary type and call as needed before the gen methods, LATER: integrate this behavior.
     

@@ -306,7 +306,7 @@ public final class FASTRingBuffer {
 
     //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
     //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
-    //TODO: B, back off write if with in cache line distance of tail (full queue case)
+    //TODO: X, back off write if with in cache line distance of tail (full queue case)
 
    
     //we are only allowed 12% of the time or so for doing this write.

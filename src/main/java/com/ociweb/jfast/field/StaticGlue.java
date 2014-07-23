@@ -195,9 +195,6 @@ public class StaticGlue {
             PrimitiveWriter.writeNull(writer);
         }
     }
-    public static void nullPMap(PrimitiveWriter writer) {
-        PrimitiveWriter.writePMapBit((byte) 0, writer);
-    }
     public static void nullDefaultInt(PrimitiveWriter writer, int[] dictionary, int source) {
         if (0 == dictionary[source]) { // stored value was null;
             PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -205,23 +202,6 @@ public class StaticGlue {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
             PrimitiveWriter.writeNull(writer);
         }
-    }
-    public static final int readIntegerUnsignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        //TODO: C, 4% perf problem in profiler, can be better if target== source ???
-        return dictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readIntegerUnsigned(reader));
-    }
-    public static final int readIntegerSignedCopy(int target, int source, int[] dictionary, PrimitiveReader reader) {
-        //TODO: C, 4% perf problem in profiler, can be better if target== source ???
-        return (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : (dictionary[target] = PrimitiveReader.readIntegerSigned(reader)));
-    }
-    public static final long readLongUnsignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        //TODO: B, can duplicate this to make a more effecient version when source==target
-        return (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source]
-                : (dictionary[target] = PrimitiveReader.readLongUnsigned(reader)));
-    }
-    public static final long readLongSignedCopy(int target, int source, long[] dictionary, PrimitiveReader reader) {
-        //TODO: B, can duplicate this to make a more effecient version when source==target
-        return dictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? dictionary[source] : PrimitiveReader.readLongSigned(reader));
     }
 
 }

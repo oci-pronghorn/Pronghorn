@@ -143,12 +143,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
                
     }
     
-    @Deprecated
-    private static void readTextRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
-        readASCIIRing(ring,len,target,targetIdx,pos);
-
-    }
-    
     private static void readASCIIRing(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
         byte[] buffer = ring.byteBuffer;
         int mask = ring.byteMask;
@@ -167,13 +161,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
 //        }
     }
 
-    
-    @Deprecated
-    public static boolean eqText(FASTRingBuffer ring, int idx, CharSequence seq) {
-        
-        return eqASCII(ring, idx, seq);
-        
-    }
     
   /**
    * Convert bytes into chars using UTF-8.

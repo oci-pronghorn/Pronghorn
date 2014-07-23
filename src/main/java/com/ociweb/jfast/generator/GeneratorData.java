@@ -25,6 +25,10 @@ public class GeneratorData {
     public int runningComplexity;
     public String lastFieldParaValues;
     public Map<String, AtomicInteger> usages;
+    
+    public final StringBuilder dictionaryBuilderInt;
+    public final StringBuilder dictionaryBuilderLong;
+    
     static final int COMPLEXITY_LIMITY_PER_METHOD = 10;
     static final String END_FIELD_METHOD = "};\n";
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
@@ -59,5 +63,7 @@ public class GeneratorData {
         this.groupMethodBuilder = new StringBuilder();
         this.statsBuilder = new StringBuilder();
         this.fieldMethodCount = 0;
+        this.dictionaryBuilderInt = new StringBuilder();
+        this.dictionaryBuilderLong = new StringBuilder();
     }
 }

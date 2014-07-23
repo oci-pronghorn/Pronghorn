@@ -439,7 +439,7 @@ public abstract class BaseStreamingTest {
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                StaticGlue.nullPMap(writer);  // null for const optional
+                PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
             } else {
                 // default
                 if (dictionary[idx] == 0) { // stored value was null;

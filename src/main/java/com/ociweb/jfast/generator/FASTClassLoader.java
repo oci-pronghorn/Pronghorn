@@ -98,7 +98,7 @@ import com.ociweb.jfast.error.FASTException;
                 }
                 
                 toCompile.add(sourceReaderFileObject);
-        //        toCompile.add(sourceWriterFileObject);//TODO: A, resolve all compile errors
+      //          toCompile.add(sourceWriterFileObject);//TODO: A, resolve all compile errors
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 
                 if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {

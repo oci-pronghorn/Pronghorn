@@ -24,8 +24,8 @@ public abstract class FASTDecoder{
     public final RingBuffers ringBuffers;
     
     //dictionary data
-    protected final long[] rLongDictionary;
-    protected final int[] rIntDictionary;
+    protected final long[] rLongDictionary; //final array with constant references TODO: A, problem they are passed in must be by decoder.*
+    protected final int[] rIntDictionary; //final array with constant references
     protected final LocalHeap byteHeap;
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.

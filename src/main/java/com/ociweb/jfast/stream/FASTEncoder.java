@@ -37,6 +37,8 @@ public abstract class FASTEncoder {
     
     public final LocalHeap byteHeap;
 
+    public int fieldPos=-1;
+    
     protected RingCharSequence ringCharSequence = new RingCharSequence();
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;

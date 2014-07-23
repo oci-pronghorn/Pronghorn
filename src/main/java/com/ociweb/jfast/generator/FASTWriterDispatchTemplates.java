@@ -1260,7 +1260,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteLongUnsignedConstantOptional(long valueOfNull, int target, PrimitiveWriter writer, int rbPos, FASTRingBuffer rbRingBuffer) {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         if (value == valueOfNull) {
-            StaticGlue.nullPMap(writer);  // null for const optional
+            PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
         }
         PrimitiveWriter.writePMapBit((byte) 1, writer);
     }
@@ -1335,7 +1335,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         long value = FASTRingBufferReader.readLong(rbRingBuffer, rbPos);
         
         if (value == valueOfNull) {
-            StaticGlue.nullPMap(writer);  // null for const optional
+            PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
         }
         
         PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -1442,7 +1442,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
     
     public void genWriteNullPMap(PrimitiveWriter writer) {
-        StaticGlue.nullPMap(writer);  // null for const optional
+        PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
     }
 
     public void genWriteNullDefaultLong(int target, PrimitiveWriter writer, long[] dictionary) {

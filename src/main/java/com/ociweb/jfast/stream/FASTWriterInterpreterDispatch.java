@@ -1288,7 +1288,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     ///////////////////////
 
-    public int fieldPos=-1;
+   
     
     public int encode(PrimitiveWriter writer) {
         int stop = activeScriptLimit;

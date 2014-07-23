@@ -227,7 +227,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
 				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
 				
-				int value = StaticGlue.readIntegerSignedCopy(target, source, rIntDictionary, reader);
+				int value = rIntDictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? rIntDictionary[source] :  PrimitiveReader.readIntegerSigned(reader));
 				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
 			}
 			if (pmapSize>0) {

@@ -19,17 +19,19 @@ import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
     
-    public static void generateHead(SourceTemplates templates, byte[] origCatBytes, Appendable target, String name, String base) throws IOException {
+    public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
+
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");
-        target.append(templates.imports()); //imports
+        target.append(generatorData.templates.imports()); //imports
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
         target.append("\n");        
-        target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
+        target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(generatorData.origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
         target.append("public "+name+"() {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
         target.append("\n");
+
     }
 
     public static int complexity(CharSequence seq) {
@@ -51,7 +53,11 @@ public class GeneratorUtils {
         return complexity;
     }
 
-    public static void generateTail(Appendable target) throws IOException {
+    public static void generateTail(GeneratorData generatorData, Appendable target) throws IOException {
+        //dictionary
+        target.append(generatorData.dictionaryBuilderInt);
+        target.append(generatorData.dictionaryBuilderLong);
+        
         target.append('}');
     }
 
@@ -94,7 +100,7 @@ public class GeneratorUtils {
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
-                                    .replace("rbPos","rb.addPos")
+                                    .replace("rbPos","rb.addPos") //TODO: A, only right for reader need to swap out.
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
@@ -238,7 +244,8 @@ public class GeneratorUtils {
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
-        return getSingleGroupMethod(doneScriptsParas, generatorData.caseParaDefs, generatorData.caseParaVals, generatorData.scriptPos, generatorData.groupMethodBuilder, generatorData.caseTail, generatorData.fieldMethodBuilder);
+        return getSingleGroupMethod(doneScriptsParas, generatorData.caseParaDefs, generatorData.caseParaVals, 
+                                    generatorData.scriptPos, generatorData.groupMethodBuilder, generatorData.caseTail, generatorData.fieldMethodBuilder);
     }
 
     static String generateOpenTemplate(GeneratorData generatorData, GeneratorDriving scriptor) {
@@ -341,15 +348,12 @@ public class GeneratorUtils {
         
         String statsName = templateMethodName+"Stats"; 
         
-//        //debug stats gathering
-//        if (!statsNames.contains(statsName)) {
-//            statsNames.add(statsName);
-//            generatorData.statsBuilder.append("Stats "+statsName+" = new Stats(1000000,1200000);\n");
-//        }
-        
-        //target.append("\n");
-        //target.append("Stats stats = new Stats(1000000,1000000,30000000); ");
-        
+        //debug stats gathering
+        if (!statsNames.contains(statsName)) {
+            statsNames.add(statsName);
+            generatorData.statsBuilder.append("Stats "+statsName+" = new Stats(1000000,1200000);\n");
+        }
+       
         
         //template details to add as comments
         int token = scriptor.getActiveToken();
@@ -365,15 +369,46 @@ public class GeneratorUtils {
         long[] data = values;
         int i = data.length;
         while (--i>=0) {
-            String strData; 
+            String hexValue; 
             if (data[i]>Integer.MAX_VALUE || 
                 (data[i]<Integer.MIN_VALUE && (data[i]>>>32)!=0xFFFFFFFF)) {
-                strData = "0x"+Long.toHexString(data[i])+"L";
+                hexValue = Long.toHexString(data[i])+"L";
             } else {
-                strData = "0x"+Integer.toHexString((int)data[i]);
+                hexValue = Integer.toHexString((int)data[i]);
             }
             
-            template = template.replace(paraVals[i],strData+"/*"+paraVals[i]+"="+Long.toString(data[i])+"*/");
+            //TODO: A, replace start and stop dictionary references with constants here?
+            boolean removeArray = false; //still testing this idea not sure it is good. It is not working that well.
+            
+            
+            if (removeArray) {
+                String intDictionaryRef = "rIntDictionary["+paraVals[i]+"]";
+                String intDictionaryReplace = "i"+hexValue;//used as var name;
+                
+                String longDictionaryRef = "rLongDictionary["+paraVals[i]+"]";
+                String longDictionaryReplace = "l"+hexValue;//used as var name;
+                
+                
+                if (template.contains(intDictionaryRef)) {
+                    String varInit = "private static int "+intDictionaryReplace+";\n";                                        
+                    if (generatorData.dictionaryBuilderInt.indexOf(varInit)<0) {
+                        generatorData.dictionaryBuilderInt.append(varInit);
+                    }
+                    template = template.replace(intDictionaryRef, intDictionaryReplace);                    
+                }
+                
+                if (template.contains(longDictionaryRef)) {
+                    String varInit = "private static long "+longDictionaryReplace+";\n";                                        
+                    if (generatorData.dictionaryBuilderLong.indexOf(varInit)<0) {
+                        generatorData.dictionaryBuilderLong.append(varInit);
+                    }
+                    template = template.replace(longDictionaryRef, longDictionaryReplace);                    
+                }                
+                
+            }
+                    
+            
+            template = template.replace(paraVals[i],"0x"+hexValue+"/*"+paraVals[i]+"="+Long.toString(data[i])+"*/");
         }
         
         
