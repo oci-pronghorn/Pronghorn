@@ -962,7 +962,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbPos.value+=2;
             } else {
-                FASTRingBuffer.addValue(rbB, rbMask, rbPos, constConst);
+               FASTRingBuffer.addValue(rbB, rbMask, rbPos, constConst);
                 //Long signed constant
                FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (mantissaConstDefault >>> 32)); 
                FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (mantissaConstDefault & 0xFFFFFFFF));
@@ -1623,14 +1623,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx);
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defLen);
             } else {
-                
+                FASTRingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.addBytePos);                
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(rbRingBuffer.byteBuffer,
                                                                     rbRingBuffer.addBytePos, 
                                                                     rbRingBuffer.byteMask,
                                                                     reader);
-                FASTRingBuffer.addValue(rbB,rbMask,rbPos, rbRingBuffer.addBytePos);
-                rbRingBuffer.addBytePos+=lenTemp;                
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, lenTemp);
+                rbRingBuffer.addBytePos+=lenTemp;                
             }
     }    
 //                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
@@ -1742,16 +1741,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
         
         if (length<0) {
-            //LocalHeap.setNull(target, byteHeap);
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addBytePos);
             FASTRingBuffer.addValue(rbB, rbMask, rbPos, length);
             return;
         }
-        
-        
+                
         PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
-     //   int len = byteHeap.valueLength(target);
-        
         FASTRingBuffer.addLocalHeapValue(target, length, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
     }
 

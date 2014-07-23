@@ -269,19 +269,19 @@ public final class PrimitiveReader {
                     reader.pmapIdxBitBlock -= (1<<16);                
                     return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
             } else {   
-                return needMoreData(reader);               
+                return readPMapBitNextByte(reader);               
             }
     }
     
     //TODO: A, if this is the first 7 bits in the fragment then use this method not the one above
-    public static byte readPMapBitFirstSeven(PrimitiveReader reader) {
-        int shft = reader.pmapIdxBitBlock>>16;
-        reader.pmapIdxBitBlock -= (1<<16);                
+    public static byte readPMapBit(PrimitiveReader reader, int shft) {               
         return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
     }
 
-    private static byte needMoreData(PrimitiveReader reader) {
+    //TODO: A, for the 8th bit call this directly
+    public static byte readPMapBitNextByte(PrimitiveReader reader) {
         if (((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 ) {
+            reader.pmapIdxBitBlock = (6<<16)|0x80;
             return 0;
         } else {
             int tmp = (5<<16)|(0xFF&reader.invPmapStack[++reader.invPmapStackDepth]);

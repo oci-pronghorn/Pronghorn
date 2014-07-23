@@ -61,7 +61,7 @@ public class GeneratorUtils {
         target.append('}');
     }
 
-    static String getSingleGroupMethod(List<String> doneScriptsParas, 
+    static String getSingleFragmentMethod(List<String> doneScriptsParas, 
                                         List<String> caseParaDefs, 
                                         List<String> caseParaVals,
                                         int scriptPos, StringBuilder groupMethodBuilder, String caseTail, StringBuilder fieldMethodBuilder) {
@@ -206,13 +206,14 @@ public class GeneratorUtils {
         return true;
     }
 
-    public static void beginSingleGroupMethod(int scriptPos, int templateId, GeneratorData generatorData) {
+    public static void beginSingleFragmentMethod(int scriptPos, int templateId, GeneratorData generatorData) {
         generatorData.fieldMethodBuilder.setLength(0);
         generatorData.groupMethodBuilder.setLength(0);
         generatorData.caseParaDefs.clear();
         generatorData.caseParaVals.clear();
         generatorData.scriptPos = scriptPos;
         generatorData.templateId = templateId;
+        generatorData.pmapBit = 6;
         
         //each field method will start with the templateId for easy debugging later.
         generatorData.fieldPrefix = Integer.toString(templateId);
@@ -235,8 +236,8 @@ public class GeneratorUtils {
         
     }
 
-    public static String buildSingleGroupMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData) {
-        beginSingleGroupMethod(fragmentStart,i-1, generatorData);
+    public static String buildSingleFragmentMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData) {
+        beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         scriptor.setActiveScriptLimit(limit); 
         try {
@@ -244,7 +245,7 @@ public class GeneratorUtils {
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
-        return getSingleGroupMethod(doneScriptsParas, generatorData.caseParaDefs, generatorData.caseParaVals, 
+        return getSingleFragmentMethod(doneScriptsParas, generatorData.caseParaDefs, generatorData.caseParaVals, 
                                     generatorData.scriptPos, generatorData.groupMethodBuilder, generatorData.caseTail, generatorData.fieldMethodBuilder);
     }
 
@@ -279,7 +280,7 @@ public class GeneratorUtils {
         
     
         return "\n"+signatureLine.toString()+
-                generatorData.statsBuilder.toString()+
+               // generatorData.statsBuilder.toString()+
                 generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
         
     }
@@ -307,7 +308,7 @@ public class GeneratorUtils {
             
             String block;
             
-            block = buildSingleGroupMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
+            block = buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
             
             builder.append("\n");
             builder.append(block);
@@ -318,7 +319,7 @@ public class GeneratorUtils {
                 if (!doneScripts.contains(seqStart)) {
                     doneScripts.add(seqStart);
                     
-                    block = buildSingleGroupMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
+                    block = buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
                     
                     builder.append("\n");
                     builder.append(block);
@@ -365,6 +366,8 @@ public class GeneratorUtils {
         //replace variables with constants
         String template = generatorData.templates.template(methodNameKey);
         
+        template = removeConditionalsFromPMapReading(generatorData, templateMethodName, template);
+                
     
         long[] data = values;
         int i = data.length;
@@ -485,6 +488,35 @@ public class GeneratorUtils {
                 generatorData.lastFieldParaValues = curFieldParaValues;
             }
         }
+    }
+
+    private static String removeConditionalsFromPMapReading(GeneratorData generatorData, String templateMethodName,
+            String template) {
+        //Must disable this if we ever see an optional decimal. TODO: X, this could allow a few optional cases with more thought.
+        if (templateMethodName.contains("OptionalMantissa") && !templateMethodName.contains("OptionalMantissaDelta")) {
+            //TODO: B, need to do this adjust reader.pmapIdxBitBlock -= (1<<16);     before returning to old method!
+            
+            
+            generatorData.pmapBit = Integer.MIN_VALUE;//used as disable flag
+            //Optimization was ok up to this point, after here it will use the slower safe method.
+            
+            
+        }
+        
+        //optimizes the pmap reading logic by removing the extra shift counter and 
+        //replacing it with constants
+        if (Integer.MIN_VALUE!=generatorData.pmapBit && template.contains("PrimitiveReader.readPMapBit(reader)")) {
+            int mapTmp;
+            if ((mapTmp = generatorData.pmapBit--)<0) {
+                //next up
+                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "PrimitiveReader.readPMapBitNextByte(reader)");               
+                generatorData.pmapBit=5;
+            } else {
+                //normal bit
+                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "PrimitiveReader.readPMapBit(reader,"+mapTmp+")");   
+            }  
+        }
+        return template;
     }
 
 }
