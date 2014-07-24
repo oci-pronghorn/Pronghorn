@@ -828,7 +828,7 @@ public class ReaderWriterPrimitiveTest {
 		int trunkTestLimit = stringData.length;//Much faster with larger strings.
 		System.gc();
 		
-		char[] target = new char[ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*3];
+		byte[] target = new byte[ReaderWriterPrimitiveTest.VERY_LONG_STRING_MASK*3];
 		int cycles = testCycles;
 		while (--cycles>=0) {
 			baost.reset();

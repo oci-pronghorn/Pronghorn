@@ -5,6 +5,7 @@ import java.util.Arrays;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.stream.FASTDecoder;
 
 public class FieldReferenceOffsetManager {
 
@@ -103,7 +104,13 @@ public class FieldReferenceOffsetManager {
             int token = config.scriptTokens[i];
             
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
-            fragDataSize[fragmentStartIdx]+=TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            
+            int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            if (!FASTDecoder.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
+                fSize = 0; //constants are not written
+            }
+            
+            fragDataSize[fragmentStartIdx] += fSize;
             fragScriptSize[fragmentStartIdx]++;
             
 

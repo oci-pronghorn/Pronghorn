@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
@@ -198,7 +199,11 @@ public class TemplateLoaderTest {
                         }
 
                         // find the next index after this token.
-                        bufferIdx += TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+                        int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+                        if (!FASTDecoder.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
+                            fSize = 0; //constants are not written
+                        }
+                        bufferIdx += fSize;
 
                     }
                     totalBytesOut.addAndGet(4 * bufferIdx);

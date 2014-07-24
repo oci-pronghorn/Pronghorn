@@ -69,7 +69,7 @@ public class StaticGlue {
 
         int len;
         do {
-            len = PrimitiveReader.readTextASCII2(LocalHeap.rawAccess(byteHeap), targIndex, nextLimit, reader);
+            len = PrimitiveReader.readTextASCII(LocalHeap.rawAccess(byteHeap), targIndex, nextLimit, reader);
             if (len < 0) {
                 targIndex -= len;
                 byteHeap.makeSpaceForAppend(offset, 2); // also space for last
@@ -177,8 +177,7 @@ public class StaticGlue {
     public static void readLongSignedDeltaOptional(int idx, int source, long[] rLongDictionary, int[] rbB, int rbMask,
             PaddedLong rbPos, long value) {
         long tmpLng = rLongDictionary[idx] = (rLongDictionary[source] + (value > 0 ? value - 1 : value));
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng >>> 32)); 
-        FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng & 0xFFFFFFFF));
+        FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng >>> 32), (int) (tmpLng & 0xFFFFFFFF));
     }
 
 

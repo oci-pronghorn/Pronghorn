@@ -9,6 +9,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 
 public abstract class FASTEncoder { 
+    
     public int templateStackHead = 0;
     protected final int[] templateStack;
 
@@ -37,7 +38,7 @@ public abstract class FASTEncoder {
     
     public final LocalHeap byteHeap;
 
-    public int fieldPos=-1;
+    public int fieldPos = -1;
     
     protected RingCharSequence ringCharSequence = new RingCharSequence();
     protected static final int INIT_VALUE_MASK = 0x80000000;

@@ -47,7 +47,7 @@ public final class PrimitiveReader {
     private int position; 
     private int limit;
     
-    private int pmapIdxBitBlock = -1; //idx high in pmap data
+    public int pmapIdxBitBlock = -1; //idx high in pmap data
     
     
     private static InputBlockagePolicy blockagePolicy = new InputBlockagePolicy(){ //   blockagePolicy
@@ -273,12 +273,8 @@ public final class PrimitiveReader {
             }
     }
     
-    //TODO: A, if this is the first 7 bits in the fragment then use this method not the one above
-    public static byte readPMapBit(PrimitiveReader reader, int shft) {               
-        return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
-    }
 
-    //TODO: A, for the 8th bit call this directly
+    //needed for code generation to eliminate conditional to detect end of 7 bits
     public static byte readPMapBitNextByte(PrimitiveReader reader) {
         if (((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 ) {
             reader.pmapIdxBitBlock = (6<<16)|0x80;
@@ -421,6 +417,8 @@ public final class PrimitiveReader {
         }
     }
 
+    //TODO: C, add overflow flag to support optional int that is outside 32 bits. Without this we dont quite match the spec.
+    
     //recursive use of the stack turns out to be a good way to unroll this loop.
     private static int readIntegerUnsignedTail(int a, PrimitiveReader reader) {
         byte v = reader.buffer[reader.position++];
@@ -499,30 +497,44 @@ public final class PrimitiveReader {
     public static final int readTextASCIIIntoRing(byte[] target, int targetOffset, int mask, PrimitiveReader reader) {
 
         if (reader.limit - reader.position > mask) {
-            int p = reader.position;
-            byte[] buffer = reader.buffer;
-            byte v = buffer[p];
-
-            if (0 == v) {
-                v = buffer[p + 1];
-                if (0x80 != (v & 0xFF)) {
-                    throw new UnsupportedOperationException();
-                }
-                // nothing to change in the target
-                reader.position += 2;
-                return 0; // zero length string
+            byte v = reader.buffer[reader.position];
+            if (v<0) {//single char
+                target[mask&targetOffset] = (byte) (0x7F & v);            
+                reader.position++;
+                return 1;
             } else {
-                int idx = targetOffset;
-                while (v >= 0) {
-                    target[mask&idx++] = (byte) (buffer[p++]);
-                    v= buffer[p];
-                }
-                target[mask&idx++] = (byte) (0x7F & v);
-                reader.position = p+1;
-                return idx - targetOffset;// length of string
+                return (v==0) ? readTextASCIIZero(reader) : readTextASCIINormal(target, targetOffset, mask, reader, v);
             }
         }        
         return readTextASCIIIntoRingSlow(target, targetOffset, mask, reader);
+    }
+
+
+    private static int readTextASCIINormal(byte[] target, int targetOffset, int mask, PrimitiveReader reader, byte v) {
+        int p = reader.position;
+        byte[] buffer = reader.buffer;
+        int idx = targetOffset;
+        while (v >= 0) {
+            target[mask&idx++] = (byte) (buffer[p++]);
+            v= buffer[p];
+        }
+        target[mask&idx++] = (byte) (0x7F & v);
+               // System.err.println(p-reader.position);
+        reader.position = p+1;
+        return idx - targetOffset;// length of string
+    }
+
+    private static int readTextASCIIZero(PrimitiveReader reader) {
+        int p = reader.position;
+        byte[] buffer = reader.buffer;
+        byte v;
+        v = buffer[p + 1];
+        if (0x80 != (v & 0xFF)) {
+            throw new UnsupportedOperationException();
+        }
+        // nothing to change in the target
+        reader.position += 2;
+        return 0; // zero length string
     }
 
     private static int readTextASCIIIntoRingSlow(byte[] target, int targetOffset, int mask, PrimitiveReader reader) {
@@ -556,48 +568,7 @@ public final class PrimitiveReader {
         }
     }
     
-    public static final int readTextASCII(char[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
-
-        // TODO: C, speed up textASCII, by add fast copy by fetch of limit, then
-        // return error when limit is reached? Do not call fetch on limit we do
-        // not know that we need them.
-
-        if (reader.limit - reader.position < 2) {
-            fetch(2, reader);
-        }
-
-        byte v = reader.buffer[reader.position];
-
-        if (0 == v) {
-            v = reader.buffer[reader.position + 1];
-            if (0x80 != (v & 0xFF)) {
-                throw new UnsupportedOperationException();
-            }
-            // nothing to change in the target
-            reader.position += 2;
-            return 0; // zero length string
-        } else {
-            int countDown = targetLimit - targetOffset;
-            // must use count because the base of position will be in motion.
-            // however the position can not be incremented or fetch may drop
-            // data.
-            int idx = targetOffset;
-            while (reader.buffer[reader.position] >= 0 && --countDown >= 0) {
-                target[idx++] = (char) (reader.buffer[reader.position++]);
-                if (reader.position >= reader.limit) {
-                    fetch(1, reader); // CAUTION: may change value of position
-                }
-            }
-            if (--countDown >= 0) {
-                target[idx++] = (char) (0x7F & reader.buffer[reader.position++]);
-                return idx - targetOffset;// length of string
-            } else {
-                return targetOffset - idx;// neg length of string if hit max
-            }
-        }
-    }
-
-    public static final int readTextASCII2(byte[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
+    public static final int readTextASCII(byte[] target, int targetOffset, int targetLimit, PrimitiveReader reader) {
 
         int countDown = targetLimit - targetOffset;
         if (reader.limit - reader.position >= countDown) {

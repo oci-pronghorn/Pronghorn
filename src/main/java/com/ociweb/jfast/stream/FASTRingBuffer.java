@@ -314,12 +314,13 @@ public final class FASTRingBuffer {
     //so this is not the real bottleneck and given the compression ratio of the test data
     //we can push 1gbs more of compressed data for each 10% of cpu freed up.
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value) {
-        
-        long p = headCache.value; //TODO: code gen may want to replace this
-        buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
-        headCache.value = p+1;
-        
+        buffer[rbMask & (int)headCache.value++] = value;
     } 
+    
+    //long p = headCache.value; //TODO: code gen may want to replace this
+    // buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
+    //  headCache.value = p+1;
+    
     
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2) {
         

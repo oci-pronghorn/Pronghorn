@@ -495,12 +495,11 @@ public class GeneratorUtils {
         //Must disable this if we ever see an optional decimal. TODO: X, this could allow a few optional cases with more thought.
         if (templateMethodName.contains("OptionalMantissa") && !templateMethodName.contains("OptionalMantissaDelta")) {
             //TODO: B, need to do this adjust reader.pmapIdxBitBlock -= (1<<16);     before returning to old method!
-            
+            //TODO: B, dont detect this here do it early when we start the script for this fragment.
             
             generatorData.pmapBit = Integer.MIN_VALUE;//used as disable flag
             //Optimization was ok up to this point, after here it will use the slower safe method.
-            
-            
+                        
         }
         
         //optimizes the pmap reading logic by removing the extra shift counter and 
@@ -513,7 +512,8 @@ public class GeneratorUtils {
                 generatorData.pmapBit=5;
             } else {
                 //normal bit
-                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "PrimitiveReader.readPMapBit(reader,"+mapTmp+")");   
+                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "((1<<"+mapTmp+") & reader.pmapIdxBitBlock)");
+                          
             }  
         }
         return template;

@@ -11,7 +11,9 @@ public abstract class FASTDecoder{
     
     //active state, TODO: C, minimize or remove these.
     
-
+   //does not appear to make big difference. probably not worth it because the write of decimals is now more complex, if not easily solved discard.
+    public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
+    
     private final int[] templateStartIdx; //These constants can be remvoed
     private final int[] templateLimitIdx;//These constants can be remvoed
     
