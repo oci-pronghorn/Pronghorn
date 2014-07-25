@@ -457,6 +457,7 @@ public abstract class BaseStreamingTest {
      * Write null value, must only be used if the field id is one of optional
      * type.
      */
+    @Deprecated //each write does its  own null now.
     public static void write(int token, PrimitiveWriter writer, FASTWriterInterpreterDispatch fw) {
     
         // only optional field types can use this method.

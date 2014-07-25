@@ -50,17 +50,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongSignedOptional(valueOfNull, target,  writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedOptional(valueOfNull, target,  rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    genWriteLongSignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedDeltaOptional(valueOfNull, target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-                genWriteLongSignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
+                genWriteLongSignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -72,10 +72,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopyOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedCopyOptional(target, source, valueOfNull, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongSignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // default              
@@ -83,7 +83,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];                
                 
-                genWriteLongSignedDefaultOptional(valueOfNull, target, constDefault, writer, rbPos, rbRingBuffer, longValues);
+                genWriteLongSignedDefaultOptional(target, rbPos, valueOfNull, constDefault, writer, rbRingBuffer, longValues);
             }
         }
     }
@@ -113,14 +113,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongSignedNone(idx, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedNone(idx, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDelta(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedDelta(target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // constant
@@ -138,17 +138,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopy(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedCopy(target, source, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongSignedIncrement(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongSignedIncrement(target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongSignedDefault(constDefault, writer, rbPos, rbRingBuffer);
+                genWriteLongSignedDefault(constDefault, rbPos, writer, rbRingBuffer);
             }
         }
     }
@@ -165,19 +165,19 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongUnsignedNoneOptional(valueOfNull, target, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedNoneOptional(valueOfNull, target, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
 
-                    genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // constant
                 assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
 
-                genWriteLongUnsignedConstantOptional(valueOfNull, target, writer, rbPos, rbRingBuffer);
+                genWriteLongUnsignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -189,10 +189,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopyOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedCopyOptional(valueOfNull, target, source, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // default               
@@ -200,7 +200,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefaultOptional(valueOfNull, target, constDefault, writer, rbPos, rbRingBuffer, longValues);
+                genWriteLongUnsignedDefaultOptional(valueOfNull, target, constDefault, rbPos, writer, rbRingBuffer, longValues);
             }
         }
     }
@@ -215,14 +215,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongUnsignedNone(idx, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedNone(idx, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongUnsignedDelta(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedDelta(target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // constant
@@ -240,17 +240,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopy(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedCopy(target, source, rbPos, writer, longValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrement(target, source, writer, longValues, rbPos, rbRingBuffer);
+                    genWriteLongUnsignedIncrement(target, source, rbPos, writer, longValues, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = longValues[idx];
                 
-                genWriteLongUnsignedDefault(constDefault, writer, rbPos, rbRingBuffer);
+                genWriteLongUnsignedDefault(constDefault, rbPos, writer, rbRingBuffer);
             }
         }
     }
@@ -266,14 +266,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(idx, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedNone(idx, rbPos, writer, intValues, rbRingBuffer);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                     
-                    genWriteIntegerSignedDelta(target, source, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedDelta(target, source, rbPos, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // constant
@@ -291,17 +291,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopy(target, source, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedCopy(target, source, rbPos, writer, intValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrement(target, source, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedIncrement(target, source, rbPos, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerSignedDefault(constDefault, writer, rbPos, rbRingBuffer);
+                genWriteIntegerSignedDefault(constDefault, rbPos, writer, rbRingBuffer);
             }
         }
     }
@@ -362,14 +362,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerSignedNoneOptional(target, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedNoneOptional(target, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 } else {
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDeltaOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedDeltaOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // constant
-                genWriteIntegerSignedConstantOptional(valueOfNull, writer, rbPos, rbRingBuffer);
+                genWriteIntegerSignedConstantOptional(valueOfNull, rbPos, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -381,10 +381,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopyOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedCopyOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrementOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // default
@@ -392,7 +392,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int constDefault = intValues[idx];
 
 
-                genWriteIntegerSignedDefaultOptional(source, constDefault, valueOfNull, writer, rbPos, rbRingBuffer, intValues);
+                genWriteIntegerSignedDefaultOptional(source, rbPos, constDefault, valueOfNull, writer, rbRingBuffer, intValues);
             }
         }
     }
@@ -405,16 +405,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, writer, rbPos, rbRingBuffer, intValues);
+                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, rbPos, writer, rbRingBuffer, intValues);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDeltaOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerUnsignedDeltaOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // constant
-                genWriteIntegerUnsignedConstantOptional(valueOfNull, writer, rbPos, rbRingBuffer);
+                genWriteIntegerUnsignedConstantOptional(rbPos, valueOfNull, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
 
@@ -426,17 +426,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopyOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerUnsignedCopyOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrementOptional(target, source, valueOfNull, writer, intValues, rbPos, rbRingBuffer);
+                    genWriteIntegerUnsignedIncrementOptional(target, source, rbPos, valueOfNull, writer, intValues, rbRingBuffer);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
 
-                genWriteIntegerUnsignedDefaultOptional(source, valueOfNull, constDefault, writer, rbPos, rbRingBuffer, intValues);
+                genWriteIntegerUnsignedDefaultOptional(source, rbPos, valueOfNull, constDefault, writer, rbRingBuffer, intValues);
             }
         }
     }
@@ -451,21 +451,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNoneOptional(idx, writer, rbPos, rbRingBuffer, byteHeap);
+                    genWriteBytesNoneOptional(idx, rbPos, writer, rbRingBuffer, byteHeap);
                 } else {
                     // tail
-                    genWriteBytesTailOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesTailOptional(idx, rbPos, writer, byteHeap, rbRingBuffer);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    genWriteBytesConstantOptional(writer, rbPos, rbRingBuffer);
+                    genWriteBytesConstantOptional(rbPos, writer, rbRingBuffer);
                 } else {
                     // delta
                     int idx = token & instanceBytesMask;
                     
-                    genWriteBytesDeltaOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesDeltaOptional(idx, rbPos, writer, byteHeap, rbRingBuffer);
                 }
             }
         } else {
@@ -475,12 +475,12 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy
                 int idx = token & instanceBytesMask;
                 
-                genWriteBytesCopyOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                genWriteBytesCopyOptional(idx, rbPos, writer, byteHeap, rbRingBuffer);
             } else {
                 // default
                 int idx = token & instanceBytesMask;
                 idx = idx|INIT_VALUE_MASK;
-                genWriteBytesDefaultOptional(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                genWriteBytesDefaultOptional(idx, rbPos, writer, byteHeap, rbRingBuffer);
             }
         }
     }
@@ -495,11 +495,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteBytesNone(writer, rbPos, rbRingBuffer);
+                    genWriteBytesNone(rbPos, writer, rbRingBuffer);
                 } else {
                     // tail
                     int idx = token & instanceBytesMask;
-                    genWriteBytesTail(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesTail(idx, rbPos, writer, byteHeap, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -509,7 +509,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 } else {
                     // delta
                     int idx = token & instanceBytesMask;
-                    genWriteBytesDelta(idx, writer, byteHeap, rbPos, rbRingBuffer);
+                    genWriteBytesDelta(idx, rbPos, writer, byteHeap, rbRingBuffer);
                 }
             }
         } else {
@@ -517,10 +517,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteBytesCopy(token & instanceBytesMask, byteHeap, writer, rbPos, rbRingBuffer);
+                genWriteBytesCopy(token & instanceBytesMask, rbPos, byteHeap, writer, rbRingBuffer);
             } else {
                 // default
-                genWriteBytesDefault(token & instanceBytesMask, byteHeap, writer, rbPos, rbRingBuffer);
+                genWriteBytesDefault(token & instanceBytesMask, rbPos, byteHeap, writer, rbRingBuffer);
             }
         }
     }
@@ -540,14 +540,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_None)) : "Found "
                             + TokenBuilder.tokenToString(token);
                     
-                    genWriteTextNoneOptional(writer, fieldPos, rbRingBuffer);
+                    genWriteTextNoneOptional(fieldPos, writer, rbRingBuffer);
 
                 } else {
                     // tail
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Tail)) : "Found "
                             + TokenBuilder.tokenToString(token);
                     
-                    genWriteTextTailOptional(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                    genWriteTextTailOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -555,13 +555,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // constant
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) : "Found "
                             + TokenBuilder.tokenToString(token);
-                    genWriteTextConstantOptional(writer, fieldPos, rbRingBuffer);
+                    genWriteTextConstantOptional(fieldPos, writer, rbRingBuffer);
                 } else {
                     // delta
                     assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Delta)) : "Found "
                             + TokenBuilder.tokenToString(token);
                     
-                    genWriteTextDeltaOptional(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                    genWriteTextDeltaOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
 
                 }
             }
@@ -573,14 +573,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "
                         + TokenBuilder.tokenToString(token);
                 
-                genWriteTextCopyOptional(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                genWriteTextCopyOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
 
             } else {
                 // default
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "
                         + TokenBuilder.tokenToString(token);
                 
-                genWriteTextDefaultOptional(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                genWriteTextDefaultOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
 
             }
         }
@@ -599,10 +599,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteTextNone(writer, fieldPos, rbRingBuffer);
+                    genWriteTextNone(fieldPos, writer, rbRingBuffer);
                 } else {
                     // tail                    
-                    genWriteTextTail(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                    genWriteTextTail(idx, fieldPos, writer, byteHeap, rbRingBuffer);
                 }
             } else {
                 // constant delta
@@ -611,7 +611,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     
                 } else {
                     // delta
-                    genWriteTextDelta(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                    genWriteTextDelta(idx, fieldPos, writer, byteHeap, rbRingBuffer);
                 }
             }
         } else {
@@ -619,10 +619,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                genWriteTextCopy(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                genWriteTextCopy(idx, fieldPos, writer, byteHeap, rbRingBuffer);
             } else {
                 // default
-                genWriteTextDefault(idx, writer, byteHeap, fieldPos, rbRingBuffer);
+                genWriteTextDefault(idx, fieldPos, writer, byteHeap, rbRingBuffer);
             }
         }
 

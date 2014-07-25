@@ -129,7 +129,11 @@ public class GeneratorUtils {
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
         builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.addPos);\n");
-        builder.append("    return ringBufferIdx;\n"); 
+        if (isReader) {
+            builder.append("    return ringBufferIdx;\n"); 
+        } else {
+            builder.append("    return activeScriptCursor;\n");
+        }
         builder.append("}\n");
     
     }
@@ -339,8 +343,7 @@ public class GeneratorUtils {
             generatorData.usages.get(templateMethodName).incrementAndGet();
         } else {
             generatorData.usages.put(templateMethodName,new AtomicInteger(1));
-        }
-        
+        }        
         
         String methodNameKey = " "+templateMethodName+'('; ///must include beginning and end to ensure match
         String[] paraVals = generatorData.templates.params(methodNameKey);
