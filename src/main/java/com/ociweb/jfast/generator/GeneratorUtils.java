@@ -383,8 +383,7 @@ public class GeneratorUtils {
                 hexValue = Integer.toHexString((int)data[i]);
             }
             
-            //TODO: A, replace start and stop dictionary references with constants here?
-            boolean removeArray = false; //still testing this idea not sure it is good. It is not working that well.
+            boolean removeArray = true; //TODO: A, still testing this idea seems to make a large difference now.
             
             
             if (removeArray) {

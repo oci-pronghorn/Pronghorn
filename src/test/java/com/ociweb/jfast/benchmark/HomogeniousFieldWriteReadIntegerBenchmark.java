@@ -199,7 +199,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
                     value++;
                 }
                 
-                writer.writeIntegerSignedCopyOptional(value, idx, idx, wIntDictionary, writer);
+                PrimitiveWriter.writeIntegerSignedCopy(value,idx,idx,wIntDictionary,writer);
 			}
 			
 			if (pmapSize>0) {
@@ -313,8 +313,18 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			int j = intTestData.length;
 			while (--j>=0) {						
 				int idx = token & wIntInstanceMask;
+                int value = intTestData[j];
 				
-				writer.writeIntegerSignedDeltaOptional(intTestData[j],idx, idx, wIntDictionary, writer);
+				int last = wIntDictionary[idx];
+                if (value > 0 == last > 0) { // optimization using int when possible instead of long
+                    int dif = value - last;
+                    wIntDictionary[idx] = value;
+                    PrimitiveWriter.writeIntegerSigned(dif >= 0 ? 1 + dif : dif, writer);
+                } else {
+                    long dif = value - (long) last;
+                    wIntDictionary[idx] = value;
+                    PrimitiveWriter.writeLongSigned(dif >= 0 ? 1 + dif : dif, writer);
+                }
 			}
 			
 			if (pmapSize>0) {

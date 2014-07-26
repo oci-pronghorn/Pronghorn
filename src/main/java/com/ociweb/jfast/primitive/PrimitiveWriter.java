@@ -968,21 +968,6 @@ public final class PrimitiveWriter {
         writer.buffer[writer.limit++] = (byte) 0x80;
     }
 
-    public static void writeTextASCII(char[] value, int offset, int length, PrimitiveWriter writer) {
-
-        if (0 == length) {
-            encodeZeroLengthASCII(writer);
-            return;
-        } else if (writer.limit > writer.buffer.length - length) {
-            // if it was not zero and was too long flush
-            writer.output.flush();
-        }
-        while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value[offset++];
-        }
-        writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
-    }
-    
     public static void writeTextASCII(byte[] value, int offset, int length, PrimitiveWriter writer) {
 
         if (0 == length) {
@@ -1036,16 +1021,6 @@ public final class PrimitiveWriter {
         }
     }
 
-    public static final void writeIntegerUnsignedCopyOptional(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-
-        if (++value == dictionary[source]) {// not null and matches
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(dictionary[target] = value, writer);
-        }
-    }
-
     public static final void writeIntegerUnsignedDefault(int value, int constDefault, PrimitiveWriter writer) {
 
         if (value == constDefault) {
@@ -1056,62 +1031,8 @@ public final class PrimitiveWriter {
         }
     }
 
-    public static final void writeIntegerUnsignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-
-        if (++value == constDefault) {// not null and matches
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(value, writer);
-        }
-    }
-
-    public static final void writeIntegerUnsignedIncrement(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-
-        int incVal;
-        if (value == (incVal = dictionary[source] + 1)) {
-            dictionary[target] = incVal;
-            writePMapBit((byte) 0, writer);
-        } else {
-            dictionary[target] = value;
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(value, writer);
-        }
-    }
-
-    public static final void writeIntegerUnsignedIncrementOptional(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-
-        if (0 != dictionary[source] && value == (dictionary[target] = dictionary[source] + 1)) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            int tmp = dictionary[target] = 1 + value;
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(tmp, writer);
-        }
-    }
-
-    public static void writeIntegerUnsignedDelta(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        writeLongSigned(value - (long) dictionary[source], writer);
-        dictionary[target] = value;
-    }
-
-    public static void writeIntegerUnsignedDeltaOptional(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        long delta = value - (long) dictionary[source];
-        writeLongSigned(delta >= 0 ? 1 + delta : delta, writer);
-        dictionary[target] = value;
-    }
-
     public static void writeIntegerSignedCopy(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
         if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedCopyOptional(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        if (value == dictionary[source]) {// not null and matches
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
@@ -1129,71 +1050,9 @@ public final class PrimitiveWriter {
         }
     }
 
-    public static void writeIntegerSignedDefaultOptional(int value, int constDefault, PrimitiveWriter writer) {
-        if (value == constDefault) {// matches
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedIncrement(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-
-        dictionary[target] = value;
-        if (value == (dictionary[source] + 1)) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedIncrementOptional(int value, int last, PrimitiveWriter writer) {
-        if (0 != last && value == 1 + last) {// not null and matches
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedDelta(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        int last = dictionary[source];
-        if (value > 0 == last > 0) {
-            writeIntegerSigned(value - last, writer);
-            dictionary[target] = value;
-        } else {
-            writeLongSigned(value - (long) last, writer);
-            dictionary[target] = value;
-        }
-    }
-
-    public static void writeIntegerSignedDeltaOptional(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        int last = dictionary[source];
-        if (value > 0 == last > 0) {
-            int dif = value - last;
-            dictionary[target] = value;
-            writeIntegerSigned(dif >= 0 ? 1 + dif : dif, writer);
-        } else {
-            long dif = value - (long) last;
-            dictionary[target] = value;
-            writeLongSigned(dif >= 0 ? 1 + dif : dif, writer);
-        }
-    }
-
     public static void writeLongUnsignedCopy(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
 
         if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static void writeLongUnsignedCopyOptional(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
-        if (value == dictionary[source]) {// not null and matches
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
@@ -1210,37 +1069,6 @@ public final class PrimitiveWriter {
         }
     }
 
-    public static void writneLongUnsignedDefaultOptional(long value, long constDefault, PrimitiveWriter writer) {
-        // room for zero
-        if (++value == constDefault) {// not null and matches
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(value, writer);
-        }
-    }
-
-    public static void writeLongUnsignedIncrement(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
-        long incVal = dictionary[source] + 1;
-        if (value == incVal) {
-            dictionary[target] = incVal;
-            writePMapBit((byte) 0, writer);
-        } else {
-            dictionary[target] = value;
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(value, writer);
-        }
-    }
-
-    public static void writeLongUnsignedIncrementOptional(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
-        if (0 != dictionary[source] && value == (dictionary[target] = dictionary[source] + 1)) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(dictionary[target] = 1 + value, writer);
-        }
-    }
-
     public static void writeLongSignedCopy(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
         if (value == dictionary[source]) {
             writePMapBit((byte) 0, writer);
@@ -1252,24 +1080,6 @@ public final class PrimitiveWriter {
 
     public static void writeLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
         if (value == constDefault) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongSigned(value, writer);
-        }
-    }
-
-    public static void writeLongSignedIncrement(long value, long last, PrimitiveWriter writer) {
-        if (value == (1 + last)) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongSigned(value, writer);
-        }
-    }
-
-    public static void writeLongSignedIncrementOptional(long value, long last, PrimitiveWriter writer) {
-        if (0 != last && value == (1 + last)) {// not null and matches
             writePMapBit((byte) 0, writer);
         } else {
             writePMapBit((byte) 1, writer);
