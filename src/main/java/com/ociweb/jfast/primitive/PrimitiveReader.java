@@ -498,8 +498,8 @@ public final class PrimitiveReader {
 
         if (reader.limit - reader.position > mask) {
             byte v = reader.buffer[reader.position];
-            if (v<0) {//single char
-                target[mask&targetOffset] = (byte) (0x7F & v);            
+            if (v < 0) {//single char
+                target[mask & targetOffset] = (byte) (0x7F & v);            
                 reader.position++;
                 return 1;
             } else {

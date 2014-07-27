@@ -23,9 +23,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     public final long[] rLongInit;
 
     public final int MAX_INT_INSTANCE_MASK; 
-    public final int byteInstanceMask; 
+    public final int MAX_BYTE_INSTANCE_MASK; 
     public final int MAX_LONG_INSTANCE_MASK;
-    public final int MAX_TEXT_INSTANCE_MASK;
     
     public final int nonTemplatePMapSize;
     public final int maxTemplatePMapSize;
@@ -60,8 +59,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         this.dictionaryMembers = catalog.dictionaryResetMembers();
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
         this.MAX_LONG_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
-        this.MAX_TEXT_INSTANCE_MASK = (null==byteHeap)?TokenBuilder.MAX_INSTANCE:Math.min(TokenBuilder.MAX_INSTANCE, (LocalHeap.itemCount(byteHeap)-1));
-        this.byteInstanceMask = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     LocalHeap.itemCount(byteHeap) - 1);
+        this.MAX_BYTE_INSTANCE_MASK = null == byteHeap ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,     LocalHeap.itemCount(byteHeap) - 1);
         
         this.fullScript = catalog.fullScript();        
         
@@ -146,8 +144,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // 01???
                     if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                         if (readFromIdx>=0) {
-                            int source = token & MAX_TEXT_INSTANCE_MASK;
-                            int target = readFromIdx & MAX_TEXT_INSTANCE_MASK;
+                            int source = token & MAX_BYTE_INSTANCE_MASK;
+                            int target = readFromIdx & MAX_BYTE_INSTANCE_MASK;
                             genReadCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
                             readFromIdx = -1; //reset for next field where it might be used.
                         }
@@ -159,8 +157,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                             decodeDecimal(reader, token, fullScript[++activeScriptCursor],rbRingBuffer); //pull second token);
                         } else {
                             if (readFromIdx>=0) {
-                                int source = token & MAX_TEXT_INSTANCE_MASK;
-                                int target = readFromIdx & MAX_TEXT_INSTANCE_MASK;
+                                int source = token & MAX_BYTE_INSTANCE_MASK;
+                                int target = readFromIdx & MAX_BYTE_INSTANCE_MASK;
                                 genReadCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
                                 readFromIdx = -1; //reset for next field where it might be used.
                             }
@@ -1247,7 +1245,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         int value = FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-2, ringBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
-        return value<0? value : token & MAX_TEXT_INSTANCE_MASK;
+        return value<0? value : token & MAX_BYTE_INSTANCE_MASK;
     }
 
     private void readByteArray(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
@@ -1259,28 +1257,28 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none tail
                 if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int idx = token & byteInstanceMask;
+                    int idx = token & MAX_BYTE_INSTANCE_MASK;
                     genReadBytesNone(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
                 } else {
                     // tail
-                    int idx = token & byteInstanceMask;
+                    int idx = token & MAX_BYTE_INSTANCE_MASK;
                     genReadBytesTail(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
                 }
             } else {
                 // constant delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // constant
-                    int id =  token & byteInstanceMask;
+                    int id =  token & MAX_BYTE_INSTANCE_MASK;
                     int idLength = LocalHeap.length(id,byteHeap);
                     genReadBytesConstant(id, idLength, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos);
                 } else {
                     // delta
-                    int idx = token & byteInstanceMask;
+                    int idx = token & MAX_BYTE_INSTANCE_MASK;
                     genReadBytesDelta(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.addPos, reader, rbRingBuffer);
                 }
             }
         } else {
-            int idx = token & byteInstanceMask;
+            int idx = token & MAX_BYTE_INSTANCE_MASK;
             // copy default
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
@@ -1302,7 +1300,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     private void readByteArrayOptional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
-            int idx = token & byteInstanceMask;
+            int idx = token & MAX_BYTE_INSTANCE_MASK;
             // none constant delta tail
             if (0 == (token & (6 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
@@ -1336,11 +1334,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {// compiler does
                                                                 // all the work.
                 // copy
-                int idx = token & byteInstanceMask;
+                int idx = token & MAX_BYTE_INSTANCE_MASK;
                 genReadBytesCopy(idx, 1, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
             } else {
                 // default
-                int constValue =    token & byteInstanceMask;
+                int constValue =    token & MAX_BYTE_INSTANCE_MASK;
                 int initId = LocalHeap.INIT_VALUE_MASK | constValue;
                 
                 int constValueLen = LocalHeap.length(initId,byteHeap);
@@ -1383,7 +1381,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
 
     public void readTextUTF8Optional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int idx = token & MAX_TEXT_INSTANCE_MASK;
+        int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1434,7 +1432,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     public void readTextASCII(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int idx = token & MAX_TEXT_INSTANCE_MASK;
+        int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1477,7 +1475,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     public void readTextUTF8(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int idx = token & MAX_TEXT_INSTANCE_MASK;
+        int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1525,7 +1523,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     public void readTextASCIIOptional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        int idx = token & MAX_TEXT_INSTANCE_MASK;
+        int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & ((4 | 2 | 1) << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {
                 // none
@@ -1539,11 +1537,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     genReadASCIIDeltaOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.addPos, rbRingBuffer);
                 } else {
-                    int constId = (token & MAX_TEXT_INSTANCE_MASK) | LocalHeap.INIT_VALUE_MASK;
+                    int constId = (token & MAX_BYTE_INSTANCE_MASK) | LocalHeap.INIT_VALUE_MASK;
                     int constInit = LocalHeap.initStartOffset(constId, byteHeap)| LocalHeap.INIT_VALUE_MASK;
                     
                     //TODO: B, redo text to avoid copy and have usage counter in text heap and, not sure we know which array to read from.
-                    int constValue = token & MAX_TEXT_INSTANCE_MASK; 
+                    int constValue = token & MAX_BYTE_INSTANCE_MASK; 
                     genReadTextConstantOptional(constInit, constValue, LocalHeap.initLength(constId, byteHeap), LocalHeap.initLength(constValue, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.addPos);
                 }
             } else {

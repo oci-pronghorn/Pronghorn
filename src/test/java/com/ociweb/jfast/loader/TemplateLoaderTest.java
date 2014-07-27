@@ -36,6 +36,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
+import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -133,7 +134,7 @@ public class TemplateLoaderTest {
         
         FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
 
-        int warmup = 64;
+        int warmup = 256;
         int count = 1024;
         final int[] fullScript = catalog.getScriptTokens();
         
@@ -368,9 +369,10 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-        FASTWriterInterpreterDispatch writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+        FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+//        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, catalog, queue, writerDispatch);
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
 
         System.gc();
         
@@ -385,8 +387,11 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
             msgs.set(0);
             grps = 0;
+            DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
-            writerDispatch.reset();
+            dictionaryFactory.reset(writerDispatch.intValues);
+            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.byteHeap);
             while (FASTInputReactor.pump(reactor)>=0) {
    
                     FASTRingBuffer.moveNext(queue);
@@ -431,7 +436,10 @@ public class TemplateLoaderTest {
         iter = count;
         while (--iter >= 0) {
 
-            writerDispatch.reset();
+            DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
+            dictionaryFactory.reset(writerDispatch.intValues);
+            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.byteHeap);
             double start = System.nanoTime();
             
             while (FASTInputReactor.pump(reactor)>=0) {  

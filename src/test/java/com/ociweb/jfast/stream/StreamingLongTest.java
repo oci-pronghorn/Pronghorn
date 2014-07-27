@@ -153,9 +153,9 @@ public class StreamingLongTest extends BaseStreamingTest {
             } else {
                 // optional
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    fw.acceptLongUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbPos, rbRingBufferLocal, writer);
+                    fw.acceptLongUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos, rbRingBufferLocal, writer);
                 } else {
-                    fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, value, rbPos, rbRingBufferLocal, writer);
+                    fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos, rbRingBufferLocal, writer);
                 }
             }
         }

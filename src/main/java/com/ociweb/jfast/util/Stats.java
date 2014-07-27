@@ -158,8 +158,8 @@ public class Stats {
                 + "99.9%["+valueAtPercent(.999)+"] "
                 + "99.99%["+valueAtPercent(.9999)+"] "
                         + " avg:"+avg+" "
-                + "Min:"+minValue+"@"+minValueIdx+" "
-                + "Max:"+maxValue+"@"+maxValueIdx+" ";
+                + "Min:"+minValue+" @ "+minValueIdx+" "
+                + "Max:"+maxValue+" @ "+maxValueIdx+" ";
     }
     
     

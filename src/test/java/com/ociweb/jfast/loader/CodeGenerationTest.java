@@ -153,7 +153,7 @@ public class CodeGenerationTest {
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedDispatchReader(catBytes);
+            readerDispatch2 = DispatchLoader.loadGeneratedDispatch(catBytes, FASTClassLoader.READER);
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());

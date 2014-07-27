@@ -375,7 +375,9 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			writer.reset(writer); //clear any values found in writer
-			staticWriter.reset(); //reset message to clear out old values;
+			dictionaryFactory.reset(staticWriter.intValues);
+            dictionaryFactory.reset(staticWriter.longValues);
+            dictionaryFactory.reset(staticWriter.byteHeap); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter
@@ -501,7 +503,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
         int value = FASTRingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.addPos.value-2, rbRingBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
-        return value<0? value : token & decoder.MAX_TEXT_INSTANCE_MASK;
+        return value<0? value : token & decoder.MAX_BYTE_INSTANCE_MASK;
     }
     
     

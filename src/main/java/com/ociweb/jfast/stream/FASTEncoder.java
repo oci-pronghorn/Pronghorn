@@ -28,7 +28,7 @@ public abstract class FASTEncoder {
 
     protected int readFromIdx = -1;
 
-    protected final DictionaryFactory dictionaryFactory;
+    public final DictionaryFactory dictionaryFactory;
     protected final int[][] dictionaryMembers;
 
     protected DispatchObserver observer;
@@ -49,19 +49,19 @@ public abstract class FASTEncoder {
     public FASTEncoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers());
+             catalog.fullScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers(), catalog.clientConfig().getPreableBytes());
     }
     
     public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers);
+             catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers, catalog.clientConfig().getPreableBytes());
     }
     
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
                                 int[][] dictionaryMembers, int[] fullScript, 
-                                int maxNestedGroupDepth, RingBuffers ringBuffers) {
+                                int maxNestedGroupDepth, RingBuffers ringBuffers, int preambleBytes) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;
@@ -89,7 +89,10 @@ public abstract class FASTEncoder {
         this.templateStack = new int[maxTemplates];
         this.dictionaryMembers = dictionaryMembers;
         this.ringBuffers = ringBuffers;
+        this.preambleData = new byte[preambleBytes];
     }
+    
+    protected final byte[] preambleData;
 
     public void setDispatchObserver(DispatchObserver observer) {
         this.observer = observer;
@@ -98,7 +101,7 @@ public abstract class FASTEncoder {
 
     protected static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
         
-        if (writer.output instanceof FASTOutputByteArrayEquals) {
+        if (null!=writer && writer.output instanceof FASTOutputByteArrayEquals) {
             FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;
             testingOutput.recordPosition(writer.limit,activeScriptCursor);
         }
@@ -106,7 +109,7 @@ public abstract class FASTEncoder {
         return true;
     }
     
-    public abstract int encode(PrimitiveWriter writer);
+    public abstract int encode(PrimitiveWriter writer, FASTRingBuffer ringBuffer);
     
     // must happen just before Group so the Group in question must always have
     // an outer group.
@@ -125,5 +128,18 @@ public abstract class FASTEncoder {
 
         //dispatch.templateStack[dispatch.templateStackHead++] = top;
     }
+    
+    public void setActiveScriptCursor(int cursor) {
+       activeScriptCursor = cursor;
+    }
+    
+    public int getActiveScriptCursor() {
+        return activeScriptCursor;
+    }
+
+    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this?
+        activeScriptLimit = limit;
+    }
+    
     
 }

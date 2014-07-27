@@ -121,7 +121,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
                             
                             fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
-                            fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, testMantConst, rbPos+1, rbRingBufferLocal, writer);
+                            fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
                         }
                     }
                 } else {
@@ -156,7 +156,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                                 
                                 BaseStreamingTest.writeNullLong(token, idx, writer, fw.longValues);
                             } else {
-                                fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, mantissa, rbPos+1, rbRingBufferLocal, writer);
+                                fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
                             }
                         }
                     }

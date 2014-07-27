@@ -314,7 +314,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			PrimitiveWriter.reset(writer); //clear any values found in writer
-			staticWriter.reset(); //reset message to clear out old values;
+			dictionaryFactory.reset(staticWriter.intValues);
+            dictionaryFactory.reset(staticWriter.longValues);
+            dictionaryFactory.reset(staticWriter.byteHeap); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////
 			//This is an example of how to use the staticWriter

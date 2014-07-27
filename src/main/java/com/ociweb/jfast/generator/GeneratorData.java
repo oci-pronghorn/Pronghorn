@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ociweb.jfast.primitive.PrimitiveReader;
+
 public class GeneratorData {
     public SourceTemplates templates;
     public StringBuilder fieldMethodBuilder;
@@ -26,11 +28,13 @@ public class GeneratorData {
     public String lastFieldParaValues;
     public Map<String, AtomicInteger> usages;
     
+    public final String dispatchType;
+    
     public final StringBuilder dictionaryBuilderInt;
     public final StringBuilder dictionaryBuilderLong;
     public int pmapBit;
     
-    static final int COMPLEXITY_LIMITY_PER_METHOD = 22;//18 25;
+    static final int COMPLEXITY_LIMITY_PER_METHOD = 500;//10050;//22;//18 25;
     static final String END_FIELD_METHOD = "};\n";
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     static final String FRAGMENT_METHOD_NAME = "fragment";
@@ -60,6 +64,8 @@ public class GeneratorData {
         this.lastFieldParaValues = lastFieldParaValues;
         this.usages = usages;
         this.templates = new SourceTemplates(clazz);
+        boolean isReader = FASTReaderDispatchTemplates.class==clazz;
+        this.dispatchType = isReader ? "FASTReaderGeneratedDispatch" : "FASTWriterGeneratedDispatch";
         this.fieldMethodBuilder = new StringBuilder();
         this.groupMethodBuilder = new StringBuilder();
         this.statsBuilder = new StringBuilder();

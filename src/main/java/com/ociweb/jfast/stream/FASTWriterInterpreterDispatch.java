@@ -3,18 +3,12 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import java.nio.ByteBuffer;
-
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.StaticGlue;
-import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 //May drop interface if this causes a performance problem from virtual table 
@@ -24,6 +18,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
+    
+    public FASTWriterInterpreterDispatch(byte[] catBytes) {
+        this(new TemplateCatalogConfig(catBytes));
+    }    
     
     public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog) {
         super(catalog, catalog.ringBuffers());
@@ -40,7 +38,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     
 
-    public void acceptLongSignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+    public void acceptLongSignedOptional(int token, long valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         
         int target = (token & longInstanceMask);
         
@@ -59,7 +57,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 }
             } else {
                 // constant
-                assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
                 genWriteLongSignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
@@ -155,7 +152,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
 
-    void acceptLongUnsignedOptional(int token, long valueOfNull, long value, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+    void acceptLongUnsignedOptional(int token, long valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
 
         int target = token & longInstanceMask;
         
@@ -175,8 +172,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 }
             } else {
                 // constant
-                assert (longValues[token & longInstanceMask] == value) : "Only the constant value from the template may be sent";
-
                 genWriteLongUnsignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
                 // the writeNull will take care of the rest.
             }
@@ -639,8 +634,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
 
     }
-
-
     
     
     public void closeGroup(int token, PrimitiveWriter writer) {
@@ -657,22 +650,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         PrimitiveWriter.flush(writer);
     }
 
-    public void reset() {
-
-        dictionaryFactory.reset(intValues);
-        dictionaryFactory.reset(longValues);
-        dictionaryFactory.reset(byteHeap);
-        dictionaryFactory.reset(byteHeap);
-        
-    }
-
-    
-    
-    private boolean dispatchWriteByToken(PrimitiveWriter writer) {
+    private boolean dispatchWriteByToken(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
 
         int token = fullScript[activeScriptCursor];
-
-        FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
+       
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
 
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
@@ -703,7 +684,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     }
                     fieldPos+=1;
                 } else {
-                    long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
                     assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                     
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
@@ -720,9 +700,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         // optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptLongUnsignedOptional(token, valueOfNull, value, fieldPos, rbRingBuffer, writer);
+                            acceptLongUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                         } else {
-                            acceptLongSignedOptional(token, valueOfNull, value, fieldPos, rbRingBuffer, writer);
+                            acceptLongSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                         }
 
                     }
@@ -776,10 +756,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         
                         int expoToken = token;
                         
-                        ///int exponent = FASTRingBufferReader.readInt(ringBuffers[activeScriptCursor], fieldPos);
-                        long mantissa = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos + 1);
-
-                        
                         //at runtime if the value is null for the exponent must not
                         //write the mantissa to the stream.
                         
@@ -794,7 +770,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         } else {
                             //exponent is optional so the mantissa may or may not be written.
-                            acceptOptionalDecimal(fieldPos, writer, expoToken, mantissa, fieldPos, rbRingBuffer);
+                            acceptOptionalDecimal(fieldPos, writer, expoToken, fieldPos, rbRingBuffer);
                         }
                                                 
                         fieldPos+=3;
@@ -939,7 +915,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, long mantissa, int rbPos, FASTRingBuffer rbRingBuffer) {
+    private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, int rbPos, FASTRingBuffer rbRingBuffer) {
         //TODO: must call specific gen method.
         
         int mantissaToken = fullScript[1+activeScriptCursor];
@@ -1242,34 +1218,44 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
     }
 
-    public void writePreamble(byte[] preambleData, PrimitiveWriter writer) {
-        genWritePreamble(preambleData, writer);
-    }
-
-    @Override
-    public int getActiveScriptCursor() {
-        return activeScriptCursor;
-    }
-
-    @Override
-    public void setActiveScriptCursor(int cursor) {
-       activeScriptCursor = cursor;
-    }
-
-    @Override
-    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this?
-        activeScriptLimit = limit;
-    }
-
     @Override
     public void runBeginMessage() {    
-      //TODO: A, is this needed for encode?  callBeginMessage(null);
+      callBeginMessage(null,null);
     }
+    
+    public void callBeginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
+        beginMessage(writer, ringBuffer);
+    }
+    
+    private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
+        if (preambleData.length != 0) {
 
+            int i = 0;
+            int s = preambleData.length;
+            while (i < s) {
+                
+                //TODO: A, must be inside a gen method to get captured, this conditional is a hack.
+                //must keep preamble in member
+                
+                int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, fieldPos);
+                preambleData[i++] = (byte) (0xFF & (d >>> 0));
+                preambleData[i++] = (byte) (0xFF & (d >>> 8));
+                preambleData[i++] = (byte) (0xFF & (d >>> 16));
+                preambleData[i++] = (byte) (0xFF & (d >>> 24));
+                fieldPos++;
+            }
+            genWritePreamble(preambleData, writer); ///TODO: A, must be in generator so gen method is integrated
+        };
+
+        // template processing (can these be nested?)
+      //  int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
+        fieldPos++;  
+    }
+    
     @Override
     public void runFromCursor() {
         fieldPos = 0;
-        encode(null);
+        encode(null,null);
     }
 
     @Override
@@ -1289,11 +1275,25 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     ///////////////////////
 
    
-    
-    public int encode(PrimitiveWriter writer) {
-        int stop = activeScriptLimit;
+    @Override
+    public int encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+        
+        fieldPos = 0;
+        
+        //TODO: how will this be set for generated code?
+        if (null!=rbRingBuffer) {
+            //cursor and limit already set
+            setActiveScriptCursor(rbRingBuffer.cursor);        
+            setActiveScriptLimit(rbRingBuffer.cursor + rbRingBuffer.fragmentSteps());
+        }
+        
+        if (null!=rbRingBuffer && rbRingBuffer.isNewMessage) {                
+            callBeginMessage(writer, rbRingBuffer);
+        }
+        
+        int stop = activeScriptLimit; 
         while (activeScriptCursor<stop) { 
-            dispatchWriteByToken(writer);
+            dispatchWriteByToken(writer,rbRingBuffer);
             activeScriptCursor++; 
         }
         return activeScriptCursor;

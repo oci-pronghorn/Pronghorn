@@ -57,7 +57,10 @@ import com.ociweb.jfast.error.FASTException;
             }
             
             //if class is found and matches use it.
-            File classFile = targetFile(SIMPLE_READER_NAME, "class");
+            String className = READER.equals(name) ? SIMPLE_READER_NAME : SIMPLE_WRITER_NAME;
+            
+            
+            File classFile = targetFile(className, "class");
             if (!forceCompile && classFile.exists()) {
                 Supervisor.log("Reading class from: "+classFile);
                 

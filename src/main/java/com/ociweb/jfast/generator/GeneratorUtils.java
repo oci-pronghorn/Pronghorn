@@ -19,6 +19,9 @@ import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
     
+    final static boolean removeArray = true; //TODO: A, still testing this idea seems to make a large difference now.
+    final static boolean addComments = false;
+    
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
 
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
@@ -100,7 +103,7 @@ public class GeneratorUtils {
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
-                                    .replace("rbPos","rb.addPos") //TODO: A, only right for reader need to swap out.
+                                    .replace("rbPos","rb.addPos") 
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
@@ -109,10 +112,11 @@ public class GeneratorUtils {
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-        builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+") {\n");
+      
         
         //if this is the beginning of a new template we use this special logic to pull the template id
         if (isReader) {
+            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+") {\n");
             builder.append("    if (activeScriptCursor<0) {\n");
             builder.append("        if (PrimitiveReader.isEOF("+primVarName+")) { \n");
             builder.append("            return -1;\n");
@@ -120,6 +124,7 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
+            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n");
             //TODO: A, need custom write method here.
             
         }
@@ -157,15 +162,29 @@ public class GeneratorUtils {
     }
 
     public static void generateParameters(String[] params, String[] defs, StringBuilder fieldParaValues,
-            StringBuilder fieldParaDefs, int x) {
+            StringBuilder fieldParaDefs, int x, String dispatchType) {
         /////////////
         ///generate params to be passed in to the method
         ///generate the param definitions in signature of each method
         ///these are the left over params from the gen method after removing values
         ///////////////
         while (x<params.length) {
-            fieldParaValues.append(params[x]).append(',');
-            fieldParaDefs.append(defs[x]).append(',');
+            if (!removeArray | 
+                    (!params[x].equals("dispatch")  && 
+                     !params[x].equals("rIntDictionary")  && 
+                     !params[x].equals("rLongDictionary"))   ) {
+                
+                fieldParaValues.append(params[x]).append(',');
+                fieldParaDefs.append(defs[x]).append(',');
+                
+                
+            } else {
+                if (fieldParaValues.indexOf("dispatch,")<0) {
+                    fieldParaValues.append("dispatch,");
+                    fieldParaDefs.append(dispatchType+" dispatch,");
+                }
+            }
+            
             x++;
         }
         if (fieldParaValues.length()>0) {
@@ -352,6 +371,8 @@ public class GeneratorUtils {
         
         String statsName = templateMethodName+"Stats"; 
         
+        
+        
         //debug stats gathering
         if (!statsNames.contains(statsName)) {
             statsNames.add(statsName);
@@ -383,7 +404,7 @@ public class GeneratorUtils {
                 hexValue = Integer.toHexString((int)data[i]);
             }
             
-            boolean removeArray = true; //TODO: A, still testing this idea seems to make a large difference now.
+            
             
             
             if (removeArray) {
@@ -395,38 +416,57 @@ public class GeneratorUtils {
                 
                 
                 if (template.contains(intDictionaryRef)) {
-                    String varInit = "private static int "+intDictionaryReplace+";\n";                                        
+                    String varInit = "private int "+intDictionaryReplace+";\n";                                        
                     if (generatorData.dictionaryBuilderInt.indexOf(varInit)<0) {
                         generatorData.dictionaryBuilderInt.append(varInit);
                     }
-                    template = template.replace(intDictionaryRef, intDictionaryReplace);                    
+                    template = template.replace(intDictionaryRef, "dispatch."+intDictionaryReplace);                    
                 }
                 
                 if (template.contains(longDictionaryRef)) {
-                    String varInit = "private static long "+longDictionaryReplace+";\n";                                        
+                    String varInit = "private long "+longDictionaryReplace+";\n";                                        
                     if (generatorData.dictionaryBuilderLong.indexOf(varInit)<0) {
                         generatorData.dictionaryBuilderLong.append(varInit);
                     }
-                    template = template.replace(longDictionaryRef, longDictionaryReplace);                    
+                    template = template.replace(longDictionaryRef, "dispatch."+longDictionaryReplace);                    
                 }                
                 
             }
                     
             
-            template = template.replace(paraVals[i],"0x"+hexValue+"/*"+paraVals[i]+"="+Long.toString(data[i])+"*/");
+            template = template.replace(paraVals[i],"0x"+hexValue  
+                       +   (addComments ? ("/*"+paraVals[i]+"="+Long.toString(data[i])+"*/") : "")
+                       );
         }
+        
         
         
         StringBuilder fieldParaValues = new StringBuilder();
         StringBuilder fieldParaDefs = new StringBuilder();
-        generateParameters(paraVals, paraDefs, fieldParaValues, fieldParaDefs, data.length);
+        generateParameters(paraVals, paraDefs, fieldParaValues, fieldParaDefs, data.length, generatorData.dispatchType);
         
         //accumulate new paras for case method.
         i = data.length;
         while (i<paraVals.length) {
             if (!generatorData.caseParaDefs.contains(paraDefs[i])) {
-                generatorData.caseParaDefs.add(paraDefs[i]);
-                generatorData.caseParaVals.add(paraVals[i]);
+                
+               // System.err.println("paraDef "+paraDefs[i]);
+               // System.err.println("paraVals "+paraVals[i]);
+                
+                
+                if (!removeArray | 
+                        (!paraVals[i].equals("dispatch")  && 
+                         !paraVals[i].equals("rIntDictionary")  && 
+                         !paraVals[i].equals("rLongDictionary"))   ) {
+                
+                    generatorData.caseParaDefs.add(paraDefs[i]);
+                    generatorData.caseParaVals.add(paraVals[i]);
+                } else {
+                    if (!generatorData.caseParaVals.contains("dispatch")) {
+                        generatorData.caseParaDefs.add(generatorData.dispatchType+" dispatch");
+                        generatorData.caseParaVals.add("dispatch");
+                    }
+                }
             }
             i++;
         }
@@ -437,7 +477,10 @@ public class GeneratorUtils {
         if (methodNameKey.contains("Length")) {
             generatorData.fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");;
             //insert field operator content into method
-            generatorData.fieldMethodBuilder.append(comment).append(template);
+            if (addComments) {
+                generatorData.fieldMethodBuilder.append(comment);
+            }
+            generatorData.fieldMethodBuilder.append(template);
             //close field method
             generatorData.fieldMethodBuilder.append(GeneratorData.END_FIELD_METHOD);
             //add call to this method from the group method  
@@ -465,7 +508,11 @@ public class GeneratorUtils {
                 generatorData.fieldMethodBuilder.setLength(generatorData.fieldMethodBuilder.length()-GeneratorData.END_FIELD_METHOD.length());
                                 
                 //insert field operator content into method
-                generatorData.fieldMethodBuilder.append(comment).append(template);
+                if (addComments) {
+                    generatorData.fieldMethodBuilder.append(comment);
+                }                
+                generatorData.fieldMethodBuilder.append(template);
+                
                 //close field method
                 generatorData.fieldMethodBuilder.append(GeneratorData.END_FIELD_METHOD);
                 
@@ -479,7 +526,10 @@ public class GeneratorUtils {
                 generatorData.fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
           
                 //insert field operator content into method
-                generatorData.fieldMethodBuilder.append(comment).append(template);
+                if (addComments) {
+                    generatorData.fieldMethodBuilder.append(comment);
+                }
+                generatorData.fieldMethodBuilder.append(template);
                 //close field method
                 generatorData.fieldMethodBuilder.append(GeneratorData.END_FIELD_METHOD);
                 
