@@ -1229,7 +1229,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
         if (preambleData.length != 0) {
-
+            
             int i = 0;
             int s = preambleData.length;
             while (i < s) {
@@ -1244,11 +1244,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 preambleData[i++] = (byte) (0xFF & (d >>> 24));
                 fieldPos++;
             }
-            genWritePreamble(preambleData, writer); ///TODO: A, must be in generator so gen method is integrated
+            
+            genWritePreamble(preambleData, writer, ringBuffer); ///TODO: A, must be in generator so gen method is integrated
+            
         };
 
         // template processing (can these be nested?)
       //  int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
+        
         fieldPos++;  
     }
     

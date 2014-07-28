@@ -21,11 +21,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
+import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -159,12 +161,11 @@ public class TemplateLoaderTest {
             reactor = new FASTInputReactor(readerDispatch,reader);
             FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
-         //   FASTRingBuffer.dump(rb);//common starting spot??
-            
-            
+
             while (FASTInputReactor.pump(reactor)>=0) {
                 FASTRingBuffer.moveNext(rb);
-             //   System.err.println(templateId);
+
+                frags++;
                 if (rb.isNewMessage) {
                     int templateId = rb.messageId;
                     
@@ -201,7 +202,7 @@ public class TemplateLoaderTest {
 
                         // find the next index after this token.
                         int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-                        if (!FASTDecoder.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
+                        if (!GeneratorUtils.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
                             fSize = 0; //constants are not written
                         }
                         bufferIdx += fSize;
@@ -225,9 +226,9 @@ public class TemplateLoaderTest {
             
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
-            
-            
+            readerDispatch.sequenceCountStackHead = -1;            
+            RingBuffers.reset(readerDispatch.ringBuffers);
+                        
   //          System.err.println(reactor.stats.toString()+" ns");
             
         }
@@ -249,28 +250,33 @@ public class TemplateLoaderTest {
             FASTRingBuffer rb = null; 
             rb =  RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
+            double duration = 0;
             
-            double start = System.nanoTime();
-
-            //Preload the ringBuffer with a few pumps to ensure we
-            //are not testing against an always empty buffer.
-            int few = 4;
-            while (--few>=0) {
-                FASTInputReactor.pump(reactor);
-            }               
-            while (FASTInputReactor.pump(reactor)>=0) { //72-88
-             //   FASTRingBuffer.dump(rb);
-                //int tmp = Profile.version.get();
-                FASTRingBuffer.moveNext(rb); //11
-                //Profile.count += (Profile.version.get()-tmp);
+            try{
+                double start = System.nanoTime();
+    
+                //Preload the ringBuffer with a few pumps to ensure we
+                //are not testing against an always empty buffer.
+                int few = 4;
+                while (--few>=0) {
+                    FASTInputReactor.pump(reactor);
+                }               
+                while (FASTInputReactor.pump(reactor)>=0) { //72-88
+                 //   FASTRingBuffer.dump(rb);
+                    //int tmp = Profile.version.get();
+                    FASTRingBuffer.moveNext(rb); //11
+                    //Profile.count += (Profile.version.get()-tmp);
+                }
+                //the buffer has extra records in it so we must clean them out here.
+                while (FASTRingBuffer.contentRemaining(rb)>0) {
+                    FASTRingBuffer.moveNext(rb); 
+                }
+                
+                duration = System.nanoTime() - start;
+            } catch (Throwable ie) {
+               ie.printStackTrace();
+               System.exit(0);
             }
-            //the buffer has extra records in it so we must clean them out here.
-            while (FASTRingBuffer.contentRemaining(rb)>0) {
-                FASTRingBuffer.moveNext(rb); 
-            }
-            
-            double duration = System.nanoTime() - start;
-            
             if (iter<count) {
                 stats.sample((long)duration);
                 

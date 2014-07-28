@@ -308,13 +308,8 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
                     
                     staticWriter.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
 
-                    if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
-                        int idx = token & staticWriter.longInstanceMask;
-
-                        BaseStreamingTest.writeNullLong(token, idx, writer, staticWriter.longValues);
-                    } else {
-                        staticWriter.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
-                    }
+                    staticWriter.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
+                   
                 }
             }
             staticWriter.closeGroup(groupToken | (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER), writer);

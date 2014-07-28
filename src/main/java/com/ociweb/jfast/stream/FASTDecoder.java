@@ -9,10 +9,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTDecoder{
     
-    //active state, TODO: C, minimize or remove these.
-    
-   //does not appear to make big difference. probably not worth it because the write of decimals is now more complex, if not easily solved discard.
-    public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
+    //active state, TODO: C, minimize or remove these. 
     
     //all constants always skipped.
     //decimals as well??
@@ -78,8 +75,10 @@ public abstract class FASTDecoder{
     public void reset(DictionaryFactory dictionaryFactory) {
                 
         // clear all previous values to un-set
-        dictionaryFactory.reset(rIntDictionary);
-        dictionaryFactory.reset(rLongDictionary);
+        dictionaryFactory.reset(rIntDictionary); //TODO: A, need generator for this
+        dictionaryFactory.reset(rLongDictionary); //TODO: A, need generator fo this
+                
+        
         if (null!=byteHeap) {
             LocalHeap.reset(byteHeap);
         }

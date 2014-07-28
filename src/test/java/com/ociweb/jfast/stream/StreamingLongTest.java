@@ -107,13 +107,13 @@ public class StreamingLongTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&0xF)==0) && TokenBuilder.isOptional(token)) {
-						BaseStreamingTest.write(token, writer, fw);//nothing
+						writeLong(fw, token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, writer);
 					} else {
 						writeLong(fw, token, testConst, writer); 
 					}
 				} else {
 					if (sendNulls && ((f&0xF)==0) && TokenBuilder.isOptional(token)) {
-						BaseStreamingTest.write(token, writer, fw);
+						writeLong(fw, token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, writer);
 					} else {
 					    writeLong(fw, token, testData[f], writer); 
 					}
@@ -150,6 +150,8 @@ public class StreamingLongTest extends BaseStreamingTest {
         } else {
             if (value == TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG) {
                 BaseStreamingTest.write(token, writer, fw);
+                //writeLong(fw, token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, writer);
+                
             } else {
                 // optional
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -175,7 +177,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 			throw new UnsupportedOperationException("must allow operations to have 3 data points but only had "+operationIters);
 		}
 			
-		long none = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+		final long none = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
 		
 		int i = operationIters;
 		int g = fieldsPerGroup;

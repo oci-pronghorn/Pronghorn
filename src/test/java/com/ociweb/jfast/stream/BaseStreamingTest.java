@@ -399,6 +399,7 @@ public abstract class BaseStreamingTest {
         
     }
 
+    @Deprecated
     public static void writeNullText(int token, int idx, PrimitiveWriter writer, LocalHeap byteHeap, FASTWriterInterpreterDispatch disp) {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -418,40 +419,6 @@ public abstract class BaseStreamingTest {
             }
         }
     }
-
-    public static void writeNullLong(int token, int idx, PrimitiveWriter writer, long[] dictionary) {
-        if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                // None and Delta (both do not use pmap)
-                dictionary[idx] = 0;
-                PrimitiveWriter.writeNull(writer);  
-                // no pmap, yes change to last value
-            } else {
-                // Copy and Increment
-                if (0 == dictionary[idx]) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    dictionary[idx] = 0;
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    PrimitiveWriter.writeNull(writer);
-                } // yes pmap, yes change to last value
-            }
-        } else {
-            if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
-                assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
-            } else {
-                // default
-                if (dictionary[idx] == 0) { // stored value was null;
-                    PrimitiveWriter.writePMapBit((byte) 0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte) 1, writer);
-                    PrimitiveWriter.writeNull(writer);
-                } 
-            }
-        }
-    }
-
 
     /**
      * Write null value, must only be used if the field id is one of optional
@@ -488,8 +455,38 @@ public abstract class BaseStreamingTest {
             } else {
                 // long
                 int idx = token & fw.longInstanceMask;
+                long[] dictionary = fw.longValues;
                 
-                BaseStreamingTest.writeNullLong(token, idx, writer, fw.longValues);
+                if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                        // None and Delta (both do not use pmap)
+                        dictionary[idx] = 0;
+                        PrimitiveWriter.writeNull(writer);  
+                        // no pmap, yes change to last value
+                    } else {
+                        // Copy and Increment
+                        if (0 == dictionary[idx]) { // stored value was null;
+                            PrimitiveWriter.writePMapBit((byte) 0, writer);
+                        } else {
+                            dictionary[idx] = 0;
+                            PrimitiveWriter.writePMapBit((byte) 1, writer);
+                            PrimitiveWriter.writeNull(writer);
+                        } // yes pmap, yes change to last value
+                    }
+                } else {
+                    if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                        assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                        PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
+                    } else {
+                        // default
+                        if (dictionary[idx] == 0) { // stored value was null;
+                            PrimitiveWriter.writePMapBit((byte) 0, writer);
+                        } else {
+                            PrimitiveWriter.writePMapBit((byte) 1, writer);
+                            PrimitiveWriter.writeNull(writer);
+                        } 
+                    }
+                }
             }
         } else {
             // text decimal bytes
@@ -497,6 +494,7 @@ public abstract class BaseStreamingTest {
                 // text
                 int idx = token & fw.TEXT_INSTANCE_MASK;
                 
+               // fw.acceptByteArray(token, writer, fw.byteHeap, rbPos, rbRingBuffer);
                 BaseStreamingTest.writeNullText(token, idx, writer, fw.byteHeap, fw);
             } else {
                 // decimal bytes
@@ -510,7 +508,8 @@ public abstract class BaseStreamingTest {
                     FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
                     FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
                     int rbPos = 0;
-                                        // hack until all the classes no longer need this method.
+                 
+                    // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                         fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
                     } else {
@@ -518,8 +517,38 @@ public abstract class BaseStreamingTest {
                     } 
     
                     int idx1 = token & fw.longInstanceMask;
+                    long[] dictionary = fw.longValues;
                     
-                    BaseStreamingTest.writeNullLong(token, idx1, writer, fw.longValues);
+                    if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                            // None and Delta (both do not use pmap)
+                            dictionary[idx1] = 0;
+                            PrimitiveWriter.writeNull(writer);  
+                            // no pmap, yes change to last value
+                        } else {
+                            // Copy and Increment
+                            if (0 == dictionary[idx1]) { // stored value was null;
+                                PrimitiveWriter.writePMapBit((byte) 0, writer);
+                            } else {
+                                dictionary[idx1] = 0;
+                                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                                PrimitiveWriter.writeNull(writer);
+                            } // yes pmap, yes change to last value
+                        }
+                    } else {
+                        if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
+                            assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
+                            PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
+                        } else {
+                            // default
+                            if (dictionary[idx1] == 0) { // stored value was null;
+                                PrimitiveWriter.writePMapBit((byte) 0, writer);
+                            } else {
+                                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                                PrimitiveWriter.writeNull(writer);
+                            } 
+                        }
+                    }
                 } else {
                     // byte
                     BaseStreamingTest.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask, fw);

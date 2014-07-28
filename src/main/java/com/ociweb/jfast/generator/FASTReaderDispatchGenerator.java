@@ -155,6 +155,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     protected void genReadIntegerUnsignedIncrementOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,target, source, constAbsent);
     }
+    
+    @Override
+    protected void genReadIntegerUnsignedIncrementOptionalTS(int targsrc, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,targsrc, constAbsent);
+    }
 
     @Override
     protected void genReadIntegerUnsignedCopyOptional(int target, int source, int constAbsent, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
@@ -187,12 +192,17 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
+    protected void genReadIntegerUnsignedIncrementTS(int targsrc, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, targsrc);
+    }
+    
+    @Override
     protected void genReadIntegerUnsignedCopy(int target, int source, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, target, source);
     }
     
     @Override
-    protected void genReadIntegerUnsignedCopyUnWatched(int target, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+    protected void genReadIntegerUnsignedCopyTS(int target, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, target);
     }
     
@@ -359,6 +369,11 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
+    protected void genReadLongSignedDeltaTS(int targsrc, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, targsrc);
+    }
+        
+    @Override
     protected void genReadLongSignedNone(int target, long[] rLongDictionary, int[] is, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, target);
     }
@@ -441,7 +456,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
+    protected void genReadASCIIDefault(int idx, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,idx, defIdx, defLen);
     }
     

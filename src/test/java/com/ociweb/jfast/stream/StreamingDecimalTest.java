@@ -97,9 +97,13 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                 int token = tokenLookup[f];
 
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
+                    long testValue;
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
+                        testValue=TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
+                        testValue = testMantConst;
+                        
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -108,8 +112,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         FASTRingBuffer.dump(rbRingBufferLocal);
                        
                         FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,testExpConst);
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testMantConst >>> 32));
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testMantConst & 0xFFFFFFFF)); 
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testValue >>> 32));
+                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.addPos,(int) (testValue & 0xFFFFFFFF)); 
                         FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
                         int rbPos = 0;
 
@@ -151,13 +155,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             
                             fw.acceptIntegerSignedOptional(token, valueOfNull, rbPos, rbRingBufferLocal, writer);
 
-                            if (TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG == mantissa) {
-                                int idx = token & fw.longInstanceMask;
-                                
-                                BaseStreamingTest.writeNullLong(token, idx, writer, fw.longValues);
-                            } else {
-                                fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
-                            }
+                            fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
+                          
                         }
                     }
                 }

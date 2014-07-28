@@ -34,7 +34,6 @@ public class GeneratorData {
     public final StringBuilder dictionaryBuilderLong;
     public int pmapBit;
     
-    static final int COMPLEXITY_LIMITY_PER_METHOD = 500;//10050;//22;//18 25;
     static final String END_FIELD_METHOD = "};\n";
     //A fragment is the smallest unit that can be passed to the caller. It is never larger than a group but may often be the same size as one.
     static final String FRAGMENT_METHOD_NAME = "fragment";

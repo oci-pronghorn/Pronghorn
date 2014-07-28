@@ -128,14 +128,13 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 					
 					//special test with constant value.
 					if (sendNulls && ((i&MASK)==0) && TokenBuilder.isOptional(token)) {
-						BaseStreamingTest.write(token, writer, fw);//nothing
+						writeInteger(fw, token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, writer);
 					} else {
 						writeInteger(fw, token, testConst, writer); 
 					}
 				} else {
 					if (sendNulls && ((f&MASK)==0) && TokenBuilder.isOptional(token)) {
-						//System.err.println("write null");
-						BaseStreamingTest.write(token, writer, fw);
+						writeInteger(fw, token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, writer);
 					} else {
 					    writeInteger(fw, token, testData[f], writer); 
 					}

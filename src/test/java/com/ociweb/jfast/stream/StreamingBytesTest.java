@@ -338,6 +338,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && ((i & 0xF) == 0) && TokenBuilder.isOptional(token)) {
                         BaseStreamingTest.write(token, writer, fw);
+                        //fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, rbRingBufferLocal);
                     } else {
                         {
                             byte[] array = testConst;

@@ -19,8 +19,11 @@ import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
     
-    final static boolean removeArray = true; //TODO: A, still testing this idea seems to make a large difference now.
-    final static boolean addComments = false;
+    static final boolean REMOVE_ARRAY = false; //TODO: A, still testing this idea 
+    static final boolean ADD_COMMENTS = false;
+    static final int COMPLEXITY_LIMITY_PER_METHOD = 28;//10050;//22;//18 25;
+    public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
+
     
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
 
@@ -103,6 +106,8 @@ public class GeneratorUtils {
             String methodCallArgs = doneScriptsParas.get(j)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
+                                    .replace("byteBuffer", "rb.byteBuffer")
+                                    .replace("byteMask", "rb.byteMask")
                                     .replace("rbPos","rb.addPos") 
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
@@ -169,7 +174,7 @@ public class GeneratorUtils {
         ///these are the left over params from the gen method after removing values
         ///////////////
         while (x<params.length) {
-            if (!removeArray | 
+            if (!REMOVE_ARRAY | 
                     (!params[x].equals("dispatch")  && 
                      !params[x].equals("rIntDictionary")  && 
                      !params[x].equals("rLongDictionary"))   ) {
@@ -407,7 +412,7 @@ public class GeneratorUtils {
             
             
             
-            if (removeArray) {
+            if (REMOVE_ARRAY) {
                 String intDictionaryRef = "rIntDictionary["+paraVals[i]+"]";
                 String intDictionaryReplace = "i"+hexValue;//used as var name;
                 
@@ -435,7 +440,7 @@ public class GeneratorUtils {
                     
             
             template = template.replace(paraVals[i],"0x"+hexValue  
-                       +   (addComments ? ("/*"+paraVals[i]+"="+Long.toString(data[i])+"*/") : "")
+                       +   (ADD_COMMENTS ? ("/*"+paraVals[i]+"="+Long.toString(data[i])+"*/") : "")
                        );
         }
         
@@ -454,7 +459,7 @@ public class GeneratorUtils {
                // System.err.println("paraVals "+paraVals[i]);
                 
                 
-                if (!removeArray | 
+                if (!REMOVE_ARRAY | 
                         (!paraVals[i].equals("dispatch")  && 
                          !paraVals[i].equals("rIntDictionary")  && 
                          !paraVals[i].equals("rLongDictionary"))   ) {
@@ -477,7 +482,7 @@ public class GeneratorUtils {
         if (methodNameKey.contains("Length")) {
             generatorData.fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");;
             //insert field operator content into method
-            if (addComments) {
+            if (ADD_COMMENTS) {
                 generatorData.fieldMethodBuilder.append(comment);
             }
             generatorData.fieldMethodBuilder.append(template);
@@ -496,7 +501,7 @@ public class GeneratorUtils {
             assert(validateMethodSize(comment, additionalComplexity));
             
             if (lastMethodContainsParams(curFieldParaValues, generatorData.lastFieldParaValues) &&
-                additionalComplexity+generatorData.runningComplexity<=GeneratorData.COMPLEXITY_LIMITY_PER_METHOD && 
+                additionalComplexity+generatorData.runningComplexity<=GeneratorUtils.COMPLEXITY_LIMITY_PER_METHOD && 
                 generatorData.fieldMethodBuilder.length()>0) {
                 //this field has the same parameters as the  previous and
                 //adding this complexity is under the limit and
@@ -508,7 +513,7 @@ public class GeneratorUtils {
                 generatorData.fieldMethodBuilder.setLength(generatorData.fieldMethodBuilder.length()-GeneratorData.END_FIELD_METHOD.length());
                                 
                 //insert field operator content into method
-                if (addComments) {
+                if (ADD_COMMENTS) {
                     generatorData.fieldMethodBuilder.append(comment);
                 }                
                 generatorData.fieldMethodBuilder.append(template);
@@ -526,7 +531,7 @@ public class GeneratorUtils {
                 generatorData.fieldMethodBuilder.append("private static void ").append(methodName).append("(").append(fieldParaDefs).append(") {\n");
           
                 //insert field operator content into method
-                if (addComments) {
+                if (ADD_COMMENTS) {
                     generatorData.fieldMethodBuilder.append(comment);
                 }
                 generatorData.fieldMethodBuilder.append(template);
@@ -570,5 +575,7 @@ public class GeneratorUtils {
         }
         return template;
     }
+
+    
 
 }

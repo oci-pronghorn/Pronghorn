@@ -43,7 +43,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer) {
+    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
     }
 
@@ -912,20 +912,6 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     public void genWriteNullPMap(PrimitiveWriter writer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
-        
-    }
-
-    
-    @Override
-    public void genWriteNullDefaultLong(int target, PrimitiveWriter writer, long[] dictionary) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullCopyIncLong(int target, PrimitiveWriter writer, long[] dictionary) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
         
     }
 
