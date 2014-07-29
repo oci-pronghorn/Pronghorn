@@ -48,7 +48,8 @@ public class Test {
     }
     
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
-         int count = 1024000;
+         final int count = 1024000;
+         final boolean single = false;
                 
                   
           byte[] catBytes = buildRawCatalogData(clientConfig, templateSource);
@@ -63,9 +64,7 @@ public class Test {
           
           final AtomicInteger msgs = new AtomicInteger();
           
-        
-
-          
+                  
           int queuedBytes = 10;
 
           int iter = count;
@@ -79,8 +78,10 @@ public class Test {
                             
               msgs.set(0);                         
               
-              double duration = singleThreadedExample(readerDispatch, msgs, reactor);
-            //  double duration = multiThreadedExample(readerDispatch, msgs, reactor, reader);
+              
+              double duration = single ?
+                                singleThreadedExample(readerDispatch, msgs, reactor) :
+                                multiThreadedExample(readerDispatch, msgs, reactor, reader);
               
                             
               if (shouldPrint(iter)) {
@@ -132,48 +133,88 @@ public class Test {
         return duration;
     }
     
+    
+    public int templateId;
+    public int preamble;
+    
     private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor, PrimitiveReader reader) {
         
         ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1);//number of reactors to support 
+
         
-        int a =0;
+        char[] temp = new char[64];
         
         double start = System.nanoTime();
           
-            reactor.start(executor, reader);
-            
-            FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
-            int j = 0;
-            long rp = rb.remPos.value;
-            do {
-                
-                //TODO: B, fix async use to ensure it does not get ahead of its self
-//                if (FASTRingBuffer.moveNext(rb)) {
-//                    int x = FASTRingBufferReader.readInt(rb, 0); //How much data is there to read? must read it
-//                    
-//                };
-                
-                ///TODO: we are checking on zero change way too often!!
-                //need to be notified of add count change? eg lock.
-                int limit = (int)FASTRingBuffer.contentRemaining(rb);
-                if (limit>0) {
-                  //  FASTRingBuffer.moveNext(rb);
+        reactor.start(executor, reader);
+        FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
 
-                    while (--limit>=0 ) {
-                           int x = FASTRingBufferReader.readInt(rb, j++);
-                           //read all the data
-                           rp++;    
-                    }
-                    if (j>60) {//estimated field size
-                        rb.removeForward2(rp);
-                        j=0;
-                    }
+         final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
+         
+        
+            do {                    
+                    while (FASTRingBuffer.moveNext(rb)) {
                     
-                }
+                        if (rb.isNewMessage) {
+                            
+                            templateId = FASTRingBufferReader.readInt(rb, 0);
+                            preamble = FASTRingBufferReader.readInt(rb, 1);
+                            
+                            switch (rb.messageId) {
+                                case 1:
+                                    int len = FASTRingBufferReader.readDataLength(rb, 2);
+                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                                   // System.err.println("ApplVerID: "+new String(temp,0,len));
+                                    
+                                    
+                                    len = FASTRingBufferReader.readDataLength(rb, 4);
+                                    FASTRingBufferReader.readASCII(rb, 4, temp, 0);                                    
+                                   // System.err.println("MessageType: "+new String(temp,0,len));
+                                    
+                                    len = FASTRingBufferReader.readDataLength(rb, 6);
+                                    FASTRingBufferReader.readASCII(rb, 6, temp, 0);                                    
+                                    //System.err.println("SenderCompID: "+new String(temp,0,len));
+                                    
+                                    int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
+                                    int sendingTime = FASTRingBufferReader.readInt(rb, 9);
+                                    int tradeDate = FASTRingBufferReader.readInt(rb, 10);
+                                    int seqCount = FASTRingBufferReader.readInt(rb, 11);
+                                    //System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
+                                    while (--seqCount>=0) {
+                                        while(!FASTRingBuffer.moveNext(rb)) { //keep calling if we have no data?                                       
+                                        };
+                                        int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
+                                       // System.err.println(mDUpdateAction);
+                                        
+                                        
+                                        
+                                    }
+                                    
+                                    
+                                    //
+                                    
+                                    break;
+                                case 2:
+                                    
+                                    break;
+                                case 99:
+                                    
+                                    len = FASTRingBufferReader.readDataLength(rb, 2);
+                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                                    
+                                    //System.err.println("MessageType: "+new String(temp,0,len));
+                                    
+                                    break;
+                                default:
+                                    System.err.println("Did not expect "+rb.messageId);
+                            }                            
+                        }
+                    }                         
+                    
             }while (!executor.isShutdown());
-    
+            
           
-          double duration = System.nanoTime() - start;
+        double duration = System.nanoTime() - start;
         return duration;
     }
     //TODO: C, need test for optional groups this is probably broken. 

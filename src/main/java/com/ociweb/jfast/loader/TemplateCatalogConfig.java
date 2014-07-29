@@ -108,7 +108,7 @@ public class TemplateCatalogConfig {
         
         //must be done after the client config construction
         from = new FieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, (byte)9, (byte)8);
+        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, (byte)10, (byte)8);
         
     }
     

@@ -9,7 +9,7 @@
 
 	<template name="MarketData" id="1" reset="Y" dictionary="1" xmlns="http://www.fixprotocol.org/ns/fast/td/1.1">
 		<string name="ApplVerID" id="1128">
- 		<constant value="1.0"/>
+ 		    <constant value="1.0"/>
 		</string>
 		<string name="MessageType" id="35">
 			<constant value="X"/>

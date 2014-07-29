@@ -1230,22 +1230,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
         if (preambleData.length != 0) {
             
-            int i = 0;
-            int s = preambleData.length;
-            while (i < s) {
-                
-                //TODO: A, must be inside a gen method to get captured, this conditional is a hack.
-                //must keep preamble in member
-                
-                int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, fieldPos);
-                preambleData[i++] = (byte) (0xFF & (d >>> 0));
-                preambleData[i++] = (byte) (0xFF & (d >>> 8));
-                preambleData[i++] = (byte) (0xFF & (d >>> 16));
-                preambleData[i++] = (byte) (0xFF & (d >>> 24));
-                fieldPos++;
-            }
-            
-            genWritePreamble(preambleData, writer, ringBuffer); ///TODO: A, must be in generator so gen method is integrated
+            genWritePreamble(preambleData, writer, ringBuffer, this); ///TODO: A, must be in generator so gen method is integrated
             
         };
 

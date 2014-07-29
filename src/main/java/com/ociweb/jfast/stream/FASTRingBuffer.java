@@ -132,7 +132,9 @@ public final class FASTRingBuffer {
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { 
 
+        //TODO: A, not sure these should move together like this, must leave old position 
         ringBuffer.remPos.value = ringBuffer.removeCount.addAndGet(ringBuffer.activeFragmentDataSize);
+        
         ringBuffer.activeFragmentDataSize = 0;
         if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
             return false;

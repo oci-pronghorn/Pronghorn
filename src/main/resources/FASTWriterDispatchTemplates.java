@@ -28,8 +28,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
     
 
-    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer, FASTRingBuffer ringBuffer) { //TODO: A, change from ringBuffer into array details.
+    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
 
+        int i = 0;
+        int s = preambleData.length;
+        while (i < s) {
+                        
+            int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, dispatch.fieldPos);
+            preambleData[i++] = (byte) (0xFF & (d >>> 0));
+            preambleData[i++] = (byte) (0xFF & (d >>> 8));
+            preambleData[i++] = (byte) (0xFF & (d >>> 16));
+            preambleData[i++] = (byte) (0xFF & (d >>> 24));
+            dispatch.fieldPos++;
+        }
         
         PrimitiveWriter.writeByteArrayData(preambleData, 0, preambleData.length, writer);
     }

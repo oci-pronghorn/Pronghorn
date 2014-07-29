@@ -99,7 +99,7 @@ public final class FASTInputReactor {
                 //TODO: inline pump and quit early if we are on a message boundary with no data in the stream
                 
                 int f=0;
-                int c = 0xFFF;
+                int c = 0xFFFFF;
                 
                 //TODO: B, what happens when there is no room in ring buffer?                
                 while ( 

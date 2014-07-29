@@ -128,4 +128,10 @@ public class FieldReferenceOffsetManager {
         }
     }
 
+    //TODO: A, need string names from catalog
+    public int lookupIDX(String string) {
+        // TODO Auto-generated method stub
+        return 0;
+    }
+
 }
