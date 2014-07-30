@@ -60,8 +60,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);                                        
             if (neededSpace > 0) {
                 int size = rb.maxSize;
-                if (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
-                    while (( size-(rb.addPos.value-rb.remPos.value)) < neededSpace) {
+                if (( size-(rb.workingHeadPos.value-rb.workingTailPos.value)) < neededSpace) {
+                    while (( size-(rb.workingHeadPos.value-rb.workingTailPos.value)) < neededSpace) {
                         //TODO: must call blocking policy on this, already committed to read.
                       //  System.err.println("no room in ring buffer");
                        Thread.yield();// rb.dump(rb);
@@ -74,21 +74,21 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genWriteTemplateId(FASTDecoder dispatch) {
         {
         FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.templateId);
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.templateId);
         }
     }
 
     protected void genWritePreambleB(FASTDecoder dispatch) {
         {
         FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleB);
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.preambleB);
         }
     }
 
     protected void genWritePreambleA(FASTDecoder dispatch) {
         {
         FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos, dispatch.preambleA);
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.preambleA);
         }
     }
 

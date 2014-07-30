@@ -218,6 +218,7 @@ public class TemplateLoaderTest {
                     
                     //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
                     //FASTRingBuffer.dump(queue);
+                    rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
             }
             
@@ -264,12 +265,15 @@ public class TemplateLoaderTest {
                 while (FASTInputReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    FASTRingBuffer.moveNext(rb); //11
+                    if (!FASTRingBuffer.moveNext(rb)) {
+                        rb.tailPos.lazySet(rb.workingTailPos.value);
+                    }; //11
                     //Profile.count += (Profile.version.get()-tmp);
                 }
                 //the buffer has extra records in it so we must clean them out here.
                 while (FASTRingBuffer.contentRemaining(rb)>0) {
                     FASTRingBuffer.moveNext(rb); 
+                    rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
                 
                 duration = System.nanoTime() - start;
@@ -303,6 +307,8 @@ public class TemplateLoaderTest {
             //fastInput.reset();
             PrimitiveReader.reset(reader);
             readerDispatch.reset(catalog.dictionaryFactory());
+            
+   //         rb.tailPos.lazySet(rb.workingTailPos.value);
 
         }
         System.err.println(stats.toString()+" ns  total:"+stats.total());

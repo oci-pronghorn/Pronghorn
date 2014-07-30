@@ -91,8 +91,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 //        
 //        ////    //temp solution as the ring buffer is introduce into all the APIs
 //        rbRingBuffer.dump();            
-//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value >>> 32);
-//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.addPos++] = (int) (value & 0xFFFFFFFF); 
+//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.workingHeadPos++] = (int) (value >>> 32);
+//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.workingHeadPos++] = (int) (value & 0xFFFFFFFF); 
 //        FASTRingBuffer.unBlockMessage(rbRingBuffer);
 //        int rbPos = 0;
 //        

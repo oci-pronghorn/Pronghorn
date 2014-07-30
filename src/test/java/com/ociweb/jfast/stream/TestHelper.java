@@ -26,7 +26,7 @@ public class TestHelper {
             }
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.addPos.value-2, ringBuffer.mask);
+        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
     }
 
     public static int readInt(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer, FASTReaderInterpreterDispatch readerInterpreterDispatch) {
@@ -48,7 +48,7 @@ public class TestHelper {
             }
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.addPos.value-1, ringBuffer.mask);
+        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-1, ringBuffer.mask);
     }
 
 }

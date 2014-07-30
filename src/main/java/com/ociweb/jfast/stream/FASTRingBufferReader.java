@@ -29,11 +29,11 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         1.0E36f,1.0E37f,1.0E38f,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN};
     
     public static int readInt(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
     }
 
     public static long readLong(FASTRingBuffer ring, int idx) {
-        long i = ring.remPos.value + idx;
+        long i = ring.workingTailPos.value + idx;
         return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
 
@@ -46,17 +46,17 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static int readDecimalExponent(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
     }
     
     public static long readDecimalMantissa(FASTRingBuffer ring, int idx) {
-        long i = ring.remPos.value + idx + 1; //plus one to skip over exponent
+        long i = ring.workingTailPos.value + idx + 1; //plus one to skip over exponent
         return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
     
 
     public static int readDataLength(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx + 1)];// second int is always the length
     }
 
     @Deprecated
@@ -67,7 +67,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static Appendable readASCII(FASTRingBuffer ring, int idx, Appendable target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         int len = FASTRingBufferReader.readDataLength(ring, idx);
 
         if (pos < 0) {
@@ -111,7 +111,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readASCII(FASTRingBuffer ring, int idx, char[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         int len = FASTRingBufferReader.readDataLength(ring, idx);
         if (pos < 0) {
             readASCIIConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
@@ -251,7 +251,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         //char count is not comparable to byte count for UTF8 of length greater than zero.
         //must convert one to the other before comparison.
         
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         if (pos < 0) {
             return eqUTF8Const(ring,len,seq,0x7FFFFFFF & pos);
         } else {
@@ -265,7 +265,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         if (len!=seq.length()) {
             return false;
         }
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         if (pos < 0) {
             return eqASCIIConst(ring,len,seq,0x7FFFFFFF & pos);
         } else {
@@ -361,11 +361,11 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     //Bytes
     
     public static int readBytesLength(FASTRingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.remPos.value + idx + 1)];// second int is always the length
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx + 1)];// second int is always the length
     }
 
     public static ByteBuffer readBytes(FASTRingBuffer ring, int idx, ByteBuffer target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             return readBytesConst(ring,len,target,0x7FFFFFFF & pos);
@@ -392,7 +392,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readBytes(FASTRingBuffer ring, int idx, byte[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
@@ -417,7 +417,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
     
     public static void readBytes(FASTRingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
-        int pos = ring.buffer[ring.mask & (int)(ring.remPos.value + idx)];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
         int len = FASTRingBufferReader.readBytesLength(ring, idx);
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
@@ -441,12 +441,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             }
     }
 
-    public static void dump(FASTRingBuffer queue) {
-        new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        //dump everything up to where it it is still writing new fragments.
-        queue.removeCount.lazySet(queue.remPos.value = queue.headPos.get());
-        
-    }
 
     public static int encodeSingleChar(int c, byte[] buffer, int pos) {
         if (c <= 0x007F) {

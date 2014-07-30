@@ -441,9 +441,9 @@ public abstract class BaseStreamingTest {
                 
                 //temp solution as the ring buffer is introduce into all the APIs
                 FASTRingBuffer.dump(fw.rbRingBufferLocal);
-                FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                 FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
-                FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
+                FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
@@ -504,9 +504,9 @@ public abstract class BaseStreamingTest {
                     
                     //temp solution as the ring buffer is introduce into all the APIs     
                     FASTRingBuffer.dump(fw.rbRingBufferLocal);
-                    FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.addPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                     FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
-                    FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.addPos);
+                    FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
                     int rbPos = 0;
                  
                     // hack until all the classes no longer need this method.

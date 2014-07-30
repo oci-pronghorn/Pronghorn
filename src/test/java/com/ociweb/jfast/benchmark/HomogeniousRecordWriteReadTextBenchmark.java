@@ -429,7 +429,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                 FASTRingBuffer.dump(rbRingBufferLocal);
                 byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
                 FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
-                FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.workingHeadPos);
 			    
 				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -500,7 +500,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
         }
         
         //NOTE: for testing we need to check what was written
-        int value = FASTRingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.addPos.value-2, rbRingBuffer.mask);
+        int value = FASTRingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.workingHeadPos.value-2, rbRingBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
         return value<0? value : token & decoder.MAX_BYTE_INSTANCE_MASK;

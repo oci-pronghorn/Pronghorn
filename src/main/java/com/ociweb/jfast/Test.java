@@ -151,6 +151,7 @@ public class Test {
 
          final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
          
+         int j = 0;
         
             do {                    
                     while (FASTRingBuffer.moveNext(rb)) {
@@ -186,7 +187,7 @@ public class Test {
                                         int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
                                        // System.err.println(mDUpdateAction);
                                         
-                                        
+                                     //TODO: write this out to a binary file?   
                                         
                                     }
                                     
@@ -207,8 +208,13 @@ public class Test {
                                     break;
                                 default:
                                     System.err.println("Did not expect "+rb.messageId);
-                            }                            
+                            }                     
+                            
+//                            if ((++j&0xFF)==0) {
+//                            
+//                            }
                         }
+                   //     rb.tailPos.lazySet(rb.workingTailPos.value);
                     }                         
                     
             }while (!executor.isShutdown());

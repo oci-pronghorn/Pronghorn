@@ -345,7 +345,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                                                         
                             FASTRingBuffer.dump(rbRingBufferLocal);
                             FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
-                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.workingHeadPos);
                             
                             assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
@@ -367,7 +367,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             
                             FASTRingBuffer.dump(rbRingBufferLocal);
                             FASTRingBuffer.addByteArray(array, 0, array.length, rbRingBufferLocal);
-                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.addPos);
+                            FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.workingHeadPos);
                                                         
                             assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
                             assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));

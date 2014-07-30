@@ -19,13 +19,13 @@ public class FASTRingBufferTest {
         FASTRingBuffer.dump(rb);
         
         //write one integer to the ring buffer
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.addPos,7);
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos,7);
         
         //write array of bytes to ring buffer
         FASTRingBuffer.addByteArray(source, 0, source.length, rb);             
         
         //unblock for reading
-        FASTRingBuffer.unBlockFragment(rb.headPos, rb.addPos);
+        FASTRingBuffer.unBlockFragment(rb.headPos, rb.workingHeadPos);
                 
         //read one integer back
         assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb)));
@@ -75,19 +75,48 @@ public class FASTRingBufferTest {
     @Test
     public void speedTest() {
         
+        byte primaryBits = 10;
+        byte charBits = 7;
+        
+        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  null, null);
+        final int rbMask = rb.mask;
+        final int[] rbB = rb.buffer;
+
+        final int testSize = 5000000;
+        final int messageSize = 47;
+        
+        
+        Runnable reader = new Runnable() {
+
+            @Override
+            public void run() {
+                int k = 2;
+                while (--k>=0) {
+                    int i = testSize;
+                    while (--i>=0) {
+                        int j = messageSize;
+                        while (FASTRingBuffer.contentRemaining(rb)<j) {
+                        }
+                        //System.err.println("A");
+                        while (--j>=0) {
+                            
+                            FASTRingBufferReader.readInt(rb, j);
+                            rb.workingTailPos.value++;
+                            
+                        }
+                        rb.tailPos.lazySet(rb.workingTailPos.value);
+                    }
+                }
+            }
+            
+        };
+        new Thread(reader).start();
+        
         int k = 2;
         while (--k>=0) {
         
-            byte primaryBits = 8;
-            byte charBits = 7;
-            
-            FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  null, null);
-            int rbMask = rb.mask;
-            int[] rbB = rb.buffer;
-            PaddedLong pos =rb.addPos;
-                    
-            int testSize = 10000000;
-            int messageSize = 47;
+            PaddedLong pos =rb.workingHeadPos;
+                            
             
             
             long start = System.nanoTime();
@@ -95,13 +124,17 @@ public class FASTRingBufferTest {
             while (--i>=0) {
                 
                 int j = messageSize;
+                while (rb.availableCapacity()<j) {
+                }
+                //System.err.println("B");
                 while (--j>=0) {
                     
                     FASTRingBuffer.addValue(rbB, rbMask, pos, i);
                     
                 }
-                FASTRingBuffer.unBlockFragment(rb.headPos,rb.addPos);
-                FASTRingBuffer.dump(rb);
+                rb.headPos.lazySet(rb.workingHeadPos.value);
+            }
+            while (FASTRingBuffer.contentRemaining(rb)>0) {
             }
             long duration = System.nanoTime()-start;
             

@@ -108,7 +108,7 @@ public class GeneratorUtils {
                                     .replace("rbRingBuffer","rb")
                                     .replace("byteBuffer", "rb.byteBuffer")
                                     .replace("byteMask", "rb.byteMask")
-                                    .replace("rbPos","rb.addPos") 
+                                    .replace("rbPos","rb.workingHeadPos") 
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
@@ -138,7 +138,7 @@ public class GeneratorUtils {
         builder.append("    int x = activeScriptCursor;\n");
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         bsg.generate("    ",builder, doneValues, doneCode);
-        builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.addPos);\n");
+        builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
         if (isReader) {
             builder.append("    return ringBufferIdx;\n"); 
         } else {

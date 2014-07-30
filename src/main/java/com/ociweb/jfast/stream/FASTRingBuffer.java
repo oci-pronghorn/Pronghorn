@@ -36,11 +36,11 @@ public final class FASTRingBuffer {
     
     public final int[] buffer;
     public final int mask;
-    public final PaddedLong addPos = new PaddedLong();
-    public final PaddedLong remPos = new PaddedLong();
+    public final PaddedLong workingHeadPos = new PaddedLong();
+    public final PaddedLong workingTailPos = new PaddedLong();
 
-    public final AtomicLong removeCount = new PaddedAtomicLong(); //reader reads from this position.
-    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to addCount
+    public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
+    public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
     public final int maxSize;
 
@@ -105,9 +105,9 @@ public final class FASTRingBuffer {
      * Empty and restore to original values.
      */
     public void reset() {
-        addPos.value = 0;
-        remPos.value = 0;
-        removeCount.set(0);
+        workingHeadPos.value = 0;
+        workingTailPos.value = 0;
+        tailPos.set(0);
         headPos.set(0);
         
         /////
@@ -132,8 +132,8 @@ public final class FASTRingBuffer {
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { 
 
-        //TODO: A, not sure these should move together like this, must leave old position 
-        ringBuffer.remPos.value = ringBuffer.removeCount.addAndGet(ringBuffer.activeFragmentDataSize);
+        
+        ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;       
         
         ringBuffer.activeFragmentDataSize = 0;
         if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
@@ -258,9 +258,6 @@ public final class FASTRingBuffer {
     // processing?
     // TODO: C, look at adding reduce method in addition to filter.
 
-    public final int availableCapacity() {
-        return maxSize - (int)(addPos.value - remPos.value);
-    }
 
     public static int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
@@ -290,8 +287,8 @@ public final class FASTRingBuffer {
         if (sourceLen > 0) {
             rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(source, sourceIdx, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceLen);
         }
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, p);
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.addPos, sourceLen);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
     }
     
     
@@ -302,8 +299,8 @@ public final class FASTRingBuffer {
 
 
     public void removeForward2(long pos) {
-        remPos.value = pos;
-        removeCount.lazySet(pos);
+        workingTailPos.value = pos;
+        tailPos.lazySet(pos);
     }
 
     //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
@@ -349,14 +346,14 @@ public final class FASTRingBuffer {
                        
         // move the removePosition up to the addPosition
         // new Exception("WARNING THIS IS NO LONGER COMPATIBLE WITH PUMP CALLS").printStackTrace();
-        rb.removeCount.lazySet(rb.remPos.value = rb.addPos.value);
+        rb.tailPos.lazySet(rb.workingTailPos.value = rb.workingHeadPos.value);
     }
 
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
 
     public static int readRingByteLen(int fieldPos, FASTRingBuffer rb) {
-        return rb.buffer[rb.mask & (int)(rb.remPos.value + fieldPos + 1)];// second int is always the length
+        return rb.buffer[rb.mask & (int)(rb.workingTailPos.value + fieldPos + 1)];// second int is always the length
     }
     
     public static int readRingBytePosition(int rawPos) {
@@ -368,7 +365,7 @@ public final class FASTRingBuffer {
     }
 
     public static int readRingByteRawPos(int fieldPos, FASTRingBuffer rbRingBuffer) {
-        return rbRingBuffer.buffer[(int)(rbRingBuffer.mask & (rbRingBuffer.remPos.value + fieldPos))];
+        return rbRingBuffer.buffer[(int)(rbRingBuffer.mask & (rbRingBuffer.workingTailPos.value + fieldPos))];
     }
     
 
@@ -376,9 +373,13 @@ public final class FASTRingBuffer {
         return byteMask;
     }
 
+    public final int availableCapacity() {
+        return maxSize - (int)(headPos.longValue() - tailPos.longValue());
+    }
 
+    
     public static int contentRemaining(FASTRingBuffer rb) {
-        return (int)(rb.headPos.longValue() - rb.remPos.value); //must not go past add count because it is not release yet.
+        return (int)(rb.headPos.longValue() - rb.tailPos.longValue()); //must not go past add count because it is not release yet.
     }
 
     public int fragmentSteps() {

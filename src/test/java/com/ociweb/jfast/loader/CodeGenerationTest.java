@@ -189,7 +189,7 @@ public class CodeGenerationTest {
 
                         int c = idx.get();
 
-                        System.err.println("From positions:"+queue1.remPos+" & "+queue2.remPos);
+                        System.err.println("From positions:"+queue1.workingTailPos+" & "+queue2.workingTailPos);
                                            
                         System.err.println("Intrp:" + Integer.toBinaryString(int1));
                         System.err.println("Compl:" + Integer.toBinaryString(int2));
@@ -199,11 +199,11 @@ public class CodeGenerationTest {
                         assertEquals(msg, int1, int2);
                     }
                 }
-                long newValue1 = queue1.removeCount.get() + 1;
-                assert (newValue1 <=queue1.addPos.value);
+                long newValue1 = queue1.tailPos.get() + 1;
+                assert (newValue1 <=queue1.workingHeadPos.value);
                 queue1.removeForward2(newValue1);
-                long newValue2 = queue2.removeCount.get() + 1;
-                assert (newValue2 <=queue2.addPos.value);
+                long newValue2 = queue2.tailPos.get() + 1;
+                assert (newValue2 <=queue2.workingHeadPos.value);
                 queue2.removeForward2(newValue2);
                 i++;
             }
