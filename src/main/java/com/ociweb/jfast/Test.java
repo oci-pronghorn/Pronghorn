@@ -59,8 +59,8 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-    //      FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);
+       //   FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+         FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -118,7 +118,9 @@ public class Test {
                           msgs.incrementAndGet();
                       }
                       
-                      //your usage of these fields would go here.                      
+                      //your usage of these fields would go here. 
+                      
+                      rb.tailPos.lazySet(rb.workingTailPos.value);
                       
                       break;
               }
@@ -147,80 +149,99 @@ public class Test {
         double start = System.nanoTime();
           
         reactor.start(executor, reader);
+        
         FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
 
          final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
          
+         rb.tailPos.lazySet(rb.workingTailPos.value);
+         
          int j = 0;
         
-            do {                    
-                    while (FASTRingBuffer.moveNext(rb)) {
-                    
-                        if (rb.isNewMessage) {
-                            
-                            templateId = FASTRingBufferReader.readInt(rb, 0);
-                            preamble = FASTRingBufferReader.readInt(rb, 1);
-                            
-                            switch (rb.messageId) {
-                                case 1:
-                                    int len = FASTRingBufferReader.readDataLength(rb, 2);
-                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
-                                   // System.err.println("ApplVerID: "+new String(temp,0,len));
-                                    
-                                    
-                                    len = FASTRingBufferReader.readDataLength(rb, 4);
-                                    FASTRingBufferReader.readASCII(rb, 4, temp, 0);                                    
-                                   // System.err.println("MessageType: "+new String(temp,0,len));
-                                    
-                                    len = FASTRingBufferReader.readDataLength(rb, 6);
-                                    FASTRingBufferReader.readASCII(rb, 6, temp, 0);                                    
-                                    //System.err.println("SenderCompID: "+new String(temp,0,len));
-                                    
-                                    int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
-                                    int sendingTime = FASTRingBufferReader.readInt(rb, 9);
-                                    int tradeDate = FASTRingBufferReader.readInt(rb, 10);
-                                    int seqCount = FASTRingBufferReader.readInt(rb, 11);
-                                    //System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
-                                    while (--seqCount>=0) {
-                                        while(!FASTRingBuffer.moveNext(rb)) { //keep calling if we have no data?                                       
-                                        };
-                                        int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
-                                       // System.err.println(mDUpdateAction);
-                                        
-                                     //TODO: write this out to a binary file?   
-                                        
-                                    }
-                                    
-                                    
-                                    //
-                                    
-                                    break;
-                                case 2:
-                                    
-                                    break;
-                                case 99:
-                                    
-                                    len = FASTRingBufferReader.readDataLength(rb, 2);
-                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
-                                    
-                                    //System.err.println("MessageType: "+new String(temp,0,len));
-                                    
-                                    break;
-                                default:
-                                    System.err.println("Did not expect "+rb.messageId);
-                            }                     
-                            
-//                            if ((++j&0xFF)==0) {
-//                            
-//                            }
-                        }
-                   //     rb.tailPos.lazySet(rb.workingTailPos.value);
-                    }                         
+            do {               
+                
+//                try {
+//                    Thread.sleep(100000);
+//                } catch (InterruptedException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }
+//                
+//                    while (FASTRingBuffer.moveNext(rb)) {
+//                        
+//                        System.err.println("move next");
+//                        
+//                        rb.tailPos.lazySet(rb.workingTailPos.value);
+//                    
+////                        if (rb.isNewMessage) {
+////                            
+////                            templateId = FASTRingBufferReader.readInt(rb, 0);
+////                            preamble = FASTRingBufferReader.readInt(rb, 1);
+////                            
+////                            switch (rb.messageId) {
+////                                case 1:
+////                                    int len = FASTRingBufferReader.readDataLength(rb, 2);
+////                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+////                                   // System.err.println("ApplVerID: "+new String(temp,0,len));
+////                                    
+////                                    
+////                                    len = FASTRingBufferReader.readDataLength(rb, 4);
+////                                    FASTRingBufferReader.readASCII(rb, 4, temp, 0);                                    
+////                                   // System.err.println("MessageType: "+new String(temp,0,len));
+////                                    
+////                                    len = FASTRingBufferReader.readDataLength(rb, 6);
+////                                    FASTRingBufferReader.readASCII(rb, 6, temp, 0);                                    
+////                                    //System.err.println("SenderCompID: "+new String(temp,0,len));
+////                                    
+////                                    int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
+////                                    int sendingTime = FASTRingBufferReader.readInt(rb, 9);
+////                                    int tradeDate = FASTRingBufferReader.readInt(rb, 10);
+////                                    int seqCount = FASTRingBufferReader.readInt(rb, 11);
+////                                    //System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
+////                                    while (--seqCount>=0) {
+////                                        while(!FASTRingBuffer.moveNext(rb)) { //keep calling if we have no data? 
+////                                        };
+////                                        rb.tailPos.lazySet(rb.workingTailPos.value);
+////                                        int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
+////                                       // System.err.println(mDUpdateAction);
+////                                        
+////                                     //TODO: write this out to a binary file?   
+////                                        
+////                                    }
+////                                    
+////                                    
+////                                    //
+////                       //             rb.tailPos.lazySet(rb.workingTailPos.value);
+////                                    break;
+////                                case 2:
+////                                    
+////                      //              rb.tailPos.lazySet(rb.workingTailPos.value);
+////                                    break;
+////                                case 99:
+////                                    
+////                                    len = FASTRingBufferReader.readDataLength(rb, 2);
+////                                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+////              //                      rb.tailPos.lazySet(rb.workingTailPos.value);
+////                                    //System.err.println("MessageType: "+new String(temp,0,len));
+////                                    
+////                                    break;
+////                                default:
+////                                    System.err.println("Did not expect "+rb.messageId);
+////                            }                     
+////                            
+//////                            if ((++j&0xFF)==0) {
+//////                            
+//////                            }
+////                        } else {
+////                //            rb.tailPos.lazySet(rb.workingTailPos.value);
+////                        }
+//                    }                         
                     
             }while (!executor.isShutdown());
             
           
         double duration = System.nanoTime() - start;
+        System.err.println("finished one test");
         return duration;
     }
     //TODO: C, need test for optional groups this is probably broken. 

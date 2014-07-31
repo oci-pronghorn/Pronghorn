@@ -133,12 +133,14 @@ public final class FASTRingBuffer {
     public static boolean moveNext(FASTRingBuffer ringBuffer) { 
 
         
-        ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;       
-        
-        ringBuffer.activeFragmentDataSize = 0;
         if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
             return false;
         }
+        
+        ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;    
+        ringBuffer.activeFragmentDataSize = 0;
+        
+  //      ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
         if (ringBuffer.messageId<0) {
             beginNewMessage(ringBuffer);
         } else {

@@ -67,6 +67,8 @@ public final class FASTInputReactor {
         
     }
     
+    //TODO: B, support zero copy mapping by (reader adds gaps to rb, writer can skip inputs from rb) add to config
+    
     public void start(final ThreadPoolExecutor executorService, PrimitiveReader reader) {
         
         PrimitiveReader.setInputPolicy(new InputBlockagePolicy() {
@@ -95,26 +97,47 @@ public final class FASTInputReactor {
 
             @Override
             public void run() {
+                System.err.println("XXXX");
   
                 //TODO: inline pump and quit early if we are on a message boundary with no data in the stream
                 
                 int f=0;
                 int c = 0xFFFFF;
                 
-                //TODO: B, what happens when there is no room in ring buffer?                
+                //TODO: B, what happens when there is no room in ring buffer?   
+                
+                
+                //If there is not enought room in byte buffer for the next record. do not write.
+                //
+                
+                
                 while ( 
-                        (f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader))>=0 &&
-                        --c>=0) {
+                        ( //(availCapacity()>60) &&
+                          (f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader))>=0) &&
+                          (--c>=0) ) {
+                    
+                    //TODO: Nothing is read in the test so how is this looping !!!!!!!!!!!!
+                    System.err.println("decode write to buffer "+c+" "+availCapacity());
                     
                 }
                 
                 if (f>=0) {
-                  //  System.err.println("pump");
+            //  System.err.println("pump");
                     executorService.execute(this);
                 } else {
                     //TODO: REMOVE THIS, we should not be shuting down the service because stream has ended.
                     executorService.shutdown();
+           //         System.err.println("ZZZZ");
                 }
+            }
+
+            private int availCapacity() {
+                int cap = 0;
+                if ( decoder.activeScriptCursor>=0) {
+                    final FASTRingBuffer rbRingBuffer = RingBuffers.get(decoder.ringBuffers, decoder.activeScriptCursor); 
+                    cap = rbRingBuffer.availableCapacity();
+                }
+                return cap;
             }
             
         };        

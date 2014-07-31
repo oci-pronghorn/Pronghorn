@@ -121,7 +121,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         // move everything needed in this tight loop to the stack
         int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
 
-        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
+        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor); 
+           
+//        if (rbRingBuffer.contentRemaining(rbRingBuffer)>0 ) {//TODO: hack test
+//            return ringBufferIdx;
+//        }
+       // System.err.println(rbRingBuffer.availableCapacity());
         
         int token = fullScript[activeScriptCursor];
 
