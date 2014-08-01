@@ -123,13 +123,22 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor); 
            
-//        if (rbRingBuffer.contentRemaining(rbRingBuffer)>0 ) {//TODO: hack test
-//            return ringBufferIdx;
-//        }
-       // System.err.println(rbRingBuffer.availableCapacity());
+     
+        //TODO: must be added to generated code AND be optimized for the polling loop!
+        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor];
+        if (rbRingBuffer.availableCapacity()<fragmentSize) {
+          return ringBufferIdx;  
+        }
+        
+      //  if (rbRingBuffer.availableCapacity()<fragmentSize) { 
+       //     System.err.println("no room");
+       //     return ringBufferIdx; //cant read right now no room
+       // }
+        
+
+    //   System.err.println("read fragment into ring buffer of size "+fragmentSize);
         
         int token = fullScript[activeScriptCursor];
-
         do {
             token = fullScript[activeScriptCursor];
     
@@ -241,10 +250,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 }
             }
         } while (++activeScriptCursor < limit);
-        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos);
         
         //TODO: B, on normal fixed closed this is not needed so the conditional can be skipped.
         genReadGroupCloseMessage(reader, this); 
+        
+        //sanity check
+       // System.err.println(fragmentSize+"  vs  "+(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
+        
+        //Must do last because this will let the other threads begin to use this data
+        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos);
         return ringBufferIdx;
     }
 

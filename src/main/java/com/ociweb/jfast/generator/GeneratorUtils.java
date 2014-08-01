@@ -112,8 +112,19 @@ public class GeneratorUtils {
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
-                          " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n\r"+
-                          GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
+                          " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n";
+                    
+            //exit if the ring buffer is full          
+            if (isReader) {
+            doneCode[j] +=
+                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor];\n"+
+                   " if (rb.availableCapacity()<fragmentSize) {\n"+
+                   "   return ringBufferIdx;\n " +
+                   " }\n";
+            }
+        
+                          
+             doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
@@ -137,6 +148,7 @@ public class GeneratorUtils {
         //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
+
         bsg.generate("    ",builder, doneValues, doneCode);
         builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
         if (isReader) {

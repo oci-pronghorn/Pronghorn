@@ -42,6 +42,13 @@ public final class FASTRingBuffer {
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
+    
+    //grouping fragments together gives a clear advantage but more latency
+    //as this gets near half the primary bits size the performance drops off
+    //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
+    public final int chunkBits = 4; //TODO: A, move into ringBuffer
+    public final int chunkMask = (1<<chunkBits)-1;//TODO: A, move into ringBuffer
+    
     public final int maxSize;
 
     final int maxByteSize;
@@ -125,23 +132,26 @@ public final class FASTRingBuffer {
     int[] seqStack = new int[10];//TODO: how deep is this?
     int seqStackHead = -1;
     static final int JUMP_MASK = 0xFFFFF;
-    int activeFragmentDataSize = 0;
+    public int activeFragmentDataSize = 0;
+    private long mnHeadCache=-1;
 
 
     //TODO: B, add method to skip rest of message up to  next message.
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { 
-
-        
-        if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
-            return false;
-        }
         
         ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;    
         ringBuffer.activeFragmentDataSize = 0;
         
-  //      ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);
-        if (ringBuffer.messageId<0) {
+        if (ringBuffer.workingTailPos.value >= ringBuffer.mnHeadCache) {
+            ringBuffer.mnHeadCache = ringBuffer.headPos.longValue();
+            if (ringBuffer.workingTailPos.value ==  ringBuffer.mnHeadCache) {
+                return false;//no data to read
+            }
+        }
+        
+        if (ringBuffer.messageId<0) {      
+           // ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//hack
             beginNewMessage(ringBuffer);
         } else {
             beginFragment(ringBuffer);
@@ -166,15 +176,21 @@ public final class FASTRingBuffer {
             0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
             0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 
+                
+                //if we are beginning a new message the tail should have been adjusted?
+                //must adjust pos before calling contentRemaining!!
+                ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //TODO: A,  HACK test, should not begin new message we only checked for the previous fragment!
+
+                
                 //must read message after more data is added to the ringBuffer
-                if (FASTRingBuffer.contentRemaining(ringBuffer)==0) {
+                if (FASTRingBuffer.contentRemaining(ringBuffer)<2) {
                     ringBuffer.activeFragmentDataSize = 0;
                     ringBuffer.messageId=-1;
                     return;
                 }
                 
-                
                 beginNewMessage(ringBuffer);
+
             }
         }
             
@@ -187,6 +203,11 @@ public final class FASTRingBuffer {
         //TODO: need to step over the preamble? but how?
         ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: how do we know this is one?
             
+        if (ringBuffer.messageId<0) {
+            System.err.println("Bad data "+ringBuffer.messageId+"  at "+ringBuffer.workingTailPos.value+" tp "+ringBuffer.tailPos.get());
+            
+        }
+        
         //start new message, can not be seq or optional group or end of message.
         ringBuffer.cursor = ringBuffer.from.starts[ringBuffer.messageId];
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
@@ -386,6 +407,19 @@ public final class FASTRingBuffer {
 
     public int fragmentSteps() {
         return from.fragScriptSize[cursor];
+    }
+
+    public static long releaseRecords(final int granularity, AtomicLong hp, PaddedLong wrkHdPos) {
+        hp.lazySet(wrkHdPos.value); //we are only looking for space for 1 but wrote n!! records!
+        return wrkHdPos.value + granularity;
+    }
+
+    public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
+        while ( lastCheckedValue < targetValue) {  
+            //NOTE: when used with more threads/jobs than cores may want to Thread.yield() here.
+            lastCheckedValue = atomicLong.longValue();
+        }
+        return lastCheckedValue;
     }
 
 

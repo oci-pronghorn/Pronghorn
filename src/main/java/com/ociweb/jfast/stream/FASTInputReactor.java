@@ -6,6 +6,8 @@ package com.ociweb.jfast.stream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
@@ -69,7 +71,9 @@ public final class FASTInputReactor {
     
     //TODO: B, support zero copy mapping by (reader adds gaps to rb, writer can skip inputs from rb) add to config
     
-    public void start(final ThreadPoolExecutor executorService, PrimitiveReader reader) {
+    public AtomicBoolean start(final ThreadPoolExecutor executorService, final PrimitiveReader reader) {
+        
+        final AtomicBoolean isAlive = new AtomicBoolean(true);
         
         PrimitiveReader.setInputPolicy(new InputBlockagePolicy() {
             Object lock = new Object();
@@ -97,61 +101,36 @@ public final class FASTInputReactor {
 
             @Override
             public void run() {
-                System.err.println("XXXX");
-  
-                //TODO: inline pump and quit early if we are on a message boundary with no data in the stream
                 
                 int f=0;
+                
                 int c = 0xFFFFF;
-                
-                //TODO: B, what happens when there is no room in ring buffer?   
-                
-                
-                //If there is not enought room in byte buffer for the next record. do not write.
-                //
-                
-                
-                while ( 
-                        ( //(availCapacity()>60) &&
-                          (f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader))>=0) &&
-                          (--c>=0) ) {
+                while (--c>=0)  {
                     
-                    //TODO: Nothing is read in the test so how is this looping !!!!!!!!!!!!
-                    System.err.println("decode write to buffer "+c+" "+availCapacity());
+                    //TODO: if there is no room must reschedule! but for now it just keeps looping til c runs out.
+                    
+                    f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
+                    if (f<0) {
+                        break;
+                    }
                     
                 }
-                
+                   
                 if (f>=0) {
-            //  System.err.println("pump");
                     executorService.execute(this);
                 } else {
-                    //TODO: REMOVE THIS, we should not be shuting down the service because stream has ended.
-                    executorService.shutdown();
-           //         System.err.println("ZZZZ");
+                    isAlive.set(false);
                 }
             }
 
-            private int availCapacity() {
-                int cap = 0;
-                if ( decoder.activeScriptCursor>=0) {
-                    final FASTRingBuffer rbRingBuffer = RingBuffers.get(decoder.ringBuffers, decoder.activeScriptCursor); 
-                    cap = rbRingBuffer.availableCapacity();
-                }
-                return cap;
-            }
             
         };        
         executorService.execute(run);        
-        
+        return isAlive;
     }
 
     public static int pump(FASTInputReactor reactor) {
-//        int tmp = Profile.version.get();
-//        try {
             return reactor.decoder.decode(reactor.reader);
-//        } finally {
-//            Profile.count+=(Profile.version.get()-tmp);
-//        }
     }
     
 
