@@ -162,7 +162,7 @@ public class TemplateLoaderTest {
             FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
 
-            while (FASTInputReactor.pump(reactor)>=0) {
+            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
                 FASTRingBuffer.moveNext(rb);
 
                 frags++;
@@ -218,7 +218,7 @@ public class TemplateLoaderTest {
                     
                     //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
                     //FASTRingBuffer.dump(queue);
-                    rb.tailPos.lazySet(rb.workingTailPos.value);
+                //    rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
             }
             
@@ -265,15 +265,15 @@ public class TemplateLoaderTest {
                 while (FASTInputReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    if (!FASTRingBuffer.moveNext(rb)) {
-                        rb.tailPos.lazySet(rb.workingTailPos.value);
+                    while (FASTRingBuffer.moveNext(rb)) {
+                       // rb.tailPos.lazySet(rb.workingTailPos.value);
                     }; //11
                     //Profile.count += (Profile.version.get()-tmp);
                 }
                 //the buffer has extra records in it so we must clean them out here.
-                while (FASTRingBuffer.contentRemaining(rb)>0) {
-                    FASTRingBuffer.moveNext(rb); 
-                    rb.tailPos.lazySet(rb.workingTailPos.value);
+                while (FASTRingBuffer.moveNext(rb)) {
+                     
+                   // rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
                 
                 duration = System.nanoTime() - start;
@@ -406,7 +406,7 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.intValues);
             dictionaryFactory.reset(writerDispatch.longValues);
             dictionaryFactory.reset(writerDispatch.byteHeap);
-            while (FASTInputReactor.pump(reactor)>=0) {
+            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
    
                     FASTRingBuffer.moveNext(queue);
                     if (queue.messageId>=0) { //skip if we are waiting for more content.

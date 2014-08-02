@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.LocalHeap;
@@ -115,7 +116,9 @@ public final class FASTRingBuffer {
         workingHeadPos.value = 0;
         workingTailPos.value = 0;
         tailPos.set(0);
-        headPos.set(0);
+        headPos.set(0); //System.err.println("reset()");
+        waiting = false;
+        moveNextStop=-1;
         
         /////
         
@@ -133,33 +136,37 @@ public final class FASTRingBuffer {
     int seqStackHead = -1;
     static final int JUMP_MASK = 0xFFFFF;
     public int activeFragmentDataSize = 0;
-    private long mnHeadCache=-1;
-
+ //   private long mnHeadCache=-1;
+    private long moveNextStop=-1;
+    private boolean waiting = false;
+    
 
     //TODO: B, add method to skip rest of message up to  next message.
     
-    public static boolean moveNext(FASTRingBuffer ringBuffer) { 
-        
+    public static boolean moveNext(FASTRingBuffer ringBuffer) { //TODO: rename to canMoveNext?
+
+        //check if we are only waiting for the ring buffer to clear
+        if (ringBuffer.waiting) {
+            ringBuffer.waiting = ringBuffer.moveNextStop>ringBuffer.headPos.longValue();
+            return !ringBuffer.waiting;
+        }
+             
+        //finished reading the previous fragment so move the working tail position forward for next fragment to read
         ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;    
         ringBuffer.activeFragmentDataSize = 0;
         
-        if (ringBuffer.workingTailPos.value >= ringBuffer.mnHeadCache) {
-            ringBuffer.mnHeadCache = ringBuffer.headPos.longValue();
-            if (ringBuffer.workingTailPos.value ==  ringBuffer.mnHeadCache) {
-                return false;//no data to read
-            }
-        }
         
         if (ringBuffer.messageId<0) {      
+            //TODO: if there is no room to begin message return false.
            // ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//hack
-            beginNewMessage(ringBuffer);
+            return beginNewMessage(ringBuffer);
         } else {
-            beginFragment(ringBuffer);
+            return beginFragment(ringBuffer);
         }
-        return true;
+        
     }
 
-    private static void beginFragment(FASTRingBuffer ringBuffer) {
+    private static boolean beginFragment(FASTRingBuffer ringBuffer) {
         ringBuffer.isNewMessage = false;
         int fragStep = ringBuffer.from.fragScriptSize[ringBuffer.cursor]; //script jump 
         ringBuffer.cursor += fragStep;
@@ -173,32 +180,41 @@ public final class FASTRingBuffer {
             //detecting end of message
             int token = ringBuffer.from.tokens[ringBuffer.cursor];
             if ((ringBuffer.cursor>=ringBuffer.from.tokens.length) || (TokenBuilder.extractType(token)==TypeMask.Group &&
-            0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
-            0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
+                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
+                    0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 
-                
-                //if we are beginning a new message the tail should have been adjusted?
-                //must adjust pos before calling contentRemaining!!
-                ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); //TODO: A,  HACK test, should not begin new message we only checked for the previous fragment!
-
-                
-                //must read message after more data is added to the ringBuffer
-                if (FASTRingBuffer.contentRemaining(ringBuffer)<2) {
-                    ringBuffer.activeFragmentDataSize = 0;
-                    ringBuffer.messageId=-1;
-                    return;
-                }
-                
-                beginNewMessage(ringBuffer);
+                return beginNewMessage(ringBuffer);
 
             }
         }
             
         //after alignment with front of fragment, may be zero because we need to find the next message?
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
+        
+        //do not let client read fragment if it is not fully in the ring buffer.
+        ringBuffer.moveNextStop = ringBuffer.workingTailPos.value+ringBuffer.activeFragmentDataSize;
+        if (ringBuffer.moveNextStop>ringBuffer.headPos.longValue()) {
+            ringBuffer.waiting = true;
+            return false;
+        }
+                        
+        return true;
     }
 
-    private static void beginNewMessage(FASTRingBuffer ringBuffer) {
+    private static boolean beginNewMessage(FASTRingBuffer ringBuffer) {
+        
+      //Now beginning a new message to release the previous one from the ring buffer
+      //This is the only safe place to do this and it must be done before we check for space needed by the next record.
+      ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
+      
+      //check if the content id is on the ring buffer.
+      if ((int)(ringBuffer.headPos.longValue() - ringBuffer.tailPos.longValue())<2) { //TODO: A, can optmimize too many longValue calls
+          ringBuffer.activeFragmentDataSize = 0;
+          ringBuffer.messageId=-1;
+          return false;
+      }
+                
+        
         //TODO: need to get messageId when its the only message and so not written to the ring buffer.
         //TODO: need to step over the preamble? but how?
         ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: how do we know this is one?
@@ -212,6 +228,16 @@ public final class FASTRingBuffer {
         ringBuffer.cursor = ringBuffer.from.starts[ringBuffer.messageId];
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
         ringBuffer.isNewMessage = true;
+        
+        //before letting client continue must confirm that this must data is in the ring buffer.
+        ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
+        ringBuffer.moveNextStop = ringBuffer.workingTailPos.value+ringBuffer.activeFragmentDataSize;
+        if (ringBuffer.moveNextStop>ringBuffer.headPos.longValue()) {
+            ringBuffer.waiting = true;
+            return false;
+        }      
+        
+        return true;
     }
 
     //TODO: B, test is probably does not work with fields following closed sequence.
@@ -227,7 +253,7 @@ public final class FASTRingBuffer {
         int type = TokenBuilder.extractType(endingToken);
         if (TypeMask.GroupLength == type) {
             int seqLength = FASTRingBufferReader.readInt(this, -1); //length is always at the end of the fragment.
-            
+                        
             //TODO: off by 2 because 1 for token id and 1 for preamble which are not in the script!!!
             //System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1)+" "+(this.removeCount.get()-1));
             
@@ -244,6 +270,10 @@ public final class FASTRingBuffer {
                 
                 return true;
             } else {
+                if (seqLength<0) {//TODO: turn into assert.
+                    throw new FASTException("The previous fragment has already been replaced or modified and it was needed for the length counter");
+                }
+                
                 //push onto stack
                 seqStack[++seqStackHead]=seqLength;
                 //this is the first run so we are already positioned at the top   
@@ -287,6 +317,7 @@ public final class FASTRingBuffer {
     }
 
     public static long peekLong(int[] buf, long pos, int mask) {
+        
         return (((long) buf[mask & (int)pos]) << 32) | (((long) buf[mask & (int)(pos + 1)]) & 0xFFFFFFFFl);
 
     }
@@ -357,6 +388,7 @@ public final class FASTRingBuffer {
     // fragment is ready for consumption
     public static final void unBlockFragment(AtomicLong head, PaddedLong headCache) {
      
+        assert(headCache.value>head.get()) : "Can not set the cache smaller than head";        
         head.lazySet(headCache.value);
     }
     

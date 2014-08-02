@@ -173,7 +173,7 @@ public class CodeGenerationTest {
         
         int errCount = 0;
         int i = 0;
-        while (FASTInputReactor.pump(reactor1) >= 0 &&
+        while (FASTInputReactor.pump(reactor1) >= 0 && //continue if no room to read or read new message
                 FASTInputReactor.pump(reactor2) >= 0) {
 
             while (FASTRingBuffer.contentRemaining(queue1)>0 && FASTRingBuffer.contentRemaining(queue2)>0) {

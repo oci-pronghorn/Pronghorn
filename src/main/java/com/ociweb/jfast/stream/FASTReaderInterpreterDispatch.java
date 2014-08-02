@@ -109,25 +109,25 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
     
     //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
+    // -1 end of file, 0 no data, 1 loaded
     public int decode(PrimitiveReader reader) {
 
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
-                return -1;
+                return -1; //no more data stop
             }  
+            
             beginMessage(reader); 
         }
         
-        // move everything needed in this tight loop to the stack
-        int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
 
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor); 
            
      
         //TODO: must be added to generated code AND be optimized for the polling loop!
-        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor];
+        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ (((3+this.preambleDataLength)>>2)+1); //plus roomm for next message
         if (rbRingBuffer.availableCapacity()<fragmentSize) {
-          return ringBufferIdx;  
+          return 0; //no space to read data and start new message so read nothing
         }
         
       //  if (rbRingBuffer.availableCapacity()<fragmentSize) { 
@@ -136,6 +136,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
        // }
         
 
+        // move everything needed in this tight loop to the stack
+        int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
+        
     //   System.err.println("read fragment into ring buffer of size "+fragmentSize);
         
         int token = fullScript[activeScriptCursor];
@@ -259,7 +262,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         //Must do last because this will let the other threads begin to use this data
         FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos);
-        return ringBufferIdx;
+        return 1;//read one fragment 
     }
 
     public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, FASTRingBuffer rbRingBuffer) {

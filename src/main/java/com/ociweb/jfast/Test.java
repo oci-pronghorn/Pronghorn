@@ -66,7 +66,7 @@ public class Test {
           FASTClassLoader.deleteFiles();
          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        
-        // FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+       //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -113,10 +113,12 @@ public class Test {
           int bufId;
           while (ok) {
               switch (bufId = FASTInputReactor.pump(reactor)) {
-                  case -1:
+                  case -1://end of file
                       ok = false;
                       break;
-                  default:
+                  case 0: //no room to read
+                      break;
+                  case 1: //read one fragment
                       FASTRingBuffer rb = RingBuffers.get(ringBuffers,bufId);                      
                       FASTRingBuffer.moveNext(rb);
                       
@@ -125,9 +127,7 @@ public class Test {
                       }
                       
                       //your usage of these fields would go here. 
-                      
-                      rb.tailPos.lazySet(rb.workingTailPos.value);
-                      
+                                            
                       break;
               }
               
@@ -255,13 +255,13 @@ public class Test {
         int messageSize = 50;
         
         FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
-        AtomicLong hp = rb.headPos;
-        AtomicLong tp = rb.tailPos;
+     ///   AtomicLong hp = rb.headPos;
+      //  AtomicLong tp = rb.tailPos;
         
-        long headPosCache = hp.longValue();
-        PaddedLong wrkTlPos = rb.workingTailPos;
-        final int granularity = 30;//messageSize<<rb.chunkBits;
-        long targetHead =  granularity+tp.longValue();
+ //       long headPosCache = hp.longValue();
+    //    PaddedLong wrkTlPos = rb.workingTailPos;
+    //    final int granularity = 60;//messageSize<<rb.chunkBits;
+     //   long targetHead =  granularity+tp.longValue();
         
          final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
          
@@ -272,58 +272,18 @@ public class Test {
          int j = 0;
         
             do {    
-                //wait until data is written and released up to the new target
-                long lastCheckedValue = headPosCache;
-                while ( lastCheckedValue < targetHead && isAlive.get()) {  //was spinLock but it must watch is Alive!!
-                    //NOTE: when used with more threads/jobs than cores may want to Thread.yield() here.
-                    lastCheckedValue = hp.longValue();
-                }
-                headPosCache = lastCheckedValue;
-                //assign work value to head like we read up to it
-                //set tail position to the new work position to let writer continue
-                if (FASTRingBuffer.moveNext(rb)) {//If queue backs up this move next will have problems!
+                while (FASTRingBuffer.moveNext(rb)) {
                     if (rb.isNewMessage) {
                         msgs.incrementAndGet();
                     }
-                };
-//TODO: must confirm that the writer stops when this reader is not reading.
+                };//TODO: must confirm that the writer stops when this reader is not reading.
                 
-             //   if ((++j&0xF)==0 ) {
-                    //wrkTlPos.value = hp.longValue();
-                    targetHead = FASTRingBuffer.releaseRecords(granularity, tp, wrkTlPos);
-           //     }
-                //dump the data as fast as possible
-//                if ((++j&0xFFF)==0) {
-//                    wrkTlPos.value = hp.longValue();
-//                    tp.lazySet(wrkTlPos.value); 
+//                //dump the data as fast as possible, this is faster than the single 
+//                if ((++j&0x3FF)==0) {
+//                    rb.workingTailPos.value = rb.headPos.longValue();
+//                    rb.tailPos.lazySet(rb.workingTailPos.value); 
 //                }
-                
-//                //System.err.println("enter spint lock");
-//                long lastCheckedValue = headPosCache;
-//                while ( lastCheckedValue < targetHead && isAlive.get()) {  
-//                    //NOTE: when used with more threads/jobs than cores may want to Thread.yield() here.
-//                    lastCheckedValue = hp.longValue();
-//                }
-//                headPosCache = lastCheckedValue;
-//                //System.err.println("exit spint lock");
-//                   
-//                    //move to next fragment to read
-//                    while (FASTRingBuffer.moveNext(rb)) {
-//                        
-//                        if (rb.isNewMessage) {
-//                            msgs.incrementAndGet();
-//                        }
-//                        
-//                        if (0==(j&0x01) || !isAlive.get() ) {  
-//                            tp.lazySet(wrkTlPos.value); //we are only looking for space for 1 but wrote n!! records!
-//                            targetHead = wrkTlPos.value + granularity;
-//                        }
-//
-//                        
-//                        j++;
-//                    
-//
-//                    }                         
+                                     
                     
             } while (isAlive.get()); //TODO: A, this boolean for end of test is slowing us down!!
             

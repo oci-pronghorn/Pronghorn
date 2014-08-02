@@ -116,10 +116,11 @@ public class GeneratorUtils {
                     
             //exit if the ring buffer is full          
             if (isReader) {
+                int preamblePlusId = 2;//TODO: A, must compute and set this
             doneCode[j] +=
-                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor];\n"+
+                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
                    " if (rb.availableCapacity()<fragmentSize) {\n"+
-                   "   return ringBufferIdx;\n " +
+                   "   return 0;//nothing read\n " +
                    " }\n";
             }
         
@@ -135,7 +136,7 @@ public class GeneratorUtils {
             builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+") {\n");
             builder.append("    if (activeScriptCursor<0) {\n");
             builder.append("        if (PrimitiveReader.isEOF("+primVarName+")) { \n");
-            builder.append("            return -1;\n");
+            builder.append("            return -1;//end of file\n");
             builder.append("        } \n");
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
@@ -152,7 +153,7 @@ public class GeneratorUtils {
         bsg.generate("    ",builder, doneValues, doneCode);
         builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
         if (isReader) {
-            builder.append("    return ringBufferIdx;\n"); 
+            builder.append("    return 1;//read a fragment\n"); 
         } else {
             builder.append("    return activeScriptCursor;\n");
         }

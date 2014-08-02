@@ -106,11 +106,8 @@ public final class FASTInputReactor {
                 
                 int c = 0xFFFFF;
                 while (--c>=0)  {
-                    
-                    //TODO: if there is no room must reschedule! but for now it just keeps looping til c runs out.
-                    
                     f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
-                    if (f<0) {
+                    if (f<=0) { //break on eof or no room to read
                         break;
                     }
                     
