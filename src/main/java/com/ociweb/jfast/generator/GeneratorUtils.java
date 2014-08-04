@@ -119,11 +119,23 @@ public class GeneratorUtils {
                 int preamblePlusId = 2;//TODO: A, must compute and set this
             doneCode[j] +=
                    " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
-                   " if (rb.availableCapacity()<fragmentSize) {\n"+
+                   " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+
+                   " if (rb.tailCache < neededTailStop) {\n"+
+                   " rb.tailCache = rb.tailPos.longValue();\n"+
+                   " if (rb.tailCache < neededTailStop) {\n"+
                    "   return 0;//nothing read\n " +
+                   " }\n"+
                    " }\n";
             }
         
+//            long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
+//            if (rbRingBuffer.tailCache < neededTailStop) {
+//                rbRingBuffer.tailCache = rbRingBuffer.tailPos.longValue(); 
+//                if ( rbRingBuffer.tailCache < neededTailStop ) {
+//                  return 0; //no space to read data and start new message so read nothing
+//                }
+//            }
+            
                           
              doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;

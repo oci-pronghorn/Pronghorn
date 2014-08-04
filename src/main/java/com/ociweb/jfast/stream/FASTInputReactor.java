@@ -109,8 +109,7 @@ public final class FASTInputReactor {
                     f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
                     if (f<=0) { //break on eof or no room to read
                         break;
-                    }
-                    
+                    }                    
                 }
                    
                 if (f>=0) {
@@ -119,7 +118,6 @@ public final class FASTInputReactor {
                     isAlive.set(false);
                 }
             }
-
             
         };        
         executorService.execute(run);        

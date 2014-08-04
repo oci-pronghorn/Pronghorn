@@ -15,6 +15,7 @@ import com.google.caliper.Benchmark;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.loader.ClientConfig;
 import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -86,9 +87,9 @@ public class HomogeniousRecordWriteReadLongBenchmark extends Benchmark {
 
 		
 	static final FASTWriterInterpreterDispatch staticWriter = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null,
-    64,8, 7, 4 ,4, 100 ));
+    64,4, 100, new ClientConfig(8 ,7) ));
 	
-	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,8, 7, maxGroupCount * 10, 0, -1);
+	static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,maxGroupCount * 10, -1,  new ClientConfig(8 ,7));
 	static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog);
 	
 	static final int groupTokenNoMap = TokenBuilder.buildToken(TypeMask.Group, 0, 0, TokenBuilder.MASK_ABSENT_DEFAULT);

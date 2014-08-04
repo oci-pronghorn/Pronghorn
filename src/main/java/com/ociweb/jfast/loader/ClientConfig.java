@@ -11,18 +11,20 @@ public class ClientConfig {
     private int bytesLengthMax;
     private int bytesGap;
     
+    private int rbPrimaryRingBits = 10;
+    private int rbTextRingBits = 8;
+
     
-    //this is for the client and the client holds the consumer or producer of the data in the local logic.
-    //therefore the client should define ALL or only those fields it expects, all new fields can be ignored.
-    //if the required fields are not in the catalog it should produce an error.
-    private String[] supportedFields;//by name or id:XXX,  if empty all fields are allowed and no filtering done.
+    public ClientConfig(int primaryRingBits, int textRingBits) {
+        this.rbPrimaryRingBits = primaryRingBits;
+        this.rbTextRingBits = textRingBits;
+    }
     
     
-   // private 
-    
-    
-    
-    //TODO: must store the ignore fields or view fields without having catalog.
+    //TODO: A, must set ring buffer for each template id
+    //TODO: A, must set extra spacers to be writen between
+    //TODO: A, must set extra spacers to skip
+    //TODO: B, must store the ignore templates without having catalog.
     
     
     //names, ids
@@ -49,6 +51,9 @@ public class ClientConfig {
         bytesLengthMax = PrimitiveReader.readIntegerUnsigned(reader);
         bytesGap = PrimitiveReader.readIntegerUnsigned(reader);
         
+        rbPrimaryRingBits = PrimitiveReader.readIntegerUnsigned(reader);
+        rbTextRingBits = PrimitiveReader.readIntegerUnsigned(reader);
+        
 //        //read the filter fields list
 //        int scriptLength = PrimitiveReader.readIntegerUnsigned(reader);
 //        ignoreFieldIds = new byte[scriptLength];
@@ -72,13 +77,17 @@ public class ClientConfig {
 
     public void save(PrimitiveWriter writer) {
         
-        writer.writeIntegerUnsigned(preableBytes, writer);
+        PrimitiveWriter.writeIntegerUnsigned(preableBytes, writer);
 
-        writer.writeIntegerUnsigned(textLengthMax, writer);
-        writer.writeIntegerUnsigned(textGap, writer);
+        PrimitiveWriter.writeIntegerUnsigned(textLengthMax, writer);
+        PrimitiveWriter.writeIntegerUnsigned(textGap, writer);
 
-        writer.writeIntegerUnsigned(bytesLengthMax, writer);
-        writer.writeIntegerUnsigned(bytesGap, writer);
+        PrimitiveWriter.writeIntegerUnsigned(bytesLengthMax, writer);
+        PrimitiveWriter.writeIntegerUnsigned(bytesGap, writer);
+        
+        PrimitiveWriter.writeIntegerUnsigned(rbPrimaryRingBits, writer);
+        PrimitiveWriter.writeIntegerUnsigned(rbTextRingBits, writer);
+        
         
 //        //write filter fields list
 //        writer.writeIntegerUnsigned(ignoreFieldIds.length);
@@ -134,7 +143,15 @@ public class ClientConfig {
         return this.bytesGap;
     }
 
- 
+    public int getPrimaryRingBits() {
+        return rbPrimaryRingBits;
+    }
+
+    public int getTextRingBits() {
+        return rbTextRingBits;
+    }
+
+
     
     
     

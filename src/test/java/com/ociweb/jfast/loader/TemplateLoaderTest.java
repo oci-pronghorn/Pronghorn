@@ -58,7 +58,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData();
-        assertEquals(707, catalogByteArray.length);
+        assertEquals(709, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -265,7 +265,7 @@ public class TemplateLoaderTest {
                 while (FASTInputReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    while (FASTRingBuffer.moveNext(rb)) {
+                    if (FASTRingBuffer.moveNext(rb)) {
                        // rb.tailPos.lazySet(rb.workingTailPos.value);
                     }; //11
                     //Profile.count += (Profile.version.get()-tmp);
@@ -360,8 +360,10 @@ public class TemplateLoaderTest {
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+        
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-        System.err.println("using: "+readerDispatch.getClass().getSimpleName());
+      
+       System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         
         final AtomicInteger msgs = new AtomicInteger();
         
@@ -382,8 +384,9 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-        FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
- //       FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+       FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+//        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);

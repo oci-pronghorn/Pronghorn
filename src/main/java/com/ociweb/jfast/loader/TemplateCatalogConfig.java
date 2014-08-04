@@ -108,15 +108,14 @@ public class TemplateCatalogConfig {
         
         //must be done after the client config construction
         from = new FieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, (byte)10, (byte)8);
+        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, clientConfig);
         
     }
     
     @Deprecated //for testing only
     public TemplateCatalogConfig(DictionaryFactory dcr, int nonTemplatePMapSize, int[][] dictionaryMembers,
-                          int[] fullScript, int maxNestedGroupDepth,
-                          int primaryRingBits, int textRingBits, int maxTemplatePMapSize, int preambleSize,
-                          int templatesCount) {
+                                int[] fullScript, int maxNestedGroupDepth,
+                                int maxTemplatePMapSize, int templatesCount, ClientConfig clientConfig) {
         
         this.scriptTokens = fullScript;
         this.maxNonTemplatePMapSize  = nonTemplatePMapSize;
@@ -133,19 +132,26 @@ public class TemplateCatalogConfig {
         this.maxFieldId=-1;
         this.dictionaryFactory = dcr;
         int fullScriptLength = null==fullScript?1:fullScript.length;
-        this.clientConfig = new ClientConfig();
+        this.clientConfig = clientConfig;
         
         this.from = new FieldReferenceOffsetManager(this); //TODO: needs max depth for all
         
-        this.ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx,
-                                            primaryRingBits, textRingBits);
+        this.ringBuffers = buildRingBuffers(dictionaryFactory,
+                                            fullScriptLength, 
+                                            from, templateStartIdx,
+                                            clientConfig);
         
         //must be done after the client config construction
     }
     
     
     private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
-                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, int primaryRingBits, int textRingBits) {
+                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, 
+                                                     ClientConfig clientConfig) {
+        
+        int primaryRingBits = clientConfig.getPrimaryRingBits(); 
+        int textRingBits = clientConfig.getTextRingBits();
+        
         FASTRingBuffer[] buffers = new FASTRingBuffer[scriptLength];
         //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
         //Move this method into RingBuffers as satic?

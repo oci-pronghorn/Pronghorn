@@ -116,7 +116,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             if (PrimitiveReader.isEOF(reader)) { 
                 return -1; //no more data stop
             }  
-            
+            //TODO: A, very first begin message can have problems, must sort out.
             beginMessage(reader); 
         }
         
@@ -124,10 +124,15 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor); 
            
      
-        //TODO: must be added to generated code AND be optimized for the polling loop!
+        //TODO: A, must be added to generated code AND be optimized for the polling loop!
         int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ (((3+this.preambleDataLength)>>2)+1); //plus roomm for next message
-        if (rbRingBuffer.availableCapacity()<fragmentSize) {
-          return 0; //no space to read data and start new message so read nothing
+       //Waiting for tail position to change! can cache the value, must make same change in compiled code.
+        long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
+        if (rbRingBuffer.tailCache < neededTailStop) {
+            rbRingBuffer.tailCache = rbRingBuffer.tailPos.longValue(); 
+            if ( rbRingBuffer.tailCache < neededTailStop ) {
+              return 0; //no space to read data and start new message so read nothing
+            }
         }
         
       //  if (rbRingBuffer.availableCapacity()<fragmentSize) { 

@@ -119,6 +119,8 @@ public final class FASTRingBuffer {
         headPos.set(0); //System.err.println("reset()");
         waiting = false;
         moveNextStop=-1;
+        bnmHeadPosCache = -1;
+        tailCache = -1;
         
         /////
         
@@ -139,6 +141,8 @@ public final class FASTRingBuffer {
  //   private long mnHeadCache=-1;
     private long moveNextStop=-1;
     private boolean waiting = false;
+    private long bnmHeadPosCache = -1;
+    public long tailCache = -1;
     
 
     //TODO: B, add method to skip rest of message up to  next message.
@@ -147,8 +151,9 @@ public final class FASTRingBuffer {
 
         //check if we are only waiting for the ring buffer to clear
         if (ringBuffer.waiting) {
-            ringBuffer.waiting = ringBuffer.moveNextStop>ringBuffer.headPos.longValue();
-            return !ringBuffer.waiting;
+          //  Thread.yield();
+            //only here if we already checked headPos against moveNextStop at least once and failed.
+            return !(ringBuffer.waiting = ringBuffer.moveNextStop>(ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue()));
         }
              
         //finished reading the previous fragment so move the working tail position forward for next fragment to read
@@ -188,14 +193,23 @@ public final class FASTRingBuffer {
             }
         }
             
+        return checkForContent(ringBuffer);
+    }
+
+    private static boolean checkForContent(FASTRingBuffer ringBuffer) {
         //after alignment with front of fragment, may be zero because we need to find the next message?
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
         ringBuffer.moveNextStop = ringBuffer.workingTailPos.value+ringBuffer.activeFragmentDataSize;
-        if (ringBuffer.moveNextStop>ringBuffer.headPos.longValue()) {
-            ringBuffer.waiting = true;
-            return false;
+        
+        //
+        if (ringBuffer.moveNextStop>ringBuffer.bnmHeadPosCache) {
+            ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue();
+            if (ringBuffer.moveNextStop>ringBuffer.bnmHeadPosCache) {
+                ringBuffer.waiting = true;
+                return false;
+            }
         }
                         
         return true;
@@ -203,41 +217,36 @@ public final class FASTRingBuffer {
 
     private static boolean beginNewMessage(FASTRingBuffer ringBuffer) {
         
-      //Now beginning a new message to release the previous one from the ring buffer
-      //This is the only safe place to do this and it must be done before we check for space needed by the next record.
-      ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
+        long needStop = ringBuffer.workingTailPos.value + 2; 
+        if (needStop>=ringBuffer.bnmHeadPosCache ) {
+            ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue();
+            if (needStop>=ringBuffer.bnmHeadPosCache) {
+              ringBuffer.messageId=-1;
+              return false;
+            }
+        }
       
-      //check if the content id is on the ring buffer.
-      if ((int)(ringBuffer.headPos.longValue() - ringBuffer.tailPos.longValue())<2) { //TODO: A, can optmimize too many longValue calls
-          ringBuffer.activeFragmentDataSize = 0;
-          ringBuffer.messageId=-1;
-          return false;
-      }
-                
+        
+        //Now beginning a new message so release the previous one from the ring buffer
+        //This is the only safe place to do this and it must be done before we check for space needed by the next record.
+        ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
+               
         
         //TODO: need to get messageId when its the only message and so not written to the ring buffer.
         //TODO: need to step over the preamble? but how?
         ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: how do we know this is one?
             
-        if (ringBuffer.messageId<0) {
-            System.err.println("Bad data "+ringBuffer.messageId+"  at "+ringBuffer.workingTailPos.value+" tp "+ringBuffer.tailPos.get());
-            
-        }
+//        if (ringBuffer.messageId<0) {
+//            System.err.println("Bad data "+ringBuffer.messageId+"  at "+ringBuffer.workingTailPos.value+" tp "+ringBuffer.tailPos.get());
+//            
+//        }
         
         //start new message, can not be seq or optional group or end of message.
         ringBuffer.cursor = ringBuffer.from.starts[ringBuffer.messageId];
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
         ringBuffer.isNewMessage = true;
         
-        //before letting client continue must confirm that this must data is in the ring buffer.
-        ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
-        ringBuffer.moveNextStop = ringBuffer.workingTailPos.value+ringBuffer.activeFragmentDataSize;
-        if (ringBuffer.moveNextStop>ringBuffer.headPos.longValue()) {
-            ringBuffer.waiting = true;
-            return false;
-        }      
-        
-        return true;
+        return checkForContent(ringBuffer);
     }
 
     //TODO: B, test is probably does not work with fields following closed sequence.
@@ -270,9 +279,9 @@ public final class FASTRingBuffer {
                 
                 return true;
             } else {
-                if (seqLength<0) {//TODO: turn into assert.
-                    throw new FASTException("The previous fragment has already been replaced or modified and it was needed for the length counter");
-                }
+//                if (seqLength<0) {//TODO: turn into assert.
+//                    throw new FASTException("The previous fragment has already been replaced or modified and it was needed for the length counter");
+//                }
                 
                 //push onto stack
                 seqStack[++seqStackHead]=seqLength;

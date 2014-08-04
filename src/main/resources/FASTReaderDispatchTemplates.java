@@ -54,7 +54,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
             dispatch.templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);                                                    
             // write template id at the beginning of this message
-            int neededSpace = 1 + preambleDataLength + dispatch.requiredBufferSpace2()*2; //TODO: B, hack for now, this needed space is not adequate for fragments.
+            int neededSpace = 1 + preambleDataLength + requiredBufferSpace2(dispatch, dispatch.templateId)*2; //TODO: B, hack for now, this needed space is not adequate for fragments.
             dispatch.ringBufferIdx = dispatch.activeScriptCursor;//TODO: A, convert to something mroe helpfull?
             //we know the templateId so we now know which ring buffer to use.
             FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);                                        

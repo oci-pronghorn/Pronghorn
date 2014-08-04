@@ -95,13 +95,18 @@ public abstract class FASTDecoder{
 
     public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
     
-    //TODO: B, remove or change to static.
-    public int requiredBufferSpace2() {
+    //TODO: A, remove or change to static.
+//    Exception in thread "pool-203-thread-1" java.lang.ArrayIndexOutOfBoundsException: -1
+//    at com.ociweb.jfast.stream.FASTDecoder.requiredBufferSpace2(FASTDecoder.java:101)
+//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.t_002(FASTReaderGeneratedDispatch.java:44)
+//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.beginMessage(FASTReaderGeneratedDispatch.java:34)
+//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.decode(FASTReaderGeneratedDispatch.java:470)
+    public static int requiredBufferSpace2(FASTDecoder decoder, int templateId) {
         
-        activeScriptCursor = templateStartIdx[templateId];//set location for the generated code state.
-        activeScriptLimit = templateLimitIdx[templateId];
+        decoder.activeScriptCursor = decoder.templateStartIdx[templateId];//set location for the generated code state.
+        decoder.activeScriptLimit = decoder.templateLimitIdx[templateId];
 
-        return (activeScriptLimit - activeScriptCursor) << 2;        
+        return (decoder.activeScriptLimit - decoder.activeScriptCursor) << 2;        
         
     }
     
