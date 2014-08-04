@@ -215,9 +215,14 @@ public final class FASTRingBuffer {
         return true;
     }
 
+    
+    //TODO: C, need to get messageId when its the only message and so not written to the ring buffer.
+    //TODO: C, need to step over the preamble? but how?
+    
     private static boolean beginNewMessage(FASTRingBuffer ringBuffer) {
         
-        long needStop = ringBuffer.workingTailPos.value + 2; 
+        long cashWorkingTailPos = ringBuffer.workingTailPos.value;
+        long needStop = cashWorkingTailPos + 3; 
         if (needStop>=ringBuffer.bnmHeadPosCache ) {
             ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue();
             if (needStop>=ringBuffer.bnmHeadPosCache) {
@@ -225,28 +230,23 @@ public final class FASTRingBuffer {
               return false;
             }
         }
-      
+              
+        updateTailPos(ringBuffer, cashWorkingTailPos);
         
+        return checkForContent(ringBuffer);
+    }
+
+    private static void updateTailPos(FASTRingBuffer ringBuffer, long cashWorkingTailPos) {
         //Now beginning a new message so release the previous one from the ring buffer
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
-        ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value); 
+        ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
-        
-        //TODO: need to get messageId when its the only message and so not written to the ring buffer.
-        //TODO: need to step over the preamble? but how?
-        ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: how do we know this is one?
-            
-//        if (ringBuffer.messageId<0) {
-//            System.err.println("Bad data "+ringBuffer.messageId+"  at "+ringBuffer.workingTailPos.value+" tp "+ringBuffer.tailPos.get());
-//            
-//        }
-        
+        ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: A, how do we know this is one? jumping over preamble
+
         //start new message, can not be seq or optional group or end of message.
         ringBuffer.cursor = ringBuffer.from.starts[ringBuffer.messageId];
         ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
         ringBuffer.isNewMessage = true;
-        
-        return checkForContent(ringBuffer);
     }
 
     //TODO: B, test is probably does not work with fields following closed sequence.

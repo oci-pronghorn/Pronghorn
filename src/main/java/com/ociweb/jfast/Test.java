@@ -110,9 +110,13 @@ public class Test {
           //Example of single threaded usage
           /////////////////////////////////////
           RingBuffers ringBuffers = readerDispatch.ringBuffers;
+          FASTRingBuffer rb = RingBuffers.get(ringBuffers, 0);  
+
           boolean ok = true;
           int bufId;
+          char[] temp = new char[64];
           while (ok) {
+
               switch (bufId = FASTInputReactor.pump(reactor)) {
                   case -1://end of file
                       ok = false;
@@ -120,11 +124,18 @@ public class Test {
                   case 0: //no room to read
                       break;
                   case 1: //read one fragment
-                      FASTRingBuffer rb = RingBuffers.get(ringBuffers,bufId);                      
-                      FASTRingBuffer.moveNext(rb);
                       
-                      if (rb.isNewMessage) {
-                          msgs.incrementAndGet();
+                      
+                      
+                      if (FASTRingBuffer.moveNext(rb)) {
+                          
+                          if (rb.isNewMessage) {
+                              msgs.incrementAndGet();
+                              
+                              //TODO: why does this hang?
+                              //processMessage(temp, rb); 
+                              
+                          } 
                       }
                       
                       //your usage of these fields would go here. 
@@ -155,7 +166,6 @@ public class Test {
         
         int reactors = 1;
         ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
-
         
         double start = System.nanoTime();
           
@@ -173,27 +183,23 @@ public class Test {
                     int totalMessages = 0;
                     do {
                         
-                        if (FASTRingBuffer.moveNext(rb)) { //if we do this too fast we get
-//                            Exception in thread "pool-14-thread-2" java.lang.ArrayIndexOutOfBoundsException: 10
-//                            at com.ociweb.jfast.stream.FASTRingBuffer.sequenceLengthDetector(FASTRingBuffer.java:287)
-//                            at com.ociweb.jfast.stream.FASTRingBuffer.beginFragment(FASTRingBuffer.java:184)
-//                            at com.ociweb.jfast.stream.FASTRingBuffer.moveNext(FASTRingBuffer.java:169)
-//                            at com.ociweb.jfast.Test$1.run(Test.java:176)
-//                            at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
-//                            at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:615)
-//                            at java.lang.Thread.run(Thread.java:744)
-                            
+                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
                             if (rb.isNewMessage) {
                                 totalMessages++;
-                            //    processMessage(temp, rb);                          
-                                
+                                processMessage(temp, rb);                          
+                               // Thread.yield(); 
                             }
                         }
-                        //Thread.yield(); //add this back in to expose other bugs.
                         
-                      //dump the data as fast as possible, this is faster than the single 
-//                      rb.workingTailPos.value = rb.headPos.longValue();
-//                      rb.tailPos.lazySet(rb.workingTailPos.value); 
+//                        //TODO: B, if we wait for the buffer to be full it will crash.
+//                        while (rb.availableCapacity()>100) {                            
+//                        }
+
+                        
+//                      //dump the data as fast as possible, this is faster than the single 
+//                      long temp = rb.headPos.longValue();
+//                      rb.workingTailPos.value=temp;
+//                      rb.tailPos.lazySet(temp); 
 //                      Thread.yield();
                         
                     } while (isAlive.get());
@@ -268,6 +274,15 @@ public class Test {
                   int mDEntryTime = FASTRingBufferReader.readInt(rb, 11);
                   int mDEntrySize = FASTRingBufferReader.readInt(rb, 12);
                   int numberOfOrders = FASTRingBufferReader.readInt(rb, 13);
+                  
+                  //TODO: A, by increasing this value the client hits the CAS less often and the queue gets full and it causes an exception!
+                  int i = 1000;
+                  while(--i>=0) {
+                      float x = (i+mDEntryPxExpo)/(1f+numberOfOrders);
+                      if (x==0.01) {
+                          System.err.println("hello");
+                      } 
+                  }
                   
                   FASTRingBufferReader.readASCII(rb, 14, temp, 0); //TradingSessionID
                   

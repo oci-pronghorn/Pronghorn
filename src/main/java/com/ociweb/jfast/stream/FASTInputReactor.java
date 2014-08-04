@@ -102,19 +102,27 @@ public final class FASTInputReactor {
             @Override
             public void run() {
                 
-                int f=0;
-                
-                int c = 0xFFFFF;
-                while (--c>=0)  {
-                    f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
-                    if (f<=0) { //break on eof or no room to read
-                        break;
-                    }                    
-                }
-                   
-                if (f>=0) {
-                    executorService.execute(this);
-                } else {
+                try {
+                    int f=0;
+                    
+                    int c = 0xFFFFF;
+                    while (--c>=0)  {
+                        
+                        f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
+                        
+                        if (f<=0) { //break on eof or no room to read
+                            break;
+                        }                    
+                    }
+                       
+                    if (f>=0) {
+                        executorService.execute(this);
+                    } else {
+                        isAlive.set(false);
+                    }
+                    
+                } catch (Throwable t) {
+                    t.printStackTrace();
                     isAlive.set(false);
                 }
             }
