@@ -52,22 +52,24 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {
 
         {
-            dispatch.templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);                                                    
             // write template id at the beginning of this message
-            int neededSpace = 1 + preambleDataLength + requiredBufferSpace2(dispatch, dispatch.templateId)*2; //TODO: B, hack for now, this needed space is not adequate for fragments.
-            dispatch.ringBufferIdx = dispatch.activeScriptCursor;//TODO: A, convert to something mroe helpfull?
-            //we know the templateId so we now know which ring buffer to use.
-            FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);                                        
-            if (neededSpace > 0) {
-                int size = rb.maxSize;
-                if (( size-(rb.workingHeadPos.value-rb.workingTailPos.value)) < neededSpace) {
-                    while (( size-(rb.workingHeadPos.value-rb.workingTailPos.value)) < neededSpace) {
-                        //TODO: must call blocking policy on this, already committed to read.
-                      //  System.err.println("no room in ring buffer");
-                       Thread.yield();// rb.dump(rb);
-                    }                                                
-                }
+            dispatch.templateId = PrimitiveReader.openMessage(maxTemplatePMapSize, reader);
+            if (dispatch.templateId<0) {
+                System.err.println("found error at "+reader.totalRead(reader)+" for "+System.identityHashCode(reader)); //this looks like end of file!!
             }
+            
+            // fragment size plus 1 for template id and preamble data length in bytes
+            dispatch.activeScriptLimit = dispatch.templateLimitIdx[ dispatch.templateId];
+            dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
+            
+            //we know the templateId so we now know which ring buffer to use.
+            FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);          
+            
+            //confirm that this ring buffer has enough room to hold the new results, and wait if it does not
+            rb.tailCache = FASTRingBuffer.spinBlock(rb.tailPos, rb.tailCache, 1 + preambleDataLength +
+                    ///rb.from.fragDataSize[dispatch.activeScriptCursor] +
+                    rb.workingHeadPos.value - rb.maxSize);
+  
         }
     }
 

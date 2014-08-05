@@ -54,7 +54,7 @@ public class Test {
     
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
          final int count = 1024000;
-         final boolean single = false;//true;//false;
+         final boolean single = false;//false;//true;//false;
                 
                   
          //TODO: for multi test we really need to have it writing to multiple ring buffers.
@@ -65,9 +65,9 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //     FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
        
-       //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+         FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -76,9 +76,11 @@ public class Test {
 
           int iter = count;
           while (--iter >= 0) {
-              FASTInputStream fastInputStream = new FASTInputStream(testDataInputStream(dataSource));
-              PrimitiveReader reader = new PrimitiveReader(1024*1024*2,fastInputStream, maxPMapCountInBytes);
               
+              
+              InputStream instr = testDataInputStream(dataSource);
+              PrimitiveReader reader = new PrimitiveReader(4096, new FASTInputStream(instr), maxPMapCountInBytes);
+
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
                             
               FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
@@ -92,11 +94,17 @@ public class Test {
               
                             
               if (shouldPrint(iter)) {
-                  printSummary(msgs.get(), queuedBytes, duration, fastInputStream.totalBytes()); 
+                  printSummary(msgs.get(), queuedBytes, duration, reader.totalRead(reader)); 
               }
 
               //reset the dictionary to run the test again.
               readerDispatch.reset(catalog.dictionaryFactory());
+              try {
+                instr.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
 
           }
 
@@ -168,7 +176,7 @@ public class Test {
         ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
         
         double start = System.nanoTime();
-          
+        
         final AtomicBoolean isAlive = reactor.start(executor, reader);
         
         int b = buffers.length;
@@ -183,24 +191,24 @@ public class Test {
                     int totalMessages = 0;
                     do {
                         
-                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-                            if (rb.isNewMessage) {
-                                totalMessages++;
-                                processMessage(temp, rb);                          
-                               // Thread.yield(); 
-                            }
-                        }
+//                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+//                            if (rb.isNewMessage) {
+//                                totalMessages++;
+//                                processMessage(temp, rb);                          
+//                               // Thread.yield(); 
+//                            }
+//                        }
                         
 //                        //TODO: B, if we wait for the buffer to be full it will crash.
 //                        while (rb.availableCapacity()>100) {                            
 //                        }
 
                         
-//                      //dump the data as fast as possible, this is faster than the single 
-//                      long temp = rb.headPos.longValue();
-//                      rb.workingTailPos.value=temp;
-//                      rb.tailPos.lazySet(temp); 
-//                      Thread.yield();
+                      //dump the data as fast as possible, this is faster than the single 
+                      long temp = rb.headPos.longValue();
+                      rb.workingTailPos.value=temp;
+                      rb.tailPos.lazySet(temp); 
+                      Thread.yield();
                         
                     } while (isAlive.get());
                     msgs.addAndGet(totalMessages);                    
@@ -213,14 +221,17 @@ public class Test {
         
         executor.shutdown();
         try {
-            executor.awaitTermination(1,TimeUnit.MINUTES);
+            executor.awaitTermination(1,TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         
         double duration = System.nanoTime() - start;
        // System.err.println("finished one test");
-        executor.shutdownNow();
+       // executor.shutdownNow();
+        
+
+      
         return duration;
     }
     //TODO: C, need test for optional groups this is probably broken. 
@@ -275,14 +286,14 @@ public class Test {
                   int mDEntrySize = FASTRingBufferReader.readInt(rb, 12);
                   int numberOfOrders = FASTRingBufferReader.readInt(rb, 13);
                   
-                  //TODO: A, by increasing this value the client hits the CAS less often and the queue gets full and it causes an exception!
-                  int i = 1000;
-                  while(--i>=0) {
-                      float x = (i+mDEntryPxExpo)/(1f+numberOfOrders);
-                      if (x==0.01) {
-                          System.err.println("hello");
-                      } 
-                  }
+//                  //TODO: A, by increasing this value the client hits the CAS less often and the queue gets full and it causes an exception!
+//                  int i = 1000;
+//                  while(--i>=0) {
+//                      float x = (i+mDEntryPxExpo)/(1f+numberOfOrders);
+//                      if (x==0.01) {
+//                          System.err.println("hello");
+//                      } 
+//                  }
                   
                   FASTRingBufferReader.readASCII(rb, 14, temp, 0); //TradingSessionID
                   
@@ -361,6 +372,7 @@ public class Test {
             throw new FASTException(e);
         }
     }
+    
 
     private static byte[] buildRawCatalogData(ClientConfig clientConfig, String source) {
 

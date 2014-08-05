@@ -93,7 +93,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         // /////////////////
         // open message (special type of group)
-        genReadTemplateId(preambleDataLength, maxTemplatePMapSize, reader, this); 
+        int preambleInts = (preambleDataLength+3)>>2;
+        genReadTemplateId(preambleInts, maxTemplatePMapSize, reader, this);
+       // activeScriptLimit = templateLimitIdx[ templateId];//value only needed by this class
         
         
         //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
@@ -114,6 +116,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
+               // System.err.println("EOF");
                 return -1; //no more data stop
             }  
             //TODO: A, very first begin message can have problems, must sort out.
@@ -137,7 +140,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
       //  if (rbRingBuffer.availableCapacity()<fragmentSize) { 
        //     System.err.println("no room");
-       //     return ringBufferIdx; //cant read right now no room
+       //     return 0; //cant read right now no room
        // }
         
 

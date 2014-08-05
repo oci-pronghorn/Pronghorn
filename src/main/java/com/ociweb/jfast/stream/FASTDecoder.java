@@ -14,9 +14,8 @@ public abstract class FASTDecoder{
     //all constants always skipped.
     //decimals as well??
     
-    private final int[] templateStartIdx; //These constants can be remvoed
-    private final int[] templateLimitIdx;//These constants can be remvoed
-    
+    public final int[] templateStartIdx; //These constants can be remvoed
+    public final int[] templateLimitIdx;//These constants can be remvoed
 
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
@@ -31,7 +30,6 @@ public abstract class FASTDecoder{
     protected final LocalHeap byteHeap;
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.
-    public int ringBufferIdx= -1; //must hold return value from beginning of fragment to the end.
     public int templateId=-1; //must hold between read (wait for space on queue) and write of templateId
     public int preambleA=0; //must hold between read (wait for space on queue) and write (if it happens)
     public int preambleB=0; //must hold between read (wait for space on queue) and write (if it happens)
@@ -40,7 +38,7 @@ public abstract class FASTDecoder{
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(), computePMapStackInBytes(catalog), 
-             catalog.getTemplateStartIdx(), catalog.getTemplateLimitIdx(),
+             catalog.getTemplateStartIdx(), catalog.getTemplateLimitIdx(), 
              catalog.maxTemplatePMapSize(), catalog.clientConfig().getPreableBytes(), catalog.ringBuffers());
     }
     
@@ -94,21 +92,6 @@ public abstract class FASTDecoder{
     
 
     public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
-    
-    //TODO: A, remove or change to static.
-//    Exception in thread "pool-203-thread-1" java.lang.ArrayIndexOutOfBoundsException: -1
-//    at com.ociweb.jfast.stream.FASTDecoder.requiredBufferSpace2(FASTDecoder.java:101)
-//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.t_002(FASTReaderGeneratedDispatch.java:44)
-//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.beginMessage(FASTReaderGeneratedDispatch.java:34)
-//    at com.ociweb.jfast.generator.FASTReaderGeneratedDispatch.decode(FASTReaderGeneratedDispatch.java:470)
-    public static int requiredBufferSpace2(FASTDecoder decoder, int templateId) {
-        
-        decoder.activeScriptCursor = decoder.templateStartIdx[templateId];//set location for the generated code state.
-        decoder.activeScriptLimit = decoder.templateLimitIdx[templateId];
-
-        return (decoder.activeScriptLimit - decoder.activeScriptCursor) << 2;        
-        
-    }
     
 
 }

@@ -217,7 +217,7 @@ public final class PrimitiveReader {
     // //
     // called at the start of each group unless group knows it has no pmap
     public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
-        //TODO: X, pmapMaxSize is a constant for many templates and can be injected.
+        //TODO: B, pmapMaxSize is a constant for many templates and can be injected.
         
         if (reader.position >= reader.limit) {
             fetch(1, reader);

@@ -83,6 +83,7 @@ public final class FASTInputReactor {
                 //TODO: C, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
                 //TODO: C, formalize this pattern in a new M:N ThreadPoolExecutor, send in the number of cores you wish to target for parsing not threads.
                 //TODO: C, once this threading is in place can the move next also be added to the same pool if we desire? This may give us locality across both calls
+               // System.err.println("Begin block");
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
                 }                
@@ -90,6 +91,7 @@ public final class FASTInputReactor {
              
             @Override
             public void resolvedInputBlockage(FASTInput input) {
+               // System.err.println("Release block");
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()-1);
                 }
@@ -122,7 +124,7 @@ public final class FASTInputReactor {
                     }
                     
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                   // t.printStackTrace();
                     isAlive.set(false);
                 }
             }
