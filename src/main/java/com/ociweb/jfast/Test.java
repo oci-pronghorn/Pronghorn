@@ -54,7 +54,7 @@ public class Test {
     
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
          final int count = 1024000;
-         final boolean single = false;//false;//true;//false;
+         final boolean single = false;//true;//false;
                 
                   
          //TODO: for multi test we really need to have it writing to multiple ring buffers.
@@ -170,8 +170,10 @@ public class Test {
     
     private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor, PrimitiveReader reader) {
 
-        FASTRingBuffer[] buffers = RingBuffers.buffers(readerDispatch.ringBuffers);
+        System.err.println("*************************************************************** multi test instance begin ");
         
+        FASTRingBuffer[] buffers = RingBuffers.buffers(readerDispatch.ringBuffers);
+                
         int reactors = 1;
         ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
         
@@ -181,7 +183,7 @@ public class Test {
         
         int b = buffers.length;
         while (--b>=0) {
-            final FASTRingBuffer rb = buffers[b];
+            final FASTRingBuffer rb = buffers[b]; //Too many buffers!
             Runnable run = new Runnable() {
                 char[] temp = new char[64];
                 
@@ -190,14 +192,15 @@ public class Test {
                 public void run() {
                     int totalMessages = 0;
                     do {
-                        
-//                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-//                            if (rb.isNewMessage) {
-//                                totalMessages++;
-//                                processMessage(temp, rb);                          
-//                               // Thread.yield(); 
-//                            }
-//                        }
+                       // System.err.println("q");
+                        while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                            if (rb.isNewMessage) {
+                                totalMessages++;
+                             //   System.err.println("msg:"+totalMessages);
+                            //    processMessage(temp, rb);  //this can hang?! and does.                        
+                               // Thread.yield(); 
+                            }
+                        }
                         
 //                        //TODO: B, if we wait for the buffer to be full it will crash.
 //                        while (rb.availableCapacity()>100) {                            
@@ -205,12 +208,26 @@ public class Test {
 
                         
                       //dump the data as fast as possible, this is faster than the single 
-                      long temp = rb.headPos.longValue();
-                      rb.workingTailPos.value=temp;
-                      rb.tailPos.lazySet(temp); 
-                      Thread.yield();
+//                      long temp = rb.headPos.longValue();
+//                      rb.workingTailPos.value=temp;
+//                      rb.tailPos.lazySet(temp); 
+//                      Thread.yield();
                         
                     } while (isAlive.get());
+                    //is alive is done writing but we need to empty out
+                    System.err.println("AAA msg:"+totalMessages);
+               //     do {
+                        while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                            if (rb.isNewMessage) {
+                                totalMessages++;
+                                System.err.println("msg:"+totalMessages);
+                                //processMessage(temp, rb);                          
+                               // Thread.yield(); 
+                            }
+                            System.err.println("x");
+                        }
+             //       } while (totalMessages<29000);
+                    System.err.println("BBB msg:"+totalMessages);
                     msgs.addAndGet(totalMessages);                    
                 }
                 
@@ -221,7 +238,7 @@ public class Test {
         
         executor.shutdown();
         try {
-            executor.awaitTermination(1,TimeUnit.MILLISECONDS);
+            executor.awaitTermination(1,TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -230,7 +247,7 @@ public class Test {
        // System.err.println("finished one test");
        // executor.shutdownNow();
         
-
+        System.err.println("*************************************************************** multi test instance end ");
       
         return duration;
     }

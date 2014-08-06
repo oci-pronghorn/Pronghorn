@@ -61,8 +61,6 @@ public final class FASTRingBuffer {
     final byte[] constByteBuffer;
     final byte[][] bufferLookup;
 
-    long lastRead;
-
     //TODO: A, use stack of fragment start offsets for each fragment until full message is completed.
     //TODO: B, first offset 0 points to the constants after the ring buffer.
     
@@ -121,8 +119,11 @@ public final class FASTRingBuffer {
         moveNextStop=-1;
         bnmHeadPosCache = -1;
         tailCache = -1;
+        addBytePos = 0;
         
         /////
+        cursor=-1;
+        seqStackHead = -1;
         
         messageId = -1;
         isNewMessage = false;

@@ -75,7 +75,7 @@ public final class FASTInputReactor {
         
         final AtomicBoolean isAlive = new AtomicBoolean(true);
         
-        PrimitiveReader.setInputPolicy(new InputBlockagePolicy() {
+        reader.setInputPolicy(new InputBlockagePolicy() {
             Object lock = new Object();
 
             @Override
@@ -83,7 +83,7 @@ public final class FASTInputReactor {
                 //TODO: C, create these extra threads on startup and pause them until this moment, this prevents creation and gc at runtime
                 //TODO: C, formalize this pattern in a new M:N ThreadPoolExecutor, send in the number of cores you wish to target for parsing not threads.
                 //TODO: C, once this threading is in place can the move next also be added to the same pool if we desire? This may give us locality across both calls
-               // System.err.println("Begin block");
+                System.err.println("Begin block");
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()+1);
                 }                
@@ -91,7 +91,7 @@ public final class FASTInputReactor {
              
             @Override
             public void resolvedInputBlockage(FASTInput input) {
-               // System.err.println("Release block");
+                System.err.println("Release block");
                 synchronized(lock) {
                     executorService.setMaximumPoolSize(executorService.getMaximumPoolSize()-1);
                 }
@@ -101,30 +101,35 @@ public final class FASTInputReactor {
         
         final Runnable run = new Runnable() {
 
+            int count = 0;
             @Override
             public void run() {
                 
                 try {
                     int f=0;
                     
-                    int c = 0xFFFFF;
-                    while (--c>=0)  {
+                 //   int c = 0xFFFFF;
+                    while (true) {//--c>=0)  { //TODO: A, stopping in the middle is causing an overlap of some kind?
                         
                         f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
                         
                         if (f<=0) { //break on eof or no room to read
                             break;
-                        }                    
+                        }  else {
+                            count++;
+                        }
                     }
                        
                     if (f>=0) {
                         executorService.execute(this);
                     } else {
+                        System.err.println("total fragments sent:"+count);
                         isAlive.set(false);
                     }
                     
                 } catch (Throwable t) {
-                   // t.printStackTrace();
+                    t.printStackTrace();
+                    System.err.println("ERR total fragments sent:"+count);
                     isAlive.set(false);
                 }
             }

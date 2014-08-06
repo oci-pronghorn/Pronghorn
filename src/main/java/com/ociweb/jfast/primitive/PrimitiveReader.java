@@ -44,13 +44,13 @@ public final class PrimitiveReader {
     private byte[] invPmapStack;
     private int invPmapStackDepth;
 
-    private int position; 
+    public int position; 
     private int limit;
     
     public int pmapIdxBitBlock = -1; //idx high in pmap data
     
     
-    private static InputBlockagePolicy blockagePolicy = new InputBlockagePolicy(){ //   blockagePolicy
+    private InputBlockagePolicy blockagePolicy = new InputBlockagePolicy(){ //   blockagePolicy
         
         @Override
         public void detectedInputBlockage(int need, FASTInput input) {
@@ -61,7 +61,7 @@ public final class PrimitiveReader {
         }};
   
      //only called when we need more data and the input is not providing any
-     public static void setInputPolicy(InputBlockagePolicy is) {
+     public void setInputPolicy(InputBlockagePolicy is) {
        blockagePolicy = is; //TODO: this needs to be specific for this instance?
      }
         
@@ -156,6 +156,7 @@ public final class PrimitiveReader {
     private static int fetchAvail(int need, PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
             reader.position = reader.limit = 0;
+          //  System.err.println("reset fetchAvail");
         }
         int remainingSpace = reader.buffer.length - reader.limit;
         if (need <= remainingSpace) {
@@ -163,6 +164,7 @@ public final class PrimitiveReader {
             // but as we near the end prevent overflow by only getting what is needed.
             
             int filled = reader.input.fill(reader.limit, remainingSpace);
+     //       System.err.println("fill from "+reader.limit+" xx "+remainingSpace+" filled "+filled+" pos "+reader.position);
 
             reader.totalReader += filled;
             reader.limit += filled;
@@ -183,6 +185,7 @@ public final class PrimitiveReader {
      * @return
      */
     private static int noRoomOnFetch(int need, PrimitiveReader reader) {
+     //   System.err.println("____ no room on fetch need "+need+" after  pos: "+reader.position+" lim:"+reader.limit);
         
         int keepFromPosition = reader.position;
         
@@ -200,6 +203,8 @@ public final class PrimitiveReader {
         reader.position = 0;
         reader.totalReader += filled;
         reader.limit = populated + filled;
+        
+    //    System.err.println("new pos:"+reader.position+" lim:"+reader.limit+" filled:"+filled);
 
         return need - filled;
 
@@ -218,16 +223,22 @@ public final class PrimitiveReader {
     // called at the start of each group unless group knows it has no pmap
     public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
         //TODO: B, pmapMaxSize is a constant for many templates and can be injected.
-        
+        // set next bit to read
         if (reader.position >= reader.limit) {
             fetch(1, reader);
         }
+        
         // push the old index for resume
         reader.invPmapStack[reader.invPmapStackDepth - 1] = (byte) (reader.pmapIdxBitBlock>>16);  //reader.pmapIdx;
 
         int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
+        if (k<0) {
+            new Exception("bad k value "+k).printStackTrace();
+            System.exit(0);
+        }
         
-        // set next bit to read
+        //System.err.println("read from posotion:"+reader.position);
+        
         reader.pmapIdxBitBlock = (6<<16)|(0xFF&reader.buffer[reader.position]);
         
         k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader, reader.buffer);
@@ -236,7 +247,7 @@ public final class PrimitiveReader {
     }
 
     private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader, byte[] buffer) {
-        if (reader.limit - reader.position > pmapMaxSize) {
+        if (reader.limit - reader.position >= pmapMaxSize) {
             if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
                 if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
                     do {
@@ -251,18 +262,16 @@ public final class PrimitiveReader {
 
     private static int openPMapSlow(int k, PrimitiveReader reader, byte[] buffer) {
         // must use slow path because we are near the end of the buffer.
-        do {
+        while ((reader.invPmapStack[k++] = buffer[reader.position++]) >= 0) {
             if (reader.position >= reader.limit) {
                 fetch(1, reader);
             }
-            // System.err.println("*pmap:"+Integer.toBinaryString(0xFF&buffer[position]));
-        } while ((reader.invPmapStack[k++] = buffer[reader.position++]) >= 0);
+        }
         return k;
     }
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
-    public static byte readPMapBit(PrimitiveReader reader) {
-            //TODO: B, first 7 bits can be hard coded shifts by compiled decoder so this if can be eliminated
+    public static byte readPMapBit(PrimitiveReader reader) { //TODO: A, confirm every instance of this call can be replaced by compiler
             if (reader.pmapIdxBitBlock >= 0 ) {    
                 // Frequent, 6 out of every 7 plus the last bit block 
                     int shft = reader.pmapIdxBitBlock>>16;
@@ -667,13 +676,6 @@ public final class PrimitiveReader {
 
     // //////////////
     // /////////
-
-    public static final int openMessage(int pmapMaxSize, PrimitiveReader reader) {
-        openPMap(pmapMaxSize, reader);
-        // return template id or unknown
-        return (0 != readPMapBit(reader)) ? readIntegerUnsigned(reader) : -1;// template Id
-
-    }
 
     //only needed for preamble, which is not BTW found in the spec.
     public static int readRawInt(PrimitiveReader reader) {
