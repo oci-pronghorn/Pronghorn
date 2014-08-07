@@ -99,44 +99,46 @@ public final class FASTInputReactor {
             
         });
         
+        final Runnable run = buildRunnable(executorService, isAlive);        
+        executorService.execute(run);        
+        return isAlive;
+    }
+
+    private Runnable buildRunnable(final ThreadPoolExecutor executorService, final AtomicBoolean isAlive) {
         final Runnable run = new Runnable() {
 
-            int count = 0;
+
             @Override
             public void run() {
                 
                 try {
                     int f=0;
                     
-                 //   int c = 0xFFFFF;
-                    while (true) {//--c>=0)  { //TODO: A, stopping in the middle is causing an overlap of some kind?
+                    int c = 0xFFF;
+                    while (--c>=0)  { //TODO: B, stopping in the middle is causing an overlap of some kind? Do not turn on until the other bugs are fixed.
                         
                         f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
                         
-                        if (f<=0) { //break on eof or no room to read
+                        if (f<=0) { //TODO B, See above, (f<=0) { //break on eof or no room to read
                             break;
-                        }  else {
-                            count++;
-                        }
+                        }  
                     }
                        
                     if (f>=0) {
-                        executorService.execute(this);
+                        executorService.execute(buildRunnable(executorService,isAlive));
                     } else {
-                        System.err.println("total fragments sent:"+count);
                         isAlive.set(false);
                     }
                     
                 } catch (Throwable t) {
                     t.printStackTrace();
-                    System.err.println("ERR total fragments sent:"+count);
+                   // System.err.println("ERR total fragments sent:"+count);
                     isAlive.set(false);
                 }
             }
             
-        };        
-        executorService.execute(run);        
-        return isAlive;
+        };
+        return run;
     }
 
     public static int pump(FASTInputReactor reactor) {

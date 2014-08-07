@@ -1,5 +1,6 @@
 package com.ociweb.jfast.stream;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.jfast.error.FASTException;
@@ -69,6 +70,20 @@ public final class FASTRingBuffer {
     public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
     
+    // adjust these from the offset of the biginning of the message.
+
+    public int messageId = -1;
+    public boolean isNewMessage = false;
+    int cursor=-1;
+    int[] seqStack = new int[10];//TODO: how deep is this?
+    int seqStackHead = -1;
+    static final int JUMP_MASK = 0xFFFFF;
+    public int activeFragmentDataSize = 0;
+ //   private long mnHeadCache=-1;
+    private long moveNextStop=-1;
+    private boolean waiting = false;
+    private long bnmHeadPosCache = -1;
+    public long tailCache = -1;
 
     public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx) {
         assert (primaryBits >= 1);       
@@ -130,29 +145,14 @@ public final class FASTRingBuffer {
         activeFragmentDataSize = 0;
     }
 
-    // adjust these from the offset of the biginning of the message.
 
-    public int messageId = -1;
-    public boolean isNewMessage = false;
-    int cursor=-1;
-    int[] seqStack = new int[10];//TODO: how deep is this?
-    int seqStackHead = -1;
-    static final int JUMP_MASK = 0xFFFFF;
-    public int activeFragmentDataSize = 0;
- //   private long mnHeadCache=-1;
-    private long moveNextStop=-1;
-    private boolean waiting = false;
-    private long bnmHeadPosCache = -1;
-    public long tailCache = -1;
     
 
-    //TODO: B, add method to skip rest of message up to  next message.
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { //TODO: rename to canMoveNext?
 
         //check if we are only waiting for the ring buffer to clear
         if (ringBuffer.waiting) {
-          //  Thread.yield();
             //only here if we already checked headPos against moveNextStop at least once and failed.
             return !(ringBuffer.waiting = ringBuffer.moveNextStop>(ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue()));
         }
@@ -163,8 +163,6 @@ public final class FASTRingBuffer {
         
         
         if (ringBuffer.messageId<0) {      
-            //TODO: if there is no room to begin message return false.
-           // ringBuffer.tailPos.lazySet(ringBuffer.workingTailPos.value);//hack
             return beginNewMessage(ringBuffer);
         } else {
             return beginFragment(ringBuffer);
@@ -458,7 +456,6 @@ public final class FASTRingBuffer {
 
     public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
         while ( lastCheckedValue < targetValue) {  
-            //NOTE: when used with more threads/jobs than cores may want to Thread.yield() here.
             lastCheckedValue = atomicLong.longValue();
         }
         return lastCheckedValue;

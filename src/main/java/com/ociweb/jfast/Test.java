@@ -13,6 +13,7 @@ import java.net.URL;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -44,7 +45,7 @@ public class Test {
     public static void main(String[] args) {
         
         //this example uses the preamble feature
-        ClientConfig clientConfig = new ClientConfig();
+        ClientConfig clientConfig = new ClientConfig(18,8);//larger than normal to help speed this up.
         clientConfig.setPreableBytes((short)4);
         String templateSource = "/performance/example.xml";
         String dataSource = "/performance/complex30000.dat";
@@ -65,9 +66,9 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-    //     FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-       
-         FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+         System.out.println("Using: "+readerDispatch.getClass().getSimpleName());
           
           final AtomicInteger msgs = new AtomicInteger();
           
@@ -79,7 +80,7 @@ public class Test {
               
               
               InputStream instr = testDataInputStream(dataSource);
-              PrimitiveReader reader = new PrimitiveReader(4096, new FASTInputStream(instr), maxPMapCountInBytes);
+              PrimitiveReader reader = new PrimitiveReader(4096*1024, new FASTInputStream(instr), maxPMapCountInBytes);
 
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
                             
@@ -94,7 +95,7 @@ public class Test {
               
                             
               if (shouldPrint(iter)) {
-                  printSummary(msgs.get(), queuedBytes, duration, reader.totalRead(reader)); 
+                  printSummary(msgs.get(), queuedBytes, duration, PrimitiveReader.totalRead(reader)); 
               }
 
               //reset the dictionary to run the test again.
@@ -170,16 +171,32 @@ public class Test {
     
     private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor, PrimitiveReader reader) {
 
-        System.err.println("*************************************************************** multi test instance begin ");
+    //    System.err.println("*************************************************************** multi test instance begin ");
         
         FASTRingBuffer[] buffers = RingBuffers.buffers(readerDispatch.ringBuffers);
                 
         int reactors = 1;
-        ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
+        final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
         
         double start = System.nanoTime();
         
         final AtomicBoolean isAlive = reactor.start(executor, reader);
+        
+//        FASTRingBuffer rb = buffers[0];
+//        long lastCheckedValue = -1;
+//        do {
+//          //dump the data as fast as possible, this is faster than the single 
+//          long targetValue = rb.workingTailPos.value+500;
+//          
+//          while ( lastCheckedValue < targetValue && (lastCheckedValue<12000 || isAlive.get())) {  
+//            lastCheckedValue  = rb.headPos.longValue();
+//          }  
+//        
+//          rb.workingTailPos.value = lastCheckedValue;
+//          rb.tailPos.lazySet(lastCheckedValue); 
+//
+//        } while (lastCheckedValue<12000 ||  isAlive.get() || FASTRingBuffer.contentRemaining(rb)>0);
+        
         
         int b = buffers.length;
         while (--b>=0) {
@@ -190,53 +207,66 @@ public class Test {
                 
                 @Override
                 public void run() {
+                 //   int x = 0;
                     int totalMessages = 0;
+                 //   long begin = System.nanoTime();
                     do {
-                       // System.err.println("q");
-                        while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-                            if (rb.isNewMessage) {
-                                totalMessages++;
-                             //   System.err.println("msg:"+totalMessages);
-                            //    processMessage(temp, rb);  //this can hang?! and does.                        
-                               // Thread.yield(); 
-                            }
-                        }
                         
-//                        //TODO: B, if we wait for the buffer to be full it will crash.
-//                        while (rb.availableCapacity()>100) {                            
-//                        }
+                       // System.err.println("q");
+                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                         //   if (rb.isNewMessage) {
+                                totalMessages++;
+                                processMessage(temp, rb);                      
+                             //   Thread.yield(); 
+                          //  } else {
+                           //     System.err.println("process is not right");
+                           // }
+                        } else {
+                            
+//                            if (rb.contentRemaining(rb)<400) {
+//                                try {
+//                                    Thread.sleep(2);
+//                                } catch (InterruptedException e) {
+//                                    // TODO Auto-generated catch block
+//                                    e.printStackTrace();
+//                                }
+//                            } else {
+                            
+                            
+                              Thread.yield();
+                            }
 
                         
-                      //dump the data as fast as possible, this is faster than the single 
-//                      long temp = rb.headPos.longValue();
-//                      rb.workingTailPos.value=temp;
-//                      rb.tailPos.lazySet(temp); 
-//                      Thread.yield();
-                        
-                    } while (isAlive.get());
+                    } while (totalMessages<30000 || isAlive.get());
                     //is alive is done writing but we need to empty out
-                    System.err.println("AAA msg:"+totalMessages);
-               //     do {
-                        while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-                            if (rb.isNewMessage) {
-                                totalMessages++;
-                                System.err.println("msg:"+totalMessages);
-                                //processMessage(temp, rb);                          
-                               // Thread.yield(); 
-                            }
-                            System.err.println("x");
+                    while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                        if (rb.isNewMessage) {
+                            totalMessages++;
                         }
-             //       } while (totalMessages<29000);
-                    System.err.println("BBB msg:"+totalMessages);
-                    msgs.addAndGet(totalMessages);                    
+                    }
+
+                   //System.err.println("BBB msg:"+totalMessages);
+                    msgs.addAndGet(totalMessages);   
+                   // System.err.println(x);
                 }
                 
             };
+            
+            //TODO: Must not run on same executor or the hand off becomes broken.
+            //run.run();
             executor.execute(run);
         }
-        
-        
+               
+        while (msgs.get()<3000 ||  isAlive.get()) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+        // Only shut down after is alive is finished.
         executor.shutdown();
+        
         try {
             executor.awaitTermination(1,TimeUnit.MINUTES);
         } catch (InterruptedException e) {
@@ -247,7 +277,7 @@ public class Test {
        // System.err.println("finished one test");
        // executor.shutdownNow();
         
-        System.err.println("*************************************************************** multi test instance end ");
+  //      System.err.println("*************************************************************** multi test instance end ");
       
         return duration;
     }
@@ -259,86 +289,145 @@ public class Test {
     private void processMessage(char[] temp, FASTRingBuffer rb) {
        
 
-        //final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
-        
+        // final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
+
         templateId = FASTRingBufferReader.readInt(rb, 0);
         preamble = FASTRingBufferReader.readInt(rb, 1);
-                 
-                 switch (rb.messageId) {
-          case 1:
-              int len = FASTRingBufferReader.readDataLength(rb, 2);
-              FASTRingBufferReader.readASCII(rb, 2, temp, 0);
-             // System.err.println("ApplVerID: "+new String(temp,0,len));
-              
-              
-              len = FASTRingBufferReader.readDataLength(rb, 4);
-              FASTRingBufferReader.readASCII(rb, 4, temp, 0);                                    
-             // System.err.println("MessageType: "+new String(temp,0,len));
-              
-              len = FASTRingBufferReader.readDataLength(rb, 6);
-              FASTRingBufferReader.readASCII(rb, 6, temp, 0);                                    
-              //System.err.println("SenderCompID: "+new String(temp,0,len));
-              
-              int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
-              int sendingTime = FASTRingBufferReader.readInt(rb, 9);
-              int tradeDate = FASTRingBufferReader.readInt(rb, 10);
-              int seqCount = FASTRingBufferReader.readInt(rb, 11);
-              //System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
-              while (--seqCount>=0) {
-                  while(!FASTRingBuffer.moveNext(rb)) { //keep calling if we have no data? 
-                  };
-                  int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
-                  int mDPriceLevel = FASTRingBufferReader.readInt(rb, 1);
+
+        switch (rb.messageId) {
+            case 1:
+                int len = FASTRingBufferReader.readDataLength(rb, 2);
+                FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                // System.err.println("ApplVerID: "+new String(temp,0,len));
+    
+                len = FASTRingBufferReader.readDataLength(rb, 4);
+                FASTRingBufferReader.readASCII(rb, 4, temp, 0);
+                // System.err.println("MessageType: "+new String(temp,0,len));
+    
+                len = FASTRingBufferReader.readDataLength(rb, 6);
+                FASTRingBufferReader.readASCII(rb, 6, temp, 0);
+                // System.err.println("SenderCompID: "+new String(temp,0,len));
+    
+                int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
+                int sendingTime = FASTRingBufferReader.readInt(rb, 9);
+                int tradeDate = FASTRingBufferReader.readInt(rb, 10);
+                int seqCount = FASTRingBufferReader.readInt(rb, 11);
+                // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
+                while (--seqCount >= 0) {
+                    while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
+                                                           // have no data?
+                    };
+                    
+                    int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
+                    int mDPriceLevel = FASTRingBufferReader.readInt(rb, 1);
+    
+                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+    
+                    int openCloseSettleFlag = FASTRingBufferReader.readInt(rb, 4);
+                    int securityIDSource = FASTRingBufferReader.readInt(rb, 5);
+                    int securityID = FASTRingBufferReader.readInt(rb, 6);
+                    int rptSeq = FASTRingBufferReader.readInt(rb, 7);
+                    // MDEntryPx
+                    int mDEntryPxExpo = FASTRingBufferReader.readDecimalExponent(rb, 8);
+                    long mDEntrypxMant = FASTRingBufferReader.readDecimalExponent(rb, 8);
+                    int mDEntryTime = FASTRingBufferReader.readInt(rb, 11);
+                    int mDEntrySize = FASTRingBufferReader.readInt(rb, 12);
+                    int numberOfOrders = FASTRingBufferReader.readInt(rb, 13);
+                                                            
+                    len = FASTRingBufferReader.readDataLength(rb, 14);
+                    FASTRingBufferReader.readASCII(rb, 14, temp, 0); 
+                    // System.err.println("TradingSessionID: "+new String(temp,0,len));
+    
+                    int netChgPrevDayExpo = FASTRingBufferReader.readDecimalExponent(rb, 16);
+                    long netChgPrevDayMant = FASTRingBufferReader.readDecimalExponent(rb, 16);
+                    
+                    int tradeVolume = FASTRingBufferReader.readInt(rb, 19);
+                    
+                    len = FASTRingBufferReader.readDataLength(rb, 20);
+                    if (len>0) {
+                    FASTRingBufferReader.readASCII(rb, 20, temp, 0); 
+                    // System.err.println("TradeCondition: "+new String(temp,0,len));
+                    }
+                    
+                    len = FASTRingBufferReader.readDataLength(rb, 22);
+                    if (len>0) {
+                    FASTRingBufferReader.readASCII(rb, 22, temp, 0); 
+                    // System.err.println("TickDirection: "+new String(temp,0,len));
+                    }
+                    
+                    len = FASTRingBufferReader.readDataLength(rb, 24);
+                    if (len>0) {
+                    FASTRingBufferReader.readASCII(rb, 24, temp, 0); 
+                    // System.err.println("QuoteCondition: "+new String(temp,0,len));
+                    }
+                    int aggressorSide = FASTRingBufferReader.readInt(rb, 26);
                   
-                  FASTRingBufferReader.readASCII(rb, 2, temp, 0); 
-                  
-                  int openCloseSettleFlag = FASTRingBufferReader.readInt(rb, 4);
-                  int securityIDSource = FASTRingBufferReader.readInt(rb, 5);
-                  int securityID = FASTRingBufferReader.readInt(rb, 6);
-                  int rptSeq = FASTRingBufferReader.readInt(rb, 7);
-                  //MDEntryPx
-                  int mDEntryPxExpo = FASTRingBufferReader.readDecimalExponent(rb, 8);
-                  long mDEntrypxMant = FASTRingBufferReader.readDecimalExponent(rb, 8);
-                  int mDEntryTime = FASTRingBufferReader.readInt(rb, 11);
-                  int mDEntrySize = FASTRingBufferReader.readInt(rb, 12);
-                  int numberOfOrders = FASTRingBufferReader.readInt(rb, 13);
-                  
-//                  //TODO: A, by increasing this value the client hits the CAS less often and the queue gets full and it causes an exception!
-//                  int i = 1000;
-//                  while(--i>=0) {
-//                      float x = (i+mDEntryPxExpo)/(1f+numberOfOrders);
-//                      if (x==0.01) {
-//                          System.err.println("hello");
-//                      } 
-//                  }
-                  
-                  FASTRingBufferReader.readASCII(rb, 14, temp, 0); //TradingSessionID
-                  
-                  
-                  
-                 // System.err.println(mDUpdateAction);
-                  
-               //TODO: write this out to a binary file?   
-                  
-              }
-              
-              
-              break;
-          case 2:
-              
-              
-              break;
-          case 99:
-              
-              len = FASTRingBufferReader.readDataLength(rb, 2);
-              FASTRingBufferReader.readASCII(rb, 2, temp, 0);
-//                                          rb.tailPos.lazySet(rb.workingTailPos.value);
-              //System.err.println("MessageType: "+new String(temp,0,len));
-              
-              break;
-          default:
-              System.err.println("Did not expect "+rb.messageId);
-                 }
+                    len = FASTRingBufferReader.readDataLength(rb, 27);
+                    if (len>0) {
+                    FASTRingBufferReader.readASCII(rb, 27, temp, 0); 
+                    // System.err.println("MatchEventIndicator: "+new String(temp,0,len));
+                    }
+                    
+                }
+    
+                break;
+            case 2:
+    
+               len = FASTRingBufferReader.readDataLength(rb, 2);
+               FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+               //System.err.println("ApplVerID: "+new String(temp,0,len));
+               
+               len = FASTRingBufferReader.readDataLength(rb, 4);
+               FASTRingBufferReader.readASCII(rb, 4, temp, 0);
+               //System.err.println("MessageType: "+new String(temp,0,len));
+               
+               len = FASTRingBufferReader.readDataLength(rb, 6);
+               FASTRingBufferReader.readASCII(rb, 6, temp, 0);
+             //  System.err.println("SenderCompID: "+new String(temp,0,len));
+               
+               int msgSeqNum2 = FASTRingBufferReader.readInt(rb, 8);
+               int sendingTime2 = FASTRingBufferReader.readInt(rb, 9);
+               
+               len = FASTRingBufferReader.readDataLength(rb, 10);
+               if (len>0) {
+                   FASTRingBufferReader.readASCII(rb, 10, temp, 0);
+                   //System.err.println("QuoteReqID: "+new String(temp,0,len));
+               }
+               
+               int seqCount2 = FASTRingBufferReader.readInt(rb, 12);
+               
+               while (--seqCount2 >= 0) {
+                   while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
+                                                          // have no data?
+                      
+                       len = FASTRingBufferReader.readDataLength(rb, 0);
+                       FASTRingBufferReader.readASCII(rb, 0, temp, 0);  
+                       
+                       long orderQty = FASTRingBufferReader.readLong(rb, 2);
+                       int side = FASTRingBufferReader.readInt(rb, 4);
+                       long transactTime = FASTRingBufferReader.readLong(rb, 5);
+                       int quoteType = FASTRingBufferReader.readInt(rb, 7);
+                       int securityID = FASTRingBufferReader.readInt(rb, 8);
+                       int securityIDSource = FASTRingBufferReader.readInt(rb, 9);
+                       
+                   };
+                                                        
+               }
+               
+         
+            
+                break;
+            case 99:
+    
+                len = FASTRingBufferReader.readDataLength(rb, 2);
+                FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                // rb.tailPos.lazySet(rb.workingTailPos.value);
+                // System.err.println("MessageType: "+new String(temp,0,len));
+    
+                break;
+            default:
+                System.err.println("Did not expect " + rb.messageId);
+        }
     }
 
     private boolean shouldPrint(int iter) {
