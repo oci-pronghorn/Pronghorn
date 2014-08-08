@@ -69,21 +69,16 @@ public final class FASTRingBuffer {
     //each fragment size must be known and looked up
     public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
-    
-    // adjust these from the offset of the biginning of the message.
 
-    public int messageId = -1;
-    public boolean isNewMessage = false;
-    int cursor=-1;
-    int[] seqStack = new int[10];//TODO: how deep is this?
-    int seqStackHead = -1;
+    
+    
+    
+    // end of moveNextFields
+
     static final int JUMP_MASK = 0xFFFFF;
-    public int activeFragmentDataSize = 0;
- //   private long mnHeadCache=-1;
-    private long moveNextStop=-1;
-    private boolean waiting = false;
-    private long bnmHeadPosCache = -1;
-    public long tailCache = -1;
+    public final FASTRingBufferConsumer consumerData;
+    
+    
 
     public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx) {
         assert (primaryBits >= 1);       
@@ -117,7 +112,8 @@ public final class FASTRingBuffer {
         
         this.from = from;
         this.templateStartIdx = templateStartIdx;
-        
+        this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
+                                                        -1, 0, new int[10], -1, -1, from);
     }
 
     //TODO: B, must add way of selecting what field to skip writing for the consumer.
@@ -130,83 +126,81 @@ public final class FASTRingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); //System.err.println("reset()");
-        waiting = false;
-        moveNextStop=-1;
-        bnmHeadPosCache = -1;
-        tailCache = -1;
         addBytePos = 0;
         
-        /////
-        cursor=-1;
-        seqStackHead = -1;
+        FASTRingBufferConsumer.reset(consumerData);
         
-        messageId = -1;
-        isNewMessage = false;
-        activeFragmentDataSize = 0;
+
     }
+   
 
-
-    
-
+    //TODO: A, calls to moveNext should also record the ring buffer positions and times.
+    //must record the time to loop the queue.
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { //TODO: rename to canMoveNext?
-
+        FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; 
+        
         //check if we are only waiting for the ring buffer to clear
-        if (ringBuffer.waiting) {
+        if (ringBufferConsumer.isWaiting()) {
             //only here if we already checked headPos against moveNextStop at least once and failed.
-            return !(ringBuffer.waiting = ringBuffer.moveNextStop>(ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue()));
+            
+            ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
+            ringBufferConsumer.setWaiting(ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
+            return !(ringBufferConsumer.isWaiting());
         }
              
         //finished reading the previous fragment so move the working tail position forward for next fragment to read
-        ringBuffer.workingTailPos.value += ringBuffer.activeFragmentDataSize;    
-        ringBuffer.activeFragmentDataSize = 0;
+        long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.getActiveFragmentDataSize();
+        ringBuffer.workingTailPos.value = cashWorkingTailPos;
+        ringBufferConsumer.setActiveFragmentDataSize(0);
         
         
-        if (ringBuffer.messageId<0) {      
-            return beginNewMessage(ringBuffer);
+        if (ringBufferConsumer.getMessageId()<0) {      
+            return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
-            return beginFragment(ringBuffer);
+            return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
         
     }
 
-    private static boolean beginFragment(FASTRingBuffer ringBuffer) {
-        ringBuffer.isNewMessage = false;
-        int fragStep = ringBuffer.from.fragScriptSize[ringBuffer.cursor]; //script jump 
-        ringBuffer.cursor += fragStep;
+    private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
+        ringBufferConsumer.setNewMessage(false);
+        int fragStep = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.getCursor()]; //script jump 
+        ringBufferConsumer.setCursor(ringBufferConsumer.getCursor() + fragStep);
 
         ///TODO: B, add optional groups to this implementation
         
         //////////////
         ////Never call these when we jump back for loop
         //////////////
-        if (ringBuffer.sequenceLengthDetector(fragStep)) {
+        if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {
             //detecting end of message
-            int token = ringBuffer.from.tokens[ringBuffer.cursor];
-            if ((ringBuffer.cursor>=ringBuffer.from.tokens.length) || (TokenBuilder.extractType(token)==TypeMask.Group &&
-                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: would be much better with end of MSG bit
+            int token = ringBufferConsumer.from.tokens[ringBufferConsumer.getCursor()];
+            if ((ringBufferConsumer.getCursor()>=ringBufferConsumer.from.tokensLen) ||
+                    (TokenBuilder.extractType(token)==TypeMask.Group &&
+                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
                     0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 
-                return beginNewMessage(ringBuffer);
+                return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 
             }
         }
             
-        return checkForContent(ringBuffer);
+        return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
 
-    private static boolean checkForContent(FASTRingBuffer ringBuffer) {
+    private static boolean checkForContent(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         //after alignment with front of fragment, may be zero because we need to find the next message?
-        ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
+        ringBufferConsumer.setActiveFragmentDataSize(ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
-        ringBuffer.moveNextStop = ringBuffer.workingTailPos.value+ringBuffer.activeFragmentDataSize;
+        ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.getActiveFragmentDataSize());
         
         //
-        if (ringBuffer.moveNextStop>ringBuffer.bnmHeadPosCache) {
-            ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue();
-            if (ringBuffer.moveNextStop>ringBuffer.bnmHeadPosCache) {
-                ringBuffer.waiting = true;
+        if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
+            ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
+            if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
+                ringBufferConsumer.setWaiting(true);
                 return false;
             }
         }
@@ -218,72 +212,58 @@ public final class FASTRingBuffer {
     //TODO: C, need to get messageId when its the only message and so not written to the ring buffer.
     //TODO: C, need to step over the preamble? but how?
     
-    private static boolean beginNewMessage(FASTRingBuffer ringBuffer) {
+    private static boolean beginNewMessage(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         
-        long cashWorkingTailPos = ringBuffer.workingTailPos.value;
+        //if we can not start to read the next message because it does not have the template id yet
+        //then fail fast and do not move the tailPos yet until we know it can be read        
         long needStop = cashWorkingTailPos + 3; 
-        if (needStop>=ringBuffer.bnmHeadPosCache ) {
-            ringBuffer.bnmHeadPosCache = ringBuffer.headPos.longValue();
-            if (needStop>=ringBuffer.bnmHeadPosCache) {
-              ringBuffer.messageId=-1;
+        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {
+            ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
+            if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
+                ringBufferConsumer.setMessageId(-1);
               return false;
             }
         }
               
-        updateTailPos(ringBuffer, cashWorkingTailPos);
-        
-        return checkForContent(ringBuffer);
-    }
-
-    private static void updateTailPos(FASTRingBuffer ringBuffer, long cashWorkingTailPos) {
         //Now beginning a new message so release the previous one from the ring buffer
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
-        ringBuffer.messageId = FASTRingBufferReader.readInt(ringBuffer,  1); //TODO: A, how do we know this is one? jumping over preamble
-
+        ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  1)); //TODO: A, how do we know this is one? jumping over preamble
+        
         //start new message, can not be seq or optional group or end of message.
-        ringBuffer.cursor = ringBuffer.from.starts[ringBuffer.messageId];
-        ringBuffer.activeFragmentDataSize = ringBuffer.from.fragDataSize[ringBuffer.cursor];//save the size of this new fragment we are about to read
-        ringBuffer.isNewMessage = true;
+        ringBufferConsumer.setCursor(ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
+        ringBufferConsumer.setNewMessage(true);
+        
+        return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
-
-    //TODO: B, test is probably does not work with fields following closed sequence.
     
-    //only called after moving foward.
-    private boolean sequenceLengthDetector(int jumpSize) {
-        if(cursor==0) {
+    //only called after moving forward.
+    private static boolean sequenceLengthDetector(FASTRingBuffer ringBuffer, int jumpSize, FASTRingBufferConsumer consumerData) {
+        if(consumerData.getCursor()==0) {
             return false;
         }
-        int endingToken = from.tokens[cursor-1];
+        int endingToken = consumerData.from.tokens[consumerData.getCursor()-1];
         
         //if last token of last fragment was length then begin new sequence
         int type = TokenBuilder.extractType(endingToken);
         if (TypeMask.GroupLength == type) {
-            int seqLength = FASTRingBufferReader.readInt(this, -1); //length is always at the end of the fragment.
-                        
-            //TODO: off by 2 because 1 for token id and 1 for preamble which are not in the script!!!
-            //System.err.println("seq len :"+seqLength+" at "+(this.remPos.value-1)+" "+(this.removeCount.get()-1));
-            
-            
+            int seqLength = FASTRingBufferReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
             if (seqLength == 0) {
 //                int jump = (TokenBuilder.MAX_INSTANCE&from.tokens[cursor-jumpSize])+2;
-                int fragJump = from.fragScriptSize[cursor+1]; //script jump  //TODO: not sure this is right whenthey are nested?
+                int fragJump = consumerData.from.fragScriptSize[consumerData.getCursor()+1]; //script jump  //TODO: not sure this is right whenthey are nested?
 //                System.err.println(jump+" vs "+fragJump);
          //       System.err.println("******************** jump over seq");
+                //TODO: B, need to build a test case, this does not appear in the current test data.
                 //do nothing and jump over the sequence
                 //there is no data in the ring buffer so do not adjust position
-                cursor += (fragJump&JUMP_MASK);
+                consumerData.setCursor(consumerData.getCursor() + (fragJump&JUMP_MASK));
                 //done so move to the next item
                 
                 return true;
             } else {
-//                if (seqLength<0) {//TODO: turn into assert.
-//                    throw new FASTException("The previous fragment has already been replaced or modified and it was needed for the length counter");
-//                }
-                
-                //push onto stack
-                seqStack[++seqStackHead]=seqLength;
+                assert(seqLength>=0) : "The previous fragment has already been replaced or modified and it was needed for the length counter";
+                consumerData.getSeqStack()[consumerData.incSeqStackHead()]=seqLength;
                 //this is the first run so we are already positioned at the top   
             }
             return false;   
@@ -297,13 +277,13 @@ public final class FASTRingBuffer {
             0 != (endingToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))            
                 ) {
             //check top of the stack
-            if (--seqStack[seqStackHead]>0) {
+            if (--consumerData.getSeqStack()[consumerData.getSeqStackHead()]>0) {
                 int jump = (TokenBuilder.MAX_INSTANCE&endingToken)+1;
-               cursor -= jump;
+               consumerData.setCursor(consumerData.getCursor() - jump);
                return false;
             } else {
                 //done, already positioned to continue
-                seqStackHead--;                
+                consumerData.setSeqStackHead(consumerData.getSeqStackHead() - 1);                
                 return true;
             }
         }                   
@@ -396,7 +376,7 @@ public final class FASTRingBuffer {
     // fragment is ready for consumption
     public static final void unBlockFragment(AtomicLong head, PaddedLong headCache) {
      
-        assert(headCache.value>head.get()) : "Can not set the cache smaller than head";        
+     //   assert(headCache.value>head.get()) : "Can not set the cache smaller than head";        
         head.lazySet(headCache.value);
     }
     
@@ -446,7 +426,7 @@ public final class FASTRingBuffer {
     }
 
     public int fragmentSteps() {
-        return from.fragScriptSize[cursor];
+        return from.fragScriptSize[consumerData.getCursor()];
     }
 
     public static long releaseRecords(final int granularity, AtomicLong hp, PaddedLong wrkHdPos) {

@@ -131,9 +131,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ (((3+this.preambleDataLength)>>2)+1); //plus roomm for next message
        //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
-        if (rbRingBuffer.tailCache < neededTailStop) {
-            rbRingBuffer.tailCache = rbRingBuffer.tailPos.longValue(); 
-            if ( rbRingBuffer.tailCache < neededTailStop ) {
+        if (rbRingBuffer.consumerData.getTailCache() < neededTailStop) {
+            rbRingBuffer.consumerData.setTailCache(rbRingBuffer.tailPos.longValue()); 
+            if ( rbRingBuffer.consumerData.getTailCache() < neededTailStop ) {
               return 0; //no space to read data and start new message so read nothing
             }
         }

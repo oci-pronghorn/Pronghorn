@@ -92,7 +92,7 @@ public abstract class FASTEncoder {
         this.preambleData = new byte[preambleBytes];
     }
     
-    protected final byte[] preambleData;
+    public final byte[] preambleData;
 
     public void setDispatchObserver(DispatchObserver observer) {
         this.observer = observer;

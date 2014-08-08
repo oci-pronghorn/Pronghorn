@@ -138,7 +138,7 @@ public class Test {
                       
                       if (FASTRingBuffer.moveNext(rb)) {
                           
-                          if (rb.isNewMessage) {
+                          if (rb.consumerData.isNewMessage()) {
                               msgs.incrementAndGet();
                               
                               //TODO: why does this hang?
@@ -181,12 +181,14 @@ public class Test {
         double start = System.nanoTime();
         
         final AtomicBoolean isAlive = reactor.start(executor, reader);
+       
+        //
         
 //        FASTRingBuffer rb = buffers[0];
 //        long lastCheckedValue = -1;
 //        do {
 //          //dump the data as fast as possible, this is faster than the single 
-//          long targetValue = rb.workingTailPos.value+500;
+//          long targetValue = rb.workingTailPos.value+100;
 //          
 //          while ( lastCheckedValue < targetValue && (lastCheckedValue<12000 || isAlive.get())) {  
 //            lastCheckedValue  = rb.headPos.longValue();
@@ -197,6 +199,7 @@ public class Test {
 //
 //        } while (lastCheckedValue<12000 ||  isAlive.get() || FASTRingBuffer.contentRemaining(rb)>0);
         
+
         
         int b = buffers.length;
         while (--b>=0) {
@@ -224,23 +227,23 @@ public class Test {
                         } else {
                             
 //                            if (rb.contentRemaining(rb)<400) {
-//                                try {
-//                                    Thread.sleep(2);
-//                                } catch (InterruptedException e) {
-//                                    // TODO Auto-generated catch block
-//                                    e.printStackTrace();
-//                                }
+                                try {
+                                    Thread.sleep(0,500);
+                                } catch (InterruptedException e) {
+                                    // TODO Auto-generated catch block
+                                    e.printStackTrace();
+                                }
 //                            } else {
                             
                             
-                              Thread.yield();
+                             // Thread.yield();
                             }
 
                         
                     } while (totalMessages<30000 || isAlive.get());
                     //is alive is done writing but we need to empty out
                     while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-                        if (rb.isNewMessage) {
+                        if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }
                     }
@@ -256,8 +259,9 @@ public class Test {
             //run.run();
             executor.execute(run);
         }
-               
-        while (msgs.get()<3000 ||  isAlive.get()) {
+        //   */     
+        
+        while (/*msgs.get()<3000 ||*/  isAlive.get()) {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
@@ -294,7 +298,7 @@ public class Test {
         templateId = FASTRingBufferReader.readInt(rb, 0);
         preamble = FASTRingBufferReader.readInt(rb, 1);
 
-        switch (rb.messageId) {
+        switch (rb.consumerData.getMessageId()) {
             case 1:
                 int len = FASTRingBufferReader.readDataLength(rb, 2);
                 FASTRingBufferReader.readASCII(rb, 2, temp, 0);
@@ -426,7 +430,7 @@ public class Test {
     
                 break;
             default:
-                System.err.println("Did not expect " + rb.messageId);
+                System.err.println("Did not expect " + rb.consumerData.getMessageId());
         }
     }
 

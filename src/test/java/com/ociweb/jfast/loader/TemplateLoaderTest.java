@@ -166,8 +166,8 @@ public class TemplateLoaderTest {
                 FASTRingBuffer.moveNext(rb);
 
                 frags++;
-                if (rb.isNewMessage) {
-                    int templateId = rb.messageId;
+                if (rb.consumerData.isNewMessage()) {
+                    int templateId = rb.consumerData.getMessageId();
                     
                     msgs.incrementAndGet();
                     
@@ -385,7 +385,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
        FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-//        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+    //    FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -412,9 +412,9 @@ public class TemplateLoaderTest {
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
    
                     FASTRingBuffer.moveNext(queue);
-                    if (queue.messageId>=0) { //skip if we are waiting for more content.
+                    if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
                         
-                        if (queue.isNewMessage) {
+                        if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
                         
@@ -461,7 +461,7 @@ public class TemplateLoaderTest {
             
             while (FASTInputReactor.pump(reactor)>=0) {  
                     FASTRingBuffer.moveNext(queue);
-                    if (queue.messageId>=0) { //skip if we are waiting for more content.
+                    if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
                             dynamicWriter.write();  
                    }
             }

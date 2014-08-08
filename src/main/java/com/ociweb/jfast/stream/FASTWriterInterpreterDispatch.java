@@ -1265,17 +1265,22 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
    
     @Override
     public int encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+        //TODO: B, generated code looks up ring buffer, remove argument
+        // rb=RingBuffers.get(ringBuffers,activeScriptCursor);
+        
+        //TODO: A, the generated code does not call the call begin message logic.
+        //TODO: A, the generated code calls unBlockFragment not sure it should!
         
         fieldPos = 0;
         
         //TODO: how will this be set for generated code?
         if (null!=rbRingBuffer) {
             //cursor and limit already set
-            setActiveScriptCursor(rbRingBuffer.cursor);        
-            setActiveScriptLimit(rbRingBuffer.cursor + rbRingBuffer.fragmentSteps());
+            setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());        
+            setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());
         }
         
-        if (null!=rbRingBuffer && rbRingBuffer.isNewMessage) {                
+        if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {                
             callBeginMessage(writer, rbRingBuffer);
         }
         

@@ -14,7 +14,7 @@ public class FieldReferenceOffsetManager {
     
     public static final int SEQ     = 0x10000000;
     public static final int MSG_END = 0x80000000;
-    
+    public final int tokensLen;
     public final int[] fragDataSize;
     public final int[] fragScriptSize;
     public final int[] tokens;
@@ -46,6 +46,8 @@ public class FieldReferenceOffsetManager {
             buildFragScript(config);
         }
         tokens = config.scriptTokens;
+        tokensLen = null==tokens?0:tokens.length;
+        
         starts = config.getTemplateStartIdx();
         
     }

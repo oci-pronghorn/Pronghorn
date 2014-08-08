@@ -120,12 +120,17 @@ public class GeneratorUtils {
             doneCode[j] +=
                    " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
                    " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+
-                   " if (rb.tailCache < neededTailStop) {\n"+
-                   " rb.tailCache = rb.tailPos.longValue();\n"+
-                   " if (rb.tailCache < neededTailStop) {\n"+
+                   " if (rb.consumerData.getTailCache() < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
+                   " rb.consumerData.setTailCache(rb.tailPos.longValue());\n"+
+                   " if (rb.consumerData.getTailCache() < neededTailStop) {\n"+
                    "   return 0;//nothing read\n " +
                    " }\n"+
                    " }\n";
+            } else {
+                
+                
+                
+                
             }
         
 //            long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
@@ -156,6 +161,15 @@ public class GeneratorUtils {
             builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n");
             //TODO: A, need custom write method here.
             
+            builder.append("if (null!=rbRingBuffer) {\n");
+            builder.append("    //cursor and limit already set\n");
+            builder.append("     setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
+            builder.append("    setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());\n");
+            builder.append("}\n");
+            builder.append("            if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {\n");                
+            builder.append("    beginMessage(preambleData, writer, rbRingBuffer, this);\n");
+            builder.append("}\n");
+            
         }
         
         //now that the cursor position / template id is known do normal processing
@@ -163,8 +177,8 @@ public class GeneratorUtils {
         builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
 
         bsg.generate("    ",builder, doneValues, doneCode);
-        builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
         if (isReader) {
+            builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
             builder.append("    return 1;//read a fragment\n"); 
         } else {
             builder.append("    return activeScriptCursor;\n");
