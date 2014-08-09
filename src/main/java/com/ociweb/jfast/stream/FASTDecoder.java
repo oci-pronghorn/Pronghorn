@@ -16,7 +16,10 @@ public abstract class FASTDecoder{
     
     public final int[] templateStartIdx; //These constants can be remvoed
     public final int[] templateLimitIdx;//These constants can be remvoed
+     
 
+    public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
+    
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
     public final int[] sequenceCountStack;
@@ -88,10 +91,6 @@ public abstract class FASTDecoder{
 
     public abstract int decode(PrimitiveReader reader);
         
-  
-    
 
-    public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
-    
 
 }

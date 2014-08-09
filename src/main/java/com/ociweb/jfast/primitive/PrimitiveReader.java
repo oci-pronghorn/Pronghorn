@@ -191,10 +191,10 @@ public final class PrimitiveReader {
         
         // not enough room at end of buffer for the need
         int populated = reader.limit - keepFromPosition;
-        int reqiredSize = need + populated;
+     //   int reqiredSize = need + populated;
 
-        assert (reader.buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
-                + " bytes";
+//        assert (reader.buffer.length >= reqiredSize) : "internal buffer is not large enough, requres " + reqiredSize
+//                + " bytes";
         
         System.arraycopy(reader.buffer, keepFromPosition, reader.buffer, 0, populated);
         // if possible fill
@@ -297,7 +297,7 @@ public final class PrimitiveReader {
 
     // called at the end of each group
     public static final void closePMap(PrimitiveReader reader) {
-        assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
+     //   assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
         byte bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
         reader.pmapIdxBitBlock = (reader.invPmapStack[reader.invPmapStackDepth - 1]<<16)|bitBlock;        
     }

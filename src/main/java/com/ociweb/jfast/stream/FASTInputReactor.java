@@ -107,34 +107,35 @@ public final class FASTInputReactor {
     private Runnable buildRunnable(final ThreadPoolExecutor executorService, final AtomicBoolean isAlive) {
         final Runnable run = new Runnable() {
 
+            final FASTDecoder decoder2 = FASTInputReactor.this.decoder;
+            final PrimitiveReader reader2 = FASTInputReactor.this.reader;
 
             @Override
             public void run() {
                 
-                try {
+             //   try {
                     int f=0;
                     
-                    int c = 0xFFF;
+                    int c = 0x1FFFF;
                     while (--c>=0)  { //TODO: B, stopping in the middle is causing an overlap of some kind? Do not turn on until the other bugs are fixed.
                         
-                        f=FASTInputReactor.this.decoder.decode(FASTInputReactor.this.reader);
                         
-                        if (f<=0) { //TODO B, See above, (f<=0) { //break on eof or no room to read
+                        if ((f=decoder2.decode(reader2))<=0) { //TODO B, See above, (f<=0) { //break on eof or no room to read
                             break;
                         }  
                     }
                        
                     if (f>=0) {
-                        executorService.execute(buildRunnable(executorService,isAlive));
+                        executorService.execute(this);//buildRunnable(executorService,isAlive));
                     } else {
                         isAlive.set(false);
                     }
                     
-                } catch (Throwable t) {
-                    t.printStackTrace();
-                   // System.err.println("ERR total fragments sent:"+count);
-                    isAlive.set(false);
-                }
+//                } catch (Throwable t) {
+//                    t.printStackTrace();
+//                   // System.err.println("ERR total fragments sent:"+count);
+//                    isAlive.set(false);
+//                }
             }
             
         };

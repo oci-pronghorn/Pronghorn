@@ -19,6 +19,7 @@ public class FieldReferenceOffsetManager {
     public final int[] fragScriptSize;
     public final int[] tokens;
     public final int[] starts;
+    public final String[] fieldNameScript;
     
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
         
@@ -49,6 +50,8 @@ public class FieldReferenceOffsetManager {
         tokensLen = null==tokens?0:tokens.length;
         
         starts = config.getTemplateStartIdx();
+        
+        fieldNameScript = config.fieldNameScript();
         
     }
 
@@ -131,9 +134,23 @@ public class FieldReferenceOffsetManager {
     }
 
     //TODO: A, need string names from catalog
-    public int lookupIDX(String string) {
+    public int lookupIDX(String target) {
         // TODO Auto-generated method stub
-        return 0;
+        
+        int x = fieldNameScript.length;
+        while (--x>=0) {
+            if (fieldNameScript[x].equalsIgnoreCase(target)) {
+                
+                
+                //if x is at the top then 
+                
+                
+                return fragDataSize[x];
+                
+            }
+        }
+        throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(fieldNameScript));
+        
     }
 
 }

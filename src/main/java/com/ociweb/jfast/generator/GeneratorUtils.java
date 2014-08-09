@@ -12,6 +12,7 @@ import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
@@ -21,7 +22,7 @@ public class GeneratorUtils {
     
     static final boolean REMOVE_ARRAY = false; //TODO: A, still testing this idea 
     static final boolean ADD_COMMENTS = false;
-    static final int COMPLEXITY_LIMITY_PER_METHOD = 28;//10050;//22;//18 25;
+    static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
 
     
@@ -120,9 +121,10 @@ public class GeneratorUtils {
             doneCode[j] +=
                    " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
                    " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+
-                   " if (rb.consumerData.getTailCache() < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
-                   " rb.consumerData.setTailCache(rb.tailPos.longValue());\n"+
-                   " if (rb.consumerData.getTailCache() < neededTailStop) {\n"+
+                   " "+FASTRingBufferConsumer.class.getSimpleName()+" cd=rb.consumerData;\n"+
+                   " if (cd.tailCache < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
+                   " cd.tailCache=rb.tailPos.longValue();\n"+
+                   " if (cd.tailCache < neededTailStop) {\n"+
                    "   return 0;//nothing read\n " +
                    " }\n"+
                    " }\n";

@@ -7,6 +7,7 @@ import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
@@ -80,7 +81,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);          
             
             //confirm that this ring buffer has enough room to hold the new results, and wait if it does not
-            rb.consumerData.setTailCache(FASTRingBuffer.spinBlock(rb.tailPos, rb.consumerData.getTailCache(), 1 + preambleDataLength + rb.workingHeadPos.value - rb.maxSize));
+            rb.consumerData.tailCache = FASTRingBuffer.spinBlock(rb.tailPos, rb.consumerData.tailCache, 1 + preambleDataLength + rb.workingHeadPos.value - rb.maxSize);
             //TODO: B, should only spin loock above once but afte this method call it is done again, also sping lock causes cpu to sleep, how to avoid.
   
         }

@@ -131,9 +131,9 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ (((3+this.preambleDataLength)>>2)+1); //plus roomm for next message
        //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
-        if (rbRingBuffer.consumerData.getTailCache() < neededTailStop) {
-            rbRingBuffer.consumerData.setTailCache(rbRingBuffer.tailPos.longValue()); 
-            if ( rbRingBuffer.consumerData.getTailCache() < neededTailStop ) {
+        if (rbRingBuffer.consumerData.tailCache < neededTailStop) {
+            rbRingBuffer.consumerData.tailCache = rbRingBuffer.tailPos.longValue(); 
+            if ( rbRingBuffer.consumerData.tailCache < neededTailStop ) {
               return 0; //no space to read data and start new message so read nothing
             }
         }
@@ -269,7 +269,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
        // System.err.println(fragmentSize+"  vs  "+(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
         
         //Must do last because this will let the other threads begin to use this data
-        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos);
+        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos); //TODO: A, test not doing this all the time
         return 1;//read one fragment 
     }
 

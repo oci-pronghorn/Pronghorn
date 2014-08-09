@@ -70,9 +70,7 @@ public final class FASTRingBuffer {
     public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
 
-    
-    
-    
+           
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
@@ -113,7 +111,7 @@ public final class FASTRingBuffer {
         this.from = from;
         this.templateStartIdx = templateStartIdx;
         this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
-                                                        -1, 0, new int[10], -1, -1, from);
+                                                        -1, 0, new int[10], -1, -1, from, mask);
     }
 
     //TODO: B, must add way of selecting what field to skip writing for the consumer.
@@ -141,18 +139,18 @@ public final class FASTRingBuffer {
         FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; 
         
         //check if we are only waiting for the ring buffer to clear
-        if (ringBufferConsumer.isWaiting()) {
+        if (ringBufferConsumer.waiting) {
             //only here if we already checked headPos against moveNextStop at least once and failed.
             
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
-            ringBufferConsumer.setWaiting(ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
-            return !(ringBufferConsumer.isWaiting());
+            ringBufferConsumer.waiting = (ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
+            return !(ringBufferConsumer.waiting);
         }
              
         //finished reading the previous fragment so move the working tail position forward for next fragment to read
-        long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.getActiveFragmentDataSize();
+        long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.activeFragmentDataSize;
         ringBuffer.workingTailPos.value = cashWorkingTailPos;
-        ringBufferConsumer.setActiveFragmentDataSize(0);
+        ringBufferConsumer.activeFragmentDataSize = (0);
         
         
         if (ringBufferConsumer.getMessageId()<0) {      
@@ -191,16 +189,16 @@ public final class FASTRingBuffer {
 
     private static boolean checkForContent(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         //after alignment with front of fragment, may be zero because we need to find the next message?
-        ringBufferConsumer.setActiveFragmentDataSize(ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
+        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
-        ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.getActiveFragmentDataSize());
+        ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
         
         //
         if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
-                ringBufferConsumer.setWaiting(true);
+                ringBufferConsumer.waiting = (true);
                 return false;
             }
         }
@@ -217,7 +215,7 @@ public final class FASTRingBuffer {
         //if we can not start to read the next message because it does not have the template id yet
         //then fail fast and do not move the tailPos yet until we know it can be read        
         long needStop = cashWorkingTailPos + 3; 
-        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {
+        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  //TODO: A, Because documents come whole this is probably the only check required.
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
                 ringBufferConsumer.setMessageId(-1);
@@ -225,6 +223,9 @@ public final class FASTRingBuffer {
             }
         }
               
+        long totalContent = ringBufferConsumer.getBnmHeadPosCache() - needStop;
+        ringBufferConsumer.queueFill.sample(totalContent);
+        
         //Now beginning a new message so release the previous one from the ring buffer
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
@@ -416,9 +417,9 @@ public final class FASTRingBuffer {
         return byteMask;
     }
 
-    public final int availableCapacity() {
-        return maxSize - (int)(headPos.longValue() - tailPos.longValue());
-    }
+//    public final int availableCapacity() {
+//        return maxSize - (int)(headPos.longValue() - tailPos.longValue());
+//    }
 
     
     public static int contentRemaining(FASTRingBuffer rb) {
@@ -434,10 +435,12 @@ public final class FASTRingBuffer {
         return wrkHdPos.value + granularity;
     }
 
+    //TODO: B, Double check that asserts have been removed because they bump up the byte code size and prevent inline
+    
     public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
-        while ( lastCheckedValue < targetValue) {  
+        do {
             lastCheckedValue = atomicLong.longValue();
-        }
+        } while ( lastCheckedValue < targetValue);
         return lastCheckedValue;
     }
 

@@ -1,23 +1,27 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.util.Stats;
 
 public class FASTRingBufferConsumer {
     private int messageId;
     private boolean isNewMessage;
-    private boolean waiting;
+    public boolean waiting;
     private long waitingNextStop;
     private long bnmHeadPosCache;
     private int cursor;
-    private int activeFragmentDataSize;
+    public int activeFragmentDataSize;
     private int[] seqStack;
     private int seqStackHead;
-    private long tailCache;
+    public long tailCache;
     public final FieldReferenceOffsetManager from;
-
+    
+    public final Stats queueFill;
+    private Stats latency   = new Stats(100, 50, 0, 100);
+    
     public FASTRingBufferConsumer(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
-                                    long tailCache, FieldReferenceOffsetManager from) {
+                                    long tailCache, FieldReferenceOffsetManager from, int rbMask) {
         this.messageId = messageId;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;
@@ -29,6 +33,8 @@ public class FASTRingBufferConsumer {
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
         this.from = from;
+        this.queueFill = new Stats(100, rbMask>>1, 0, rbMask);
+        
     }
 
     public int getMessageId() {
@@ -47,13 +53,6 @@ public class FASTRingBufferConsumer {
         this.isNewMessage = isNewMessage;
     }
 
-    public boolean isWaiting() {
-        return waiting;
-    }
-
-    public void setWaiting(boolean waiting) {
-        this.waiting = waiting;
-    }
 
     public long getWaitingNextStop() {
         return waitingNextStop;
@@ -79,14 +78,6 @@ public class FASTRingBufferConsumer {
         this.cursor = cursor;
     }
 
-    public int getActiveFragmentDataSize() {
-        return activeFragmentDataSize;
-    }
-
-    public void setActiveFragmentDataSize(int activeFragmentDataSize) {
-        this.activeFragmentDataSize = activeFragmentDataSize;
-    }
-
     public int[] getSeqStack() {
         return seqStack;
     }
@@ -107,19 +98,12 @@ public class FASTRingBufferConsumer {
         this.seqStackHead = seqStackHead;
     }
 
-    public long getTailCache() {
-        return tailCache;
-    }
-
-    public void setTailCache(long tailCache) {
-        this.tailCache = tailCache;
-    }
 
     public static void reset(FASTRingBufferConsumer consumerData) {
-        consumerData.setWaiting(false);
+        consumerData.waiting = (false);
         consumerData.setWaitingNextStop(-1);
         consumerData.setBnmHeadPosCache(-1);
-        consumerData.setTailCache(-1);
+        consumerData.tailCache=-1;
         
         /////
         consumerData.setCursor(-1);
@@ -127,7 +111,7 @@ public class FASTRingBufferConsumer {
         
         consumerData.setMessageId(-1);
         consumerData.setNewMessage(false);
-        consumerData.setActiveFragmentDataSize(0);
+        consumerData.activeFragmentDataSize = (0);
         
     }
 }

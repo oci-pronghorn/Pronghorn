@@ -207,6 +207,7 @@ public class Test {
             Runnable run = new Runnable() {
                 char[] temp = new char[64];
                 
+               // long time=0;
                 
                 @Override
                 public void run() {
@@ -215,29 +216,20 @@ public class Test {
                  //   long begin = System.nanoTime();
                     do {
                         
-                       // System.err.println("q");
-                        if (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
-                         //   if (rb.isNewMessage) {
+                        //NOTE: the stats object shows that this is empty 75% of the time, eg needs more .
+
+                        if (FASTRingBuffer.moveNext(rb)) { 
+                                assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
-                                processMessage(temp, rb);                      
-                             //   Thread.yield(); 
-                          //  } else {
-                           //     System.err.println("process is not right");
-                           // }
+                                processMessage(temp, rb);   
                         } else {
-                            
-//                            if (rb.contentRemaining(rb)<400) {
-                                try {
-                                    Thread.sleep(0,500);
-                                } catch (InterruptedException e) {
-                                    // TODO Auto-generated catch block
-                                    e.printStackTrace();
-                                }
-//                            } else {
-                            
-                            
-                             // Thread.yield();
+                            //must wait on more to be written into the ring buffer before they can be read
+                            //the code is pushed a bit too hard so we have a lot of extra cpu cycles on the reader side to play with.
+                            int x = 4000;
+                            while (--x>=0) {
+                                Thread.yield();
                             }
+                        }
 
                         
                     } while (totalMessages<30000 || isAlive.get());
@@ -247,26 +239,20 @@ public class Test {
                             totalMessages++;
                         }
                     }
-
-                   //System.err.println("BBB msg:"+totalMessages);
-                    msgs.addAndGet(totalMessages);   
-                   // System.err.println(x);
+                    msgs.addAndGet(totalMessages);  
                 }
                 
             };
-            
-            //TODO: Must not run on same executor or the hand off becomes broken.
-            //run.run();
             executor.execute(run);
         }
         //   */     
         
         while (/*msgs.get()<3000 ||*/  isAlive.get()) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                break;
-            }
+//            try {
+//                Thread.sleep(1);
+//            } catch (InterruptedException e) {
+//                break;
+//            }
         }
         // Only shut down after is alive is finished.
         executor.shutdown();
@@ -278,7 +264,8 @@ public class Test {
         }
         
         double duration = System.nanoTime() - start;
-       // System.err.println("finished one test");
+        
+   //     System.err.println("finished one test  "+ buffers[0].consumerData.queueFill.toString()+" out of "+buffers[0].mask);
        // executor.shutdownNow();
         
   //      System.err.println("*************************************************************** multi test instance end ");
@@ -290,10 +277,39 @@ public class Test {
     
     
     
+    //TODO: A, this is the beginning of a unit test.
+    int IDX_AppVerId;
+    int IDX_MessageType;
+    
+    boolean isInit;
+    
+    public void populateFieldIDs(FieldReferenceOffsetManager from) {
+        
+        if (!isInit) {
+            IDX_AppVerId = from.lookupIDX("ApplVerID"); //TODO: mixes each fragment and this is very bad!
+            assertEquals("ApplVerID", 2, IDX_AppVerId);
+            
+            IDX_MessageType = from.lookupIDX("MessageType");
+            assertEquals("MessageType", 4, IDX_MessageType);
+            
+            
+            
+            isInit = true;
+        }
+        
+    }
+    
+    private void assertEquals(String message, int a, int b) {
+        if (a!=b) {
+            System.err.println("expected: "+a+" but found "+b+" for "+message);
+        }
+    }
+    
+    
     private void processMessage(char[] temp, FASTRingBuffer rb) {
        
+        populateFieldIDs(rb.from); 
 
-        // final int IDX_AppVerId = rb.from.lookupIDX("ApplVerID");
 
         templateId = FASTRingBufferReader.readInt(rb, 0);
         preamble = FASTRingBufferReader.readInt(rb, 1);

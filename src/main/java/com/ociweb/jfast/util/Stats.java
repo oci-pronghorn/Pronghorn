@@ -29,12 +29,12 @@ public class Stats {
      * @param highEst May grow larger with additional data
      */
     public Stats(int bucketsCount, long expectedAvg, long hardMin, long hardMax) {
-        this.hardMin=hardMin;
-        this.hardMax=hardMax;
+        this.hardMin = hardMin;
+        this.hardMax = hardMax;
         this.buckets = new long[bucketsCount<<1];//must be divisible by two
         this.step = 1;
         this.min = expectedAvg - (bucketsCount>>1);
-        if (this.min<hardMin) {
+        if (this.min < hardMin) {
             this.min = hardMin;
         }
         //max is allowed be larger than hardMax
@@ -152,7 +152,10 @@ public class Stats {
     
     public String toString() {
         double avg = (accum/(float)total);
-        return "50%["+valueAtPercent(.5)+"] "
+        return "25%["+valueAtPercent(.25)+"] "
+                + "50%["+valueAtPercent(.5)+"] "
+                + "60%["+valueAtPercent(.6)+"] "
+                + "70%["+valueAtPercent(.7)+"] "
                 + "80%["+valueAtPercent(.99)+"] "
                 + "99%["+valueAtPercent(.99)+"] "
                 + "99.9%["+valueAtPercent(.999)+"] "
