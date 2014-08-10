@@ -381,6 +381,7 @@ public class TemplateCatalogConfig {
             PrimitiveWriter.writeIntegerSigned(catalogScriptTokens[i], writer);
             PrimitiveWriter.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
             String name = catalogScriptFieldNames[i];
+            
             int len = null==name?0:name.length();
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
             if (len>0) {

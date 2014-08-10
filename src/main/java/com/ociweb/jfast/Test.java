@@ -37,6 +37,9 @@ import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+
+import static com.ociweb.jfast.stream.FASTRingBufferReader.*;
+
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
@@ -275,22 +278,126 @@ public class Test {
     //TODO: C, need test for optional groups this is probably broken. 
 
     
+    int IDX_TemplateId = 0;
+    int IDX_Preamble = 1;
     
+    int IDX1_AppVerId;
+    int IDX1_MessageType;
+    int IDX1_SenderCompID;
+    int IDX1_MsgSeqNum;
+    int IDX1_SendingTime;
+    int IDX1_TradeDate;    
+    int IDX1_NoMDEntries;
     
-    //TODO: A, this is the beginning of a unit test.
-    int IDX_AppVerId;
-    int IDX_MessageType;
+    int IDX1_MDUpdateAction;
+    int IDX1_MDPriceLevel;    
+    int IDX1_MDEntryType;
+    int IDX1_OpenCloseSettleFlag;
+    int IDX1_SecurityIDSource;
+    int IDX1_SecurityID;
+    int IDX1_RptSeq;
+    int IDX1_MDEntryPx;    
+    int IDX1_MDEntryTime;
+    int IDX1_MDEntrySize;
+    int IDX1_NumberOfOrders;
+    int IDX1_TradingSessionID;
+    int IDX1_NetChgPrevDay;
+    int IDX1_TradeVolume;
+    int IDX1_TradeCondition;
+    int IDX1_TickDirection;
+    int IDX1_QuoteCondition;
+    int IDX1_AggressorSide;
+    int IDX1_MatchEventIndicator;
+    
+    int IDX2_AppVerId;
+    int IDX2_MessageType;
+    int IDX2_SenderCompID;
+    int IDX2_MsgSeqNum;
     
     boolean isInit;
     
     public void populateFieldIDs(FieldReferenceOffsetManager from) {
         
+        
+        
+        
         if (!isInit) {
-            IDX_AppVerId = from.lookupIDX("ApplVerID"); //TODO: mixes each fragment and this is very bad!
-            assertEquals("ApplVerID", 2, IDX_AppVerId);
             
-            IDX_MessageType = from.lookupIDX("MessageType");
-            assertEquals("MessageType", 4, IDX_MessageType);
+            int templateId;
+            
+            
+            templateId = 1;
+            IDX1_AppVerId = from.lookupIDX(templateId,"ApplVerID"); 
+            IDX1_MessageType = from.lookupIDX(templateId, "MessageType");
+            IDX1_SenderCompID = from.lookupIDX(templateId, "SenderCompID");
+            IDX1_MsgSeqNum = from.lookupIDX(templateId, "MsgSeqNum");
+            IDX1_SendingTime = from.lookupIDX(templateId, "SendingTime");
+            IDX1_TradeDate = from.lookupIDX(templateId, "TradeDate");            
+            IDX1_NoMDEntries = from.lookupIDX(templateId, "NoMDEntries");
+            
+            IDX1_MDUpdateAction = from.lookupIDX(templateId, "MDUpdateAction");
+            IDX1_MDPriceLevel = from.lookupIDX(templateId, "MDPriceLevel");            
+            IDX1_MDEntryType = from.lookupIDX(templateId, "MDEntryType");
+            IDX1_OpenCloseSettleFlag = from.lookupIDX(templateId, "OpenCloseSettleFlag");
+            IDX1_SecurityIDSource = from.lookupIDX(templateId, "SecurityIDSource");
+            IDX1_SecurityID = from.lookupIDX(templateId, "SecurityID");
+            IDX1_RptSeq = from.lookupIDX(templateId, "RptSeq");
+            IDX1_MDEntryPx = from.lookupIDX(templateId, "MDEntryPx");            
+            IDX1_MDEntryTime = from.lookupIDX(templateId, "MDEntryTime");
+            IDX1_MDEntrySize = from.lookupIDX(templateId, "MDEntrySize");
+            IDX1_NumberOfOrders = from.lookupIDX(templateId, "NumberOfOrders");
+            IDX1_TradingSessionID = from.lookupIDX(templateId, "TradingSessionID");
+            IDX1_NetChgPrevDay = from.lookupIDX(templateId, "NetChgPrevDay");
+            IDX1_TradeVolume = from.lookupIDX(templateId, "TradeVolume");
+            IDX1_TradeCondition = from.lookupIDX(templateId, "TradeCondition");
+            IDX1_TickDirection = from.lookupIDX(templateId, "TickDirection");
+            IDX1_QuoteCondition = from.lookupIDX(templateId, "QuoteCondition");
+            IDX1_AggressorSide = from.lookupIDX(templateId, "AggressorSide");
+            IDX1_MatchEventIndicator = from.lookupIDX(templateId, "MatchEventIndicator");
+            
+            
+            //TODO: A, this is the beginning of a unit test.
+            validate("ApplVerID", 2, IDX1_AppVerId);
+            validate("MessageType", 4, IDX1_MessageType);
+            validate("SenderCompID", 6, IDX1_SenderCompID);
+            validate("MsgSeqNum", 8, IDX1_MsgSeqNum);
+            validate("SendingTime", 9, IDX1_SendingTime);
+            validate("TradeDate", 10, IDX1_TradeDate);            
+            validate("NoMDEntries", 11, IDX1_NoMDEntries);
+            
+            validate("MDUpdateAction", 0, IDX1_MDUpdateAction);
+            validate("MDPriceLevel", 1, IDX1_MDPriceLevel);
+            validate("MDEntryType", 2, IDX1_MDEntryType);
+            validate("OpenCloseSettleFlag", 4, IDX1_OpenCloseSettleFlag);
+            validate("SecurityIDSource", 5, IDX1_SecurityIDSource);
+            validate("SecurityID", 6, IDX1_SecurityID);
+            validate("RptSeq", 7, IDX1_RptSeq);
+            validate("MDEntryPx", 8, IDX1_MDEntryPx);            
+            validate("MDEntryTime", 11, IDX1_MDEntryTime);
+            validate("MDEntrySize", 12, IDX1_MDEntrySize);
+            validate("NumberOfOrders", 13, IDX1_NumberOfOrders);
+            validate("TradingSessionID", 14, IDX1_TradingSessionID);
+            validate("NetChgPrevDay", 16, IDX1_NetChgPrevDay);
+            validate("TradeVolume", 19, IDX1_TradeVolume);
+            validate("TradeCondition", 20, IDX1_TradeCondition);
+            validate("TickDirection", 22, IDX1_TickDirection);
+            validate("QuoteCondition", 24, IDX1_QuoteCondition);
+            validate("AggressorSide", 26, IDX1_AggressorSide);
+            validate("MatchEventIndicator", 27, IDX1_MatchEventIndicator);
+            
+            
+            templateId = 2;
+            IDX2_AppVerId = from.lookupIDX(templateId,"ApplVerID"); 
+            IDX2_MessageType = from.lookupIDX(templateId, "MessageType");
+            IDX2_SenderCompID = from.lookupIDX(templateId, "SenderCompID");
+            IDX2_MsgSeqNum = from.lookupIDX(templateId, "MsgSeqNum");
+            
+            validate("ApplVerID", 2, IDX2_AppVerId);
+            validate("MessageType", 4, IDX2_MessageType);
+            validate("SenderCompID", 6, IDX2_SenderCompID);
+            validate("MsgSeqNum", 8, IDX2_MsgSeqNum);
+            
+            templateId = 99;
             
             
             
@@ -299,9 +406,9 @@ public class Test {
         
     }
     
-    private void assertEquals(String message, int a, int b) {
-        if (a!=b) {
-            System.err.println("expected: "+a+" but found "+b+" for "+message);
+    private void validate(String message, int expectedOffset, int id) {
+        if (expectedOffset!=(FASTRingBufferReader.OFF_MASK&id)) {
+            System.err.println("expected: "+expectedOffset+" but found "+id+" for "+message);
         }
     }
     
@@ -311,80 +418,82 @@ public class Test {
         populateFieldIDs(rb.from); 
 
 
-        templateId = FASTRingBufferReader.readInt(rb, 0);
-        preamble = FASTRingBufferReader.readInt(rb, 1);
+        templateId = readInt(rb, IDX_TemplateId);
+        preamble = readInt(rb, IDX_Preamble);
 
         switch (rb.consumerData.getMessageId()) {
             case 1:
-                int len = FASTRingBufferReader.readDataLength(rb, 2);
-                FASTRingBufferReader.readASCII(rb, 2, temp, 0);
-                // System.err.println("ApplVerID: "+new String(temp,0,len));
-    
-                len = FASTRingBufferReader.readDataLength(rb, 4);
-                FASTRingBufferReader.readASCII(rb, 4, temp, 0);
+                
+                if (!eqASCII(rb, IDX1_AppVerId, "1.0")) {
+                    throw new UnsupportedOperationException("Does not support version "+readASCII(rb, IDX1_AppVerId, new StringBuilder()));
+                }
+              
+                int len;
+                len = readDataLength(rb, IDX1_MessageType);
+                readASCII(rb, IDX1_MessageType, temp, 0);
                 // System.err.println("MessageType: "+new String(temp,0,len));
     
-                len = FASTRingBufferReader.readDataLength(rb, 6);
-                FASTRingBufferReader.readASCII(rb, 6, temp, 0);
+                len = readDataLength(rb, IDX1_SenderCompID);
+                readASCII(rb, IDX1_SenderCompID, temp, 0);
                 // System.err.println("SenderCompID: "+new String(temp,0,len));
     
-                int msgSeqNum = FASTRingBufferReader.readInt(rb, 8);
-                int sendingTime = FASTRingBufferReader.readInt(rb, 9);
-                int tradeDate = FASTRingBufferReader.readInt(rb, 10);
-                int seqCount = FASTRingBufferReader.readInt(rb, 11);
+                int msgSeqNum = readInt(rb, IDX1_MsgSeqNum);
+                int sendingTime = readInt(rb, IDX1_SendingTime);
+                int tradeDate = readInt(rb, IDX1_TradeDate);
+                int seqCount = readInt(rb, IDX1_NoMDEntries);
                 // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
                 while (--seqCount >= 0) {
                     while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
                                                            // have no data?
                     };
                     
-                    int mDUpdateAction = FASTRingBufferReader.readInt(rb, 0);
-                    int mDPriceLevel = FASTRingBufferReader.readInt(rb, 1);
+                    int mDUpdateAction = readInt(rb, IDX1_MDUpdateAction);
+                    int mDPriceLevel = readInt(rb, IDX1_MDPriceLevel);
     
-                    FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                    readASCII(rb, IDX1_MDEntryType, temp, 0);
     
-                    int openCloseSettleFlag = FASTRingBufferReader.readInt(rb, 4);
-                    int securityIDSource = FASTRingBufferReader.readInt(rb, 5);
-                    int securityID = FASTRingBufferReader.readInt(rb, 6);
-                    int rptSeq = FASTRingBufferReader.readInt(rb, 7);
+                    int openCloseSettleFlag = readInt(rb, IDX1_OpenCloseSettleFlag);
+                    int securityIDSource = readInt(rb, IDX1_SecurityIDSource);
+                    int securityID = readInt(rb, IDX1_SecurityID);
+                    int rptSeq = readInt(rb, IDX1_RptSeq);
                     // MDEntryPx
-                    int mDEntryPxExpo = FASTRingBufferReader.readDecimalExponent(rb, 8);
-                    long mDEntrypxMant = FASTRingBufferReader.readDecimalExponent(rb, 8);
-                    int mDEntryTime = FASTRingBufferReader.readInt(rb, 11);
-                    int mDEntrySize = FASTRingBufferReader.readInt(rb, 12);
-                    int numberOfOrders = FASTRingBufferReader.readInt(rb, 13);
+                    int mDEntryPxExpo = readDecimalExponent(rb, IDX1_MDEntryPx);
+                    long mDEntrypxMant = readDecimalExponent(rb, IDX1_MDEntryPx);
+                    int mDEntryTime = readInt(rb, IDX1_MDEntryTime);
+                    int mDEntrySize = readInt(rb, IDX1_MDEntrySize);
+                    int numberOfOrders = readInt(rb, IDX1_NumberOfOrders);
                                                             
-                    len = FASTRingBufferReader.readDataLength(rb, 14);
-                    FASTRingBufferReader.readASCII(rb, 14, temp, 0); 
+                    len = readDataLength(rb, IDX1_TradingSessionID);
+                    readASCII(rb, IDX1_TradingSessionID, temp, 0); 
                     // System.err.println("TradingSessionID: "+new String(temp,0,len));
     
-                    int netChgPrevDayExpo = FASTRingBufferReader.readDecimalExponent(rb, 16);
-                    long netChgPrevDayMant = FASTRingBufferReader.readDecimalExponent(rb, 16);
+                    int netChgPrevDayExpo = readDecimalExponent(rb, IDX1_NetChgPrevDay);
+                    long netChgPrevDayMant = readDecimalMantissa(rb, IDX1_NetChgPrevDay);
                     
-                    int tradeVolume = FASTRingBufferReader.readInt(rb, 19);
+                    int tradeVolume = readInt(rb, IDX1_TradeVolume);
                     
-                    len = FASTRingBufferReader.readDataLength(rb, 20);
+                    len = readDataLength(rb, IDX1_TradeCondition);
                     if (len>0) {
-                    FASTRingBufferReader.readASCII(rb, 20, temp, 0); 
+                    readASCII(rb, IDX1_TradeCondition, temp, 0); 
                     // System.err.println("TradeCondition: "+new String(temp,0,len));
                     }
                     
-                    len = FASTRingBufferReader.readDataLength(rb, 22);
+                    len = readDataLength(rb, IDX1_TickDirection);
                     if (len>0) {
-                    FASTRingBufferReader.readASCII(rb, 22, temp, 0); 
+                    readASCII(rb, IDX1_TickDirection, temp, 0); 
                     // System.err.println("TickDirection: "+new String(temp,0,len));
                     }
                     
-                    len = FASTRingBufferReader.readDataLength(rb, 24);
+                    len = readDataLength(rb, IDX1_QuoteCondition);
                     if (len>0) {
-                    FASTRingBufferReader.readASCII(rb, 24, temp, 0); 
+                    readASCII(rb, IDX1_QuoteCondition, temp, 0); 
                     // System.err.println("QuoteCondition: "+new String(temp,0,len));
                     }
-                    int aggressorSide = FASTRingBufferReader.readInt(rb, 26);
+                    int aggressorSide = readInt(rb, IDX1_AggressorSide);
                   
-                    len = FASTRingBufferReader.readDataLength(rb, 27);
+                    len = readDataLength(rb, IDX1_MatchEventIndicator);
                     if (len>0) {
-                    FASTRingBufferReader.readASCII(rb, 27, temp, 0); 
+                    readASCII(rb, IDX1_MatchEventIndicator, temp, 0); 
                     // System.err.println("MatchEventIndicator: "+new String(temp,0,len));
                     }
                     
@@ -393,42 +502,42 @@ public class Test {
                 break;
             case 2:
     
-               len = FASTRingBufferReader.readDataLength(rb, 2);
-               FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+               len = readDataLength(rb, IDX2_AppVerId);
+               readASCII(rb, IDX2_AppVerId, temp, 0);
                //System.err.println("ApplVerID: "+new String(temp,0,len));
                
-               len = FASTRingBufferReader.readDataLength(rb, 4);
-               FASTRingBufferReader.readASCII(rb, 4, temp, 0);
+               len = readDataLength(rb, IDX2_MessageType);
+               readASCII(rb, IDX2_MessageType, temp, 0);
                //System.err.println("MessageType: "+new String(temp,0,len));
                
-               len = FASTRingBufferReader.readDataLength(rb, 6);
-               FASTRingBufferReader.readASCII(rb, 6, temp, 0);
+               len = readDataLength(rb, IDX2_SenderCompID);
+               readASCII(rb, IDX2_SenderCompID, temp, 0);
              //  System.err.println("SenderCompID: "+new String(temp,0,len));
                
-               int msgSeqNum2 = FASTRingBufferReader.readInt(rb, 8);
-               int sendingTime2 = FASTRingBufferReader.readInt(rb, 9);
+               int msgSeqNum2 = readInt(rb, IDX2_MsgSeqNum);
+               int sendingTime2 = readInt(rb, 9);
                
-               len = FASTRingBufferReader.readDataLength(rb, 10);
+               len = readDataLength(rb, 10);
                if (len>0) {
-                   FASTRingBufferReader.readASCII(rb, 10, temp, 0);
+                   readASCII(rb, 10, temp, 0);
                    //System.err.println("QuoteReqID: "+new String(temp,0,len));
                }
                
-               int seqCount2 = FASTRingBufferReader.readInt(rb, 12);
+               int seqCount2 = readInt(rb, 12);
                
                while (--seqCount2 >= 0) {
                    while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
                                                           // have no data?
                       
-                       len = FASTRingBufferReader.readDataLength(rb, 0);
-                       FASTRingBufferReader.readASCII(rb, 0, temp, 0);  
+                       len = readDataLength(rb, 0);
+                       readASCII(rb, 0, temp, 0);  
                        
-                       long orderQty = FASTRingBufferReader.readLong(rb, 2);
-                       int side = FASTRingBufferReader.readInt(rb, 4);
-                       long transactTime = FASTRingBufferReader.readLong(rb, 5);
-                       int quoteType = FASTRingBufferReader.readInt(rb, 7);
-                       int securityID = FASTRingBufferReader.readInt(rb, 8);
-                       int securityIDSource = FASTRingBufferReader.readInt(rb, 9);
+                       long orderQty = readLong(rb, 2);
+                       int side = readInt(rb, 4);
+                       long transactTime = readLong(rb, 5);
+                       int quoteType = readInt(rb, 7);
+                       int securityID = readInt(rb, 8);
+                       int securityIDSource = readInt(rb, 9);
                        
                    };
                                                         
@@ -439,8 +548,8 @@ public class Test {
                 break;
             case 99:
     
-                len = FASTRingBufferReader.readDataLength(rb, 2);
-                FASTRingBufferReader.readASCII(rb, 2, temp, 0);
+                len = readDataLength(rb, 2);
+                readASCII(rb, 2, temp, 0);
                 // rb.tailPos.lazySet(rb.workingTailPos.value);
                 // System.err.println("MessageType: "+new String(temp,0,len));
     

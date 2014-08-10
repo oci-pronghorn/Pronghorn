@@ -19,6 +19,7 @@ public class FieldReferenceOffsetManager {
     public final int[] fragScriptSize;
     public final int[] tokens;
     public final int[] starts;
+    public final int[] limits;
     public final String[] fieldNameScript;
     
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
@@ -50,6 +51,7 @@ public class FieldReferenceOffsetManager {
         tokensLen = null==tokens?0:tokens.length;
         
         starts = config.getTemplateStartIdx();
+        limits = config.getTemplateLimitIdx();
         
         fieldNameScript = config.fieldNameScript();
         
@@ -133,21 +135,29 @@ public class FieldReferenceOffsetManager {
         }
     }
 
-    //TODO: A, need string names from catalog
-    public int lookupIDX(String target) {
-        // TODO Auto-generated method stub
+    public int lookupIDX(int templateId, String target) {
+        int x = starts[templateId];
+        int limit = limits[templateId];
         
-        int x = fieldNameScript.length;
-        while (--x>=0) {
+        
+        int UPPER_BITS = 0xF0000000;
+        //System.err.println("looking for "+target+ " between "+x+" and "+limit);
+        //System.err.println(Arrays.toString(fieldNameScript));
+        
+        while (x<limit) {
             if (fieldNameScript[x].equalsIgnoreCase(target)) {
                 
-                
-                //if x is at the top then 
-                
-                
-                return fragDataSize[x];
+                if (0==x) {
+                    return UPPER_BITS|0; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
+                } else {
+                    //System.err.println("found at "+x);
+                    //System.err.println(Arrays.toString(fragDataSize));
+                    return UPPER_BITS|fragDataSize[x];                    
+                }
                 
             }
+            x++;
+            
         }
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(fieldNameScript));
         

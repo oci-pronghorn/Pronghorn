@@ -4,6 +4,7 @@
 package com.ociweb.jfast.loader;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -285,9 +286,10 @@ public class TemplateHandler extends DefaultHandler {
             maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
             groupOpenTokenPMapStack[groupTokenStackHead] = 0;
 
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; // Zero id for group
+            fieldName=null;//ensure it is only used once
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
 
         } else if (qName.equalsIgnoreCase("sequence")) {
 
@@ -322,7 +324,8 @@ public class TemplateHandler extends DefaultHandler {
         } else if (qName.equalsIgnoreCase("template")) {
             // must support zero so we add 1 to the index.
             int templateOffset = catalogTemplateScriptIdx + 1;
-
+            fieldName = attributes.getValue("name");
+            
             templateId = Integer.valueOf(attributes.getValue("id"));
             if (0 != templateIdx[templateId]) {
                 throw new SAXException("Duplicate template id: " + templateId);
@@ -352,11 +355,11 @@ public class TemplateHandler extends DefaultHandler {
             maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
             groupOpenTokenPMapStack[groupTokenStackHead] = 0;
 
-            if (true) {
-                catalogScriptTokens[catalogTemplateScriptIdx] = token;
-                catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-                catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0; // Zero id for group
-            }
+            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
+
             
             
             // messages do not need to be listed in catalogTemplateScript
@@ -459,6 +462,7 @@ public class TemplateHandler extends DefaultHandler {
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("uint64") || qName.equalsIgnoreCase("int64")) {
@@ -492,6 +496,7 @@ public class TemplateHandler extends DefaultHandler {
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("string")) {
@@ -510,6 +515,7 @@ public class TemplateHandler extends DefaultHandler {
 
             catalogScriptTokens[catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("decimal")) {
@@ -572,6 +578,7 @@ public class TemplateHandler extends DefaultHandler {
            
             catalogScriptTokens[catalogTemplateScriptIdx] = tokenMantisssa;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
 
             fieldPMapInc = 1;// set back to 1 we are leaving decimal processing
@@ -587,9 +594,10 @@ public class TemplateHandler extends DefaultHandler {
 
             int token = buildToken(tokenBuilderByteCount);
 
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+            fieldName=null;//ensure it is only used once
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
 
         } else if (qName.equalsIgnoreCase("template")) {
 
@@ -644,9 +652,10 @@ public class TemplateHandler extends DefaultHandler {
             // NOTE: we want the sequence length to come first then the
             // repeating group pmap therefore
             // we are waiting until now to add the open group token.
-            catalogScriptTokens[catalogTemplateScriptIdx] = token;
+            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = fieldId;
+            fieldName=null;//ensure it is only used once
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = fieldId;
 
             catalogScriptTokens[catalogTemplateScriptIdx] = groupOpenTokenStack[groupTokenStackHead];
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
@@ -679,6 +688,9 @@ public class TemplateHandler extends DefaultHandler {
             //add closing group to script
             catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize,
                                                                     TokenBuilder.MASK_ABSENT_DEFAULT);
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
+            
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
 
             groupTokenStackHead--;// pop this group off the stack to work on the
@@ -856,6 +868,8 @@ public class TemplateHandler extends DefaultHandler {
                                tokenBuilderLongCount.intValue(),
                                tokenBuilderByteCount.intValue());
 
+       //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
+        
         // write catalog data.
         TemplateCatalogConfig.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
                 defaultConstValues, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers,
