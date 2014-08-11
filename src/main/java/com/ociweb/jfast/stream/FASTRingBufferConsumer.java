@@ -17,7 +17,13 @@ public class FASTRingBufferConsumer {
     public final FieldReferenceOffsetManager from;
     
     public final Stats queueFill;
-    private Stats latency   = new Stats(100, 50, 0, 100);
+    public final Stats timeBetween;
+    //keep the queue fill size for Little's law 
+    //MeanResponseTime = MeanNumberInSystem / MeanThroughput
+    private long lastTime = -1;
+    private final int rateAvgBit = 5;
+    private final int rateAvgCntInit = 1<<rateAvgBit;
+    private int rateAvgCnt = rateAvgCntInit;
     
     public FASTRingBufferConsumer(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
@@ -33,10 +39,35 @@ public class FASTRingBufferConsumer {
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
         this.from = from;
-        this.queueFill = new Stats(100, rbMask>>1, 0, rbMask);
+        this.queueFill  =  new Stats(10000, rbMask>>1, 0, rbMask);
+        this.timeBetween = new Stats(10000, 20, 0, 1000000000);
         
     }
 
+    public static void recordRates(FASTRingBufferConsumer ringBufferConsumer, long newTailPos) {
+        
+        //MeanResponseTime = MeanNumberInSystem / MeanThroughput
+                
+        if ((--ringBufferConsumer.rateAvgCnt)<0) {
+        
+            ringBufferConsumer.queueFill.sample(ringBufferConsumer.bnmHeadPosCache - newTailPos);
+            long now = System.nanoTime();
+            if (ringBufferConsumer.lastTime>0) {
+                ringBufferConsumer.timeBetween.sample(now-ringBufferConsumer.lastTime);
+            }
+            ringBufferConsumer.lastTime = now;
+            
+            ringBufferConsumer.rateAvgCnt = ringBufferConsumer.rateAvgCntInit;
+        }
+        
+    }
+    
+    public static long responseTime(FASTRingBufferConsumer ringBufferConsumer) {
+        //Latency in ns
+        return (ringBufferConsumer.queueFill.valueAtPercent(.5)*ringBufferConsumer.timeBetween.valueAtPercent(.5))>>ringBufferConsumer.rateAvgBit;
+        
+    }
+    
     public int getMessageId() {
         return messageId;
     }
@@ -114,4 +145,6 @@ public class FASTRingBufferConsumer {
         consumerData.activeFragmentDataSize = (0);
         
     }
+
+   
 }

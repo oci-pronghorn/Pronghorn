@@ -36,6 +36,7 @@ import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 import static com.ociweb.jfast.stream.FASTRingBufferReader.*;
@@ -48,7 +49,8 @@ public class Test {
     public static void main(String[] args) {
         
         //this example uses the preamble feature
-        ClientConfig clientConfig = new ClientConfig(18,8);//larger than normal to help speed this up.
+        //large value for bandwidth, small for latency
+        ClientConfig clientConfig = new ClientConfig(21,18);//If first number is bumped up the second will have to be near it!! TODO: A, what is the ratio for prmary to data?
         clientConfig.setPreableBytes((short)4);
         String templateSource = "/performance/example.xml";
         String dataSource = "/performance/complex30000.dat";
@@ -185,24 +187,7 @@ public class Test {
         
         final AtomicBoolean isAlive = reactor.start(executor, reader);
        
-        //
-        
-//        FASTRingBuffer rb = buffers[0];
-//        long lastCheckedValue = -1;
-//        do {
-//          //dump the data as fast as possible, this is faster than the single 
-//          long targetValue = rb.workingTailPos.value+100;
-//          
-//          while ( lastCheckedValue < targetValue && (lastCheckedValue<12000 || isAlive.get())) {  
-//            lastCheckedValue  = rb.headPos.longValue();
-//          }  
-//        
-//          rb.workingTailPos.value = lastCheckedValue;
-//          rb.tailPos.lazySet(lastCheckedValue); 
-//
-//        } while (lastCheckedValue<12000 ||  isAlive.get() || FASTRingBuffer.contentRemaining(rb)>0);
-        
-
+//Thread.yield(); //TODO: A, why is this needed? need more testing.
         
         int b = buffers.length;
         while (--b>=0) {
@@ -210,32 +195,29 @@ public class Test {
             Runnable run = new Runnable() {
                 char[] temp = new char[64];
                 
-               // long time=0;
-                
                 @Override
                 public void run() {
-                 //   int x = 0;
                     int totalMessages = 0;
-                 //   long begin = System.nanoTime();
-                    do {
+                    do {                        
+                        //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
                         
-                        //NOTE: the stats object shows that this is empty 75% of the time, eg needs more .
+                        
 
                         if (FASTRingBuffer.moveNext(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
                                 processMessage(temp, rb);   
-                        } else {
-                            //must wait on more to be written into the ring buffer before they can be read
-                            //the code is pushed a bit too hard so we have a lot of extra cpu cycles on the reader side to play with.
-                            int x = 4000;
-                            while (--x>=0) {
-                                Thread.yield();
-                            }
-                        }
-
-                        
+                        } 
+//                        else {
+//                            //must wait on more to be written into the ring buffer before they can be read
+//                            //the code is pushed a bit too hard so we have a lot of extra cpu cycles on the reader side to play with.
+////                            int x = 4000;
+////                            while (--x>=0) {
+////                                Thread.yield();
+////                            }
+//                        }                        
                     } while (totalMessages<30000 || isAlive.get());
+                    
                     //is alive is done writing but we need to empty out
                     while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
                         if (rb.consumerData.isNewMessage()) {
@@ -248,27 +230,28 @@ public class Test {
             };
             executor.execute(run);
         }
-        //   */     
+    
         
-        while (/*msgs.get()<3000 ||*/  isAlive.get()) {
-//            try {
-//                Thread.sleep(1);
-//            } catch (InterruptedException e) {
-//                break;
-//            }
+        while (msgs.get()<3000 ||  isAlive.get()) {
         }
+        
         // Only shut down after is alive is finished.
         executor.shutdown();
         
         try {
-            executor.awaitTermination(1,TimeUnit.MINUTES);
+            executor.awaitTermination(1,TimeUnit.HOURS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         
         double duration = System.nanoTime() - start;
         
-   //     System.err.println("finished one test  "+ buffers[0].consumerData.queueFill.toString()+" out of "+buffers[0].mask);
+        
+  //      System.err.println("Mean Latency:"+FASTRingBufferConsumer.responseTime(buffers[0].consumerData)+"ns");
+        
+//        System.err.println("finished one test  "+ buffers[0].consumerData.queueFill.toString()+" out of "+buffers[0].mask);
+//        System.err.println("                   "+ buffers[0].consumerData.timeBetween.toString());
+        
        // executor.shutdownNow();
         
   //      System.err.println("*************************************************************** multi test instance end ");

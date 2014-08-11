@@ -122,7 +122,15 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = FASTRingBufferReader.readDataLength(ring, idx);
         if (pos < 0) {
-            readASCIIConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
+            try {
+                readASCIIConst(ring,len,target, targetOffset, 0x7FFFFFFF & pos);
+            } catch (Exception e) {
+                
+                e.printStackTrace();
+                System.err.println("pos now :"+(0x7FFFFFFF & pos)+" len "+len);                
+                System.exit(0);
+                
+            }
         } else {
             readASCIIRing(ring,len,target, targetOffset,pos);
         }
@@ -132,7 +140,8 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     private static void readASCIIConst(FASTRingBuffer ring, int len, char[] target, int targetIdx, int pos) {
         byte[] buffer = ring.constByteBuffer;
         while (--len >= 0) {
-            target[targetIdx++]=(char)buffer[pos++];
+            char c = (char)buffer[pos++];
+            target[targetIdx++] = c;
         };
     }
     

@@ -94,6 +94,8 @@ public final class FASTRingBuffer {
             if (null!=byteHeap) {
                           
                 this.constByteBuffer = LocalHeap.rawInitAccess(byteHeap);  
+                //System.err.println("constByteBufferLen:"+this.constByteBuffer.length);
+                
             } else {
                 this.constByteBuffer = null;
             }
@@ -223,8 +225,11 @@ public final class FASTRingBuffer {
             }
         }
               
-        long totalContent = ringBufferConsumer.getBnmHeadPosCache() - needStop;
-        ringBufferConsumer.queueFill.sample(totalContent);
+        //keep the queue fill size for Little's law 
+        //also need to keep messages per second data
+        FASTRingBufferConsumer.recordRates(ringBufferConsumer, needStop);
+        
+        
         
         //Now beginning a new message so release the previous one from the ring buffer
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
