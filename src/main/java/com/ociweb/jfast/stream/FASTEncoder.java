@@ -46,6 +46,8 @@ public abstract class FASTEncoder {
 
     protected final RingBuffers ringBuffers;
     
+    public final byte[] preambleData;
+    
     public FASTEncoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
@@ -92,7 +94,7 @@ public abstract class FASTEncoder {
         this.preambleData = new byte[preambleBytes];
     }
     
-    public final byte[] preambleData;
+
 
     public void setDispatchObserver(DispatchObserver observer) {
         this.observer = observer;

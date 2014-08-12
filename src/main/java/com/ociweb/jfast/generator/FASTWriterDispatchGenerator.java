@@ -29,8 +29,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         
         GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
-               
-        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class);
+        int preambleInts = (preambleData.length+3)>>2;
+        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, preambleInts);
         GeneratorUtils.generateTail(generatorData, target);
         
         return target;
@@ -43,7 +43,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) {
+    protected void genWritePreamble(PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
     }
 

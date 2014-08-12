@@ -20,7 +20,7 @@ import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
     
-    static final boolean REMOVE_ARRAY = false; //TODO: A, still testing this idea 
+    static final boolean REMOVE_ARRAY = false; //TODO: B, still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
@@ -91,7 +91,7 @@ public class GeneratorUtils {
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
 
-    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName, Class primClass) throws IOException {
+    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName, Class primClass, int preambleIntCount) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";
@@ -117,7 +117,8 @@ public class GeneratorUtils {
                     
             //exit if the ring buffer is full          
             if (isReader) {
-                int preamblePlusId = 2;//TODO: A, must compute and set this
+                
+                int preamblePlusId = preambleIntCount+1;
             doneCode[j] +=
                    " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
                    " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+
@@ -128,23 +129,10 @@ public class GeneratorUtils {
                    "   return 0;//nothing read\n " +
                    " }\n"+
                    " }\n";
-            } else {
-                
-                
-                
-                
-            }
-        
-//            long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
-//            if (rbRingBuffer.tailCache < neededTailStop) {
-//                rbRingBuffer.tailCache = rbRingBuffer.tailPos.longValue(); 
-//                if ( rbRingBuffer.tailCache < neededTailStop ) {
-//                  return 0; //no space to read data and start new message so read nothing
-//                }
-//            }
-            
+            } 
+                   
                           
-             doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
+            doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
             doneValues[j++] = d;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
@@ -160,16 +148,17 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
-            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n");
+            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n"); 
             //TODO: A, need custom write method here.
             
-            builder.append("if (null!=rbRingBuffer) {\n");
+            builder.append("fieldPos = 0;\n");
+            builder.append("\n");
             builder.append("    //cursor and limit already set\n");
-            builder.append("     setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
+            builder.append("    setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
             builder.append("    setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());\n");
-            builder.append("}\n");
-            builder.append("            if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {\n");                
-            builder.append("    beginMessage(preambleData, writer, rbRingBuffer, this);\n");
+            builder.append("\n");
+            builder.append("if (rbRingBuffer.consumerData.isNewMessage()) {\n");                
+            builder.append("    beginMessage(writer, rbRingBuffer, this);\n");
             builder.append("}\n");
             
         }
@@ -348,9 +337,13 @@ public class GeneratorUtils {
                      .append(") {\n");
         
     
-        return "\n"+signatureLine.toString()+
+        return "\n"+signatureLine.toString()+ 
                // generatorData.statsBuilder.toString()+
-                generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
+                generatorData.groupMethodBuilder.toString()+ 
+                
+                (paraDefs.contains("Writer") ?  "dispatch.fieldPos++;  ": "")+
+                generatorData.caseTail+
+                generatorData.fieldMethodBuilder.toString();
         
     }
 

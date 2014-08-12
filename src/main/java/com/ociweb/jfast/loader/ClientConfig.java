@@ -22,8 +22,8 @@ public class ClientConfig {
     
     
     //TODO: A, must set ring buffer for each template id
-    //TODO: A, must set extra spacers to be writen between
-    //TODO: A, must set extra spacers to skip
+    //TODO: B, must set extra spacers to be written between
+    //TODO: B, must set extra spacers to skip on read
     //TODO: B, must store the ignore templates without having catalog.
     
     

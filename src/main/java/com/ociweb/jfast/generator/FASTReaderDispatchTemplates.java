@@ -53,25 +53,11 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {
 
         {
-            int tmp = reader.position;
-            
             // write template id at the beginning of this message
             PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
             
-            if (0 == ((1<<6) & reader.pmapIdxBitBlock)) {
-                new Exception("template error at "+tmp).printStackTrace();
-                System.exit(0);
-            }
-            
             //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-            //TODO: A, why is the bit block wrong after hitting end of data!!
             dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -1;
-            
-            
-//            if (dispatch.templateId<0) {
-//                int bitBlock = ((1<<6) & reader.pmapIdxBitBlock);
-//                System.err.println("bits "+bitBlock+" found error at "+reader.totalRead(reader)+" for "+System.identityHashCode(reader)); //this looks like end of file!!
-//            }
             
             // fragment size plus 1 for template id and preamble data length in bytes
             dispatch.activeScriptLimit = dispatch.templateLimitIdx[ dispatch.templateId];

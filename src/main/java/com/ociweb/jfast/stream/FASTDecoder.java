@@ -37,6 +37,7 @@ public abstract class FASTDecoder{
     public int preambleA=0; //must hold between read (wait for space on queue) and write (if it happens)
     public int preambleB=0; //must hold between read (wait for space on queue) and write (if it happens)
             
+    public final byte[] preambleData;
    
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
@@ -53,7 +54,7 @@ public abstract class FASTDecoder{
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, int maxPMapCountInBytes,
             int[] templateStartIdx, int[] templateLimitIdx,
-            int maxTemplatePMapSize, int preambleDataLength, RingBuffers ringBuffers) {
+            int maxTemplatePMapSize, int preambleBytes, RingBuffers ringBuffers) {
 
         this.byteHeap = dcr.byteDictionary();
         
@@ -63,6 +64,7 @@ public abstract class FASTDecoder{
         
         this.templateStartIdx = templateStartIdx;
         this.templateLimitIdx = templateLimitIdx;
+        this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;
         
@@ -77,7 +79,7 @@ public abstract class FASTDecoder{
                 
         // clear all previous values to un-set
         dictionaryFactory.reset(rIntDictionary); //TODO: A, need generator for this
-        dictionaryFactory.reset(rLongDictionary); //TODO: A, need generator fo this
+        dictionaryFactory.reset(rLongDictionary); //TODO: A, need generator for this
                 
         
         if (null!=byteHeap) {

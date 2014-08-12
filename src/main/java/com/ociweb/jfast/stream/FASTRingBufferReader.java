@@ -77,7 +77,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = FASTRingBufferReader.readDataLength(ring, idx);
 
-        if (pos < 0) {
+        if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readASCIIConst(ring,len,target,0x7FFFFFFF & pos);
         } else {
             return readASCIIRing(ring,len,target,pos);

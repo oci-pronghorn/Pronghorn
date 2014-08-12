@@ -48,8 +48,8 @@ public final class FASTRingBuffer {
     //grouping fragments together gives a clear advantage but more latency
     //as this gets near half the primary bits size the performance drops off
     //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
-    public final int chunkBits = 4; //TODO: A, move into ringBuffer
-    public final int chunkMask = (1<<chunkBits)-1;//TODO: A, move into ringBuffer
+    public final int chunkBits = 4; 
+    public final int chunkMask = (1<<chunkBits)-1;
     
     public final int maxSize;
 
@@ -69,6 +69,8 @@ public final class FASTRingBuffer {
     //each fragment size must be known and looked up
     public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
+    
+    int preambleInts = 1; //TODO: A, set on construction.
 
            
     // end of moveNextFields
@@ -221,7 +223,7 @@ public final class FASTRingBuffer {
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
                 ringBufferConsumer.setMessageId(-1);
-              return false;
+              return false; //TODO: A, the inner byte ring buffer also must be checked to ensure its not overwitten, how is this ensured?
             }
         }
               
@@ -235,13 +237,16 @@ public final class FASTRingBuffer {
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
-        ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  1)); //TODO: A, how do we know this is one? jumping over preamble
+        ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBuffer.preambleInts)); //jumps over preamble to find templateId
         
         //start new message, can not be seq or optional group or end of message.
         ringBufferConsumer.setCursor(ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
         ringBufferConsumer.setNewMessage(true);
         
-        return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
+        //////
+        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
+        return true;
+       // return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
     
     //only called after moving forward.

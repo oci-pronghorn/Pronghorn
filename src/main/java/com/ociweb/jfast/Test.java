@@ -50,7 +50,7 @@ public class Test {
         
         //this example uses the preamble feature
         //large value for bandwidth, small for latency
-        ClientConfig clientConfig = new ClientConfig(21,18);//If first number is bumped up the second will have to be near it!! TODO: A, what is the ratio for prmary to data?
+        ClientConfig clientConfig = new ClientConfig(20,22);//If first number is bumped up the second will have to be near it!! TODO: A, what is the ratio for prmary to data?
         clientConfig.setPreableBytes((short)4);
         String templateSource = "/performance/example.xml";
         String dataSource = "/performance/complex30000.dat";
@@ -186,9 +186,7 @@ public class Test {
         double start = System.nanoTime();
         
         final AtomicBoolean isAlive = reactor.start(executor, reader);
-       
-//Thread.yield(); //TODO: A, why is this needed? need more testing.
-        
+
         int b = buffers.length;
         while (--b>=0) {
             final FASTRingBuffer rb = buffers[b]; //Too many buffers!
@@ -219,7 +217,7 @@ public class Test {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (FASTRingBuffer.moveNext(rb)) { //TODO: A, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                    while (FASTRingBuffer.moveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
                         if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }
@@ -513,7 +511,7 @@ public class Test {
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);
-                       readASCII(rb, 0, temp, 0);  
+                       readASCII(rb, 0, temp, 0);  //TODO: A, need add checking for the byte ring buffer overlap.
                        
                        long orderQty = readLong(rb, 2);
                        int side = readInt(rb, 4);

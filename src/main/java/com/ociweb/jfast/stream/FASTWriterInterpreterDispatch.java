@@ -1230,7 +1230,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
         if (preambleData.length != 0) {
             
-            genWritePreamble(preambleData, writer, ringBuffer, this); ///TODO: A, must be in generator so gen method is integrated
+            genWritePreamble(writer, ringBuffer, this);
             
         };
 
@@ -1268,9 +1268,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         //TODO: B, generated code looks up ring buffer, remove argument
         // rb=RingBuffers.get(ringBuffers,activeScriptCursor);
         
-        //TODO: A, the generated code does not call the call begin message logic.
-        //TODO: A, the generated code calls unBlockFragment not sure it should!
-        
+       
         fieldPos = 0;
         
         //TODO: how will this be set for generated code?

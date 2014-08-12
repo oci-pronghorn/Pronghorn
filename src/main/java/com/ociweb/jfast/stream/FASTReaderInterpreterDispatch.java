@@ -269,7 +269,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
        // System.err.println(fragmentSize+"  vs  "+(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
         
         //Must do last because this will let the other threads begin to use this data
-        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos); //TODO: A, test not doing this all the time
+        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos); //TODO: B, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
     }
 

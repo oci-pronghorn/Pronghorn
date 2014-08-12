@@ -26,23 +26,22 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteCopyBytes(int source, int target, LocalHeap byteHeap) {
         LocalHeap.copy(source,target,byteHeap);
     }
-    
 
-    protected void genWritePreamble(byte[] preambleData, PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
+    protected void genWritePreamble(PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
 
         int i = 0;
-        int s = preambleData.length;
+        int s = dispatch.preambleData.length;
         while (i < s) {
                         
             int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, dispatch.fieldPos);
-            preambleData[i++] = (byte) (0xFF & (d >>> 0));
-            preambleData[i++] = (byte) (0xFF & (d >>> 8));
-            preambleData[i++] = (byte) (0xFF & (d >>> 16));
-            preambleData[i++] = (byte) (0xFF & (d >>> 24));
+            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 0));
+            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 8));
+            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 16));
+            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 24));
             dispatch.fieldPos++;
         }
         
-        PrimitiveWriter.writeByteArrayData(preambleData, 0, preambleData.length, writer);
+        PrimitiveWriter.writeByteArrayData(dispatch.preambleData, 0, dispatch.preambleData.length, writer);
     }
     
 
