@@ -117,6 +117,8 @@ public abstract class FASTEncoder {
     // an outer group.
     protected static void pushTemplate(int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
 
+        long readFromPos = queue.workingTailPos.value;
+        
         int templateId = FASTRingBufferReader.readInt(queue, fieldPos);
         
      //   int top = dispatch.templateStack[dispatch.templateStackHead];
@@ -124,12 +126,21 @@ public abstract class FASTEncoder {
 //            PrimitiveWriter.writePMapBit((byte) 0, writer);
 //        } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
+            
+//            System.err.println("XXXXX: wrote templateId:"+templateId+" from "+fieldPos+"  from pos "+readFromPos);
+//            new Exception().printStackTrace();
+        
             PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
       //      top = templateId;
      //   }
 
         //dispatch.templateStack[dispatch.templateStackHead++] = top;
+      //  System.exit(0);    
+            
     }
+//            Write:Group:010000/Open:DynTempl::000010/17
+//            XXXXX: wrote templateId:2 from 1  from pos 0   vs   the bad XXXXX: wrote templateId:0 from 1  from pos 0
+//            Write:ASCII:001000/Constant:000010/10
     
     public void setActiveScriptCursor(int cursor) {
        activeScriptCursor = cursor;

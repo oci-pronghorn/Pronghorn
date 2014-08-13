@@ -113,7 +113,10 @@ public class GeneratorUtils {
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
-                          " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n";
+                          " rb="+ //TODO: B, Clean up this is very messy
+                              (isReader?
+                               RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n":
+                                   "rbRingBuffer;\n");
                     
             //exit if the ring buffer is full          
             if (isReader) {

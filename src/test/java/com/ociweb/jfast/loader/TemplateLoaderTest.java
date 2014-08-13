@@ -384,8 +384,9 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-       FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-   //   FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+     FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+     //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //TODO: A, this has its own ring buffer!!! this is very bad!
+     
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -406,29 +407,24 @@ public class TemplateLoaderTest {
             grps = 0;
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
+            //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
             dictionaryFactory.reset(writerDispatch.intValues);
             dictionaryFactory.reset(writerDispatch.longValues);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
-   
-                    FASTRingBuffer.moveNext(queue);
-                    if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
-                        
+
+                    if (FASTRingBuffer.moveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
-                        
-                        //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
-                        
-                        
-                        try{   //TODO: A, writer needs to be comipled
-                             dynamicWriter.write();
-                            } catch (FASTException e) {
-                                System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
-                                throw e;
-                            }                            
+                        try{   
+                            dynamicWriter.write();
+                        } catch (FASTException e) {
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            throw e;
+                        }                            
                         grps++;
-                   }
+                    }
 
             }
             

@@ -656,6 +656,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
 
+      //  System.err.println("Write:"+TokenBuilder.tokenToString(token));
+        
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
             if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
@@ -804,8 +806,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
 
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
-                        if (isTemplate && true) {
-                            
+                        if (isTemplate) {
                             openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
@@ -1228,6 +1229,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     
     private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
+        
+        fieldPos = 0;
+        
         if (preambleData.length != 0) {
             
             genWritePreamble(writer, ringBuffer, this);
@@ -1242,7 +1246,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     @Override
     public void runFromCursor() {
-        fieldPos = 0;
+        //do not set fieldPos will be set by previous call to runBeginMessage?
+        fieldPos = 2;
         encode(null,null);
     }
 
@@ -1262,24 +1267,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     ///////////////////////
 
-   
     @Override
     public int encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        //TODO: B, generated code looks up ring buffer, remove argument
-        // rb=RingBuffers.get(ringBuffers,activeScriptCursor);
         
-       
-        fieldPos = 0;
         
-        //TODO: how will this be set for generated code?
         if (null!=rbRingBuffer) {
             //cursor and limit already set
-            setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());        
+            setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());  //TODO: A, how will this be set for generated code?
             setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());
+            fieldPos = 0;//needed for fragments in interpreter but is not called when generating
         }
+        
         
         if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {                
             callBeginMessage(writer, rbRingBuffer);
+            //TODO: this has incremented field position to 2 but its not that way when we generate the code
         }
         
         int stop = activeScriptLimit; 
