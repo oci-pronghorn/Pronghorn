@@ -214,7 +214,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                     }
                                 } else {
                                     //this IS a message requireing template
-                                   // System.err.println("xxx");
+                                    //System.err.println("xxx");
                                     //Do nothing because this is done by Reactor at this time.
                                     
                                 }                                
@@ -1215,6 +1215,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
+    //TODO: A, must build writeLength for the writer code.
     private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
         //because the generator hacks this boolean return value it is not helpful here.
         int jumpToNext = activeScriptCursor+1;

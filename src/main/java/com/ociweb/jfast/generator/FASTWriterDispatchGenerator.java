@@ -897,10 +897,6 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
-//TODO: A, put back in to track down writer problem
-        //        if (fieldPos<0) {
-//            throw new UnsupportedOperationException("fieldPos:"+fieldPos);
-//        }
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, pmapSize, fieldPos);
         
     }

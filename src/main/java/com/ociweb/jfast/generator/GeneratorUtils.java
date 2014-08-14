@@ -380,6 +380,8 @@ public class GeneratorUtils {
             
             //do additional case methods if needed.
             
+            System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
+            
             for(int seqStart:generatorData.sequenceStarts) {
                 if (!doneScripts.contains(seqStart)) {
                     doneScripts.add(seqStart);

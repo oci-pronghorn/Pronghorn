@@ -309,7 +309,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                     int idx = token & intInstanceMask;
-
                     genWriteIntegerUnsignedNone(idx, rbPos, writer, intValues, rbRingBuffer);
                 } else {
                     // delta
@@ -343,7 +342,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = intValues[idx];
-
                 genWriteIntegerUnsignedDefault(constDefault, rbPos, writer, rbRingBuffer);
             }
         }
@@ -656,7 +654,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
 
-      //  System.err.println("Write:"+TokenBuilder.tokenToString(token));
+       // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
         
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
@@ -821,30 +819,25 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     }
 
                 } else {
+                    
+                    //generatorData.sequenceStarts.add(activeScriptCursor+1);
+                    //TODO: A, generated code must call the above before each length.
+                    
+                    
                     // 101??
                     // Length Type, no others defined so no need to keep
                     // checking
                     // Only happens once before a node sequence so push it on
                     // the count stack
                     if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                        // not optional
-                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                            acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
-                        } else {
-                            acceptIntegerSigned(token, fieldPos, rbRingBuffer, writer);
-                        }
+                        acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                     } else {
-
                         // optional
                         //TODO: B, Add lookup for value of absent/null instead of this constant.
                         int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
-                        
-                        if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                                
-                            acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
-                        } else {
-                            acceptIntegerSignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
-                        }
+                        acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                     }
+                    
                     fieldPos+=1;
                     assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
                     return true;
@@ -1246,7 +1239,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     @Override
     public void runFromCursor() {
-        //do not set fieldPos will be set by previous call to runBeginMessage?
         fieldPos = 2;
         encode(null,null);
     }
@@ -1285,10 +1277,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         int stop = activeScriptLimit; 
+      
+        //should have stopped at 12 and 44 when generating code? TODO: the starts are missing for the code generation
+      //  System.err.println("cursor:"+activeScriptCursor+" to "+activeScriptLimit);
+        
         while (activeScriptCursor<stop) { 
-            dispatchWriteByToken(writer,rbRingBuffer);
+            if (dispatchWriteByToken(writer,rbRingBuffer)) {
+                break;//for stops for fragments in the middle of a message
+            };
             activeScriptCursor++; 
         }
+       // System.err.println("stop:"+activeScriptCursor);
         return activeScriptCursor;
     }
 

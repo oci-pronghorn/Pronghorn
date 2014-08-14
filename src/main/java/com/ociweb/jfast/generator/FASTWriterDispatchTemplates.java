@@ -641,19 +641,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     
-    /*
-     * example  - valueOfNull no longer needed we know its zero, no need to add one already done.
-     * 
-            int value = FASTRingBufferReader.readInt(rbRingBuffer,fieldPos);
-            if (0 == value) {
-                StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
-            } else {
-                PrimitiveWriter.writeIntegerUnsignedDefault(value,constDefault,writer);
-            }
-            
-     */
-    
-    
+   
     protected void genWriteIntegerUnsignedDefaultOptional(int source, int fieldPos, int valueOfNull, int constDefault, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] intValues) {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer,fieldPos);
@@ -1520,14 +1508,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
+    //TODO: B, can optimize be creating FASTRingBufferReader.isLongEqual(rbRingBuffer, fieldPos, valueOfNull)
     protected void genWriteLongUnsignedConstantOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        {
-            long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
-            if (value == valueOfNull) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
-            }
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-        }
+            PrimitiveWriter.writePMapBit(FASTRingBufferReader.readLong(rbRingBuffer, fieldPos)==valueOfNull ? (byte) 0 : (byte) 1, writer);
     }
 
 
@@ -1537,8 +1520,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (value == valueOfNull) {
                 longValues[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
+            } else {
+                PrimitiveWriter.writeLongUnsigned(value + 1, writer);
             }
-            PrimitiveWriter.writeLongUnsigned(value + 1, writer);
         }
     }
 
@@ -1548,10 +1532,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (value == valueOfNull) {
                 longValues[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
+            } else {
+                long delta = value - longValues[source];
+                PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
+                longValues[target] = value;
             }
-            long delta = value - longValues[source];
-            PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
-            longValues[target] = value;
         }
     }
     
@@ -1594,8 +1579,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (value == valueOfNull) {
                 longValues[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
+            } else {
+                PrimitiveWriter.writeLongSignedOptional(value, writer);
             }
-            PrimitiveWriter.writeLongSignedOptional(value, writer);
         }
     }
 
@@ -1605,23 +1591,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (value == valueOfNull) {
                 longValues[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
+            } else {
+                long delta = value - longValues[source];
+                PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
+                longValues[target] = value;
             }
-            long delta = value - longValues[source];
-            PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
-            longValues[target] = value;
         }
     }
 
+    //TODO: B, can optimize with isLongEqual
     protected void genWriteLongSignedConstantOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        {
-            long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
-            
-            if (value == valueOfNull) {
-                PrimitiveWriter.writePMapBit((byte) 0, writer);  // null for const optional
-            }
-            
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-        }
+            PrimitiveWriter.writePMapBit(FASTRingBufferReader.readLong(rbRingBuffer, fieldPos) == valueOfNull ? (byte) 0 : (byte) 1, writer);
     }
     
 

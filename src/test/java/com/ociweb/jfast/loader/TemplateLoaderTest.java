@@ -384,9 +384,9 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-     FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-     //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //TODO: A, this has its own ring buffer!!! this is very bad!
-     
+    FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+    // FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+     //TODO: fragments 12 and 44 are missing in this generated code!
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
