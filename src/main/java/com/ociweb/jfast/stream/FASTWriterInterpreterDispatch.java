@@ -805,6 +805,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
                         if (isTemplate) {
+                            fieldPos = 2;//TODO: A, hack test. MUST compute this value on start up !
                             openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
@@ -839,6 +840,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     }
                     
                     fieldPos+=1;
+                    
                     assert(FASTEncoder.notifyFieldPositions(writer, activeScriptCursor));
                     return true;
                 }
@@ -1222,13 +1224,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     
     private void beginMessage(PrimitiveWriter writer, FASTRingBuffer ringBuffer) {
-        
+        //called only once when generating to create the needed method for beginning of messages
         fieldPos = 0;
         
         if (preambleData.length != 0) {
             
-            genWritePreamble(writer, ringBuffer, this);
+            genWritePreamble(fieldPos, writer, ringBuffer, this);
             
+            fieldPos += (preambleData.length+3)>>2;//must adjust this because it is meta data and when generating it will be used.
         };
 
         // template processing (can these be nested?)
@@ -1239,8 +1242,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     
     @Override
     public void runFromCursor() {
-        fieldPos = 2;
-        encode(null,null);
+         //NOTE: openMessage has fieldPos set based on constant in encode, if not this default value will stand
+         fieldPos = 0;//value only needed for start of fragments that are NOT messages
+         encode(null,null);               
     }
 
     @Override
@@ -1260,7 +1264,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     ///////////////////////
 
     @Override
-    public int encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    public void encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         
         
         if (null!=rbRingBuffer) {
@@ -1268,7 +1272,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());  //TODO: A, how will this be set for generated code?
             setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());
             fieldPos = 0;//needed for fragments in interpreter but is not called when generating
+          //  System.err.println(getActiveScriptCursor());
         }
+        
         
         
         if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {                
@@ -1287,8 +1293,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             };
             activeScriptCursor++; 
         }
-       // System.err.println("stop:"+activeScriptCursor);
-        return activeScriptCursor;
+    }
+
+    @Override
+    public int scriptLength() {
+        return fullScript.length;
     }
 
  

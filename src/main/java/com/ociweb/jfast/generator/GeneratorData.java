@@ -45,7 +45,7 @@ public class GeneratorData {
                 new ArrayList<String>(), 
                 "}\n", 
                 new HashSet<Integer>(), 0, "_",
-                new HashMap<String,AtomicInteger>(), clazz);
+                clazz);
         
     }
     
@@ -53,7 +53,7 @@ public class GeneratorData {
             byte[] catBytes,
             List<String> caseParaDefs, List<String> caseParaVals, String caseTail,
             Set<Integer> sequenceStarts, int runningComplexity, String lastFieldParaValues,
-            Map<String, AtomicInteger> usages, Class clazz) {
+            Class clazz) {
         this.origCatBytes = catBytes;
         this.caseParaDefs = caseParaDefs;
         this.caseParaVals = caseParaVals;
@@ -61,7 +61,7 @@ public class GeneratorData {
         this.sequenceStarts = sequenceStarts;
         this.runningComplexity = runningComplexity;
         this.lastFieldParaValues = lastFieldParaValues;
-        this.usages = usages;
+        this.usages = new HashMap<String,AtomicInteger>();
         this.templates = new SourceTemplates(clazz);
         boolean isReader = FASTReaderDispatchTemplates.class==clazz;
         this.dispatchType = isReader ? "FASTReaderGeneratedDispatch" : "FASTWriterGeneratedDispatch";

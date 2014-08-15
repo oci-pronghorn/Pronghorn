@@ -103,38 +103,38 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     @Override
     protected int genReadLengthDefault(int constDefault,  int jumpToTarget, int jumpToNext, int[] rbB, PrimitiveReader reader, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constDefault, jumpToTarget, jumpToNext);
         return jumpToNext;
     }
 
     @Override
     protected void genReadLengthIncrement(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,target,source, jumpToTarget, jumpToNext);
     }
 
     @Override
     protected void genReadLengthCopy(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,target,source, jumpToTarget, jumpToNext);
     }
 
     @Override
     protected void genReadLengthConstant(int constDefault, int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, PaddedLong rbPos, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constDefault, jumpToTarget, jumpToNext);
     }
 
     @Override
     protected void genReadLengthDelta(int target, int source,  int jumpToTarget, int jumpToNext, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos, PrimitiveReader reader, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,target,source, jumpToTarget, jumpToNext);
     }
 
     @Override
     protected void genReadLength(int target,  int jumpToTarget, int jumpToNext, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary, PrimitiveReader reader, FASTDecoder dispatch) {
-        generatorData.sequenceStarts.add(activeScriptCursor+1);
+        //generatorData.sequenceStarts.add(activeScriptCursor+1);
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this,target, jumpToTarget, jumpToNext);
     }
     

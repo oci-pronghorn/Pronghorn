@@ -19,6 +19,7 @@ import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
+    //TODO: D, schema is flexable and recorded with the data stream.
     
     static final boolean REMOVE_ARRAY = false; //TODO: B, still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false;
@@ -120,17 +121,19 @@ public class GeneratorUtils {
                     
             //exit if the ring buffer is full          
             if (isReader) {
+                //TODO: A, need custom write method here.
+                //TODO: A, more spark research. horton works vs cloudara resarch
                 
                 int preamblePlusId = preambleIntCount+1;
-            doneCode[j] +=
-                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor]+ "+preamblePlusId+";\n"+
-                   " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+
-                   " "+FASTRingBufferConsumer.class.getSimpleName()+" cd=rb.consumerData;\n"+
-                   " if (cd.tailCache < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
-                   " cd.tailCache=rb.tailPos.longValue();\n"+
-                   " if (cd.tailCache < neededTailStop) {\n"+
-                   "   return 0;//nothing read\n " +
-                   " }\n"+
+            doneCode[j] += //TODO: A, rb lookup here should be constant reference!
+                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor] + "+preamblePlusId+";\n"+//TODO: A, should be constant
+                   " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+ //TODO: A, second half is constant
+                   
+                   " if (rb.consumerData.tailCache < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
+                   "    rb.consumerData.tailCache = rb.tailPos.longValue();\n"+
+                   "    if (rb.consumerData.tailCache < neededTailStop) {\n"+
+                   "       return 0;//nothing read\n " +
+                   "    }\n"+
                    " }\n";
             } 
                    
@@ -140,6 +143,8 @@ public class GeneratorUtils {
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
       
+
+        
         
         //if this is the beginning of a new template we use this special logic to pull the template id
         if (isReader) {
@@ -151,19 +156,22 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
-            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n"); 
-            //TODO: A, need custom write method here.
+            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n"); 
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
-            builder.append("    //cursor and limit already set\n");
-            builder.append("    setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
-            builder.append("    setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());\n");
-            builder.append("\n");
+            builder.append("setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
+            builder.append("setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());\n");// System.err.println(getActiveScriptCursor());");
             builder.append("if (rbRingBuffer.consumerData.isNewMessage()) {\n");                
             builder.append("    beginMessage(writer, rbRingBuffer, this);\n");
-            builder.append("}\n");
-            
+            builder.append("}\n"); //TODO A: if this is not the begining then what script location is used?
+//            36
+//            44
+//            3
+//            12
+//            12
+//            3
+//            12
         }
         
         //now that the cursor position / template id is known do normal processing
@@ -175,7 +183,7 @@ public class GeneratorUtils {
             builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
             builder.append("    return 1;//read a fragment\n"); 
         } else {
-            builder.append("    return activeScriptCursor;\n");
+            builder.append("    \n");
         }
         builder.append("}\n");
     
@@ -303,6 +311,13 @@ public class GeneratorUtils {
         scriptor.setActiveScriptLimit(limit); 
         try {
             scriptor.runFromCursor();//Generate the code, if any method was missed a null pointer will result.
+            //
+            //record the 'next' cursor index in case this message has stopped early at the end of a fragment.
+            //this value is stored as a potential fragment start to ensure every entry point is covered.
+            if (scriptor.getActiveScriptCursor()+1<scriptor.scriptLength()) {
+                generatorData.sequenceStarts.add(scriptor.getActiveScriptCursor()+1);
+            }
+            
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
@@ -319,8 +334,8 @@ public class GeneratorUtils {
         //each field method will start with the templateId for easy debugging later.
         generatorData.fieldPrefix = "t";
         
-        try {
-            scriptor.setActiveScriptCursor(0);
+        try {//this is done only once to create the beginMessage method that will be called each time a new message starts.
+            scriptor.setActiveScriptCursor(0);//just to prevent out of bounds error this has nothing to do with the cursor postion.
             scriptor.runBeginMessage();
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
@@ -380,9 +395,14 @@ public class GeneratorUtils {
             
             //do additional case methods if needed.
             
-            System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
+            //generatorData.sequenceStarts.
             
-            for(int seqStart:generatorData.sequenceStarts) {
+            
+            //Must make copy because we will be modifying this set inside the loop
+            Set<Integer> clonedStarts = new HashSet<Integer>(generatorData.sequenceStarts);
+           // System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
+            
+            for(int seqStart:clonedStarts) {
                 if (!doneScripts.contains(seqStart)) {
                     doneScripts.add(seqStart);
                     
@@ -615,6 +635,6 @@ public class GeneratorUtils {
         return template;
     }
 
-    
+
 
 }

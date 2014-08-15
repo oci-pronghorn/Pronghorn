@@ -70,6 +70,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
     
     private void beginMessage(PrimitiveReader reader) {
+        
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
         //ring buffer is build on int32s so the implementation limits preamble to units of 4
@@ -113,7 +114,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
     // -1 end of file, 0 no data, 1 loaded
     public int decode(PrimitiveReader reader) {
-
+        
+        
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
                // System.err.println("EOF");
@@ -232,6 +234,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     } else {
                         // 101??
 
+                        
+                        
                         // Length Type, no others defined so no need to keep
                         // checking
                         // Only happens once before a node sequence so push it
@@ -239,6 +243,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
                         readLength(token,jumpToTarget, readFromIdx, reader);
+                        
                         break;
                         //FASTRingBuffer.unBlockFragment(rbRingBuffer);
                         //return sequenceCountStackHead>=0;
@@ -1215,7 +1220,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    //TODO: A, must build writeLength for the writer code.
     private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
         //because the generator hacks this boolean return value it is not helpful here.
         int jumpToNext = activeScriptCursor+1;
@@ -1640,6 +1644,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     @Override
     public void runBeginMessage() {
         callBeginMessage(null);
+    }
+
+    @Override
+    public int scriptLength() {
+        return fullScript.length;
     }
 
 }

@@ -15,5 +15,6 @@ public interface GeneratorDriving {
     int getActiveToken();
     int getActiveFieldId();
     String getActiveFieldName();
+    int scriptLength();
     
 }

@@ -39,8 +39,9 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
     }
 
+//    System.err.println("read long:" +ring.buffer[ring.mask & (int)i]+" with "+ring.buffer[ring.mask & (int)(i + 1)]);
     public static long readLong(FASTRingBuffer ring, int idx) {
-        long i = ring.workingTailPos.value + (OFF_MASK&idx);
+        long i = ring.workingTailPos.value + (OFF_MASK&idx);        
         return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
 

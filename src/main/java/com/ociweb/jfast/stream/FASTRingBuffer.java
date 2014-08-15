@@ -31,6 +31,11 @@ import com.ociweb.jfast.util.Profile;
  * 
  */
 public final class FASTRingBuffer {
+    
+    //TODO: C, load shedding features,  Writer may decide to back up instead of release the headPos if this messsage is "less imporant", Reader may decide to "route" message to null or low priority ring buffer.
+    //TODO: C, all overload situations must communicate the specific problem cause back out as far as possible
+    //TODO: C, dev ops tool to empty (drain) buffers and record the loss.
+    
 
     public static class PaddedLong {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;

@@ -340,6 +340,9 @@ public class TemplateLoaderTest {
 
     @Test
     public void testDecodeEncodeComplex30000() {
+        
+        FASTClassLoader.deleteFiles();
+        
         byte[] catBytes = buildRawCatalogData();
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
         int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);   
@@ -385,8 +388,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
     FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-    // FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
-     //TODO: fragments 12 and 44 are missing in this generated code!
+ //   FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

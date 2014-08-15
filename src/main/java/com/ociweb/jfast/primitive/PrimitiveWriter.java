@@ -793,11 +793,7 @@ public final class PrimitiveWriter {
     // called only at the beginning of a group.
     public static final void openPMap(int maxBytes, PrimitiveWriter writer) {
 
-        // if (tempHead>=0) {
-        // System.arraycopy(temp, 0, buffer, tempIdx, tempHead+1);
-        // tempIdx = -1;
-        // tempHead = -1;
-        // }
+      //  System.err.println("write maxBytes "+maxBytes+" at "+(writer.limit+writer.totalWritten));
 
         assert (maxBytes > 0) : "Do not call openPMap if it is not expected to be used.";
 

@@ -43,8 +43,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWritePreamble(PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
+    protected void genWritePreamble(int fieldPos, PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, fieldPos);
     }
 
     

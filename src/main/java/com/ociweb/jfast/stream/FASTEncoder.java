@@ -111,7 +111,7 @@ public abstract class FASTEncoder {
         return true;
     }
     
-    public abstract int encode(PrimitiveWriter writer, FASTRingBuffer ringBuffer);
+    public abstract void encode(PrimitiveWriter writer, FASTRingBuffer ringBuffer);
     
     // must happen just before Group so the Group in question must always have
     // an outer group.

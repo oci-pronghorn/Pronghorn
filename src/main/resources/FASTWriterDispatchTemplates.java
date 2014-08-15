@@ -27,22 +27,23 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         LocalHeap.copy(source,target,byteHeap);
     }
 
-    protected void genWritePreamble(PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
+    protected void genWritePreamble(int fieldPos, PrimitiveWriter writer, FASTRingBuffer ringBuffer, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
 
         int i = 0;
         int s = dispatch.preambleData.length;
+        int p = fieldPos;
         while (i < s) {
                         
-            int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, dispatch.fieldPos);
+            int d = null==ringBuffer? 0 : FASTRingBufferReader.readInt(ringBuffer, p);
             dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 0));
             dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 8));
             dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 16));
             dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 24));
-            dispatch.fieldPos++;
+            p++;
         }
-        
         PrimitiveWriter.writeByteArrayData(dispatch.preambleData, 0, dispatch.preambleData.length, writer);
     }
+    //    System.err.println("write preamble to :"+(writer.limit+writer.totalWritten(writer)));
     
 
     protected void genWriteTextDefaultOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
@@ -1514,8 +1515,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
 
+    //      System.err.println(fieldPos+" fieldPos write long unsigned optional none to :"+(writer.limit+writer.totalWritten(writer))+" of "+value+" null "+(value == valueOfNull)+" vs "+valueOfNull);
     protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, long[] longValues, FASTRingBuffer rbRingBuffer) {
         {
+            
             long value = FASTRingBufferReader.readLong(rbRingBuffer, fieldPos);
             if (value == valueOfNull) {
                 longValues[target] = 0; //for none and delta
