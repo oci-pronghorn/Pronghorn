@@ -62,8 +62,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writePMapBit((byte) 1, writer);
                     PrimitiveWriter.writeNull(writer);
                 }
-            } else {
-                if (LocalHeap.equals(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK,buffer,offset,length,byteMask,byteHeap)) {
+            } else {//TODO: A, need to remove or minimize this equals call.
+              
+                if (LocalHeap.equals(target | FASTWriterInterpreterDispatch.INIT_VALUE_MASK, buffer, offset, length, byteMask, byteHeap)) {
                     PrimitiveWriter.writePMapBit((byte) 0, writer);
                 } else {
                     PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -557,7 +558,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } // null for default 
             } else {
                 PrimitiveWriter.writeIntegerSignedDefault(value>=0?value+1:value,constDefault,writer);
             }
@@ -568,7 +574,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[target] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else { 
                 int last = intValues[source];
                 int value1 = intValues[target] = (1+(value + (value >>> 31)));
@@ -587,7 +599,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             //TODO: C, these reader calls should all be inlined to remove the object de-ref by passing in the mask and buffer directly as was done in the reader.
             int value = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[target] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else {        
                 PrimitiveWriter.writeIntegerSignedCopy((1+(value + (value >>> 31))),target,source,intValues,writer);
             }
@@ -634,7 +652,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer, fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[target] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else { 
                 PrimitiveWriter.writeIntegerUnsignedCopy(1+value,target,source,intValues,writer);
             }
@@ -647,7 +671,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int value = FASTRingBufferReader.readInt(rbRingBuffer,fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullDefaultInt(writer, intValues, source); // null for default 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } // null for default 
             } else {
                 PrimitiveWriter.writeIntegerUnsignedDefault(1+value,constDefault,writer);
             }
@@ -660,7 +689,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {   
             int value = FASTRingBufferReader.readInt(rbRingBuffer,fieldPos);
             if (valueOfNull == value) {
-                StaticGlue.nullCopyIncInt(writer, intValues, source, target);// null for Copy and Increment 
+                if (0 == intValues[source]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[target] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else { 
                 if (0 != intValues[source] && value == (intValues[target] = intValues[source] + 1)) {
                     PrimitiveWriter.writePMapBit((byte) 0, writer);
@@ -712,11 +747,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
       {
         int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
         if (exponentValueOfNull == exponentValue) {
-            StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+            if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            } // null for default 
         } else {
             PrimitiveWriter.writeIntegerSignedDefault(exponentValue>=0?exponentValue+1:exponentValue,exponentConstDefault,writer);
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-            dispatch.activeScriptCursor++;
+           
             PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
         }
       }
@@ -726,7 +766,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
             if (exponentValueOfNull == exponentValue) {
-                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
                 int value = intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue);
@@ -737,7 +783,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value, writer);
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }   
         }
@@ -747,11 +793,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
-                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else {        
                 PrimitiveWriter.writeIntegerSignedCopy(exponentValue>=0?exponentValue+1:exponentValue,exponentTarget,exponentSource,intValues,writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }
         }
@@ -765,7 +817,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer);        
             }     
         }
@@ -788,7 +840,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }
         }
@@ -802,7 +854,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 PrimitiveWriter.writeLongSigned(longValues[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }
         }
@@ -815,11 +867,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
       {
         int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
         if (exponentValueOfNull == exponentValue) {
-            StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+            if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            } // null for default 
         } else {
             PrimitiveWriter.writeIntegerSignedDefault(exponentValue>=0?exponentValue+1:exponentValue,exponentConstDefault,writer);
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-            dispatch.activeScriptCursor++;
+           
             //mantissa
             PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
         }
@@ -830,7 +887,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
             if (exponentValueOfNull == exponentValue) {
-                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else { 
                 int last = intValues[exponentSource];
                 int value = intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue);
@@ -841,7 +904,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value, writer);
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 //mantissa
                 PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
             }   
@@ -852,11 +915,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
-                StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
             } else {        
                 PrimitiveWriter.writeIntegerSignedCopy((1+(exponentValue + (exponentValue >>> 31))),exponentTarget,exponentSource,intValues,writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 //mantissa
                 PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
             }
@@ -871,7 +940,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 //mantissa
                 PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
             }     
@@ -895,7 +964,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 //mantissa
                 PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
             }
@@ -910,7 +979,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             } else {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                dispatch.activeScriptCursor++;
+               
                 //mantissa
                 PrimitiveWriter.writeLongSignedDefault(FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), mantissaConstDefault, writer);
             }
@@ -925,18 +994,23 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
      {
        int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
        if (exponentValueOfNull == exponentValue) {
-           StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
-       } else {
-           PrimitiveWriter.writeIntegerSignedDefault(exponentValue>=0?exponentValue+1:exponentValue,exponentConstDefault,writer);
-           assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-           dispatch.activeScriptCursor++;
-           //mantissa
-           long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
-           if (value == (1 + longValues[mantissaSource])) {
+           if (0 == intValues[exponentSource]) { // stored value was null;
             PrimitiveWriter.writePMapBit((byte) 0, writer);
         } else {
             PrimitiveWriter.writePMapBit((byte) 1, writer);
-            PrimitiveWriter.writeLongSigned(value, writer);
+            PrimitiveWriter.writeNull(writer);
+        } // null for default 
+       } else {
+           PrimitiveWriter.writeIntegerSignedDefault(exponentValue>=0?exponentValue+1:exponentValue,exponentConstDefault,writer);
+           assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
+          
+           //mantissa
+           long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+           if (value == (1 + longValues[mantissaSource])) {
+           PrimitiveWriter.writePMapBit((byte) 0, writer);
+        } else {
+           PrimitiveWriter.writePMapBit((byte) 1, writer);
+           PrimitiveWriter.writeLongSigned(value, writer);
         }
            longValues[mantissaTarget] = value;
        }
@@ -947,7 +1021,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        {
            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
            if (exponentValueOfNull == exponentValue) {
-               StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+               if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                intValues[exponentTarget] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }// null for Copy and Increment 
            } else { 
                int last = intValues[exponentSource];
             int value1 = intValues[exponentTarget] = (exponentValue>=0?exponentValue+1:exponentValue);
@@ -958,7 +1038,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeIntegerSigned(value1, writer);
             } 
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + longValues[mantissaSource])) {
@@ -976,11 +1056,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        {   
            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
            if (exponentValueOfNull == exponentValue) {
-               StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+               if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                intValues[exponentTarget] = 0;
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            }// null for Copy and Increment 
            } else {        
                PrimitiveWriter.writeIntegerSignedCopy(exponentValue>=0?exponentValue+1:exponentValue,exponentTarget,exponentSource,intValues,writer);
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + longValues[mantissaSource])) {
@@ -1002,7 +1088,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            } else {
                PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + longValues[mantissaSource])) {
@@ -1033,7 +1119,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
             }
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + longValues[mantissaSource])) {
@@ -1055,7 +1141,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            } else {
                PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + longValues[mantissaSource])) {
@@ -1075,11 +1161,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        {
          int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
          if (exponentValueOfNull == exponentValue) {
-             StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+             if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            } // null for default 
          } else {
              PrimitiveWriter.writeIntegerSignedDefault(exponentValue>=0?exponentValue+1:exponentValue,exponentConstDefault,writer);
              assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-             dispatch.activeScriptCursor++;
+            
              //mantissa
              long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);   
              PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1091,7 +1182,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          {
              int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
              if (exponentValueOfNull == exponentValue) {
-                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                 if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
              } else { 
                  int last = intValues[exponentSource];
                 int value1 = intValues[exponentTarget] = (1+(exponentValue + (exponentValue >>> 31)));
@@ -1102,7 +1199,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value1, writer);
                 } 
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+                
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1114,11 +1211,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          {   
              int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
              if (exponentValueOfNull == exponentValue) {
-                 StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                 if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
              } else {        
                  PrimitiveWriter.writeIntegerSignedCopy((1+(exponentValue + (exponentValue >>> 31))),exponentTarget,exponentSource,intValues,writer);
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+                
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1134,7 +1237,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              } else {
                  PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+                
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1159,7 +1262,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+                
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1175,7 +1278,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              } else {
                  PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+                
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  PrimitiveWriter.writeLongSignedCopy(value, mantissaTarget, mantissaSource, longValues, writer);
@@ -1189,11 +1292,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          {
            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
            if (exponentValueOfNull == exponentValue) {
-               StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+               if (0 == intValues[exponentSource]) { // stored value was null;
+                PrimitiveWriter.writePMapBit((byte) 0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte) 1, writer);
+                PrimitiveWriter.writeNull(writer);
+            } // null for default 
            } else {
                PrimitiveWriter.writeIntegerSignedDefault((1+(exponentValue + (exponentValue >>> 31))),exponentConstDefault,writer);
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-               dispatch.activeScriptCursor++;
+              
                //mantissa
                //is constant so do nothing
            }
@@ -1204,7 +1312,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            {
                int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
                if (exponentValueOfNull == exponentValue) {
-                   StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                   if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
                } else { 
                    int last = intValues[exponentSource];
                 int value = intValues[exponentTarget] = (1+(exponentValue + (exponentValue >>> 31)));
@@ -1215,7 +1329,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value, writer);
                 } 
                    assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                   dispatch.activeScriptCursor++;
+                  
                    //mantissa
                    //is constant so do nothing
                }   
@@ -1226,11 +1340,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            {   
                int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                if (exponentValueOfNull == exponentValue) {
-                   StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                   if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    intValues[exponentTarget] = 0;
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }// null for Copy and Increment 
                } else {        
                    PrimitiveWriter.writeIntegerSignedCopy((1+(exponentValue + (exponentValue >>> 31))),exponentTarget,exponentSource,intValues,writer);
                    assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                   dispatch.activeScriptCursor++;
+                  
                    //mantissa
                    //is constant so do nothing
                }
@@ -1245,7 +1365,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                } else {
                    PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                    assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                   dispatch.activeScriptCursor++;
+                  
                    //mantissa
                    //is constant so do nothing
                }     
@@ -1269,7 +1389,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                    assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                   dispatch.activeScriptCursor++;
+                  
                    //mantissa
                    //is constant so do nothing
                }
@@ -1284,7 +1404,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                } else {
                    PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                    assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                   dispatch.activeScriptCursor++;
+                  
                    //mantissa
                    //is constant so do nothing
                }
@@ -1297,14 +1417,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            {
              int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
              if (exponentValueOfNull == exponentValue) {
-                 StaticGlue.nullDefaultInt(writer, intValues, exponentSource); // null for default 
+                 if (0 == intValues[exponentSource]) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } // null for default 
              } else {
                  PrimitiveWriter.writeIntegerSignedDefault((1+(exponentValue + (exponentValue >>> 31))),exponentConstDefault,writer);
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                 dispatch.activeScriptCursor++;
+
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
-                 PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
+                  PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
                  longValues[mantissaTarget] = value;
              }
            }
@@ -1314,7 +1439,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              {
                  int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
                  if (exponentValueOfNull == exponentValue) {
-                     StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                     if (0 == intValues[exponentSource]) { // stored value was null;
+                        PrimitiveWriter.writePMapBit((byte) 0, writer);
+                    } else {
+                        intValues[exponentTarget] = 0;
+                        PrimitiveWriter.writePMapBit((byte) 1, writer);
+                        PrimitiveWriter.writeNull(writer);
+                    }// null for Copy and Increment 
                  } else { 
                      int last = intValues[exponentSource];
                     int value1 = intValues[exponentTarget] = (1+(exponentValue + (exponentValue >>> 31)));
@@ -1325,7 +1456,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                         PrimitiveWriter.writeIntegerSigned(value1, writer);
                     } 
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                     dispatch.activeScriptCursor++;
+                    
                      //mantissa
                      long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
@@ -1338,11 +1469,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              {   
                  int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
-                     StaticGlue.nullCopyIncInt(writer, intValues, exponentSource, exponentTarget);// null for Copy and Increment 
+                     if (0 == intValues[exponentSource]) { // stored value was null;
+                        PrimitiveWriter.writePMapBit((byte) 0, writer);
+                    } else {
+                        intValues[exponentTarget] = 0;
+                        PrimitiveWriter.writePMapBit((byte) 1, writer);
+                        PrimitiveWriter.writeNull(writer);
+                    }// null for Copy and Increment 
                  } else {        
                      PrimitiveWriter.writeIntegerSignedCopy((1+(exponentValue + (exponentValue >>> 31))),exponentTarget,exponentSource,intValues,writer);
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                     dispatch.activeScriptCursor++;
+                    
                      //mantissa
                      long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
@@ -1359,7 +1496,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  } else {
                      PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                     dispatch.activeScriptCursor++;
+                    
                      //mantissa
                      long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
@@ -1385,7 +1522,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                         PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                     }
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                     dispatch.activeScriptCursor++;
+                    
                      //mantissa
                      long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);
@@ -1403,7 +1540,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  } else {
                      PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                     dispatch.activeScriptCursor++;
+                    
                      //mantissa
                      long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - longValues[mantissaSource], writer);

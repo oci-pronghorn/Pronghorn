@@ -21,6 +21,7 @@ import org.openfast.template.loader.MessageTemplateLoader;
 import org.openfast.template.loader.XMLMessageTemplateLoader;
 
 import com.google.caliper.Benchmark;
+import com.ociweb.jfast.loader.ClientConfig;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
@@ -45,7 +46,7 @@ public class Complex30000Benchmark extends Benchmark {
     byte[] testData;
 
     public Complex30000Benchmark() {
-        catalog = new TemplateCatalogConfig(TemplateLoaderTest.buildRawCatalogData());
+        catalog = new TemplateCatalogConfig(TemplateLoaderTest.buildRawCatalogData(new ClientConfig()));
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");

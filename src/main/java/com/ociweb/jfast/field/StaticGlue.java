@@ -185,22 +185,5 @@ public class StaticGlue {
         dictionary[idx] = 0;
         PrimitiveWriter.writeNull(writer);
     }
-    public static void nullCopyIncInt(PrimitiveWriter writer, int[] dictionary, int source, int target) {
-        if (0 == dictionary[source]) { // stored value was null;
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            dictionary[target] = 0;
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            PrimitiveWriter.writeNull(writer);
-        }
-    }
-    public static void nullDefaultInt(PrimitiveWriter writer, int[] dictionary, int source) {
-        if (0 == dictionary[source]) { // stored value was null;
-            PrimitiveWriter.writePMapBit((byte) 0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            PrimitiveWriter.writeNull(writer);
-        }
-    }
 
 }

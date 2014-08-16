@@ -116,11 +116,12 @@ public final class FASTInputReactor {
              //   try {
                     int f=0;
                     
-                    int c = 0x1FFFF;
+                    int c = 0x1FFFFF;
                     while (--c>=0)  { //TODO: B, stopping in the middle is causing an overlap of some kind? Do not turn on until the other bugs are fixed.
                         
                         
                         if ((f=decoder2.decode(reader2))<=0) { //TODO: B, See above, (f<=0) { //break on eof or no room to read
+                           
                             break;
                         }  
                     }

@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
+
 public class RingBuffers {
     
     private FASTRingBuffer[] buffers;
@@ -55,6 +57,10 @@ public class RingBuffers {
         }
     }
 
+    public static FieldReferenceOffsetManager getFrom(RingBuffers ringBuffers) {
+        return ringBuffers.buffers[0].from; //NOTE: all ring buffers have the same instance
+    }
+    
     public static FASTRingBuffer get(RingBuffers ringBuffers, int idx) {
         return ringBuffers.buffers[idx];
     }

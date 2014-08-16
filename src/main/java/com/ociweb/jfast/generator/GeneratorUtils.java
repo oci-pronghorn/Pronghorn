@@ -92,17 +92,23 @@ public class GeneratorUtils {
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
 
-    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName, Class primClass, int preambleIntCount) throws IOException {
+    //TODO: A, more spark research. horton works vs cloudara resarch
+    
+    
+    //Called only once for generating full source file
+    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName,
+                                               Class primClass, RingBuffers ringBuffers) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";
+        
         
         
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int[] doneValues = new int[doneScripts.size()];
         String[] doneCode = new String[doneScripts.size()];
-        for(Integer d:doneScripts) {
+        for(Integer cursorPos:doneScripts) {
             //rbRingBuffer.buffer, rbRingBuffer.mask
             
             String methodCallArgs = doneScriptsParas.get(j)
@@ -114,32 +120,28 @@ public class GeneratorUtils {
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
             doneCode[j] = "\n\r"+
-                          " rb="+ //TODO: B, Clean up this is very messy
+                          " "+ //TODO: B, Clean up this is very messy
                               (isReader?
-                               RingBuffers.class.getSimpleName()+".get(ringBuffers,"+d+");\n":
-                                   "rbRingBuffer;\n");
+                               " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
+                                   "\n\r");
                     
             //exit if the ring buffer is full          
             if (isReader) {
-                //TODO: A, need custom write method here.
-                //TODO: A, more spark research. horton works vs cloudara resarch
                 
-                int preamblePlusId = preambleIntCount+1;
-            doneCode[j] += //TODO: A, rb lookup here should be constant reference!
-                   " int fragmentSize = rb.from.fragDataSize[activeScriptCursor] + "+preamblePlusId+";\n"+//TODO: A, should be constant
-                   " long neededTailStop = rb.workingHeadPos.value + fragmentSize  - rb.maxSize;\n"+ //TODO: A, second half is constant
+                FASTRingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
+                int fragmentSize = thisRingBuffer.from.fragDataSize[cursorPos]+ thisRingBuffer.from.templateOffset + 1;
+                
+            doneCode[j] += 
+                   " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
                    
-                   " if (rb.consumerData.tailCache < neededTailStop) {\n"+  ///TODO: A, slowing down generated code! should not be hardcoded this way must be in template
-                   "    rb.consumerData.tailCache = rb.tailPos.longValue();\n"+
-                   "    if (rb.consumerData.tailCache < neededTailStop) {\n"+
-                   "       return 0;//nothing read\n " +
-                   "    }\n"+
-                   " }\n";
+                   " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
+                   "       return 0;//nothing read\n\r" +
+                   " }\n\r";
             } 
                    
                           
-            doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+d+"("+methodCallArgs+");\n";
-            doneValues[j++] = d;
+            doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";
+            doneValues[j++] = cursorPos;
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
       
@@ -156,28 +158,23 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
-            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rbRingBuffer) {\n"); 
+            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rb) {\n"); 
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
-            builder.append("setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());\n");        
-            builder.append("setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());\n");// System.err.println(getActiveScriptCursor());");
-            builder.append("if (rbRingBuffer.consumerData.isNewMessage()) {\n");                
-            builder.append("    beginMessage(writer, rbRingBuffer, this);\n");
-            builder.append("}\n"); //TODO A: if this is not the begining then what script location is used?
-//            36
-//            44
-//            3
-//            12
-//            12
-//            3
-//            12
+            builder.append("setActiveScriptCursor(rb.consumerData.getCursor());\n");        
+            builder.append("if (rb.consumerData.isNewMessage()) {\n");                
+            builder.append("    beginMessage(writer, rb, this);\n");
+            builder.append("}\n"); 
+
         }
         
         //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
-        builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
-
+        if (isReader) {
+            builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
+        }
+        
         bsg.generate("    ",builder, doneValues, doneCode);
         if (isReader) {
             builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");

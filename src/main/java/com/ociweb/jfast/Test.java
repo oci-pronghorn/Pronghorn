@@ -60,7 +60,7 @@ public class Test {
     
     public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
          final int count = 1024000;
-         final boolean single = false;//true;//false;
+         final boolean single = false;
                 
                   
          //TODO: for multi test we really need to have it writing to multiple ring buffers.
@@ -71,8 +71,10 @@ public class Test {
           
           
           FASTClassLoader.deleteFiles();
-         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-    //     FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+   
+          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+       //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
+         
          System.out.println("Using: "+readerDispatch.getClass().getSimpleName());
           
           final AtomicInteger msgs = new AtomicInteger();
@@ -91,7 +93,7 @@ public class Test {
                             
               FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
                             
-              msgs.set(0);                         
+              msgs.set(0);                    
               
               
               double duration = single ?
@@ -108,8 +110,9 @@ public class Test {
               try {
                 instr.close();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
+                
                 e.printStackTrace();
+                fail(e.getMessage());
             }
 
           }
@@ -198,8 +201,6 @@ public class Test {
                     int totalMessages = 0;
                     do {                        
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
-                        
-                        
 
                         if (FASTRingBuffer.moveNext(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";

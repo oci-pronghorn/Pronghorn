@@ -130,14 +130,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
            
      
         //TODO: A, must be added to generated code AND be optimized for the polling loop!
-        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ (((3+this.preambleDataLength)>>2)+1); //plus roomm for next message
+        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ 1+ rbRingBuffer.from.templateOffset; //plus roomm for next message
        //Waiting for tail position to change! can cache the value, must make same change in compiled code.
-        long neededTailStop = rbRingBuffer.workingHeadPos.value + fragmentSize  - rbRingBuffer.maxSize;
-        if (rbRingBuffer.consumerData.tailCache < neededTailStop) {
-            rbRingBuffer.consumerData.tailCache = rbRingBuffer.tailPos.longValue(); 
-            if ( rbRingBuffer.consumerData.tailCache < neededTailStop ) {
+        long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
+        if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
-            }
         }
         
       //  if (rbRingBuffer.availableCapacity()<fragmentSize) { 

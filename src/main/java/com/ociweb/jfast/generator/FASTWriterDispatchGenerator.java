@@ -1,6 +1,7 @@
 package com.ociweb.jfast.generator;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.ociweb.jfast.field.LocalHeap;
@@ -29,8 +30,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         
         GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
-        int preambleInts = (preambleData.length+3)>>2;
-        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, preambleInts);
+        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers);
         GeneratorUtils.generateTail(generatorData, target);
         
         return target;

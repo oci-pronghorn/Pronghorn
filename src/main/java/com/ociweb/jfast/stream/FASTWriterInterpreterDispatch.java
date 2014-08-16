@@ -771,6 +771,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         } else {
                             //exponent is optional so the mantissa may or may not be written.
                             acceptOptionalDecimal(fieldPos, writer, expoToken, fieldPos, rbRingBuffer);
+                            activeScriptCursor++;
                         }
                                                 
                         fieldPos+=3;
@@ -805,7 +806,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
                         if (isTemplate) {
-                            fieldPos = 2;//TODO: A, hack test. MUST compute this value on start up !
+                            
+                            //must start at a location after the preamble and templateId.
+                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset+1;
+                            
                             openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
@@ -820,11 +824,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     }
 
                 } else {
-                    
-                    //generatorData.sequenceStarts.add(activeScriptCursor+1);
-                    //TODO: A, generated code must call the above before each length.
-                    
-                    
+                                        
                     // 101??
                     // Length Type, no others defined so no need to keep
                     // checking

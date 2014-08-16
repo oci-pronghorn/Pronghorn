@@ -111,7 +111,7 @@ public class CodeGenerationTest {
     @Test
     public void testCodeGenerator() {
                 
-        byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData();
+        byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData(new ClientConfig());
         
         FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);
         assertEquals(Kind.SOURCE, file.getKind());
@@ -133,7 +133,7 @@ public class CodeGenerationTest {
         // code.
         // plays both together and checks each as they are processed.
         // /////////
-        byte[] catBytes = TemplateLoaderTest.buildRawCatalogData();
+        byte[] catBytes = TemplateLoaderTest.buildRawCatalogData(new ClientConfig());
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
         int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog); 
 

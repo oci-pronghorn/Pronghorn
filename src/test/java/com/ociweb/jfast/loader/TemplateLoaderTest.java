@@ -15,6 +15,10 @@ import java.nio.channels.FileChannel;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -57,7 +61,7 @@ public class TemplateLoaderTest {
     @Test
     public void buildRawCatalog() {
 
-        byte[] catalogByteArray = buildRawCatalogData();
+        byte[] catalogByteArray = buildRawCatalogData(new ClientConfig());
         assertEquals(714, catalogByteArray.length);
                
         
@@ -108,7 +112,7 @@ public class TemplateLoaderTest {
         
       Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
         
-        byte[] catBytes = buildRawCatalogData();
+        byte[] catBytes = buildRawCatalogData(new ClientConfig());
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
 
         // connect to file
@@ -343,7 +347,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        byte[] catBytes = buildRawCatalogData();
+        byte[] catBytes = buildRawCatalogData(new ClientConfig());
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
         int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);   
 
@@ -387,8 +391,8 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-    FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
- //   FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -458,10 +462,11 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
             
             while (FASTInputReactor.pump(reactor)>=0) {  
-                    FASTRingBuffer.moveNext(queue);
-                    if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
-                            dynamicWriter.write();  
-                   }
+                    if (FASTRingBuffer.moveNext(queue)) {
+                       if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
+                                dynamicWriter.write();  
+                       }
+                    }
             }
             
             
@@ -494,6 +499,184 @@ public class TemplateLoaderTest {
 
     }
 
+    
+    @Test
+    public void testEncodeComplex30000() {
+        
+        FASTClassLoader.deleteFiles();
+        
+        byte[] catBytes = buildRawCatalogData(new ClientConfig(22,20));
+        final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+        int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);   
+
+        // connect to file
+        URL sourceData = getClass().getResource("/performance/complex30000.dat");
+        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+        long totalTestBytes = sourceDataFile.length();
+        final byte[] testBytesData = buildInputArrayForTesting(sourceDataFile);
+
+        FASTInputByteArray fastInput = new FASTInputByteArray(testBytesData);
+
+        // New memory mapped solution. No need to cache because we warm up and
+        // OS already has it.
+        // FASTInputByteBuffer fastInput =
+        // buildInputForTestingByteBuffer(sourceDataFile);
+
+        PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
+        
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+        
+       // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+      
+       System.err.println("using: "+readerDispatch.getClass().getSimpleName());
+        
+        final AtomicInteger msgs = new AtomicInteger();
+        
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        
+        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
+
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
+        
+               
+        // TODO: Z, force this error and add friendly message, when minimize
+        // latency set to false these need to be much bigger?
+        int writeBuffer = 2048;
+        
+        int maxGroupCount = catalog.getScriptTokens().length; //overkill but its fine for testing. 
+        // NOTE: may need to be VERY large if minimize
+        // latency is turned off!!
+        
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+        
+        //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
+         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+
+        System.err.println("using: "+writerDispatch.getClass().getSimpleName());
+
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+
+        System.gc();
+        
+        int warmup = 20;// set much larger for profiler
+        int count = 512;
+        
+
+        long wroteSize = 0;
+        msgs.set(0);
+        int grps = 0;
+        int iter = warmup;
+        while (--iter >= 0) {
+            msgs.set(0);
+            grps = 0;
+            DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
+            
+            //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
+            dictionaryFactory.reset(writerDispatch.intValues);
+            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.byteHeap);
+            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
+
+                    if (FASTRingBuffer.moveNext(queue)) {
+                        if (queue.consumerData.isNewMessage()) {
+                            msgs.incrementAndGet();
+                        }
+                        try{   
+                            dynamicWriter.write();
+                        } catch (FASTException e) {
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            throw e;
+                        }                            
+                        grps++;
+                    }
+
+            }
+            
+
+            queue.reset();
+
+            fastInput.reset();
+            PrimitiveReader.reset(reader);
+            readerDispatch.reset(catalog.dictionaryFactory());
+
+            PrimitiveWriter.flush(writer);
+            wroteSize = Math.max(wroteSize, PrimitiveWriter.totalWritten(writer));
+            fastOutput.reset();
+            PrimitiveWriter.reset(writer);
+            dynamicWriter.reset(true);
+
+        }
+
+        // Expected total read fields:2126101
+        assertEquals("test file bytes", totalTestBytes, wroteSize);
+
+        //In the warm up we checked the writes for accuracy, here we are only going for speed
+        //so the FASTOutput instance is changed to one that only writes.
+        FASTOutputByteArray fastOutput2 = new FASTOutputByteArray(testBytesData);
+        writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, true);
+        dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+        
+        iter = count;
+        while (--iter >= 0) {
+
+            DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
+            dictionaryFactory.reset(writerDispatch.intValues);
+            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.byteHeap);
+            
+            final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1); 
+
+          
+            
+            //Pre-populate the ring buffer to only measure the write time.
+            final AtomicBoolean isAlive = reactor.start(executor, reader);
+            while (isAlive.get()) {                
+            }
+            
+            double start = System.nanoTime();            
+            while (FASTRingBuffer.moveNext(queue)) {
+                    dynamicWriter.write();  
+            } 
+            double duration = System.nanoTime() - start;
+
+            // Only shut down after is alive is finished.
+            executor.shutdown();
+            
+            try {
+                executor.awaitTermination(1,TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            
+            }
+            
+
+            if ((0x3F & iter) == 0) {
+                int ns = (int) duration;
+                float mmsgPerSec = (msgs.intValue() * (float) 1000l / ns);
+                float nsPerByte = (ns / (float) totalTestBytes);
+                int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
+
+                System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
+                        + " " + mbps + "mbps " + " Bytes:" + totalTestBytes + " Messages:" + msgs + " Groups:" + grps); // Phrases/Clauses
+            }
+
+            // //////
+            // reset the data to run the test again.
+            // //////
+            queue.reset();
+
+            fastInput.reset();
+            PrimitiveReader.reset(reader);
+            readerDispatch.reset(catalog.dictionaryFactory());
+
+            fastOutput2.reset();
+            PrimitiveWriter.reset(writer);
+            dynamicWriter.reset(true);
+
+        }
+
+    }
 
     private String hex(int x) {
         String t = Integer.toHexString(0xFF & x);
@@ -558,9 +741,8 @@ public class TemplateLoaderTest {
 //        return builder.toString();
 //    }
 
-    public static byte[] buildRawCatalogData() {
+    public static byte[] buildRawCatalogData(ClientConfig clientConfig) {
         //this example uses the preamble feature
-        ClientConfig clientConfig = new ClientConfig();
         clientConfig.setPreableBytes((short)4);
 
         ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);

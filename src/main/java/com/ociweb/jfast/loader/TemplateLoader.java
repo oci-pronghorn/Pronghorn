@@ -60,7 +60,7 @@ public class TemplateLoader {
             System.exit(FILE_REQUIRED_NOT_DIRECTORY);
         }
 
-        ClientConfig clientConfig = new ClientConfig(); //TODO: B, load from file or args?
+        ClientConfig clientConfig = new ClientConfig(21,20); //TODO: B, load from file or args?
         
         try {
             buildCatalog(new FileOutputStream(catalog), source, clientConfig);

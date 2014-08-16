@@ -651,6 +651,7 @@ public class LocalHeap {
         if (len != length) {
             return false;
         }
+                
         if (len>0) {
             int i = length;
             while (--i >= 0) {

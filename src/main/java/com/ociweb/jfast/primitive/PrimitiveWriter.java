@@ -882,41 +882,29 @@ public final class PrimitiveWriter {
     // called by ever field that needs to set a bit either 1 or 0
     // must be fast because it is frequently called.
     public static final void writePMapBit(byte bit, PrimitiveWriter writer) {
-        if (0 == --writer.pMapIdxWorking) {
-            // TODO: X, note we only corrupt the buffer cache line once every 7
-            // bits but it must be less! what if we cached the buffer writes?
-            assert (writer.safetyStackDepth > 0) : "PMap must be open before write of bits.";
-            int idx = (int) (POS_POS_MASK & writer.safetyStackPosPos[writer.safetyStackDepth - 1]++);
-
-            // save this byte and if it was not a zero save that fact as well
-            // //NOTE: pos pos will not rollover so can inc
-            if (0 != (writer.buffer[idx] = (byte) (bit == 0 ? writer.pMapByteAccum : (writer.pMapByteAccum | bit)))) {
-                long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
-                // set the last known non zero bit so we can avoid scanning for
-                // it.
-                int lastPopulatedIdx = (int) (POS_POS_MASK & stackFrame);// one
-                                                                         // has
-                                                                         // been
-                                                                         // added
-                                                                         // for
-                                                                         // exclusive
-                                                                         // use
-                                                                         // of
-                                                                         // range
-                // writing the pmap bit is the ideal place to detect overflow of
-                // the bits based on expectations.
-                assert (lastPopulatedIdx < writer.flushSkips[(int) (stackFrame >> 32) + 1]) : "Too many bits in PMAP.";
-                writer.flushSkips[(int) (stackFrame >> 32)] = lastPopulatedIdx;
-            }
-
-            writer.pMapIdxWorking = 7;
-            writer.pMapByteAccum = 0;
-
+        if (0 == --writer.pMapIdxWorking) { //TODO: B, can remove this conditional the same way it was done in the reader.
+            writeNextPMapByte(bit, writer);
         } else {
-            if (bit != 0) {
-                writer.pMapByteAccum |= (bit << writer.pMapIdxWorking);
-            }
+            writer.pMapByteAccum |= (bit << writer.pMapIdxWorking);
         }
+    }
+
+    private static void writeNextPMapByte(byte bit, PrimitiveWriter writer) {
+        // TODO: X, note we only corrupt the buffer cache line once every 7
+        // bits but it must be less! what if we cached the buffer writes?
+      //     assert (writer.safetyStackDepth > 0) : "PMap must be open before write of bits.";
+        int idx = (int) (POS_POS_MASK & writer.safetyStackPosPos[writer.safetyStackDepth - 1]++);
+
+        // save this byte and if it was not a zero save that fact as well
+        // //NOTE: pos pos will not rollover so can inc
+        if (0 != (writer.buffer[idx] = (byte) (bit == 0 ? writer.pMapByteAccum : (writer.pMapByteAccum | bit)))) {
+            long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
+            // set the last known non zero bit so we can avoid scanning for it.
+            writer.flushSkips[(int) (stackFrame >> 32)] = (int) (POS_POS_MASK & stackFrame);
+        }
+
+        writer.pMapIdxWorking = 7;
+        writer.pMapByteAccum = 0;
     }
 
     public static final void writeTextASCIIAfter(int start, byte[] value, int offset, int len, int mask, PrimitiveWriter writer) {
