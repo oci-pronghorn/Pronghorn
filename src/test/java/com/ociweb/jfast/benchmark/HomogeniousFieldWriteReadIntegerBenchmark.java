@@ -199,7 +199,12 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
                     value++;
                 }
                 
-                PrimitiveWriter.writeIntegerSignedCopy(value,idx,idx,wIntDictionary,writer);
+                if (value == wIntDictionary[idx]) {
+                    PrimitiveWriter.writePMapBit((byte) 0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte) 1, writer);
+                    PrimitiveWriter.writeIntegerSigned(wIntDictionary[idx] = value, writer);
+                }
 			}
 			
 			if (pmapSize>0) {

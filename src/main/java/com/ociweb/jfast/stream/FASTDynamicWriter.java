@@ -42,8 +42,8 @@ public class FASTDynamicWriter {
         writerDispatch.activeScriptLimit = 0;
 
         if (clearData) {
-            writerDispatch.dictionaryFactory.reset(writerDispatch.intValues);
-            writerDispatch.dictionaryFactory.reset(writerDispatch.longValues);
+            writerDispatch.dictionaryFactory.reset(writerDispatch.rIntDictionary);
+            writerDispatch.dictionaryFactory.reset(writerDispatch.rLongDictionary);
             writerDispatch.dictionaryFactory.reset(writerDispatch.byteHeap);
         }
     }

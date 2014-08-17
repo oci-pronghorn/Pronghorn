@@ -180,10 +180,4 @@ public class StaticGlue {
         FASTRingBuffer.addValue(rbB,rbMask,rbPos, (int) (tmpLng >>> 32), (int) (tmpLng & 0xFFFFFFFF));
     }
 
-
-    public static void nullNoPMapInt(PrimitiveWriter writer, int[] dictionary, int idx) {
-        dictionary[idx] = 0;
-        PrimitiveWriter.writeNull(writer);
-    }
-
 }

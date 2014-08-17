@@ -50,8 +50,8 @@ public final class PrimitiveWriter {
     public int limit;
 
     // both bytes but class def likes int much better for alignment
-    private int pMapIdxWorking = 7;
-    private int pMapByteAccum = 0;
+    public int pMapIdxWorking = 7;
+    public int pMapByteAccum = 0;
 
     private long totalWritten;
     private final int[] flushSkips;// list of all skip nodes produced at the end
@@ -740,14 +740,7 @@ public final class PrimitiveWriter {
 
     public static final void writeIntegerUnsigned(int value, PrimitiveWriter writer) {
         if (value < 0) {
-            if (writer.buffer.length - writer.limit < 5) {
-                writer.output.flush();
-            }
-            writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
-            writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
-            writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
-            writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
-            writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
+            writeIntegerUnsignedRollover(value, writer);
             return;
         }
         // assert(value>=0) :
@@ -784,6 +777,18 @@ public final class PrimitiveWriter {
             writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
         }
         writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
+    }
+
+    private static void writeIntegerUnsignedRollover(int value, PrimitiveWriter writer) {
+        if (writer.buffer.length - writer.limit < 5) {
+            writer.output.flush();
+        }
+        writer.buffer[writer.limit++] = (byte) (((value >> 28) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 21) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 14) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value >> 7) & 0x7F));
+        writer.buffer[writer.limit++] = (byte) (((value & 0x7F) | 0x80));
+        return;
     }
 
     // /////////////////////////////////
@@ -889,7 +894,7 @@ public final class PrimitiveWriter {
         }
     }
 
-    private static void writeNextPMapByte(byte bit, PrimitiveWriter writer) {
+    public static void writeNextPMapByte(byte bit, PrimitiveWriter writer) {
         // TODO: X, note we only corrupt the buffer cache line once every 7
         // bits but it must be less! what if we cached the buffer writes?
       //     assert (writer.safetyStackDepth > 0) : "PMap must be open before write of bits.";
@@ -990,85 +995,6 @@ public final class PrimitiveWriter {
         
     }    
 
-    
-
-    // //////////////////////////
-    // //////////////////////////
-
-    public static final void writeIntegerUnsignedCopy(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-
-        if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static final void writeIntegerUnsignedDefault(int value, int constDefault, PrimitiveWriter writer) {
-
-        if (value == constDefault) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerUnsigned(value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedCopy(int value, int target, int source, int[] dictionary, PrimitiveWriter writer) {
-        if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static void writeIntegerSignedDefault(int value, int constDefault, PrimitiveWriter writer) {
-
-        if (value == constDefault) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeIntegerSigned(value, writer);
-        }
-    }
-
-    public static void writeLongUnsignedCopy(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
-
-        if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static void writeLongUnsignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        if (value == constDefault) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongUnsigned(value, writer);
-        }
-    }
-
-    public static void writeLongSignedCopy(long value, int target, int source, long[] dictionary, PrimitiveWriter writer) {
-        if (value == dictionary[source]) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongSigned(dictionary[target] = value, writer);
-        }
-    }
-
-    public static void writeLongSignedDefault(long value, long constDefault, PrimitiveWriter writer) {
-        if (value == constDefault) {
-            writePMapBit((byte) 0, writer);
-        } else {
-            writePMapBit((byte) 1, writer);
-            writeLongSigned(value, writer);
-        }
-    }
+   
 
 }

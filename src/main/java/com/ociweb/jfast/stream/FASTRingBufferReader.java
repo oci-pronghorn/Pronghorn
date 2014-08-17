@@ -34,7 +34,6 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return buffer[mask & (int)(pos.value + (OFF_MASK&idx))];
     }
 
-    
     public static int readInt(FASTRingBuffer ring, int idx) {
         return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
     }

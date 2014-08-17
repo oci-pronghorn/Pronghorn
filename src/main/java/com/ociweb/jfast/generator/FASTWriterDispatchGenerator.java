@@ -10,6 +10,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     
@@ -216,7 +217,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -224,7 +225,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -232,14 +233,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
 
 
     @Override
-    protected void genWriteIntegerSignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] intValues,
+    protected void genWriteIntegerSignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos);
         
@@ -256,7 +257,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -264,7 +265,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -272,24 +273,22 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
 
 
     @Override
-    protected void genWriteIntegerUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos);
-        
+    protected void genWriteIntegerUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos);        
     }
 
     //
 
     @Override
     protected void genWriteIntegerSignedDefaultOptional(int source, int fieldPos, int constDefault,
-            int valueOfNull, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] intValues) {
+            int valueOfNull, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] rIntDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, source, fieldPos, constDefault, valueOfNull);
         
     }
@@ -297,7 +296,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedIncrementOptional(int target, int source, int fieldPos,
-            int valueOfNull, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -305,7 +304,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedCopyOptional(int target, int source, int fieldPos, int valueOfNull,
-            PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -321,7 +320,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedDeltaOptional(int target, int source, int fieldPos, int valueOfNull,
-            PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -329,7 +328,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerSignedNoneOptional(int target, int fieldPos, int valueOfNull,
-            PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos, valueOfNull);
         
     }
@@ -337,7 +336,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedCopyOptional(int target, int source, int fieldPos, int valueOfNull,
-            PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -345,7 +344,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedDefaultOptional(int source, int fieldPos, int valueOfNull,
-            int constDefault, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] intValues) {
+            int constDefault, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] rIntDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, source, fieldPos, valueOfNull, constDefault);
         
     }
@@ -353,7 +352,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedIncrementOptional(int target, int source, int fieldPos,
-            int valueOfNull, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -368,7 +367,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedDeltaOptional(int target, int source, int fieldPos,
-            int valueOfNull, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer) {
+            int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
@@ -376,15 +375,15 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteIntegerUnsignedNoneOptional(int target, int valueOfNull, int fieldPos, PrimitiveWriter writer,
-            FASTRingBuffer rbRingBuffer, int[] intValues) {
+            FASTRingBuffer rbRingBuffer, int[] rIntDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, valueOfNull, fieldPos);
         
     }
 
     @Override
     protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues,
-            int[] intValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary,
+            int[] rIntDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, fieldPos);
 
     }
@@ -392,38 +391,38 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer,
-            long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer,
+            long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
 
     @Override
     protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer,
-            long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer,
+            long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
 
     @Override
     protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int fieldPos,
-            PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentValueOfNull, mantissaTarget, fieldPos);
         
     }
 
     @Override
     protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer,
-            long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer,
+            long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaTarget, exponentSource, exponentValueOfNull, fieldPos);
     }
 
 
     @Override
     protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull,
-            int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
@@ -431,7 +430,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalDefaultOptionalDefault(int exponentSource, int mantissaTarget,
             int exponentConstDefault, int exponentValueOfNull, long mantissaConstDefault, int fieldPos,
-            PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] intValues, FASTEncoder dispatch) {
+            PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this,exponentSource, mantissaTarget, exponentConstDefault, exponentValueOfNull, mantissaConstDefault, fieldPos);
     }
     
@@ -439,7 +438,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget,
-            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull,
                 mantissaConstDefault, fieldPos);
@@ -448,7 +447,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalCopyOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget,
-            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this,exponentTarget, exponentSource, mantissaTarget, exponentValueOfNull,
                 mantissaConstDefault, fieldPos);
@@ -464,7 +463,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalDeltaOptionalDefault(int exponentTarget, int mantissaTarget, int exponentSource,
-            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaTarget, exponentSource, exponentValueOfNull,
                 mantissaConstDefault, fieldPos);
@@ -473,7 +472,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalNoneOptionalDefault(int exponentTarget, int mantissaTarget, int exponentValueOfNull,
-            long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+            long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaTarget, exponentValueOfNull, mantissaConstDefault, fieldPos);
     }
 
@@ -481,7 +480,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalDefaultOptionalIncrement(int exponentSource, int mantissaSource, int mantissaTarget,
             int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentSource, mantissaSource, mantissaTarget, exponentConstDefault,
                 exponentValueOfNull, fieldPos);
     }
@@ -490,7 +489,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalIncrementOptionalIncrement(int exponentTarget, int exponentSource,
             int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer,
-            int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
     }
@@ -498,8 +497,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalCopyOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
     }
@@ -507,15 +506,15 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalConstantOptionalIncrement(int exponentValueOfNull, int mantissaSource,
-            int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentValueOfNull, mantissaSource, mantissaTarget, fieldPos);
     }
 
 
     @Override
     protected void genWriteDecimalDeltaOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentSource,
                 exponentValueOfNull, fieldPos);
     }
@@ -523,7 +522,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalNoneOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
@@ -531,7 +530,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalDefaultOptionalCopy(int exponentSource, int mantissaSource, int mantissaTarget,
             int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentSource, mantissaSource, mantissaTarget, exponentConstDefault,
                 exponentValueOfNull, fieldPos);
     }
@@ -539,8 +538,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalIncrementOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this,exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
     }
@@ -548,8 +547,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalCopyOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
     }
@@ -557,15 +556,15 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalConstantOptionalCopy(int exponentValueOfNull, int mantissaSource, int mantissaTarget,
-            int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentValueOfNull, mantissaSource, mantissaTarget, fieldPos);
     }
 
 
     @Override
     protected void genWriteDecimalDeltaOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentSource,
                 exponentValueOfNull, fieldPos);
     }
@@ -573,7 +572,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalNoneOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
@@ -581,7 +580,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalDefaultOptionalConstant(int exponentSource, int mantissaSource, int mantissaTarget,
             int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer,
-            FASTRingBuffer rbRingBuffer, int[] intValues, FASTEncoder dispatch) {
+            FASTRingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentSource, mantissaSource, mantissaTarget, exponentConstDefault,
                 exponentValueOfNull, fieldPos);
     }
@@ -589,7 +588,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalIncrementOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this,exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
@@ -598,7 +597,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalCopyOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
@@ -614,7 +613,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalDeltaOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentSource,
                 exponentValueOfNull, fieldPos);
@@ -623,7 +622,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalNoneOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
@@ -631,7 +630,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     @Override
     protected void genWriteDecimalDefaultOptionalDelta(int exponentSource, int mantissaSource, int mantissaTarget,
             int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer,
-            FASTRingBuffer rbRingBuffer, long[] longValues, int[] intValues, FASTEncoder dispatch) {
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentSource, mantissaSource, mantissaTarget, exponentConstDefault,
                 exponentValueOfNull, fieldPos);
     }
@@ -639,8 +638,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalIncrementOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
     }
@@ -648,7 +647,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalCopyOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource,
-            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
+            int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
             FASTRingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, exponentSource, mantissaSource, mantissaTarget,
                 exponentValueOfNull, fieldPos);
@@ -664,8 +663,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalDeltaOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues,
-            FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary,
+            FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentSource,
                 exponentValueOfNull, fieldPos);
     }
@@ -673,7 +672,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteDecimalNoneOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget,
-            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] intValues, FASTRingBuffer rbRingBuffer, long[] longValues, FASTEncoder dispatch) {
+            int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, exponentTarget, mantissaSource, mantissaTarget, exponentValueOfNull, fieldPos);
     }
 
@@ -688,7 +687,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -696,7 +695,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
@@ -704,14 +703,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
 
 
     @Override
-    protected void genWriteLongUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] longValues,
+    protected void genWriteLongUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary,
             FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos);
         
@@ -719,7 +718,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteLongUnsignedDefaultOptional(long valueOfNull, int target, long constDefault, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues) {
+    protected void genWriteLongUnsignedDefaultOptional(long valueOfNull, int target, long constDefault, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, constDefault, fieldPos); 
         
     }
@@ -727,7 +726,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedIncrementOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source, fieldPos);
         
     }
@@ -735,7 +734,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedCopyOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source, fieldPos);
         
     }
@@ -749,7 +748,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, long[] longValues, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, fieldPos);
         
     }
@@ -757,7 +756,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongUnsignedDeltaOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source, fieldPos);
         
     }
@@ -773,14 +772,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongSignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] longValues,
+    protected void genWriteLongSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary,
             FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
@@ -788,7 +787,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteLongSignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] longValues,
+    protected void genWriteLongSignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary,
             FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos);
         
@@ -796,21 +795,21 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongSignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedOptional(long valueOfNull, int target,  int fieldPos, PrimitiveWriter writer, long[] longValues, FASTRingBuffer ringBuffer) {
+    protected void genWriteLongSignedOptional(long valueOfNull, int target,  int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, FASTRingBuffer ringBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, fieldPos);
         
     }
 
     @Override
     protected void genWriteLongSignedDeltaOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, valueOfNull, target, source, fieldPos);
         
     }
@@ -825,7 +824,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongSignedCopyOptional(int target, int source, long valueOfNull, int fieldPos, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, valueOfNull, fieldPos);
         
     }
@@ -833,14 +832,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     @Override
     protected void genWriteLongSignedIncrementOptional(int target, int source, int fieldPos, long valueOfNull, PrimitiveWriter writer,
-            long[] longValues, FASTRingBuffer rbRingBuffer) {
+            long[] rLongDictionary, FASTRingBuffer rbRingBuffer) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, source, fieldPos, valueOfNull);
         
     }
 
 
     @Override
-    protected void genWriteLongSignedDefaultOptional(int target, int fieldPos, long valueOfNull, long constDefault, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValues) {
+    protected void genWriteLongSignedDefaultOptional(int target, int fieldPos, long valueOfNull, long constDefault, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, fieldPos, valueOfNull, constDefault);
         
     }
@@ -861,14 +860,14 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteDictionaryLongReset(int target, long constValue, long[] longValues) {
+    protected void genWriteDictionaryLongReset(int target, long constValue, long[] rLongDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, constValue);
         
     }
 
 
     @Override
-    protected void genWriteDictionaryIntegerReset(int target, int constValue, int[] intValues) {
+    protected void genWriteDictionaryIntegerReset(int target, int constValue, int[] rIntDictionary) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target, constValue);
         
     }
@@ -896,7 +895,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
+    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue, FASTEncoder dispatch) {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, pmapSize, fieldPos);
         
     }
@@ -908,60 +907,5 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         
     }
 
-
-    @Override
-    public void genWriteNullPMap(PrimitiveWriter writer) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
-        
-    }
-
-
-    @Override
-    public void genWriteNullNoPMapLong(int target, PrimitiveWriter writer, long[] dictionary) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullDefaultText(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullCopyIncText(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullNoPMapText(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullDefaultBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullNoPMapBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
-
-
-    @Override
-    public void genWriteNullCopyIncBytes(int target, PrimitiveWriter writer, LocalHeap byteHeap) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, target);
-        
-    }
     
 }

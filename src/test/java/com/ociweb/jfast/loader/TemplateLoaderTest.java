@@ -414,8 +414,8 @@ public class TemplateLoaderTest {
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
             //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
-            dictionaryFactory.reset(writerDispatch.intValues);
-            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.rIntDictionary);
+            dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
@@ -456,8 +456,8 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
-            dictionaryFactory.reset(writerDispatch.intValues);
-            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.rIntDictionary);
+            dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             double start = System.nanoTime();
             
@@ -573,8 +573,8 @@ public class TemplateLoaderTest {
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
             //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
-            dictionaryFactory.reset(writerDispatch.intValues);
-            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.rIntDictionary);
+            dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
@@ -621,8 +621,8 @@ public class TemplateLoaderTest {
         while (--iter >= 0) {
 
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
-            dictionaryFactory.reset(writerDispatch.intValues);
-            dictionaryFactory.reset(writerDispatch.longValues);
+            dictionaryFactory.reset(writerDispatch.rIntDictionary);
+            dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             
             final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1); 
@@ -634,7 +634,12 @@ public class TemplateLoaderTest {
             while (isAlive.get()) {                
             }
             
+            //TODO: B,  build a test that uses the ring buffer to move integers from the decoder to the encoder ring buffers (separate) this is much more in keeping with how it will be used. 
+            //note this test is never something that represents a normal use case but it is good for testing the encoding only time.
+            //      
+            
             double start = System.nanoTime();            
+            
             while (FASTRingBuffer.moveNext(queue)) {
                     dynamicWriter.write();  
             } 

@@ -376,8 +376,8 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		for (int i = 0; i < reps; i++) {
 			output.reset(); //reset output to start of byte buffer
 			writer.reset(writer); //clear any values found in writer
-			dictionaryFactory.reset(staticWriter.intValues);
-            dictionaryFactory.reset(staticWriter.longValues);
+			dictionaryFactory.reset(staticWriter.rIntDictionary);
+            dictionaryFactory.reset(staticWriter.rLongDictionary);
             dictionaryFactory.reset(staticWriter.byteHeap); //reset message to clear out old values;
 			
 			//////////////////////////////////////////////////////////////////

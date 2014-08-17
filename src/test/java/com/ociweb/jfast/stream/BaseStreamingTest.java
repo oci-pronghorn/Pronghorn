@@ -381,19 +381,32 @@ public abstract class BaseStreamingTest {
         if (0==(token&(2<<TokenBuilder.SHIFT_OPER))) {
             if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
                 //None and Delta and Tail
-                disp.genWriteNullNoPMapBytes(token & instanceMask, writer, byteHeap);              //no pmap, yes change to last value
+                PrimitiveWriter.writeNull(writer);
+                LocalHeap.setNull(token & instanceMask, byteHeap);              //no pmap, yes change to last value
             } else {
                 //Copy and Increment
                 int idx = token & instanceMask;
-                disp.genWriteNullCopyIncBytes(idx, writer, byteHeap);  //yes pmap, yes change to last value 
+                if (LocalHeap.isNull(idx,byteHeap)) { //stored value was null;
+                    PrimitiveWriter.writePMapBit((byte)0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte)1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                    LocalHeap.setNull(idx, byteHeap);
+                }  //yes pmap, yes change to last value 
             }
         } else {
             if (0==(token&(1<<TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                disp.genWriteNullPMap(writer);      
+                
+                PrimitiveWriter.writePMapBit((byte)0, writer);  // null for const optional
             } else {    
                 //default
-                disp.genWriteNullDefaultBytes(token & instanceMask, writer, byteHeap);  //yes pmap,  no change to last value
+                if (LocalHeap.isNull(token & instanceMask,byteHeap)) { //stored value was null;
+                    PrimitiveWriter.writePMapBit((byte)0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte)1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                }  //yes pmap,  no change to last value
             }   
         }
         
@@ -404,18 +417,31 @@ public abstract class BaseStreamingTest {
         if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 // None and Delta and Tail
-                disp.genWriteNullNoPMapText(idx, writer, byteHeap); // no pmap, yes change to last value
+                PrimitiveWriter.writeNull(writer);
+                LocalHeap.setNull(idx, byteHeap); // no pmap, yes change to last value
             } else {
                 // Copy and Increment
-                disp.genWriteNullCopyIncText(idx, writer, byteHeap); // yes pmap, yes change to last value
+                if (LocalHeap.isNull(idx,byteHeap)) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte)0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte)1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                    LocalHeap.setNull(idx, byteHeap);
+                } // yes pmap, yes change to last value
             }
         } else {
             if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
                 assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))) : "Sending a null constant is not supported";
-                disp.genWriteNullPMap(writer);
+                
+                PrimitiveWriter.writePMapBit((byte)0, writer);  // null for const optional
             } else {
                 // default
-                disp.genWriteNullDefaultText(idx, writer, byteHeap); // yes pmap, no change to last value
+                if (LocalHeap.isNull(idx,byteHeap)) { // stored value was null;
+                    PrimitiveWriter.writePMapBit((byte)0, writer);
+                } else {
+                    PrimitiveWriter.writePMapBit((byte)1, writer);
+                    PrimitiveWriter.writeNull(writer);
+                } // yes pmap, no change to last value
             }
         }
     }
@@ -455,7 +481,7 @@ public abstract class BaseStreamingTest {
             } else {
                 // long
                 int idx = token & fw.longInstanceMask;
-                long[] dictionary = fw.longValues;
+                long[] dictionary = fw.rLongDictionary;
                 
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                     if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -517,7 +543,7 @@ public abstract class BaseStreamingTest {
                     } 
     
                     int idx1 = token & fw.longInstanceMask;
-                    long[] dictionary = fw.longValues;
+                    long[] dictionary = fw.rLongDictionary;
                     
                     if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
                         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {

@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferConsumer;
@@ -21,7 +22,7 @@ import com.ociweb.jfast.util.Stats;
 public class GeneratorUtils {
     //TODO: D, schema is flexable and recorded with the data stream.
     
-    static final boolean REMOVE_ARRAY = false; //TODO: B, still testing this idea, must decide after writer is finished 
+    static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
@@ -115,10 +116,16 @@ public class GeneratorUtils {
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
                                     .replace("byteBuffer", "rb.byteBuffer")
-                                    .replace("byteMask", "rb.byteMask")
-                                    .replace("rbPos","rb.workingHeadPos") 
+                                    .replace("byteMask", "rb.byteMask")                                    
                                     .replace("rbB","rb.buffer")
                                     .replace("rbMask", "rb.mask");
+            
+            if (isReader) {
+                methodCallArgs = methodCallArgs.replace("rbPos","rb.workingHeadPos"); 
+            } else {
+                methodCallArgs = methodCallArgs.replace("rbPos","rb.workingTailPos"); 
+            }
+            
             doneCode[j] = "\n\r"+
                           " "+ //TODO: B, Clean up this is very messy
                               (isReader?
@@ -179,9 +186,7 @@ public class GeneratorUtils {
         if (isReader) {
             builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
             builder.append("    return 1;//read a fragment\n"); 
-        } else {
-            builder.append("    \n");
-        }
+        } 
         builder.append("}\n");
     
     }
@@ -279,7 +284,10 @@ public class GeneratorUtils {
         generatorData.caseParaVals.clear();
         generatorData.scriptPos = scriptPos;
         generatorData.templateId = templateId;
-        generatorData.pmapBit = 6;
+        generatorData.readerPmapBit = 6;
+        generatorData.writerPmapBit0 = 6;
+        generatorData.writerPmapBit1 = 6;
+        
         
         //each field method will start with the templateId for easy debugging later.
         generatorData.fieldPrefix = Integer.toString(templateId);
@@ -605,29 +613,72 @@ public class GeneratorUtils {
 
     private static String removeConditionalsFromPMapReading(GeneratorData generatorData, String templateMethodName,
             String template) {
+        
+        //NOTE: remove this entire block and escape early if the unsupported optional decimals are used!!!
         //Must disable this if we ever see an optional decimal. TODO: X, this could allow a few optional cases with more thought.
         if (templateMethodName.contains("OptionalMantissa") && !templateMethodName.contains("OptionalMantissaDelta")) {
-            //TODO: B, need to do this adjust reader.pmapIdxBitBlock -= (1<<16);     before returning to old method!
-            //TODO: B, dont detect this here do it early when we start the script for this fragment.
-            
-            generatorData.pmapBit = Integer.MIN_VALUE;//used as disable flag
-            //Optimization was ok up to this point, after here it will use the slower safe method.
-                        
+            //TODO: B, need to do this adjust reader.pmapIdxBitBlock -= (1<<16);  but Dont detect this here do it early when we start the script for this fragment.
+            generatorData.readerPmapBit = Integer.MIN_VALUE;//used as disable flag
+            //Optimization was ok up to this point, after here it will use the slower safe method.                        
         }
+        
+        
         
         //optimizes the pmap reading logic by removing the extra shift counter and 
         //replacing it with constants
-        if (Integer.MIN_VALUE!=generatorData.pmapBit && template.contains("PrimitiveReader.readPMapBit(reader)")) {
-            int mapTmp;
-            if ((mapTmp = generatorData.pmapBit--)<0) {
-                //next up
-                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "PrimitiveReader.readPMapBitNextByte(reader)");               
-                generatorData.pmapBit=5;
-            } else {
-                //normal bit
-                template = template.replace("PrimitiveReader.readPMapBit(reader)",  "((1<<"+mapTmp+") & reader.pmapIdxBitBlock)");
-                          
-            }  
+        if (Integer.MIN_VALUE!=generatorData.readerPmapBit) {
+            
+            //For reader
+            if (template.contains("PrimitiveReader.readPMapBit(reader)")) {
+                int mapTmp;
+                if ((mapTmp = generatorData.readerPmapBit--)<0) {
+                    //next up
+                    template = template.replace("PrimitiveReader.readPMapBit(reader)",  "PrimitiveReader.readPMapBitNextByte(reader)");               
+                    generatorData.readerPmapBit=5;
+                } else {
+                    //normal bit
+                    template = template.replace("PrimitiveReader.readPMapBit(reader)",  "((1<<"+mapTmp+") & reader.pmapIdxBitBlock)");
+                              
+                }  
+            }
+            assert(!template.contains("PrimitiveReader.readPMapBit")) : "check for exact match of arguments.";
+            
+            //For writer
+            //unlike reader there will be two writers 1 and 0 so the counting will be more difficult.
+            //to solve this we use two independent counters
+            if (template.contains("PrimitiveWriter.writePMapBit((byte)0, writer);")) {
+                //all calls to the write pmap 0 bit can be removed because zero has no side effect
+                //but we do need to keep track of when the next byte must be flushed
+                
+                int mapTmp; 
+                if ((mapTmp = generatorData.writerPmapBit0--)<=0) {
+                    //next up
+                    template = template.replace("PrimitiveWriter.writePMapBit((byte)0, writer);", "PrimitiveWriter.writeNextPMapByte((byte)0, writer);");               
+                    generatorData.writerPmapBit0=6;
+                } else {
+                    //zero bit does nothing so we remove the call
+                    template = template.replace("PrimitiveWriter.writePMapBit((byte)0, writer);",  "");
+                              
+                }  
+                
+            }
+            //                     PrimitiveWriter.writePMapBit((byte)1, writer);
+            if (template.contains("PrimitiveWriter.writePMapBit((byte)1, writer);")) {
+                int mapTmp; 
+                if ((mapTmp = generatorData.writerPmapBit1--)<=0) {
+                    //next up
+                    template = template.replace("PrimitiveWriter.writePMapBit((byte)1, writer);", "PrimitiveWriter.writeNextPMapByte((byte)1, writer);");               
+                    generatorData.writerPmapBit1=6;
+                } else {
+                    
+                    template = template.replace("PrimitiveWriter.writePMapBit((byte)1, writer);",  "writer.pMapByteAccum |= (((byte)1) << "+mapTmp+");");
+                              
+                }  
+            }
+            assert(!template.contains("PrimitiveWriter.writePMapBit")) : "check for exact match of arguments.";
+            
+            
+            
         }
         return template;
     }

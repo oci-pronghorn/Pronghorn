@@ -15,11 +15,11 @@ public abstract class FASTEncoder {
 
     protected final int instanceBytesMask;
     
-    public final int[] intValues;
+    public final int[] rIntDictionary; //rIntDictionary
     protected final int[] intInit;
     public final int intInstanceMask;
     
-    public final long[] longValues;
+    public final long[] rLongDictionary; //rLongDictionary
     protected final long[] longInit;
     public final int longInstanceMask;
     
@@ -71,17 +71,17 @@ public abstract class FASTEncoder {
         this.nonTemplatePMapSize = nonTemplatePMapSize;
         this.templatePMapSize = templatePMapSize;
 
-        this.intValues = dcr.integerDictionary();
+        this.rIntDictionary = dcr.integerDictionary();
         this.intInit = dcr.integerDictionary();
-        assert (intValues.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(intValues.length));
-        this.intInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (intValues.length - 1));
+        assert (rIntDictionary.length < TokenBuilder.MAX_INSTANCE);
+        assert (TokenBuilder.isPowerOfTwo(rIntDictionary.length));
+        this.intInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
         
-        this.longValues = dcr.longDictionary();
+        this.rLongDictionary = dcr.longDictionary();
         this.longInit = dcr.longDictionary();
-        assert (longValues.length < TokenBuilder.MAX_INSTANCE);
-        assert (TokenBuilder.isPowerOfTwo(longValues.length));
-        this.longInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (longValues.length - 1));
+        assert (rLongDictionary.length < TokenBuilder.MAX_INSTANCE);
+        assert (TokenBuilder.isPowerOfTwo(rLongDictionary.length));
+        this.longInstanceMask = Math.min(TokenBuilder.MAX_INSTANCE, (rLongDictionary.length - 1));
         
         this.byteHeap = dcr.byteDictionary();
 
@@ -113,35 +113,7 @@ public abstract class FASTEncoder {
     
     public abstract void encode(PrimitiveWriter writer, FASTRingBuffer ringBuffer);
     
-    // must happen just before Group so the Group in question must always have
-    // an outer group.
-    protected static void pushTemplate(int fieldPos, PrimitiveWriter writer, FASTRingBuffer queue) {
 
-        long readFromPos = queue.workingTailPos.value;
-        
-        int templateId = FASTRingBufferReader.readInt(queue, fieldPos);
-        
-     //   int top = dispatch.templateStack[dispatch.templateStackHead];
-//        if (top == templateId) {
-//            PrimitiveWriter.writePMapBit((byte) 0, writer);
-//        } else {
-            PrimitiveWriter.writePMapBit((byte) 1, writer);
-            
-//            System.err.println("XXXXX: wrote templateId:"+templateId+" from "+fieldPos+"  from pos "+readFromPos);
-//            new Exception().printStackTrace();
-        
-            PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
-      //      top = templateId;
-     //   }
-
-        //dispatch.templateStack[dispatch.templateStackHead++] = top;
-      //  System.exit(0);    
-            
-    }
-//            Write:Group:010000/Open:DynTempl::000010/17
-//            XXXXX: wrote templateId:2 from 1  from pos 0   vs   the bad XXXXX: wrote templateId:0 from 1  from pos 0
-//            Write:ASCII:001000/Constant:000010/10
-    
     public void setActiveScriptCursor(int cursor) {
        activeScriptCursor = cursor;
     }
