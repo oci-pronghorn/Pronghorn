@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTOutputByteBuffer implements FASTOutput {
 
@@ -24,13 +25,13 @@ public class FASTOutputByteBuffer implements FASTOutput {
 	@Override
 	public void flush() {
 
-		int size = dataTransfer.nextBlockSize();
+		int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 
 		while (size>0) {
-			byteBuffer.put(dataTransfer.rawBuffer(), 
-			     	       dataTransfer.nextOffset(), size);
+			byteBuffer.put(dataTransfer.writer.buffer, 
+			     	       PrimitiveWriter.nextOffset(dataTransfer.writer), size);
 
-			size = dataTransfer.nextBlockSize();
+			size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 		}
 	}
 

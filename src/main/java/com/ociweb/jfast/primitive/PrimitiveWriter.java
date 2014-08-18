@@ -66,7 +66,7 @@ public final class PrimitiveWriter {
     private int nextBlockOffset = -1; // position to begin copy data from
     private int pendingPosition = 0; // new position after the read
 
-    private boolean minimizeFlush = false;
+    private boolean minimizeFlush = false; //TODO: B, resolve bug when this is set to true
     
     public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 
@@ -111,7 +111,7 @@ public final class PrimitiveWriter {
     public static int nextBlockSize(PrimitiveWriter writer) {
         // return block size if the block is available
         if (writer.nextBlockSize > 0 || writer.position == writer.limit) {
-            assert (writer.nextBlockSize != 0 || writer.position == writer.limit) : "nextBlockSize must be zero of position is at limit";
+           // assert (writer.nextBlockSize != 0 || writer.position == writer.limit) : "nextBlockSize must be zero of position is at limit";
             return writer.nextBlockSize;
         }
         // block was not available so build it
@@ -538,6 +538,9 @@ public final class PrimitiveWriter {
     }
 
     public static final void writeLongUnsigned(long value, PrimitiveWriter writer) {
+        
+        
+        
         if (value < 0x0000000000000080l) {
             if (writer.buffer.length - writer.limit < 1) {
                 writer.output.flush();
@@ -743,6 +746,8 @@ public final class PrimitiveWriter {
             writeIntegerUnsignedRollover(value, writer);
             return;
         }
+        //TODO: A, add fast path for the entire fragment, eg maximum size not needing flush.
+        
         // assert(value>=0) :
         // "Java limitation must code this case special to reconstruct unsigned on the wire";
         if (value < 0x00000080) {
@@ -889,26 +894,26 @@ public final class PrimitiveWriter {
     public static final void writePMapBit(byte bit, PrimitiveWriter writer) {
         if (0 == --writer.pMapIdxWorking) { //TODO: B, can remove this conditional the same way it was done in the reader.
             writeNextPMapByte(bit, writer);
+            writer.pMapIdxWorking = 7; //not needed when this gets in-lined so it is done here
         } else {
             writer.pMapByteAccum |= (bit << writer.pMapIdxWorking);
         }
     }
 
     public static void writeNextPMapByte(byte bit, PrimitiveWriter writer) {
-        // TODO: X, note we only corrupt the buffer cache line once every 7
+
         // bits but it must be less! what if we cached the buffer writes?
       //     assert (writer.safetyStackDepth > 0) : "PMap must be open before write of bits.";
         int idx = (int) (POS_POS_MASK & writer.safetyStackPosPos[writer.safetyStackDepth - 1]++);
 
         // save this byte and if it was not a zero save that fact as well
         // //NOTE: pos pos will not rollover so can inc
-        if (0 != (writer.buffer[idx] = (byte) (bit == 0 ? writer.pMapByteAccum : (writer.pMapByteAccum | bit)))) {
+        if (0 != (writer.buffer[idx] = (byte) (writer.pMapByteAccum | bit))) {  //TODO: A,  the logic inside this only needs to be done for the last call??, no conditioal needd when bit is 1
             long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
             // set the last known non zero bit so we can avoid scanning for it.
-            writer.flushSkips[(int) (stackFrame >> 32)] = (int) (POS_POS_MASK & stackFrame);
+            writer.flushSkips[(int) (stackFrame >> 32)] =  idx+1;//(int) (POS_POS_MASK & stackFrame);
         }
 
-        writer.pMapIdxWorking = 7;
         writer.pMapByteAccum = 0;
     }
 

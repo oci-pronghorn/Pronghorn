@@ -46,6 +46,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     public void acceptLongSignedOptional(int token, long valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
         
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         int target = (token & longInstanceMask);
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -54,16 +58,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongSignedOptional(valueOfNull, target,  rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedOptional(valueOfNull, target,  rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
-                    genWriteLongSignedDeltaOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedDeltaOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
-                genWriteLongSignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
+                genWriteLongSignedConstantOptional(valueOfNull, target, rbPos, writer, buffer, mask, workingTailPos);
                 // the writeNull will take care of the rest.
             }
 
@@ -75,10 +79,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopyOptional(target, source, valueOfNull, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedCopyOptional(target, source, valueOfNull, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteLongSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default              
@@ -86,28 +90,18 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int idx = token & longInstanceMask;
                 long constDefault = rLongDictionary[idx];                
                 
-                genWriteLongSignedDefaultOptional(target, rbPos, valueOfNull, constDefault, writer, rbRingBuffer, rLongDictionary);
+                genWriteLongSignedDefaultOptional(target, rbPos, valueOfNull, constDefault, writer, buffer, mask, workingTailPos, rLongDictionary);
             }
         }
     }
 
 
-//
-//    public void acceptLongSigned(int token, long value, Object newParam, FASTRingBuffer rbRingBuffer) {
-//        
-//        ////    //temp solution as the ring buffer is introduce into all the APIs
-//        rbRingBuffer.dump();            
-//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.workingHeadPos++] = (int) (value >>> 32);
-//        rbRingBuffer.buffer[rbRingBuffer.mask & rbRingBuffer.workingHeadPos++] = (int) (value & 0xFFFFFFFF); 
-//        FASTRingBuffer.unBlockMessage(rbRingBuffer);
-//        int rbPos = 0;
-//        
-//
-//        acceptLongSigned(token, rbPos, rbRingBuffer);
-//
-//    }
-
     public void acceptLongSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -116,14 +110,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongSignedNone(idx, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedNone(idx, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongSignedDelta(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedDelta(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
@@ -141,17 +135,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongSignedCopy(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedCopy(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteLongSignedIncrement(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongSignedIncrement(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = rLongDictionary[idx];
                 
-                genWriteLongSignedDefault(constDefault, rbPos, writer, rbRingBuffer);
+                genWriteLongSignedDefault(constDefault, rbPos, writer, buffer, mask, workingTailPos);
             }
         }
     }
@@ -160,6 +154,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     void acceptLongUnsignedOptional(int token, long valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
 
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         int target = token & longInstanceMask;
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
@@ -168,17 +166,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteLongUnsignedNoneOptional(valueOfNull, target, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedNoneOptional(valueOfNull, target, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
 
-                    genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedDeltaOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
-                genWriteLongUnsignedConstantOptional(valueOfNull, target, rbPos, writer, rbRingBuffer);
+                genWriteLongUnsignedConstantOptional(valueOfNull, target, rbPos, writer, buffer, mask, workingTailPos);
                 // the writeNull will take care of the rest.
             }
 
@@ -190,10 +188,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopyOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedCopyOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedIncrementOptional(valueOfNull, target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default               
@@ -201,13 +199,18 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int idx = token & longInstanceMask;
                 long constDefault = rLongDictionary[idx];
                 
-                genWriteLongUnsignedDefaultOptional(valueOfNull, target, constDefault, rbPos, writer, rbRingBuffer, rLongDictionary);
+                genWriteLongUnsignedDefaultOptional(valueOfNull, target, constDefault, rbPos, writer, buffer, mask, workingTailPos, rLongDictionary);
             }
         }
     }
 
 
     public void acceptLongUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -216,14 +219,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & longInstanceMask;
 
-                    genWriteLongUnsignedNone(idx, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedNone(idx, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // delta
                     //Delta opp never uses PMAP
                     int target = (token & longInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                     
-                    genWriteLongUnsignedDelta(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedDelta(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
@@ -241,17 +244,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int source = readFromIdx > 0 ? readFromIdx & longInstanceMask : target;
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteLongUnsignedCopy(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedCopy(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteLongUnsignedIncrement(target, source, rbPos, writer, rLongDictionary, rbRingBuffer);
+                    genWriteLongUnsignedIncrement(target, source, rbPos, writer, rLongDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
                 int idx = token & longInstanceMask;
                 long constDefault = rLongDictionary[idx];
                 
-                genWriteLongUnsignedDefault(constDefault, rbPos, writer, rbRingBuffer);
+                genWriteLongUnsignedDefault(constDefault, rbPos, writer, buffer, mask, workingTailPos);
             }
         }
     }
@@ -259,6 +262,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
 
     public void acceptIntegerSigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -267,14 +275,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & intInstanceMask;
 
-                    genWriteIntegerSignedNone(idx, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedNone(idx, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                     
-                    genWriteIntegerSignedDelta(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedDelta(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
@@ -292,22 +300,27 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopy(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedCopy(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrement(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedIncrement(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = rIntDictionary[idx];
 
-                genWriteIntegerSignedDefault(constDefault, rbPos, writer, rbRingBuffer);
+                genWriteIntegerSignedDefault(constDefault, rbPos, writer, buffer, mask, workingTailPos);
             }
         }
     }
 
     public void acceptIntegerUnsigned(int token, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -316,9 +329,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // none
                     int idx = token & intInstanceMask;
                     
-                    int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
-                    int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
-                    PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
                     
                     genWriteIntegerUnsignedNone(idx, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
@@ -326,7 +336,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     // Delta opp never uses PMAP
                     int target = (token & intInstanceMask);
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDelta(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedDelta(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
@@ -344,21 +354,26 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopy(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedCopy(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrement(target, source, rbPos, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedIncrement(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = rIntDictionary[idx];
-                genWriteIntegerUnsignedDefault(constDefault, rbPos, writer, rbRingBuffer);
+                genWriteIntegerUnsignedDefault(constDefault, rbPos, writer, buffer, mask, workingTailPos);
             }
         }
     }
  
     public void acceptIntegerSignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+        
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -366,14 +381,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerSignedNoneOptional(target, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedNoneOptional(target, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerSignedDeltaOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedDeltaOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
-                genWriteIntegerSignedConstantOptional(valueOfNull, rbPos, writer, rbRingBuffer);
+                genWriteIntegerSignedConstantOptional(valueOfNull, rbPos, writer, buffer, mask, workingTailPos);
                 // the writeNull will take care of the rest.
             }
 
@@ -385,10 +400,10 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerSignedCopyOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedCopyOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteIntegerSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerSignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
@@ -396,12 +411,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int constDefault = rIntDictionary[idx];
 
 
-                genWriteIntegerSignedDefaultOptional(source, rbPos, constDefault, valueOfNull, writer, rbRingBuffer, rIntDictionary);
+                genWriteIntegerSignedDefaultOptional(source, rbPos, constDefault, valueOfNull, writer, buffer, mask, workingTailPos, rIntDictionary);
             }
         }
     }
 
     public void acceptIntegerUnsignedOptional(int token, int valueOfNull, int rbPos, FASTRingBuffer rbRingBuffer, PrimitiveWriter writer) {
+       
+        int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+        int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+        PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+        
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -409,16 +429,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, rbPos, writer, rbRingBuffer, rIntDictionary);
+                    genWriteIntegerUnsignedNoneOptional(target, valueOfNull, rbPos, writer, buffer, mask, workingTailPos, rIntDictionary);
                 } else {
                     // delta
                     // Delta opp never uses PMAP
                     int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
-                    genWriteIntegerUnsignedDeltaOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedDeltaOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // constant
-                genWriteIntegerUnsignedConstantOptional(rbPos, valueOfNull, writer, rbRingBuffer);
+                genWriteIntegerUnsignedConstantOptional(rbPos, valueOfNull, writer, buffer, mask, workingTailPos);
                 // the writeNull will take care of the rest.
             }
 
@@ -430,17 +450,17 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // copy, increment
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // copy
-                    genWriteIntegerUnsignedCopyOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedCopyOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
                     // increment
-                    genWriteIntegerUnsignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, rbRingBuffer);
+                    genWriteIntegerUnsignedIncrementOptional(target, source, rbPos, valueOfNull, writer, rIntDictionary, buffer, mask, workingTailPos);
                 }
             } else {
                 // default
                 int idx = token & intInstanceMask;
                 int constDefault = rIntDictionary[idx];
 
-                genWriteIntegerUnsignedDefaultOptional(source, rbPos, valueOfNull, constDefault, writer, rbRingBuffer, rIntDictionary);
+                genWriteIntegerUnsignedDefaultOptional(source, rbPos, valueOfNull, constDefault, writer, buffer, mask, workingTailPos, rIntDictionary);
             }
         }
     }
@@ -484,7 +504,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // default
                 int idx = token & instanceBytesMask;
                 idx = idx|INIT_VALUE_MASK;
-                genWriteBytesDefaultOptional(idx, rbPos, writer, byteHeap, rbRingBuffer);
+                genWriteBytesDefaultOptional(rbPos, writer, rbRingBuffer);
             }
         }
     }
@@ -524,7 +544,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 genWriteBytesCopy(token & instanceBytesMask, rbPos, byteHeap, writer, rbRingBuffer);
             } else {
                 // default
-                genWriteBytesDefault(token & instanceBytesMask, rbPos, byteHeap, writer, rbRingBuffer);
+                genWriteBytesDefault(rbPos, writer, rbRingBuffer);
             }
         }
     }
@@ -584,7 +604,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Default)) : "Found "
                         + TokenBuilder.tokenToString(token);
                 
-                genWriteTextDefaultOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
+//                int[] buffer = rbRingBuffer==null?null:rbRingBuffer.buffer;
+//                int mask = rbRingBuffer==null?0:rbRingBuffer.mask;
+//                PaddedLong workingTailPos = rbRingBuffer==null?null:rbRingBuffer.workingTailPos;
+                
+                genWriteTextDefaultOptional(fieldPos, writer, rbRingBuffer);
 
             }
         }
@@ -626,7 +650,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 genWriteTextCopy(idx, fieldPos, writer, byteHeap, rbRingBuffer);
             } else {
                 // default
-                genWriteTextDefault(idx, fieldPos, writer, byteHeap, rbRingBuffer);
+                genWriteTextDefault(fieldPos, writer, rbRingBuffer);
             }
         }
 
@@ -695,7 +719,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 //                Decimal:001100/Default:000011=2
 //                IntegerSignedOptional:000011/Delta:000100=2
 //                IntegerUnsignedOptional:000001/Default:000011=8 ***
-//                IntegerUnsigned:000000/Constant:000010=4
+//                IntegerUnsigned:000000/Constant:000010=4 ***** NOTHING TO DO
 //                Group:010000/Open:Seq:PMap::001100=4
 //                LongUnsigned:000100/None:000000=2
 //                DecimalOptional:001101/Default:000011=2
@@ -705,14 +729,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 //                Length:010100/None:000000=4
 //                IntegerUnsigned:000000/None:000000=12   ***** DONE
 //                Group:010000/Open:DynTempl::000010=6  ****
-//                ASCII:001000/Copy:000001=2
+//                ASCII:001000/Copy:000001=2 //TODO: B, should copy also check bit flags for write?
 //                IntegerUnsignedOptional:000001/None:000000=2
 //                IntegerUnsigned:000000/Default:000011=2
 //                LongUnsignedOptional:000101/None:000000=2
 //                Dictionary:011000/Reset:000000=2
 //                IntegerUnsigned:000000/Copy:000001=6  *****
 //                IntegerUnsigned:000000/Increment:000101=2
-//                ASCIIOptional:001001/Default:000011=10  ****
+//                ASCIIOptional:001001/Default:000011=10  **** DONE
 //                IntegerUnsignedOptional:000001/Delta:000100=2  
         
         
@@ -1268,7 +1292,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         //add 1 bit to pmap and write the templateId
       //  System.err.println("open msg");
-        genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, queue, this);
+        int[] buffer = queue==null?null:queue.buffer;
+        int mask = queue==null?0:queue.mask;
+        PaddedLong workingTailPos = queue==null?null:queue.workingTailPos;
+        
+        genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, buffer, mask, workingTailPos, this);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
             //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
@@ -1293,8 +1321,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         fieldPos = 0;
         
         if (preambleData.length != 0) {
+            int[] buffer = ringBuffer==null?null:ringBuffer.buffer;
+            int mask = ringBuffer==null?0:ringBuffer.mask;
+            PaddedLong workingTailPos = ringBuffer==null?null:ringBuffer.workingTailPos;
             
-            genWritePreamble(fieldPos, writer, ringBuffer, this);
+            genWritePreamble(fieldPos, writer, buffer, mask, workingTailPos, this);
             
             fieldPos += (preambleData.length+3)>>2;//must adjust this because it is meta data and when generating it will be used.
         };
@@ -1331,27 +1362,21 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     @Override
     public void encode(PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         
-        
+        //set the cursor positions for the interpreter if we are not generating code
         if (null!=rbRingBuffer) {
             //cursor and limit already set
-            setActiveScriptCursor(rbRingBuffer.consumerData.getCursor());  //TODO: A, how will this be set for generated code?
-            setActiveScriptLimit(rbRingBuffer.consumerData.getCursor() + rbRingBuffer.fragmentSteps());
+            setActiveScriptCursor(rbRingBuffer.consumerData.cursor); 
+            setActiveScriptLimit(rbRingBuffer.consumerData.cursor + rbRingBuffer.fragmentSteps());
             fieldPos = 0;//needed for fragments in interpreter but is not called when generating
-          //  System.err.println(getActiveScriptCursor());
         }
         
-        
-        
+        //start new message with preamble if needed        
         if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {                
             callBeginMessage(writer, rbRingBuffer);
-            //TODO: this has incremented field position to 2 but its not that way when we generate the code
         }
         
-        int stop = activeScriptLimit; 
-      
-        //should have stopped at 12 and 44 when generating code? TODO: the starts are missing for the code generation
-      //  System.err.println("cursor:"+activeScriptCursor+" to "+activeScriptLimit);
-        
+        //loop over every cursor position and dispatch to do the right activity
+        int stop = activeScriptLimit;         
         while (activeScriptCursor<stop) { 
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message

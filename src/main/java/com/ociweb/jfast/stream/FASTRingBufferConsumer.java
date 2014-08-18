@@ -9,7 +9,7 @@ public class FASTRingBufferConsumer {
     public boolean waiting;
     private long waitingNextStop;
     private long bnmHeadPosCache;
-    private int cursor;
+    public int cursor;
     public int activeFragmentDataSize;
     private int[] seqStack;
     private int seqStackHead;
@@ -101,14 +101,6 @@ public class FASTRingBufferConsumer {
         this.bnmHeadPosCache = bnmHeadPosCache;
     }
 
-    public int getCursor() {
-        return cursor;
-    }
-
-    public void setCursor(int cursor) {
-        this.cursor = cursor;
-    }
-
     public int[] getSeqStack() {
         return seqStack;
     }
@@ -137,7 +129,7 @@ public class FASTRingBufferConsumer {
         consumerData.tailCache=-1;
         
         /////
-        consumerData.setCursor(-1);
+        consumerData.cursor = (-1);
         consumerData.setSeqStackHead(-1);
         
         consumerData.setMessageId(-1);

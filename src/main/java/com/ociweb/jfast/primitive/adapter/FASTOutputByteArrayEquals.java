@@ -10,6 +10,7 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
 public final class FASTOutputByteArrayEquals implements FASTOutput {
@@ -48,13 +49,13 @@ public final class FASTOutputByteArrayEquals implements FASTOutput {
 	@Override
 	public void flush() {
 		
-		int size = dataTransfer.nextBlockSize();
+		int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 		while (size>0) {
 			
 		    int i = 0;
-		    byte[] sourceBuffer = dataTransfer.rawBuffer();
+		    byte[] sourceBuffer = dataTransfer.writer.buffer;
 		    byte[] targetBuffer = expectedBuffer;
-		    int sIdx = dataTransfer.nextOffset();
+		    int sIdx = PrimitiveWriter.nextOffset(dataTransfer.writer);
 		    int tIdx = position;
 		    while (i<size) {
 		        
@@ -114,7 +115,7 @@ public final class FASTOutputByteArrayEquals implements FASTOutput {
 			//helpfull as trace
 			//System.err.println("data validated up to position:"+position);
 			
-			size = dataTransfer.nextBlockSize();
+			size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 		}
 		
 		limits.clear();

@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTOutputStream implements FASTOutput{
 
@@ -27,11 +28,11 @@ public class FASTOutputStream implements FASTOutput{
 	@Override
 	public void flush() {
 		try {
-			int size = dataTransfer.nextBlockSize();
+			int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 			while (size>0) {
-				ostr.write(dataTransfer.rawBuffer(), 
-				     	   dataTransfer.nextOffset(), size);
-				size = dataTransfer.nextBlockSize();		
+				ostr.write(dataTransfer.writer.buffer, 
+				     	   PrimitiveWriter.nextOffset(dataTransfer.writer), size);
+				size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);		
 			}
 			ostr.flush();
 		} catch (IOException e) {

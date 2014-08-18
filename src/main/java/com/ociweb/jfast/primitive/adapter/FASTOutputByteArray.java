@@ -5,6 +5,7 @@ package com.ociweb.jfast.primitive.adapter;
 
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 
 public final class FASTOutputByteArray implements FASTOutput {
@@ -12,6 +13,7 @@ public final class FASTOutputByteArray implements FASTOutput {
 	public final byte[] buffer;
 	public int position;
 	private DataTransfer dataTransfer;
+	private PrimitiveWriter writer;
 		
 	
 	public FASTOutputByteArray(byte[] buffer) {
@@ -30,19 +32,20 @@ public final class FASTOutputByteArray implements FASTOutput {
 	@Override
 	public void init(DataTransfer dataTransfer) {
 		this.dataTransfer = dataTransfer;
+		this.writer = dataTransfer.writer;
 	}
 
 	@Override
 	public void flush() {
 		
-		int size = dataTransfer.nextBlockSize();
+		int size = PrimitiveWriter.nextBlockSize(writer);
 		while (size>0) {
-			System.arraycopy(dataTransfer.rawBuffer(), 
-			         		 dataTransfer.nextOffset(), 
+			System.arraycopy(writer.buffer, 
+			         		 PrimitiveWriter.nextOffset(writer), 
 			         		 buffer, position, size);
 			
 			position+=size;
-			size = dataTransfer.nextBlockSize();
+			size = PrimitiveWriter.nextBlockSize(writer);
 		}
 	}
 

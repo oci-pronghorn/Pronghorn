@@ -617,6 +617,8 @@ public class TemplateLoaderTest {
         writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, true);
         dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
         
+        boolean concurrent = false; //when set true this is not realistic use case but it is a nice test point.
+                
         iter = count;
         while (--iter >= 0) {
 
@@ -627,24 +629,41 @@ public class TemplateLoaderTest {
             
             final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1); 
 
-          
-            
-            //Pre-populate the ring buffer to only measure the write time.
-            final AtomicBoolean isAlive = reactor.start(executor, reader);
-            while (isAlive.get()) {                
-            }
             
             //TODO: B,  build a test that uses the ring buffer to move integers from the decoder to the encoder ring buffers (separate) this is much more in keeping with how it will be used. 
             //note this test is never something that represents a normal use case but it is good for testing the encoding only time.
             //      
             
-            double start = System.nanoTime();            
+          
             
-            while (FASTRingBuffer.moveNext(queue)) {
+            //Pre-populate the ring buffer to only measure the write time.
+            final AtomicBoolean isAlive = reactor.start(executor, reader);
+            double start;
+            
+            if (concurrent) {
+                start = System.nanoTime(); 
+                while (isAlive.get()) {
+                    while (FASTRingBuffer.moveNext(queue)) {
+                        dynamicWriter.write();  
+                    }   
+                }
+                while (FASTRingBuffer.moveNext(queue)) {
                     dynamicWriter.write();  
-            } 
+                }
+                
+            } else {
+                //wait until everything is decoded  
+            
+                while (isAlive.get()) {                
+                }
+                //now start the timer
+                start = System.nanoTime();            
+                
+                while (FASTRingBuffer.moveNext(queue)) {
+                        dynamicWriter.write();  
+                } 
+            }
             double duration = System.nanoTime() - start;
-
             // Only shut down after is alive is finished.
             executor.shutdown();
             
@@ -663,7 +682,7 @@ public class TemplateLoaderTest {
                 int mbps = (int) ((1000l * totalTestBytes * 8l) / ns);
 
                 System.err.println("Duration:" + ns + "ns " + " " + mmsgPerSec + "MM/s " + " " + nsPerByte + "nspB "
-                        + " " + mbps + "mbps " + " Bytes:" + totalTestBytes + " Messages:" + msgs + " Groups:" + grps); // Phrases/Clauses
+                        + " " + mbps + "mbps " + " Bytes:" + totalTestBytes + " Messages:" + msgs + " Groups:" + grps +" "+(concurrent?"concurrent":"sequential")); // Phrases/Clauses
             }
 
             // //////
@@ -680,25 +699,6 @@ public class TemplateLoaderTest {
             dynamicWriter.reset(true);
 
         }
-
-    }
-
-    private String hex(int x) {
-        String t = Integer.toHexString(0xFF & x);
-        if (t.length() == 1) {
-            return '0' + t;
-        } else {
-            return t;
-        }
-    }
-
-    private String bin(int x) {
-        String t = Integer.toBinaryString(0xFF & x);
-        while (t.length() < 8) {
-            t = '0' + t;
-        }
-
-        return t.substring(t.length() - 8);
 
     }
 
@@ -720,31 +720,7 @@ public class TemplateLoaderTest {
         return fileData;
     }
     
-    
-
-//    private String hexString(byte[] targetBuffer) {
-//        StringBuilder builder = new StringBuilder();
-//
-//        for (byte b : targetBuffer) {
-//
-//            String tmp = Integer.toHexString(0xFF & b);
-//            builder.append(tmp.substring(Math.max(0, tmp.length() - 2))).append(" ");
-//
-//        }
-//        return builder.toString();
-//    }
-
-//    private String binString(byte[] targetBuffer) {
-//        StringBuilder builder = new StringBuilder();
-//
-//        for (byte b : targetBuffer) {
-//
-//            String tmp = Integer.toBinaryString(0xFF & b);
-//            builder.append(tmp.substring(Math.max(0, tmp.length() - 8))).append(" ");
-//
-//        }
-//        return builder.toString();
-//    }
+  
 
     public static byte[] buildRawCatalogData(ClientConfig clientConfig) {
         //this example uses the preamble feature

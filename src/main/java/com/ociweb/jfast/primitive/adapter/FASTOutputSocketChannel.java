@@ -12,6 +12,7 @@ import java.nio.channels.WritableByteChannel;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
 
 public class FASTOutputSocketChannel implements FASTOutput {
 
@@ -27,7 +28,7 @@ public class FASTOutputSocketChannel implements FASTOutput {
 
 	@Override
 	public void init(DataTransfer dataTransfer) {
-		this.writerBuffer = dataTransfer.wrap();
+		this.writerBuffer = dataTransfer.wrappedByteBuffer;
 		this.dataTransfer = dataTransfer;
 	}
 
@@ -35,17 +36,17 @@ public class FASTOutputSocketChannel implements FASTOutput {
 	public void flush() {
 
 		try {
-			int size = dataTransfer.nextBlockSize();
+			int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 			while (size>0) {
 				
-				int offset = dataTransfer.nextOffset(); //must only call once per iteration
+				int offset = PrimitiveWriter.nextOffset(dataTransfer.writer); //must only call once per iteration
 				writerBuffer.clear();
 				writerBuffer.position(offset);
 				writerBuffer.limit(offset+size);
 				
 				channel.write(writerBuffer);
 				
-				size = dataTransfer.nextBlockSize();
+				size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 				
 			}
 		} catch (IOException e) {

@@ -170,20 +170,21 @@ public final class FASTRingBuffer {
         
     }
 
+    ///TODO: B, add optional groups to this implementation
+
     private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         ringBufferConsumer.setNewMessage(false);
-        int fragStep = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.getCursor()]; //script jump 
-        ringBufferConsumer.setCursor(ringBufferConsumer.getCursor() + fragStep);
+        int fragStep = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor]; //script jump 
+        ringBufferConsumer.cursor = (ringBufferConsumer.cursor + fragStep);
 
-        ///TODO: B, add optional groups to this implementation
         
         //////////////
         ////Never call these when we jump back for loop
         //////////////
         if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {
             //detecting end of message
-            int token = ringBufferConsumer.from.tokens[ringBufferConsumer.getCursor()];
-            if ((ringBufferConsumer.getCursor()>=ringBufferConsumer.from.tokensLen) ||
+            int token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor];
+            if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
                     (TokenBuilder.extractType(token)==TypeMask.Group &&
                     0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
                     0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
@@ -198,7 +199,7 @@ public final class FASTRingBuffer {
 
     private static boolean checkForContent(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         //after alignment with front of fragment, may be zero because we need to find the next message?
-        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
+        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
         ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
@@ -245,21 +246,21 @@ public final class FASTRingBuffer {
         ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBuffer.preambleInts)); //jumps over preamble to find templateId
         
         //start new message, can not be seq or optional group or end of message.
-        ringBufferConsumer.setCursor(ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
+        ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
         ringBufferConsumer.setNewMessage(true);
         
         //////
-        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.getCursor()]);//save the size of this new fragment we are about to read
+        ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
         return true;
        // return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
     
     //only called after moving forward.
     private static boolean sequenceLengthDetector(FASTRingBuffer ringBuffer, int jumpSize, FASTRingBufferConsumer consumerData) {
-        if(consumerData.getCursor()==0) {
+        if(0==consumerData.cursor) {
             return false;
         }
-        int endingToken = consumerData.from.tokens[consumerData.getCursor()-1];
+        int endingToken = consumerData.from.tokens[consumerData.cursor-1];
         
         //if last token of last fragment was length then begin new sequence
         int type = TokenBuilder.extractType(endingToken);
@@ -267,13 +268,13 @@ public final class FASTRingBuffer {
             int seqLength = FASTRingBufferReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
             if (seqLength == 0) {
 //                int jump = (TokenBuilder.MAX_INSTANCE&from.tokens[cursor-jumpSize])+2;
-                int fragJump = consumerData.from.fragScriptSize[consumerData.getCursor()+1]; //script jump  //TODO: not sure this is right whenthey are nested?
+                int fragJump = consumerData.from.fragScriptSize[consumerData.cursor+1]; //script jump  //TODO: not sure this is right whenthey are nested?
 //                System.err.println(jump+" vs "+fragJump);
          //       System.err.println("******************** jump over seq");
                 //TODO: B, need to build a test case, this does not appear in the current test data.
                 //do nothing and jump over the sequence
                 //there is no data in the ring buffer so do not adjust position
-                consumerData.setCursor(consumerData.getCursor() + (fragJump&JUMP_MASK));
+                consumerData.cursor = (consumerData.cursor + (fragJump&JUMP_MASK));
                 //done so move to the next item
                 
                 return true;
@@ -295,7 +296,7 @@ public final class FASTRingBuffer {
             //check top of the stack
             if (--consumerData.getSeqStack()[consumerData.getSeqStackHead()]>0) {
                 int jump = (TokenBuilder.MAX_INSTANCE&endingToken)+1;
-               consumerData.setCursor(consumerData.getCursor() - jump);
+               consumerData.cursor = (consumerData.cursor - jump);
                return false;
             } else {
                 //done, already positioned to continue
@@ -411,8 +412,8 @@ public final class FASTRingBuffer {
     // WARNING: consumer of these may need to loop around end of buffer !!
     // these are needed for fast direct READ FROM here
 
-    public static int readRingByteLen(int fieldPos, FASTRingBuffer rb) {
-        return rb.buffer[rb.mask & (int)(rb.workingTailPos.value + fieldPos + 1)];// second int is always the length
+    public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
+        return rbB[rbMask & (int)(rbPos.value + fieldPos + 1)];// second int is always the length
     }
     
     public static int readRingBytePosition(int rawPos) {
@@ -420,11 +421,11 @@ public final class FASTRingBuffer {
     }    
 
     public static byte[] readRingByteBuffers(int rawPos, FASTRingBuffer rbRingBuffer) {
-        return rbRingBuffer.bufferLookup[1&(rawPos>>31)];
+        return rbRingBuffer.bufferLookup[rawPos>>>31];
     }
 
-    public static int readRingByteRawPos(int fieldPos, FASTRingBuffer rbRingBuffer) {
-        return rbRingBuffer.buffer[(int)(rbRingBuffer.mask & (rbRingBuffer.workingTailPos.value + fieldPos))];
+    public static int readRingByteRawPos(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
+        return rbB[(int)(rbMask & (rbPos.value + fieldPos))];
     }
     
 
@@ -442,7 +443,7 @@ public final class FASTRingBuffer {
     }
 
     public int fragmentSteps() {
-        return from.fragScriptSize[consumerData.getCursor()];
+        return from.fragScriptSize[consumerData.cursor];
     }
 
     public static long releaseRecords(final int granularity, AtomicLong hp, PaddedLong wrkHdPos) {

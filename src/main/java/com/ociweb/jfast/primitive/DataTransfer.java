@@ -8,28 +8,12 @@ import java.nio.ByteBuffer;
 
 public final class DataTransfer {
 
-	private ByteBuffer wrappedByteBuffer;
-	private PrimitiveWriter writer;
+	public final ByteBuffer wrappedByteBuffer;
+	public final PrimitiveWriter writer;
 		
 	public DataTransfer(PrimitiveWriter writer) {
 		this.writer = writer;
 		this.wrappedByteBuffer = ByteBuffer.wrap(writer.buffer);
-	}
-
-	public ByteBuffer wrap() {
-		return wrappedByteBuffer;
-	}
-	
-	public byte[] rawBuffer() {
-		return writer.buffer;
-	}
-	
-	public int nextBlockSize() {
-		return PrimitiveWriter.nextBlockSize(writer);
-	}
-	
-	public int nextOffset() {
-		return PrimitiveWriter.nextOffset(writer);
 	}
 	
 }

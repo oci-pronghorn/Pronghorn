@@ -30,9 +30,9 @@ public class FASTRingBufferTest {
         FASTRingBuffer.unBlockFragment(rb.headPos, rb.workingHeadPos);
                 
         //read one integer back
-        assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb)));
+        assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb.buffer, rb.mask, rb.workingTailPos)));
         // constant from heap or dynamic from char ringBuffer
-        int rawPos = FASTRingBuffer.readRingByteRawPos(1,rb);                     
+        int rawPos = FASTRingBuffer.readRingByteRawPos(1, rb.buffer, rb.mask, rb.workingTailPos);                     
         
         //read back the array
         byte[] data = FASTRingBuffer.readRingByteBuffers(rawPos, rb);
@@ -44,7 +44,7 @@ public class FASTRingBufferTest {
         
         //assertEquals(source,data);
         
-        assertEquals(source.length, rb.readRingByteLen(1,rb));
+        assertEquals(source.length, FASTRingBuffer.readRingByteLen(1,rb.buffer,rb.mask,rb.workingTailPos));
                         
         
     }

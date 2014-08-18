@@ -169,9 +169,9 @@ public class GeneratorUtils {
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
-            builder.append("setActiveScriptCursor(rb.consumerData.getCursor());\n");        
+            builder.append("setActiveScriptCursor(rb.consumerData.cursor);\n");        
             builder.append("if (rb.consumerData.isNewMessage()) {\n");                
-            builder.append("    beginMessage(writer, rb, this);\n");
+            builder.append("    beginMessage(writer, rb.buffer, rb.mask, rb.workingTailPos, this);\n");
             builder.append("}\n"); 
 
         }
@@ -641,7 +641,7 @@ public class GeneratorUtils {
                               
                 }  
             }
-            assert(!template.contains("PrimitiveReader.readPMapBit")) : "check for exact match of arguments.";
+          //  assert(!template.contains("PrimitiveReader.readPMapBit")) : "check for exact match of arguments.";
             
             //For writer
             //unlike reader there will be two writers 1 and 0 so the counting will be more difficult.
@@ -675,7 +675,7 @@ public class GeneratorUtils {
                               
                 }  
             }
-            assert(!template.contains("PrimitiveWriter.writePMapBit")) : "check for exact match of arguments.";
+         //   assert(!template.contains("PrimitiveWriter.writePMapBit")) : "check for exact match of arguments.";
             
             
             
