@@ -25,9 +25,9 @@ public final class PrimitiveWriter {
     // TODO: X, the write to output is not implemented right it must send one
     // giant block when possible
     // TODO: X, we should have min and max block size? this may cover all cases.
-    private static final int BLOCK_SIZE = 256;//256;//512;// 4096;//128;// in bytes
+    private static final int BLOCK_SIZE = 256;// in bytes
 
-    private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE * 3) + (BLOCK_SIZE >> 1);
+ //   private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE * 3) + (BLOCK_SIZE >> 1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; // top 4 are bit pos,
                                                        // bottom 28 are byte pos
@@ -66,15 +66,17 @@ public final class PrimitiveWriter {
     private int nextBlockOffset = -1; // position to begin copy data from
     private int pendingPosition = 0; // new position after the read
 
-    private boolean minimizeFlush = false; //TODO: B, resolve bug when this is set to true
+    private final int mustFlush;
     
     public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 
         // NOTE: POS_POS_MASK can be shortened to only match the length of
         // buffer. but then buffer always must be a power of two.
 
-        if (initBufferSize < BLOCK_SIZE_LAZY * 2) {
-            initBufferSize = BLOCK_SIZE_LAZY * 2;
+        int largestMessageSize = BLOCK_SIZE<<2; //hack must compute from the template config
+        
+        if (initBufferSize < largestMessageSize * 2) {
+            initBufferSize = largestMessageSize * 2;
         }
 
         this.buffer = new byte[initBufferSize];
@@ -84,7 +86,12 @@ public final class PrimitiveWriter {
         this.safetyStackPosPos = new long[maxGroupCount];
 
         this.output = output;
-        this.flushSkipsSize = maxGroupCount * 2;
+        
+        //NOTE: for high latency large throughput this must be as big as every group that can fit into initBufferSize
+        //TODO: B, optimize this later by getting the smallest group size from template config and passing it in 
+        this.flushSkipsSize = initBufferSize;//HACK for now assuming average message is no more than 1 bytes
+        this.mustFlush = initBufferSize - largestMessageSize;//HACK must flush after this point TODO: B, need to compute from template config
+        
         // this may grow very large, to fields per group
         this.flushSkips = new int[flushSkipsSize];
 
@@ -878,14 +885,16 @@ public final class PrimitiveWriter {
         } 
 
         // ensure low-latency for groups, or
-        // if we can reset the safety stack and we have one block ready go ahead
-        // and flush
-        if (!writer.minimizeFlush) { //TODO: this maximizes bandwith usage and helps find bugs earlier
-            if (writer.minimizeLatency != 0 ||
-                (0 == writer.safetyStackDepth && (writer.limit - writer.position) > (BLOCK_SIZE_LAZY))) { 
-                writer.output.flush();
-            }
-        } 
+        // if reset the safety stack and we have one block ready go ahead and flush
+        
+        //NOTE: to only flush at the end of full messages use  0 == writer.safetyStackDepth 
+        //      however for low latency we flush after every fragment and 
+        //      for high throughput we wait until the buffer is filled to mustFlush
+        
+        if (writer.minimizeLatency != 0 || writer.limit > writer.mustFlush ) { 
+            writer.output.flush();
+        }       
+        
 
     }
 

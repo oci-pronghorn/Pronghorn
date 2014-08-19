@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
@@ -522,7 +523,7 @@ public class TemplateLoaderTest {
         // FASTInputByteBuffer fastInput =
         // buildInputForTestingByteBuffer(sourceDataFile);
 
-        PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
+        PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);
         
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
         
@@ -539,15 +540,12 @@ public class TemplateLoaderTest {
         FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
         
                
-        // TODO: Z, force this error and add friendly message, when minimize
-        // latency set to false these need to be much bigger?
-        int writeBuffer = 2048;
         
         int maxGroupCount = catalog.getScriptTokens().length; //overkill but its fine for testing. 
-        // NOTE: may need to be VERY large if minimize
-        // latency is turned off!!
-        
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+
+        int writeBuffer = 16384;
+        boolean minimizeLatency = false;
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, minimizeLatency);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
@@ -614,7 +612,7 @@ public class TemplateLoaderTest {
         //In the warm up we checked the writes for accuracy, here we are only going for speed
         //so the FASTOutput instance is changed to one that only writes.
         FASTOutputByteArray fastOutput2 = new FASTOutputByteArray(testBytesData);
-        writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, true);
+        writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, minimizeLatency);
         dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
         
         boolean concurrent = false; //when set true this is not realistic use case but it is a nice test point.
