@@ -25,7 +25,9 @@ public class GeneratorUtils {
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
-    public final static boolean WRITE_CONST = true; //TODO: A, turn off when rest of code supports not sending constants. Must fix unit tests and encoder.
+    
+    //TODO: A, confirm this is a good or bad feature.
+    public final static boolean WRITE_CONST = true; 
 
     
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
@@ -93,7 +95,7 @@ public class GeneratorUtils {
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
 
-    //TODO: A, more spark research. horton works vs cloudara resarch
+    //TODO: D, do more spark research
     
     
     //Called only once for generating full source file

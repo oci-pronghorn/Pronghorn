@@ -26,19 +26,21 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         LocalHeap.copy(source,target,byteHeap);
     }
 
-    protected void genWritePreamble(int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) { //TODO: A, change from ringBuffer into array details.
-
-        int i = 0;
-        int s = dispatch.preambleData.length;
-        int p = fieldPos;
-        while (i < s) {
-                        
-            int d = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, p);;
-            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 0));
-            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 8));
-            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 16));
-            dispatch.preambleData[i++] = (byte) (0xFF & (d >>> 24));
-            p++;
+    protected void genWritePreamble(int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
+        {
+            int i = 0;
+            byte[] preambleData = dispatch.preambleData;
+            int s = preambleData.length;
+            int p = fieldPos;
+            while (i < s) {
+                            
+                int d = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, p);;
+                preambleData[i++] = (byte) (0xFF & (d >>> 0));
+                preambleData[i++] = (byte) (0xFF & (d >>> 8));
+                preambleData[i++] = (byte) (0xFF & (d >>> 16));
+                preambleData[i++] = (byte) (0xFF & (d >>> 24));
+                p++;
+            }
         }
         PrimitiveWriter.writeByteArrayData(dispatch.preambleData, 0, dispatch.preambleData.length, writer);
     }
@@ -569,7 +571,6 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    //TODO: adjust this. int[] rbB, int rbMask, PaddedLong rbPos
     protected void genWriteIntegerUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         PrimitiveWriter.writeIntegerUnsigned(rIntDictionary[target] = FASTRingBufferReader.readInt(rbB, rbMask, rbPos, fieldPos), writer);
     }

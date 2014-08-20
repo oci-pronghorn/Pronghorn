@@ -67,7 +67,7 @@ public final class FASTRingBuffer {
     final byte[] constByteBuffer;
     final byte[][] bufferLookup;
 
-    //TODO: A, use stack of fragment start offsets for each fragment until full message is completed.
+    //TODO: A, X use stack of fragment start offsets for each fragment until full message is completed.
     //TODO: B, first offset 0 points to the constants after the ring buffer.
     
     //Need to know when the new template starts
@@ -75,7 +75,7 @@ public final class FASTRingBuffer {
     public FieldReferenceOffsetManager from;
     int[] templateStartIdx;
     
-    int preambleInts = 1; //TODO: A, set on construction.
+    int preambleInts = 1; //TODO: A, X set on construction.
 
            
     // end of moveNextFields
@@ -139,10 +139,6 @@ public final class FASTRingBuffer {
         
 
     }
-   
-
-    //TODO: A, calls to moveNext should also record the ring buffer positions and times.
-    //must record the time to loop the queue.
     
     public static boolean moveNext(FASTRingBuffer ringBuffer) { //TODO: rename to canMoveNext?
         FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; 
@@ -225,11 +221,12 @@ public final class FASTRingBuffer {
         //if we can not start to read the next message because it does not have the template id yet
         //then fail fast and do not move the tailPos yet until we know it can be read        
         long needStop = cashWorkingTailPos + 3; 
-        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  //TODO: A, Because documents come whole this is probably the only check required.
+        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
                 ringBufferConsumer.setMessageId(-1);
-              return false; //TODO: A, the inner byte ring buffer also must be checked to ensure its not overwitten, how is this ensured?
+              return false; 
+              //TODO: A, X the inner byte ring buffer also must be checked to ensure it's stopping in template code
             }
         }
               

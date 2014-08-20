@@ -50,7 +50,7 @@ public class Test {
         
         //this example uses the preamble feature
         //large value for bandwidth, small for latency
-        ClientConfig clientConfig = new ClientConfig(20,22);//If first number is bumped up the second will have to be near it!! TODO: A, what is the ratio for prmary to data?
+        ClientConfig clientConfig = new ClientConfig(20,22);
         clientConfig.setPreableBytes((short)4);
         String templateSource = "/performance/example.xml";
         String dataSource = "/performance/complex30000.dat";
@@ -338,7 +338,7 @@ public class Test {
             IDX1_MatchEventIndicator = from.lookupIDX(templateId, "MatchEventIndicator");
             
             
-            //TODO: A, this is the beginning of a unit test.
+            //TODO: B, this is the beginning of a unit test.
             validate("ApplVerID", 2, IDX1_AppVerId);
             validate("MessageType", 4, IDX1_MessageType);
             validate("SenderCompID", 6, IDX1_SenderCompID);
@@ -512,7 +512,7 @@ public class Test {
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);
-                       readASCII(rb, 0, temp, 0);  //TODO: A, need add checking for the byte ring buffer overlap.
+                       readASCII(rb, 0, temp, 0);  //TODO: A, X need add checking for the byte ring buffer overlap.
                        
                        long orderQty = readLong(rb, 2);
                        int side = readInt(rb, 4);

@@ -271,7 +271,7 @@ public final class PrimitiveReader {
     }
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
-    public static byte readPMapBit(PrimitiveReader reader) { //TODO: A, confirm every instance of this call can be replaced by compiler
+    public static byte readPMapBit(PrimitiveReader reader) { 
             if (reader.pmapIdxBitBlock >= 0 ) {    
                 // Frequent, 6 out of every 7 plus the last bit block 
                     int shft = reader.pmapIdxBitBlock>>16;

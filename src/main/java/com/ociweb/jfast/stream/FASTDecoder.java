@@ -78,8 +78,8 @@ public abstract class FASTDecoder{
     public void reset(DictionaryFactory dictionaryFactory) {
                 
         // clear all previous values to un-set
-        dictionaryFactory.reset(rIntDictionary); //TODO: A, need generator for this
-        dictionaryFactory.reset(rLongDictionary); //TODO: A, need generator for this
+        dictionaryFactory.reset(rIntDictionary); //TODO: A, X  need generator for accumulated reset message
+        dictionaryFactory.reset(rLongDictionary); 
                 
         
         if (null!=byteHeap) {

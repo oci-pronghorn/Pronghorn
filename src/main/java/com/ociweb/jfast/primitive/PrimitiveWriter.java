@@ -753,7 +753,7 @@ public final class PrimitiveWriter {
             writeIntegerUnsignedRollover(value, writer);
             return;
         }
-        //TODO: A, add fast path for the entire fragment, eg maximum size not needing flush.
+        //TODO: A, * add fast path for the entire fragment, eg maximum size not needing flush.
         
         // assert(value>=0) :
         // "Java limitation must code this case special to reconstruct unsigned on the wire";
@@ -917,7 +917,8 @@ public final class PrimitiveWriter {
 
         // save this byte and if it was not a zero save that fact as well
         // //NOTE: pos pos will not rollover so can inc
-        if (0 != (writer.buffer[idx] = (byte) (writer.pMapByteAccum | bit))) {  //TODO: A,  the logic inside this only needs to be done for the last call??, no conditioal needd when bit is 1
+        //TODO: A, * no conditioal needd when bit is 1
+        if (0 != (writer.buffer[idx] = (byte) (writer.pMapByteAccum | bit))) {  
             long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
             // set the last known non zero bit so we can avoid scanning for it.
             writer.flushSkips[(int) (stackFrame >> 32)] =  idx+1;//(int) (POS_POS_MASK & stackFrame);
@@ -980,9 +981,11 @@ public final class PrimitiveWriter {
             // if it was not zero and was too long flush
             writer.output.flush();
         }
-        while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value[offset++];
-        }
+        int len = length-1;
+        System.arraycopy(value, offset, writer.buffer, writer.limit, len);
+        writer.limit+=len;
+        offset+=len;
+        
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
     }
     
@@ -995,9 +998,11 @@ public final class PrimitiveWriter {
             // if it was not zero and was too long flush
             writer.output.flush();
         }
+        
         while (--length > 0) {
             writer.buffer[writer.limit++] = (byte) value[mask & offset++];
         }
+        
         writer.buffer[writer.limit++] = (byte) (0x80 | value[mask & offset]);
     }
 

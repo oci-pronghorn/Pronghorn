@@ -631,6 +631,8 @@ public class TemplateLoaderTest {
             //TODO: B,  build a test that uses the ring buffer to move integers from the decoder to the encoder ring buffers (separate) this is much more in keeping with how it will be used. 
             //note this test is never something that represents a normal use case but it is good for testing the encoding only time.
             //      
+            //TODO: X, allow decoding in parallel by n cores into n ring buffers but let each one use different techniques.  The first one done is the value used. Would support runtime optimizations.
+            
             
           
             
