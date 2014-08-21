@@ -73,9 +73,15 @@ public final class FASTRingBuffer {
     //Need to know when the new template starts
     //each fragment size must be known and looked up
     public FieldReferenceOffsetManager from;
-    int[] templateStartIdx;
     
-    int preambleInts = 1; //TODO: A, X set on construction.
+    // 0 - constants?
+    // 1 - start of fragment
+    // 2 - sequence fragment
+    
+    int[] templateStartIdx; //TODO: A, X must set these values as move next is called
+    int templateStartIdxHead=0;
+    
+    private int preambleInts;
 
            
     // end of moveNextFields
@@ -85,13 +91,13 @@ public final class FASTRingBuffer {
     
     
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx) {
+    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx, int preambleInts) {
         assert (primaryBits >= 1);       
                 
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
-        
+        this.preambleInts = preambleInts;
         this.buffer = new int[maxSize];      
         
 
@@ -119,6 +125,7 @@ public final class FASTRingBuffer {
         
         this.from = from;
         this.templateStartIdx = templateStartIdx;
+                
         this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
                                                         -1, 0, new int[10], -1, -1, from, mask);
     }
@@ -170,7 +177,8 @@ public final class FASTRingBuffer {
 
     private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
         ringBufferConsumer.setNewMessage(false);
-        int fragStep = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor]; //script jump 
+        int lastCursor = ringBufferConsumer.cursor;
+        int fragStep = ringBufferConsumer.from.fragScriptSize[lastCursor]; //script jump 
         ringBufferConsumer.cursor = (ringBufferConsumer.cursor + fragStep);
 
         
@@ -189,7 +197,16 @@ public final class FASTRingBuffer {
 
             }
         }
-            
+        
+        //save the index into these fragments so the reader will be able to find them.
+        //if this fragment is not the same as the last must increment on the stack
+//        if (lastCursor != ringBufferConsumer.cursor) {
+//            ringBuffer.templateStartIdx[++ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
+//        } else {
+//            ringBuffer.templateStartIdx[ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
+//        }
+        
+        
         return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
 
@@ -234,6 +251,9 @@ public final class FASTRingBuffer {
         //also need to keep messages per second data
         FASTRingBufferConsumer.recordRates(ringBufferConsumer, needStop);
         
+        //Start new stack of fragments because this is a new message
+        ringBuffer.templateStartIdxHead = 0;
+        ringBuffer.templateStartIdx[ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
         
         
         //Now beginning a new message so release the previous one from the ring buffer

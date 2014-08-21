@@ -267,7 +267,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null, 1);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;

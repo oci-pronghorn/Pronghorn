@@ -71,7 +71,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null, 1);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,

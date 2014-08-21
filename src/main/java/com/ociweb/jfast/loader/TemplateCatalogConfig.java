@@ -156,7 +156,7 @@ public class TemplateCatalogConfig {
         //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
         //Move this method into RingBuffers as satic?
         
-        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, from, templateStartIdx);
+        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,dFactory, from, templateStartIdx, 1);
         int i = scriptLength;
         while (--i>=0) {
             buffers[i]=rb;            

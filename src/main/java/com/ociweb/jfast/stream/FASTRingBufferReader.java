@@ -15,7 +15,8 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 public class FASTRingBufferReader {//TODO: B, build another static reader that does auto convert to the requested type.
     
     
-    public final static int OFF_MASK = 0xFFFFFFF;
+    public final static int OFF_MASK  =   0xFFFFFFF;
+    public final static int BASE_SHFT =   28;
     
     static double[] powd = new double[] {1.0E-64,1.0E-63,1.0E-62,1.0E-61,1.0E-60,1.0E-59,1.0E-58,1.0E-57,1.0E-56,1.0E-55,1.0E-54,1.0E-53,1.0E-52,1.0E-51,1.0E-50,1.0E-49,1.0E-48,1.0E-47,1.0E-46,
         1.0E-45,1.0E-44,1.0E-43,1.0E-42,1.0E-41,1.0E-40,1.0E-39,1.0E-38,1.0E-37,1.0E-36,1.0E-35,1.0E-34,1.0E-33,1.0E-32,1.0E-31,1.0E-30,1.0E-29,1.0E-28,1.0E-27,1.0E-26,1.0E-25,1.0E-24,1.0E-23,1.0E-22,
@@ -31,7 +32,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     
     
     public static int readInt(int[] buffer, int mask, PaddedLong pos, int idx) {
-        return buffer[mask & (int)(pos.value + (OFF_MASK&idx))];
+          return buffer[mask & (int)(pos.value + (OFF_MASK&idx))];
     }
 
     public static int readInt(FASTRingBuffer ring, int idx) {
