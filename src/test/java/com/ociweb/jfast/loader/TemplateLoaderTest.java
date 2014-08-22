@@ -311,7 +311,7 @@ public class TemplateLoaderTest {
             // //////
             //fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
+            FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
             
    //         rb.tailPos.lazySet(rb.workingTailPos.value);
 
@@ -414,10 +414,10 @@ public class TemplateLoaderTest {
             grps = 0;
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
-            //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
             dictionaryFactory.reset(writerDispatch.rIntDictionary);
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
+            
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (FASTRingBuffer.moveNext(queue)) {
@@ -440,7 +440,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
+            FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
 
             PrimitiveWriter.flush(writer);
             wroteSize = Math.max(wroteSize, PrimitiveWriter.totalWritten(writer));
@@ -490,7 +490,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
+            FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
 
             fastOutput.reset();
             PrimitiveWriter.reset(writer);
@@ -570,10 +570,10 @@ public class TemplateLoaderTest {
             grps = 0;
             DictionaryFactory dictionaryFactory = writerDispatch.dictionaryFactory;
             
-            //TODO: A, writer needs field access api? but not here because the fields are already in the right place in the ring buffer. Need to show ring buffer copy.
             dictionaryFactory.reset(writerDispatch.rIntDictionary);
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
+            
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (FASTRingBuffer.moveNext(queue)) {
@@ -596,7 +596,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
+            FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
 
             PrimitiveWriter.flush(writer);
             wroteSize = Math.max(wroteSize, PrimitiveWriter.totalWritten(writer));
@@ -692,7 +692,7 @@ public class TemplateLoaderTest {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(catalog.dictionaryFactory());
+            FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
 
             fastOutput2.reset();
             PrimitiveWriter.reset(writer);

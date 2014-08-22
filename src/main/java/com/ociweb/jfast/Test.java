@@ -106,7 +106,7 @@ public class Test {
               }
 
               //reset the dictionary to run the test again.
-              readerDispatch.reset(catalog.dictionaryFactory());
+              FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
               try {
                 instr.close();
             } catch (IOException e) {

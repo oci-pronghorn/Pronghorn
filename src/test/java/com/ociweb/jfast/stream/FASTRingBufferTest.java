@@ -13,7 +13,7 @@ public class FASTRingBufferTest {
     @Test
     public void bytesWriteRead() {
         
-        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  null, null, 1);
+        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  null);
         
         byte[] source = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         
@@ -83,7 +83,7 @@ public class FASTRingBufferTest {
         byte primaryBits = 14;
         byte charBits = 7;
         
-        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  null, null, 1);
+        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  null);
         final int rbMask = rb.mask;
         final int[] rbB = rb.buffer;
 

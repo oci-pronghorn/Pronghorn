@@ -49,7 +49,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     public static final int INIT_VALUE_MASK = 0x80000000;
 
-    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null, null, 1);
+    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null);
     
     @AfterClass
     public static void cleanup() {

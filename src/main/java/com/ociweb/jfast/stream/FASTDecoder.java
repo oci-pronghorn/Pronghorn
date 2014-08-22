@@ -75,21 +75,22 @@ public abstract class FASTDecoder{
     }
     
     
-    public void reset(DictionaryFactory dictionaryFactory) {
-                
+    public static void reset(DictionaryFactory dictionaryFactory, FASTDecoder decoder) {
+        
         // clear all previous values to un-set
-        dictionaryFactory.reset(rIntDictionary); //TODO: A, X  need generator for accumulated reset message
-        dictionaryFactory.reset(rLongDictionary); 
+        dictionaryFactory.reset(decoder.rIntDictionary); 
+        dictionaryFactory.reset(decoder.rLongDictionary); 
                 
         
-        if (null!=byteHeap) {
-            LocalHeap.reset(byteHeap);
+        if (null!=decoder.byteHeap) {
+            LocalHeap.reset(decoder.byteHeap);
         }
-        sequenceCountStackHead = -1;
+        decoder.sequenceCountStackHead = -1;
         
-        RingBuffers.reset(ringBuffers);        
+        RingBuffers.reset(decoder.ringBuffers);        
 
     }
+    
 
     public abstract int decode(PrimitiveReader reader);
         

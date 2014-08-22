@@ -753,8 +753,6 @@ public final class PrimitiveWriter {
             writeIntegerUnsignedRollover(value, writer);
             return;
         }
-        //TODO: A, * add fast path for the entire fragment, eg maximum size not needing flush.
-        
         // assert(value>=0) :
         // "Java limitation must code this case special to reconstruct unsigned on the wire";
         if (value < 0x00000080) {
@@ -917,11 +915,9 @@ public final class PrimitiveWriter {
 
         // save this byte and if it was not a zero save that fact as well
         // //NOTE: pos pos will not rollover so can inc
-        //TODO: A, * no conditioal needd when bit is 1
-        if (0 != (writer.buffer[idx] = (byte) (writer.pMapByteAccum | bit))) {  
-            long stackFrame = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
+        if (0 != (writer.buffer[idx] = (byte) (writer.pMapByteAccum | bit))) {   //TODO: C, code gen can remove this conditional when bit==1
             // set the last known non zero bit so we can avoid scanning for it.
-            writer.flushSkips[(int) (stackFrame >> 32)] =  idx+1;//(int) (POS_POS_MASK & stackFrame);
+            writer.flushSkips[(int) ( writer.safetyStackPosPos[writer.safetyStackDepth - 1] >> 32)] =  idx+1;
         }
 
         writer.pMapByteAccum = 0;

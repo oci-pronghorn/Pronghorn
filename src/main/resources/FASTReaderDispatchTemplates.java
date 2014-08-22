@@ -89,7 +89,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 
     protected void genWritePreambleA(FASTDecoder dispatch) {
         {
-        FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
+        FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.preambleA);
         }
     }
@@ -1587,13 +1587,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx, defLen);
             } else {
-                int bytePos = rbRingBuffer.addBytePos;
+                int bytePos = rbRingBuffer.addBytePos.value;
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(byteBuffer,
                                                                     bytePos, 
                                                                     byteMask,
                                                                     reader);
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, bytePos, lenTemp);
-                rbRingBuffer.addBytePos = bytePos+lenTemp;                
+                rbRingBuffer.addBytePos.value = bytePos+lenTemp;                
             }
     }    
 //                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
@@ -1704,7 +1704,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
         
         if (length<0) {
-            FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addBytePos, length);
+            FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addBytePos.value, length);
             return;
         }
                 

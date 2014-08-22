@@ -18,6 +18,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.RingBuffers;
@@ -604,7 +605,7 @@ public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
-			staticReader.reset(dictionaryFactory); //reset message to clear the previous values
+			FASTDecoder.reset(dictionaryFactory, staticReader); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = intTestData.length;

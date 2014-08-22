@@ -287,4 +287,20 @@ public class DictionaryFactory {
         }
     }
 
+    public static byte[] initConstantByteArray(DictionaryFactory dcr) {
+        if (null!=dcr) {
+            LocalHeap byteHeap = dcr.byteDictionary();
+            if (null!=byteHeap) {
+                          
+                return LocalHeap.rawInitAccess(byteHeap);  
+                //System.err.println("constByteBufferLen:"+this.constByteBuffer.length);
+                
+            } else {
+                return null;
+            }
+        } else {
+            return null;
+        }
+    }
+
 }

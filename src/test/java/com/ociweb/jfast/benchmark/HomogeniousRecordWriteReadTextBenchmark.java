@@ -395,7 +395,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			input.reset(); //for testing reset bytes back to the beginning.
 			PrimitiveReader.reset(reader);//for testing clear any data found in reader 
 			
-			staticReader.reset(dictionaryFactory); //reset message to clear the previous values
+			FASTDecoder.reset(dictionaryFactory, staticReader); //reset message to clear the previous values
 			
 			staticReader.openGroup(groupToken, pmapSize, reader);
 			j = textTestData.length;
@@ -408,7 +408,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null, null, 1);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;

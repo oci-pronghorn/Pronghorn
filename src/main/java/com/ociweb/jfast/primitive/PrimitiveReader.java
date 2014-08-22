@@ -247,13 +247,15 @@ public final class PrimitiveReader {
     }
 
     private static int walkPMapLength(final int pmapMaxSize, int k, byte[] pmapStack, PrimitiveReader reader, byte[] buffer) {
-        if (reader.limit - reader.position >= pmapMaxSize) {
-            if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
-                if ((pmapStack[k++] = buffer[reader.position++]) >= 0) {
+        int rp = reader.position;
+        if (reader.limit - rp >= pmapMaxSize) {
+            if ((pmapStack[k++] = buffer[rp++]) >= 0) {
+                if ((pmapStack[k++] = buffer[rp++]) >= 0) {
                     do {
-                    } while ((pmapStack[k++] = buffer[reader.position++]) >= 0);
+                    } while ((pmapStack[k++] = buffer[rp++]) >= 0);
                 }
             }
+            reader.position = rp;
         } else {
             k = openPMapSlow(k,reader, buffer);
         }
@@ -312,9 +314,11 @@ public final class PrimitiveReader {
         return (v<0) ? a | (v & 0x7Fl) : readLongSignedTail((a | v) << 7,reader);
     }
     
-    public static long readLongSigned(PrimitiveReader reader) {        
-        if (reader.limit - reader.position >= 10) {// not near end so go fast.
-            byte v = reader.buffer[reader.position++];              
+    public static long readLongSigned(PrimitiveReader reader) {   
+        int rp = reader.position;
+        if (reader.limit - rp >= 10) {// not near end so go fast.
+            byte v = reader.buffer[rp];        
+            reader.position = rp+1;
             long accumulator = (~((long)(((v>>6)&1)-1)))&0xFFFFFFFFFFFFFF80l; 
             return (v < 0) ? accumulator |(v & 0x7F) : readLongSignedTail((accumulator | v) << 7,reader);
         }
@@ -418,8 +422,10 @@ public final class PrimitiveReader {
     }
 
     public static int readIntegerUnsigned(PrimitiveReader reader) {//Invoked 100's of millions of times, must be tight.
-        if (reader.limit - reader.position >= 5) {// not near end so go fast.
-            byte v = reader.buffer[reader.position++];
+        int rp = reader.position;
+        if (reader.limit - rp >= 5) {// not near end so go fast.
+            byte v = reader.buffer[rp];
+            reader.position = rp+1;
             return (v < 0) ? (v & 0x7F) : readIntegerUnsignedTail(v,reader);
         } else {
             return readIntegerUnsignedSlow(reader);
@@ -505,11 +511,12 @@ public final class PrimitiveReader {
 
     public static final int readTextASCIIIntoRing(byte[] target, int targetOffset, int mask, PrimitiveReader reader) {
 
-        if (reader.limit - reader.position > mask) {
-            byte v = reader.buffer[reader.position];
+        int rp = reader.position;
+        if (reader.limit - rp > mask) {
+            byte v = reader.buffer[rp];
             if (v < 0) {//single char
                 target[mask & targetOffset] = (byte) (0x7F & v);            
-                reader.position++;
+                reader.position=rp+1;
                 return 1;
             } else {
                 return (v==0) ? readTextASCIIZero(reader) : readTextASCIINormal(target, targetOffset, mask, reader, v);

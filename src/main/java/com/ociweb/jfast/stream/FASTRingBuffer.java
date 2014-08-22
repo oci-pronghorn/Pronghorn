@@ -1,17 +1,12 @@
 package com.ociweb.jfast.stream;
 
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.loader.DictionaryFactory;
 import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
-import com.ociweb.jfast.util.Profile;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -41,6 +36,10 @@ public final class FASTRingBuffer {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
     
+    public static class PaddedInt {
+        public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
+    }
+    
     public final int[] buffer;
     public final int mask;
     public final PaddedLong workingHeadPos = new PaddedLong();
@@ -61,7 +60,7 @@ public final class FASTRingBuffer {
     final int maxByteSize;
     public final int byteMask;
     public final byte[] byteBuffer;
-    public int addBytePos = 0;
+    public PaddedInt addBytePos = new PaddedInt();
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -78,12 +77,10 @@ public final class FASTRingBuffer {
     // 1 - start of fragment
     // 2 - sequence fragment
     
-    int[] templateStartIdx; //TODO: A, X must set these values as move next is called
-    int templateStartIdxHead=0;
     
-    private int preambleInts;
-
-           
+    int[] activeFragmentStack;
+    int   activeFragmentStackHead = 0;
+               
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
@@ -91,44 +88,35 @@ public final class FASTRingBuffer {
     
     
 
-    public FASTRingBuffer(byte primaryBits, byte charBits, DictionaryFactory dcr, FieldReferenceOffsetManager from, int[] templateStartIdx, int preambleInts) {
+    public FASTRingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
+        //constant data will never change and is populated externally.
+        this.constByteBuffer = byteConstants;
+        
         assert (primaryBits >= 1);       
                 
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
         this.mask = maxSize - 1;
-        this.preambleInts = preambleInts;
-        this.buffer = new int[maxSize];      
         
+        this.buffer = new int[maxSize];    
 
-        //constant data will never change and is populated externally.
-        if (null!=dcr) {
-            LocalHeap byteHeap = dcr.byteDictionary();
-            if (null!=byteHeap) {
-                          
-                this.constByteBuffer = LocalHeap.rawInitAccess(byteHeap);  
-                //System.err.println("constByteBufferLen:"+this.constByteBuffer.length);
-                
-            } else {
-                this.constByteBuffer = null;
-            }
-        } else {
-            this.constByteBuffer = null;
-        }
                         
         //single text and byte buffers because this is where the variable length data will go.
 
-        this.maxByteSize =  1 << charBits;
+        this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
         
         this.from = from;
-        this.templateStartIdx = templateStartIdx;
+        
+        this.activeFragmentStack = new int[null==from?0:from.maximumFragmentStackDepth];
                 
         this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
                                                         -1, 0, new int[10], -1, -1, from, mask);
     }
+
+    
 
     //TODO: B, must add way of selecting what field to skip writing for the consumer.
     
@@ -140,7 +128,7 @@ public final class FASTRingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); //System.err.println("reset()");
-        addBytePos = 0;
+        addBytePos.value = 0;
         
         FASTRingBufferConsumer.reset(consumerData);
         
@@ -189,7 +177,7 @@ public final class FASTRingBuffer {
             //detecting end of message
             int token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor];
             if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
-                    (TokenBuilder.extractType(token)==TypeMask.Group &&
+                    (((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
                     0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
                     0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 
@@ -200,11 +188,11 @@ public final class FASTRingBuffer {
         
         //save the index into these fragments so the reader will be able to find them.
         //if this fragment is not the same as the last must increment on the stack
-//        if (lastCursor != ringBufferConsumer.cursor) {
-//            ringBuffer.templateStartIdx[++ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
-//        } else {
-//            ringBuffer.templateStartIdx[ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
-//        }
+        if (lastCursor != ringBufferConsumer.cursor) {
+            ringBuffer.activeFragmentStack[++ringBuffer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
+        } else {
+            ringBuffer.activeFragmentStack[ringBuffer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
+        }
         
         
         return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
@@ -243,7 +231,6 @@ public final class FASTRingBuffer {
             if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
                 ringBufferConsumer.setMessageId(-1);
               return false; 
-              //TODO: A, X the inner byte ring buffer also must be checked to ensure it's stopping in template code
             }
         }
               
@@ -252,15 +239,15 @@ public final class FASTRingBuffer {
         FASTRingBufferConsumer.recordRates(ringBufferConsumer, needStop);
         
         //Start new stack of fragments because this is a new message
-        ringBuffer.templateStartIdxHead = 0;
-        ringBuffer.templateStartIdx[ringBuffer.templateStartIdxHead]= ringBuffer.mask&(int)cashWorkingTailPos;
+        ringBuffer.activeFragmentStackHead = 0;
+        ringBuffer.activeFragmentStack[ringBuffer.activeFragmentStackHead]= ringBuffer.mask&(int)cashWorkingTailPos;
         
         
         //Now beginning a new message so release the previous one from the ring buffer
         //This is the only safe place to do this and it must be done before we check for space needed by the next record.
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
-        ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBuffer.preambleInts)); //jumps over preamble to find templateId
+        ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
         
         //start new message, can not be seq or optional group or end of message.
         ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
@@ -280,7 +267,7 @@ public final class FASTRingBuffer {
         int endingToken = consumerData.from.tokens[consumerData.cursor-1];
         
         //if last token of last fragment was length then begin new sequence
-        int type = TokenBuilder.extractType(endingToken);
+        int type = (endingToken >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE;
         if (TypeMask.GroupLength == type) {
             int seqLength = FASTRingBufferReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
             if (seqLength == 0) {
@@ -350,18 +337,20 @@ public final class FASTRingBuffer {
 
     public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         //int rbMask, int[] rbB  PaddedLong rbPos
-        final int p = rbRingBuffer.addBytePos;
+        final int p = rbRingBuffer.addBytePos.value;
         if (sourceLen > 0) {
-            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
+            rbRingBuffer.addBytePos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
         addValue(rbB, rbMask, rbPos, p);
         addValue(rbB, rbMask, rbPos, sourceLen);
     }
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
-        final int p = rbRingBuffer.addBytePos;
+        final int p = rbRingBuffer.addBytePos.value;
         if (sourceLen > 0) {
-            rbRingBuffer.addBytePos = LocalHeap.copyToRingBuffer(source, sourceIdx, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, sourceLen);
+            int targetMask = rbRingBuffer.byteMask;
+            LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
+            rbRingBuffer.addBytePos.value = p + sourceLen;
         }
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);

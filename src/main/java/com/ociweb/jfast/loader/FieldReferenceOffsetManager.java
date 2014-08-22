@@ -21,6 +21,7 @@ public class FieldReferenceOffsetManager {
     public final int[] starts;
     public final int[] limits;
     public final String[] fieldNameScript;
+    public final int maximumFragmentStackDepth;
     
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
         
@@ -40,10 +41,13 @@ public class FieldReferenceOffsetManager {
             null == config.scriptTokens) {
             fragDataSize = null;
             fragScriptSize = null;
+            maximumFragmentStackDepth = 0;
         } else {
         
             fragDataSize  = new int[config.scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             fragScriptSize = new int[config.scriptTokens.length];
+            //TODO: D, could be optimized after the fragments are given the expected locations, for now this works fine.
+            maximumFragmentStackDepth = config.scriptTokens.length;
             
             buildFragScript(config);
         }
@@ -54,6 +58,7 @@ public class FieldReferenceOffsetManager {
         limits = config.getTemplateLimitIdx();
         
         fieldNameScript = config.fieldNameScript();
+        
         
     }
 

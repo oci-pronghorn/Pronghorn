@@ -20,7 +20,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null, 1);
+    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null);
     
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
@@ -692,55 +692,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         int token = fullScript[activeScriptCursor];
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
-        
-        //gather most common tokens together
-//        String key = TokenBuilder.tokenToString(token);
-//        key = key.substring(0, key.lastIndexOf('/'));
-//        
-//      //  System.err.println(key);
-//        if (!tokenCount.containsKey(key)) {
-//            tokenCount.put(key, new AtomicInteger(1));
-//        } else {
-//            tokenCount.get(key).incrementAndGet();
-//        }       
-//        System.err.println();
-//        String biggestKey = "";
-//        int biggestValue = Integer.MIN_VALUE;
-//        for (Entry<String, AtomicInteger> entry:tokenCount.entrySet()) {
-//            System.err.println(entry);
-//            
-////            if (entry.getValue().get() > biggestValue) {
-////                biggestValue = entry.getValue().get();
-////                biggestKey = entry.getKey();
-////            }
-//        }
-        
-     //  System.err.println(biggestValue+" "+biggestKey);
-//                Decimal:001100/Default:000011=2
-//                IntegerSignedOptional:000011/Delta:000100=2
-//                IntegerUnsignedOptional:000001/Default:000011=8 ***
-//                IntegerUnsigned:000000/Constant:000010=4 ***** NOTHING TO DO
-//                Group:010000/Open:Seq:PMap::001100=4
-//                LongUnsigned:000100/None:000000=2
-//                DecimalOptional:001101/Default:000011=2
-//                ASCIIOptional:001001/None:000000=2
-//                ASCII:001000/Constant:000010=16   ***** NOTHING TO DO
-//                Group:010000/Close:Seq:PMap::001101=4
-//                Length:010100/None:000000=4
-//                IntegerUnsigned:000000/None:000000=12   ***** DONE
-//                Group:010000/Open:DynTempl::000010=6  ****
-//                ASCII:001000/Copy:000001=2 //TODO: B, should copy also check bit flags for write?
-//                IntegerUnsignedOptional:000001/None:000000=2
-//                IntegerUnsigned:000000/Default:000011=2
-//                LongUnsignedOptional:000101/None:000000=2
-//                Dictionary:011000/Reset:000000=2
-//                IntegerUnsigned:000000/Copy:000001=6  *****
-//                IntegerUnsigned:000000/Increment:000101=2
-//                ASCIIOptional:001001/Default:000011=10  **** DONE
-//                IntegerUnsignedOptional:000001/Delta:000100=2  
-        
-        
-        
+               
         
     ///   System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
        
@@ -1275,7 +1227,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             // write.
 
             long absPos = PrimitiveWriter.totalWritten(writer) + PrimitiveWriter.bytesReadyToWrite(writer);
-            // TODO: Z, this position is never right because it is changed by
+            // NOTE:  this position is never right because it is changed by
             // the pmap length which gets trimmed.
 
             observer.tokenItem(absPos, token, cursor, value);

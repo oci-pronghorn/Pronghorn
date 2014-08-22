@@ -555,31 +555,17 @@ public class LocalHeap {
 
     // for ring buffer only where the length was already known
     public static int copyToRingBuffer(int idx, byte[] target, final int targetIdx, final int targetMask, LocalHeap localHeap) {//Invoked 100's of millions of times, must be tight.
-        // Does not support init values
-        assert (idx > 0);
-
         final int offset = idx << 2;
         final int pos = localHeap.tat[offset];
         final int len = localHeap.tat[offset + 1] - pos;
-        final byte[] source = localHeap.data;
 
-        return copyToRingBuffer(source, pos, target, targetIdx, targetMask, len);
+        copyToRingBuffer(target, targetIdx, targetMask, pos, len, localHeap.data);
+        return targetIdx + len;
     }
 
-    public static int copyToRingBuffer(final byte[] source, final int sourceIdx, byte[] target, final int targetIdx, final int targetMask, final int sourceLen) {
-        int tStart = targetIdx & targetMask;
-        if (1 == sourceLen) {
-            // simplification because 1 char can not loop around ring buffer.
-            target[tStart] = source[sourceIdx];
-        } else {
-            copyToRingBuffer(target, targetIdx, targetMask, sourceIdx, sourceLen, tStart, source);
-        }
-        return targetIdx + sourceLen;
-    }
-
-    private static void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos,
-            final int len, int tStart, byte[] data) {
+    public static void copyToRingBuffer(byte[] target, final int targetIdx, final int targetMask, final int pos, final int len, byte[] data) {
         int tStop = (targetIdx + len) & targetMask;
+        int tStart = targetIdx & targetMask;
         if (tStop > tStart) {
             System.arraycopy(data, pos, target, tStart, len);
         } else {

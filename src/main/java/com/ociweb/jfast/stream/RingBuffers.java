@@ -4,7 +4,7 @@ import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
 
 public class RingBuffers {
     
-    private FASTRingBuffer[] buffers;
+    public final FASTRingBuffer[] buffers;
     private FASTRingBuffer[] uniqueBuffers;
     
     

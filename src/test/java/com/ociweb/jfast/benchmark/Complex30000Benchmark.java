@@ -90,7 +90,7 @@ public class Complex30000Benchmark extends Benchmark {
 
             fastInput.reset();
             PrimitiveReader.reset(reader);
-            readerDispatch.reset(this.catalog.dictionaryFactory());
+            FASTDecoder.reset(this.catalog.dictionaryFactory(), readerDispatch);
 
         }
     }

@@ -5,7 +5,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 public class FASTRingBufferWriter {
 
     
-    //TODO: A, fill this out based on the work done in the writer
+    //TODO: A, X fill this out based on the work done in the writer,  Build Test example where this is used to write into ring buffer.
     
     public static void writeLong(int[] buffer, int mask, long pos, long value) {
         

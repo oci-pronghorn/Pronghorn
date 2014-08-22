@@ -21,6 +21,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.stream.BaseStreamingTest;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
@@ -255,7 +256,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             input.reset(); // for testing reset bytes back to the beginning.
             PrimitiveReader.reset(reader);// for testing clear any data found in reader
 
-            staticReader.reset(dictionaryFactory); // reset message to clear the previous values
+            FASTDecoder.reset(dictionaryFactory, staticReader); // reset message to clear the previous values
 
             staticReader.openGroup(groupToken, pmapSize, reader);
             j = intTestData.length;
@@ -267,7 +268,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null, null, 1);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;

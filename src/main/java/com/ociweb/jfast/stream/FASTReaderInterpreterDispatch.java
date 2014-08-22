@@ -74,12 +74,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         // get next token id then immediately start processing the script
         // /read prefix bytes if any (only used by some implementations)
         //ring buffer is build on int32s so the implementation limits preamble to units of 4
-        assert ((this.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
-        assert (this.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
+  //      assert ((this.preambleDataLength&0x3)==0) : "Preable may only be in units of 4 bytes";
+  //      assert (this.preambleDataLength<=8) : "Preable may only be 8 or fewer bytes";
         //Hold the preamble value here until we know the template and therefore the needed ring buffer.
         
         
-        //TODO: redo to check for space before read so these values need not be saved in the base decoder class.
         
         //break out into series of gen calls to save int somewhere. units of 4 only.
         int p = this.preambleDataLength;
@@ -103,7 +102,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //break out into second half of gen.
         p = this.preambleDataLength;
         if (p>0) {
-            genWritePreambleA(this);
+            genWritePreambleA(this); //No need to spin lock because it was done by genReadTemplateId
             if (p>4) {
                 genWritePreambleB(this);
             }
@@ -121,7 +120,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                // System.err.println("EOF");
                 return -1; //no more data stop
             }  
-            //TODO: A, X very first begin message can have problems, must sort out.
             beginMessage(reader); 
         }
         
