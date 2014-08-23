@@ -73,7 +73,7 @@ public final class PrimitiveWriter {
         // NOTE: POS_POS_MASK can be shortened to only match the length of
         // buffer. but then buffer always must be a power of two.
 
-        int largestMessageSize = BLOCK_SIZE<<2; //hack must compute from the template config
+        int largestMessageSize = BLOCK_SIZE<<2; //hack must compute from the template config TODO: B, need to compute from template config
         
         if (initBufferSize < largestMessageSize * 2) {
             initBufferSize = largestMessageSize * 2;
@@ -83,14 +83,14 @@ public final class PrimitiveWriter {
         this.position = 0;
         this.limit = 0;
         this.minimizeLatency = minimizeLatency ? 1 : 0;
-        this.safetyStackPosPos = new long[maxGroupCount];
+        this.safetyStackPosPos = new long[maxGroupCount]; 
 
         this.output = output;
         
         //NOTE: for high latency large throughput this must be as big as every group that can fit into initBufferSize
         //TODO: B, optimize this later by getting the smallest group size from template config and passing it in 
         this.flushSkipsSize = initBufferSize;//HACK for now assuming average message is no more than 1 bytes
-        this.mustFlush = initBufferSize - largestMessageSize;//HACK must flush after this point TODO: B, need to compute from template config
+        this.mustFlush = initBufferSize - (largestMessageSize*2);
         
         // this may grow very large, to fields per group
         this.flushSkips = new int[flushSkipsSize];

@@ -40,6 +40,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
+import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -612,6 +613,8 @@ public class TemplateLoaderTest {
         //In the warm up we checked the writes for accuracy, here we are only going for speed
         //so the FASTOutput instance is changed to one that only writes.
         FASTOutputByteArray fastOutput2 = new FASTOutputByteArray(testBytesData);
+ //       FASTOutput fastOutput2 = new FASTOutputTotals();
+        
         writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, minimizeLatency);
         dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
         
@@ -695,6 +698,7 @@ public class TemplateLoaderTest {
             FASTDecoder.reset(catalog.dictionaryFactory(), readerDispatch);
 
             fastOutput2.reset();
+            
             PrimitiveWriter.reset(writer);
             dynamicWriter.reset(true);
 
