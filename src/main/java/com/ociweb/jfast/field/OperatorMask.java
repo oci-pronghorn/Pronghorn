@@ -41,6 +41,10 @@ public class OperatorMask {
     // pmap is only in group or sequence never message
     //
 
+    public final static String[] xmlOperatorName = new String[] { "", "Copy", "Constant", "Default", "Delta",
+        "Increment", "Reserved6", "Reserved7", "Tail", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+        "", "", "", "", "", "" };
+    
     public final static String[] methodOperatorName = new String[] { "", "Copy", "Constant", "Default", "Delta",
             "Increment", "Reserved6", "Reserved7", "Tail", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
             "", "", "", "", "", "" };

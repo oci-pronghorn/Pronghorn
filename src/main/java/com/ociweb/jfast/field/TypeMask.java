@@ -48,9 +48,11 @@ public final class TypeMask {
                                                                   0, 0, 0, 0,
                                                                   1, 0, 0, 0, 0};
 
-    
-    // TODO: T, build unit test to confirm by reflection that every generated
-    // Token can be found
+    public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
+        "string", "string", "string", "string", "decimal", "decimal", "bytes", "bytes",
+        "group", "Reserved1", "Reserved2", "Reserved3", "length", "Reserved5",
+        "Reserved6", "Reserved7", "Dictionary" };
+
 
     // for code generation need to know the substring of the method related to
     // this type.

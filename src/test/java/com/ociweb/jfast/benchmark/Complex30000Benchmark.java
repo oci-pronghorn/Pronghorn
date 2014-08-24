@@ -21,9 +21,9 @@ import org.openfast.template.loader.MessageTemplateLoader;
 import org.openfast.template.loader.XMLMessageTemplateLoader;
 
 import com.google.caliper.Benchmark;
-import com.ociweb.jfast.loader.ClientConfig;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.loader.TemplateLoader;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;

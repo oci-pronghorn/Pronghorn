@@ -1,6 +1,6 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 
 public class RingBuffers {
     

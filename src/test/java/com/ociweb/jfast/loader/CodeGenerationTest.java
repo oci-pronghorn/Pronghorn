@@ -21,6 +21,8 @@ import javax.tools.ToolProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;

@@ -6,7 +6,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring

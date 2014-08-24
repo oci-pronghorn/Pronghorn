@@ -19,9 +19,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.loader.ClientConfig;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.loader.TemplateLoader;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;

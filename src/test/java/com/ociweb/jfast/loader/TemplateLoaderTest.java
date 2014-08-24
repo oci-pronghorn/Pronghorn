@@ -25,6 +25,10 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;

@@ -2,8 +2,8 @@ package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.StaticGlue;
-import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;

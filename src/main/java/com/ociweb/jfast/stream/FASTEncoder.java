@@ -3,8 +3,8 @@ package com.ociweb.jfast.stream;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 

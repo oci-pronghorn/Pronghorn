@@ -9,8 +9,8 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
 import com.ociweb.jfast.generator.Supervisor;
-import com.ociweb.jfast.loader.DictionaryFactory;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {

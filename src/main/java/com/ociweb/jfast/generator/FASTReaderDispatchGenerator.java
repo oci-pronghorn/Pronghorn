@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;

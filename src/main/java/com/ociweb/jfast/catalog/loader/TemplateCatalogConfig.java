@@ -1,7 +1,7 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.loader;
+package com.ociweb.jfast.catalog.loader;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -25,7 +25,7 @@ public class TemplateCatalogConfig {
     //Change impact generated code so the changes must be done only once before the catBytes are generated.
     ///////////
     
-    final ClientConfig clientConfig;
+    public final ClientConfig clientConfig;
     
     
     // because optional values are sent as +1 when >= 0 it is not possible to

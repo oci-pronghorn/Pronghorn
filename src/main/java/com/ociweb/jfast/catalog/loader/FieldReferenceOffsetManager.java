@@ -1,4 +1,4 @@
-package com.ociweb.jfast.loader;
+package com.ociweb.jfast.catalog.loader;
 
 import java.util.Arrays;
 

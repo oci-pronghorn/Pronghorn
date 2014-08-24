@@ -1,4 +1,4 @@
-package com.ociweb.jfast.loader;
+package com.ociweb.jfast.catalog.loader;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
