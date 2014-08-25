@@ -7,7 +7,7 @@ public class GroupGenerator implements ItemGenerator {
     }
 
     @Override
-    public StringBuilder appendTo(StringBuilder result) {
+    public StringBuilder appendTo(String tab, StringBuilder result) {
         // TODO Auto-generated method stub
         return null;
     }

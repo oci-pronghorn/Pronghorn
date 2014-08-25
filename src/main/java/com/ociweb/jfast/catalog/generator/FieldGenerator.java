@@ -36,11 +36,12 @@ public class FieldGenerator implements ItemGenerator {
     }
     
     public String toString() {
-        return appendTo(new StringBuilder()).toString();
+        return appendTo("",new StringBuilder()).toString();
     }
     
     @Override
-    public StringBuilder appendTo(StringBuilder result) {
+    public StringBuilder appendTo(String tab, StringBuilder result) {
+        result.append(tab);
         result.append("<").append(TypeMask.xmlTypeName[type]).append(" name=\"").append(name).append("\" id=\"").append(id).append("\" ");
         if (presence) {
             result.append("prsence=\"optional\" ");
@@ -51,30 +52,42 @@ public class FieldGenerator implements ItemGenerator {
         }
         result.append(">\n");
                 
+        String innerTab = null==tab ? "" : tab+"    ";
         //stuff inside the element
         if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type) {
+            result.append(tab);
             result.append("<exponent>\n");
-            addOperation(result, operator1, initial1);
+            
+            addOperation(innerTab, result, operator1, initial1);
+            
+            result.append(tab);
             result.append("</exponent>\n");
+            result.append(tab);
             result.append("<mantissa>\n");
-            addOperation(result, operator2, initial2);
+            
+            addOperation(innerTab, result, operator2, initial2);
+            
+            result.append(tab);
             result.append("</mantissa>\n");                        
-        } else {
-            addOperation(result, operator1, initial1);            
+        } else {            
+            addOperation(innerTab,result, operator1, initial1);            
         }
-        
+        result.append(tab);
         result.append("</").append(TypeMask.xmlTypeName[type]).append(">\n");
         return result;
     }
 
-    private void addOperation(StringBuilder result, int operator, String initial) {
+    private void addOperation(String tab, StringBuilder result, int operator, String initial) {
         
-        result.append("<").append(OperatorMask.xmlOperatorName[operator]);
-        
-        if (null!=initial) {
-            result.append(" value=\"").append(initial).append("\"");
-         } 
-        result.append("/>");
+        if (OperatorMask.Field_None != operator) {
+            result.append(tab);
+            result.append("<").append(OperatorMask.xmlOperatorName[operator]);
+            
+            if (null!=initial) {
+                result.append(" value=\"").append(initial).append("\"");
+             } 
+            result.append("/>\n");
+        }
     }
 
 }

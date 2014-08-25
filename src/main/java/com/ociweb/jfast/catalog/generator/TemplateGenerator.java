@@ -21,7 +21,7 @@ public class TemplateGenerator implements ItemGenerator {
         
     
     public String toString() {
-        return appendTo(new StringBuilder()).toString();
+        return appendTo("",new StringBuilder()).toString();
     }
 
 
@@ -51,7 +51,9 @@ public class TemplateGenerator implements ItemGenerator {
     }   
     
 
-    public StringBuilder appendTo(StringBuilder result) {
+    public StringBuilder appendTo(String tab, StringBuilder result) {
+                
+        result.append(tab);
         result.append("<template ");
         result.append("name=\"").append(name).append("\" ");
         result.append("id=\"").append(id).append("\" ");
@@ -62,12 +64,13 @@ public class TemplateGenerator implements ItemGenerator {
             result.append("dictionary=\"").append(dictionary).append("\" ");
         }
         result.append("xmlns=\"http://www.fixprotocol.org/ns/fast/td/1.1\">\n");
-        
+                
+        String innerTab = null==tab ? "" : tab+"    ";
         for(ItemGenerator item:items) {
-            item.appendTo(result);
+            item.appendTo(innerTab,result);
         }
-        
-        result.append("</template>)");
+        result.append(tab);
+        result.append("</template>\n");
         return result;
     }
     

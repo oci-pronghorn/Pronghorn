@@ -22,13 +22,13 @@ public class CatalogGenerator implements ItemGenerator {
     }
         
     public String toString() {
-        return appendTo(new StringBuilder()).toString();
+        return appendTo("    ",new StringBuilder()).toString();
     }
 
-    public StringBuilder appendTo(StringBuilder result) {
+    public StringBuilder appendTo(String tab, StringBuilder result) {
         result.append(HEADER);
         for(TemplateGenerator g:templates) {
-            g.appendTo(result);
+            g.appendTo(tab, result);
         }
         result.append(FOOTER);
         return result;

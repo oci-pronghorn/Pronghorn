@@ -72,15 +72,9 @@ public class TemplateLoader {
 
     public static void buildCatalog(OutputStream outputStream, String source, ClientConfig clientConfig) throws ParserConfigurationException,
             SAXException, IOException {
-        SAXParserFactory spfac = SAXParserFactory.newInstance();
-        GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
-        SAXParser sp = spfac.newSAXParser();
-        FASTOutput output = new FASTOutputStream(gZipOutputStream);
-        TemplateHandler handler = new TemplateHandler(output, clientConfig);        
-        Supervisor.templateSource(source);
-                        
-        InputStream sourceInputStream = TemplateLoader.class.getResourceAsStream(source);
-
+        
+        Supervisor.templateSource(source);                
+        InputStream sourceInputStream = TemplateLoader.class.getResourceAsStream(source);     
         File folder = null;
         if (null==sourceInputStream) {
             folder = new File(source);
@@ -88,7 +82,15 @@ public class TemplateLoader {
                 sourceInputStream = new FileInputStream(source);
             }        
         }        
+
         
+        GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
+        FASTOutput output = new FASTOutputStream(gZipOutputStream);
+        TemplateHandler handler = new TemplateHandler(output, clientConfig);   
+        
+        
+        SAXParserFactory spfac = SAXParserFactory.newInstance();
+        SAXParser sp = spfac.newSAXParser();
         if (null!= sourceInputStream) {
             sp.parse(sourceInputStream, handler);   
         } else {
