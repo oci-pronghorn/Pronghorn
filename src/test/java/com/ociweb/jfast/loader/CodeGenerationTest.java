@@ -112,7 +112,8 @@ public class CodeGenerationTest {
     
     @Test
     public void testCodeGenerator() {
-                
+        FASTClassLoader.deleteFiles();
+        
         byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData(new ClientConfig());
         
         FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);
@@ -130,6 +131,7 @@ public class CodeGenerationTest {
     
     @Test
     public void testDecodeGenVsInterp30000() {
+        FASTClassLoader.deleteFiles();
         // /////////
         // ensure the generated code does the same thing as the interpreted
         // code.

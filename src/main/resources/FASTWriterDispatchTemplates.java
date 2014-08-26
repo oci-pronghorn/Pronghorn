@@ -1755,12 +1755,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     ///////////////
     
     protected void genWriteLongUnsignedDefault(long constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {        
-        long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
-        if (value == constDefault) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeLongUnsigned(value, writer);
+        {
+            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            if (value == constDefault) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);
+                PrimitiveWriter.writeLongUnsigned(value, writer);
+            }
         }
     }
 
@@ -1904,12 +1906,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
     
     protected void genWriteLongSignedDefault(long constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
-        long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
-        if (value == constDefault) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeLongSigned(value, writer);
+        {
+            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            if (value == constDefault) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);
+                PrimitiveWriter.writeLongSigned(value, writer);
+            }
         }
     }
 
@@ -1927,12 +1931,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteLongSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
-        if (value == rLongDictionary[source]) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeLongSigned(rLongDictionary[target] = value, writer);
+        {
+            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            if (value == rLongDictionary[source]) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);
+                PrimitiveWriter.writeLongSigned(rLongDictionary[target] = value, writer);
+            }
         }
     }
 

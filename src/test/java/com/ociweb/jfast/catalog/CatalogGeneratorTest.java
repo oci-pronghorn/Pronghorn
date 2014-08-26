@@ -26,6 +26,7 @@ import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
@@ -97,7 +98,7 @@ public class CatalogGeneratorTest {
                 
                 StringBuilder builder = cg.appendTo("", new StringBuilder());        
     
- //               System.err.println(builder);
+       //         System.err.println(builder);
                 
                 ClientConfig clientConfig = new ClientConfig();                
                 byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);        
@@ -106,19 +107,20 @@ public class CatalogGeneratorTest {
                 assertEquals(1, catalog.templatesCount());
                 
                 //TODO: A, new unit tests. use catalog to test mock data
+                FASTClassLoader.deleteFiles();
+         //       FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
                 
                 
                // PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
                 
                 //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
                  //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        //         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
         //        System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
                //FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
                 
-               // System.err.println(Arrays.toString(catalog.getScriptTokens()));                        
+         //       System.err.println(Arrays.toString(catalog.getScriptTokens()));                        
                 
             }            
         } 

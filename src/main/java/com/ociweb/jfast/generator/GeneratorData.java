@@ -44,24 +44,21 @@ public class GeneratorData {
     public GeneratorData(byte[] catBytes, Class clazz) {
         
         this(   catBytes,
-                new ArrayList<String>(), 
-                new ArrayList<String>(), 
-                "}\n", 
-                new HashSet<Integer>(), 0, "_",
+                "}\n", 0, "_",
                 clazz);
         
     }
     
     public GeneratorData(
             byte[] catBytes,
-            List<String> caseParaDefs, List<String> caseParaVals, String caseTail,
-            Set<Integer> sequenceStarts, int runningComplexity, String lastFieldParaValues,
+            String caseTail,
+            int runningComplexity, String lastFieldParaValues,
             Class clazz) {
         this.origCatBytes = catBytes;
-        this.caseParaDefs = caseParaDefs;
-        this.caseParaVals = caseParaVals;
+        this.caseParaDefs = new ArrayList<String>();
+        this.caseParaVals = new ArrayList<String>();
         this.caseTail = caseTail;
-        this.sequenceStarts = sequenceStarts;
+        this.sequenceStarts = new HashSet<Integer>();
         this.runningComplexity = runningComplexity;
         this.lastFieldParaValues = lastFieldParaValues;
         this.usages = new HashMap<String,AtomicInteger>();
