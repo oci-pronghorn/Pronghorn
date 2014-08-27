@@ -11,13 +11,13 @@ public class BalancedSwitchGenerator {
     int[] counts = new int[bits];
     
     public Appendable generate(String tab, Appendable target, int[] values, String[] code) {
-        if (values.length>1) {
+        if (values.length>0) {
             try {
                 split(tab,target,values, code);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }
+        } 
         return target;
     }
     

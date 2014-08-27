@@ -30,8 +30,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         List<String> doneScriptsParas = new ArrayList<String>();
         
         GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
-        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);
-        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers);
+        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);        
+        GeneratorUtils.buildEntryDispatchMethod(preambleData.length,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers);
         GeneratorUtils.generateTail(generatorData, target);
         
         return target;

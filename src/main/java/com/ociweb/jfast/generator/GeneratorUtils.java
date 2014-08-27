@@ -25,6 +25,8 @@ public class GeneratorUtils {
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
+    static final boolean OPTIMIZE_PMAP_READ_WRITE = true;
+    
     
     //TODO: C, confirm this is a good or bad feature. leave true until we decide on this performance idea.
     public final static boolean WRITE_CONST = true; 
@@ -94,13 +96,13 @@ public class GeneratorUtils {
           
         return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
     }
-
-    //TODO: D, do more spark research
     
     
     //Called only once for generating full source file
-    public static void buildEntryDispatchMethod(List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, String entryMethodName,
-                                               Class primClass, RingBuffers ringBuffers) throws IOException {
+    public static void buildEntryDispatchMethod(int preambleLength,
+                                                List<Integer> doneScripts, List<String> doneScriptsParas, 
+                                                Appendable builder, String entryMethodName,
+                                                Class primClass, RingBuffers ringBuffers) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";
@@ -172,8 +174,17 @@ public class GeneratorUtils {
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
             builder.append("setActiveScriptCursor(rb.consumerData.cursor);\n");        
+            
+            //TODO: X, optimization to remove this conditional. if we only have 1 fragment it is always a new message
+            
             builder.append("if (rb.consumerData.isNewMessage()) {\n");                
-            builder.append("    beginMessage(writer, rb.buffer, rb.mask, rb.workingTailPos, this);\n");
+            
+            if (preambleLength==0) {
+                builder.append("    beginMessage(this);\n");
+            } else {
+                builder.append("    beginMessage(writer, rb.buffer, rb.mask, rb.workingTailPos, this);\n");
+            }
+            
             builder.append("}\n"); 
 
         }
@@ -184,6 +195,7 @@ public class GeneratorUtils {
             builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
         }
         
+              
         bsg.generate("    ",builder, doneValues, doneCode);
         if (isReader) {
             builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
@@ -193,7 +205,12 @@ public class GeneratorUtils {
     
     }
 
-    public static void reportErrorDetails(NullPointerException npe) {
+    /**
+     * Reports back to the developer that one of the template methods were not captured for generation.
+     * Without this the developer would only see a non-descript null pointer exception instead of the true cause of the problem.
+     * @param npe
+     */
+    private static void reportErrorDetails(NullPointerException npe) {
         StackTraceElement[] stackTrace = npe.getStackTrace();
         int j = 0;
         while (j<stackTrace.length) {
@@ -351,22 +368,36 @@ public class GeneratorUtils {
         String paraDefs = generatorData.caseParaDefs.toString().substring(1);
         paraDefs = paraDefs.substring(0, paraDefs.length()-1);
         
+        //Must add argument to ensure dispatch is available inside the method.
+        if (generatorData.dispatchType.contains("Writer")) {
+            if (!paraDefs.contains("FASTEncoder dispatch")) {
+                if (paraDefs.length()>0) {
+                    paraDefs = paraDefs+",";
+                }                
+                paraDefs = paraDefs+"FASTEncoder dispatch";
+            }
+        }
+        
         String paraVals = generatorData.caseParaVals.toString().substring(1);
         paraVals = paraVals.substring(0, paraVals.length()-1);
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private static void ")
+        signatureLine.append("\n")
+                     .append("private static void ")
                      .append("beginMessage")
                      .append("(")
                      .append(paraDefs)
-                     .append(") {\n");
+                     .append(") {\n")
+                     .append(generatorData.groupMethodBuilder);
+     
         
-    
-        return "\n"+signatureLine.toString()+ 
-               // generatorData.statsBuilder.toString()+
-                generatorData.groupMethodBuilder.toString()+ 
-                
-                (paraDefs.contains("Writer") ?  "dispatch.fieldPos++;  ": "")+
+        //above the method was checked to ensure it has the dispatch parameter
+        if (generatorData.dispatchType.contains("Writer")) {
+            signatureLine.append("dispatch.fieldPos++;\n");
+        }
+        
+        
+        return  signatureLine.toString()+ 
                 generatorData.caseTail+
                 generatorData.fieldMethodBuilder.toString();
         
@@ -460,10 +491,10 @@ public class GeneratorUtils {
     
         
         //replace variables with constants
-        String template = generatorData.templates.template(methodNameKey);
-        
-        template = removeConditionalsFromPMapReading(generatorData, templateMethodName, template);
-                
+        String template = generatorData.templates.template(methodNameKey);       
+        if (OPTIMIZE_PMAP_READ_WRITE) {
+            template = optimizeTemplatePMapReadWrite(generatorData, templateMethodName, template);
+        }
     
         long[] data = values;
         int i = data.length;
@@ -614,7 +645,7 @@ public class GeneratorUtils {
         }
     }
 
-    private static String removeConditionalsFromPMapReading(GeneratorData generatorData, String templateMethodName,
+    private static String optimizeTemplatePMapReadWrite(GeneratorData generatorData, String templateMethodName,
             String template) {
         
         //NOTE: remove this entire block and escape early if the unsupported optional decimals are used!!!

@@ -1782,12 +1782,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteLongUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
-        if (value == rLongDictionary[source]) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeLongUnsigned(rLongDictionary[target] = value, writer);
+        {
+            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            if (value == rLongDictionary[source]) {
+                PrimitiveWriter.writePMapBit((byte)0, writer);
+            } else {
+                PrimitiveWriter.writePMapBit((byte)1, writer);
+                PrimitiveWriter.writeLongUnsigned(rLongDictionary[target] = value, writer);
+            }
         }
     }
 

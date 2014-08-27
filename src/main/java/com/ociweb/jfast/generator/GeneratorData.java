@@ -49,10 +49,11 @@ public class GeneratorData {
         
     }
     
-    public GeneratorData(
+    private GeneratorData(
             byte[] catBytes,
             String caseTail,
-            int runningComplexity, String lastFieldParaValues,
+            int runningComplexity, 
+            String lastFieldParaValues,
             Class clazz) {
         this.origCatBytes = catBytes;
         this.caseParaDefs = new ArrayList<String>();

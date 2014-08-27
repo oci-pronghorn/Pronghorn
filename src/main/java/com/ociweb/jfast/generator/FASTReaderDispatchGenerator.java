@@ -36,10 +36,10 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     public <T extends Appendable> T generateFullReaderSource(T target) throws IOException {
         List<Integer> doneScripts = new ArrayList<Integer>();
         List<String> doneScriptsParas = new ArrayList<String>();
-        
+                
         GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);       
-        GeneratorUtils.buildEntryDispatchMethod(doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,ringBuffers);
+        GeneratorUtils.buildEntryDispatchMethod(preambleDataLength,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,ringBuffers);
         GeneratorUtils.generateTail(generatorData, target);
         
         return target;

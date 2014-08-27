@@ -29,9 +29,12 @@ import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
+import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class CatalogGeneratorTest {
     
@@ -108,17 +111,20 @@ public class CatalogGeneratorTest {
                 
                 //TODO: A, new unit tests. use catalog to test mock data
                 FASTClassLoader.deleteFiles();
-         //       FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+                FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
                 
                 
-               // PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+                int writeBuffer=1024;
+                byte[] buffer = new byte[1024];
+                FASTOutput fastOutput = new FASTOutputByteArray(buffer );
+                int maxGroupCount=1024;
+                //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
+                //catalog.getMaxGroupDepth()
                 
-                //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-                 //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-
-        //        System.err.println("using: "+writerDispatch.getClass().getSimpleName());
-
-               //FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+                PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+                
+                
+                //FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
                 
          //       System.err.println(Arrays.toString(catalog.getScriptTokens()));                        
                 
