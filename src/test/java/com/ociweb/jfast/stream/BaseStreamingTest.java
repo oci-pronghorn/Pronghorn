@@ -3,17 +3,12 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import static org.junit.Assert.assertTrue;
-
-import java.nio.MappedByteBuffer;
-
 import com.ociweb.jfast.benchmark.TestUtil;
-import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.StaticGlue;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.field.LocalHeap;
+import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;

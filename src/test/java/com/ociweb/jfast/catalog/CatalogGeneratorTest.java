@@ -8,12 +8,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -30,6 +33,7 @@ import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -84,23 +88,30 @@ public class CatalogGeneratorTest {
             TypeMask.ByteArrayOptional
     };    
     
-    private int fieldId = 1000;
-    private final int writeBuffer=2048;
-    private final byte[] buffer = new byte[65536];
+   
+    private final int writeBuffer=1<<19; //TODO: A, trace why this should be so big? is closed never called so teh buffer over flows?
+    private final byte[] buffer = new byte[1<<20];
     
-    @Test
-    public void numericFieldTest() {
-                        
+    List<byte[]> numericCatalogs;
+    List<Integer> numericFieldCounts;
+    List<Integer> numericFieldTypes;
+    List<Integer> numericFieldOperators;
+    
+    @Before
+    public void buildCatalogs() {
+        
+        numericCatalogs = new ArrayList<byte[]>();
+        numericFieldCounts = new ArrayList<Integer>();
+        numericFieldTypes = new ArrayList<Integer>();
+        numericFieldOperators = new ArrayList<Integer>();
+        
         String name = "testTemplate";
         int id = 2;
         boolean reset = false;
         String dictionary = null;
-        boolean fieldPresence = false;
-     
-        String fieldInitial = "10";
-        
-        int totalFields = 10;
-                                
+        boolean fieldPresence = false;     
+        String fieldInitial = "10";        
+        int totalFields = 50;//1024;  //at 4 bytes per int for 4K message size test                              
         
         int p = numericOps.length;
         while (--p>=0) {            
@@ -108,53 +119,157 @@ public class CatalogGeneratorTest {
             int t = numericTypes.length;
             while (--t>=0) {               
                 int fieldType = numericTypes[t];
+                int fieldCount = 1; 
+                while (fieldCount<totalFields) {                 
+                    byte[] catBytes = buildCatBytes(name, id, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, fieldCount);  
+                    
+                    
+                    TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);                    
+                    assertEquals(1, catalog.templatesCount());
+                    
+                    int expectedScriptLength = 2+fieldCount;
+                    if (fieldType == TypeMask.Decimal || fieldType == TypeMask.DecimalOptional) {
+                        expectedScriptLength +=fieldCount;
+                    }
+                    assertEquals(expectedScriptLength,catalog.getScriptTokens().length);
                 
-                
-                
-             //   System.err.println();
-           //     System.err.println("checking:"+TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]);
-                
-                int f = totalFields; //TODO: do each one to capture the linear scalablility
-                
-                
-                byte[] catBytes = buildCatBytes(name, id, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, f);  
-                
-                
-                TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
-                
-                assertEquals(1, catalog.templatesCount());
-                
-                //TODO: A, new unit tests. use catalog to test mock data
-                FASTClassLoader.deleteFiles();
-                FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
-                                
-
-                FASTOutput fastOutput = new FASTOutputByteArray(buffer );
-                int maxGroupCount=1024;
-                //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
-                //catalog.getMaxGroupDepth()
-                
-                PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
-                                
-            //    catalog.dictionaryFactory().byteDictionary().
-               
-                FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
-                FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
-             
-                
-                int j = totalFields;
-                while (--j>=0) {
-                    FASTRingBufferWriter.writeInt(queue, 42);
+                    numericCatalogs.add(catBytes);
+                    numericFieldCounts.add(new Integer(fieldCount));
+                    numericFieldTypes.add(new Integer(fieldType));
+                    numericFieldOperators.add(new Integer(fieldOperator));
+                    
+                    if (fieldCount<100) {
+                        fieldCount+=5;
+                    } else {
+                        fieldCount+=100;//by steps of 100, 
+                    }
                 }
-                FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                
-                dynamicWriter.write();
-                
-                
-         //       System.err.println(Arrays.toString(catalog.getScriptTokens()));                        
-                
             }            
         } 
+        
+        //cleanup now that our test data is built so it will not run later
+        System.gc();        
+        
+    }
+    
+    
+    @Test
+    public void numericFieldTest() {
+        
+        int i = numericCatalogs.size();
+        System.out.println("testing "+i+" numeric configurations");
+        while (--i>=0) {
+            testEncoding(numericFieldOperators.get(i).intValue(), 
+                         numericFieldTypes.get(i).intValue(), 
+                         numericFieldCounts.get(i).intValue(), 
+                         numericCatalogs.get(i));
+        }
+            
+    }
+
+
+
+    public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes) {
+        int type = fieldType;
+        int operation = fieldOperator;
+               
+        
+        TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+        
+        assertEquals(1, catalog.templatesCount());
+        int maxGroupCount=4096;
+        
+        //TODO: A, new unit tests. use catalog to test mock data
+        FASTClassLoader.deleteFiles();
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+                        
+   
+        FASTOutput fastOutput = new FASTOutputByteArray(buffer );
+        //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
+        //catalog.getMaxGroupDepth()
+        
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+                        
+            //    catalog.dictionaryFactory().byteDictionary().
+               
+        FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+             
+        //       System.err.println(Arrays.toString(catalog.getScriptTokens()));      
+        
+        
+        //how many of these fit in ring buffer and output buffer?
+        //if output buffer is 
+        //total fields + templateId
+        
+        int size = queue.buffer.length;
+        
+        //queue.consumerData.tailCache = FASTRingBuffer.spinBlock(queue.tailPos, queue.consumerData.tailCache, 1 + preambleDataLength + queue.workingHeadPos.value - queue.maxSize);
+        
+        
+        
+        int records;
+        
+        
+        switch(fieldType) {
+            case TypeMask.IntegerUnsigned:
+            case TypeMask.IntegerUnsignedOptional:
+            case TypeMask.IntegerSigned:
+            case TypeMask.IntegerSignedOptional:
+                //ReaderWriterPrimitiveTest.unsignedIntData
+                
+                records = size/(fieldCount+1);  
+    //            System.out.println("records:"+records);
+                int d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                while (--records>=0) {
+                    int j = fieldCount;
+                    while (--j>=0) {
+                        FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                        if (0==d) {
+                            d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                        }
+                    }
+                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                    dynamicWriter.write();
+                }
+                
+                
+                break;
+            case TypeMask.LongUnsigned:
+            case TypeMask.LongUnsignedOptional:
+            case TypeMask.LongSigned:
+            case TypeMask.LongSignedOptional:
+                //ReaderWriterPrimitiveTest.unsignedLongData;
+                
+                records = size/((2*fieldCount)+1);   
+                
+                break;
+            case TypeMask.Decimal:
+            case TypeMask.DecimalOptional:
+                //ReaderWriterPrimitiveTest.unsignedLongData;
+                
+                records = size/((3*fieldCount)+1);
+                
+                break;
+        
+        
+        }
+        
+        //TypeMask.xmlTypeName
+        
+        
+        
+               
+        
+//        int j = fieldCount;
+//        while (--j>=0) {
+//            FASTRingBufferWriter.writeInt(queue, 42);
+//        }
+//        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+//        
+//        
+//        
+//        dynamicWriter.write();
         
         
         
@@ -164,6 +279,9 @@ public class CatalogGeneratorTest {
 
     private byte[] buildCatBytes(String name, int id, boolean reset, String dictionary, boolean fieldPresence,
             String fieldInitial, int fieldOperator, int fieldType, int f) {
+        
+        int fieldId = 1000;
+        
         CatalogGenerator cg = new CatalogGenerator();
         TemplateGenerator template = cg.addTemplate(name, id, reset, dictionary);            
         while (--f>=0) {
@@ -175,7 +293,7 @@ public class CatalogGeneratorTest {
    
       //         System.err.println(builder);
         
-        ClientConfig clientConfig = new ClientConfig();                
+        ClientConfig clientConfig = new ClientConfig(13,10);  //keep bits small or the test will take a very long time to run.              
         byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);
         return catBytes;
     }

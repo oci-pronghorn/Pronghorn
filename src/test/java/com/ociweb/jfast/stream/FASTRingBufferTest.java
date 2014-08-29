@@ -113,6 +113,8 @@ public class FASTRingBufferTest {
                         
                         //wait for at least n messages to be available 
                         //waiting for headPos to change
+                        
+                        
 
                         headPosCache = FASTRingBuffer.spinBlock(hp, headPosCache, targetHead);
                         

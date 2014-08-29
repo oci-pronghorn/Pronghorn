@@ -50,6 +50,7 @@ public final class TypeMask {
                                                                   0, 0, 0, 0,
                                                                   1, 0, 0, 0, 0};
 
+
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
         "string", "string", "string", "string", "decimal", "decimal", "bytes", "bytes",
         "group", "Reserved1", "Reserved2", "Reserved3", "length", "Reserved5",
@@ -66,7 +67,8 @@ public final class TypeMask {
             "Reserved6", "Reserved7", "Dictionary" };
 
     public final static String[] methodTypeInstanceName = new String[] { "Integer", "Integer", "Integer", "Integer",
-            "Long", "Long", "Long", "Long", "Text", "Text", "Text", "Text",
+                                                                         "Long", "Long", "Long", "Long", 
+                                                                         "Text", "Text", "Text", "Text",
             "Decimal", // need exponent and mantissa strings.
             "Decimal", "Bytes", "Bytes", "", "Reserved1", "Reserved2", "Reserved3", "", "Reserved5", "Reserved6",
             "Reserved7", "this" };
