@@ -20,6 +20,7 @@ import org.xml.sax.SAXException;
 import com.ociweb.jfast.catalog.generator.CatalogGenerator;
 import com.ociweb.jfast.catalog.generator.TemplateGenerator;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
@@ -34,6 +35,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferWriter;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class CatalogGeneratorTest {
@@ -60,6 +62,32 @@ public class CatalogGeneratorTest {
             OperatorMask.Field_None 
     };
     
+    int[] textByteOps = new int[] {
+            OperatorMask.Field_Constant,
+            OperatorMask.Field_Copy,
+            OperatorMask.Field_Default,
+            OperatorMask.Field_Delta,
+            OperatorMask.Field_Increment,            
+            OperatorMask.Field_None,
+            OperatorMask.Field_Tail
+    };
+    
+    int[] textTypes = new int[] {
+            TypeMask.TextASCII,
+            TypeMask.TextASCIIOptional,
+            TypeMask.TextUTF8,
+            TypeMask.TextUTF8Optional
+    };
+    
+    int[] byteTypes = new int[] {
+            TypeMask.ByteArray,
+            TypeMask.ByteArrayOptional
+    };    
+    
+    private int fieldId = 1000;
+    private final int writeBuffer=2048;
+    private final byte[] buffer = new byte[65536];
+    
     @Test
     public void numericFieldTest() {
                         
@@ -72,39 +100,26 @@ public class CatalogGeneratorTest {
         String fieldInitial = "10";
         
         int totalFields = 10;
-                        
-        
-        int fieldId = 1000;
+                                
         
         int p = numericOps.length;
-        while (--p>=0) {
-            
-            int fieldOperator = numericOps[p];
-            
+        while (--p>=0) {            
+            int fieldOperator = numericOps[p];            
             int t = numericTypes.length;
-            while (--t>=0) {        
-                
+            while (--t>=0) {               
                 int fieldType = numericTypes[t];
+                
+                
                 
              //   System.err.println();
            //     System.err.println("checking:"+TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]);
                 
-                CatalogGenerator cg = new CatalogGenerator();
-                TemplateGenerator template = cg.addTemplate(name, id, reset, dictionary);            
-                
-                
                 int f = totalFields; //TODO: do each one to capture the linear scalablility
-                while (--f>=0) {
-                    String fieldName = "field"+fieldId;
-                    template.addField(fieldName, fieldId++, fieldPresence, fieldType, fieldOperator, fieldInitial);        
-                }
                 
-                StringBuilder builder = cg.appendTo("", new StringBuilder());        
-    
-       //         System.err.println(builder);
                 
-                ClientConfig clientConfig = new ClientConfig();                
-                byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);        
+                byte[] catBytes = buildCatBytes(name, id, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, f);  
+                
+                
                 TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
                 
                 assertEquals(1, catalog.templatesCount());
@@ -112,19 +127,29 @@ public class CatalogGeneratorTest {
                 //TODO: A, new unit tests. use catalog to test mock data
                 FASTClassLoader.deleteFiles();
                 FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
-                
-                
-                int writeBuffer=1024;
-                byte[] buffer = new byte[1024];
+                                
+
                 FASTOutput fastOutput = new FASTOutputByteArray(buffer );
                 int maxGroupCount=1024;
                 //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
                 //catalog.getMaxGroupDepth()
                 
                 PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+                                
+            //    catalog.dictionaryFactory().byteDictionary().
+               
+                FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
+                FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+             
                 
+                int j = totalFields;
+                while (--j>=0) {
+                    FASTRingBufferWriter.writeInt(queue, 42);
+                }
+                FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
                 
-                //FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+                dynamicWriter.write();
+                
                 
          //       System.err.println(Arrays.toString(catalog.getScriptTokens()));                        
                 
@@ -133,6 +158,26 @@ public class CatalogGeneratorTest {
         
         
         
+    }
+
+
+
+    private byte[] buildCatBytes(String name, int id, boolean reset, String dictionary, boolean fieldPresence,
+            String fieldInitial, int fieldOperator, int fieldType, int f) {
+        CatalogGenerator cg = new CatalogGenerator();
+        TemplateGenerator template = cg.addTemplate(name, id, reset, dictionary);            
+        while (--f>=0) {
+            String fieldName = "field"+fieldId;
+            template.addField(fieldName, fieldId++, fieldPresence, fieldType, fieldOperator, fieldInitial);        
+        }
+        
+        StringBuilder builder = cg.appendTo("", new StringBuilder());        
+   
+      //         System.err.println(builder);
+        
+        ClientConfig clientConfig = new ClientConfig();                
+        byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);
+        return catBytes;
     }
 
 

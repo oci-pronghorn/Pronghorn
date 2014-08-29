@@ -27,6 +27,8 @@ import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
  */
 public final class FASTRingBuffer {
     
+    //TODO: A, change interfaces to use reactive streams design
+    
     //TODO: C, load shedding features,  Writer may decide to back up instead of release the headPos if this messsage is "less imporant", Reader may decide to "route" message to null or low priority ring buffer.
     //TODO: C, all overload situations must communicate the specific problem cause back out as far as possible
     //TODO: C, dev ops tool to empty (drain) buffers and record the loss.

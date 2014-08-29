@@ -17,5 +17,14 @@ public class FASTRingBufferWriter {
         
                 
     }
+
+    public static void writeInt(FASTRingBuffer rb, int value) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);        
+    }
+    
+    public static void writeLong(FASTRingBuffer rb, long value) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)value >>> 32, (int)value & 0xFFFFFFFF );    
+    }
+
     
 }
