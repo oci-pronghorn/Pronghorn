@@ -39,8 +39,14 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.util.Stats;
+
+//TODO B, the example test file is full of long sequences of 1 then a 2,  if the ratio was more balanced this file could be read in parallel with multiple decoders.
+//TODO B, note that template 1 (the most common) also has a reset on each message, As a result each of these can be done in parallel.
+//TODO B, build speed loader of file with NIO and add multiple decoders
 
 public class CatalogGeneratorTest {
     
@@ -195,70 +201,23 @@ public class CatalogGeneratorTest {
         FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
              
-        //       System.err.println(Arrays.toString(catalog.getScriptTokens()));      
+        //populate ring buffer with the new records to be written.
+        
+        timeEncoding(fieldType, fieldCount, queue, dynamicWriter);
+        
+        long responseTime = FASTRingBufferConsumer.responseTime(queue.consumerData);
+        
+  //      System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" per field "+(responseTime/(double)fieldCount));
         
         
-        //how many of these fit in ring buffer and output buffer?
-        //if output buffer is 
-        //total fields + templateId
-        
-        int size = queue.buffer.length;
-        
-        //queue.consumerData.tailCache = FASTRingBuffer.spinBlock(queue.tailPos, queue.consumerData.tailCache, 1 + preambleDataLength + queue.workingHeadPos.value - queue.maxSize);
-        
-        
-        
-        int records;
-        
-        
-        switch(fieldType) {
-            case TypeMask.IntegerUnsigned:
-            case TypeMask.IntegerUnsignedOptional:
-            case TypeMask.IntegerSigned:
-            case TypeMask.IntegerSignedOptional:
-                //ReaderWriterPrimitiveTest.unsignedIntData
-                
-                records = size/(fieldCount+1);  
-    //            System.out.println("records:"+records);
-                int d = ReaderWriterPrimitiveTest.unsignedIntData.length;
-                while (--records>=0) {
-                    int j = fieldCount;
-                    while (--j>=0) {
-                        FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
-                        if (0==d) {
-                            d = ReaderWriterPrimitiveTest.unsignedIntData.length;
-                        }
-                    }
-                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                    dynamicWriter.write();
-                }
-                
-                
-                break;
-            case TypeMask.LongUnsigned:
-            case TypeMask.LongUnsignedOptional:
-            case TypeMask.LongSigned:
-            case TypeMask.LongSignedOptional:
-                //ReaderWriterPrimitiveTest.unsignedLongData;
-                
-                records = size/((2*fieldCount)+1);   
-                
-                break;
-            case TypeMask.Decimal:
-            case TypeMask.DecimalOptional:
-                //ReaderWriterPrimitiveTest.unsignedLongData;
-                
-                records = size/((3*fieldCount)+1);
-                
-                break;
-        
-        
-        }
+        //followed by time decoding
+        //followed by validate values
         
         //TypeMask.xmlTypeName
         
         
-        
+        //TODO A, need the compiled static accessor to greatly simplify the usage of clients
+        //TODO A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
                
         
 //        int j = fieldCount;
@@ -273,6 +232,90 @@ public class CatalogGeneratorTest {
         
         
         
+    }
+
+
+    private void timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
+
+        int size = queue.maxSize;
+        
+        int records;
+        int d;
+        switch(fieldType) {
+            case TypeMask.IntegerUnsigned:
+            case TypeMask.IntegerUnsignedOptional:
+            case TypeMask.IntegerSigned:
+            case TypeMask.IntegerSignedOptional:
+                //ReaderWriterPrimitiveTest.unsignedIntData
+                
+                records = size/(fieldCount+1);  
+    //            System.out.println("records:"+records);
+                
+                d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                while (--records>=0) {
+                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                    int j = fieldCount;
+                    while (--j>=0) {
+                        FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                        if (0==d) {
+                            d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                        }
+                    }
+                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+            //        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                        dynamicWriter.write();
+            //        }
+                }
+                                
+                break;
+            case TypeMask.LongUnsigned:
+            case TypeMask.LongUnsignedOptional:
+            case TypeMask.LongSigned:
+            case TypeMask.LongSignedOptional:
+                //ReaderWriterPrimitiveTest.unsignedLongData;
+                
+                records = size/((2*fieldCount)+1);   
+                
+                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                while (--records>=0) {
+                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                    int j = fieldCount;
+                    while (--j>=0) {
+                        FASTRingBufferWriter.writeLong(queue, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                        if (0==d) {
+                            d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                        }
+                    }
+                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                    dynamicWriter.write();
+                }
+                
+                
+                break;
+            case TypeMask.Decimal:
+            case TypeMask.DecimalOptional:
+                //ReaderWriterPrimitiveTest.unsignedLongData;
+                
+                records = size/((3*fieldCount)+1);
+                
+                int exponent = 2;
+                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                while (--records>=0) {
+                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                    int j = fieldCount;
+                    while (--j>=0) {
+                        FASTRingBufferWriter.writeDecimal(queue, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                        if (0==d) {
+                            d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                        }
+                    }
+                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                    dynamicWriter.write();
+                }
+                
+                break;        
+        
+        }
     }
 
 

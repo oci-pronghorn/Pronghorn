@@ -39,7 +39,7 @@ public class TemplateCatalogConfig {
     private final int maxTemplatePMapSize;
     private final int maxNonTemplatePMapSize;
     private final int maxPMapDepth;
-    private final int maxFieldId;
+    private final int maxFieldId; 
 
     private final int[] templateStartIdx; // TODO: X, these two arrays can be
                                          // shortened!

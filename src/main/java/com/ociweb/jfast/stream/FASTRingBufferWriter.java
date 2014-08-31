@@ -26,5 +26,9 @@ public class FASTRingBufferWriter {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)value >>> 32, (int)value & 0xFFFFFFFF );    
     }
 
+    public static void writeDecimal(FASTRingBuffer rb, int exponent, long mantissa) {
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent);   
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)mantissa >>> 32, (int)mantissa & 0xFFFFFFFF );    
+    }
     
 }
