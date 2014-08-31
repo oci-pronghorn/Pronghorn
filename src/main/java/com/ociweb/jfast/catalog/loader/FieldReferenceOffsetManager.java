@@ -97,8 +97,10 @@ public class FieldReferenceOffsetManager {
                 //TODO: if optional group it will also need to be zero like seq
                 
                 //must be a group open only for a new message 
-                if (!isSeq && isGroupOpen) {
-                    fragDataSize[fragmentStartIdx] = 2; //TODO: where does this 2 come from it needs to know about the preamble
+                if (!isSeq && isGroupOpen) { 
+                    int preambleInts = (config.clientConfig().getPreableBytes()+3)>>2;
+                    int templateInt = 1;
+                    fragDataSize[fragmentStartIdx] = preambleInts+templateInt;
                 }
                 
                 

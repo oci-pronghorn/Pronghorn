@@ -20,7 +20,7 @@ public class FASTRingBufferConsumer {
     public final Stats timeBetween;
     //keep the queue fill size for Little's law 
     //MeanResponseTime = MeanNumberInSystem / MeanThroughput
-    private long lastTime = -1;
+    private long lastTime = 0;
     private final int rateAvgBit = 5;
     private final int rateAvgCntInit = 1<<rateAvgBit;
     private int rateAvgCnt = rateAvgCntInit;
@@ -39,8 +39,8 @@ public class FASTRingBufferConsumer {
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
         this.from = from;
-        this.queueFill  =  new Stats(10000, rbMask>>1, 0, rbMask);
-        this.timeBetween = new Stats(10000, 20, 0, 1000000000);
+        this.queueFill  =  new Stats(10000, rbMask>>1, 0, rbMask+1);
+        this.timeBetween = new Stats(10000, 20, 0, 10000000000l);
         
     }
 
@@ -64,6 +64,7 @@ public class FASTRingBufferConsumer {
     
     public static long responseTime(FASTRingBufferConsumer ringBufferConsumer) {
         //Latency in ns
+       // System.err.println("inputs:" +ringBufferConsumer.queueFill.valueAtPercent(.5)+"x"+ringBufferConsumer.timeBetween.valueAtPercent(.5)); 
         return (ringBufferConsumer.queueFill.valueAtPercent(.5)*ringBufferConsumer.timeBetween.valueAtPercent(.5))>>ringBufferConsumer.rateAvgBit;
         
     }

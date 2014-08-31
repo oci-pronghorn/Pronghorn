@@ -122,7 +122,7 @@ public abstract class FASTEncoder {
         return activeScriptCursor;
     }
 
-    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this?
+    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this? only needed by generation as an inclusive limit
         activeScriptLimit = limit;
     }
     

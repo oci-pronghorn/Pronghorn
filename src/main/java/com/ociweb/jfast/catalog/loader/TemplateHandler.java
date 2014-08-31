@@ -601,7 +601,7 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("template")) {
 
-            templateLimit[templateId] = catalogTemplateScriptIdx;
+            templateLimit[templateId] = catalogTemplateScriptIdx;//warning this limit is inclusive not exclusive
 
             // templates always add 1 more for the templateId in the pmap
             int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead] + 1;

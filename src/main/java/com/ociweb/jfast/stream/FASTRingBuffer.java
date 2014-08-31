@@ -177,9 +177,9 @@ public final class FASTRingBuffer {
         //////////////
         if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {
             //detecting end of message
-            int token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor];
+            int token;//do not set before cursor is checked to ensure it is not after the script length
             if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
-                    (((token >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
+                    ((((token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor]) >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
                     0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
                     0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
                 

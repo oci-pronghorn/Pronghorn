@@ -28,6 +28,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
@@ -95,8 +96,8 @@ public class CatalogGeneratorTest {
     };    
     
    
-    private final int writeBuffer=1<<19; //TODO: A, trace why this should be so big? is closed never called so teh buffer over flows?
-    private final byte[] buffer = new byte[1<<20];
+    private final int writeBuffer=65536;
+    private final byte[] buffer = new byte[1<<22];
     
     List<byte[]> numericCatalogs;
     List<Integer> numericFieldCounts;
@@ -117,7 +118,7 @@ public class CatalogGeneratorTest {
         String dictionary = null;
         boolean fieldPresence = false;     
         String fieldInitial = "10";        
-        int totalFields = 50;//1024;  //at 4 bytes per int for 4K message size test                              
+        int totalFields = 200;//1024;  //at 4 bytes per int for 4K message size test                              
         
         int p = numericOps.length;
         while (--p>=0) {            
@@ -174,13 +175,35 @@ public class CatalogGeneratorTest {
     }
 
 
+    int lastOp = -1;
+    int lastType = -1;
 
     public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes) {
         int type = fieldType;
         int operation = fieldOperator;
                
-        
         TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+        
+        if (operation!=lastOp) {
+            lastOp = operation;
+            System.err.println();
+            System.err.println("operation:"+OperatorMask.xmlOperatorName[operation]);
+        }
+        if (type!=lastType) {
+            lastType = type;
+            System.err.println("type:"+TypeMask.methodTypeName[type]+TypeMask.methodTypeSuffix[type]);
+            
+   //         boolean noPMap = (0 == (catalog.getScriptTokens()[0] & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER)));
+  //          System.err.println("noPMap:"+noPMap);
+            
+//            for (int token:  catalog.getScriptTokens()) {
+//                System.err.println("    "+TokenBuilder.tokenToString(token));
+//            }
+            
+        }
+        
+        
+        
         
         assertEquals(1, catalog.templatesCount());
         int maxGroupCount=4096;
@@ -203,11 +226,12 @@ public class CatalogGeneratorTest {
              
         //populate ring buffer with the new records to be written.
         
-        timeEncoding(fieldType, fieldCount, queue, dynamicWriter);
+        float millionPerSecond = timeEncoding(fieldType, fieldCount, queue, dynamicWriter)/1000000f;
         
-        long responseTime = FASTRingBufferConsumer.responseTime(queue.consumerData);
+        long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
         
-  //      System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" per field "+(responseTime/(double)fieldCount));
+     //   System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+                //" per field "+(responseTime/(double)fieldCount));
         
         
         //followed by time decoding
@@ -235,87 +259,100 @@ public class CatalogGeneratorTest {
     }
 
 
-    private void timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
+    private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
 
         int size = queue.maxSize;
         
-        int records;
+        int records = 10000; //testing enough to get repeatable results
         int d;
         switch(fieldType) {
             case TypeMask.IntegerUnsigned:
             case TypeMask.IntegerUnsignedOptional:
             case TypeMask.IntegerSigned:
             case TypeMask.IntegerSignedOptional:
-                //ReaderWriterPrimitiveTest.unsignedIntData
-                
-                records = size/(fieldCount+1);  
-    //            System.out.println("records:"+records);
-                
-                d = ReaderWriterPrimitiveTest.unsignedIntData.length;
-                while (--records>=0) {
-                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
-                    int j = fieldCount;
-                    while (--j>=0) {
-                        FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
-                        if (0==d) {
-                            d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                {
+                    records = size/((fieldCount)+1);   
+                    //System.err.println(records);
+                    long start = System.nanoTime();
+                    
+                    d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                    int i = records;
+                    while (--i>=0) {
+                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        int j = fieldCount;
+                        while (--j>=0) {
+                            FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                            if (0==d) {
+                                d = ReaderWriterPrimitiveTest.unsignedIntData.length;
+                            }
+                        }
+                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                        
+                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                            dynamicWriter.write();
                         }
                     }
-                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-            //        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
-                        dynamicWriter.write();
-            //        }
+                    long duration = System.nanoTime()-start;
+                    return 1000000000f*records/duration;
                 }
-                                
-                break;
             case TypeMask.LongUnsigned:
             case TypeMask.LongUnsignedOptional:
             case TypeMask.LongSigned:
             case TypeMask.LongSignedOptional:
                 //ReaderWriterPrimitiveTest.unsignedLongData;
-                
-                records = size/((2*fieldCount)+1);   
-                
-                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
-                while (--records>=0) {
-                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
-                    int j = fieldCount;
-                    while (--j>=0) {
-                        FASTRingBufferWriter.writeLong(queue, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
-                        if (0==d) {
-                            d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                {
+                    records = size/((2*fieldCount)+1);   
+                    long start = System.nanoTime();
+                    
+                    d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                    int i = records;
+                    while (--i>=0) {
+                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        int j = fieldCount;
+                        while (--j>=0) {
+                            FASTRingBufferWriter.writeLong(queue, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            if (0==d) {
+                                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                            }
+                        }
+                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                            dynamicWriter.write();
                         }
                     }
-                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                    dynamicWriter.write();
+                    long duration = System.nanoTime()-start;
+                    return 1000000000f*records/duration;
                 }
-                
-                
-                break;
             case TypeMask.Decimal:
             case TypeMask.DecimalOptional:
                 //ReaderWriterPrimitiveTest.unsignedLongData;
-                
-                records = size/((3*fieldCount)+1);
-                
-                int exponent = 2;
-                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
-                while (--records>=0) {
-                    FASTRingBufferWriter.writeInt(queue, 0);//template Id
-                    int j = fieldCount;
-                    while (--j>=0) {
-                        FASTRingBufferWriter.writeDecimal(queue, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
-                        if (0==d) {
-                            d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                {
+                    records = size/((3*fieldCount)+1);
+                    long start = System.nanoTime();
+                    
+                    int exponent = 2;
+                    d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                    int i = records;
+                    while (--i>=0) {
+                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        int j = fieldCount;
+                        while (--j>=0) {
+                            FASTRingBufferWriter.writeDecimal(queue, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            if (0==d) {
+                                d = ReaderWriterPrimitiveTest.unsignedLongData.length;
+                            }
+                        }
+                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                            dynamicWriter.write();
                         }
                     }
-                    FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                    dynamicWriter.write();
-                }
-                
-                break;        
+                    long duration = System.nanoTime()-start;
+                    return 1000000000f*records/duration;
+                }     
         
         }
+        return 0;
     }
 
 

@@ -675,7 +675,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         if (0 != (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
                 genWriteClosePMap(writer);
-        }
+        } 
     }
 
 
@@ -1235,7 +1235,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         return true;
     }
-
     
     private void openMessage(int token, int pmapSize, int fieldPos,  PrimitiveWriter writer, FASTRingBuffer queue) {
         assert (token < 0);
@@ -1243,20 +1242,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
         //add 1 bit to pmap and write the templateId
-      //  System.err.println("open msg");
         int[] buffer = queue==null?null:queue.buffer;
         int mask = queue==null?0:queue.mask;
         PaddedLong workingTailPos = queue==null?null:queue.workingTailPos;
-        
+
         genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, buffer, mask, workingTailPos, this);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
             //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
             genWriteClosePMap(writer); 
-       //     System.err.println("close msg");
-        } else {
-        //    System.err.println("********* must close later");
-        }
+        } 
     }
 
     @Override
@@ -1328,8 +1323,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //loop over every cursor position and dispatch to do the right activity
-        int stop = activeScriptLimit;         
-        while (activeScriptCursor<stop) { 
+        int stop = activeScriptLimit; //limit value is inclusive        
+        while (activeScriptCursor<=stop) { 
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message
             };

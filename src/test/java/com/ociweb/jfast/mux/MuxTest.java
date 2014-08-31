@@ -4,19 +4,30 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.Pipe;
 import java.nio.channels.WritableByteChannel;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
-import com.ociweb.jfast.primitive.adapter.FASTInputSocketChannel;
+import com.ociweb.jfast.primitive.adapter.FASTInputSourceChannel;
+import com.ociweb.jfast.stream.FASTDecoder;
+import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class MuxTest {
 
@@ -45,16 +56,50 @@ public class MuxTest {
         //FASTInputByteBuffer input = buildInputForTestingByteBuffer(sourceDataFile);
         
         
-        FASTInputSocketChannel targetChannel = null;
+        //TODO: put these into decoder
+        int channels = 4;        
+        FASTInput[] targetChannel = new FASTInput[channels];        
+        WritableByteChannel[] writableChannel = new WritableByteChannel[channels];
         
-        WritableByteChannel target = null;
+        
+        int reactors = 3;
+        final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors);       
+   //     final AtomicBoolean isAlive = reactor.start(executor, reader);
         
         
         
-        int loops = 4;
+        FASTRingBuffer decoderIdQueue = new FASTRingBuffer((byte)20,(byte)22,null,null);
+        
+        
+        
+        Pipe pipe;
+        try {
+            pipe = Pipe.open();
+        
+            // gets the pipe's sink channel
+            writableChannel[0] = pipe.sink();          
+            
+            targetChannel[0] = new FASTInputSourceChannel(pipe.source());
+            
+            int maxPMapCountInBytes=32;
+            PrimitiveReader reader = new PrimitiveReader(2048, targetChannel[0], maxPMapCountInBytes);
+            
+            FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+            FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+            
+            reactor.start(executor, reader);
+        
+        } catch (IOException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+        
+        
+        int loops = 100;
         
         long totalTestBytes = sourceDataFile.length();
-        System.err.println(totalTestBytes);
+        System.err.println("File size:"+totalTestBytes);
+        
         long begin = System.nanoTime();
         try {
             RandomAccessFile randomAccessFile = new RandomAccessFile(sourceDataFile, "r");
@@ -65,7 +110,9 @@ public class MuxTest {
             
             FileChannel fc = randomAccessFile.getChannel();
             MappedByteBuffer mem = fc.map(FileChannel.MapMode.READ_ONLY, 0, totalTestBytes);
-                 
+                            
+            
+            
            int j = loops;
            while (--j>=0) {
             
@@ -81,27 +128,28 @@ public class MuxTest {
                     //peek ahead at the templateId which will be after the pmap
                     
                     int pmap =  mem.get();
-                    
                     int templateId = readIntegerUnsigned(mem);
                     
-                    //all the 2's will go to another
-                    //all the 1's can round robin the shortest
-                    
-                    
-                   // int templateId = mem.get(); //this is encoded however!
-                    
-                    
-               //     System.err.println(templateId);
-                    
-                   
-                    
-//                    WritableByteChannel target = null;
-//                    fc.transferTo(mem.position(), preamble, target);//does zero copy when it can
+                    //message 1 resets so do them separate
+                    if (templateId==1) {
+                        //round robin on 3 of these
+                                                
+                        
+                        //TODO: will only work if encoder is, consuming the bytes from FASTInput
+                         //      fc.transferTo(mem.position(), preamble, writableChannel);//does zero copy when it can
+                        
+                    } else {  //all others 
+                        //TODO: will only work if encoder is, consuming the bytes from FASTInput
+                            //   fc.transferTo(mem.position(), preamble, writableChannel);//does zero copy when it can    
+                        
+                    }
+                    //store which encoder was used here so that the reader can join this data together.
+                    //decoderIdQueue
+
                     
                     
                     mem.position(newPos);//now at start of next block or end of file
-                    
-                    
+                                      
                     
                 
                    // System.err.println(mem.remaining());

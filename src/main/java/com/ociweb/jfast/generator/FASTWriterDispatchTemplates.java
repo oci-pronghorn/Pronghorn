@@ -2093,9 +2093,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteCloseTemplate(PrimitiveWriter writer, FASTEncoder dispatch) {
         // must always pop because open will always push
         dispatch.templateStackHead--;
-    }
-    
-    
+    }    
 
     protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
         PrimitiveWriter.openPMap(pmapSize, writer);  //FASTRingBuffer queue, int fieldPos

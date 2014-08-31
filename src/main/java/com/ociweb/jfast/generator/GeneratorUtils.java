@@ -417,7 +417,7 @@ public class GeneratorUtils {
         while (i<startCursor.length) {
             int fragmentStart = startCursor[i];
             int limit = limitCursor[i++];
-            
+                        
             if (0==fragmentStart && 0==limit) {
                 continue;//skip this one it was not at an entry point
             }
