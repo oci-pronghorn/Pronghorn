@@ -40,9 +40,14 @@ public final class FASTOutputByteArray implements FASTOutput {
 		
 		int size = PrimitiveWriter.nextBlockSize(writer);
 		while (size>0) {
-			System.arraycopy(writer.buffer, 
-			         		 PrimitiveWriter.nextOffset(writer), 
-			         		 buffer, position, size);
+		    int srcOffset = PrimitiveWriter.nextOffset(writer);
+		    if (position+size>buffer.length) {
+		        throw new ArrayIndexOutOfBoundsException(position+size);		        
+		    }
+		    System.arraycopy(writer.buffer, 
+			         		 srcOffset, 
+			         		 buffer, position, 
+			         		 size);
 			
 			position+=size;
 			size = PrimitiveWriter.nextBlockSize(writer);

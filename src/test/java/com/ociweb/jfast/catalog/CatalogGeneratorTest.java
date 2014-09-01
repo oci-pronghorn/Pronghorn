@@ -65,12 +65,12 @@ public class CatalogGeneratorTest {
     };
     
     int[] numericOps = new int[] {
-            OperatorMask.Field_Constant,
-            OperatorMask.Field_Copy,
-            OperatorMask.Field_Default,
+            //OperatorMask.Field_Copy,
+           // OperatorMask.Field_Default,
+           //  OperatorMask.Field_Increment,            
             OperatorMask.Field_Delta,
-            OperatorMask.Field_Increment,            
-            OperatorMask.Field_None 
+            OperatorMask.Field_None, 
+            OperatorMask.Field_Constant,
     };
     
     int[] textByteOps = new int[] {
@@ -97,7 +97,10 @@ public class CatalogGeneratorTest {
     
    
     private final int writeBuffer=65536;
-    private final byte[] buffer = new byte[1<<22];
+    
+    //If this test is going to both encode then decode to test both parts of the process this
+    //buffer must be very large in order to hold all the possible permutations
+    private final byte[] buffer = new byte[1<<28];
     
     List<byte[]> numericCatalogs;
     List<Integer> numericFieldCounts;
@@ -118,7 +121,7 @@ public class CatalogGeneratorTest {
         String dictionary = null;
         boolean fieldPresence = false;     
         String fieldInitial = "10";        
-        int totalFields = 200;//1024;  //at 4 bytes per int for 4K message size test                              
+        int totalFields = 400;//1024;  //at 4 bytes per int for 4K message size test                              
         
         int p = numericOps.length;
         while (--p>=0) {            
@@ -145,8 +148,10 @@ public class CatalogGeneratorTest {
                     numericFieldTypes.add(new Integer(fieldType));
                     numericFieldOperators.add(new Integer(fieldOperator));
                     
-                    if (fieldCount<100) {
-                        fieldCount+=5;
+                    if (fieldCount<10) {
+                        fieldCount+=1;
+                    } else if (fieldCount<100) {
+                        fieldCount+=10;
                     } else {
                         fieldCount+=100;//by steps of 100, 
                     }
@@ -177,6 +182,7 @@ public class CatalogGeneratorTest {
 
     int lastOp = -1;
     int lastType = -1;
+    int lastFieldCount = -1;
 
     public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes) {
         int type = fieldType;
@@ -201,6 +207,11 @@ public class CatalogGeneratorTest {
 //            }
             
         }
+//        if (fieldCount!=lastFieldCount) {
+//            lastFieldCount = fieldCount;
+//            System.err.println("FieldCount:"+lastFieldCount);
+//            
+//        }
         
         
         
@@ -217,7 +228,7 @@ public class CatalogGeneratorTest {
         //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
         //catalog.getMaxGroupDepth()
         
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, false);
                         
             //    catalog.dictionaryFactory().byteDictionary().
                
@@ -230,7 +241,7 @@ public class CatalogGeneratorTest {
         
         long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
         
-     //   System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+        System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
                 //" per field "+(responseTime/(double)fieldCount));
         
         
@@ -263,7 +274,7 @@ public class CatalogGeneratorTest {
 
         int size = queue.maxSize;
         
-        int records = 10000; //testing enough to get repeatable results
+        int records = 100000; //testing enough to get repeatable results
         int d;
         switch(fieldType) {
             case TypeMask.IntegerUnsigned:
@@ -271,8 +282,7 @@ public class CatalogGeneratorTest {
             case TypeMask.IntegerSigned:
             case TypeMask.IntegerSignedOptional:
                 {
-                    records = size/((fieldCount)+1);   
-                    //System.err.println(records);
+     //               records = size/((fieldCount)+1);   
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
@@ -299,7 +309,6 @@ public class CatalogGeneratorTest {
             case TypeMask.LongUnsignedOptional:
             case TypeMask.LongSigned:
             case TypeMask.LongSignedOptional:
-                //ReaderWriterPrimitiveTest.unsignedLongData;
                 {
                     records = size/((2*fieldCount)+1);   
                     long start = System.nanoTime();
