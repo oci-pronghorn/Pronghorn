@@ -22,18 +22,13 @@ import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public final class PrimitiveWriter {
 
-    // TODO: X, the write to output is not implemented right it must send one
-    // giant block when possible
-    // TODO: X, we should have min and max block size? this may cover all cases.
-    private static final int BLOCK_SIZE = 256;// in bytes
-
- //   private static final int BLOCK_SIZE_LAZY = (BLOCK_SIZE * 3) + (BLOCK_SIZE >> 1);
     private static final int POS_POS_SHIFT = 28;
     private static final int POS_POS_MASK = 0xFFFFFFF; // top 4 are bit pos,
                                                        // bottom 28 are byte pos
 
     public final FASTOutput output;
     public final byte[] buffer;
+    public final int bufferSize;
 
     private final int minimizeLatency;
     private final long[] safetyStackPosPos;// low 28, location where the last
@@ -70,16 +65,11 @@ public final class PrimitiveWriter {
     
     public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
 
-        // NOTE: POS_POS_MASK can be shortened to only match the length of
+        // TODO: X, POS_POS_MASK can be shortened to only match the length of
         // buffer. but then buffer always must be a power of two.
 
-        int largestMessageSize = BLOCK_SIZE<<2; //hack must compute from the template config TODO: B, need to compute from template config
-        
-        if (initBufferSize < largestMessageSize * 2) {
-            initBufferSize = largestMessageSize * 2;
-        }
-
-        this.buffer = new byte[initBufferSize];
+        this.bufferSize=initBufferSize;
+        this.buffer = new byte[bufferSize];
         this.position = 0;
         this.limit = 0;
         this.minimizeLatency = minimizeLatency ? 1 : 0;
@@ -90,7 +80,7 @@ public final class PrimitiveWriter {
         //NOTE: for high latency large throughput this must be as big as every group that can fit into initBufferSize
         //TODO: B, optimize this later by getting the smallest group size from template config and passing it in 
         this.flushSkipsSize = initBufferSize;//HACK for now assuming average message is no more than 1 bytes
-        this.mustFlush = initBufferSize - (largestMessageSize*2);
+        this.mustFlush = initBufferSize/2;// - (largestMessageSize*2);
         
         // this may grow very large, to fields per group
         this.flushSkips = new int[flushSkipsSize];
@@ -127,7 +117,7 @@ public final class PrimitiveWriter {
             // all the data we have lines up with the end of the skip limit
             // nothing to skip so flush the full block
             int avail = computeFlushToIndex(writer) - (writer.nextBlockOffset = writer.position);
-            writer.pendingPosition = writer.position + (writer.nextBlockSize = (avail >= BLOCK_SIZE) ? BLOCK_SIZE : avail);
+            writer.pendingPosition = writer.position + (writer.nextBlockSize = avail);
         } else {
             buildNextBlockWithSkips(writer);
         }
@@ -138,7 +128,7 @@ public final class PrimitiveWriter {
     private static void buildNextBlockWithSkips(PrimitiveWriter writer) {
         int sourceOffset = writer.position;
         int targetOffset = writer.position;
-        int reqLength = BLOCK_SIZE;
+        int reqLength = writer.bufferSize;
 
         // do not change this value after this point we are committed to this
         // location.
@@ -207,7 +197,9 @@ public final class PrimitiveWriter {
                 //TODO: X, direct write without this move would help lower latency but this design helps throughput.
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
-            writer.nextBlockSize = BLOCK_SIZE - (reqLength - flushRequest);
+   //         System.err.println("error here:"+ reqLength+" "+flushRequest+"   "+writer.position+"   "+writer.limit);
+            
+            writer.nextBlockSize = writer.bufferSize - (reqLength - flushRequest);
             writer.pendingPosition = sourceOffset + flushRequest;
         }
     }
@@ -218,7 +210,7 @@ public final class PrimitiveWriter {
             //TODO: X, direct write without this move would help lower latency but this design helps throughput.
             System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, reqLength);
         }
-        writer.nextBlockSize = BLOCK_SIZE;
+        writer.nextBlockSize = writer.bufferSize;
         writer.pendingPosition = sourceOffset + reqLength;
     }
 
@@ -238,7 +230,10 @@ public final class PrimitiveWriter {
         if (0 == writer.safetyStackDepth && 0 == writer.flushSkipsIdxLimit && writer.position == writer.limit) {
             writer.position = writer.limit = 0;
         }
-
+      //  System.err.println("xxx "+writer.position+" "+writer.limit);
+        //if nextBlock size is not large enought to get to the end of the message eg 255 but need 257 we will have 3 left
+        //TODO: A, must write remaining bytes if it takes us to limit and is smaller than block?
+        
         return nextOffset;
     }
 
@@ -255,18 +250,21 @@ public final class PrimitiveWriter {
                                    // coverage test?
             // only need to check first entry on stack the rest are larger
             // values
-            // NOTE: using safetyStackPosPos here may not be the best performant
-            // idea.
-            int safetyLimit = (((int) writer.safetyStackPosPos[0]) & POS_POS_MASK) - 1;// still
-                                                                                // modifying
-                                                                                // this
-                                                                                // position
-                                                                                // but
-                                                                                // previous
-                                                                                // is
-                                                                                // ready
-                                                                                // to
-                                                                                // go.
+            // NOTE: using safetyStackPosPos here may not be the best performant idea.
+            int safetyLimit = (((int) writer.safetyStackPosPos[0]) & POS_POS_MASK) - 1;
+           
+//            if (safetyLimit<writer.position) {
+//                return writer.limit;
+//            }
+            
+          System.err.println(writer.safetyStackDepth+" this never happens "+safetyLimit+" "+writer.position+" "+writer.limit);
+           // new Exception().printStackTrace();
+//            if (safetyLimit < writer.position) {
+//                safetyLimit = writer.position;
+//                
+//            }
+            
+            
             return (safetyLimit < writer.limit ? safetyLimit : writer.limit);
         } else {
             return writer.limit;
@@ -808,6 +806,7 @@ public final class PrimitiveWriter {
     // called only at the beginning of a group.
     public static final void openPMap(int maxBytes, PrimitiveWriter writer) {
 
+               
       //  System.err.println("write maxBytes "+maxBytes+" at "+(writer.limit+writer.totalWritten));
 
         assert (maxBytes > 0) : "Do not call openPMap if it is not expected to be used.";
@@ -832,10 +831,14 @@ public final class PrimitiveWriter {
             }
             writer.safetyStackPosPos[s] = (((long) writer.pMapIdxWorking) << POS_POS_SHIFT) | idx;
 
+   //         System.err.println("open pmap2 set safety depth "+writer.safetyStackDepth+" value "+writer.limit+" or "+idx);
+
         }
         // NOTE: pos pos, new position storage so top bits are always unset and
         // no need to set.
 
+  //      System.err.println("open pmap set safety depth "+writer.safetyStackDepth+" value "+writer.limit);
+        
         writer.safetyStackPosPos[writer.safetyStackDepth++] = (((long) writer.flushSkipsIdxLimit) << 32) | writer.limit;
         writer.flushSkips[writer.flushSkipsIdxLimit++] = writer.limit + 1;// default minimum size for
                                                      // present PMap
@@ -851,6 +854,10 @@ public final class PrimitiveWriter {
 
     // called only at the end of a group.
     public static final void closePMap(PrimitiveWriter writer) {
+        
+    //    System.err.println("close pmap "+writer.position+" "+writer.limit);
+        
+        
         // ///
         // the PMap is ready for writing.
         // bit writes will go to previous bitmap location
@@ -891,7 +898,10 @@ public final class PrimitiveWriter {
         
         if (writer.minimizeLatency != 0 || writer.limit > writer.mustFlush ) { 
             writer.output.flush();
-        }       
+           // System.err.println("flush");
+        }// else {
+         //   System.err.println("no flush "+writer.limit+" "+writer.mustFlush);
+      //  }
         
 
     }

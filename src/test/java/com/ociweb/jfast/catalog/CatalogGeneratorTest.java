@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.SAXParser;
@@ -65,9 +66,9 @@ public class CatalogGeneratorTest {
     };
     
     int[] numericOps = new int[] {
-            //OperatorMask.Field_Copy,
-           // OperatorMask.Field_Default,
-           //  OperatorMask.Field_Increment,            
+            OperatorMask.Field_Copy,
+            OperatorMask.Field_Default,
+            OperatorMask.Field_Increment,            
             OperatorMask.Field_Delta,
             OperatorMask.Field_None, 
             OperatorMask.Field_Constant,
@@ -168,14 +169,17 @@ public class CatalogGeneratorTest {
     @Test
     public void numericFieldTest() {
         
+        AtomicLong totalWrittenCount = new AtomicLong();
         int i = numericCatalogs.size();
         System.out.println("testing "+i+" numeric configurations");
         while (--i>=0) {
             testEncoding(numericFieldOperators.get(i).intValue(), 
                          numericFieldTypes.get(i).intValue(), 
                          numericFieldCounts.get(i).intValue(), 
-                         numericCatalogs.get(i));
+                         numericCatalogs.get(i),
+                         totalWrittenCount);
         }
+        System.err.println("totalWritten:"+totalWrittenCount.longValue());
             
     }
 
@@ -184,7 +188,7 @@ public class CatalogGeneratorTest {
     int lastType = -1;
     int lastFieldCount = -1;
 
-    public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes) {
+    public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes, AtomicLong totalWritten) {
         int type = fieldType;
         int operation = fieldOperator;
                
@@ -241,7 +245,7 @@ public class CatalogGeneratorTest {
         
         long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
         
-        System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+   //     System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
                 //" per field "+(responseTime/(double)fieldCount));
         
         
@@ -265,7 +269,8 @@ public class CatalogGeneratorTest {
 //        
 //        dynamicWriter.write();
         
-        
+        //Use as bases for building single giant test file with test values provided, in ascii?
+        totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
         
     }
 
