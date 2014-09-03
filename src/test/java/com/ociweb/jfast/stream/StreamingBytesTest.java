@@ -88,7 +88,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
         byte[] buffer = new byte[2048];
         FASTOutput output = new FASTOutputByteArray(buffer);
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
 
         int singleSize = 14;
         int singleGapSize = 8;
@@ -524,7 +524,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
         output = new FASTOutputByteArray(writeBuffer);
-        writer = new PrimitiveWriter(writeBuffer.length, output, maxGroupCount, false);
+        writer = new PrimitiveWriter(writeBuffer.length, output, false);
     }
 
     protected long totalRead() {

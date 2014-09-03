@@ -75,7 +75,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
-	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, false);
 	static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final CharSequence[] textTestData = new CharSequence[]{"","","a","a","ab","ab","abcd","abcd","abcdefgh","abcdefgh"};

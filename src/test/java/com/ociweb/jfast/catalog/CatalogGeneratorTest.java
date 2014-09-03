@@ -46,9 +46,6 @@ import com.ociweb.jfast.stream.FASTRingBufferWriter;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.util.Stats;
 
-//TODO B, the example test file is full of long sequences of 1 then a 2,  if the ratio was more balanced this file could be read in parallel with multiple decoders.
-//TODO B, note that template 1 (the most common) also has a reset on each message, As a result each of these can be done in parallel.
-//TODO B, build speed loader of file with NIO and add multiple decoders
 
 public class CatalogGeneratorTest {
     
@@ -97,7 +94,7 @@ public class CatalogGeneratorTest {
     };    
     
    
-    private final int writeBuffer=65536;
+    private final int writeBuffer=4096;
     
     //If this test is going to both encode then decode to test both parts of the process this
     //buffer must be very large in order to hold all the possible permutations
@@ -187,6 +184,7 @@ public class CatalogGeneratorTest {
     int lastOp = -1;
     int lastType = -1;
     int lastFieldCount = -1;
+    
 
     public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes, AtomicLong totalWritten) {
         int type = fieldType;
@@ -199,95 +197,60 @@ public class CatalogGeneratorTest {
             System.err.println();
             System.err.println("operation:"+OperatorMask.xmlOperatorName[operation]);
         }
+        
         if (type!=lastType) {
             lastType = type;
-            System.err.println("type:"+TypeMask.methodTypeName[type]+TypeMask.methodTypeSuffix[type]);
-            
-   //         boolean noPMap = (0 == (catalog.getScriptTokens()[0] & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER)));
-  //          System.err.println("noPMap:"+noPMap);
-            
-//            for (int token:  catalog.getScriptTokens()) {
-//                System.err.println("    "+TokenBuilder.tokenToString(token));
-//            }
-            
+            System.err.println("type:"+TypeMask.methodTypeName[type]+TypeMask.methodTypeSuffix[type]);           
         }
-//        if (fieldCount!=lastFieldCount) {
-//            lastFieldCount = fieldCount;
-//            System.err.println("FieldCount:"+lastFieldCount);
-//            
-//        }
-        
-        
-        
-        
+
         assertEquals(1, catalog.templatesCount());
-        int maxGroupCount=4096;
         
-        //TODO: A, new unit tests. use catalog to test mock data
         FASTClassLoader.deleteFiles();
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder
                         
    
         FASTOutput fastOutput = new FASTOutputByteArray(buffer );
-        //TODO: A, need the maximum groups that would fit in this buffer based on smallest known buffer.
-        //catalog.getMaxGroupDepth()
-        
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, false);
-                        
-            //    catalog.dictionaryFactory().byteDictionary().
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
                
         FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
              
         //populate ring buffer with the new records to be written.
         
-        float millionPerSecond = timeEncoding(fieldType, fieldCount, queue, dynamicWriter)/1000000f;
-        
-        long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
-        
-   //     System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
-                //" per field "+(responseTime/(double)fieldCount));
-        
-        
-        //followed by time decoding
-        //followed by validate values
-        
-        //TypeMask.xmlTypeName
-        
-        
-        //TODO A, need the compiled static accessor to greatly simplify the usage of clients
-        //TODO A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
-               
-        
-//        int j = fieldCount;
-//        while (--j>=0) {
-//            FASTRingBufferWriter.writeInt(queue, 42);
-//        }
-//        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-//        
-//        
-//        
-//        dynamicWriter.write();
-        
+        float millionPerSecond = timeEncoding(fieldType, fieldCount, queue, dynamicWriter)/1000000f;        
+
         //Use as bases for building single giant test file with test values provided, in ascii?
         totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
         
+        long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
+        //TODO: write to flat file to produce google chart.
+     //   System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+
+        
+        
+        //TODO: B, followed by time decoding
+        //TODO: B, followed by validate values
+        
+
+        
+        
     }
 
+    //TODO A, need the compiled static accessor to greatly simplify the usage of clients
+    //TODO A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
+    
 
     private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
 
-        int size = queue.maxSize;
-        
         int records = 100000; //testing enough to get repeatable results
+        
         int d;
         switch(fieldType) {
             case TypeMask.IntegerUnsigned:
             case TypeMask.IntegerUnsignedOptional:
             case TypeMask.IntegerSigned:
             case TypeMask.IntegerSignedOptional:
-                {
-     //               records = size/((fieldCount)+1);   
+                { 
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
@@ -314,8 +277,7 @@ public class CatalogGeneratorTest {
             case TypeMask.LongUnsignedOptional:
             case TypeMask.LongSigned:
             case TypeMask.LongSignedOptional:
-                {
-                    records = size/((2*fieldCount)+1);   
+                { 
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
@@ -339,9 +301,7 @@ public class CatalogGeneratorTest {
                 }
             case TypeMask.Decimal:
             case TypeMask.DecimalOptional:
-                //ReaderWriterPrimitiveTest.unsignedLongData;
                 {
-                    records = size/((3*fieldCount)+1);
                     long start = System.nanoTime();
                     
                     int exponent = 2;
@@ -363,7 +323,37 @@ public class CatalogGeneratorTest {
                     }
                     long duration = System.nanoTime()-start;
                     return 1000000000f*records/duration;
-                }     
+                } 
+            case TypeMask.TextASCII:
+            case TypeMask.TextASCIIOptional:
+            case TypeMask.TextUTF8:
+            case TypeMask.TextUTF8Optional:
+                {
+                    long start = System.nanoTime();
+                    
+                    int exponent = 2;
+                    d = ReaderWriterPrimitiveTest.stringData.length;
+                    int i = records;
+                    while (--i>=0) {
+                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        int j = fieldCount;
+                        while (--j>=0) {
+                            
+                            FASTRingBufferWriter.writeString(queue, ReaderWriterPrimitiveTest.stringData[--d]);
+                            if (0==d) {
+                                d = ReaderWriterPrimitiveTest.stringData.length;
+                            }
+                        }
+                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                            dynamicWriter.write();
+                        }
+                    }
+                    long duration = System.nanoTime()-start;
+                    return 1000000000f*records/duration;
+                    
+                }
+                
         
         }
         return 0;

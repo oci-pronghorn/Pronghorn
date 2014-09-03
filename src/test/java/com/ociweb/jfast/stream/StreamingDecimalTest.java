@@ -278,7 +278,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
         output = new FASTOutputByteArray(writeBuffer);
-        writer = new PrimitiveWriter(4096, output, maxGroupCount, false);
+        writer = new PrimitiveWriter(4096, output, false);
     }
 
     protected long totalRead() {

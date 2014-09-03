@@ -30,5 +30,10 @@ public class FASTRingBufferWriter {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent);   
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)mantissa >>> 32, (int)mantissa & 0xFFFFFFFF );    
     }
+
+    public static void writeString(FASTRingBuffer queue, CharSequence charSequence) {
+        // TODO Auto-generated method stub
+        
+    }
     
 }

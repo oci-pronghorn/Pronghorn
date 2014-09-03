@@ -33,7 +33,7 @@ public class FASTEncoderTest {
         int writeBuffer=4096;  //buffer size for the encoder
         int maxGroupCount=100;  //max group depth 
         boolean minimizeLatency=false;        
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, minimizeLatency);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput2, minimizeLatency);
         
         //////////////
         //Write all the new data into this ring buffer

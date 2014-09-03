@@ -132,7 +132,7 @@ public class TemplateHandler extends DefaultHandler {
     
 
     public TemplateHandler(FASTOutput output, ClientConfig clientConfig) {
-        this.writer = new PrimitiveWriter(4096, output, 128, false);
+        this.writer = new PrimitiveWriter(4096, output, false);
         this.clientConfig = clientConfig;
         this.dictionaryNames.add(globalDictionaryName);
         this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);

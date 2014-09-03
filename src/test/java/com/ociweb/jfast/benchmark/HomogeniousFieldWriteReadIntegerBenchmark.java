@@ -68,7 +68,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final FASTOutputByteBuffer output = new FASTOutputByteBuffer(directBuffer);
 	static final FASTInputByteBuffer input = new FASTInputByteBuffer(directBuffer);
 		
-	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, maxGroupCount, false);
+	static final PrimitiveWriter writer = new PrimitiveWriter(internalBufferSize, output, false);
 	static final PrimitiveReader reader = new PrimitiveReader(internalBufferSize, input, maxGroupCount*10);
 
 	static final int[] intTestData = new int[] {0,0,1,1,2,2,2000,2002,10000,10001};

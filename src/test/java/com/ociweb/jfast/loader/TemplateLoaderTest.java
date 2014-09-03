@@ -394,7 +394,7 @@ public class TemplateLoaderTest {
         // NOTE: may need to be VERY large if minimize
         // latency is turned off!!
         
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, true);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
@@ -550,7 +550,7 @@ public class TemplateLoaderTest {
 
         int writeBuffer = 16384;
         boolean minimizeLatency = false;
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, maxGroupCount, minimizeLatency);
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, minimizeLatency);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
@@ -619,7 +619,7 @@ public class TemplateLoaderTest {
         FASTOutputByteArray fastOutput2 = new FASTOutputByteArray(testBytesData);
  //       FASTOutput fastOutput2 = new FASTOutputTotals();
         
-        writer = new PrimitiveWriter(writeBuffer, fastOutput2, maxGroupCount, minimizeLatency);
+        writer = new PrimitiveWriter(writeBuffer, fastOutput2, minimizeLatency);
         dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
         
         boolean concurrent = false; //when set true this is not realistic use case but it is a nice test point.

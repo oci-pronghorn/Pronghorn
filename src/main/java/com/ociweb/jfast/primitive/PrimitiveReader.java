@@ -80,7 +80,7 @@ public final class PrimitiveReader {
         this.buffer = new byte[bufferSizeInBytes];
         this.resetLimit = 0;
         this.position = 0;
-        this.limit = 0;
+        this.limit = 0;        
         this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
         this.invPmapStackDepth = maxPMapCountInBytes-2;
         input.init(this.buffer);

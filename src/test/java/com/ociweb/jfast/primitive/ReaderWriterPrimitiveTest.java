@@ -93,7 +93,7 @@ public class ReaderWriterPrimitiveTest {
 		long totalBytesWritten = 0;
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);	
-		writer = new PrimitiveWriter(capacity, new FASTOutputStream(baost),(int) count, minimizeLatency);
+		writer = new PrimitiveWriter(capacity, new FASTOutputStream(baost),minimizeLatency);
 		FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(baost.toByteArray()));
 		PrimitiveReader pr = new PrimitiveReader(2048, input, 32);
 		
@@ -172,7 +172,7 @@ public class ReaderWriterPrimitiveTest {
 						} while (--repeat>0);
 						serverSocketChannel.configureBlocking(true);
 						SocketChannel socketChannel = serverSocketChannel.accept();
-						writer = new PrimitiveWriter(capacity, new FASTOutputSocketChannel(socketChannel), (int) count, minimizeLatency);
+						writer = new PrimitiveWriter(capacity, new FASTOutputSocketChannel(socketChannel), minimizeLatency);
 					} catch (IOException e) {
 						writer = null;
 						e.printStackTrace();
@@ -260,7 +260,7 @@ public class ReaderWriterPrimitiveTest {
 		/////////////////
 		ByteBuffer buffer = ByteBuffer.allocateDirect(capacity);
 		
-		writer = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer), (int) count, minimizeLatency);
+		writer = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer), minimizeLatency);
 		pr = new PrimitiveReader(2048, new FASTInputByteBuffer(buffer), 32);
 		
 		writeDurationIOSpeed = Float.MAX_VALUE;
@@ -309,7 +309,7 @@ public class ReaderWriterPrimitiveTest {
 		byte[] bufferArray = new byte[capacity];
 		
 		FASTOutputByteArray byteArrayOutput = new FASTOutputByteArray(bufferArray);
-		writer = new PrimitiveWriter(capacity, byteArrayOutput, (int) count, minimizeLatency);
+		writer = new PrimitiveWriter(capacity, byteArrayOutput, minimizeLatency);
 		
 		FASTInputByteArray byteArrayInput = new FASTInputByteArray(bufferArray);
 		pr = new PrimitiveReader(2048, byteArrayInput, 32);
@@ -406,7 +406,7 @@ public class ReaderWriterPrimitiveTest {
 		int capacity = speedTestSize*fieldSize*nullLoops;
 		
 		byte[] buffer = new byte[capacity];		
-		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(buffer), 128, false);
+		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(buffer), false);
 		
 		int i = 0;
 		while (i<nullLoops) {
@@ -476,7 +476,7 @@ public class ReaderWriterPrimitiveTest {
 				
 		ByteBuffer buffer = ByteBuffer.allocateDirect(capacity);
 		
-		final PrimitiveWriter writer = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer),100, false);
+		final PrimitiveWriter writer = new PrimitiveWriter(capacity, new FASTOutputByteBuffer(buffer),false);
 		
 		int i = 0;
 		while (i<unsignedLongData.length) {
@@ -790,7 +790,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), 128, false);
+		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), false);
 	
 		int i = 0;
 		while (i<stringData.length) {
@@ -870,7 +870,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), 128, false);
+		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), false);
 	
 		int i = 0;
 		while (i<stringData.length) {
@@ -1056,7 +1056,7 @@ public class ReaderWriterPrimitiveTest {
 		
 		ByteArrayOutputStream baost = new ByteArrayOutputStream(capacity);
 		
-		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), 128, false);
+		final PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputStream(baost), false);
 		
 		int i = 0;
 		while (i<byteData.length) {

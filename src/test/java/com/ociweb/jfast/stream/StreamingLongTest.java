@@ -245,7 +245,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 	
 	protected void buildOutputWriter(int maxGroupCount, byte[] writeBuffer) {
 		output = new FASTOutputByteArray(writeBuffer);
-		writer = new PrimitiveWriter(bufferSize, output, maxGroupCount, false);
+		writer = new PrimitiveWriter(bufferSize, output, false);
 	}
 	
 	protected long totalRead() {

@@ -63,7 +63,7 @@ public final class PrimitiveWriter {
 
     private final int mustFlush;
     
-    public PrimitiveWriter(int initBufferSize, FASTOutput output, int maxGroupCount, boolean minimizeLatency) {
+    public PrimitiveWriter(int initBufferSize, FASTOutput output, boolean minimizeLatency) {
 
         // TODO: X, POS_POS_MASK can be shortened to only match the length of
         // buffer. but then buffer always must be a power of two.
@@ -73,7 +73,12 @@ public final class PrimitiveWriter {
         this.position = 0;
         this.limit = 0;
         this.minimizeLatency = minimizeLatency ? 1 : 0;
-        this.safetyStackPosPos = new long[maxGroupCount]; 
+        
+        //must have enough room for the maximum number of groups that
+        //will appear within the buffer, because the data is all variable 
+        //length and that defines the smallest group as 1 byte. This stack
+        //must be the same depth as the buffer size.
+        this.safetyStackPosPos = new long[bufferSize]; 
 
         this.output = output;
         
@@ -246,25 +251,11 @@ public final class PrimitiveWriter {
     }
 
     protected static int computeFlushToIndex(PrimitiveWriter writer) {
-        if (writer.safetyStackDepth > 0) {// TODO: T, this never happens according to
-                                   // coverage test?
+        if (writer.safetyStackDepth > 0) {
             // only need to check first entry on stack the rest are larger
             // values
             // NOTE: using safetyStackPosPos here may not be the best performant idea.
             int safetyLimit = (((int) writer.safetyStackPosPos[0]) & POS_POS_MASK) - 1;
-           
-//            if (safetyLimit<writer.position) {
-//                return writer.limit;
-//            }
-            
-          System.err.println(writer.safetyStackDepth+" this never happens "+safetyLimit+" "+writer.position+" "+writer.limit);
-           // new Exception().printStackTrace();
-//            if (safetyLimit < writer.position) {
-//                safetyLimit = writer.position;
-//                
-//            }
-            
-            
             return (safetyLimit < writer.limit ? safetyLimit : writer.limit);
         } else {
             return writer.limit;

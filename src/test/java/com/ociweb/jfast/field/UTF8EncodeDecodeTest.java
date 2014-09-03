@@ -38,7 +38,7 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
+		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), false);
 		PrimitiveWriter.ensureSpace(data.length,writer);
         
         //convert from chars to bytes
@@ -62,7 +62,7 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
+		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),true);
 		PrimitiveWriter.ensureSpace(data.length,writer);
         
         //convert from chars to bytes
@@ -86,7 +86,7 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), 128, false);
+		PrimitiveWriter writer = new PrimitiveWriter(4096, new FASTOutputByteArray(myData), false);
 		char[] temp = unicodeTestString.toCharArray();
         int offset = 0;
         int length = temp.length;
@@ -110,7 +110,7 @@ public class UTF8EncodeDecodeTest {
 		
 		byte[] myData = new byte[data.length];
 		
-		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),0,true);
+		PrimitiveWriter writer = new PrimitiveWriter(data.length,new FASTOutputByteArray(myData),true);
 		char[] temp = unicodeTestString.toCharArray();
         int offset = 0;
         int length = temp.length;

@@ -30,7 +30,11 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class MuxTest {
-
+  
+  //TODO B, the example test file is full of long sequences of 1 then a 2,  if the ratio was more balanced this file could be read in parallel with multiple decoders.
+  //TODO B, note that template 1 (the most common) also has a reset on each message, As a result each of these can be done in parallel.
+  //TODO B, build speed loader of file with NIO and add multiple decoders
+    
     
     @Test
     public void loadFile() {

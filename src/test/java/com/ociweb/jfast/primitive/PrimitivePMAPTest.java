@@ -31,7 +31,7 @@ public class PrimitivePMAPTest {
         ByteArrayOutputStream baost = new ByteArrayOutputStream();
         FASTOutputStream output = new FASTOutputStream(baost);
 
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
 
         PrimitiveWriter.openPMap(10, writer);
         PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -68,7 +68,7 @@ public class PrimitivePMAPTest {
         ByteArrayOutputStream baost = new ByteArrayOutputStream();
         FASTOutputStream output = new FASTOutputStream(baost);
 
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
 
         PrimitiveWriter.openPMap(10, writer);
         PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -121,7 +121,7 @@ public class PrimitivePMAPTest {
         ByteArrayOutputStream baost = new ByteArrayOutputStream();
         FASTOutputStream output = new FASTOutputStream(baost);
 
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
 
         PrimitiveWriter.openPMap(3, writer);
         PrimitiveWriter.writePMapBit((byte) 1, writer);
@@ -187,7 +187,7 @@ public class PrimitivePMAPTest {
         ByteArrayOutputStream baost = new ByteArrayOutputStream();
         FASTOutputStream output = new FASTOutputStream(baost);
 
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, 128, false);
+        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
 
         // pw.pushPMap(3);
 
@@ -517,7 +517,7 @@ public class PrimitivePMAPTest {
         final FASTOutputByteBuffer output = new FASTOutputByteBuffer(buffer);
         final FASTInputByteBuffer input = new FASTInputByteBuffer(buffer);
 
-        final PrimitiveWriter writer = new PrimitiveWriter(localBufferSize, output, pmaps, false);
+        final PrimitiveWriter writer = new PrimitiveWriter(localBufferSize, output, false);
         final PrimitiveReader reader = new PrimitiveReader(localBufferSize, input, pmaps);
 
         int q = 3; // set to a large number when using profiler.
