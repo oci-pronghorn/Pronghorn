@@ -20,6 +20,19 @@ public class Extractor {
     boolean inEscape = false;
     int     contentPos = -1;
     boolean contentQuoted = false;
+    final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
+
+    //TODO: B, Based on this design build another that can parse JSON
+    
+    //Parsing order of priority
+    //  1.  escape
+    //  2.  quotes
+    //  3.  record delimiter
+    //  4.  field delimiter
+    //  5.  data
+    
+    //zero copy and garbage free
+    //visitor may do copy and may produce garbage
 
     public Extractor(ByteBuffer fieldDelimiter, ByteBuffer recordDelimiter,
                      ByteBuffer openQuote, ByteBuffer closeQuote, ByteBuffer escape) {
@@ -28,20 +41,16 @@ public class Extractor {
         this.openQuote = openQuote;
         this.closeQuote = closeQuote;
         this.escape = escape;
+        
+        this.tailPadding = Math.max(
+                              Math.max(
+                                Math.max(fieldDelimiter.remaining(),recordDelimiter.remaining()),
+                                Math.max(openQuote.remaining(),closeQuote.remaining())),
+                              escape.remaining());
     }
+
     
     public void extract(FileChannel fileChannel, ExtractionVisitor visitor) throws IOException {
-        
-        //Parsing order of priority
-        //  1.  escape
-        //  2.  quotes
-        //  3.  record delimiter
-        //  4.  field delimiter
-        //  5.  data
-        
-        //zero copy and garbage free
-        //visitor may do copy and may produce garbage
-        
         MappedByteBuffer mappedBuffer;
         
         long fileSize = fileChannel.size();
@@ -53,13 +62,47 @@ public class Extractor {
         do {
             do {
                 parseEscape(mappedBuffer, visitor);
-            } while (mappedBuffer.remaining()>0);
-            visitor.contextSwitch();
-            position+=mappedBuffer.limit();
+            } while (mappedBuffer.remaining()>tailPadding);
+            //notify the visitor that the buffer is probably going to change out from under them
+            visitor.frameSwitch();
+            //only increment by exactly how many bytes were read assuming we started at zero
+            position+=mappedBuffer.position();
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);
+                
+    }
+    
+    public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
+        MappedByteBuffer mappedBuffer;
+        
+        long fileSize = fileChannel.size();
+        long position = 0;
         
         
+        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        
+        do {
+            do {
+                parseEscape(mappedBuffer, visitor1);
+            } while (mappedBuffer.remaining()>tailPadding);
+            //notify the visitor that the buffer is probably going to change out from under them
+            visitor1.frameSwitch();
+            
+            //visit second visitor while this block is still mapped
+            mappedBuffer.position(0);
+            do {
+                parseEscape(mappedBuffer, visitor2);
+            } while (mappedBuffer.remaining()>tailPadding);
+            //notify the visitor that the buffer is probably going to change out from under them
+            visitor2.frameSwitch();
+            
+            
+            
+            //only increment by exactly how many bytes were read assuming we started at zero
+            position+=mappedBuffer.position();
+            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        } while (position<fileSize);
+                
     }
     
     private void flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {

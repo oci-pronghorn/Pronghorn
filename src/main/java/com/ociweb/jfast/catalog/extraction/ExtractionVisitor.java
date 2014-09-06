@@ -10,6 +10,6 @@ public interface ExtractionVisitor {
 
     void closeField();
 
-    void contextSwitch(); //must use any buffers it has been given because they are about to be changed
+    void frameSwitch(); //must use any buffers it has been given because they are about to be changed
 
 }
