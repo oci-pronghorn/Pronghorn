@@ -119,7 +119,7 @@ public class CatalogGeneratorTest {
         String dictionary = null;
         boolean fieldPresence = false;     
         String fieldInitial = "10";        
-        int totalFields = 400;//1024;  //at 4 bytes per int for 4K message size test                              
+        int totalFields = 10;//400;//1024;  //at 4 bytes per int for 4K message size test                              
         
         int p = numericOps.length;
         while (--p>=0) {            
@@ -242,7 +242,7 @@ public class CatalogGeneratorTest {
 
     private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
 
-        int records = 100000; //testing enough to get repeatable results
+        int records = 100;//100000; //testing enough to get repeatable results
         
         int d;
         switch(fieldType) {

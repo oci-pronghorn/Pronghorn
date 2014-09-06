@@ -113,6 +113,7 @@ public class ExtractorTest {
         fieldDelimiter.flip();
                 
         ByteBuffer recordDelimiter = ByteBuffer.allocate(2);
+        recordDelimiter.put((byte)'\r');
         recordDelimiter.put((byte)'\n');
         recordDelimiter.flip();
         

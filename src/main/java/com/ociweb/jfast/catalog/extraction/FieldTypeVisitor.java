@@ -47,6 +47,7 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     private static final int TYPE_EOM = 15;
     
     
+    
     //TODO: saturation isnot working and rolls over to zero then gets masked.
     
     int         activeSum;
@@ -57,17 +58,18 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     final int[] accumValues;
     
     //16 possible field types
-    final int typeTrieUnit = 16;
-    final int[] typeTrie;
-    int typeTrieCursor; 
-    int typeTrieLimit = typeTrieUnit;
+    
+    static final int   typeTrieUnit = 16;
+    static final int   typeTrieSize = 1<<20; //1M
+    static final int   typeTrieMask = typeTrieSize-1;
+    static final int   OPTIONAL_FLAG =  1<<30;
+    
+    final int[] typeTrie = new int[typeTrieSize];
+    int         typeTrieCursor; 
+    int         typeTrieLimit = typeTrieUnit;
     
     
     public FieldTypeVisitor() {
-        System.err.println(Integer.toBinaryString(ACCUM_MASK));
-        
-        //Pull out with its own class testing and tostring
-        typeTrie = new int[1<<20];//1M room for all the fields
         
         //one value for each of the possible bytes we may encounter.
         accumValues = new int[256];
@@ -110,7 +112,13 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         while (--i>=0) {
             byte b = mappedBuffer.get(pos+i);
             temp.append((char)b);
-            activeSum = (activeSum + accumValues[0xFF&b]) & ACCUM_MASK;            
+            int x = activeSum + accumValues[0xFF&b];
+            
+            int y = ((x>>1) & ACCUM_MASK) & 0x7FFF;
+            
+            activeSum = (x|y)&ACCUM_MASK;
+            
+            //activeSum = (activeSum + accumValues[0xFF&b]) & ACCUM_MASK;            
         };        
         
     }
@@ -126,7 +134,7 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     public void closeField() {
         assert(activeLength>=0);
         
-        System.err.println(Integer.toBinaryString(activeSum));
+   //     System.err.println(Integer.toBinaryString(activeSum));
         
         //split fields.
         int otherCount = ((1<<BITS_OTHER)-1)&(activeSum>>SHIFT_OTHER);
@@ -150,7 +158,6 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         if (activeLength==0 || activeSum==0) {
             //null field
             type = TYPE_NULL; 
-            System.err.println("null");
         } else {        
             if (otherCount>0) {
                 //utf8 or byte array
@@ -189,31 +196,37 @@ public class FieldTypeVisitor implements ExtractionVisitor{
             }
         }
         String v = (type==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type<<1]);
-        System.err.println(v+" from "+temp.toString());
+    //    System.err.println(v+" from "+temp.toString());
         
         //it points to next which may end up holding the count.
+        
+        //if this one is null and one already exists then change it to opional
+        //if this null and none then both must
+        //both null and real value point to same object!!!!!
         
         int pos = typeTrieCursor+type;
         if (typeTrie[pos]==0) {
             //create new position
+          
             typeTrieCursor = typeTrie[pos] = typeTrieLimit;
-            typeTrieLimit += typeTrieUnit;            
-        } else {
-            typeTrieCursor = typeTrie[pos];
-        }
-      
-        //System.err.println(TypeMask.methodTypeName[type<<1]);
-        
-        //TODO: do something with the type?
+            typeTrieLimit += typeTrieUnit; 
 
-        
+        } else {
+            typeTrieCursor = typeTrieMask&typeTrie[pos];
+        }
         resetFieldSum();
     }
 
     @Override
     public void frameSwitch() {
-        // PRINT REPORT
         
+        //consolidation rules
+        // if only 1 type plus null merge them
+        // need to merge target of both together.
+        
+        mergeOptionalNulls(0);
+        
+        // PRINT REPORT
         printRecursiveReport(0,"");
         
         
@@ -224,31 +237,154 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     }
 
     
+    //if all zero but the null then do recurse null otherwise not.
+    
     public void printRecursiveReport(int pos, String tab) {
         
-        int i = 16;
+        int i = typeTrieUnit;
         while (--i>=0) {
-            int value = typeTrie[pos+i];
+            int value = typeTrieMask&typeTrie[pos+i];
             if (value > 0) {                
                 if (i==TYPE_EOM) {
-    //                    System.err.println(tab+"Count:"+value);
+                        System.err.print(tab+"Count:"+value+"\n");
                 } else {
                     int type = i<<1;
-                    if (type<TypeMask.methodTypeName.length) {
-                        String v = (type==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type]);
+                    if (type<TypeMask.methodTypeName.length) {                    
                         
-      //                  System.err.println(tab+v);
+                        
+                        String v = (i==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type]);
+                        
+                        if ((OPTIONAL_FLAG&typeTrie[pos+i])!=0) {
+                            v = "Optional"+v;
+                        }
+                        
+                        
+                        System.err.print(tab+v);
                         printRecursiveReport(value, tab+"  ");    
                     }
                 }        
             }
             
-        }
-        
-        
-        
-        
+        }        
     }
+    
+    public void nav(int pos) {
+        
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int value = typeTrieMask&typeTrie[pos+i];
+            if (value > 0) {                
+                if (i==TYPE_EOM) {
+                    //value contains count
+                    
+                } else {
+                    int type = i<<1;
+                    if (type<TypeMask.methodTypeName.length) {                    
+                        
+                        
+                        //String stringType = (i==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type]);
+                        
+                        
+                        
+                        
+                        nav(value);    
+                    }
+                }        
+            }
+            
+        }        
+    }
+    
+    public void mergeOptionalNulls(int pos) {
+        
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int value = typeTrieMask&typeTrie[pos+i];
+            if (value > 0) {                
+                if (i!=TYPE_EOM) {
+                    int type = i<<1;
+                    if (type<TypeMask.methodTypeName.length) {      
+                        mergeOptionalNulls(value);
+                        //finished call for this position i so it can removed if needed
+                        //after merge on the way up also ensure we are doing the smallest parts first then larger ones
+                        //and everything after this point is already merged.
+                        
+                        int lastNonNull = lastNonNull(pos, typeTrie, typeTrieUnit);
+                        //TODO: if there is more than one will need to add that functionality later by continuing from lastNonNull
+                        //TODO: if null is a subset of two different branches then what? stand alone or merge to both?
+                        if (lastNonNull>=0 && TYPE_NULL==i) {
+                                                    
+                            
+                            int nullPos = value;
+                            int thatPosDoes = typeTrieMask&typeTrie[pos+lastNonNull];
+                            
+                            //if recursively all of null pos is contained in that pos then we will move it over.                            
+                            if (contains(nullPos,thatPosDoes)) {
+                                //since the null is a full subset add all its counts to the rlarger
+                                sum(nullPos,thatPosDoes);
+                                
+                                //flag this type as optional
+                                typeTrie[thatPosDoes] |= OPTIONAL_FLAG;
+                                //delete old null branch
+                                typeTrie[nullPos] = 0;
+                            }             
+                        }
+                    }
+                }        
+            }            
+        }        
+    }
+
+    private boolean contains(int subset, int targetset) {
+        //if all the field in inner are contained in outer
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            //exclude this type its only holding the count
+            if (TYPE_EOM!=i) {
+                if (0!=(typeTrieMask&typeTrie[subset+i])) {
+                    if (0==(typeTrieMask&typeTrie[targetset+i]) || !contains(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
+                        return false;
+                    }
+                }
+            }
+        }                    
+        return true;
+    }
+    
+    private boolean sum(int subset, int targetset) {
+        //if all the field in inner are contained in outer
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            //exclude this type its only holding the count
+            if (TYPE_EOM!=i) {
+                if (0!=(typeTrieMask&typeTrie[subset+i])) {
+                    if (0==(typeTrieMask&typeTrie[targetset+i]) || !sum(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
+                        return false;
+                    }
+                }
+                //don't loose the optional flag from the other branch if it is there
+                typeTrie[targetset+i] |= (OPTIONAL_FLAG & typeTrie[subset+i]);
+            } else {
+                //everything matches to this point so add the inner into the outer
+                typeTrie[targetset+i] += typeTrie[subset+i];
+            }
+        }                    
+        return true;
+    }
+    
+    
+    private static int lastNonNull(int pos, int[] typeTrie, int startLimit) {
+        int i = startLimit;
+        while (--i>=0) {
+            if (TYPE_NULL!=i) {
+                if (0!=typeTrie[pos+i]) {
+                    return i;
+                }
+            }            
+        }
+        return -1;
+    }
+    
     
     
 }
