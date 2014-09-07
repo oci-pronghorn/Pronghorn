@@ -35,5 +35,10 @@ public class FASTRingBufferWriter {
         // TODO Auto-generated method stub
         
     }
+
+    public static void writeBytes(FASTRingBuffer ringBuffer, byte[] catBytes) {
+        // TODO Auto-generated method stub
+        
+    }
     
 }

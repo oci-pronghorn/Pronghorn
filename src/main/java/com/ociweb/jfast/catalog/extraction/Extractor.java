@@ -13,7 +13,7 @@ public class Extractor {
     private final ByteBuffer closeQuote;
     private final ByteBuffer escape;
     
-    private final long BLOCK_SIZE = 1l<<20; //1MB
+    private final long BLOCK_SIZE = 1l<<19;//26; //64MB
     
     //state while parsing
     boolean inQuote = false;
@@ -104,6 +104,11 @@ public class Extractor {
         } while (position<fileSize);
                 
     }
+    
+    //TODO: When building JSON parser the field names will also be extracted. These names will be written one after the other into a buffer
+    //      once the end if the message is reached this full string is used as an additional information point to distinquish between 
+    //      messages that have the same field signatures but define them with different.  Each unique set of labels will need to define
+    //      its own TypeTrie
     
     private void flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
         if (contentPos>=0 && mappedBuffer.position()>contentPos) {

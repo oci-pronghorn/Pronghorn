@@ -105,7 +105,7 @@ public class ExtractorTest {
     }
     
     @Test
-    public void extractTest2() throws FileNotFoundException {
+    public void fieldTypeExtractionTest() throws FileNotFoundException {
         
         
         ByteBuffer fieldDelimiter = ByteBuffer.allocate(1);
@@ -125,8 +125,11 @@ public class ExtractorTest {
         closeQuote.put((byte)'"');
         closeQuote.flip();
         
-        ByteBuffer escape = ByteBuffer.allocate(1);
-        escape.put((byte)'/'); 
+        //Not using escape in this test file
+        ByteBuffer escape = ByteBuffer.allocate(3);
+        escape.put((byte)0);
+        escape.put((byte)0);
+        escape.put((byte)0);
         escape.flip();
         
         String fullPath = "/home/nate/flat/example.txt";
