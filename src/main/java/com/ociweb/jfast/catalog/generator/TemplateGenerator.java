@@ -17,14 +17,21 @@ public class TemplateGenerator implements ItemGenerator {
         this.id = id;
         this.reset = reset;
         this.dictionary = dictionary;
+        this.items = new ArrayList<ItemGenerator>();
+    }
+    
+    public TemplateGenerator(String name, int id, boolean reset, String dictionary, List<ItemGenerator> items) {
+        this.name = name;
+        this.id = id;
+        this.reset = reset;
+        this.dictionary = dictionary;
+        this.items = items;
     }
         
     
     public String toString() {
         return appendTo("",new StringBuilder()).toString();
     }
-
-
     
     public SequenceGenerator addSequence(String name) {
         SequenceGenerator field = new SequenceGenerator(name);
@@ -54,6 +61,22 @@ public class TemplateGenerator implements ItemGenerator {
     public StringBuilder appendTo(String tab, StringBuilder result) {
                 
         result.append(tab);
+        openTemplate(result,name, id, reset, dictionary);
+                
+        String innerTab = null==tab ? "" : tab+"    ";
+        for(ItemGenerator item:items) {
+            item.appendTo(innerTab,result);
+        }
+        result.append(tab);
+        closeTemplate(result);
+        return result;
+    }
+
+    public static void closeTemplate(StringBuilder result) {
+        result.append("</template>\n");
+    }
+
+    public static void openTemplate(StringBuilder result, String name, int id, boolean reset, String dictionary) {
         result.append("<template ");
         result.append("name=\"").append(name).append("\" ");
         result.append("id=\"").append(id).append("\" ");
@@ -64,14 +87,6 @@ public class TemplateGenerator implements ItemGenerator {
             result.append("dictionary=\"").append(dictionary).append("\" ");
         }
         result.append("xmlns=\"http://www.fixprotocol.org/ns/fast/td/1.1\">\n");
-                
-        String innerTab = null==tab ? "" : tab+"    ";
-        for(ItemGenerator item:items) {
-            item.appendTo(innerTab,result);
-        }
-        result.append(tab);
-        result.append("</template>\n");
-        return result;
     }
     
 

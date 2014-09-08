@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CatalogGenerator implements ItemGenerator {
-    static final String HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
+    public static final String HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
                                  "<templates xmlns=\"http://www.fixprotocol.org/ns/fast/td/1.1\">\n";
-    static final String FOOTER = "</templates>";
+    public static final String FOOTER = "</templates>";
     
     List<TemplateGenerator> templates = new ArrayList<TemplateGenerator>();
     
@@ -17,9 +17,14 @@ public class CatalogGenerator implements ItemGenerator {
     
     public TemplateGenerator addTemplate(String name, int id, boolean reset, String dictionary) { //return new empty template on which we will add fields.
         TemplateGenerator tg = new TemplateGenerator(name, id, reset, dictionary);
-        templates.add(tg);
+        addTemplate(tg);
         return tg;
     }
+
+    public void addTemplate(TemplateGenerator tg) {
+        templates.add(tg);
+    }
+    
         
     public String toString() {
         return appendTo("    ",new StringBuilder()).toString();
@@ -33,4 +38,5 @@ public class CatalogGenerator implements ItemGenerator {
         result.append(FOOTER);
         return result;
     }
+
 }

@@ -1,8 +1,26 @@
 package com.ociweb.jfast.catalog.extraction;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.nio.MappedByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.zip.GZIPOutputStream;
 
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+
+import com.ociweb.jfast.catalog.generator.CatalogGenerator;
+import com.ociweb.jfast.catalog.generator.FieldGenerator;
+import com.ociweb.jfast.catalog.generator.ItemGenerator;
+import com.ociweb.jfast.catalog.generator.TemplateGenerator;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateHandler;
+import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class TypeTrie {
 
@@ -57,6 +75,10 @@ public class TypeTrie {
     
     //TODO: null will be mapped to default bytearray null?
     //TODO: next step stream this data using next visitor into the ring buffer and these types.
+
+    //Need flag to turn on that feature
+    ///TODO: convert short byte sequences to int or long
+    ///TODO: treat leading zero as ascii not numeric.
     
     private int         activeSum;
     private int         activeLength;
@@ -68,13 +90,16 @@ public class TypeTrie {
     private static final int   typeTrieUnit = 16;
     private static final int   typeTrieSize = 1<<20; //1M
     private static final int   typeTrieMask = typeTrieSize-1;
-    private static final int   OPTIONAL_FLAG =  1<<30;
+    
+    private static final int   OPTIONAL_SHIFT = 30;
+    private static final int   OPTIONAL_FLAG  = 1<<OPTIONAL_SHIFT;
+    private static final int   CATALOG_TEMPLATE_ID = 0;
     
     private final int[] typeTrie = new int[typeTrieSize];
     private int         typeTrieCursor; 
     private int         typeTrieLimit = typeTrieUnit;
     
-    
+    byte[] catBytes;
     
     public TypeTrie() {
         //one value for each of the possible bytes we may encounter.
@@ -158,10 +183,6 @@ public class TypeTrie {
         if (commaCount>0) {
             System.err.println("did not expect any commas");
         }                     
-
-        //Need flag to turn on that feature
-        ///TODO: convert short byte sequences to int or long
-        ///TODO: treat leading zero as ascii not numeric.
         
         //apply rules to determine field type
         int type;
@@ -351,7 +372,141 @@ public class TypeTrie {
     }
     
     
+    private  void catalog(int pos, StringBuilder target, ItemGenerator[] buffer, int idx) {
+        
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int raw = typeTrie[pos+i];
+            int value = typeTrieMask&raw;
+            int optionalBit = 1&(raw>>OPTIONAL_SHIFT);
+            
+            if (value > 0) {                
+                if (i==TYPE_EOM) {
+                        
+                    String name=""+pos;
+                    int id=pos;
+                    
+                    boolean reset=false;
+                    String dictionary=null;
+                    
+                    TemplateGenerator.openTemplate(target, name, id, reset, dictionary);
+                    
+                    int j = 0;
+                    while (j<idx) {
+                        buffer[j].appendTo("    ", target);
+                        j++;
+                    }
+                        
+                    TemplateGenerator.closeTemplate(target);
+                    
+                } else {
+                    int type = i<<1;
+                    if (type<TypeMask.methodTypeName.length) {        
+                                                
+                        if (i==TYPE_NULL) {
+                            type = TypeMask.TextUTF8Optional;
+                        } else {
+                            type = type|optionalBit;
+                            
+                        }
+                        
+                        int id = 1000+idx;
+                        String name = ""+id;
+                        boolean presence = 1==optionalBit;
+                        int operator = OperatorMask.Field_None;
+                        String initial = null;
+                        
+                        buffer[idx] = new FieldGenerator(name,id,presence,type,operator,initial);                                      
+                        
+                        
+                        catalog(value, target, buffer, idx+1);    
+                    }
+                }        
+            }
+        }        
+
+    }
     
+    
+    public String buildCatalog(boolean withCatalogSupport) {
+        
+        StringBuilder target = new StringBuilder(1024);
+        target.append(CatalogGenerator.HEADER);
+               
+
+        ItemGenerator[] buffer = new ItemGenerator[64];        
+        catalog(0,target,buffer,0);
+                
+        if (withCatalogSupport) {
+            addTemplateToHoldTemplates(target);
+        }
+        
+        
+        target.append(CatalogGenerator.FOOTER);
+        return target.toString();      
+        
+        
+    }
+
+    public void addTemplateToHoldTemplates(StringBuilder target) {
+        String name="catalog";
+        int id=CATALOG_TEMPLATE_ID;
+        
+        boolean reset=true;
+        String dictionary="global";
+        
+        TemplateGenerator.openTemplate(target, name, id, reset, dictionary);
+        
+        
+        int catId = 100;
+        String catName = ""+catId;
+        boolean presence = false;
+        int operator = OperatorMask.Field_None;
+        String initial = null;
+        int type = TypeMask.ByteArray;
+        
+        FieldGenerator fg = new FieldGenerator(catName,catId,presence,type,operator,initial);  
+        fg.appendTo("    ", target);            
+        
+        TemplateGenerator.closeTemplate(target);
+    }
+    
+    public byte[] catBytes(ClientConfig clientConfig) {
+        String catalog = buildCatalog(true);
+        
+        clientConfig.setCatalogTemplateId(CATALOG_TEMPLATE_ID);
+        
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            GZIPOutputStream gZipOutputStream = new GZIPOutputStream(baos);
+            FASTOutput output = new FASTOutputStream(gZipOutputStream);
+            
+            SAXParserFactory spfac = SAXParserFactory.newInstance();
+            SAXParser sp = spfac.newSAXParser();
+            InputStream stream = new ByteArrayInputStream(catalog.getBytes(StandardCharsets.UTF_8));           
+            
+            TemplateHandler handler = new TemplateHandler(output, clientConfig);            
+            sp.parse(stream, handler);
+    
+            handler.postProcessing();
+            gZipOutputStream.close();            
+            
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        byte[] catBytes = baos.toByteArray();
+        return catBytes;
+    }
+
+    public void memoizeCatBytes() {
+      //  System.err.println(buildCatalog(true));
+        catBytes = catBytes(new ClientConfig());
+        
+    }
+    
+    public byte[] getCatBytes() {
+        return catBytes;
+    }
     
     
 }

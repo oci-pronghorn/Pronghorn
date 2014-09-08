@@ -2,6 +2,8 @@ package com.ociweb.jfast.catalog.extraction;
 
 import java.nio.MappedByteBuffer;
 
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+
 public class FieldTypeVisitor implements ExtractionVisitor{
 
     private TypeTrie accumulatedMessageTypes;
@@ -28,7 +30,12 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     }
 
     @Override
-    public void frameSwitch() {
+    public void openFrame() {
+        //has nothing to do
+    }
+
+    @Override
+    public void closeFrame() {
         
         
         System.err.println("________________________________________");
@@ -41,9 +48,15 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         
         // PRINT REPORT
         accumulatedMessageTypes.printRecursiveReport(0,"");
+        
+        accumulatedMessageTypes.memoizeCatBytes(); //store this so next visitor can pick it up on the open frame call.
+        
+
 
         
     }
+
+
 
 
     

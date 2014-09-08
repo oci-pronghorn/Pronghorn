@@ -1,5 +1,6 @@
 package com.ociweb.jfast.catalog.loader;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -13,6 +14,9 @@ public class ClientConfig {
     
     private int rbPrimaryRingBits = 10;
     private int rbTextRingBits = 8;
+    
+    private static final int NONE = -1;
+    private int catalogId = NONE;
 
     
     public ClientConfig(int primaryRingBits, int textRingBits) {
@@ -53,6 +57,8 @@ public class ClientConfig {
         rbPrimaryRingBits = PrimitiveReader.readIntegerUnsigned(reader);
         rbTextRingBits = PrimitiveReader.readIntegerUnsigned(reader);
         
+        catalogId = PrimitiveReader.readIntegerSigned(reader);
+        
 //        //read the filter fields list
 //        int scriptLength = PrimitiveReader.readIntegerUnsigned(reader);
 //        ignoreFieldIds = new byte[scriptLength];
@@ -87,6 +93,9 @@ public class ClientConfig {
         PrimitiveWriter.writeIntegerUnsigned(rbPrimaryRingBits, writer);
         PrimitiveWriter.writeIntegerUnsigned(rbTextRingBits, writer);
         
+        PrimitiveWriter.writeIntegerSigned(catalogId, writer);
+        
+        
         
 //        //write filter fields list
 //        writer.writeIntegerUnsigned(ignoreFieldIds.length);
@@ -103,8 +112,7 @@ public class ClientConfig {
 //        writer.writeIntegerUnsigned(i);
 //        while (--i>=0) {
 //            writer.writeIntegerUnsigned(bufferMaps[i]);
-//        }
-        
+//        }        
         
     }
     
@@ -150,7 +158,20 @@ public class ClientConfig {
         return rbTextRingBits;
     }
 
-
+    public void setCatalogTemplateId(int id) {
+        if (NONE == id) {
+            throw new FASTException("Catalog template Id may not be: "+NONE);
+        }
+        catalogId = id;
+    }
+    
+    public boolean hasCatalogTemplate() {
+        return NONE!=catalogId;
+    }
+    
+    public int getCatalogTemplateId() {
+        return catalogId;
+    }
     
     
     

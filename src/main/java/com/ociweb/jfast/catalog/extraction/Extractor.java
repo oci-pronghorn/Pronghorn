@@ -13,7 +13,7 @@ public class Extractor {
     private final ByteBuffer closeQuote;
     private final ByteBuffer escape;
     
-    private final long BLOCK_SIZE = 1l<<19;//26; //64MB
+    private final long BLOCK_SIZE = 1l<<26;//26; //64MB
     
     //state while parsing
     boolean inQuote = false;
@@ -58,18 +58,30 @@ public class Extractor {
         
         
         mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-        
+        int padding = tailPadding;
         do {
+            if (mappedBuffer.limit()+position==fileSize) {
+                padding = 0;
+            }
+            
+            visitor.openFrame();
             do {
                 parseEscape(mappedBuffer, visitor);
-            } while (mappedBuffer.remaining()>tailPadding);
+            } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
-            visitor.frameSwitch();
+            visitor.closeFrame();
             //only increment by exactly how many bytes were read assuming we started at zero
             position+=mappedBuffer.position();
+                        
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);
                 
+        if (flushContent(mappedBuffer,visitor)) {
+            flushField(visitor);
+            flushRecord(visitor);
+        }
+        
+        
     }
     
     public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
@@ -80,26 +92,51 @@ public class Extractor {
         
         
         mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-        
+        int padding = tailPadding;
         do {
+            //the last go round must never use any padding, this padding is only needed when spanning two blocks.
+            if (mappedBuffer.limit()+position==fileSize) {
+                padding = 0;
+            }
+            
+            visitor1.openFrame();
             do {
                 parseEscape(mappedBuffer, visitor1);
-            } while (mappedBuffer.remaining()>tailPadding);
+            } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
-            visitor1.frameSwitch();
+            visitor1.closeFrame();            
+            if (position+mappedBuffer.position()>=fileSize) {
+                if (flushContent(mappedBuffer,visitor1)) {
+                    flushField(visitor1);
+                    flushRecord(visitor1);
+                }
+            }
+            
+            
+            //TODO: each visitor needs their own state vars to cover any values crossing over the mapped boundry
             
             //visit second visitor while this block is still mapped
             mappedBuffer.position(0);
+            
+            visitor2.openFrame();            
             do {
                 parseEscape(mappedBuffer, visitor2);
-            } while (mappedBuffer.remaining()>tailPadding);
+            } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
-            visitor2.frameSwitch();
-            
-            
+            visitor2.closeFrame();
+            if (position+mappedBuffer.position()>=fileSize) {
+                if (flushContent(mappedBuffer,visitor2)) {
+                    flushField(visitor2);
+                    flushRecord(visitor2);
+                }
+            }
+                        
             
             //only increment by exactly how many bytes were read assuming we started at zero
             position+=mappedBuffer.position();
+            
+           
+            
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);
                 
@@ -110,12 +147,14 @@ public class Extractor {
     //      messages that have the same field signatures but define them with different.  Each unique set of labels will need to define
     //      its own TypeTrie
     
-    private void flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
+    private boolean flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
         if (contentPos>=0 && mappedBuffer.position()>contentPos) {
             visitor.appendContent(mappedBuffer, contentPos, mappedBuffer.position(), contentQuoted);
             contentPos = -1;
             contentQuoted = false;
+            return true;
         }
+        return false;
     }
 
     private void flushRecord(ExtractionVisitor visitor) {

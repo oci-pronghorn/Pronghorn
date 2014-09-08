@@ -18,8 +18,9 @@ public class StreamingVisitor implements ExtractionVisitor {
     TemplateCatalogConfig catalog;
     
     long beforeDotValue;
-    long afterDotValue;
+    long accumDecimalValue;
     boolean aftetDot;
+    
     //chars are written to  ring buffer.
     
     int bytePosStart;
@@ -37,11 +38,18 @@ public class StreamingVisitor implements ExtractionVisitor {
         bytePosStart = ringBuffer.addBytePos.value;
         aftetDot = false;
         beforeDotValue=0;
-        afterDotValue=0;
+        accumDecimalValue=0;
     }
+    
+    
+    //TODO: how does this get called? at what point?
     
     public void setCatalog(byte[] catBytes) {
         if (!Arrays.equals(this.catBytes, catBytes)) {
+            
+            //TODO: if there is a field write in progress this catalog must be done first, copy the bytes somewhere safe
+            
+            
             this.catBytes = catBytes;
 
             catalog = new TemplateCatalogConfig(catBytes);            
@@ -52,6 +60,9 @@ public class StreamingVisitor implements ExtractionVisitor {
             FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
             FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);        
 
+            //TODO: if we moved the in progress field bytes they must be put back
+            
+            
         }        
         
     }
@@ -66,18 +77,21 @@ public class StreamingVisitor implements ExtractionVisitor {
         //keep bytes here in case we need it, will only be known after we are done
         int p = pos;
         while (p<limit) {
+            
+            //TODO: this written data will need to be copied elsewhere if there is a frame switch and 
+            //the new catalog needs to be sent.
+            
             byte b = mappedBuffer.get(p);
             byteBuffer[byteMask&bytePosStart++] = b; //TODO: need to check for the right stop point
                         
             if ('.'==b) {
-                aftetDot = true;                
+                aftetDot = true;
+                beforeDotValue = accumDecimalValue;
+                accumDecimalValue = 0;
             }
             
-            if (aftetDot) {
-                afterDotValue = (10*afterDotValue) + (b-'0');                
-            } else {
-                beforeDotValue = (10*beforeDotValue) + (b-'0');
-            }            
+            accumDecimalValue = (10*accumDecimalValue) + (b-'0');  
+  
             
             p++;
         }
@@ -112,14 +126,21 @@ public class StreamingVisitor implements ExtractionVisitor {
         bytePosStart = ringBuffer.addBytePos.value;
         aftetDot = false;
         beforeDotValue = 0;
-        afterDotValue = 0;
+        accumDecimalValue = 0;
         
     }
 
     @Override
-    public void frameSwitch() {
-      
+    public void closeFrame() {
+      //TODO: Should we flush here?
         
+    }
+
+
+    @Override
+    public void openFrame() {
+        //get new catalog if is has been changed by the other visitor
+        setCatalog(messageTypes.getCatBytes());        
     }
 
 }

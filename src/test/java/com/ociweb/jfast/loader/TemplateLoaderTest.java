@@ -68,7 +68,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData(new ClientConfig());
-        assertEquals(714, catalogByteArray.length);
+        assertEquals(715, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream

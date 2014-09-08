@@ -43,7 +43,7 @@ public class ExtractorTest {
         ExtractionVisitor visitor = new ExtractionVisitor() {
             
             @Override
-            public void frameSwitch() {
+            public void closeFrame() {
                 // TODO Auto-generated method stub
                 
             }
@@ -76,6 +76,12 @@ public class ExtractorTest {
              //   System.err.println(start+" to "+limit+" "+new String(target));
 
                
+            }
+
+            @Override
+            public void openFrame() {
+                // TODO Auto-generated method stub
+                
             }
         };
                 

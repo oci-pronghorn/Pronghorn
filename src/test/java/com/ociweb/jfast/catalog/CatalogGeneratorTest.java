@@ -384,7 +384,7 @@ public class CatalogGeneratorTest {
 
 
 
-    public byte[] convertTemplateToCatBytes(StringBuilder builder, ClientConfig clientConfig) {
+    public static byte[] convertTemplateToCatBytes(StringBuilder builder, ClientConfig clientConfig) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             GZIPOutputStream gZipOutputStream = new GZIPOutputStream(baos);
