@@ -13,7 +13,7 @@ public class Extractor {
     private final ByteBuffer closeQuote;
     private final ByteBuffer escape;
     
-    private final long BLOCK_SIZE = 1l<<26;//26; //64MB
+    private final long BLOCK_SIZE = 1l<<28;//.25GB so 26 cycles  //26; //64MB
     
     //state while parsing
     boolean inQuote = false;
@@ -73,6 +73,10 @@ public class Extractor {
             //only increment by exactly how many bytes were read assuming we started at zero
             position+=mappedBuffer.position();
                         
+            if (true) { //hack to exit early
+                break;
+            }
+            
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);
                 

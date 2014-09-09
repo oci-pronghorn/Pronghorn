@@ -138,8 +138,9 @@ public class ExtractorTest {
         escape.put((byte)0);
         escape.flip();
         
-        String fullPath = "/home/nate/flat/example.txt";
-        
+        String fullPath = "/home/nate/flat/fullExample.txt";
+      //  String fullPath = "/home/nate/flat/example.txt";
+         
         FieldTypeVisitor visitor = new FieldTypeVisitor();
                 
         if (null!=fullPath && fullPath.length()>0) {

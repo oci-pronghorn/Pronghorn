@@ -3,8 +3,10 @@ package com.ociweb.jfast.catalog.extraction;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
@@ -127,7 +129,13 @@ public class TypeTrie {
         
     }
     
+    MappedByteBuffer tempBuffer;
+    int tempPos;
+    
     public void appendContent(MappedByteBuffer mappedBuffer, int pos, int limit, boolean contentQuoted) {
+        
+        tempBuffer = mappedBuffer;
+        tempPos = pos;
         
         activeQuote |= contentQuoted;
         
@@ -142,8 +150,26 @@ public class TypeTrie {
     }
     
     public void appendNewRecord() {
+        
+        //for debug
+        if (431==(typeTrieCursor+TYPE_EOM)) {
+            
+            // need junk filter up front in parser? escape sequces?
+            // Fair, Isaac, Inco     bulk repkace??
+            // Charming Shoppes,,,   bulk replace??
+            
+            byte[] dst = new byte[200];
+            ByteBuffer x = tempBuffer.asReadOnlyBuffer();
+            x.position(tempPos-100);
+            
+            x.get(dst, 0, dst.length);
+            System.err.println("<"+new String(dst)+">");
+            
+        }
+        
         typeTrie[typeTrieCursor+TYPE_EOM]++;        
         restToRecordStart();
+        
     }
     
     public void appendNewField() {
@@ -216,7 +242,7 @@ public class TypeTrie {
                             //int
                             if (signCount==0) {
                                 //unsigned
-                                type = TYPE_UINT;
+                                type = TYPE_UINT; //TODO: may need to bump up to long if that is all we find when building records.
                             } else {
                                 //signed
                                 type = TYPE_SINT;
@@ -252,7 +278,7 @@ public class TypeTrie {
             int value = typeTrieMask&typeTrie[pos+i];
             if (value > 0) {                
                 if (i==TYPE_EOM) {
-                        System.err.print(tab+"Count:"+value+"\n");
+                        System.err.print(tab+"Count:"+value+" at "+(pos+i)+"\n");
                         noOutput = false;
                 } else {
                     int type = i<<1;
@@ -267,7 +293,7 @@ public class TypeTrie {
                         noOutput = false;
                         
                         System.err.println(tab+v);
-                        printRecursiveReport(value, tab+"  ");    
+                        printRecursiveReport(value, tab+"     ");    
                     }
                 }        
             }
@@ -296,6 +322,7 @@ public class TypeTrie {
                     
                     if (lastNonNull>=0 && TYPE_NULL==i) {
                     
+                       // System.err.println("found one "+lastNonNull);
                     
                         //check if there is another non-null field
                         //if there is more than 1 field with the null NEVER collapse because we don't know which path to which it belongs.
@@ -306,29 +333,73 @@ public class TypeTrie {
                             int thatPosDoes = typeTrieMask&typeTrie[pos+lastNonNull];
                             
                             //if recursively all of null pos is contained in that pos then we will move it over.                            
-                            if (contains(nullPos,thatPosDoes)) {
+                            if (contains(nullPos,thatPosDoes,0)) {
                                 //since the null is a full subset add all its counts to the rlarger
                                 sum(nullPos,thatPosDoes);                                
                                 //flag this type as optional
                                 typeTrie[pos+lastNonNull] |= OPTIONAL_FLAG;
                                 //delete old null branch
                                 typeTrie[pos+i] = 0;
-                            }             
+                            }
                         }
                     }
                 }        
             }            
         }        
     }
+    
+    void mergeIntLongs(int pos) {
+        
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int value = typeTrieMask&typeTrie[pos+i];
+            if (value > 0) {                
+                if (i!=TYPE_EOM) {
+                    mergeIntLongs(value);
+    
+                    //finished call for this position i so it can removed if needed
+                    //after merge on the way up also ensure we are doing the smallest parts first then larger ones
+                    //and everything after this point is already merged.
 
-    private boolean contains(int subset, int targetset) {
+                    mergeTypes(pos, i, value, TYPE_ULONG, TYPE_UINT);
+                    mergeTypes(pos, i, value, TYPE_SLONG, TYPE_SINT);
+                    
+                    
+                    
+                }        
+            }            
+        }        
+    }
+
+    private void mergeTypes(int pos, int i, int value, int t1, int t2) {
+        int thatPosDoes = typeTrieMask&typeTrie[pos+t1];
+        if (thatPosDoes>0 && t2==i) {
+                                   
+                
+                //if recursively all of null pos is contained in that pos then we will move it over.                            
+                if (contains(value,thatPosDoes,0)) {
+                    //since the null is a full subset add all its counts to the rlarger
+                    sum(value,thatPosDoes);               
+                    //delete old UINT branch
+                    typeTrie[pos+i] = 0;
+                }
+
+        }
+    }
+    
+
+    private boolean contains(int subset, int targetset, int depth) {
         //if all the field in inner are contained in outer
         int i = typeTrieUnit;
         while (--i>=0) {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
-                if (0!=(typeTrieMask&typeTrie[subset+i])) {
-                    if (0==(typeTrieMask&typeTrie[targetset+i]) || !contains(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
+                if (0!=(typeTrieMask&typeTrie[subset+i])) { 
+                    if (0==(typeTrieMask&typeTrie[targetset+i])) {
+                        return false;
+                    }
+                    
+                    if (!contains(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i],depth+1)  ) {
                         return false;
                     }
                 }
@@ -410,7 +481,8 @@ public class TypeTrie {
                             
                         }
                         
-                        int id = 1000+idx;
+                        //pos + type is used because it will never collide
+                        int id = pos+i; //pos skips by 16's so there is room for the i
                         String name = ""+id;
                         boolean presence = 1==optionalBit;
                         int operator = OperatorMask.Field_None;
@@ -499,7 +571,7 @@ public class TypeTrie {
     }
 
     public void memoizeCatBytes() {
-      //  System.err.println(buildCatalog(true));
+    //    System.err.println(buildCatalog(true));
         catBytes = catBytes(new ClientConfig());
         
     }
