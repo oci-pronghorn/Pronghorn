@@ -7,11 +7,11 @@ import java.nio.channels.FileChannel;
 
 public class Extractor {
 
-    private final ByteBuffer fieldDelimiter;
-    private final ByteBuffer recordDelimiter;
-    private final ByteBuffer openQuote;
-    private final ByteBuffer closeQuote;
-    private final ByteBuffer escape;
+    private final int fieldDelimiter;
+    private final byte[] recordDelimiter;
+    private final int openQuote;
+    private final int closeQuote;
+    private final int escape;
     
     private final long BLOCK_SIZE = 1l<<28;//.25GB so 26 cycles  //26; //64MB
     
@@ -22,6 +22,23 @@ public class Extractor {
     boolean contentQuoted = false;
     final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
 
+    int recordStart = 0;
+    
+    
+    final byte[] temp = "Astec Industries,".getBytes();
+//    example for :1552 length 58
+//
+//    INDFY,Indofood Agri Resources,,56.1,56.15,56.1,56.15,400
+//    example for :1584 length 23
+//
+//    GREE,,,0.0,0.0,0.0,,0
+//    example for :1696 length 38
+//
+//    NNNLL,637417601,,0.0,0.0,0.0,24.98,0
+//    example for :1728 length 40
+
+    
+    
     //TODO: B, Based on this design build another that can parse JSON
     
     //Parsing order of priority
@@ -34,19 +51,17 @@ public class Extractor {
     //zero copy and garbage free
     //visitor may do copy and may produce garbage
 
-    public Extractor(ByteBuffer fieldDelimiter, ByteBuffer recordDelimiter,
-                     ByteBuffer openQuote, ByteBuffer closeQuote, ByteBuffer escape) {
+    public Extractor(int fieldDelimiter, byte[] recordDelimiter,
+                     int openQuote, int closeQuote, int escape) {
         this.fieldDelimiter = fieldDelimiter;
         this.recordDelimiter = recordDelimiter;
         this.openQuote = openQuote;
         this.closeQuote = closeQuote;
         this.escape = escape;
         
-        this.tailPadding = Math.max(
-                              Math.max(
-                                Math.max(fieldDelimiter.remaining(),recordDelimiter.remaining()),
-                                Math.max(openQuote.remaining(),closeQuote.remaining())),
-                              escape.remaining());
+        this.tailPadding =   Math.max(
+                                recordDelimiter.length,
+                                temp.length);
     }
 
     
@@ -66,7 +81,7 @@ public class Extractor {
             
             visitor.openFrame();
             do {
-                parseEscape(mappedBuffer, visitor);
+                parse(mappedBuffer, visitor);
             } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
             visitor.closeFrame();
@@ -77,12 +92,13 @@ public class Extractor {
                 break;
             }
             
+            recordStart = 0;
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);
                 
         if (flushContent(mappedBuffer,visitor)) {
             flushField(visitor);
-            flushRecord(visitor);
+            flushRecord(visitor, mappedBuffer.position());
         }
         
         
@@ -105,14 +121,14 @@ public class Extractor {
             
             visitor1.openFrame();
             do {
-                parseEscape(mappedBuffer, visitor1);
+                parse(mappedBuffer, visitor1);
             } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
             visitor1.closeFrame();            
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor1)) {
                     flushField(visitor1);
-                    flushRecord(visitor1);
+                    flushRecord(visitor1, mappedBuffer.position());
                 }
             }
             
@@ -124,14 +140,14 @@ public class Extractor {
             
             visitor2.openFrame();            
             do {
-                parseEscape(mappedBuffer, visitor2);
+                parse(mappedBuffer, visitor2);
             } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
             visitor2.closeFrame();
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor2)) {
                     flushField(visitor2);
-                    flushRecord(visitor2);
+                    flushRecord(visitor2, mappedBuffer.position());
                 }
             }
                         
@@ -161,17 +177,35 @@ public class Extractor {
         return false;
     }
 
-    private void flushRecord(ExtractionVisitor visitor) {
-       visitor.closeRecord();
+    private void flushRecord(ExtractionVisitor visitor, int pos) {
+        
+        
+       visitor.closeRecord(recordStart);
+       
+       recordStart = pos+recordDelimiter.length;
+       
     }
 
     private void flushField(ExtractionVisitor visitor) {
         visitor.closeField();
     }
-    
+
+
+    private void parse(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
+        
+//        if (foundHere(mappedBuffer,temp)) {
+//            contentPos = mappedBuffer.position();//hack test.
+//            mappedBuffer.position(mappedBuffer.position()+temp.length);
+//            
+//        } else {
+//        
+            parseEscape(mappedBuffer, visitor);
+     //   }
+    }
+
 
     private void parseEscape(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        if (foundHere(mappedBuffer, escape)) {
+        if (mappedBuffer.get(mappedBuffer.position())==escape) { 
             if (inEscape) {
                 //starts new content block from this location
                 contentPos = mappedBuffer.position();
@@ -181,7 +215,7 @@ public class Extractor {
                 flushContent(mappedBuffer, visitor);                
                 inEscape = true;
             }
-            mappedBuffer.position(mappedBuffer.position()+escape.remaining());
+            mappedBuffer.position(mappedBuffer.position()+1);
         } else {
             parseQuote(mappedBuffer, visitor);
             inEscape = false;
@@ -190,7 +224,7 @@ public class Extractor {
 
     private void parseQuote(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
         if (inQuote) {
-            if (foundHere(mappedBuffer,closeQuote)) {
+            if (mappedBuffer.get(mappedBuffer.position())==closeQuote) {
                 if (inEscape) {
                     //starts new content block from this location
                     contentPos = mappedBuffer.position();
@@ -199,14 +233,14 @@ public class Extractor {
                 } else {                                
                     inQuote = false;  
                 }
-                mappedBuffer.position(mappedBuffer.position()+closeQuote.remaining());
+                mappedBuffer.position(mappedBuffer.position()+1);
             } else {
                 parseRecord(mappedBuffer, visitor);   
             }
             
             
         } else {
-            if (foundHere(mappedBuffer,openQuote)) {
+            if (mappedBuffer.get(mappedBuffer.position())==openQuote) {
                 if (inEscape) {
                     //starts new content block from this location
                     contentPos = mappedBuffer.position();
@@ -215,7 +249,7 @@ public class Extractor {
                 } else {
                     inQuote = true;
                 }
-                mappedBuffer.position(mappedBuffer.position()+openQuote.remaining());
+                mappedBuffer.position(mappedBuffer.position()+1);
             } else {
                 parseRecord(mappedBuffer, visitor);       
                 
@@ -237,10 +271,10 @@ public class Extractor {
                 } else {
                     flushContent(mappedBuffer, visitor);
                     flushField(visitor);
-                    flushRecord(visitor);
+                    flushRecord(visitor, mappedBuffer.position());
                 }
             }
-            mappedBuffer.position(mappedBuffer.position()+recordDelimiter.remaining());
+            mappedBuffer.position(mappedBuffer.position()+recordDelimiter.length);
         } else {
             parseField(mappedBuffer, visitor);       
             
@@ -249,7 +283,7 @@ public class Extractor {
    
 
     private void parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        if (foundHere(mappedBuffer,fieldDelimiter)) {
+        if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter) {
             if (inEscape) {
                 //starts new content block from this location
                 contentPos = mappedBuffer.position();
@@ -263,7 +297,7 @@ public class Extractor {
                     flushField(visitor);
                 }
             }
-            mappedBuffer.position(mappedBuffer.position()+fieldDelimiter.remaining());
+            mappedBuffer.position(mappedBuffer.position()+1);
         } else {
             parseContent(mappedBuffer); 
         }      
@@ -274,24 +308,30 @@ public class Extractor {
             contentPos = mappedBuffer.position();
             contentQuoted = inQuote;
         }
-        mappedBuffer.position(mappedBuffer.position()+1);   
+        
+        //check for special text that starts out ok but then goes wrong.
+          if (foundHere(mappedBuffer,temp)) {
+              
+              //contentPos = mappedBuffer.position();//hack test.
+              mappedBuffer.position(mappedBuffer.position()+temp.length);
+          
+          } else {
+            
+            mappedBuffer.position(mappedBuffer.position()+1);
+          }
     }  
     
 
-    private boolean foundHere(MappedByteBuffer data, ByteBuffer goal) {
+    private boolean foundHere(MappedByteBuffer data, byte[] goal) {
         
-        int i = goal.remaining();
-        int dpos = data.position();
-        int gpos = goal.position();
-        if (i+dpos>data.limit()) {
+        int i = goal.length;
+        if (data.position()+i>data.limit()) {
             return false;
         }
-        
         while (--i>=0) {
-            if (data.get(dpos+i)!=goal.get(gpos+i)) {
+            if (data.get(data.position()+i)!=goal[i]) {
                 return false;
             }
-            
         }
         return true;
     }

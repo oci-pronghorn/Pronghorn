@@ -18,25 +18,14 @@ public class ExtractorTest {
         
       //  FieldTypeVisitor visitor = new FieldTypeVisitor();
         
-        ByteBuffer fieldDelimiter = ByteBuffer.allocate(1);
-        fieldDelimiter.put((byte)',');
-        fieldDelimiter.flip();
+        int fieldDelimiter = (int)',';
                 
-        ByteBuffer recordDelimiter = ByteBuffer.allocate(2);
-        recordDelimiter.put((byte)'\n');
-        recordDelimiter.flip();
+        byte[] recordDelimiter = new byte[]{'\n'};
         
-        ByteBuffer openQuote = ByteBuffer.allocate(1);
-        openQuote.put((byte)'"');
-        openQuote.flip();
+        int openQuote = (int)'"';        
+        int closeQuote = (int)'"';
         
-        ByteBuffer closeQuote = ByteBuffer.allocate(1);
-        closeQuote.put((byte)'"');
-        closeQuote.flip();
-        
-        ByteBuffer escape = ByteBuffer.allocate(1);
-        escape.put((byte)'/'); 
-        escape.flip();
+        int escape = (int)'/';
         
         String fullPath = "/home/nate/flat/example.txt";
         
@@ -49,7 +38,7 @@ public class ExtractorTest {
             }
             
             @Override
-            public void closeRecord() {
+            public void closeRecord(int startPos) {
                 // TODO Auto-generated method stub
                 
             }
@@ -114,29 +103,15 @@ public class ExtractorTest {
     public void fieldTypeExtractionTest() throws FileNotFoundException {
         
         
-        ByteBuffer fieldDelimiter = ByteBuffer.allocate(1);
-        fieldDelimiter.put((byte)',');
-        fieldDelimiter.flip();
+        int fieldDelimiter = (int)',';
                 
-        ByteBuffer recordDelimiter = ByteBuffer.allocate(2);
-        recordDelimiter.put((byte)'\r');
-        recordDelimiter.put((byte)'\n');
-        recordDelimiter.flip();
+        byte[] recordDelimiter = new byte[]{'\r','\n'};
         
-        ByteBuffer openQuote = ByteBuffer.allocate(1);
-        openQuote.put((byte)'"');
-        openQuote.flip();
-        
-        ByteBuffer closeQuote = ByteBuffer.allocate(1);
-        closeQuote.put((byte)'"');
-        closeQuote.flip();
+        int openQuote = (int)'"';        
+        int closeQuote = (int)'"';
         
         //Not using escape in this test file
-        ByteBuffer escape = ByteBuffer.allocate(3);
-        escape.put((byte)0);
-        escape.put((byte)0);
-        escape.put((byte)0);
-        escape.flip();
+        int escape = Integer.MIN_VALUE;
         
         String fullPath = "/home/nate/flat/fullExample.txt";
       //  String fullPath = "/home/nate/flat/example.txt";

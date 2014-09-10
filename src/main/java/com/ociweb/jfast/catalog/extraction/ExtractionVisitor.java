@@ -8,7 +8,7 @@ public interface ExtractionVisitor {
     
     void appendContent(MappedByteBuffer mappedBuffer, int contentPos, int position, boolean contentQuoted);
 
-    void closeRecord();
+    void closeRecord(int startPos);
 
     void closeField();
 

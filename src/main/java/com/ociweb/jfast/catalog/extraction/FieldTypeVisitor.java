@@ -20,8 +20,8 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     }
 
     @Override
-    public void closeRecord() {
-        accumulatedMessageTypes.appendNewRecord();
+    public void closeRecord(int startPos) {
+        accumulatedMessageTypes.appendNewRecord(startPos);
     }
 
     @Override

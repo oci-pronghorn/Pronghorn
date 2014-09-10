@@ -149,25 +149,24 @@ public class TypeTrie {
         
     }
     
-    public void appendNewRecord() {
-        
-        //for debug
-        if (431==(typeTrieCursor+TYPE_EOM)) {
-            
-            // need junk filter up front in parser? escape sequces?
-            // Fair, Isaac, Inco     bulk repkace??
-            // Charming Shoppes,,,   bulk replace??
-            
-            byte[] dst = new byte[200];
-            ByteBuffer x = tempBuffer.asReadOnlyBuffer();
-            x.position(tempPos-100);
-            
-            x.get(dst, 0, dst.length);
-            System.err.println("<"+new String(dst)+">");
+//            //TODO: add string literals to be extracted by tokenizer
+    int reportLimit = 2;
+    
+    public void appendNewRecord(int startPos) {       
+
+        if (++typeTrie[typeTrieCursor+TYPE_EOM]<reportLimit) {
+            if (tempBuffer.position()-startPos<200) {
+                System.err.println("example for :"+(typeTrieCursor)+" length "+(tempBuffer.position()-startPos));
+                byte[] dst = new byte[tempBuffer.position()-startPos];
+                ByteBuffer x = tempBuffer.asReadOnlyBuffer();
+                x.position(startPos);
+                x.limit(tempBuffer.position());
+                x.get(dst, 0, dst.length);
+                System.err.println(new String(dst));     
+            }
             
         }
         
-        typeTrie[typeTrieCursor+TYPE_EOM]++;        
         restToRecordStart();
         
     }
@@ -206,9 +205,9 @@ public class TypeTrie {
         int dotCount = ((1<<BITS_DOT)-1)&(activeSum>>SHIFT_DOT);
         int commaCount = ((1<<BITS_COMMA)-1)&(activeSum>>SHIFT_COMMA);
         
-        if (commaCount>0) {
-            System.err.println("did not expect any commas");
-        }                     
+//        if (commaCount>0) {
+//            System.err.println("did not expect any commas");
+//        }                     
         
         //apply rules to determine field type
         int type;

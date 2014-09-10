@@ -101,7 +101,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     }
 
     @Override
-    public void closeRecord() {
+    public void closeRecord(int startPos) {
         
         // ** fields are now at the end of the record so the template Id is known
         
