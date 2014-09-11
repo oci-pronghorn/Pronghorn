@@ -44,19 +44,21 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         //TODO: add boolean config for this step. Normally there will be no consolidation of types because we want
         //      as many message types as possible to help with the next stage.  Sometimes when we only have one null
         //      along with one field it makes more sence to colapse thse together.
-        accumulatedMessageTypes.mergeIntLongs(0);        
         accumulatedMessageTypes.mergeOptionalNulls(0);
-        
+        accumulatedMessageTypes.mergeIntLongs(0);        
+        accumulatedMessageTypes.removeZeros(0);
+  
         
         // PRINT REPORT
         accumulatedMessageTypes.printRecursiveReport(0,"");
+        System.err.println("total records "+accumulatedMessageTypes.totalRecords);
         
      //   System.err.println(accumulatedMessageTypes.buildCatalog(true));
         
        // accumulatedMessageTypes.memoizeCatBytes(); //store this so next visitor can pick it up on the open frame call.
         
 
-
+        
         
     }
 

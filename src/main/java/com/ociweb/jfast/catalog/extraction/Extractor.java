@@ -13,31 +13,31 @@ public class Extractor {
     private final int closeQuote;
     private final int escape;
     
-    private final long BLOCK_SIZE = 1l<<28;//.25GB so 26 cycles  //26; //64MB
-    
-    //state while parsing
-    boolean inQuote = false;
-    boolean inEscape = false;
-    int     contentPos = -1;
-    boolean contentQuoted = false;
+    private final long BLOCK_SIZE = (1l<<29)-1;//.5GB so 13 cycles  //26; //64MB
+
     final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
+    
+    //the next char is a text because of the following text
+    byte[]  TEXT_COMMA1 = ", ".getBytes();
+    byte[]  TEXT_COMMA2 = ",,,".getBytes(); //TODO: can be set externally to allow 1 char as text based on this pattern
+    
+        
+    //TODO: add support for string literals as needed
+    final byte[][] temp = new byte[][]{};//"Astec Industries,".getBytes(),
+//                                       "Charming Shoppes,".getBytes(),
+//                                       "New Germany Fund,".getBytes(),
+//                                       "Raven Industries,".getBytes(),
+//                                       "Elan Corporation,".getBytes(),
+//                                       "Asia Tigers Fund,".getBytes(),
+//                                       "Beazer Homes USA,".getBytes(),
+//                                       "Mitsui & Company,".getBytes(),
+//                                       "Lakeland Bancorp,".getBytes(),
+//                                       "Asia Tigers Fund,".getBytes(),
+//                                       "AEterna Zentaris,".getBytes(),
+//                                       "LJ International,".getBytes(),
+//                                       "Cavco Industries,".getBytes(), //don't have solution for when this comma gets dropped
+//                                       };
 
-    int recordStart = 0;
-    
-    
-    final byte[] temp = "Astec Industries,".getBytes();
-//    example for :1552 length 58
-//
-//    INDFY,Indofood Agri Resources,,56.1,56.15,56.1,56.15,400
-//    example for :1584 length 23
-//
-//    GREE,,,0.0,0.0,0.0,,0
-//    example for :1696 length 38
-//
-//    NNNLL,637417601,,0.0,0.0,0.0,24.98,0
-//    example for :1728 length 40
-
-    
     
     //TODO: B, Based on this design build another that can parse JSON
     
@@ -71,118 +71,129 @@ public class Extractor {
         long fileSize = fileChannel.size();
         long position = 0;
         
+        int loops = 20;
+        
+        
+        ExtractorWorkspace workspace = new ExtractorWorkspace(false, false, -1, false, 0);
         
         mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         int padding = tailPadding;
-        do {
+        do {       
+                        
             if (mappedBuffer.limit()+position==fileSize) {
                 padding = 0;
             }
             
             visitor.openFrame();
             do {
-                parse(mappedBuffer, visitor);
+                parse(mappedBuffer, visitor, workspace);
             } while (mappedBuffer.remaining()>padding);
             //notify the visitor that the buffer is probably going to change out from under them
             visitor.closeFrame();
             //only increment by exactly how many bytes were read assuming we started at zero
-            position+=mappedBuffer.position();
-                        
-            if (true) { //hack to exit early
+            //can only cut at the last known record start
+            position+=workspace.getRecordStart();
+           
+            //reset workspace to re-read this record from the beginning
+            workspace.reset();
+            
+            if (--loops<=0) { //hack to exit early
                 break;
             }
             
-            recordStart = 0;
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+            
+            
         } while (position<fileSize);
                 
-        if (flushContent(mappedBuffer,visitor)) {
+        if (flushContent(mappedBuffer,visitor, workspace)) {
             flushField(visitor);
-            flushRecord(visitor, mappedBuffer.position());
+            flushRecord(visitor, mappedBuffer.position(), workspace);
         }
         
         
     }
     
-    public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
-        MappedByteBuffer mappedBuffer;
-        
-        long fileSize = fileChannel.size();
-        long position = 0;
-        
-        
-        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-        int padding = tailPadding;
-        do {
-            //the last go round must never use any padding, this padding is only needed when spanning two blocks.
-            if (mappedBuffer.limit()+position==fileSize) {
-                padding = 0;
-            }
-            
-            visitor1.openFrame();
-            do {
-                parse(mappedBuffer, visitor1);
-            } while (mappedBuffer.remaining()>padding);
-            //notify the visitor that the buffer is probably going to change out from under them
-            visitor1.closeFrame();            
-            if (position+mappedBuffer.position()>=fileSize) {
-                if (flushContent(mappedBuffer,visitor1)) {
-                    flushField(visitor1);
-                    flushRecord(visitor1, mappedBuffer.position());
-                }
-            }
-            
-            
-            //TODO: each visitor needs their own state vars to cover any values crossing over the mapped boundry
-            
-            //visit second visitor while this block is still mapped
-            mappedBuffer.position(0);
-            
-            visitor2.openFrame();            
-            do {
-                parse(mappedBuffer, visitor2);
-            } while (mappedBuffer.remaining()>padding);
-            //notify the visitor that the buffer is probably going to change out from under them
-            visitor2.closeFrame();
-            if (position+mappedBuffer.position()>=fileSize) {
-                if (flushContent(mappedBuffer,visitor2)) {
-                    flushField(visitor2);
-                    flushRecord(visitor2, mappedBuffer.position());
-                }
-            }
-                        
-            
-            //only increment by exactly how many bytes were read assuming we started at zero
-            position+=mappedBuffer.position();
-            
-           
-            
-            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-        } while (position<fileSize);
-                
-    }
+//    public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
+//        MappedByteBuffer mappedBuffer;
+//        
+//        long fileSize = fileChannel.size();
+//        long position = 0;
+//        
+//        
+//        ExtractorWorkspace workspace1 = new ExtractorWorkspace(false, false, -1, false, 0);
+//        ExtractorWorkspace workspace2 = new ExtractorWorkspace(false, false, -1, false, 0);
+//        
+//        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+//        int padding = tailPadding;
+//        do {
+//            //the last go round must never use any padding, this padding is only needed when spanning two blocks.
+//            if (mappedBuffer.limit()+position==fileSize) {
+//                padding = 0;
+//            }
+//            
+//            visitor1.openFrame();
+//            do {
+//                parse(mappedBuffer, visitor1, workspace1);
+//            } while (mappedBuffer.remaining()>padding);
+//            //notify the visitor that the buffer is probably going to change out from under them
+//            visitor1.closeFrame();            
+//            if (position+mappedBuffer.position()>=fileSize) {
+//                if (flushContent(mappedBuffer,visitor1, workspace1)) {
+//                    flushField(visitor1);
+//                    flushRecord(visitor1, mappedBuffer.position(), workspace1);
+//                }
+//            }
+//            
+//                        
+//            //visit second visitor while this block is still mapped
+//            mappedBuffer.position(0);
+//            
+//            visitor2.openFrame();            
+//            do {
+//                parse(mappedBuffer, visitor2, workspace2);
+//            } while (mappedBuffer.remaining()>padding);
+//            //notify the visitor that the buffer is probably going to change out from under them
+//            visitor2.closeFrame();
+//            if (position+mappedBuffer.position()>=fileSize) {
+//                if (flushContent(mappedBuffer,visitor2, workspace2)) {
+//                    flushField(visitor2);
+//                    flushRecord(visitor2, mappedBuffer.position(), workspace2);
+//                }
+//            }
+//                        
+//            
+//            //only increment by exactly how many bytes were read assuming we started at zero
+//            position+=mappedBuffer.position();
+//            
+//           
+//            
+//            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+//        } while (position<fileSize);
+//                
+//    }
     
     //TODO: When building JSON parser the field names will also be extracted. These names will be written one after the other into a buffer
     //      once the end if the message is reached this full string is used as an additional information point to distinquish between 
     //      messages that have the same field signatures but define them with different.  Each unique set of labels will need to define
     //      its own TypeTrie
     
-    private boolean flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        if (contentPos>=0 && mappedBuffer.position()>contentPos) {
-            visitor.appendContent(mappedBuffer, contentPos, mappedBuffer.position(), contentQuoted);
-            contentPos = -1;
-            contentQuoted = false;
+    private boolean flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+        if (workspace.contentPos>=0 && mappedBuffer.position()>workspace.contentPos) {
+            visitor.appendContent(mappedBuffer, workspace.contentPos, mappedBuffer.position(), workspace.contentQuoted);
+            workspace.contentPos = -1;
+            workspace.contentQuoted = false;
             return true;
         }
         return false;
     }
 
-    private void flushRecord(ExtractionVisitor visitor, int pos) {
+    private void flushRecord(ExtractionVisitor visitor, int pos, ExtractorWorkspace workspace) {
         
         
-       visitor.closeRecord(recordStart);
+       visitor.closeRecord(workspace.getRecordStart());
        
-       recordStart = pos+recordDelimiter.length;
+       workspace.setRecordStart(pos+recordDelimiter.length);
        
     }
 
@@ -191,134 +202,137 @@ public class Extractor {
     }
 
 
-    private void parse(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        
-//        if (foundHere(mappedBuffer,temp)) {
-//            contentPos = mappedBuffer.position();//hack test.
-//            mappedBuffer.position(mappedBuffer.position()+temp.length);
-//            
-//        } else {
-//        
-            parseEscape(mappedBuffer, visitor);
-     //   }
+    private void parse(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+        parseEscape(mappedBuffer, visitor, workspace);
     }
 
 
-    private void parseEscape(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
+    private void parseEscape(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (mappedBuffer.get(mappedBuffer.position())==escape) { 
-            if (inEscape) {
+            if (workspace.inEscape) {
                 //starts new content block from this location
-                contentPos = mappedBuffer.position();
-                contentQuoted = inQuote;
-                inEscape = false;
+                workspace.contentPos = mappedBuffer.position();
+                workspace.contentQuoted = workspace.inQuote;
+                workspace.inEscape = false;
             } else {
-                flushContent(mappedBuffer, visitor);                
-                inEscape = true;
+                flushContent(mappedBuffer, visitor, workspace);                
+                workspace.inEscape = true;
             }
             mappedBuffer.position(mappedBuffer.position()+1);
         } else {
-            parseQuote(mappedBuffer, visitor);
-            inEscape = false;
+            parseQuote(mappedBuffer, visitor, workspace);
+            workspace.inEscape = false;
         }
     }
 
-    private void parseQuote(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        if (inQuote) {
+    private void parseQuote(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+        if (workspace.inQuote) {
             if (mappedBuffer.get(mappedBuffer.position())==closeQuote) {
-                if (inEscape) {
+                if (workspace.inEscape) {
                     //starts new content block from this location
-                    contentPos = mappedBuffer.position();
-                    contentQuoted = inQuote;
-                    inEscape = false;
+                    workspace.contentPos = mappedBuffer.position();
+                    workspace.contentQuoted = workspace.inQuote;
+                    workspace.inEscape = false;
                 } else {                                
-                    inQuote = false;  
+                    workspace.inQuote = false;  
                 }
                 mappedBuffer.position(mappedBuffer.position()+1);
             } else {
-                parseRecord(mappedBuffer, visitor);   
+                parseRecord(mappedBuffer, visitor, workspace);   
             }
             
             
         } else {
             if (mappedBuffer.get(mappedBuffer.position())==openQuote) {
-                if (inEscape) {
+                if (workspace.inEscape) {
                     //starts new content block from this location
-                    contentPos = mappedBuffer.position();
-                    contentQuoted = inQuote;
-                    inEscape = false;
+                    workspace.contentPos = mappedBuffer.position();
+                    workspace.contentQuoted = workspace.inQuote;
+                    workspace.inEscape = false;
                 } else {
-                    inQuote = true;
+                    workspace.inQuote = true;
                 }
                 mappedBuffer.position(mappedBuffer.position()+1);
             } else {
-                parseRecord(mappedBuffer, visitor);       
+                parseRecord(mappedBuffer, visitor, workspace);       
                 
             }           
             
         }
     }
     
-    private void parseRecord(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
+    private void parseRecord(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (foundHere(mappedBuffer,recordDelimiter)) {
-            if (inEscape) {
+            if (workspace.inEscape) {
                 //starts new content block from this location
-                contentPos = mappedBuffer.position();
-                contentQuoted = inQuote;
-                inEscape = false;
+                workspace.contentPos = mappedBuffer.position();
+                workspace.contentQuoted = workspace.inQuote;
+                workspace.inEscape = false;
             } else {
-                if (inQuote) {
-                    parseField(mappedBuffer, visitor);  
+                if (workspace.inQuote) {
+                    parseField(mappedBuffer, visitor, workspace);  
                 } else {
-                    flushContent(mappedBuffer, visitor);
+                    flushContent(mappedBuffer, visitor, workspace);
                     flushField(visitor);
-                    flushRecord(visitor, mappedBuffer.position());
+                    flushRecord(visitor, mappedBuffer.position(), workspace);
                 }
             }
             mappedBuffer.position(mappedBuffer.position()+recordDelimiter.length);
         } else {
-            parseField(mappedBuffer, visitor);       
+            parseField(mappedBuffer, visitor, workspace);       
             
         }           
     }
    
 
-    private void parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor) {
-        if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter) {
-            if (inEscape) {
+    private void parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+                
+        if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter &&
+                !foundHere(mappedBuffer,TEXT_COMMA1) &&
+                !foundHere(mappedBuffer,TEXT_COMMA2) ) {
+            if (workspace.inEscape) {
                 //starts new content block from this location
-                contentPos = mappedBuffer.position();
-                contentQuoted = inQuote;
-                inEscape = false;
+                workspace.contentPos = mappedBuffer.position();
+                workspace.contentQuoted = workspace.inQuote;
+                workspace.inEscape = false;
+                mappedBuffer.position(mappedBuffer.position()+1);
             } else {
-                if (inQuote) {
-                    parseContent(mappedBuffer); 
+                if (workspace.inQuote) {
+                    parseContent(mappedBuffer, workspace); 
+                    mappedBuffer.position(mappedBuffer.position()+1);
                 } else {                
-                    flushContent(mappedBuffer, visitor);
+                    flushContent(mappedBuffer, visitor, workspace);
                     flushField(visitor);
+                    mappedBuffer.position(mappedBuffer.position()+1);
+                    //the field has finished so check for the special case values //TODO: also do this on line beginning
+                    
+                    int j = temp.length;
+                    while (--j>=0) {
+                        if (foundHere(mappedBuffer,temp[j])) { 
+                            
+                            workspace.contentQuoted = false;
+                            workspace.contentPos = mappedBuffer.position();
+                            mappedBuffer.position(mappedBuffer.position()+temp[j].length);
+                            j=-1;
+                        }
+                    }
+                    
+                    
                 }
             }
-            mappedBuffer.position(mappedBuffer.position()+1);
+           
         } else {
-            parseContent(mappedBuffer); 
+            parseContent(mappedBuffer, workspace); 
         }      
     }   
     
-    private void parseContent(MappedByteBuffer mappedBuffer) {        
-        if (contentPos<0) {
-            contentPos = mappedBuffer.position();
-            contentQuoted = inQuote;
+    
+    static private void parseContent(MappedByteBuffer mappedBuffer, ExtractorWorkspace workspace) {        
+        if (workspace.contentPos<0) {
+            workspace.contentPos = mappedBuffer.position();
+            workspace.contentQuoted = workspace.inQuote;
         }
-        
-        //check for special text that starts out ok but then goes wrong.
-          if (foundHere(mappedBuffer,temp)) {
-              
-              //contentPos = mappedBuffer.position();//hack test.
-              mappedBuffer.position(mappedBuffer.position()+temp.length);
-          
-          } else {
-            
-            mappedBuffer.position(mappedBuffer.position()+1);
-          }
+        mappedBuffer.position(mappedBuffer.position()+1);
     }  
     
 

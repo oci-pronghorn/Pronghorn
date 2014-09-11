@@ -99,7 +99,16 @@ public class TypeTrie {
     
     private final int[] typeTrie = new int[typeTrieSize];
     private int         typeTrieCursor; 
+    
+    private int         nullCount; //TODO: expand to the other types and externalize rules to an interface
+    private int         firstField = -1;
+    private int         firstFieldLength = -1;
+    private int         utf8Count;
+    private int         asciiCount;
+    
     private int         typeTrieLimit = typeTrieUnit;
+    
+    long totalRecords;
     
     byte[] catBytes;
     
@@ -133,7 +142,7 @@ public class TypeTrie {
     int tempPos;
     
     public void appendContent(MappedByteBuffer mappedBuffer, int pos, int limit, boolean contentQuoted) {
-        
+   
         tempBuffer = mappedBuffer;
         tempPos = pos;
         
@@ -150,32 +159,101 @@ public class TypeTrie {
     }
     
 //            //TODO: add string literals to be extracted by tokenizer
-    int reportLimit = 2;
+    int reportLimit = 1;
     
     public void appendNewRecord(int startPos) {       
 
-        if (++typeTrie[typeTrieCursor+TYPE_EOM]<reportLimit) {
-            if (tempBuffer.position()-startPos<200) {
-                System.err.println("example for :"+(typeTrieCursor)+" length "+(tempBuffer.position()-startPos));
-                byte[] dst = new byte[tempBuffer.position()-startPos];
-                ByteBuffer x = tempBuffer.asReadOnlyBuffer();
-                x.position(startPos);
-                x.limit(tempBuffer.position());
-                x.get(dst, 0, dst.length);
-                System.err.println(new String(dst));     
+        boolean isValid = isValid(); 
+        
+        if (isValid) {
+            if (++typeTrie[typeTrieCursor+TYPE_EOM]<=reportLimit) {
+                if (tempBuffer.position()-startPos<200) { ///TODO: this is a large bug.
+                    System.err.println("example for :"+(typeTrieCursor+TYPE_EOM));
+                    byte[] dst = new byte[tempBuffer.position()-startPos];
+                    ByteBuffer x = tempBuffer.asReadOnlyBuffer();
+                    x.position(startPos);
+                    x.limit(tempBuffer.position());
+                    x.get(dst, 0, dst.length);
+                    System.err.println(new String(dst));     
+                } else {
+                    System.err.println(startPos+" to "+tempBuffer.position());
+                }
+                
             }
-            
-        }
+            totalRecords++;
+        } 
+//        else {
+//            if (totalRecords ==8771313) {
+//                System.err.println("not valid :"+ nullCount+" "+utf8Count+" "+firstField);
+//                if (tempBuffer.position()-startPos<200) { ///TODO: this is a large bug.
+//                    System.err.println("example for :"+(typeTrieCursor+TYPE_EOM));
+//                    byte[] dst = new byte[tempBuffer.position()-startPos];
+//                    ByteBuffer x = tempBuffer.asReadOnlyBuffer();
+//                    x.position(startPos);
+//                    x.limit(tempBuffer.position());
+//                    x.get(dst, 0, dst.length);
+//                    System.err.println(new String(dst));     
+//                } else {
+//                    System.err.println(startPos+" to "+tempBuffer.position());
+//                }
+//            }
+//        }
         
         restToRecordStart();
         
+
+        
+    }
+
+    private boolean isValid() { //TODO: move this logic out to an interface
+        return nullCount<=2 &&        //Too much missing data
+               utf8Count==0 &&        //data known to be ASCII so this is corrupted
+               (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  TODO: why are zeros not removed?
+               firstFieldLength<=9 && //key must not be too large
+               firstField!=TYPE_NULL; //known primary key is missing
     }
     
     public void appendNewField() {
+        
+        if (firstField<0) {
+            firstFieldLength = activeLength;
+        }
+        
         int type = extractType();
         
+        if (TYPE_NULL == type) {
+            nullCount++;
+        }
+        if (TYPE_BYTES == type) {
+            utf8Count++;
+        }
+        if (TYPE_ASCII == type) {
+            asciiCount++;
+        }
+        if (firstField<0) {
+            firstField = type;
+        }
+        
+        
+        if (TYPE_UINT == type) {
+            //switch up to long if it is already in use
+            if (typeTrie[TYPE_ULONG+typeTrieCursor]!=0) {
+                type = TYPE_ULONG;
+            }            
+        }
+        
+        if (TYPE_SINT == type) {
+            //switch up to long if it is already in use
+            if (typeTrie[TYPE_SLONG+typeTrieCursor]!=0) {
+                type = TYPE_SLONG;
+            }            
+        }
+        
         //store type into the Trie to build messages.
+        
         int pos = typeTrieCursor+type;
+                
+        
         if (typeTrie[pos]==0) {
             //create new position          
             typeTrieCursor = typeTrie[pos] = typeTrieLimit;
@@ -251,7 +329,7 @@ public class TypeTrie {
                 }           
             }
         }
-        resetFieldSum();
+        resetFieldSum(); //TODO: not a  good place for this, side effect.
         return type;
     }
     
@@ -263,7 +341,11 @@ public class TypeTrie {
     }
     
     public void restToRecordStart() {
-        typeTrieCursor=0;
+        nullCount = 0;
+        utf8Count = 0;
+        asciiCount = 0;
+        typeTrieCursor = 0;
+        firstField = -1;
     }
     
     
@@ -332,7 +414,7 @@ public class TypeTrie {
                             int thatPosDoes = typeTrieMask&typeTrie[pos+lastNonNull];
                             
                             //if recursively all of null pos is contained in that pos then we will move it over.                            
-                            if (contains(nullPos,thatPosDoes,0)) {
+                            if (contains(nullPos,thatPosDoes)) {
                                 //since the null is a full subset add all its counts to the rlarger
                                 sum(nullPos,thatPosDoes);                                
                                 //flag this type as optional
@@ -346,6 +428,29 @@ public class TypeTrie {
             }            
         }        
     }
+    
+    boolean removeZeros(int pos) {
+        
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int value = typeTrieMask&typeTrie[pos+i];
+            if (value > 0) {   
+                if (i==TYPE_EOM) {
+                    //the EOM slot has a count so return false, cant remove
+                    return false;                    
+                } else {                    
+                    if (removeZeros(value)) {
+                        //we have all zeros so remove this position.
+                        typeTrie[pos+i] = 0;                    
+                    } else {
+                        return false;                    
+                    }
+                }          
+            }            
+        }        
+        return true;
+    }
+    
     
     void mergeIntLongs(int pos) {
         
@@ -376,18 +481,19 @@ public class TypeTrie {
                                    
                 
                 //if recursively all of null pos is contained in that pos then we will move it over.                            
-                if (contains(value,thatPosDoes,0)) {
+                if (contains(value,thatPosDoes)) {
                     //since the null is a full subset add all its counts to the rlarger
                     sum(value,thatPosDoes);               
-                    //delete old UINT branch
-                    typeTrie[pos+i] = 0;
+                    //delete old branch
+                    typeTrie[typeTrie[pos+t2]+TYPE_EOM] = 0;
+                    typeTrie[pos+t2] = 0;
                 }
 
         }
     }
     
 
-    private boolean contains(int subset, int targetset, int depth) {
+    private boolean contains(int subset, int targetset) {
         //if all the field in inner are contained in outer
         int i = typeTrieUnit;
         while (--i>=0) {
@@ -396,9 +502,8 @@ public class TypeTrie {
                 if (0!=(typeTrieMask&typeTrie[subset+i])) { 
                     if (0==(typeTrieMask&typeTrie[targetset+i])) {
                         return false;
-                    }
-                    
-                    if (!contains(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i],depth+1)  ) {
+                    }                    
+                    if (!contains(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
                         return false;
                     }
                 }
@@ -414,15 +519,18 @@ public class TypeTrie {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
                 if (0!=(typeTrieMask&typeTrie[subset+i])) {
-                    if (0==(typeTrieMask&typeTrie[targetset+i]) || !sum(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
+                    if (0==(typeTrieMask&typeTrie[targetset+i]) || 
+                        !sum(typeTrieMask&typeTrie[subset+i],typeTrieMask&typeTrie[targetset+i])  ) {
                         return false;
                     }
                 }
-                //don't loose the optional flag from the other branch if it is there
-                typeTrie[targetset+i] |= (OPTIONAL_FLAG & typeTrie[subset+i]);
+
+                //don't loose the optional flag from the other branch if it is there                
+                typeTrie[targetset+i]  = (OPTIONAL_FLAG & (typeTrie[subset+i] | typeTrie[targetset+i])) |
+                                         (typeTrieMask&(typeTrie[targetset+i]));
             } else {
                 //everything matches to this point so add the inner into the outer
-                typeTrie[targetset+i] += typeTrie[subset+i];
+                typeTrie[targetset+i]  = (typeTrieMask & (typeTrie[subset+i] + typeTrie[targetset+i]));
             }
         }                    
         return true;
