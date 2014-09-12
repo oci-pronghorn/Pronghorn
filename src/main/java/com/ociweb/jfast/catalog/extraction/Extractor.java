@@ -20,7 +20,7 @@ public class Extractor {
     //the next char is a text because of the following text
     byte[]  TEXT_COMMA1 = ", ".getBytes();
     byte[]  TEXT_COMMA2 = ",,,".getBytes(); //TODO: can be set externally to allow 1 char as text based on this pattern
-    
+    byte[]  TEXT_COMMA4 = ",,,,".getBytes();
         
     //TODO: add support for string literals as needed
     final byte[][] temp = new byte[][]{};//"Astec Industries,".getBytes(),
@@ -110,6 +110,7 @@ public class Extractor {
             flushField(visitor);
             flushRecord(visitor, mappedBuffer.position(), workspace);
         }
+        
         
         
     }
@@ -261,6 +262,7 @@ public class Extractor {
         }
     }
     
+    
     private void parseRecord(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (foundHere(mappedBuffer,recordDelimiter)) {
             if (workspace.inEscape) {
@@ -284,12 +286,18 @@ public class Extractor {
         }           
     }
    
-
+    //TODO: extract rules for continued content, add and NOT ,,,, and add that these 2 must alreay have content.
+    private boolean mayBeEndOfField(MappedByteBuffer mappedBuffer, ExtractorWorkspace workspace) {
+        return workspace.contentPos==-1 || //if no content so far this is just an empty field
+                foundHere(mappedBuffer,TEXT_COMMA4) | //if lots of commas this is
+               (!foundHere(mappedBuffer,TEXT_COMMA1) &&
+                !foundHere(mappedBuffer,TEXT_COMMA2));
+        
+    }
+    
     private void parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
                 
-        if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter &&
-                !foundHere(mappedBuffer,TEXT_COMMA1) &&
-                !foundHere(mappedBuffer,TEXT_COMMA2) ) {
+        if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter && mayBeEndOfField(mappedBuffer, workspace) ) {
             if (workspace.inEscape) {
                 //starts new content block from this location
                 workspace.contentPos = mappedBuffer.position();

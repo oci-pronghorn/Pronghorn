@@ -6,7 +6,6 @@ public class ExtractorWorkspace {
     public int contentPos;
     public boolean contentQuoted;
     private int recordStart;
-    private boolean inExcapeAtStart;
     public ExtractorWorkspace(boolean inQuote, boolean inEscape, int contentPos, boolean contentQuoted, int recordStart) {
         this.inQuote = inQuote;
         this.inEscape = inEscape;
@@ -17,7 +16,7 @@ public class ExtractorWorkspace {
 
     public void reset() {
         inQuote = false;
-        inEscape = inExcapeAtStart; 
+        inEscape = false; 
         contentPos = -1;
         contentQuoted = false;
         setRecordStart(0);
@@ -28,7 +27,6 @@ public class ExtractorWorkspace {
     }
 
     public void setRecordStart(int recordStart) {
-        this.inExcapeAtStart = inEscape;
         this.recordStart = recordStart;
     }
 }
