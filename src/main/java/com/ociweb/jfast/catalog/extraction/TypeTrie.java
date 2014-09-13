@@ -197,10 +197,10 @@ public class TypeTrie {
     }
 
     private boolean isValid() { //TODO: move this logic out to an interface
-        return nullCount<=2 &&        //Too much missing data
+        return nullCount<=2 &&        //Too much missing data, 
                utf8Count==0 &&        //data known to be ASCII so this is corrupted
-               (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  TODO: why are zeros not removed?
-               firstFieldLength<=9 && //key must not be too large
+               (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  
+               firstFieldLength<=15 && //key must not be too large
                firstField!=TYPE_NULL; //known primary key is missing
     }
     
@@ -401,13 +401,11 @@ public class TypeTrie {
                         //check if there is another non-null field
                         //if there is more than 1 field with the null NEVER collapse because we don't know which path to which it belongs.
                         //we will produce 3 or more separate templates and they will be resolved by the later consumption stages
-                        if (lastNonNull(pos,typeTrie,lastNonNull)<0) {
+                        if (lastNonNull(pos, typeTrie, lastNonNull)<0) {
                             
                             int nullPos = value;
                             int thatPosDoes = OPTIONAL_LOW_MASK&typeTrie[pos+lastNonNull];
-                            
-                            //TODO: this needs to know about int and longs and see them cross over?
-                            
+                                                        
                             //if recursively all of null pos is contained in that pos then we will move it over.                            
                             if (contains(nullPos,thatPosDoes)) {
                                 //since the null is a full subset add all its counts to the rlarger
@@ -507,7 +505,6 @@ public class TypeTrie {
                         } else {
                             return false;
                         }
-                        return false;
                     }                           
                     if (!contains(OPTIONAL_LOW_MASK&typeTrie[subset+i],OPTIONAL_LOW_MASK&typeTrie[targetset+j])  ) {
                         return false;
@@ -539,7 +536,6 @@ public class TypeTrie {
                         } else {
                             return false;
                         }
-                        return false;
                     }
                     
                     if (!sum(OPTIONAL_LOW_MASK&typeTrie[subset+i],OPTIONAL_LOW_MASK&typeTrie[targetset+j])  ) {

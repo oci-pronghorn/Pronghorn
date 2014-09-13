@@ -42,31 +42,6 @@ public class StreamingVisitor implements ExtractionVisitor {
     }
     
     
-    //TODO: how does this get called? at what point?
-    
-    public void setCatalog(byte[] catBytes) {
-        if (!Arrays.equals(this.catBytes, catBytes)) {
-            
-            //TODO: if there is a field write in progress this catalog must be done first, copy the bytes somewhere safe
-            
-            
-            this.catBytes = catBytes;
-
-            catalog = new TemplateCatalogConfig(catBytes);            
-            //TODO: check assumption that templateID 0 is the one for sending catalogs.
-            
-            
-            // Write new catalog to stream.
-            FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
-            FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);        
-
-            //TODO: if we moved the in progress field bytes they must be put back
-            
-            
-        }        
-        
-    }
-    
     
     @Override
     public void appendContent(MappedByteBuffer mappedBuffer, int pos, int limit, boolean contentQuoted) {
@@ -78,9 +53,9 @@ public class StreamingVisitor implements ExtractionVisitor {
         int p = pos;
         while (p<limit) {
             
-            //TODO: this written data will need to be copied elsewhere if there is a frame switch and 
-            //the new catalog needs to be sent.
-            
+            //TODO: if there is a frame swith this visitor is repositioned to the front of the record again
+            //so nothing needs to be kept we can roll back to the last known ring buffer position.
+                        
             byte b = mappedBuffer.get(p);
             byteBuffer[byteMask&bytePosStart++] = b; //TODO: need to check for the right stop point
                         
@@ -140,7 +115,24 @@ public class StreamingVisitor implements ExtractionVisitor {
     @Override
     public void openFrame() {
         //get new catalog if is has been changed by the other visitor
-        setCatalog(messageTypes.getCatBytes());        
+        byte[] catBytes = messageTypes.getCatBytes();
+        if (!Arrays.equals(this.catBytes, catBytes)) {
+
+            this.catBytes = catBytes;        
+            catalog = new TemplateCatalogConfig(catBytes);            
+            //TODO: check assumption that templateID 0 is the one for sending catalogs.
+                        
+            //TODO: if any partial write of field data is in progress just throw it away becuase 
+            //next frame will begin again from the start of the message.
+            
+            // Write new catalog to stream.
+            FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
+            FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);        
+        
+            //TODO: if we moved the in progress field bytes they must be put back
+            
+            
+        }        
     }
 
 }

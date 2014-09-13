@@ -11,6 +11,8 @@ import java.nio.channels.FileChannel;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.stream.FASTRingBuffer;
+
 public class ExtractorTest {
 
     @Test
@@ -123,11 +125,6 @@ public class ExtractorTest {
             if (file.exists()) {
                 FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
                 
-                //TODO: add 1 pass to extract the types using the map reduce approach by counting chars
-                //We could generate a template from the type data?
-                //TODO: add 1 pass to map data directly to field types and put in ring buffer for usage.
-                
-                
                 Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape);
                 
                 try {
@@ -135,12 +132,49 @@ public class ExtractorTest {
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
-                }
-                
-            }
-        
-        
+                }                
+            }            
         }
+    }
+    
+    @Test
+    public void dataExtractionTest() throws FileNotFoundException {
+        
+        
+        int fieldDelimiter = (int)',';
+                
+        byte[] recordDelimiter = new byte[]{'\r','\n'};
+        
+        int openQuote = (int)'"';        
+        int closeQuote = (int)'"';
+        
+        //Not using escape in this test file
+        int escape = Integer.MIN_VALUE;
+        
+        String fullPath = "/home/nate/flat/fullExample.txt";
+      //  String fullPath = "/home/nate/flat/example.txt";
+         
+        FieldTypeVisitor visitor1 = new FieldTypeVisitor();
+//       
+//        FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
+//        StreamingVisitor visitor2 = new StreamingVisitor(visitor1.getTypes(), ringBuffer);
+//        
+//                
+//        if (null!=fullPath && fullPath.length()>0) {
+//            File file = new File(fullPath);
+//            if (file.exists()) {
+//                FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
+//                
+//                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape);
+//                
+//                try {
+//                    ex.extract(fileChannel, visitor1, visitor2);
+//                } catch (IOException e) {
+//                    // TODO Auto-generated catch block
+//                    e.printStackTrace();
+//                }                
+//            }            
+//        }
     }
     
     

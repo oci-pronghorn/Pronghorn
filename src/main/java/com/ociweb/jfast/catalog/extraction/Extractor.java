@@ -18,25 +18,12 @@ public class Extractor {
     final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
     
     //the next char is a text because of the following text
-    byte[]  TEXT_COMMA1 = ", ".getBytes();
+    byte[]  TEXT_COMMA1 = ", ".getBytes();//TODO: these should not be here, instead recombine after populating the tree structure.
     byte[]  TEXT_COMMA2 = ",,,".getBytes(); //TODO: can be set externally to allow 1 char as text based on this pattern
     byte[]  TEXT_COMMA4 = ",,,,".getBytes();
         
     //TODO: add support for string literals as needed
-    final byte[][] temp = new byte[][]{};//"Astec Industries,".getBytes(),
-//                                       "Charming Shoppes,".getBytes(),
-//                                       "New Germany Fund,".getBytes(),
-//                                       "Raven Industries,".getBytes(),
-//                                       "Elan Corporation,".getBytes(),
-//                                       "Asia Tigers Fund,".getBytes(),
-//                                       "Beazer Homes USA,".getBytes(),
-//                                       "Mitsui & Company,".getBytes(),
-//                                       "Lakeland Bancorp,".getBytes(),
-//                                       "Asia Tigers Fund,".getBytes(),
-//                                       "AEterna Zentaris,".getBytes(),
-//                                       "LJ International,".getBytes(),
-//                                       "Cavco Industries,".getBytes(), //don't have solution for when this comma gets dropped
-//                                       };
+    final byte[][] temp = new byte[][]{};
 
     
     //TODO: B, Based on this design build another that can parse JSON
@@ -71,7 +58,7 @@ public class Extractor {
         long fileSize = fileChannel.size();
         long position = 0;
         
-        int loops = 20;
+        int loops = 20;//11;
         
         
         ExtractorWorkspace workspace = new ExtractorWorkspace(false, false, -1, false, 0);
@@ -103,76 +90,73 @@ public class Extractor {
             
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
             
-            
         } while (position<fileSize);
                 
         if (flushContent(mappedBuffer,visitor, workspace)) {
             flushField(visitor);
             flushRecord(visitor, mappedBuffer.position(), workspace);
         }
-        
-        
-        
     }
     
-//    public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
-//        MappedByteBuffer mappedBuffer;
-//        
-//        long fileSize = fileChannel.size();
-//        long position = 0;
-//        
-//        
-//        ExtractorWorkspace workspace1 = new ExtractorWorkspace(false, false, -1, false, 0);
-//        ExtractorWorkspace workspace2 = new ExtractorWorkspace(false, false, -1, false, 0);
-//        
-//        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-//        int padding = tailPadding;
-//        do {
-//            //the last go round must never use any padding, this padding is only needed when spanning two blocks.
-//            if (mappedBuffer.limit()+position==fileSize) {
-//                padding = 0;
-//            }
-//            
-//            visitor1.openFrame();
-//            do {
-//                parse(mappedBuffer, visitor1, workspace1);
-//            } while (mappedBuffer.remaining()>padding);
-//            //notify the visitor that the buffer is probably going to change out from under them
-//            visitor1.closeFrame();            
-//            if (position+mappedBuffer.position()>=fileSize) {
-//                if (flushContent(mappedBuffer,visitor1, workspace1)) {
-//                    flushField(visitor1);
-//                    flushRecord(visitor1, mappedBuffer.position(), workspace1);
-//                }
-//            }
-//            
-//                        
-//            //visit second visitor while this block is still mapped
-//            mappedBuffer.position(0);
-//            
-//            visitor2.openFrame();            
-//            do {
-//                parse(mappedBuffer, visitor2, workspace2);
-//            } while (mappedBuffer.remaining()>padding);
-//            //notify the visitor that the buffer is probably going to change out from under them
-//            visitor2.closeFrame();
-//            if (position+mappedBuffer.position()>=fileSize) {
-//                if (flushContent(mappedBuffer,visitor2, workspace2)) {
-//                    flushField(visitor2);
-//                    flushRecord(visitor2, mappedBuffer.position(), workspace2);
-//                }
-//            }
-//                        
-//            
-//            //only increment by exactly how many bytes were read assuming we started at zero
-//            position+=mappedBuffer.position();
-//            
-//           
-//            
-//            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
-//        } while (position<fileSize);
-//                
-//    }
+    
+    public void extract(FileChannel fileChannel, ExtractionVisitor visitor1, ExtractionVisitor visitor2) throws IOException {
+        MappedByteBuffer mappedBuffer;
+        
+        long fileSize = fileChannel.size();
+        long position = 0;
+        
+        
+        ExtractorWorkspace workspace1 = new ExtractorWorkspace(false, false, -1, false, 0);
+        ExtractorWorkspace workspace2 = new ExtractorWorkspace(false, false, -1, false, 0);
+        
+        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        int padding = tailPadding;
+        do {
+            //the last go round must never use any padding, this padding is only needed when spanning two blocks.
+            if (mappedBuffer.limit()+position==fileSize) {
+                padding = 0;
+            }
+            
+            visitor1.openFrame();
+            do {
+                parse(mappedBuffer, visitor1, workspace1);
+            } while (mappedBuffer.remaining()>padding);
+            //notify the visitor that the buffer is probably going to change out from under them
+            visitor1.closeFrame();            
+            if (position+mappedBuffer.position()>=fileSize) {
+                if (flushContent(mappedBuffer,visitor1, workspace1)) {
+                    flushField(visitor1);
+                    flushRecord(visitor1, mappedBuffer.position(), workspace1);
+                }
+            }
+            workspace1.reset();
+                        
+            //visit second visitor while this block is still mapped
+            mappedBuffer.position(0);
+            
+            visitor2.openFrame();            
+            do {
+                parse(mappedBuffer, visitor2, workspace2);
+            } while (mappedBuffer.remaining()>padding);
+            //notify the visitor that the buffer is probably going to change out from under them
+            visitor2.closeFrame();
+            if (position+mappedBuffer.position()>=fileSize) {
+                if (flushContent(mappedBuffer,visitor2, workspace2)) {
+                    flushField(visitor2);
+                    flushRecord(visitor2, mappedBuffer.position(), workspace2);
+                }
+            }
+            workspace2.reset();            
+            
+            //only increment by exactly how many bytes were read assuming we started at zero
+            position+=workspace2.getRecordStart();
+            
+           
+            
+            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        } while (position<fileSize);
+                
+    }
     
     //TODO: When building JSON parser the field names will also be extracted. These names will be written one after the other into a buffer
     //      once the end if the message is reached this full string is used as an additional information point to distinquish between 
@@ -291,7 +275,7 @@ public class Extractor {
         return workspace.contentPos==-1 || //if no content so far this is just an empty field
                 foundHere(mappedBuffer,TEXT_COMMA4) | //if lots of commas this is
                (!foundHere(mappedBuffer,TEXT_COMMA1) &&
-                !foundHere(mappedBuffer,TEXT_COMMA2));
+                !(foundHere(mappedBuffer,TEXT_COMMA2)&&(mappedBuffer.position()-workspace.contentPos>7))    );
         
     }
     

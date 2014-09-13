@@ -764,8 +764,11 @@ public class TemplateHandler extends DefaultHandler {
         } else {
             token = dTokens[activeDictionary];
             if (0 != token && fieldType!= TypeMask.Decimal && fieldType!=TypeMask.DecimalOptional) { ///TODO: B, hack for now but need to clean up for decimals.
-                if (fieldType != TokenBuilder.extractType(token) || fieldOperator != TokenBuilder.extractType(token)) {
-                    throw new SAXException("Field id can not be redefined within the same dictionary.");
+                if (fieldType != TokenBuilder.extractType(token) || fieldOperator != TokenBuilder.extractOper(token)) {
+                    throw new SAXException("Field id can not be redefined within the same dictionary. "+
+                                            fieldType+" vs "+TokenBuilder.extractType(token)+
+                                            fieldOperator+" vs "+TokenBuilder.extractOper(token)
+                            );
                 }
             } else {
                 int tokCount = count.getAndIncrement();

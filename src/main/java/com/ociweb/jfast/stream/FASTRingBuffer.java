@@ -62,7 +62,7 @@ public final class FASTRingBuffer {
     final int maxByteSize;
     public final int byteMask;
     public final byte[] byteBuffer;
-    public PaddedInt addBytePos = new PaddedInt();
+    public PaddedInt addBytePos = new PaddedInt();//TODO: remove from tail byte position is missing.
     
     //defined externally and never changes
     final byte[] constByteBuffer;
