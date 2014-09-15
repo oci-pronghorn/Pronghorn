@@ -31,21 +31,13 @@ public class FASTRingBufferWriter {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)mantissa >>> 32, (int)mantissa & 0xFFFFFFFF );    
     }
 
-     //delete because it does not know if this is asii or utf8 encodeded. however this may be renamed as write ascii text?
-    public static void writeString(FASTRingBuffer rb, CharSequence charSequence) {
-        //TODO: VERY bad impl becuase it creates garbage here and does not need to.
-        //must do a char sequence copy but that assumes this string to be ascii which is wrong, TODO: remove this method completely?
-        FASTRingBuffer.addByteArray( charSequence.toString().getBytes(), 0, charSequence.length(), rb);
-        
-        
-        
-    }
+
     
     //TODO: need helper method to append text as we go so that logic remains here, temp bytes write
     
     //Because the stream neeeds to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
-    public static void complteWriteBytes(FASTRingBuffer rb, int length) {
+    public static void finishWriteBytes(FASTRingBuffer rb, int length) {
         
         int p = rb.addBytePos.value;
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);

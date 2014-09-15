@@ -58,14 +58,14 @@ public class TypeTrie {
                                     (((1<<(BITS_ASCII-1))-1)<<SHIFT_ASCII) |
                                     (((1<<(BITS_OTHER-1))-1)<<SHIFT_OTHER);
     
-    private static final int TYPE_UINT = TypeMask.IntegerUnsigned>>1; //  0
-    private static final int TYPE_SINT = TypeMask.IntegerSigned>>1;   //  1
-    private static final int TYPE_ULONG = TypeMask.LongUnsigned>>1;   //  2
-    private static final int TYPE_SLONG = TypeMask.LongSigned>>1;     //  3
-    private static final int TYPE_ASCII = TypeMask.TextASCII>>1;      //  4 
-    private static final int TYPE_BYTES = TypeMask.TextUTF8>>1;       //  5 
-    private static final int TYPE_DECIMAL = TypeMask.Decimal>>1;      //  6
-    private static final int TYPE_NULL = 7;//no need to use BYTE_ARRAY, its the same as UTF8
+    public static final int TYPE_UINT = TypeMask.IntegerUnsigned>>1; //  0
+    public static final int TYPE_SINT = TypeMask.IntegerSigned>>1;   //  1
+    public static final int TYPE_ULONG = TypeMask.LongUnsigned>>1;   //  2
+    public static final int TYPE_SLONG = TypeMask.LongSigned>>1;     //  3
+    public static final int TYPE_ASCII = TypeMask.TextASCII>>1;      //  4 
+    public static final int TYPE_BYTES = TypeMask.TextUTF8>>1;       //  5 
+    public static final int TYPE_DECIMAL = TypeMask.Decimal>>1;      //  6
+    public static final int TYPE_NULL = 7;//no need to use BYTE_ARRAY, its the same as UTF8
     //NOTE: more will be added here for group and sequence once JSON support is added
     private static final int TYPE_EOM = 15;
     
@@ -162,7 +162,8 @@ public class TypeTrie {
     }
     
 //            //TODO: add string literals to be extracted by tokenizer
-    int reportLimit = 1;
+    int reportLimit = 0; //turn off the debug feature by setting this to zero.
+    
     
     public void appendNewRecord(int startPos) {       
 
@@ -173,8 +174,10 @@ public class TypeTrie {
             
             int total =  ++typeTrie[typeTrieCursor+TYPE_EOM];
             if (total<=reportLimit) {
-                if (tempBuffer.position()-startPos<200) { ///TODO: this is a large bug.
+                if (tempBuffer.position()-startPos<200) { 
+                    
                     System.err.println("example for :"+(typeTrieCursor+TYPE_EOM));
+                    
                     byte[] dst = new byte[tempBuffer.position()-startPos];
                     ByteBuffer x = tempBuffer.asReadOnlyBuffer();
                     x.position(startPos);
@@ -258,11 +261,48 @@ public class TypeTrie {
     public int moveNextField() {
         int type = extractType();        
         resetFieldSum(); //TODO: not a  good place for this, side effect.
+        
         int pos = typeTrieCursor+type;
         typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[pos];  
         return type;
     }
 
+    public int moveNextField2() {
+        int type = extractType();        
+        resetFieldSum(); //TODO: not a  good place for this, side effect.
+        
+        int pos = typeTrieCursor+type;
+        typeTrieCursor = OPTIONAL_LOW_MASK & typeTrie[pos];
+        
+        //if type is null???
+        if (TYPE_NULL == type) {
+            
+         //   System.err.println(idx);
+            
+            int i = typeTrieUnit;
+            while (--i>=0) {
+                if (TYPE_NULL != i) {
+                    
+                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {
+                        
+                        return i;
+                        
+                        
+                    }                
+                }
+                
+            }
+            
+           
+            
+        }
+        
+        
+        
+        
+        return type;
+    }
+    
     private int extractType() {
         assert(activeLength>=0);
                 

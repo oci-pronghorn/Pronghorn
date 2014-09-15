@@ -338,8 +338,8 @@ public class CatalogGeneratorTest {
                         FASTRingBufferWriter.writeInt(queue, 0);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            
-                            FASTRingBufferWriter.writeString(queue, ReaderWriterPrimitiveTest.stringData[--d]);
+                            //TODO: this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
+                            FASTRingBufferWriter.writeBytes(queue, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }

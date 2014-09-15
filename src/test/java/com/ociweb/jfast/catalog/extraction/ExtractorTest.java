@@ -154,12 +154,12 @@ public class ExtractorTest {
         String fullPath = "/home/nate/flat/fullExample.txt";
       //  String fullPath = "/home/nate/flat/example.txt";
          
-        FieldTypeVisitor visitor1 = new FieldTypeVisitor();
-//       
-//        FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
-//        StreamingVisitor visitor2 = new StreamingVisitor(visitor1.getTypes(), ringBuffer);
-//        
-//                
+        FieldTypeVisitor visitor1 = new FieldTypeVisitor(); //TODO: must use stream to write all the data to FAST data file.
+       
+        FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
+        StreamingVisitor visitor2 = new StreamingVisitor(visitor1.getTypes(), ringBuffer);
+        
+                
 //        if (null!=fullPath && fullPath.length()>0) {
 //            File file = new File(fullPath);
 //            if (file.exists()) {
@@ -168,13 +168,19 @@ public class ExtractorTest {
 //                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape);
 //                
 //                try {
-//                    ex.extract(fileChannel, visitor1, visitor2);
+//                    ex.extract(fileChannel, visitor1, visitor2);  
+//
+//                   // ex.extract(fileChannel, visitor1); 
+//                    
+//                    
 //                } catch (IOException e) {
 //                    // TODO Auto-generated catch block
 //                    e.printStackTrace();
 //                }                
 //            }            
 //        }
+        
+        
     }
     
     

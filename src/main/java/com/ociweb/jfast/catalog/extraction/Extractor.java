@@ -75,6 +75,14 @@ public class Extractor {
             do {
                 parse(mappedBuffer, visitor, workspace);
             } while (mappedBuffer.remaining()>padding);
+            if (position+mappedBuffer.position()>=fileSize) {
+                if (flushContent(mappedBuffer,visitor, workspace)) {
+                    flushField(visitor);
+                    flushRecord(visitor, mappedBuffer.position(), workspace);
+                }
+            }
+            
+            
             //notify the visitor that the buffer is probably going to change out from under them
             visitor.closeFrame();
             //only increment by exactly how many bytes were read assuming we started at zero
@@ -91,11 +99,7 @@ public class Extractor {
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
             
         } while (position<fileSize);
-                
-        if (flushContent(mappedBuffer,visitor, workspace)) {
-            flushField(visitor);
-            flushRecord(visitor, mappedBuffer.position(), workspace);
-        }
+
     }
     
     
@@ -121,16 +125,16 @@ public class Extractor {
             do {
                 parse(mappedBuffer, visitor1, workspace1);
             } while (mappedBuffer.remaining()>padding);
-            //notify the visitor that the buffer is probably going to change out from under them
-            visitor1.closeFrame();            
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor1, workspace1)) {
                     flushField(visitor1);
                     flushRecord(visitor1, mappedBuffer.position(), workspace1);
                 }
             }
-            workspace1.reset();
-                        
+            
+            visitor1.closeFrame();           
+            workspace1.reset();//must be done after any calls for data in workspace
+                                    
             //visit second visitor while this block is still mapped
             mappedBuffer.position(0);
             
@@ -146,12 +150,11 @@ public class Extractor {
                     flushRecord(visitor2, mappedBuffer.position(), workspace2);
                 }
             }
-            workspace2.reset();            
             
             //only increment by exactly how many bytes were read assuming we started at zero
-            position+=workspace2.getRecordStart();
-            
-           
+            position+=workspace2.getRecordStart();//Only done once by the last visitor for this data.
+                        
+            workspace2.reset();   //must be done after any calls for data in workspace                  
             
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
         } while (position<fileSize);

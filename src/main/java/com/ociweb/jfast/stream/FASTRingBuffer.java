@@ -454,10 +454,14 @@ public final class FASTRingBuffer {
         return from.fragScriptSize[consumerData.cursor];
     }
 
-    public static long releaseRecords(final int granularity, AtomicLong hp, PaddedLong wrkHdPos) {
-        hp.lazySet(wrkHdPos.value); //we are only looking for space for 1 but wrote n!! records!
-        return wrkHdPos.value + granularity;
+    public static void publishWrites(AtomicLong hp, PaddedLong wrkHdPos) {
+        hp.lazySet(wrkHdPos.value);
     }
+    public static void abandonWrites(AtomicLong hp, PaddedLong wrkHdPos) {    
+        //ignore the fact that any of this was written to the ring buffer
+        wrkHdPos.value = hp.longValue();
+    }
+    
 
     //TODO: B, Double check that asserts have been removed because they bump up the byte code size and prevent inline
     

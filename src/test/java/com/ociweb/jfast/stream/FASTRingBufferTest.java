@@ -133,7 +133,8 @@ public class FASTRingBufferTest {
                         
                         //allow writer to write up to new tail position
                         if (0==(i&rb.chunkMask) ) {  
-                            targetHead = FASTRingBuffer.releaseRecords(granularity, tp, wrkTlPos);
+                            FASTRingBuffer.publishWrites(tp, wrkTlPos);
+                            targetHead = wrkTlPos.value + granularity;
                         }
                         
                     }
@@ -171,7 +172,8 @@ public class FASTRingBufferTest {
                 }
                 //allow read thread to read up to new head position
                 if (0==(i&rb.chunkMask) ) {
-                    targetPos = FASTRingBuffer.releaseRecords(granularity, hp, wrkHdPos);
+                    FASTRingBuffer.publishWrites(hp, wrkHdPos);
+                    targetPos = wrkHdPos.value + granularity;
                     targetPos -= rb.maxSize;
                 }
             }

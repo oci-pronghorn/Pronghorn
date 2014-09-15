@@ -50,7 +50,7 @@ public class FieldTypeVisitor implements ExtractionVisitor{
   
         
         // PRINT REPORT
-        accumulatedMessageTypes.printRecursiveReport(0,"");
+     //   accumulatedMessageTypes.printRecursiveReport(0,"");
         System.err.println("total records: "+accumulatedMessageTypes.totalRecords+" tossed:"+accumulatedMessageTypes.tossedRecords);
         
        // System.err.println(accumulatedMessageTypes.buildCatalog(true));
