@@ -160,25 +160,25 @@ public class ExtractorTest {
         StreamingVisitor visitor2 = new StreamingVisitor(visitor1.getTypes(), ringBuffer);
         
                 
-//        if (null!=fullPath && fullPath.length()>0) {
-//            File file = new File(fullPath);
-//            if (file.exists()) {
-//                FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
-//                
-//                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape);
-//                
-//                try {
-//                    ex.extract(fileChannel, visitor1, visitor2);  
-//
-//                   // ex.extract(fileChannel, visitor1); 
-//                    
-//                    
-//                } catch (IOException e) {
-//                    // TODO Auto-generated catch block
-//                    e.printStackTrace();
-//                }                
-//            }            
-//        }
+        if (null!=fullPath && fullPath.length()>0) {
+            File file = new File(fullPath);
+            if (file.exists()) {
+                FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
+                
+                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape);
+                
+                try {
+                    ex.extract(fileChannel, visitor1, visitor2);  
+
+                   // ex.extract(fileChannel, visitor1); 
+                    
+                    
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }                
+            }            
+        }
         
         
     }

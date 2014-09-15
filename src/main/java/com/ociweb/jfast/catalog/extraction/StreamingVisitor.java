@@ -19,6 +19,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     
     long beforeDotValue;
     long accumDecimalValue;
+    long accumSign;
     boolean aftetDot;
     
     //chars are written to  ring buffer.
@@ -40,6 +41,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
         aftetDot = false;
         beforeDotValue=0;
+        accumSign=1;
         accumDecimalValue=0;
     }
         
@@ -56,16 +58,19 @@ public class StreamingVisitor implements ExtractionVisitor {
             byte b = mappedBuffer.get(p);
             byteBuffer[byteMask&bytePosActive++] = b; //TODO: need to check for the right stop point
                         
-            if ('.'==b) {
+            if ('.' == b) {
                 aftetDot = true;
                 beforeDotValue = accumDecimalValue;
                 accumDecimalValue = 0;
             } else {
-                //TODO: add conditional to check for + and -
-            
-                int v = (b-'0');
-                accumDecimalValue = (10*accumDecimalValue) + v;    
-               // System.err.println(accumDecimalValue);
+               if ('+' != b) {
+                   if ('-' == b) { 
+                       accumSign = -1;
+                   } else {
+                       int v = (b-'0');
+                       accumDecimalValue = (10*accumDecimalValue) + v;    
+                   }                    
+               }
             }
             p++;
         }                 
@@ -110,27 +115,29 @@ public class StreamingVisitor implements ExtractionVisitor {
                 
                 break;
             case TypeTrie.TYPE_UINT:                
-                FASTRingBufferWriter.writeInt(ringBuffer, (int)accumDecimalValue);;  
+                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
                 break;            
             case TypeTrie.TYPE_SINT:
-                FASTRingBufferWriter.writeInt(ringBuffer, (int)accumDecimalValue);;  
+                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
                 break;    
             case TypeTrie.TYPE_ULONG:
-                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue);;  
+                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
                 break;    
             case TypeTrie.TYPE_SLONG:
-                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue);;  
+                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
                 break;    
             case TypeTrie.TYPE_ASCII:
-                FASTRingBufferWriter.finishWriteBytes(ringBuffer, 0); //TODO: What is the length?
+                FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
             case TypeTrie.TYPE_BYTES:                
-                FASTRingBufferWriter.finishWriteBytes(ringBuffer, 0); //TODO: What is the length?
+                FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
             case TypeTrie.TYPE_DECIMAL:
-                int exponent = 0; //TODO: how to detect exponent?
+                int exponent = messageTypes.globalExponent(); 
+                
+                //continue to write values even when they are known to be a constant!!
                 long mantissa = 0; //TODO: before dot appented to after dot plus any space needed for exponent.
-                FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, mantissa);  
+                FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, mantissa*accumSign);  
                 break;
             
             default:
@@ -147,6 +154,7 @@ public class StreamingVisitor implements ExtractionVisitor {
 
         aftetDot = false;
         beforeDotValue = 0;
+        accumSign = 1;
         accumDecimalValue = 0;
         
         

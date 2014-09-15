@@ -23,6 +23,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
+import com.ociweb.jfast.util.Stats;
 
 public class TypeTrie {
 
@@ -82,10 +83,12 @@ public class TypeTrie {
     ///TODO: convert short byte sequences to int or long
     ///TODO: treat leading zero as ascii not numeric.
     
+    private int         activePostDotCount;
     private int         activeSum;
     private int         activeLength;
     private boolean     activeQuote;
    
+    private Stats       histPostDotCount = new Stats(60,7,0,15);
     
     //16 possible field types
     
@@ -101,6 +104,7 @@ public class TypeTrie {
     
     private final int[] typeTrie = new int[typeTrieArraySize];
     private int         typeTrieCursor; 
+    
     
     private int         nullCount; //TODO: expand to the other types and externalize rules to an interface
     private int         firstField = -1;
@@ -155,10 +159,14 @@ public class TypeTrie {
         activeLength+=i;
         while (--i>=0) {
             byte b = mappedBuffer.get(pos+i);
-            int x = activeSum + accumValues[0xFF&b];            
-            activeSum = (x|(((x>>1) & ACCUM_MASK) & SATURATION_MASK))&ACCUM_MASK;                     
-        };        
-        
+            int x = activeSum + accumValues[0xFF&b];    
+            
+            activePostDotCount += (ONE_DOT&x);  //may need to use ONE_COMMA FOR UK
+            
+            activeSum = (x|(((x>>1) & ACCUM_MASK) & SATURATION_MASK))&ACCUM_MASK;  
+            
+            
+        }       
     }
     
 //            //TODO: add string literals to be extracted by tokenizer
@@ -315,7 +323,7 @@ public class TypeTrie {
         //NOTE: swap these two assignments for British vs American numbers
         int dotCount = ((1<<BITS_DOT)-1)&(activeSum>>SHIFT_DOT);
         int commaCount = ((1<<BITS_COMMA)-1)&(activeSum>>SHIFT_COMMA);
-        
+                
 //        if (commaCount>0) {
 //            System.err.println("did not expect any commas");
 //        }                     
@@ -336,7 +344,23 @@ public class TypeTrie {
                 } else {
                     if (dotCount==1) {
                         //decimal 
-                        type = TYPE_DECIMAL;                        
+                        type = TYPE_DECIMAL;     
+                        
+                        //        activePostDotCount
+                        //TODO: need histogram of the values ? then use percentile to pick
+                        int decAfterDot = activePostDotCount>>SHIFT_DOT;
+                        histPostDotCount.sample(decAfterDot);
+                        
+                       
+                        
+//                        if (decAfterDot>maxPostDotCount) {
+//                            maxPostDotCount = decAfterDot;
+//                            System.err.println("xxx: "+maxPostDotCount);
+//                        }
+                                    
+                        //System.err.println(decAfterDot);
+                        
+                        
                     } else {  
                         //no dot
                         if (decimalCount>9) { //NOTE: 9 could be optimized by reading first digit
@@ -370,6 +394,7 @@ public class TypeTrie {
     private void resetFieldSum() {
         activeLength = 0;
         activeSum = 0;
+        activePostDotCount = 0;
         activeQuote = false;
     }
     
@@ -382,6 +407,9 @@ public class TypeTrie {
     }
     
     
+    public void printStatus() {
+        System.err.println(histPostDotCount);
+    }
     //if all zero but the null then do recurse null otherwise not.
     
     public void printRecursiveReport(int pos, String tab) {
@@ -608,7 +636,7 @@ public class TypeTrie {
     }
     
     
-    private  void catalog(int pos, StringBuilder target, ItemGenerator[] buffer, int idx) {
+    private  void catalog(int pos, StringBuilder target, ItemGenerator[] buffer, int idx, String exponent) {
         
         int i = typeTrieUnit;
         while (--i>=0) {
@@ -636,6 +664,7 @@ public class TypeTrie {
                     TemplateGenerator.closeTemplate(target);
                     
                 } else {
+                    
                     int type = i<<1;
                     if (type<TypeMask.methodTypeName.length) {        
                                                 
@@ -652,11 +681,16 @@ public class TypeTrie {
                         boolean presence = 1==optionalBit;
                         int operator = OperatorMask.Field_None;
                         String initial = null;
+                    
                         
-                        buffer[idx] = new FieldGenerator(name,id,presence,type,operator,initial);                                      
+                        if (TypeMask.Decimal==type || TypeMask.DecimalOptional==type ) {
+                            //TODO: this uses a constant exponent for all values, we will want to make the settable by field position or name
+                            buffer[idx] = new FieldGenerator(name,id,presence,type,OperatorMask.Field_Constant,operator,exponent,initial);  
+                        } else {
+                            buffer[idx] = new FieldGenerator(name,id,presence,type,operator,initial);                                      
+                        }
                         
-                        
-                        catalog(value, target, buffer, idx+1);    
+                        catalog(value, target, buffer, idx+1, exponent);    
                     }
                 }        
             }
@@ -665,14 +699,22 @@ public class TypeTrie {
     }
     
     
-    public String buildCatalog(boolean withCatalogSupport) {
+    public String buildCatalog(boolean withCatalogSupport) {       
         
         StringBuilder target = new StringBuilder(1024);
         target.append(CatalogGenerator.HEADER);
                
+        
+        
+        //TODO: this is a global value but we really need 1. a value per field 2. user input percentile values
+        int exponent = globalExponent();
+        //TODO: this is using a constant exponent for the decimals, that may not be what we need for other situations
+        
 
+        
+        
         ItemGenerator[] buffer = new ItemGenerator[64];        
-        catalog(0,target,buffer,0);
+        catalog(0,target,buffer,0, String.valueOf(exponent));
                 
         if (withCatalogSupport) {
             addTemplateToHoldTemplates(target);
@@ -691,7 +733,7 @@ public class TypeTrie {
         
         boolean reset=true;
         String dictionary="global";
-        
+
         TemplateGenerator.openTemplate(target, name, id, reset, dictionary);
         
         
@@ -702,7 +744,8 @@ public class TypeTrie {
         String initial = null;
         int type = TypeMask.ByteArray;
         
-        FieldGenerator fg = new FieldGenerator(catName,catId,presence,type,operator,initial);  
+        FieldGenerator fg;
+        fg = new FieldGenerator(catName,catId,presence,type,operator,initial);  
         fg.appendTo("    ", target);            
         
         TemplateGenerator.closeTemplate(target);
@@ -743,6 +786,10 @@ public class TypeTrie {
     
     public byte[] getCatBytes() {
         return catBytes;
+    }
+
+    public int globalExponent() {
+        return (int)histPostDotCount.valueAtPercent(.999d);
     }
     
     
