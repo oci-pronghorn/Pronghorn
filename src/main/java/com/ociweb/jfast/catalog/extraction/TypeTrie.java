@@ -119,6 +119,11 @@ public class TypeTrie {
     
     byte[] catBytes;
     
+    
+    //  //TODO: add string literals to be extracted by tokenizer
+    int reportLimit = 3; //turn off the debug feature by setting this to zero.
+
+    
     public TypeTrie() {
         //one value for each of the possible bytes we may encounter.
         accumValues = new int[256];
@@ -168,10 +173,7 @@ public class TypeTrie {
             
         }       
     }
-    
-//            //TODO: add string literals to be extracted by tokenizer
-    int reportLimit = 0; //turn off the debug feature by setting this to zero.
-    
+
     
     public void appendNewRecord(int startPos) {       
 
@@ -184,7 +186,7 @@ public class TypeTrie {
             if (total<=reportLimit) {
                 if (tempBuffer.position()-startPos<200) { 
                     
-                    System.err.println("example for :"+(typeTrieCursor+TYPE_EOM));
+                    System.err.println("example "+total+" for :"+(typeTrieCursor+TYPE_EOM));
                     
                     byte[] dst = new byte[tempBuffer.position()-startPos];
                     ByteBuffer x = tempBuffer.asReadOnlyBuffer();
@@ -512,30 +514,65 @@ public class TypeTrie {
         return result;
     }
     
+    void resetLimit() {
+        typeTrieLimit = bigestPos(0)+typeTrieUnit;
+        
+    }
     
-    void mergeIntLongs(int pos) {
+    int bigestPos(int pos) {
+        int max = 0;
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
+            if (value > 0) {   
+                if (i==TYPE_EOM) {
+                    if (pos>max) {
+                        max = pos;
+                    }             
+                } else {
+                    int temp = bigestPos(value);
+                    if (temp>max) {
+                        max = temp;
+                    }
+                }          
+            }            
+        }        
+        return max;
+    }
+    
+    
+    //If two numeric types are found and one can fit inside the other then merge them.
+    void mergeNumerics(int pos) { //TODO: rename as general merge
         
         int i = typeTrieUnit;
         while (--i>=0) {
             int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
             if (value > 0) {                
                 if (i!=TYPE_EOM) {
-                    mergeIntLongs(value);
+                    mergeNumerics(value);
     
                     //finished call for this position i so it can removed if needed
                     //after merge on the way up also ensure we are doing the smallest parts first then larger ones
                     //and everything after this point is already merged.
+                    
+                    //uint to ulong to decimal
+                    //sint to slong to decimal
 
-                    mergeTypes(pos, i, value, TYPE_ULONG, TYPE_UINT);
-                    mergeTypes(pos, i, value, TYPE_SLONG, TYPE_SINT);
+                    mergeTypes(pos, i, value, TYPE_ULONG, TYPE_UINT); //UINT  into ULONG
+                    mergeTypes(pos, i, value, TYPE_SLONG, TYPE_SINT); //SINT  into SLONG
                     
-                    
+                    //TOOD: in the future may want to only do the merge if the sub type is only a small count of instances relative to the super type.         
+                    mergeTypes(pos, i, value, TYPE_DECIMAL, TYPE_SINT); //SLONG into DECIMAL
+                    mergeTypes(pos, i, value, TYPE_DECIMAL, TYPE_UINT); //SLONG into DECIMAL
+                    mergeTypes(pos, i, value, TYPE_DECIMAL, TYPE_SLONG); //SLONG into DECIMAL
+                    mergeTypes(pos, i, value, TYPE_DECIMAL, TYPE_ULONG); //SLONG into DECIMAL
                     
                 }        
             }            
         }        
     }
 
+    //TODO: this is not recursive and we need it do a deep contains and sum so we must extract the subset rules.
     private void mergeTypes(int pos, int i, int value, int t1, int t2) {
         int thatPosDoes = OPTIONAL_LOW_MASK&typeTrie[pos+t1];
         if (thatPosDoes>0 && t2==i) {
@@ -563,16 +600,52 @@ public class TypeTrie {
                 if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i])) { 
                     int j = i;
                     if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i])) {
-                        //if own kind is not found check for the simple super
-                        if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                            if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
-                                return false;
-                            } else {
+                        
+                        //TODO: build out for contains and for sum then simplify , SAME block for both methods!!
+                        
+                        if (TYPE_NULL==i) {
+                            //find something that takes Optional
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_UINT])) {
+                                j = TYPE_UINT;
+                            } else
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_ULONG])) {
                                 j = TYPE_ULONG;
+                            } else
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_DECIMAL])) {
+                                j = TYPE_DECIMAL;
+                            } else {
+                                return false;
                             }
                         } else {
-                            return false;
+                        
+                        
+                            //if own kind is not found check for the simple super
+                            if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                                if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
+                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                                        return false;
+                                    } else {
+                                        j = TYPE_DECIMAL;
+                                    }
+                                } else {
+                                    j = TYPE_ULONG;
+                                }
+                            } else {
+                                
+                                if (TYPE_ULONG==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                                        return false;
+                                    } else {
+                                        j = TYPE_DECIMAL;
+                                    }
+                                } else {
+                                    return false;
+                                }                          
+                                
+                            }
                         }
+                        
+                        
                     }                           
                     if (!contains(OPTIONAL_LOW_MASK&typeTrie[subset+i],OPTIONAL_LOW_MASK&typeTrie[targetset+j])  ) {
                         return false;
@@ -594,15 +667,47 @@ public class TypeTrie {
                 if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i])) {
                     
                     if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i])) {
-                      //if own kind is not found check for the simple super
-                        if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                            if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
-                                return false;
-                            } else {
+                        
+                        
+                        if (TYPE_NULL==i) {
+                            //find something that takes Optional
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_UINT])) {
+                                j = TYPE_UINT;
+                            } else
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_ULONG])) {
                                 j = TYPE_ULONG;
+                            } else
+                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_DECIMAL])) {
+                                j = TYPE_DECIMAL;
+                            } else {
+                                return false;
                             }
                         } else {
-                            return false;
+                        
+                          //if own kind is not found check for the simple super
+                            if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                                if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
+                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                                        return false;
+                                    } else {
+                                        j = TYPE_DECIMAL;
+                                    }
+                                } else {
+                                    j = TYPE_ULONG;
+                                }
+                            } else {
+                            
+                                if (TYPE_ULONG==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                                        return false;
+                                    } else {
+                                        j = TYPE_DECIMAL;
+                                    }
+                                } else {
+                                    return false;
+                                }
+                                
+                            }
                         }
                     }
                     
@@ -791,6 +896,7 @@ public class TypeTrie {
     public int globalExponent() {
         return (int)histPostDotCount.valueAtPercent(.999d);
     }
+
     
     
 }
