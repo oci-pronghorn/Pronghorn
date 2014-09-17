@@ -425,19 +425,23 @@ public class TypeTrie {
                         System.err.print(tab+"Count:"+value+" at "+(pos+i)+"\n");
                         noOutput = false;
                 } else {
-                    int type = i<<1;
-                    if (type<TypeMask.methodTypeName.length) {                    
+                    if (totalCount(value, typeTrie)>0) {
+                    
                         
-                        
-                        String v = (i==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type]);
-                        
-                        if ((OPTIONAL_FLAG&typeTrie[pos+i])!=0) {
-                            v = "Optional"+v;
+                        int type = i<<1;
+                        if (type<TypeMask.methodTypeName.length) {                    
+                            
+                            
+                            String v = (i==TYPE_NULL ? "NULL" : TypeMask.methodTypeName[type]);
+                            
+                            if ((OPTIONAL_FLAG&typeTrie[pos+i])!=0) {
+                                v = "Optional"+v;
+                            }
+                            noOutput = false;
+                            
+                            System.err.println(tab+v);
+                            printRecursiveReport(value, tab+"     ");    
                         }
-                        noOutput = false;
-                        
-                        System.err.println(tab+v);
-                        printRecursiveReport(value, tab+"     ");    
                     }
                 }        
             }
@@ -449,13 +453,30 @@ public class TypeTrie {
     
 
     
+    private static int totalCount(int value, int[] typeTrie) {
+        int sum = 0;
+        int i = typeTrieUnit;
+        while (--i>=0) {
+            int temp = OPTIONAL_LOW_MASK&typeTrie[value+i];
+            if (TYPE_EOM==i) {
+                sum += temp;                
+            } else {
+                if (temp>0) {
+                    sum += totalCount(temp, typeTrie);
+                }
+            }
+        }
+        return sum;
+    }
+
+
     void mergeOptionalNulls(int pos) {
         
         int i = typeTrieUnit;
         while (--i>=0) {
             int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
             if (value > 0) {                
-                if (i!=TYPE_EOM) {
+                if (i!=TYPE_EOM && totalCount(value, typeTrie)>0) {
                     mergeOptionalNulls(value);
     
                     //finished call for this position i so it can removed if needed
@@ -478,12 +499,10 @@ public class TypeTrie {
                                                         
                             //if recursively all of null pos is contained in that pos then we will move it over.                            
                             if (contains(nullPos,thatPosDoes)) {
-                                //since the null is a full subset add all its counts to the rlarger
+                                //since the null is a full subset add all its counts to the larger
                                 sum(nullPos,thatPosDoes);                                
                                 //flag this type as optional
                                 typeTrie[pos+lastNonNull] |= OPTIONAL_FLAG;
-                                //delete old null branch
-                                typeTrie[pos+i] = 0;
                             }
                         }
                     }
@@ -492,54 +511,8 @@ public class TypeTrie {
         }        
     }
     
-    boolean removeZeros(int pos) {
-        boolean result = true;
-        int i = typeTrieUnit;
-        while (--i>=0) {
-            int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
-            if (value > 0) {   
-                if (i==TYPE_EOM) {
-                    //the EOM slot has a count so return false, cant remove
-                    result = false;                    
-                } else {                    
-                    if (removeZeros(value)) {
-                        //we have all zeros so remove this position.
-                        typeTrie[pos+i] = 0;                    
-                    } else {
-                        result =false;                    
-                    }
-                }          
-            }            
-        }        
-        return result;
-    }
-    
-    void resetLimit() {
-        typeTrieLimit = bigestPos(0)+typeTrieUnit;
-        
-    }
-    
-    int bigestPos(int pos) {
-        int max = 0;
-        int i = typeTrieUnit;
-        while (--i>=0) {
-            int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
-            if (value > 0) {   
-                if (i==TYPE_EOM) {
-                    if (pos>max) {
-                        max = pos;
-                    }             
-                } else {
-                    int temp = bigestPos(value);
-                    if (temp>max) {
-                        max = temp;
-                    }
-                }          
-            }            
-        }        
-        return max;
-    }
-    
+   
+     
     
     //If two numeric types are found and one can fit inside the other then merge them.
     void mergeNumerics(int pos) { //TODO: rename as general merge
@@ -548,7 +521,7 @@ public class TypeTrie {
         while (--i>=0) {
             int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
             if (value > 0) {                
-                if (i!=TYPE_EOM) {
+                if (i!=TYPE_EOM  && totalCount(value,typeTrie)>0) {
                     mergeNumerics(value);
     
                     //finished call for this position i so it can removed if needed
@@ -581,15 +554,66 @@ public class TypeTrie {
                 //if recursively all of null pos is contained in that pos then we will move it over.                            
                 if (contains(value,thatPosDoes)) {
                     //since the null is a full subset add all its counts to the rlarger
-                    sum(value,thatPosDoes);               
-                    //delete old branch
-                    typeTrie[typeTrie[pos+t2]+TYPE_EOM] = 0;
-                    typeTrie[pos+t2] = 0;
+                    sum(value,thatPosDoes);   
                 }
 
         }
     }
     
+   
+    
+    private int targetType(int i, int targetset) {
+        if (TYPE_NULL==i) {
+            //if only one type is optional then we can represent this null as that type.
+            //if there is more than one then we must not combine them until or if the types are merged first
+            int q = typeTrieUnit;
+            int result = -1;
+            while (--q>=0) {
+                if (TYPE_EOM!=q &&
+                    TYPE_NULL!=q && 
+                    totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+q], typeTrie)>0  &&
+                    (0!=  (OPTIONAL_FLAG&typeTrie[targetset+q]))) {
+                    
+                        if (result<0) {
+                            result = q;
+                        } else {
+                            return -1;
+                        }  
+                        
+                }                
+            }
+            return result;
+            
+        } else {
+        
+        
+            //if own kind is not found check for the simple super
+            if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                        return -1;
+                    } else {
+                        return TYPE_DECIMAL;
+                    }
+                } else {
+                    return TYPE_ULONG;
+                }
+            } else {
+                
+                if (TYPE_ULONG==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
+                        return -1;
+                    } else {
+                        return TYPE_DECIMAL;
+                    }
+                } else {
+                    return -1;
+                }                          
+                
+            }
+        }
+    
+    }
 
     private boolean contains(int subset, int targetset) {
         //if all the field in inner are contained in outer
@@ -597,54 +621,14 @@ public class TypeTrie {
         while (--i>=0) {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
-                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i])) { 
+                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie)>0) { 
                     int j = i;
-                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i])) {
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie)>0) {
                         
-                        //TODO: build out for contains and for sum then simplify , SAME block for both methods!!
-                        
-                        if (TYPE_NULL==i) {
-                            //find something that takes Optional
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_UINT])) {
-                                j = TYPE_UINT;
-                            } else
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_ULONG])) {
-                                j = TYPE_ULONG;
-                            } else
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_DECIMAL])) {
-                                j = TYPE_DECIMAL;
-                            } else {
-                                return false;
-                            }
-                        } else {
-                        
-                        
-                            //if own kind is not found check for the simple super
-                            if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                                if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
-                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
-                                        return false;
-                                    } else {
-                                        j = TYPE_DECIMAL;
-                                    }
-                                } else {
-                                    j = TYPE_ULONG;
-                                }
-                            } else {
-                                
-                                if (TYPE_ULONG==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
-                                        return false;
-                                    } else {
-                                        j = TYPE_DECIMAL;
-                                    }
-                                } else {
-                                    return false;
-                                }                          
-                                
-                            }
-                        }
-                        
+                        j = targetType(i,targetset);
+                        if (j<0) {
+                            return false;//TODO: is this giving up too early!!!?? only if null?
+                        }                                            
                         
                     }                           
                     if (!contains(OPTIONAL_LOW_MASK&typeTrie[subset+i],OPTIONAL_LOW_MASK&typeTrie[targetset+j])  ) {
@@ -664,51 +648,16 @@ public class TypeTrie {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
                 
-                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i])) {
+                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie)>0 ) {
                     
-                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i])) {
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie)>0) {
                         
                         
-                        if (TYPE_NULL==i) {
-                            //find something that takes Optional
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_UINT])) {
-                                j = TYPE_UINT;
-                            } else
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_ULONG])) {
-                                j = TYPE_ULONG;
-                            } else
-                            if (0!=  (OPTIONAL_FLAG&typeTrie[targetset+TYPE_DECIMAL])) {
-                                j = TYPE_DECIMAL;
-                            } else {
-                                return false;
-                            }
-                        } else {
-                        
-                          //if own kind is not found check for the simple super
-                            if (TYPE_UINT==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                                if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_ULONG])) {
-                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
-                                        return false;
-                                    } else {
-                                        j = TYPE_DECIMAL;
-                                    }
-                                } else {
-                                    j = TYPE_ULONG;
-                                }
-                            } else {
-                            
-                                if (TYPE_ULONG==i) {//TODO: EXPAND FOR SUPPORT OF SIGNED
-                                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+TYPE_DECIMAL])) {
-                                        return false;
-                                    } else {
-                                        j = TYPE_DECIMAL;
-                                    }
-                                } else {
-                                    return false;
-                                }
-                                
-                            }
+                        j = targetType(i,targetset);
+                        if (j<0) {
+                            return false;
                         }
+                        
                     }
                     
                     if (!sum(OPTIONAL_LOW_MASK&typeTrie[subset+i],OPTIONAL_LOW_MASK&typeTrie[targetset+j])  ) {
@@ -722,6 +671,7 @@ public class TypeTrie {
             } else {
                 //everything matches to this point so add the inner into the outer
                 typeTrie[targetset+j]  = (OPTIONAL_LOW_MASK & (typeTrie[subset+i] + typeTrie[targetset+j]));
+                typeTrie[subset+i] = 0;//clear out old value so we do not double count
             }
         }                    
         return true;
@@ -731,8 +681,9 @@ public class TypeTrie {
     private static int lastNonNull(int pos, int[] typeTrie, int startLimit) {
         int i = startLimit;
         while (--i>=0) {
-            if (TYPE_NULL!=i) {
-                if (0!=typeTrie[pos+i]) {
+            if (TYPE_NULL!=i && TYPE_EOM!=i) {
+                int v =OPTIONAL_LOW_MASK&typeTrie[pos+i];
+                if (0!=v && totalCount(v, typeTrie)>0) {
                     return i;
                 }
             }            

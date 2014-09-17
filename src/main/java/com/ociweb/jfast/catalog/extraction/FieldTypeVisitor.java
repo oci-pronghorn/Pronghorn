@@ -46,11 +46,13 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         //      along with one field it makes more sence to colapse thse together.
      
         accumulatedMessageTypes.mergeNumerics(0);   
-        accumulatedMessageTypes.removeZeros(0);
+        accumulatedMessageTypes.mergeOptionalNulls(0);
+        accumulatedMessageTypes.mergeNumerics(0);   
         accumulatedMessageTypes.mergeOptionalNulls(0);//only works when there is 1 type and null so do other reductions first
-     //   accumulatedMessageTypes.resetLimit();
+
         
         
+        //TODO: add support to avoid printing null and avoid adding null to catalog
         // PRINT REPORT
         accumulatedMessageTypes.printRecursiveReport(0,"");
        System.err.println("total records: "+accumulatedMessageTypes.totalRecords+" tossed:"+accumulatedMessageTypes.tossedRecords);
