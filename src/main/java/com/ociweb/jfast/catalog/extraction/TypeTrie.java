@@ -121,7 +121,7 @@ public class TypeTrie {
     
     
     //  //TODO: add string literals to be extracted by tokenizer
-    int reportLimit = 3; //turn off the debug feature by setting this to zero.
+    int reportLimit = 0; //turn off the debug feature by setting this to zero.
 
     
     public TypeTrie() {

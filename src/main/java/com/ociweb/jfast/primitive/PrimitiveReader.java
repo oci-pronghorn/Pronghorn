@@ -61,6 +61,7 @@ public final class PrimitiveReader {
         }};
   
      //only called when we need more data and the input is not providing any
+     //TODO: B, this will be refactored again as we add "reactive streams" into this implementation   
      public void setInputPolicy(InputBlockagePolicy is) {
        blockagePolicy = is; //TODO: this needs to be specific for this instance?
      }
@@ -112,7 +113,13 @@ public final class PrimitiveReader {
         this.invPmapStackDepth = maxPMapCountInBytes-2;
 
     }
-    
+
+    /**
+     * Reset the internal state to its initial values.
+     * 
+     * This is needed when re-using the reader expcially by unit tests.
+     * @param reader
+     */
     public static final void reset(PrimitiveReader reader) {
         reader.totalReader = 0;
         reader.position = 0;
@@ -122,22 +129,47 @@ public final class PrimitiveReader {
 
     }
     
+    /**
+     * Returns the total number of bytes that have been taken from the input. 
+     * 
+     * @param reader
+     * @return
+     */
     public static final long totalRead(PrimitiveReader reader) {
         return reader.totalReader;
     }
 
+    /**
+     * Returns the total number of bytes that are currently waiting in the buffer to be parsed.
+     * 
+     * Using this with the totalRead method allows the caller to compute the exact byte positions being parsed.
+     * 
+     * @param reader
+     * @return
+     */
     public static final int bytesReadyToParse(PrimitiveReader reader) {
         return reader.limit - reader.position;
     }
 
+    /**
+     * Non blocking call that will pull more data from the input if the internal
+     * buffer has room at the source has data available.
+     * 
+     * @param reader
+     */
     public static final void fetch(PrimitiveReader reader) {
         fetch(0, reader);
     }
     
-    // Will not return until the need is met because the parser has
-    // determined that we can not continue until this data is provided.
-    // this call may however read in more than the need because its ready
-    // and convenient to reduce future calls.
+    /**
+     *  Blocking call will not return until the need is met because the parser has
+     *  determined that we can not continue until this data is provided.
+     *  this call may however read in more than the need because its ready
+     *  and convenient to reduce future calls.
+     *  
+     * @param need
+     * @param reader
+     */
     private static void fetch(int need, PrimitiveReader reader) {
 
         need = fetchAvail(need, reader);        
@@ -221,6 +253,15 @@ public final class PrimitiveReader {
     // I pmapIdx of last stack frame
     // //
     // called at the start of each group unless group knows it has no pmap
+    
+    /**
+     * Begin/Open a new PMap.  This is should be done for the begging of the messages or groups
+     * that require a PMap based on the used operators within that group.
+     * 
+     * @param pmapMaxSize the PMap is known to never be larger than this
+     * @param reader
+     */
+    
     public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
         //TODO: B, pmapMaxSize is a constant for many templates and can be injected.
         // set next bit to read
@@ -273,6 +314,13 @@ public final class PrimitiveReader {
     }
 
     //NOTE: for consistancy and to help with branch prediction ALWAYS check this against zero unless using brancheless
+    
+    /**
+     * Read the next PMap bit from the open PMap. The cursor is moved forward so another call will read the next bit.
+     * 
+     * @param reader
+     * @return
+     */
     public static byte readPMapBit(PrimitiveReader reader) { 
             if (reader.pmapIdxBitBlock >= 0 ) {    
                 // Frequent, 6 out of every 7 plus the last bit block 
@@ -286,6 +334,12 @@ public final class PrimitiveReader {
     
 
     //needed for code generation to eliminate conditional to detect end of 7 bits
+    /**
+     * Reads the next PMap and moves to the next byte position in the PMap.
+     * 
+     * @param reader
+     * @return
+     */
     public static byte readPMapBitNextByte(PrimitiveReader reader) {
         if (((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 ) {
             reader.pmapIdxBitBlock = (6<<16)|0x80;
@@ -298,6 +352,12 @@ public final class PrimitiveReader {
     }
 
     // called at the end of each group
+    
+    /**
+     * Close the open PMap.  Should only call when the message or group has opened a PMap
+     *   
+     * @param reader
+     */
     public static final void closePMap(PrimitiveReader reader) {
      //   assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
         byte bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
@@ -314,6 +374,13 @@ public final class PrimitiveReader {
         return (v<0) ? a | (v & 0x7Fl) : readLongSignedTail((a | v) << 7,reader);
     }
     
+    
+    /**
+     * Parse a 64 bit signed value from the buffer
+     * 
+     * @param reader
+     * @return
+     */
     public static long readLongSigned(PrimitiveReader reader) {   
         int rp = reader.position;
         if (reader.limit - rp >= 10) {// not near end so go fast.
@@ -325,6 +392,12 @@ public final class PrimitiveReader {
         return readLongSignedSlow(reader);
     }
 
+    /**
+     * Slow version of 64 bit parser that is used when the position is near the end of the buffer.
+     * 
+     * @param reader
+     * @return
+     */
     private static long readLongSignedSlow(PrimitiveReader reader) {
         // slow path
         if (reader.position >= reader.limit) {
@@ -349,6 +422,13 @@ public final class PrimitiveReader {
         return (v<0) ? (a << 7) | (v & 0x7F) : readLongUnsignedTail((a<<7)|v,reader);
     }
     
+    
+    /**
+     * Parse 64 bit unsigned value from the buffer
+     * 
+     * @param reader
+     * @return
+     */
     public static long readLongUnsigned(PrimitiveReader reader) {
         
         if (reader.limit - reader.position >= 10) {// not near end so go fast.
@@ -393,6 +473,10 @@ public final class PrimitiveReader {
         return (v<0) ? a | (v & 0x7F) : readIntegerSignedTail((a | v) << 7,reader);
     }
     
+    /**
+     * Parse a 32 bit signed integer from the buffer.
+     * 
+     */
     public static int readIntegerSigned(PrimitiveReader reader) {
           if (reader.limit - reader.position >= 10) {// not near end so go fast.
             byte v = reader.buffer[reader.position++];
