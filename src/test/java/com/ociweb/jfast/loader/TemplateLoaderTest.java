@@ -146,8 +146,8 @@ public class TemplateLoaderTest {
         
         FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
 
-        int warmup = 256;
-        int count = 1024;
+        int warmup = 128;
+        int count = 512;
         final int[] fullScript = catalog.getScriptTokens();
         
         

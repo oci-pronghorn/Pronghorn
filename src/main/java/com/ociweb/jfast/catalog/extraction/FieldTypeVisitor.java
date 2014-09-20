@@ -6,11 +6,11 @@ import com.ociweb.jfast.catalog.loader.ClientConfig;
 
 public class FieldTypeVisitor implements ExtractionVisitor{
 
-    private TypeTrie accumulatedMessageTypes;
+    private RecordFieldExtractor accumulatedMessageTypes;
            
     
-    public FieldTypeVisitor() {        
-        accumulatedMessageTypes = new TypeTrie();     
+    public FieldTypeVisitor(RecordFieldExtractor typeAccumulator) {        
+        accumulatedMessageTypes = typeAccumulator;  
     }
 
     
@@ -68,15 +68,6 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         
         
     }
-
-
-    public TypeTrie getTypes() {
-       return accumulatedMessageTypes;
-    }
-
-
-
-
     
     
 }

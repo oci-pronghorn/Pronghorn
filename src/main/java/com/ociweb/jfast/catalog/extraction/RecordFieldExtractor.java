@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
 import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.SAXParser;
@@ -25,7 +23,7 @@ import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.util.Stats;
 
-public class TypeTrie {
+public class RecordFieldExtractor {
 
     //High                       1
     private static final int BITS_DECIMAL = 11; //this is the only one that keeps count
@@ -120,12 +118,18 @@ public class TypeTrie {
     byte[] catBytes;
     
     
+    private RecordFieldValidator recordValidator = RecordFieldValidator.ALL_VALID;
+    
+    
     //  //TODO: add string literals to be extracted by tokenizer
     int reportLimit = 0; //turn off the debug feature by setting this to zero.
 
     
-    public TypeTrie() {
-        //one value for each of the possible bytes we may encounter.
+    public RecordFieldExtractor(RecordFieldValidator recordValidator) {
+    	
+    	this.recordValidator = recordValidator; 
+        
+    	//one value for each of the possible bytes we may encounter.
         accumValues = new int[256];
         int i = 256;
         while (--i>=0) {
@@ -177,7 +181,7 @@ public class TypeTrie {
     
     public void appendNewRecord(int startPos) {       
 
-        boolean isValid = isValid(); 
+        boolean isValid = recordValidator.isValid(nullCount,utf8Count,asciiCount,firstFieldLength,firstField); 
         
         if (isValid) {                        
             totalRecords++;
@@ -209,14 +213,6 @@ public class TypeTrie {
         
     }
 
-    private boolean isValid() { //TODO: move this logic out to an interface
-        return nullCount<=2 &&        //Too much missing data, 
-               utf8Count==0 &&        //data known to be ASCII so this is corrupted
-               (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  
-               firstFieldLength<=15 && //key must not be too large
-               firstField!=TYPE_NULL; //known primary key is missing
-    }
-    
     public void appendNewField() {
         
         if (firstField<0) {

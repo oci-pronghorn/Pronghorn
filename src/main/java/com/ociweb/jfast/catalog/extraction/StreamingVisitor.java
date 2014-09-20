@@ -11,7 +11,7 @@ public class StreamingVisitor implements ExtractionVisitor {
 
     public static final int CATALOG_TEMPLATE_ID = 0;
     
-    TypeTrie messageTypes;    
+    RecordFieldExtractor messageTypes;    
     FASTRingBuffer ringBuffer;
     
     byte[] catBytes;
@@ -29,7 +29,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     int byteMask;
     byte[] byteBuffer;
     
-    public StreamingVisitor(TypeTrie messageTypes, FASTRingBuffer ringBuffer) {
+    public StreamingVisitor(RecordFieldExtractor messageTypes, FASTRingBuffer ringBuffer) {
         
         this.messageTypes = messageTypes;
         this.ringBuffer = ringBuffer;        
@@ -109,30 +109,30 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         
         switch (fieldType) {
-            case TypeTrie.TYPE_NULL:
+            case RecordFieldExtractor.TYPE_NULL:
                 //TODO: what optional types are available? what if there are two then follow the order.
             //   System.err.println("need to find a null");
                 
                 break;
-            case TypeTrie.TYPE_UINT:                
+            case RecordFieldExtractor.TYPE_UINT:                
                 FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
                 break;            
-            case TypeTrie.TYPE_SINT:
+            case RecordFieldExtractor.TYPE_SINT:
                 FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
                 break;    
-            case TypeTrie.TYPE_ULONG:
+            case RecordFieldExtractor.TYPE_ULONG:
                 FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
                 break;    
-            case TypeTrie.TYPE_SLONG:
+            case RecordFieldExtractor.TYPE_SLONG:
                 FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
                 break;    
-            case TypeTrie.TYPE_ASCII:
+            case RecordFieldExtractor.TYPE_ASCII:
                 FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
-            case TypeTrie.TYPE_BYTES:                
+            case RecordFieldExtractor.TYPE_BYTES:                
                 FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
-            case TypeTrie.TYPE_DECIMAL:
+            case RecordFieldExtractor.TYPE_DECIMAL:
                 int exponent = messageTypes.globalExponent(); 
                 
                 //continue to write values even when they are known to be a constant!!

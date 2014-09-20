@@ -11,9 +11,8 @@ public class Extractor {
     private final byte[] recordDelimiter;
     private final int openQuote;
     private final int closeQuote;
-    private final int escape;
-    
-    private final long BLOCK_SIZE = (1l<<29)-1;//.5GB so 13 cycles  //26; //64MB
+    private final int escape;    
+    private final long blockSize;
 
     final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
     
@@ -39,8 +38,11 @@ public class Extractor {
     //visitor may do copy and may produce garbage
 
     public Extractor(int fieldDelimiter, byte[] recordDelimiter,
-                     int openQuote, int closeQuote, int escape) {
-        this.fieldDelimiter = fieldDelimiter;
+                     int openQuote, int closeQuote, int escape, int pageBits) {
+    	
+    	this.blockSize = (1l<<pageBits)-1;
+    	
+    	this.fieldDelimiter = fieldDelimiter;
         this.recordDelimiter = recordDelimiter;
         this.openQuote = openQuote;
         this.closeQuote = closeQuote;
@@ -63,7 +65,7 @@ public class Extractor {
         
         ExtractorWorkspace workspace = new ExtractorWorkspace(false, false, -1, false, 0);
         
-        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
         int padding = tailPadding;
         do {       
                         
@@ -96,7 +98,7 @@ public class Extractor {
                 break;
             }
             
-            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
             
         } while (position<fileSize);
 
@@ -113,7 +115,7 @@ public class Extractor {
         ExtractorWorkspace workspace1 = new ExtractorWorkspace(false, false, -1, false, 0);
         ExtractorWorkspace workspace2 = new ExtractorWorkspace(false, false, -1, false, 0);
         
-        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+        mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
         int padding = tailPadding;
         do {
             //the last go round must never use any padding, this padding is only needed when spanning two blocks.
@@ -156,7 +158,7 @@ public class Extractor {
                         
             workspace2.reset();   //must be done after any calls for data in workspace                  
             
-            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(BLOCK_SIZE, fileSize-position));
+            mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
         } while (position<fileSize);
                 
     }
