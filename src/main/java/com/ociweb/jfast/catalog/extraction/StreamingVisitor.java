@@ -18,9 +18,26 @@ public class StreamingVisitor implements ExtractionVisitor {
     TemplateCatalogConfig catalog;
     
     long beforeDotValue;
-    long accumDecimalValue;
+    int beforeDotValueChars;
+    long accumValue;
+    int accumValueChars;
     long accumSign;
     boolean aftetDot;
+    
+    static final long[] POW_10;
+    
+    static {
+    	int max = 19;
+    	POW_10 = new long[max];
+    	int j = 0;
+    	long total=1;
+    	while (j<max) {
+    		POW_10[j++]=total;
+    		total *= 10l;
+    	}    	
+    	//System.err.println(Arrays.toString(POW_10));
+    }
+    
     
     //chars are written to  ring buffer.
     
@@ -40,9 +57,14 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
         aftetDot = false;
-        beforeDotValue=0;
-        accumSign=1;
-        accumDecimalValue=0;
+        beforeDotValue = 0;
+        beforeDotValueChars = 0;
+        
+        accumSign = 1;
+        
+        accumValue = 0;
+        accumValueChars = 0;
+        
     }
         
     
@@ -60,15 +82,18 @@ public class StreamingVisitor implements ExtractionVisitor {
                         
             if ('.' == b) {
                 aftetDot = true;
-                beforeDotValue = accumDecimalValue;
-                accumDecimalValue = 0;
+                beforeDotValue = accumValue;
+                beforeDotValueChars = accumValueChars;
+                accumValue = 0;
+                accumValueChars = 0;
             } else {
                if ('+' != b) {
                    if ('-' == b) { 
                        accumSign = -1;
                    } else {
                        int v = (b-'0');
-                       accumDecimalValue = (10*accumDecimalValue) + v;    
+                       accumValue = (10*accumValue) + v;    
+                       accumValueChars++;
                    }                    
                }
             }
@@ -104,27 +129,26 @@ public class StreamingVisitor implements ExtractionVisitor {
     @Override
     public void closeField() {
         //selecting the message type one field at at time as we move forward
-        int fieldType = messageTypes.moveNextField2();
+        int fieldType = messageTypes.convertRawTypeToSpecific(messageTypes.moveNextField());
                
         
         
         switch (fieldType) {
             case RecordFieldExtractor.TYPE_NULL:
                 //TODO: what optional types are available? what if there are two then follow the order.
-            //   System.err.println("need to find a null");
-                
+                System.err.println("need to find a null and we have many to choose from, now what");                
                 break;
             case RecordFieldExtractor.TYPE_UINT:                
-                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
+                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
                 break;            
             case RecordFieldExtractor.TYPE_SINT:
-                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumDecimalValue*accumSign));  
+                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
                 break;    
             case RecordFieldExtractor.TYPE_ULONG:
-                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
+                FASTRingBufferWriter.writeLong(ringBuffer, accumValue*accumSign);  
                 break;    
             case RecordFieldExtractor.TYPE_SLONG:
-                FASTRingBufferWriter.writeLong(ringBuffer, accumDecimalValue*accumSign);  
+                FASTRingBufferWriter.writeLong(ringBuffer, accumValue*accumSign);  
                 break;    
             case RecordFieldExtractor.TYPE_ASCII:
                 FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
@@ -133,20 +157,30 @@ public class StreamingVisitor implements ExtractionVisitor {
                 FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
             case RecordFieldExtractor.TYPE_DECIMAL:
-                int exponent = messageTypes.globalExponent(); 
+                int exponent = messageTypes.globalExponent(); //always positive, positions measured after the dot
+                                
+                //this is A solution but it is not THE global solution
+                long totalValue = (beforeDotValue*POW_10[accumValueChars])+accumValue;
+                int  totalExp = accumValueChars;
                 
-                //continue to write values even when they are known to be a constant!!
-                long mantissa = 0; //TODO: before dot appented to after dot plus any space needed for exponent.
-                FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, mantissa*accumSign);  
+                //if totalExp is larger than const exponent must /10 to total value and dec by that many
+                while (totalExp>exponent) {
+                	totalValue=totalValue/10;
+                	totalExp--;
+                }
+                
+                //if totalExp is smaller than const exponent must *10 to total value and inc by that many
+                while (totalExp<exponent) {
+                	totalValue=totalValue*10;
+                	totalExp++;
+                }
+                 
+                FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, totalValue*accumSign);  
                 break;
             
             default:
                 throw new UnsupportedOperationException("Field was "+fieldType);
-        }
-        
-        //TODO: this field type is only the simple type or null
-        //TODO: we still do not know if its optional 
-        
+        }       
         
         //closing field so keep this new active position as the potential start for the next field
         bytePosStartField = bytePosActive;
@@ -155,7 +189,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         aftetDot = false;
         beforeDotValue = 0;
         accumSign = 1;
-        accumDecimalValue = 0;
+        accumValue = 0;
         
         
     }

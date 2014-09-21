@@ -32,9 +32,13 @@ public class ExtractorTest {
 			FileOutputStream out = new FileOutputStream(f);
 			
 			out.write("0,0,0,2.3,2.4,2.5,\"alpha\"\r\n".getBytes());
-			out.write("0,0,0,2.3,2.4,2.5,\"alpha\"\r\n".getBytes());
-			out.write("0,0,0,2.3,2.4,2.5,\"alpha\"\r\n".getBytes());
-			out.write("0,0,0,2.3,2.4,2.5,\"alpha\"\r\n".getBytes());
+			out.write(",0,0,2.4,2.4,3.05,\"alpha\"\r\n".getBytes());
+			out.write(",0,0,2.5,2.4,4.05,\r\n".getBytes());
+			out.write("0,0,0,2.6,2.4,5.005,\"alpha\"\r\n".getBytes());
+			
+			out.write("0,0,0,2.6,2.4,\"alpha\"\r\n".getBytes());
+			out.write("0,0,0,2.6,2.4,\"alpha\"\r\n".getBytes());
+			out.write("0,0,0,2.6,2.4,\"alpha\"\r\n".getBytes());
 			
 			//TODO: build out all the test examples we need... 				
 	

@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.SAXParser;
@@ -21,6 +22,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
+import com.ociweb.jfast.stream.FASTRingBufferWriter;
 import com.ociweb.jfast.util.Stats;
 
 public class RecordFieldExtractor {
@@ -68,6 +70,17 @@ public class RecordFieldExtractor {
     //NOTE: more will be added here for group and sequence once JSON support is added
     private static final int TYPE_EOM = 15;
     
+    //                                              
+    private static final int[] SUPER_TYPE = new int[]{
+    	                        TYPE_ULONG,   //FROM TYPE_UINT
+    	                        TYPE_SLONG,   //FROM TYPE_SINT
+    	                        TYPE_DECIMAL, //FROM TYPE_ULONG
+    	                        TYPE_DECIMAL, //FROM TYPE_SLONG
+    	                        TYPE_BYTES,   //FROM TYPE_ASCII 
+    	                        TYPE_BYTES,   //CANT CONVERT, THIS IS EVERYTHING
+    	                        TYPE_ASCII,   //FROM TYPE_DECIMAL
+    	                        TYPE_NULL,    //CANT CONVERT, THIS IS NOTHING
+    };
     
     private final int[] accumValues;
     
@@ -102,7 +115,7 @@ public class RecordFieldExtractor {
     
     private final int[] typeTrie = new int[typeTrieArraySize];
     private int         typeTrieCursor; 
-    
+    private int         typeTrieCursorPrev;
     
     private int         nullCount; //TODO: expand to the other types and externalize rules to an interface
     private int         firstField = -1;
@@ -268,46 +281,53 @@ public class RecordFieldExtractor {
         int type = extractType();        
         resetFieldSum(); //TODO: not a  good place for this, side effect.
         
-        int pos = typeTrieCursor+type;
-        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[pos];  
+        typeTrieCursorPrev = typeTrieCursor;
+        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];  
         return type;
     }
 
-    public int moveNextField2() {
-        int type = extractType();        
-        resetFieldSum(); //TODO: not a  good place for this, side effect.
-        
-        int pos = typeTrieCursor+type;
-        typeTrieCursor = OPTIONAL_LOW_MASK & typeTrie[pos];
-        
-        //if type is null???
-        if (TYPE_NULL == type) {
-            
-         //   System.err.println(idx);
-            
+    /**
+     * Only called after the record and types have been established from the first pass.
+     * This is needed to map the raw extract types to the final determined types after
+     * the full analysis at the end of the last iteration.
+     * 
+     * @param type
+     * @return
+     */
+	public int convertRawTypeToSpecific(int type) {
+		
+		//back up to parent cursor location
+		typeTrieCursor=typeTrieCursorPrev;
+		
+		//if type is null???
+        if (TYPE_NULL == type) {            
+            //select the optional type instead of null
             int i = typeTrieUnit;
             while (--i>=0) {
-                if (TYPE_NULL != i) {
-                    
-                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {
+                if (TYPE_NULL != i) {                    
+                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) { 
                         
-                        return i;
-                        
-                        
+                        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+i];  
+                    	return i; 
                     }                
+                }                
+            } 
+         //   int[] temp = Arrays.copyOfRange(typeTrie, typeTrieCursor, typeTrieCursor+typeTrieUnit);
+           // System.err.println("non found "+Arrays.toString(temp));
+        } else {
+        	//if the type is not found then bump it up until it is found
+        	while (totalCount(typeTrieCursor+type, typeTrie)==0) {
+        		//bump up type
+        		int newType = SUPER_TYPE[type];  
+                if (type==newType) {
+                	break;
                 }
-                
-            }
-            
-           
-            
+        		type = newType;      		        		
+        	}
         }
-        
-        
-        
-        
+        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];  
         return type;
-    }
+	}
     
     private int extractType() {
         assert(activeLength>=0);
