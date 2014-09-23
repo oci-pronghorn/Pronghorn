@@ -850,10 +850,8 @@ public class RecordFieldExtractor {
         return catBytes;
     }
 
-    public void memoizeCatBytes() {
-    //    System.err.println(buildCatalog(true));
-        catBytes = catBytes(new ClientConfig());
-        
+    public byte[] memoizeCatBytes() {
+         return catBytes = catBytes(new ClientConfig());        
     }
     
     public byte[] getCatBytes() {

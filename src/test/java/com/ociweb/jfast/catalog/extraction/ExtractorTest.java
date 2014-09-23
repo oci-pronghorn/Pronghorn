@@ -10,10 +10,22 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Before;
 import org.junit.Test;
 
+import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
+import com.ociweb.jfast.stream.FASTDynamicWriter;
+import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class ExtractorTest {
@@ -164,25 +176,74 @@ public class ExtractorTest {
         
         RecordFieldExtractor typeAccum = new RecordFieldExtractor(RecordFieldValidator.ALL_VALID);   
         
-        FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum); 
+        final FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum); 
+        
+        byte[] catBytes = typeAccum.memoizeCatBytes();
+        
+        System.err.println("Empty catalog before startup: "+ typeAccum.buildCatalog(true));
+        
        
         FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
-        StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, ringBuffer);
+        final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, ringBuffer);
 
-        FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
+        final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
         
-        Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+        final Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
         
+        ///TOOD: need writer to extract ring buffer and write to stream.
+        
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        
+        Runnable extractRunnable = new Runnable() {
+			@Override
+			public void run() {
+				try {
+					ex.extract(fileChannel, visitor1, visitor2);  
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}  
+			}        	
+        };
+        
+        executor.execute(extractRunnable);
+        
+        
+        
+        
+        int writeBuffer = 16384;
+        boolean minimizeLatency = false;
+        FASTOutputTotals fastOutput =  new FASTOutputTotals();
+		PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput , minimizeLatency);
+      		
+	//	FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //this is the first catalog that only knows catalogs
+        
+    ///    FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+        
+        
+        
+//TODO: This needs to be done on another thread. or the vistors and extraction is done on another thread or both.       
+//        if (FASTRingBuffer.moveNext(queue)) {
+//            if (queue.consumerData.isNewMessage()) {
+//                msgs.incrementAndGet();
+//            }
+//            try{   
+//                dynamicWriter.write();
+//            } catch (FASTException e) {
+//                System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+//                throw e;
+//            }                            
+//            grps++;
+//        }
+                
+        
+        executor.shutdown();
         try {
-            ex.extract(fileChannel, visitor1, visitor2);  
+			executor.awaitTermination(10, TimeUnit.MINUTES);
+		} catch (InterruptedException e) {
+		}
 
-           // ex.extract(fileChannel, visitor1); 
-            
-            
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }               
         
 
     }

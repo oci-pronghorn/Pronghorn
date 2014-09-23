@@ -545,9 +545,6 @@ public class TemplateLoaderTest {
         FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
         
                
-        
-        int maxGroupCount = catalog.getScriptTokens().length; //overkill but its fine for testing. 
-
         int writeBuffer = 16384;
         boolean minimizeLatency = false;
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, minimizeLatency);

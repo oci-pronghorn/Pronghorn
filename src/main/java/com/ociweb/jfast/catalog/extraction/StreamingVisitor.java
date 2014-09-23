@@ -130,8 +130,6 @@ public class StreamingVisitor implements ExtractionVisitor {
     public void closeField() {
         //selecting the message type one field at at time as we move forward
         int fieldType = messageTypes.convertRawTypeToSpecific(messageTypes.moveNextField());
-               
-        
         
         switch (fieldType) {
             case RecordFieldExtractor.TYPE_NULL:
