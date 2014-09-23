@@ -803,7 +803,7 @@ public class RecordFieldExtractor {
         String name="catalog";
         int id=CATALOG_TEMPLATE_ID;
         
-        boolean reset=true;
+        boolean reset=false;
         String dictionary="global";
 
         TemplateGenerator.openTemplate(target, name, id, reset, dictionary);
@@ -825,7 +825,7 @@ public class RecordFieldExtractor {
     
     public byte[] catBytes(ClientConfig clientConfig) {
         String catalog = buildCatalog(true);
-        
+        System.err.println("catalog:\n"+catalog+"\n");
         clientConfig.setCatalogTemplateId(CATALOG_TEMPLATE_ID);
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

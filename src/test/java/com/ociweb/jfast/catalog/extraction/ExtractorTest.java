@@ -180,6 +180,14 @@ public class ExtractorTest {
         
         byte[] catBytes = typeAccum.memoizeCatBytes();
         
+        
+        int writeBuffer = 16384;
+        boolean minimizeLatency = false;
+        FASTOutputTotals fastOutput =  new FASTOutputTotals();
+		PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput , minimizeLatency);      		
+		FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //this is the first catalog that only knows catalogs
+		
+        
         System.err.println("Empty catalog before startup: "+ typeAccum.buildCatalog(true));
         
        
@@ -210,41 +218,30 @@ public class ExtractorTest {
         executor.execute(extractRunnable);
         
         
-        
-        
-        int writeBuffer = 16384;
-        boolean minimizeLatency = false;
-        FASTOutputTotals fastOutput =  new FASTOutputTotals();
-		PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput , minimizeLatency);
-      		
-	//	FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //this is the first catalog that only knows catalogs
-        
-    ///    FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
-        
-        
-        
-//TODO: This needs to be done on another thread. or the vistors and extraction is done on another thread or both.       
-//        if (FASTRingBuffer.moveNext(queue)) {
-//            if (queue.consumerData.isNewMessage()) {
-//                msgs.incrementAndGet();
-//            }
-//            try{   
-//                dynamicWriter.write();
-//            } catch (FASTException e) {
-//                System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
-//                throw e;
-//            }                            
-//            grps++;
-//        }
-                
-        
         executor.shutdown();
-        try {
-			executor.awaitTermination(10, TimeUnit.MINUTES);
-		} catch (InterruptedException e) {
-		}
+        
+        while (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0) {
+        	FASTRingBuffer.dump(ringBuffer);
+	        //if (FASTRingBuffer.moveNext(ringBuffer)) {
+     //          if (queue.consumerData.isNewMessage()) {
+        				//TODO: if this is a new catalog must load it and replace the dynamicWriter code
+                    	///    FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+            	//}
+        	
+		//          try{   
+		//          dynamicWriter.write();
+		//      } catch (FASTException e) {
+		//          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+		//          throw e;
+		//      }    
+	       // }
+        }
+        
 
         
+        
+        
+
 
     }
     

@@ -649,43 +649,44 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     private void readDictionaryReset(int[] members) {
 
         int limit = members.length;
-        int m = 0;
-        int idx = members[m++]; // assumes that a dictionary always has at lest
-                                // 1 member
-        while (m < limit) {
-            assert (idx < 0);
-
-            if (0 == (idx & 8)) {
-                if (0 == (idx & 4)) {
-                    // integer
-                    while (m < limit && (idx = members[m++]) >= 0) {
-                        genReadDictionaryIntegerReset(idx, rIntInit[idx], rIntDictionary);
-                    }
-                } else {
-                    // long
-                    // System.err.println("long");
-                    while (m < limit && (idx = members[m++]) >= 0) {
-                        genReadDictionaryLongReset(idx, rLongInit[idx], rLongDictionary);
-                    }
-                }
-            } else {
-                if (0 == (idx & 4)) {
-                    // text
-                    while (m < limit && (idx = members[m++]) >= 0) {
-                        genReadDictionaryTextReset(idx, byteHeap);
-                    }
-                } else {
-                    if (0 == (idx & 2)) {
-                        // decimal
-                        throw new UnsupportedOperationException("Implemented as int and long reset");
-                    } else {
-                        // bytes
-                        while (m < limit && (idx = members[m++]) >= 0) {
-                            genReadDictionaryBytesReset(idx, byteHeap);
-                        }
-                    }
-                }
-            }
+        int m = 0;   
+        if (m<limit) {
+	        int idx = members[m++];
+	        while (m < limit) {
+	            assert (idx < 0);
+	
+	            if (0 == (idx & 8)) {
+	                if (0 == (idx & 4)) {
+	                    // integer
+	                    while (m < limit && (idx = members[m++]) >= 0) {
+	                        genReadDictionaryIntegerReset(idx, rIntInit[idx], rIntDictionary);
+	                    }
+	                } else {
+	                    // long
+	                    // System.err.println("long");
+	                    while (m < limit && (idx = members[m++]) >= 0) {
+	                        genReadDictionaryLongReset(idx, rLongInit[idx], rLongDictionary);
+	                    }
+	                }
+	            } else {
+	                if (0 == (idx & 4)) {
+	                    // text
+	                    while (m < limit && (idx = members[m++]) >= 0) {
+	                        genReadDictionaryTextReset(idx, byteHeap);
+	                    }
+	                } else {
+	                    if (0 == (idx & 2)) {
+	                        // decimal
+	                        throw new UnsupportedOperationException("Implemented as int and long reset");
+	                    } else {
+	                        // bytes
+	                        while (m < limit && (idx = members[m++]) >= 0) {
+	                            genReadDictionaryBytesReset(idx, byteHeap);
+	                        }
+	                    }
+	                }
+	            }
+	        }
         }
     }
 

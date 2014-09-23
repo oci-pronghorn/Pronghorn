@@ -122,7 +122,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         //TODO: compiled encoder will need to detect new catalog on the fly!
         //for now just throw the data away
-        FASTRingBuffer.dump(ringBuffer);
+        //FASTRingBuffer.dump(ringBuffer);
         
     }
 
