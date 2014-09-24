@@ -242,7 +242,7 @@ public final class FASTRingBuffer {
         
         //Start new stack of fragments because this is a new message
         ringBuffer.activeFragmentStackHead = 0;
-        ringBuffer.activeFragmentStack[ringBuffer.activeFragmentStackHead]= ringBuffer.mask&(int)cashWorkingTailPos;
+        ringBuffer.activeFragmentStack[ringBuffer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
         
         
         //Now beginning a new message so release the previous one from the ring buffer

@@ -44,7 +44,7 @@ public class FieldGenerator implements ItemGenerator {
         result.append(tab);
         result.append("<").append(TypeMask.xmlTypeName[type]).append(" name=\"").append(name).append("\" id=\"").append(id).append("\" ");
         if (presence) {
-            result.append("prsence=\"optional\" ");
+            result.append("presence=\"optional\" ");
         }
         
         if (TypeMask.TextUTF8==type || TypeMask.TextUTF8Optional==type) {

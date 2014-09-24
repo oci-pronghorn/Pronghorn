@@ -23,6 +23,8 @@ public class StreamingVisitor implements ExtractionVisitor {
     int accumValueChars;
     long accumSign;
     boolean aftetDot;
+    boolean startingMessage = true;
+    
     
     static final long[] POW_10;
     
@@ -71,6 +73,8 @@ public class StreamingVisitor implements ExtractionVisitor {
     @Override
     public void appendContent(MappedByteBuffer mappedBuffer, int pos, int limit, boolean contentQuoted) {
                 
+    	
+    	
         //discovering the field types using the same way the previous visitor did it
         messageTypes.appendContent(mappedBuffer, pos, limit, contentQuoted);
                   
@@ -124,10 +128,18 @@ public class StreamingVisitor implements ExtractionVisitor {
         //for now just throw the data away
         //FASTRingBuffer.dump(ringBuffer);
         
+        startingMessage = true;
+        
     }
 
     @Override
     public void closeField() {
+    	
+    	if (startingMessage) {
+    		 int templateId = 1;
+    		 FASTRingBufferWriter.writeInt(ringBuffer, templateId);  
+    	}    	
+    	
         //selecting the message type one field at at time as we move forward
         int fieldType = messageTypes.convertRawTypeToSpecific(messageTypes.moveNextField());
         
@@ -189,6 +201,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         accumSign = 1;
         accumValue = 0;
         
+        startingMessage = false;
         
     }
 

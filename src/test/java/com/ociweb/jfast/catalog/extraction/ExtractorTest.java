@@ -27,6 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 
 public class ExtractorTest {
 	
@@ -217,24 +218,43 @@ public class ExtractorTest {
         
         executor.execute(extractRunnable);
         
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
         
         executor.shutdown();
         
         while (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0) {
-        	FASTRingBuffer.dump(ringBuffer);
-	        //if (FASTRingBuffer.moveNext(ringBuffer)) {
-     //          if (queue.consumerData.isNewMessage()) {
-        				//TODO: if this is a new catalog must load it and replace the dynamicWriter code
-                    	///    FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
-            	//}
         	
-		//          try{   
-		//          dynamicWriter.write();
-		//      } catch (FASTException e) {
-		//          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
-		//          throw e;
-		//      }    
-	       // }
+	        	FASTRingBuffer.dump(ringBuffer);
+        	
+        	
+//	        	if (FASTRingBuffer.moveNext(ringBuffer)) {
+//	        		if (ringBuffer.consumerData.isNewMessage()) {
+//	        			
+//	        			if (0 == ringBuffer.consumerData.getMessageId()) {
+//	        				System.err.println("new template");
+//	        			
+//	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
+//	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
+//	        				byte[] target = new byte[len];
+//	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
+//	        				
+//	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
+//	        				
+//	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+//	        				
+//	        			} else {
+//	    				      try{   
+//	    				          dynamicWriter.write();
+//	    				      } catch (FASTException e) {
+//	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
+//	    				          throw e;
+//	    				      }    
+//	        			}
+//            	    }        	
+//	        	}
+	        	
+	        	
+	        	
         }
         
 
