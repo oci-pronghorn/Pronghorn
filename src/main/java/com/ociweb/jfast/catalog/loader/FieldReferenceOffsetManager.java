@@ -9,6 +9,8 @@ import com.ociweb.jfast.generator.GeneratorUtils;
 
 public class FieldReferenceOffsetManager {
 
+	public static final FieldReferenceOffsetManager TEST = new FieldReferenceOffsetManager();
+	
     public final int preambleOffset; //-1 if there is no preamble
     public final int templateOffset;
     
@@ -22,6 +24,40 @@ public class FieldReferenceOffsetManager {
     public final int[] limits;
     public final String[] fieldNameScript;
     public final int maximumFragmentStackDepth;
+    
+    /**
+     * Constructor is only for unit tests.
+     */
+    private FieldReferenceOffsetManager() {
+    	
+        //TODO: B, clientConfig must be able to skip reading the preamble,
+        int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
+        
+        //contants for basic test setups.
+        int configPreambleBytes = 0;
+        
+        int pb = PREAMBLE_MASK & configPreambleBytes;
+        if (pb<=0) {
+            preambleOffset = -1;
+            templateOffset = 0;
+        } else {
+            preambleOffset = 0;
+            templateOffset = (pb+3)>>2;
+        }
+         
+        fragDataSize = null;
+        fragScriptSize = null;
+        maximumFragmentStackDepth = 10; //default for testing
+
+        tokens = null;
+        tokensLen = null==tokens?0:tokens.length;
+        
+        starts = null;
+        limits = null;
+        
+        fieldNameScript = null;
+        
+    }
     
     public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
         

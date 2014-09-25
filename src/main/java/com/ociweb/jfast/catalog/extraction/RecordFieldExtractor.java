@@ -851,7 +851,7 @@ public class RecordFieldExtractor {
     }
 
     public byte[] memoizeCatBytes() {
-         return catBytes = catBytes(new ClientConfig());        
+         return catBytes = catBytes(new ClientConfig(20,24)); //TODO: A, expose these constants!        
     }
     
     public byte[] getCatBytes() {

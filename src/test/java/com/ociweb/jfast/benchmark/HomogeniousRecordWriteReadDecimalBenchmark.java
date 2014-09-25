@@ -15,6 +15,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -268,7 +269,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null);
+    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;

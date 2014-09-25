@@ -218,6 +218,10 @@ public class StreamingVisitor implements ExtractionVisitor {
             this.catBytes = catBytes;        
             catalog = new TemplateCatalogConfig(catBytes);
             System.err.println("new catalog");            
+            
+            //TODO: A, produce new ring buffer here instead of modifying the old one, this is because we must chagne the constant array under it
+            //TODO: make a way to chain ring buffers one to the next so this can be attched to the last one for hand off when ready.
+            
             //TODO: check assumption that templateID 0 is the one for sending catalogs.
             
             //if any partial write of field data is in progress just throw it away because 

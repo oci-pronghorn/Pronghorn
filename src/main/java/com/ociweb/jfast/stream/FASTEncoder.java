@@ -44,7 +44,7 @@ public abstract class FASTEncoder {
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
 
-    protected final RingBuffers ringBuffers;
+    public final RingBuffers ringBuffers;
     
     public final byte[] preambleData;
     

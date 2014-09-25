@@ -80,7 +80,7 @@ public final class FASTRingBuffer {
     // 2 - sequence fragment
     
     
-    int[] activeFragmentStack;
+    final int[] activeFragmentStack;
     int   activeFragmentStackHead = 0;
                
     // end of moveNextFields
@@ -90,9 +90,9 @@ public final class FASTRingBuffer {
     
     
 
-    public FASTRingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
+    public FASTRingBuffer(byte primaryBits, byte byteBits,
+    		              byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
-        this.constByteBuffer = byteConstants;
         
         assert (primaryBits >= 1);       
                 
@@ -108,14 +108,15 @@ public final class FASTRingBuffer {
         this.maxByteSize =  1 << byteBits;
         this.byteMask = maxByteSize - 1;
         this.byteBuffer = new byte[maxByteSize];
+
+        this.constByteBuffer = byteConstants;
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
         
         this.from = from;
-        
-        this.activeFragmentStack = new int[null==from?0:from.maximumFragmentStackDepth];
+        this.activeFragmentStack = new int[from.maximumFragmentStackDepth];
                 
         this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
-                                                        -1, 0, new int[10], -1, -1, from, mask);
+                                                        -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
     }
 
     

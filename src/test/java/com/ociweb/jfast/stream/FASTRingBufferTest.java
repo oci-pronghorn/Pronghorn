@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTRingBufferTest {
@@ -13,7 +14,7 @@ public class FASTRingBufferTest {
     @Test
     public void bytesWriteRead() {
         
-        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  null);
+        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  FieldReferenceOffsetManager.TEST);
         
         byte[] source = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         
@@ -83,7 +84,7 @@ public class FASTRingBufferTest {
         byte primaryBits = 14;
         byte charBits = 7;
         
-        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  null);
+        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  FieldReferenceOffsetManager.TEST);
         final int rbMask = rb.mask;
         final int[] rbB = rb.buffer;
 

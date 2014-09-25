@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
@@ -28,6 +29,7 @@ import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.stream.RingBuffers;
 
 public class ExtractorTest {
 	
@@ -180,19 +182,25 @@ public class ExtractorTest {
         final FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum); 
         
         byte[] catBytes = typeAccum.memoizeCatBytes();
-        
+      
         
         int writeBuffer = 16384;
         boolean minimizeLatency = false;
         FASTOutputTotals fastOutput =  new FASTOutputTotals();
 		PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput , minimizeLatency);      		
 		FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //this is the first catalog that only knows catalogs
-		
         
+		FASTRingBuffer ringBuffer = RingBuffers.get(writerDispatch.ringBuffers,0);
+		
+		
+	//	writerDispatch.
         System.err.println("Empty catalog before startup: "+ typeAccum.buildCatalog(true));
         
-       
-        FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
+       /// FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
+
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+        
+        
         final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, ringBuffer);
 
         final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
@@ -218,7 +226,8 @@ public class ExtractorTest {
         
         executor.execute(extractRunnable);
         
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+//TODO: A inside the ringbuffer we must swap to a new catalog!!!! so from is now different!
+        
         
         executor.shutdown();
         
@@ -228,29 +237,29 @@ public class ExtractorTest {
         	
         	
 //	        	if (FASTRingBuffer.moveNext(ringBuffer)) {
-//	        		if (ringBuffer.consumerData.isNewMessage()) {
-//	        			
-//	        			if (0 == ringBuffer.consumerData.getMessageId()) {
-//	        				System.err.println("new template");
-//	        			
-//	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
-//	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
-//	        				byte[] target = new byte[len];
-//	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
-//	        				
-//	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
-//	        				
-//	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
-//	        				
-//	        			} else {
-//	    				      try{   
-//	    				          dynamicWriter.write();
-//	    				      } catch (FASTException e) {
-//	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
-//	    				          throw e;
-//	    				      }    
-//	        			}
-//            	    }        	
+////	        		if (ringBuffer.consumerData.isNewMessage()) {
+////	        			
+////	        			if (0 == ringBuffer.consumerData.getMessageId()) {
+////	        				System.err.println("new template");
+////	        			
+////	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
+////	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
+////	        				byte[] target = new byte[len];
+////	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
+////	        				
+////	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
+////	        				
+////	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+////	        				
+////	        			} else {
+////	    				      try{   
+////	    				          dynamicWriter.write();
+////	    				      } catch (FASTException e) {
+////	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
+////	    				          throw e;
+////	    				      }    
+////	        			}
+////            	    }        	
 //	        	}
 	        	
 	        	

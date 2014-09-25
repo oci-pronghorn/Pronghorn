@@ -15,6 +15,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -408,7 +409,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;

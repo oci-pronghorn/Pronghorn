@@ -20,6 +20,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
@@ -49,7 +50,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     public static final int INIT_VALUE_MASK = 0x80000000;
 
-    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, null);
+    static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
     
     @AfterClass
     public static void cleanup() {

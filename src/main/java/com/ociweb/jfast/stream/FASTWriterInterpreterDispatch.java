@@ -13,6 +13,7 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
@@ -20,7 +21,7 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, null);
+    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
     
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
