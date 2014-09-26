@@ -198,10 +198,11 @@ public class ExtractorTest {
         
        /// FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
 
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
         
         
-        final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, ringBuffer);
+        final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
+        
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, visitor2.getRingBuffer(), writerDispatch);
 
         final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
         

@@ -99,8 +99,7 @@ public class Tool {
         
         FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum); //TODO: must use stream to write all the data to FAST data file.
        
-        FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, null); //TODO: produce from catalog.
-        StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, ringBuffer);
+        StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
         
         //TODO: should not be part of unit tests, need to make an app for testing files and unit test should check smaller structure.   
         

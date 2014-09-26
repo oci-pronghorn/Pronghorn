@@ -3,6 +3,7 @@ package com.ociweb.jfast.catalog.extraction;
 import java.nio.MappedByteBuffer;
 import java.util.Arrays;
 
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
@@ -11,8 +12,7 @@ public class StreamingVisitor implements ExtractionVisitor {
 
     public static final int CATALOG_TEMPLATE_ID = 0;
     
-    RecordFieldExtractor messageTypes;    
-    FASTRingBuffer ringBuffer;
+    RecordFieldExtractor messageTypes;   
     
     byte[] catBytes;
     TemplateCatalogConfig catalog;
@@ -48,10 +48,11 @@ public class StreamingVisitor implements ExtractionVisitor {
     int byteMask;
     byte[] byteBuffer;
     
-    public StreamingVisitor(RecordFieldExtractor messageTypes, FASTRingBuffer ringBuffer) {
+    FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
+    
+    public StreamingVisitor(RecordFieldExtractor messageTypes) {
         
-        this.messageTypes = messageTypes;
-        this.ringBuffer = ringBuffer;        
+        this.messageTypes = messageTypes;    
         this.byteMask      = ringBuffer.byteMask;
         this.byteBuffer = ringBuffer.byteBuffer;
         
@@ -219,6 +220,8 @@ public class StreamingVisitor implements ExtractionVisitor {
             catalog = new TemplateCatalogConfig(catBytes);
             System.err.println("new catalog");            
             
+                     
+            
             //TODO: A, produce new ring buffer here instead of modifying the old one, this is because we must chagne the constant array under it
             //TODO: make a way to chain ring buffers one to the next so this can be attched to the last one for hand off when ready.
             
@@ -231,11 +234,22 @@ public class StreamingVisitor implements ExtractionVisitor {
             bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
             FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
             
-            // Write new catalog to stream.
+            // Write new catalog to old stream stream so it is the last one written.
             FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
             FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);               
             
+            //now create new ring buffer and chain them
+            FASTRingBuffer newRingBuffer = catalog.ringBuffers().buffers[0];
+            
+            //TODO: chain these ring buffers
+            //          ringBuffer = newRingBuffer;
+            
         }        
     }
+
+
+	public FASTRingBuffer getRingBuffer() {
+		return ringBuffer;
+	}
 
 }
