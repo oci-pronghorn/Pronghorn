@@ -231,7 +231,7 @@ public final class FASTRingBuffer {
         
         //if we can not start to read the next message because it does not have the template id yet
         //then fail fast and do not move the tailPos yet until we know it can be read        
-        long needStop = cashWorkingTailPos + 3; 
+        long needStop = cashWorkingTailPos + 1; //NOTE: do not make this bigger or hangs are likely
         if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {

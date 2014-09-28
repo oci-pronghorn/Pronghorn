@@ -10,6 +10,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -196,9 +197,8 @@ public class ExtractorTest {
         
         final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
         
-        FASTRingBuffer ringBuffer = visitor2.getRingBuffer();
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
-
+        
+        
         final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
         
         final Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
@@ -223,29 +223,45 @@ public class ExtractorTest {
         executor.execute(extractRunnable);
         
 //TODO: A inside the ringbuffer we must swap to a new catalog!!!! so from is now different!
-        
+  
+//TODO: perhaps a simpler example with a static catalog would work better.        
         
         executor.shutdown();
         
+        
+        int rbIdx = 0;
+        FASTRingBuffer ringBuffer = visitor2.getRingBuffer(rbIdx++);
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+
         while (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0) {
         	
-	        //	FASTRingBuffer.dump(ringBuffer);
+	        	FASTRingBuffer.dump(ringBuffer);
         		
+        	//System.err.println(	ringBuffer.contentRemaining(ringBuffer));
         	
 	        	if (FASTRingBuffer.canMoveNext(ringBuffer)) {
-	       // 		System.err.println("xxxxxxxxxxx");
+	        
 	        		if (ringBuffer.consumerData.isNewMessage()) {
 	        			
 	        			if (0 == ringBuffer.consumerData.getMessageId()) {
 	        				System.err.println("new template");
 	        			
-	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
+	        				//we have no preamble and we know this is the only filed after the template id.
+	        				int idx = 1;//no need to lookup, ringBuffer.from.lookupIDX(0, "100");	        				
 	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
 	        				byte[] target = new byte[len];
+	        				
+	        				
+	        	            idx=0;
+	        	            System.err.println("read bytes to position:"+ringBuffer.workingTailPos.value+" plus "+idx);
+	        	            
 	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
 	        				
 	        				//we have read the new catalog bytes so switch over to the new ring buffer.
-	        				ringBuffer = visitor2.getRingBuffer();
+	        				ringBuffer = visitor2.getRingBuffer(rbIdx++);
+	        				
+	        				System.err.println("length "+len);
+	        				System.err.println(Arrays.toString(target));
 	        				
 	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
 	        				

@@ -1,7 +1,10 @@
 package com.ociweb.jfast.catalog.extraction;
 
 import java.nio.MappedByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
@@ -50,9 +53,11 @@ public class StreamingVisitor implements ExtractionVisitor {
     
     public StreamingVisitor(RecordFieldExtractor messageTypes) {
         
-    	
-    	ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
-    	
+    	//initial ring buffer needed only for the first catalog then we move on from this one.
+    	byte[] catBytes = messageTypes.getCatBytes(); //must use a ring buffer from catalog or it will not be initilzied for use.
+    	ringBuffer = (new TemplateCatalogConfig(catBytes)).ringBuffers().buffers[0];
+    			 
+    	ringBufferList.add(ringBuffer);
     	
         this.messageTypes = messageTypes;    
         
@@ -111,25 +116,11 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         messageTypes.restToRecordStart();
         
-        //move the pointer up to the next record?
+        //move the pointer up to the next record
         bytePosStartField = ringBuffer.addBytePos.value = bytePosActive;
         
         FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
-         
-        // ** fields are now at the end of the record so the template Id is known
-        
-        //write it
-        //flush it
-        
-        //TODO: Should we flush here?
-        //ring buffer data is given over to the encoder
-        
-        //TODO: compiled encoder will need to detect new catalog on the fly!
-        //for now just throw the data away
-        //FASTRingBuffer.dump(ringBuffer);
-        
-        startingMessage = true;
-        
+        startingMessage = true;        
     }
 
     @Override
@@ -209,6 +200,8 @@ public class StreamingVisitor implements ExtractionVisitor {
     public void closeFrame() {        
     }
 
+    //TODO: hack test for now this should be a ring buffer of ring buffers.
+    List<FASTRingBuffer> ringBufferList = new ArrayList<FASTRingBuffer>();
 
     @Override
     public void openFrame() {
@@ -219,26 +212,38 @@ public class StreamingVisitor implements ExtractionVisitor {
             catalog = new TemplateCatalogConfig(catBytes);
             System.err.println("new catalog");            
             
-                     
-            
-            //TODO: A, produce new ring buffer here instead of modifying the old one, this is because we must chagne the constant array under it
-            //TODO: make a way to chain ring buffers one to the next so this can be attched to the last one for hand off when ready.
+            //TODO: A, need to build FieldRectordExtractor so it matches the existing catalog, then we can start with a given catalog and remove this dynamic part.
             
             //TODO: check assumption that templateID 0 is the one for sending catalogs.
             
             //if any partial write of field data is in progress just throw it away because 
             //next frame will begin again from the start of the message.
+            
+         //   System.err.println("A "+ringBuffer.contentRemaining(ringBuffer));
+            
                         
             //ignore any byte kept so far in this message
             bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
             FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
             
+         //   System.err.println("B "+ringBuffer.contentRemaining(ringBuffer));
+            
+            System.err.println("wrote bytes to position:"+ringBuffer.addBytePos.value);
+            
             // Write new catalog to old stream stream so it is the last one written.
             FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
             FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);               
             
+			System.err.println("length "+catBytes.length);
+			System.err.println(Arrays.toString(catBytes));
+            
+            FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
+         //   System.err.println("C "+ringBuffer.contentRemaining(ringBuffer)+"  "+catBytes.length);
+            
             //now create new ring buffer and chain them
             FASTRingBuffer newRingBuffer = catalog.ringBuffers().buffers[0];
+            
+            ringBufferList.add(newRingBuffer);
             
             //TODO: chain these ring buffers
              ringBuffer = newRingBuffer;
@@ -247,8 +252,14 @@ public class StreamingVisitor implements ExtractionVisitor {
     }
 
 
-	public FASTRingBuffer getRingBuffer() {
-		return ringBuffer;
+	public FASTRingBuffer getRingBuffer(int index) {
+		//TODO: clear all previous values.
+		//TODO: must block until first rb is found?
+		while (ringBufferList.size()<=0) {
+			Thread.yield();//TODO: poor choice but still thinking about this.
+		}
+		return ringBufferList.get(index);
+	//	return ringBuffer;
 	}
 
 }

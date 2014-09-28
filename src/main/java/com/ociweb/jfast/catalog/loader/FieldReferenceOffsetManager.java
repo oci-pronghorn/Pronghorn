@@ -187,7 +187,8 @@ public class FieldReferenceOffsetManager {
         //System.err.println("looking for "+target+ " between "+x+" and "+limit);
         //System.err.println(Arrays.toString(fieldNameScript));
         
-        while (x<limit) {
+        while (x<=limit) {
+        	System.err.println("looking at:"+fieldNameScript[x]);
             if (fieldNameScript[x].equalsIgnoreCase(target)) {
                 
                 if (0==x) {
