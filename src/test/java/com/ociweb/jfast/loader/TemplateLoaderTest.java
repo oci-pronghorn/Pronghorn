@@ -173,7 +173,7 @@ public class TemplateLoaderTest {
             rb.reset();
 
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-                FASTRingBuffer.moveNext(rb);
+                FASTRingBuffer.canMoveNext(rb);
 
                 frags++;
                 if (rb.consumerData.isNewMessage()) {
@@ -275,13 +275,13 @@ public class TemplateLoaderTest {
                 while (FASTInputReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    if (FASTRingBuffer.moveNext(rb)) {
+                    if (FASTRingBuffer.canMoveNext(rb)) {
                        // rb.tailPos.lazySet(rb.workingTailPos.value);
                     }; //11
                     //Profile.count += (Profile.version.get()-tmp);
                 }
                 //the buffer has extra records in it so we must clean them out here.
-                while (FASTRingBuffer.moveNext(rb)) {
+                while (FASTRingBuffer.canMoveNext(rb)) {
                      
                    // rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
@@ -425,7 +425,7 @@ public class TemplateLoaderTest {
             
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (FASTRingBuffer.moveNext(queue)) {
+                    if (FASTRingBuffer.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
@@ -468,7 +468,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
             
             while (FASTInputReactor.pump(reactor)>=0) {  
-                    if (FASTRingBuffer.moveNext(queue)) {
+                    if (FASTRingBuffer.canMoveNext(queue)) {
                        if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
                                 dynamicWriter.write();  
                        }
@@ -578,7 +578,7 @@ public class TemplateLoaderTest {
             
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (FASTRingBuffer.moveNext(queue)) {
+                    if (FASTRingBuffer.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
@@ -647,11 +647,11 @@ public class TemplateLoaderTest {
             if (concurrent) {
                 start = System.nanoTime(); 
                 while (isAlive.get()) {
-                    while (FASTRingBuffer.moveNext(queue)) {
+                    while (FASTRingBuffer.canMoveNext(queue)) {
                         dynamicWriter.write();  
                     }   
                 }
-                while (FASTRingBuffer.moveNext(queue)) {
+                while (FASTRingBuffer.canMoveNext(queue)) {
                     dynamicWriter.write();  
                 }
                 
@@ -663,7 +663,7 @@ public class TemplateLoaderTest {
                 //now start the timer
                 start = System.nanoTime();            
                 
-                while (FASTRingBuffer.moveNext(queue)) {
+                while (FASTRingBuffer.canMoveNext(queue)) {
                         dynamicWriter.write();  
                 } 
             }

@@ -144,7 +144,7 @@ public class Test {
                       
                       
                       
-                      if (FASTRingBuffer.moveNext(rb)) {
+                      if (FASTRingBuffer.canMoveNext(rb)) {
                           
                           if (rb.consumerData.isNewMessage()) {
                               msgs.incrementAndGet();
@@ -202,7 +202,7 @@ public class Test {
                     do {                        
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
 
-                        if (FASTRingBuffer.moveNext(rb)) { 
+                        if (FASTRingBuffer.canMoveNext(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
                                 processMessage(temp, rb);   
@@ -218,7 +218,7 @@ public class Test {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (FASTRingBuffer.moveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                    while (FASTRingBuffer.canMoveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
                         if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }
@@ -425,7 +425,7 @@ public class Test {
                 int seqCount = readInt(rb, IDX1_NoMDEntries);
                 // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
                 while (--seqCount >= 0) {
-                    while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
+                    while (!FASTRingBuffer.canMoveNext(rb)) { // keep calling if we
                                                            // have no data?
                     };
                     
@@ -508,7 +508,7 @@ public class Test {
                int seqCount2 = readInt(rb, 12);
                
                while (--seqCount2 >= 0) {
-                   while (!FASTRingBuffer.moveNext(rb)) { // keep calling if we
+                   while (!FASTRingBuffer.canMoveNext(rb)) { // keep calling if we
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);

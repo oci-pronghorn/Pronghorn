@@ -266,7 +266,7 @@ public class CatalogGeneratorTest {
                         }
                         FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
                         
-                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -292,7 +292,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -317,7 +317,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -345,7 +345,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.moveNext(queue)) {//without move next we get no stats.
+                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }

@@ -190,19 +190,14 @@ public class ExtractorTest {
 		PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput , minimizeLatency);      		
 		FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //this is the first catalog that only knows catalogs
         
-		FASTRingBuffer ringBuffer = RingBuffers.get(writerDispatch.ringBuffers,0);
-		
 		
 	//	writerDispatch.
         System.err.println("Empty catalog before startup: "+ typeAccum.buildCatalog(true));
         
-       /// FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
-
-        
-        
         final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
         
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, visitor2.getRingBuffer(), writerDispatch);
+        FASTRingBuffer ringBuffer = visitor2.getRingBuffer();
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 
         final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
         
@@ -234,34 +229,38 @@ public class ExtractorTest {
         
         while (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0) {
         	
-	        	FASTRingBuffer.dump(ringBuffer);
+	        //	FASTRingBuffer.dump(ringBuffer);
+        		
         	
-        	
-//	        	if (FASTRingBuffer.moveNext(ringBuffer)) {
-////	        		if (ringBuffer.consumerData.isNewMessage()) {
-////	        			
-////	        			if (0 == ringBuffer.consumerData.getMessageId()) {
-////	        				System.err.println("new template");
-////	        			
-////	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
-////	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
-////	        				byte[] target = new byte[len];
-////	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
-////	        				
-////	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
-////	        				
-////	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
-////	        				
-////	        			} else {
-////	    				      try{   
-////	    				          dynamicWriter.write();
-////	    				      } catch (FASTException e) {
-////	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
-////	    				          throw e;
-////	    				      }    
-////	        			}
-////            	    }        	
-//	        	}
+	        	if (FASTRingBuffer.canMoveNext(ringBuffer)) {
+	       // 		System.err.println("xxxxxxxxxxx");
+	        		if (ringBuffer.consumerData.isNewMessage()) {
+	        			
+	        			if (0 == ringBuffer.consumerData.getMessageId()) {
+	        				System.err.println("new template");
+	        			
+	        				int idx = ringBuffer.from.lookupIDX(0, "100");	        				
+	        				int len = FASTRingBufferReader.readBytesLength(ringBuffer, idx);
+	        				byte[] target = new byte[len];
+	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
+	        				
+	        				//we have read the new catalog bytes so switch over to the new ring buffer.
+	        				ringBuffer = visitor2.getRingBuffer();
+	        				
+	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
+	        				
+	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+	        				
+	        			} else {
+	    				      try{   
+	    				          dynamicWriter.write();
+	    				      } catch (FASTException e) {
+	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
+	    				          throw e;
+	    				      }    
+	        			}
+            	    }        	
+	        	}
 	        	
 	        	
 	        	

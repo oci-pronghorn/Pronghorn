@@ -138,11 +138,12 @@ public final class FASTRingBuffer {
 
     }
     
-    public static boolean moveNext(FASTRingBuffer ringBuffer) { //TODO: rename to canMoveNext?
+    public static boolean canMoveNext(FASTRingBuffer ringBuffer) { 
         FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; 
         
         //check if we are only waiting for the ring buffer to clear
         if (ringBufferConsumer.waiting) {
+ //       	System.err.println("waiting");
             //only here if we already checked headPos against moveNextStop at least once and failed.
             
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
@@ -156,9 +157,11 @@ public final class FASTRingBuffer {
         ringBufferConsumer.activeFragmentDataSize = (0);
         
         
-        if (ringBufferConsumer.getMessageId()<0) {      
+        if (ringBufferConsumer.getMessageId()<0) {     
+        //	System.err.println("aaa");
             return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
+        //	System.err.println("bbb");
             return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
         

@@ -45,20 +45,19 @@ public class StreamingVisitor implements ExtractionVisitor {
     
     int bytePosActive;
     int bytePosStartField;
-    int byteMask;
-    byte[] byteBuffer;
     
-    FASTRingBuffer ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
+    FASTRingBuffer ringBuffer;
     
     public StreamingVisitor(RecordFieldExtractor messageTypes) {
         
+    	
+    	ringBuffer = new FASTRingBuffer((byte)20, (byte)24, null, FieldReferenceOffsetManager.TEST); //TODO: produce from catalog.
+    	
+    	
         this.messageTypes = messageTypes;    
-        this.byteMask      = ringBuffer.byteMask;
-        this.byteBuffer = ringBuffer.byteBuffer;
         
         messageTypes.restToRecordStart();
         
-        bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
         aftetDot = false;
         beforeDotValue = 0;
         beforeDotValueChars = 0;
@@ -83,7 +82,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         int p = pos;
         while (p<limit) {
             byte b = mappedBuffer.get(p);
-            byteBuffer[byteMask&bytePosActive++] = b; //TODO: need to check for the right stop point
+            ringBuffer.byteBuffer[ringBuffer.byteMask&bytePosActive++] = b; //TODO: need to check for the right stop point
                         
             if ('.' == b) {
                 aftetDot = true;
@@ -115,7 +114,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         //move the pointer up to the next record?
         bytePosStartField = ringBuffer.addBytePos.value = bytePosActive;
         
-        FASTRingBuffer.publishWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
+        FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
          
         // ** fields are now at the end of the record so the template Id is known
         
@@ -242,7 +241,7 @@ public class StreamingVisitor implements ExtractionVisitor {
             FASTRingBuffer newRingBuffer = catalog.ringBuffers().buffers[0];
             
             //TODO: chain these ring buffers
-            //          ringBuffer = newRingBuffer;
+             ringBuffer = newRingBuffer;
             
         }        
     }

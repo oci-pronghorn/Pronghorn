@@ -825,7 +825,7 @@ public class RecordFieldExtractor {
     
     public byte[] catBytes(ClientConfig clientConfig) {
         String catalog = buildCatalog(true);
-        System.err.println("catalog:\n"+catalog+"\n");
+  //      System.err.println("catalog:\n"+catalog+"\n");
         clientConfig.setCatalogTemplateId(CATALOG_TEMPLATE_ID);
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
