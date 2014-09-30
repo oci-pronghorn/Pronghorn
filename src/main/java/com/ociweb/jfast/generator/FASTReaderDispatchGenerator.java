@@ -374,7 +374,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
         
     @Override
-    protected void genReadLongSignedNone(int target, long[] rLongDictionary, int[] is, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+    protected void genReadLongSignedNone(int target, long[] rLongDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData, this, target);
     }
     

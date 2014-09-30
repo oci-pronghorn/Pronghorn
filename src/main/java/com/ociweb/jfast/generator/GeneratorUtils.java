@@ -7,23 +7,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferConsumer;
-import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
-import com.ociweb.jfast.util.Stats;
 
 public class GeneratorUtils {
     //TODO: D, schema is flexable and recorded with the data stream.
     
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
-    static final boolean ADD_COMMENTS = false;
+    static final boolean ADD_COMMENTS = true;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true;
     
@@ -135,34 +130,33 @@ public class GeneratorUtils {
                 methodCallArgs = methodCallArgs.replace("rbPos","rb.workingTailPos"); 
             }
             
-            doneCode[j] = "\n\r"+
-                          " "+ //TODO: B, Clean up this is very messy
-                              (isReader?
-                               " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
-                                   "\n\r");
-                    
-            //exit if the ring buffer is full          
-            if (isReader) {
-                
-                FASTRingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
-                int fragmentSize = thisRingBuffer.from.fragDataSize[cursorPos]+ thisRingBuffer.from.templateOffset + 1;
-                
-            doneCode[j] += 
-                   " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
-                   
-                   " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
-                   "       return 0;//nothing read\n\r" +
-                   " }\n\r";
-            } 
-                                            
-            
-            
             int k = j;
             boolean found = false;
             while (--k >= 0) {
-            	found |= (doneValues[k]==cursorPos);
+            	found |= (doneValues[k]==cursorPos.intValue());
             }
             if (!found) {
+	            doneCode[j] = "\n\r"+
+	                          " "+ //TODO: B, Clean up this is very messy
+	                              (isReader?
+	                               " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
+	                                   "\n\r");
+	                    
+	            //exit if the ring buffer is full          
+	            if (isReader) {
+	                
+	                FASTRingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
+	                int fragmentSize = thisRingBuffer.from.fragDataSize[cursorPos]+ thisRingBuffer.from.templateOffset + 1;
+	                
+	            doneCode[j] += 
+	                   " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
+	                   
+	                   " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
+	                   "       return 0;//nothing read\n\r" +
+	                   " }\n\r";
+	            } 
+	                                            
+	            
             	
             	doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
             	doneValues[j++] = cursorPos;
@@ -489,6 +483,11 @@ public class GeneratorUtils {
         String[] paraDefs = generatorData.templates.defs(methodNameKey);
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
         
+        
+        //TODO: each of the para files must be found in order in the para defs!!
+        //System.err.println("ParaVals:"+Arrays.toString(paraVals));
+        //System.err.println("ParaDefs:"+Arrays.toString(paraDefs));
+        
         String statsName = templateMethodName+"Stats"; 
         
         
@@ -570,8 +569,8 @@ public class GeneratorUtils {
         while (i<paraVals.length) {
             if (!generatorData.caseParaDefs.contains(paraDefs[i])) {
                 
-               // System.err.println("paraDef "+paraDefs[i]);
-               // System.err.println("paraVals "+paraVals[i]);
+                System.err.println("paraDef "+paraDefs[i]);
+                System.err.println("paraVals "+paraVals[i]);
                 
                 
                 if (!REMOVE_ARRAY | 
