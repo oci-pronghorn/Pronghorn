@@ -111,8 +111,13 @@ public class GeneratorUtils {
         
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
-        int[] doneValues = new int[doneScripts.size()];
-        String[] doneCode = new String[doneScripts.size()];
+        
+        //Removes all the duplicates
+        Set<Integer> uniqueTotal = new HashSet<Integer>();
+        uniqueTotal.addAll(doneScripts);
+                
+        int[] doneValues = new int[uniqueTotal.size()];
+        String[] doneCode = new String[uniqueTotal.size()];
         for(Integer cursorPos:doneScripts) {
             //rbRingBuffer.buffer, rbRingBuffer.mask
             
@@ -149,10 +154,22 @@ public class GeneratorUtils {
                    "       return 0;//nothing read\n\r" +
                    " }\n\r";
             } 
-                   
-                          
-            doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";
-            doneValues[j++] = cursorPos;
+                                            
+            
+            
+            int k = j;
+            boolean found = false;
+            while (--k >= 0) {
+            	found |= (doneValues[k]==cursorPos);
+            }
+            if (!found) {
+            	
+            	doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
+            	doneValues[j++] = cursorPos;
+            	
+            }
+            
+            
         }
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
       

@@ -12,7 +12,7 @@ public class BalancedSwitchGenerator {
     
     public Appendable generate(String tab, Appendable target, int[] values, String[] code) {
         if (values.length>0) {
-            try {
+            try {            	
                 split(tab,target,values, code);
             } catch (IOException e) {
                 throw new RuntimeException(e);

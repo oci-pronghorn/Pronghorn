@@ -227,7 +227,7 @@ public class StreamingVisitor implements ExtractionVisitor {
             FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
             
          //   System.err.println("B "+ringBuffer.contentRemaining(ringBuffer));
-            
+          
             System.err.println("wrote bytes to position:"+ringBuffer.addBytePos.value);
             
             // Write new catalog to old stream stream so it is the last one written.

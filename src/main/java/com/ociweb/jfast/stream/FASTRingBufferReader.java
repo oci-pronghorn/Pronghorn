@@ -435,7 +435,7 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
             byte[] buffer = ring.byteBuffer;
             int mask = ring.byteMask;
             while (--len >= 0) {
-                target[targetIdx]=buffer[mask & pos++];
+                target[targetIdx++]=buffer[mask & pos++];
             }
     }
     

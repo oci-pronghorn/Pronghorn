@@ -233,9 +233,9 @@ public class ExtractorTest {
         FASTRingBuffer ringBuffer = visitor2.getRingBuffer(rbIdx++);
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 
-        while (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0) {
+        while (false && (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0)) {
         	
-	        	FASTRingBuffer.dump(ringBuffer);
+	     //   	FASTRingBuffer.dump(ringBuffer);
         		
         	//System.err.println(	ringBuffer.contentRemaining(ringBuffer));
         	
@@ -252,16 +252,17 @@ public class ExtractorTest {
 	        				byte[] target = new byte[len];
 	        				
 	        				
-	        	            idx=0;
-	        	            System.err.println("read bytes to position:"+ringBuffer.workingTailPos.value+" plus "+idx);
+	        	            int bytepos = ringBuffer.buffer[ringBuffer.mask & (int)(ringBuffer.workingTailPos.value + (FASTRingBufferReader.OFF_MASK&idx))];
+	        	            
+	        	            System.err.println(bytepos+"  read bytes to position:"+ringBuffer.workingTailPos.value+" plus "+idx);
 	        	            
 	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
 	        				
 	        				//we have read the new catalog bytes so switch over to the new ring buffer.
 	        				ringBuffer = visitor2.getRingBuffer(rbIdx++);
 	        				
-	        				System.err.println("length "+len);
-	        				System.err.println(Arrays.toString(target));
+	        	//			System.err.println("length "+len);
+	        	//			System.err.println(Arrays.toString(target));
 	        				
 	        				writerDispatch = DispatchLoader.loadDispatchWriter(target);
 	        				
