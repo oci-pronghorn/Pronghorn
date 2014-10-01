@@ -73,7 +73,7 @@ public class GeneratorUtils {
                                         List<String> caseParaDefs, 
                                         List<String> caseParaVals,
                                         int scriptPos, StringBuilder groupMethodBuilder, String caseTail, StringBuilder fieldMethodBuilder) {
-        
+
         String paraDefs = caseParaDefs.toString().substring(1);
         paraDefs = paraDefs.substring(0, paraDefs.length()-1);
         
@@ -106,6 +106,7 @@ public class GeneratorUtils {
         
         assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
+        int m = 0;
         
         //Removes all the duplicates
         Set<Integer> uniqueTotal = new HashSet<Integer>();
@@ -114,9 +115,8 @@ public class GeneratorUtils {
         int[] doneValues = new int[uniqueTotal.size()];
         String[] doneCode = new String[uniqueTotal.size()];
         for(Integer cursorPos:doneScripts) {
-            //rbRingBuffer.buffer, rbRingBuffer.mask
-            
-            String methodCallArgs = doneScriptsParas.get(j)
+        	
+            String methodCallArgs = doneScriptsParas.get(m++)
                                     .replace("dispatch","this")
                                     .replace("rbRingBuffer","rb")
                                     .replace("byteBuffer", "rb.byteBuffer")
@@ -155,9 +155,7 @@ public class GeneratorUtils {
 	                   "       return 0;//nothing read\n\r" +
 	                   " }\n\r";
 	            } 
-	                                            
-	            
-            	
+	                                                        	
             	doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
             	doneValues[j++] = cursorPos;
             	
@@ -568,10 +566,7 @@ public class GeneratorUtils {
         i = data.length;
         while (i<paraVals.length) {
             if (!generatorData.caseParaDefs.contains(paraDefs[i])) {
-                
-                System.err.println("paraDef "+paraDefs[i]);
-                System.err.println("paraVals "+paraVals[i]);
-                
+                               
                 
                 if (!REMOVE_ARRAY | 
                         (!paraVals[i].equals("dispatch")  && 
@@ -586,6 +581,7 @@ public class GeneratorUtils {
                         generatorData.caseParaVals.add("dispatch");
                     }
                 }
+                
             }
             i++;
         }

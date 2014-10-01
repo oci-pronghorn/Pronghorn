@@ -16,8 +16,8 @@ public class Tool {
 		Tool tool = new Tool();
 		
 		try {
-			tool.fieldTypeExtractionTest("/home/nate/flat/fullExample.txt");
-			//tool.dataExtractionTest("/home/nate/flat/fullExample.txt")
+			//tool.fieldTypeExtractionTest("/home/nate/flat/fullExample.txt");
+			tool.dataExtractionTest("/home/nate/flat/fullExample.txt");
 			
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();

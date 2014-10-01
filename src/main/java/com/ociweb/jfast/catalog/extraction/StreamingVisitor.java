@@ -210,7 +210,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         if (!Arrays.equals(this.catBytes, catBytes)) {
             this.catBytes = catBytes;        
             catalog = new TemplateCatalogConfig(catBytes);
-            System.err.println("new catalog");            
+        //    System.err.println("new catalog");            
             
             //TODO: A, need to build FieldRectordExtractor so it matches the existing catalog, then we can start with a given catalog and remove this dynamic part.
             
@@ -228,14 +228,14 @@ public class StreamingVisitor implements ExtractionVisitor {
             
          //   System.err.println("B "+ringBuffer.contentRemaining(ringBuffer));
           
-            System.err.println("wrote bytes to position:"+ringBuffer.addBytePos.value);
+         //   System.err.println("wrote bytes to position:"+ringBuffer.addBytePos.value);
             
             // Write new catalog to old stream stream so it is the last one written.
             FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        
             FASTRingBufferWriter.writeBytes(ringBuffer, catBytes);               
             
-			System.err.println("length "+catBytes.length);
-			System.err.println(Arrays.toString(catBytes));
+			//System.err.println("length "+catBytes.length);
+			//System.err.println(Arrays.toString(catBytes));
             
             FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
          //   System.err.println("C "+ringBuffer.contentRemaining(ringBuffer)+"  "+catBytes.length);

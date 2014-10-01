@@ -152,7 +152,8 @@ public final class FASTRingBuffer {
         }
              
         //finished reading the previous fragment so move the working tail position forward for next fragment to read
-        long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.activeFragmentDataSize;
+    //    System.err.println("xx"+ringBuffer.workingTailPos.value+"  "+ringBufferConsumer.activeFragmentDataSize);
+        final long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.activeFragmentDataSize;
         ringBuffer.workingTailPos.value = cashWorkingTailPos;
         ringBufferConsumer.activeFragmentDataSize = (0);
         
@@ -169,7 +170,7 @@ public final class FASTRingBuffer {
 
     ///TODO: B, add optional groups to this implementation
 
-    private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
+    private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, final long cashWorkingTailPos) {
         ringBufferConsumer.setNewMessage(false);
         int lastCursor = ringBufferConsumer.cursor;
         int fragStep = ringBufferConsumer.from.fragScriptSize[lastCursor]; //script jump 
@@ -209,6 +210,7 @@ public final class FASTRingBuffer {
         ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
+    //    new Exception(cashWorkingTailPos+"  "+ ringBufferConsumer.activeFragmentDataSize).printStackTrace();
         ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
         
         //

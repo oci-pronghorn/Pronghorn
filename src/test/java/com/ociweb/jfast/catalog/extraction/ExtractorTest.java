@@ -233,18 +233,30 @@ public class ExtractorTest {
         FASTRingBuffer ringBuffer = visitor2.getRingBuffer(rbIdx++);
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 
-        while (false && (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0)) {
+        int p = 0;
+        while (true && (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0)) {
         	
-	     //   	FASTRingBuffer.dump(ringBuffer);
+	        	//FASTRingBuffer.dump(ringBuffer);
         		
-        	//System.err.println(	ringBuffer.contentRemaining(ringBuffer));
-        	
+
 	        	if (FASTRingBuffer.canMoveNext(ringBuffer)) {
-	        
+	        System.err.print("write message...");
+	        		try{
+	        			//write this message, could be template or message
+	        			dynamicWriter.write();
+	        		} catch (FASTException e) {
+	        			System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
+	        			throw e;
+	        		}   
+	       System.err.println("  done.  "+fastOutput.total()); 		
+
 	        		if (ringBuffer.consumerData.isNewMessage()) {
+	        			System.err.println("xx"+ringBuffer.consumerData.getMessageId());
 	        			
 	        			if (0 == ringBuffer.consumerData.getMessageId()) {
 	        				System.err.println("new template");
+	        				PrimitiveWriter.flush(writer);
+	        				PrimitiveWriter.reset(writer);
 	        			
 	        				//we have no preamble and we know this is the only filed after the template id.
 	        				int idx = 1;//no need to lookup, ringBuffer.from.lookupIDX(0, "100");	        				
@@ -252,9 +264,9 @@ public class ExtractorTest {
 	        				byte[] target = new byte[len];
 	        				
 	        				
-	        	            int bytepos = ringBuffer.buffer[ringBuffer.mask & (int)(ringBuffer.workingTailPos.value + (FASTRingBufferReader.OFF_MASK&idx))];
+	        	       //     int bytepos = ringBuffer.buffer[ringBuffer.mask & (int)(ringBuffer.workingTailPos.value + (FASTRingBufferReader.OFF_MASK&idx))];
 	        	            
-	        	            System.err.println(bytepos+"  read bytes to position:"+ringBuffer.workingTailPos.value+" plus "+idx);
+	        	          //  System.err.println(bytepos+"  read bytes to position:"+ringBuffer.workingTailPos.value+" plus "+idx);
 	        	            
 	        				FASTRingBufferReader.readBytes(ringBuffer, idx, target,0);
 	        				
@@ -268,16 +280,10 @@ public class ExtractorTest {
 	        				
 	        				dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 	        				
-	        			} else {
-	    				      try{   
-	    				          dynamicWriter.write();
-	    				      } catch (FASTException e) {
-	    				          System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(ringBuffer.from.tokens[writerDispatch.getActiveScriptCursor()]));
-	    				          throw e;
-	    				      }    
-	        			}
+	        			} 
+	        			
             	    }        	
-	        	}
+	        	} 
 	        	
 	        	
 	        	
