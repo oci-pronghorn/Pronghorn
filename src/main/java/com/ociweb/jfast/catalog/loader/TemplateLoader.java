@@ -85,25 +85,26 @@ public class TemplateLoader {
 
         
         GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
-        FASTOutput output = new FASTOutputStream(gZipOutputStream);
-        TemplateHandler handler = new TemplateHandler(output, clientConfig);   
-        
-        
-        SAXParserFactory spfac = SAXParserFactory.newInstance();
-        SAXParser sp = spfac.newSAXParser();
-        if (null!= sourceInputStream) {
-            sp.parse(sourceInputStream, handler);   
-        } else {
-            for (File f : folder.listFiles()) {
-                if (f.isFile()) {
-                    sp.parse(f, handler);
-                }
-            }
-        }
-
-        handler.postProcessing();
-        gZipOutputStream.close();
+		FASTOutput output = new FASTOutputStream(gZipOutputStream);
+		TemplateHandler handler = new TemplateHandler(output, clientConfig);   
+		
+		
+		SAXParserFactory spfac = SAXParserFactory.newInstance();
+		SAXParser sp = spfac.newSAXParser();
+		if (null!= sourceInputStream) {
+		    sp.parse(sourceInputStream, handler);   
+		} else {
+		    for (File f : folder.listFiles()) {
+		        if (f.isFile()) {
+		            sp.parse(f, handler);
+		        }
+		    }
+		}
+		
+		handler.postProcessing();
+		gZipOutputStream.close();
     }
+
 
     private static void printHelp(String message) {
         System.out.println(message);

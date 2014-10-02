@@ -188,7 +188,7 @@ public class FieldReferenceOffsetManager {
         //System.err.println(Arrays.toString(fieldNameScript));
         
         while (x<=limit) {
-        	System.err.println("looking at:"+fieldNameScript[x]);
+        	//System.err.println("looking at:"+fieldNameScript[x]);
             if (fieldNameScript[x].equalsIgnoreCase(target)) {
                 
                 if (0==x) {

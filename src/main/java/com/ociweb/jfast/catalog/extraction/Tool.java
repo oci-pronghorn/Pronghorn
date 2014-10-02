@@ -10,6 +10,8 @@ import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class Tool {
 
+	//TODO: this is just an experimental class the core of this work must be moved over to FASTUtil
+	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		

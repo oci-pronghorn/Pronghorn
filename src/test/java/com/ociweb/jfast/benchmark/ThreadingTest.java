@@ -1,5 +1,12 @@
-package com.ociweb.jfast;
+package com.ociweb.jfast.benchmark;
 
+import static com.ociweb.jfast.stream.FASTRingBufferReader.eqASCII;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readASCII;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readDataLength;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readDecimalExponent;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readDecimalMantissa;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readInt;
+import static com.ociweb.jfast.stream.FASTRingBufferReader.readLong;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -8,59 +15,49 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.generator.DispatchLoader;
-import com.ociweb.jfast.generator.FASTClassLoader;
+import org.junit.Test;
+
+import com.ociweb.jfast.FASTUtil;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
-import com.ociweb.jfast.stream.FASTListener;
-import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
-
-import static com.ociweb.jfast.stream.FASTRingBufferReader.*;
-
 import com.ociweb.jfast.stream.RingBuffers;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
-public class Test {
+public class ThreadingTest {
 
-    public static void main(String[] args) {
-        
-        //this example uses the preamble feature
+	
+	@Test
+	public void builtInTest() {
+		//this example uses the preamble feature
         //large value for bandwidth, small for latency
         ClientConfig clientConfig = new ClientConfig(20,22);
         clientConfig.setPreableBytes((short)4);
         String templateSource = "/performance/example.xml";
         String dataSource = "/performance/complex30000.dat";
+        boolean singleThreaded = true;
         
-        new Test().decode(clientConfig, templateSource, dataSource);
-    }
+        decode(clientConfig, templateSource, dataSource, singleThreaded);
+	}
     
-    public void decode(ClientConfig clientConfig, String templateSource, String dataSource) {
-         final int count = 1024000;
-         final boolean single = false;
+    public void decode(ClientConfig clientConfig, String templateSource, String dataSource, boolean single) {
+         final int count = 128;
                 
                   
          //TODO: for multi test we really need to have it writing to multiple ring buffers.
@@ -84,7 +81,6 @@ public class Test {
 
           int iter = count;
           while (--iter >= 0) {
-              
               
               InputStream instr = testDataInputStream(dataSource);
               PrimitiveReader reader = new PrimitiveReader(4096*1024, new FASTInputStream(instr), maxPMapCountInBytes);
@@ -578,7 +574,7 @@ public class Test {
     
     private static InputStream testDataInputStream(String resource) {
         
-        InputStream resourceInput = Test.class.getResourceAsStream(resource);
+        InputStream resourceInput = FASTUtil.class.getResourceAsStream(resource);
         if (null!=resourceInput) {
             return resourceInput;            
         }
@@ -608,6 +604,5 @@ public class Test {
     }
 
    
-    
     
 }

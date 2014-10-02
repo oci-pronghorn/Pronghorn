@@ -2,6 +2,7 @@ package com.ociweb.jfast.catalog.extraction;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -18,6 +19,7 @@ import com.ociweb.jfast.catalog.generator.ItemGenerator;
 import com.ociweb.jfast.catalog.generator.TemplateGenerator;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
+import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.FASTOutput;
@@ -863,6 +865,28 @@ public class RecordFieldExtractor {
     public int globalExponent() {
         return (int)histPostDotCount.valueAtPercent(.999d);
     }
+
+    /**
+     * Load catalog from this file and use it
+     * @param templateFile
+     */
+	public void loadTemplate(String source, ClientConfig clientConfig) {
+		
+        ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
+        try {
+            TemplateLoader.buildCatalog(catalogBuffer, source, clientConfig);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assert(catalogBuffer.size() > 0);
+        catBytes = catalogBuffer.toByteArray();
+        
+        
+        //TODO: must update the typeTrie
+        
+		
+	}
 
     
     

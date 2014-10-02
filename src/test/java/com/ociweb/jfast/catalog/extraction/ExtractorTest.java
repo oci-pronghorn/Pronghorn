@@ -234,7 +234,7 @@ public class ExtractorTest {
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 
         int p = 0;
-        while (true && (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0)) {
+        while (false && (!executor.isTerminated() || FASTRingBuffer.contentRemaining(ringBuffer)>0)) {
         	
 	        	//FASTRingBuffer.dump(ringBuffer);
         		
