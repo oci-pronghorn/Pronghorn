@@ -61,7 +61,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     	
         this.messageTypes = messageTypes;    
         
-        messageTypes.restToRecordStart();
+        messageTypes.resetToRecordStart();
         
         aftetDot = false;
         beforeDotValue = 0;
@@ -114,7 +114,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     @Override
     public void closeRecord(int startPos) {
         
-        messageTypes.restToRecordStart();
+        messageTypes.resetToRecordStart();
         
         //move the pointer up to the next record
         bytePosStartField = ringBuffer.addBytePos.value = bytePosActive;

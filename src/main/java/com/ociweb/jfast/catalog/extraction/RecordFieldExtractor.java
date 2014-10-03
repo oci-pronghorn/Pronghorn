@@ -18,9 +18,11 @@ import com.ociweb.jfast.catalog.generator.FieldGenerator;
 import com.ociweb.jfast.catalog.generator.ItemGenerator;
 import com.ociweb.jfast.catalog.generator.TemplateGenerator;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.field.OperatorMask;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
@@ -165,7 +167,7 @@ public class RecordFieldExtractor {
                 
         
         resetFieldSum();
-        restToRecordStart();
+        resetToRecordStart();
         
     }
     
@@ -222,7 +224,7 @@ public class RecordFieldExtractor {
             tossedRecords++;
         }
         
-        restToRecordStart();
+        resetToRecordStart();
         
 
         
@@ -267,7 +269,12 @@ public class RecordFieldExtractor {
         
         //store type into the Trie to build messages.
         
-        int pos = typeTrieCursor+type;
+        appendNewField(type);
+    }
+
+
+	private void appendNewField(int type) {
+		int pos = typeTrieCursor+type;
                 
         
         if (typeTrie[pos]==0) {
@@ -277,7 +284,7 @@ public class RecordFieldExtractor {
         } else {
             typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[pos];
         }
-    }
+	}
     
     public int moveNextField() {
         int type = extractType();        
@@ -418,7 +425,7 @@ public class RecordFieldExtractor {
         activeQuote = false;
     }
     
-    public void restToRecordStart() {
+    public void resetToRecordStart() {
         nullCount = 0;
         utf8Count = 0;
         asciiCount = 0;
@@ -882,9 +889,24 @@ public class RecordFieldExtractor {
         assert(catalogBuffer.size() > 0);
         catBytes = catalogBuffer.toByteArray();
         
+        //load all the fields to be used by the parser
+        TemplateCatalogConfig config = new TemplateCatalogConfig(catBytes);
         
-        //TODO: must update the typeTrie
+        int[] entries = config.templateScriptEntries;
+        int[] limits  = config.templateScriptEntryLimits;
+        int[] scripts = config.fullScript();
         
+        int j = entries.length;
+        while (--j>=0) {
+        	resetToRecordStart();
+        	int i = entries[j];
+        	int stop = limits[j];//inclusive
+        	while (i<=stop) {
+        		int token = scripts[i++];        		
+        		int type = TokenBuilder.extractType(token);        		
+        		appendNewField(((type&1)<<OPTIONAL_SHIFT) & (type>>1));        		
+        	}        	
+        }
 		
 	}
 
