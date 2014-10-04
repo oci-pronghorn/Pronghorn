@@ -54,7 +54,10 @@ public class StreamingVisitor implements ExtractionVisitor {
     public StreamingVisitor(RecordFieldExtractor messageTypes) {
         
     	//initial ring buffer needed only for the first catalog then we move on from this one.
-    	byte[] catBytes = messageTypes.getCatBytes(); //must use a ring buffer from catalog or it will not be initilzied for use.
+    	byte[] catBytes = messageTypes.getCatBytes();
+    	if (null==catBytes) {
+    		catBytes = messageTypes.memoizeCatBytes(); //must use a ring buffer from catalog or it will not be initilzied for use.
+    	}
     	ringBuffer = (new TemplateCatalogConfig(catBytes)).ringBuffers().buffers[0];
     			 
     	ringBufferList.add(ringBuffer);
@@ -121,10 +124,11 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
         startingMessage = true;        
+       // System.err.println("close record");
     }
 
     @Override
-    public void closeField() {
+    public void closeField(int startPos) {
     	
     	if (startingMessage) {
     		 int templateId = 1;
@@ -136,8 +140,13 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         switch (fieldType) {
             case RecordFieldExtractor.TYPE_NULL:
+            	
+            	String example = new String(messageTypes.bytesForLine(startPos));
+            	
                 //TODO: what optional types are available? what if there are two then follow the order.
-                System.err.println("need to find a null and we have many to choose from, now what");                
+                new Exception("Require optional field but unable to find one in field "+messageTypes.fieldCount+" example "+example).printStackTrace();;
+                System.exit(-1);
+                
                 break;
             case RecordFieldExtractor.TYPE_UINT:                
                 FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
@@ -160,6 +169,12 @@ public class StreamingVisitor implements ExtractionVisitor {
             case RecordFieldExtractor.TYPE_DECIMAL:
                 int exponent = messageTypes.globalExponent(); //always positive, positions measured after the dot
                                 
+                if (accumValueChars>=POW_10.length) {
+                	//this caused by bug totaling the chars that no longer happens. but this may be a good idea for long odd values
+                	//they should be ascii instead???
+                	System.err.println("Too long example:"+new String(messageTypes.bytesForLine(startPos)));
+                }
+                
                 //this is A solution but it is not THE global solution
                 long totalValue = (beforeDotValue*POW_10[accumValueChars])+accumValue;
                 int  totalExp = accumValueChars;
@@ -191,6 +206,9 @@ public class StreamingVisitor implements ExtractionVisitor {
         beforeDotValue = 0;
         accumSign = 1;
         accumValue = 0;
+        beforeDotValueChars = 0;
+        accumValueChars = 0;
+        
         
         startingMessage = false;
         

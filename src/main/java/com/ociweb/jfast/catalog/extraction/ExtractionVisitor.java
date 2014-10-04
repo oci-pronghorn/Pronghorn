@@ -10,7 +10,7 @@ public interface ExtractionVisitor {
 
     void closeRecord(int startPos);
 
-    void closeField();
+    void closeField(int startPos);
 
     void closeFrame(); //must use any buffers it has been given because they are about to be changed
 

@@ -118,14 +118,15 @@ public class RecordFieldExtractor {
     private static final int   CATALOG_TEMPLATE_ID = 0;
     
     private final int[] typeTrie = new int[typeTrieArraySize];
-    private int         typeTrieCursor; 
-    private int         typeTrieCursorPrev;
+    int         typeTrieCursor; 
+    int         typeTrieCursorPrev;
     
     private int         nullCount; //TODO: expand to the other types and externalize rules to an interface
     private int         firstField = -1;
     private int         firstFieldLength = -1;
     private int         utf8Count;
     private int         asciiCount;
+    int                 fieldCount;
     
     private int         typeTrieLimit = typeTrieUnit;
     
@@ -180,6 +181,8 @@ public class RecordFieldExtractor {
         tempPos = pos;
         
         activeQuote |= contentQuoted;
+     //   
+     //   StringBuilder bl = new StringBuilder();
         
         int i = (limit-pos);
         activeLength+=i;
@@ -187,18 +190,21 @@ public class RecordFieldExtractor {
             byte b = mappedBuffer.get(pos+i);
             int x = activeSum + accumValues[0xFF&b];    
             
+       //     bl.append((char)b);
+            
             activePostDotCount += (ONE_DOT&x);  //may need to use ONE_COMMA FOR UK
             
             activeSum = (x|(((x>>1) & ACCUM_MASK) & SATURATION_MASK))&ACCUM_MASK;  
             
             
         }       
+      //  System.err.println(bl);
     }
 
     
     public void appendNewRecord(int startPos) {       
 
-        boolean isValid = recordValidator.isValid(nullCount,utf8Count,asciiCount,firstFieldLength,firstField); 
+        boolean isValid = recordValidator.isValid(fieldCount, nullCount,utf8Count,asciiCount,firstFieldLength,firstField); 
         
         if (isValid) {                        
             totalRecords++;
@@ -209,11 +215,7 @@ public class RecordFieldExtractor {
                     
                     System.err.println("example "+total+" for :"+(typeTrieCursor+TYPE_EOM));
                     
-                    byte[] dst = new byte[tempBuffer.position()-startPos];
-                    ByteBuffer x = tempBuffer.asReadOnlyBuffer();
-                    x.position(startPos);
-                    x.limit(tempBuffer.position());
-                    x.get(dst, 0, dst.length);
+                    byte[] dst = bytesForLine(startPos);
                     System.err.println(new String(dst));     
                 } else {
                     System.err.println(startPos+" to "+tempBuffer.position());
@@ -221,6 +223,10 @@ public class RecordFieldExtractor {
                 
             }
         } else {
+        	boolean debug = true;
+        	if(debug) {
+        		System.err.println("bad data:"+new String(bytesForLine(startPos)));
+        	}
             tossedRecords++;
         }
         
@@ -229,6 +235,18 @@ public class RecordFieldExtractor {
 
         
     }
+
+
+	public byte[] bytesForLine(int startPos) {
+		int lim = Math.min(tempBuffer.position()+50, tempBuffer.limit());
+		
+		byte[] dst = new byte[lim-startPos];
+		ByteBuffer x = tempBuffer.asReadOnlyBuffer();
+		x.position(startPos);
+		x.limit(lim);
+		x.get(dst, 0, dst.length);
+		return dst;
+	}
 
     public void appendNewField() {
         
@@ -239,6 +257,7 @@ public class RecordFieldExtractor {
         int type = extractType();
         resetFieldSum(); //TODO: not a  good place for this, side effect.
         
+        fieldCount++;
         if (TYPE_NULL == type) {
             nullCount++;
         }
@@ -274,21 +293,34 @@ public class RecordFieldExtractor {
 
 
 	private void appendNewField(int type) {
-		int pos = typeTrieCursor+type;
-                
-        
+		int pos = typeTrieCursor + (OPTIONAL_LOW_MASK & type);
+                        
         if (typeTrie[pos]==0) {
             //create new position          
-            typeTrieCursor = typeTrie[pos] = typeTrieLimit;
+        	typeTrie[pos] =  (OPTIONAL_FLAG & type) | (typeTrieCursor = typeTrieLimit);
             typeTrieLimit += typeTrieUnit;
         } else {
-            typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[pos];
+            typeTrieCursor = OPTIONAL_LOW_MASK & typeTrie[pos];
         }
 	}
     
     public int moveNextField() {
         int type = extractType();        
         resetFieldSum(); //TODO: not a  good place for this, side effect.
+        
+        fieldCount++; //TODO: share this block with the appendnewfield so both have the same behavior?
+        if (TYPE_NULL == type) {
+            nullCount++;
+        }
+        if (TYPE_BYTES == type) {
+            utf8Count++;
+        }
+        if (TYPE_ASCII == type) {
+            asciiCount++;
+        }
+        if (firstField<0) {
+            firstField = type;
+        }
         
         typeTrieCursorPrev = typeTrieCursor;
         typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];  
@@ -314,18 +346,17 @@ public class RecordFieldExtractor {
             int i = typeTrieUnit;
             while (--i>=0) {
                 if (TYPE_NULL != i) {                    
-                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) { 
-                        
+                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {                         
                         typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+i];  
                     	return i; 
                     }                
                 }                
             } 
-         //   int[] temp = Arrays.copyOfRange(typeTrie, typeTrieCursor, typeTrieCursor+typeTrieUnit);
-           // System.err.println("non found "+Arrays.toString(temp));
+            System.err.println(Arrays.toString(Arrays.copyOfRange(typeTrie, 0, 100)));
+            System.err.println("unable to find non null! "+Arrays.toString(Arrays.copyOfRange(typeTrie, typeTrieCursor, typeTrieCursor+15)));
         } else {
         	//if the type is not found then bump it up until it is found
-        	while (totalCount(typeTrieCursor+type, typeTrie)==0) {
+        	while (totalCount(typeTrieCursor+type, typeTrie, 0)==0) {
         		//bump up type
         		int newType = SUPER_TYPE[type];  
                 if (type==newType) {
@@ -431,6 +462,7 @@ public class RecordFieldExtractor {
         asciiCount = 0;
         typeTrieCursor = 0;
         firstField = -1;
+        fieldCount = 0;
     }
     
     
@@ -450,7 +482,7 @@ public class RecordFieldExtractor {
                         System.err.print(tab+"Count:"+value+" at "+(pos+i)+"\n");
                         noOutput = false;
                 } else {
-                    if (totalCount(value, typeTrie)>0) {
+                    if (totalCount(value, typeTrie, 0)>0) {
                     
                         
                         int type = i<<1;
@@ -478,7 +510,7 @@ public class RecordFieldExtractor {
     
 
     
-    private static int totalCount(int value, int[] typeTrie) {
+    private static int totalCount(int value, int[] typeTrie, int count) {
         int sum = 0;
         int i = typeTrieUnit;
         while (--i>=0) {
@@ -487,7 +519,7 @@ public class RecordFieldExtractor {
                 sum += temp;                
             } else {
                 if (temp>0) {
-                    sum += totalCount(temp, typeTrie);
+                   	sum += totalCount(temp, typeTrie, count+1);
                 }
             }
         }
@@ -501,7 +533,7 @@ public class RecordFieldExtractor {
         while (--i>=0) {
             int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
             if (value > 0) {                
-                if (i!=TYPE_EOM && totalCount(value, typeTrie)>0) {
+                if (i!=TYPE_EOM && totalCount(value, typeTrie, 0)>0) {
                     mergeOptionalNulls(value);
     
                     //finished call for this position i so it can removed if needed
@@ -511,8 +543,6 @@ public class RecordFieldExtractor {
                     int lastNonNull = lastNonNull(pos, typeTrie, typeTrieUnit);
                     
                     if (lastNonNull>=0 && TYPE_NULL==i) {
-                    
-                       // System.err.println("found one "+lastNonNull);
                     
                         //check if there is another non-null field
                         //if there is more than 1 field with the null NEVER collapse because we don't know which path to which it belongs.
@@ -546,7 +576,7 @@ public class RecordFieldExtractor {
         while (--i>=0) {
             int value = OPTIONAL_LOW_MASK&typeTrie[pos+i];
             if (value > 0) {                
-                if (i!=TYPE_EOM  && totalCount(value,typeTrie)>0) {
+                if (i!=TYPE_EOM  && totalCount(value,typeTrie, 0)>0) {
                     mergeNumerics(value);
     
                     //finished call for this position i so it can removed if needed
@@ -596,7 +626,7 @@ public class RecordFieldExtractor {
             while (--q>=0) {
                 if (TYPE_EOM!=q &&
                     TYPE_NULL!=q && 
-                    totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+q], typeTrie)>0  &&
+                    totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+q], typeTrie, 0)>0  &&
                     (0!=  (OPTIONAL_FLAG&typeTrie[targetset+q]))) {
                     
                         if (result<0) {
@@ -646,9 +676,9 @@ public class RecordFieldExtractor {
         while (--i>=0) {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
-                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie)>0) { 
+                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie, 0)>0) { 
                     int j = i;
-                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie)>0) {
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie, 0)>0) {
                         
                         j = targetType(i,targetset);
                         if (j<0) {
@@ -673,9 +703,9 @@ public class RecordFieldExtractor {
             //exclude this type its only holding the count
             if (TYPE_EOM!=i) {
                 
-                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie)>0 ) {
+                if (0!=(OPTIONAL_LOW_MASK&typeTrie[subset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[subset+i], typeTrie, 0)>0 ) {
                     
-                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie)>0) {
+                    if (0==(OPTIONAL_LOW_MASK&typeTrie[targetset+i]) && totalCount(OPTIONAL_LOW_MASK&typeTrie[targetset+i], typeTrie, 0)>0) {
                         
                         
                         j = targetType(i,targetset);
@@ -708,7 +738,7 @@ public class RecordFieldExtractor {
         while (--i>=0) {
             if (TYPE_NULL!=i && TYPE_EOM!=i) {
                 int v =OPTIONAL_LOW_MASK&typeTrie[pos+i];
-                if (0!=v && totalCount(v, typeTrie)>0) {
+                if (0!=v && totalCount(v, typeTrie, 0)>0) {
                     return i;
                 }
             }            
@@ -835,8 +865,10 @@ public class RecordFieldExtractor {
     public byte[] catBytes(ClientConfig clientConfig) {
         String catalog = buildCatalog(true);
         
-        System.err.println("catalog:\n"+catalog+"\n");
-  
+        boolean debug = true;
+        if (debug) {
+        	System.err.println("catalog:\n"+catalog+"\n");
+        }
         clientConfig.setCatalogTemplateId(CATALOG_TEMPLATE_ID);
         
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -896,6 +928,7 @@ public class RecordFieldExtractor {
         int[] limits  = config.templateScriptEntryLimits;
         int[] scripts = config.fullScript();
         
+           
         int j = entries.length;
         while (--j>=0) {
         	resetToRecordStart();
@@ -904,12 +937,28 @@ public class RecordFieldExtractor {
         	while (i<=stop) {
         		int token = scripts[i++];        		
         		int type = TokenBuilder.extractType(token);        		
-        		appendNewField(((type&1)<<OPTIONAL_SHIFT) & (type>>1));        		
-        	}        	
+        		
+        		if ((type>>1)<TYPE_NULL) {
+        			
+        			
+	        		//System.err.println(TokenBuilder.tokenToString(token)+"  "+type);
+	        		//System.err.println("xx "+(type>>1)+"   "+TokenBuilder.tokenToString(token));
+	        		
+	        		
+	        		appendNewField(((type&1)<<OPTIONAL_SHIFT) | (type>>1));  
+        		}
+        		
+        	}   
+        	//add 1 to this message count in order to validate it
+        	 ++typeTrie[typeTrieCursor+TYPE_EOM];
+        	
+        	
         }
 		
+        System.err.println("loaded data:\n"+buildCatalog(false));
+        
 	}
 
-    
+    //TODO: B, the templates can not parse the byte data type properly, are they not recognized.
     
 }

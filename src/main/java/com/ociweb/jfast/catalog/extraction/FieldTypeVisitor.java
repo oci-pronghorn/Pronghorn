@@ -25,7 +25,7 @@ public class FieldTypeVisitor implements ExtractionVisitor{
     }
 
     @Override
-    public void closeField() {
+    public void closeField(int startPos) {
         accumulatedMessageTypes.appendNewField();     
     }
 

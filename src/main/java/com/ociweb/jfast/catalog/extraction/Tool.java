@@ -68,7 +68,7 @@ public class Tool {
 		return new RecordFieldValidator() {
 
 			@Override
-			public boolean isValid(int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField) {
+			public boolean isValid(int fieldCount, int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField) {
 				
 		        return nullCount<=2 &&        //Too much missing data, 
 		              utf8Count==0 &&        //data known to be ASCII so this is corrupted

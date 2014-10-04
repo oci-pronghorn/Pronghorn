@@ -81,8 +81,7 @@ public class TemplateLoader {
             if (folder.exists() && !folder.isDirectory()) {
                 sourceInputStream = new FileInputStream(source);
             }        
-        }        
-
+        }
         
         GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
 		FASTOutput output = new FASTOutputStream(gZipOutputStream);

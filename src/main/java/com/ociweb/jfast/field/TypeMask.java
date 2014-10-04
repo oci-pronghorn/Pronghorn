@@ -52,7 +52,7 @@ public final class TypeMask {
 
 
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
-        "string", "string", "string", "string", "decimal", "decimal", "bytes", "bytes",
+        "string", "string", "string", "string", "decimal", "decimal", "byteVector", "byteVector",
         "group", "Reserved1", "Reserved2", "Reserved3", "length", "Reserved5",
         "Reserved6", "Reserved7", "Dictionary" };
 

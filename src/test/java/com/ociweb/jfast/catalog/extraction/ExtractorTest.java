@@ -96,7 +96,7 @@ public class ExtractorTest {
             }
             
             @Override
-            public void closeField() {
+            public void closeField(int startPos) {
             }
             
             @Override

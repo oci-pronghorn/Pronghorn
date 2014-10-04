@@ -79,7 +79,7 @@ public class Extractor {
             } while (mappedBuffer.remaining()>padding);
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor, workspace)) {
-                    flushField(visitor);
+                    flushField(visitor, workspace);
                     flushRecord(visitor, mappedBuffer.position(), workspace);
                 }
             }
@@ -129,7 +129,7 @@ public class Extractor {
             } while (mappedBuffer.remaining()>padding);
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor1, workspace1)) {
-                    flushField(visitor1);
+                    flushField(visitor1, workspace1);
                     flushRecord(visitor1, mappedBuffer.position(), workspace1);
                 }
             }
@@ -148,7 +148,7 @@ public class Extractor {
             visitor2.closeFrame();
             if (position+mappedBuffer.position()>=fileSize) {
                 if (flushContent(mappedBuffer,visitor2, workspace2)) {
-                    flushField(visitor2);
+                    flushField(visitor2, workspace2);
                     flushRecord(visitor2, mappedBuffer.position(), workspace2);
                 }
             }
@@ -187,8 +187,8 @@ public class Extractor {
        
     }
 
-    private void flushField(ExtractionVisitor visitor) {
-        visitor.closeField();
+    private void flushField(ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+        visitor.closeField(workspace.getRecordStart());
     }
 
 
@@ -264,7 +264,7 @@ public class Extractor {
                     parseField(mappedBuffer, visitor, workspace);  
                 } else {
                     flushContent(mappedBuffer, visitor, workspace);
-                    flushField(visitor);
+                    flushField(visitor, workspace);
                     flushRecord(visitor, mappedBuffer.position(), workspace);
                 }
             }
@@ -299,7 +299,7 @@ public class Extractor {
                     mappedBuffer.position(mappedBuffer.position()+1);
                 } else {                
                     flushContent(mappedBuffer, visitor, workspace);
-                    flushField(visitor);
+                    flushField(visitor, workspace);
                     mappedBuffer.position(mappedBuffer.position()+1);
                     //the field has finished so check for the special case values //TODO: also do this on line beginning
                     

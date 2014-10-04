@@ -5,10 +5,10 @@ public interface RecordFieldValidator {
 	RecordFieldValidator ALL_VALID = new RecordFieldValidator(){
 
 		@Override
-		public boolean isValid(int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField) {
+		public boolean isValid(int fieldCount, int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField) {
 			return true;
 		}};
 	
-	boolean isValid(int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField);
+	boolean isValid(int fieldCount, int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField);
 	
 }
