@@ -3,6 +3,7 @@ package com.ociweb.jfast.catalog.extraction;
 import java.nio.MappedByteBuffer;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.stream.FASTRingBuffer;
 
 public class FieldTypeVisitor implements ExtractionVisitor{
 
@@ -31,7 +32,9 @@ public class FieldTypeVisitor implements ExtractionVisitor{
 
     @Override
     public void openFrame() {
-        //has nothing to do
+    	
+    	accumulatedMessageTypes.resetToRecordStart();
+
     }
 
     @Override
@@ -56,6 +59,8 @@ public class FieldTypeVisitor implements ExtractionVisitor{
         // PRINT REPORT
         accumulatedMessageTypes.printRecursiveReport(0,"");
        System.err.println("total records: "+accumulatedMessageTypes.totalRecords+" tossed:"+accumulatedMessageTypes.tossedRecords);
+       System.err.println();
+       System.err.println();
         
         
         

@@ -115,7 +115,7 @@ public class FASTUtil {
     		if (!templateFile.exists()) {
     			instance.encodeAndBuildTemplate(templateFilePath, csvFile, templateFile, typeAccum); 
     		} else {
-    			instance.encodeGivenTemplate(csvFile, templateFilePath, typeAccum);  
+    			instance.encodeGivenTemplate(csvFile, templateFilePath, typeAccum, fastFilePath);  
     		}
     	} 
     	if (VALUE_DECODE.equalsIgnoreCase(task)) {
@@ -127,23 +127,16 @@ public class FASTUtil {
 
 
 	private void encodeGivenTemplate(File csvFile, String templateFile,
-			RecordFieldExtractor typeAccum) {
+			RecordFieldExtractor typeAccum, String fastFilePath) {
 		
-		ClientConfig clientConfig = new ClientConfig();
+		ClientConfig clientConfig = new ClientConfig(22,23);
 		typeAccum.loadTemplate(templateFile, clientConfig);		
 		StreamingVisitor visitor = new StreamingVisitor(typeAccum);
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
-			Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+			Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 30);
 		    ex.extract(fileChannel, visitor);  
-
-		    //write out the new final template that was used at the end of the file.
-		    String catalog = typeAccum.buildCatalog(true);
-		    FileOutputStream fost = new FileOutputStream(templateFile);
-		    fost.write(catalog.getBytes());
-		    fost.close();
-		    
 		    
 		} catch (IOException e) {
 		    System.err.println(e.getLocalizedMessage());
@@ -158,12 +151,12 @@ public class FASTUtil {
 		System.out.println("No template provided so one will be generated at: "+templateFilePath);
 		//pass over file generating the template as we pass over it			
 		FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum);
-		StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);    			
+		//StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);    			
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
 			Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
-		    ex.extract(fileChannel, visitor1, visitor2);  
+		    ex.extract(fileChannel, visitor1);//, visitor2);  
 
 		    //write out the new final template that was used at the end of the file.
 		    String catalog = typeAccum.buildCatalog(true);
@@ -206,12 +199,12 @@ public class FASTUtil {
 
 			@Override
 			public boolean isValid(int fieldCount, int nullCount, int utf8Count, int asciiCount, int firstFieldLength, int firstField) {
-				
-		        return nullCount<=2 &&        //Too much missing data, 
-		              utf8Count==0 &&        //data known to be ASCII so this is corrupted
-		              (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  
-		              firstFieldLength<=15 && //key must not be too large
-		              firstField!=RecordFieldExtractor.TYPE_NULL; //known primary key is missing
+				return true;
+//		        return nullCount<=2 &&        //Too much missing data, 
+//		              utf8Count==0 &&        //data known to be ASCII so this is corrupted
+//		              (asciiCount==0 || asciiCount==2) && //only two known configurations for ascii  
+//		              firstFieldLength<=15 && //key must not be too large
+//		              firstField!=RecordFieldExtractor.TYPE_NULL; //known primary key is missing
 
 			}
 			

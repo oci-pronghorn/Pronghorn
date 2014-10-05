@@ -204,6 +204,7 @@ public class RecordFieldExtractor {
     
     public void appendNewRecord(int startPos) {       
 
+    	
         boolean isValid = recordValidator.isValid(fieldCount, nullCount,utf8Count,asciiCount,firstFieldLength,firstField); 
         
         if (isValid) {                        
@@ -238,7 +239,7 @@ public class RecordFieldExtractor {
 
 
 	public byte[] bytesForLine(int startPos) {
-		int lim = Math.min(tempBuffer.position()+50, tempBuffer.limit());
+		int lim = tempBuffer.position();// Math.min(tempBuffer.position()+50, tempBuffer.limit());
 		
 		byte[] dst = new byte[lim-startPos];
 		ByteBuffer x = tempBuffer.asReadOnlyBuffer();
@@ -304,6 +305,7 @@ public class RecordFieldExtractor {
         }
 	}
     
+	
     public int moveNextField() {
         int type = extractType();        
         resetFieldSum(); //TODO: not a  good place for this, side effect.
@@ -322,10 +324,35 @@ public class RecordFieldExtractor {
             firstField = type;
         }
         
+        int nextIdx = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];
+        if (0==nextIdx) {
+        	//our assumed type was not found so we need to change it or fail
+        	//TODO: should this be moved
+        	boolean fail = true;
+        	
+        	//////////////////////////DOWNGRADES FROM UTF8 to ASCII//////////////////////////
+        	//If we picked bytes but there is none however we do have ASCII so we map to that
+        	//This is done because the template is already established and we have little choice
+        	/////////////////////////////////////////////////////////////////////////////////
+        	if (TYPE_BYTES==type && 0!=typeTrie[typeTrieCursor+TYPE_ASCII]) {
+        		type= TYPE_ASCII;    
+        	} 
+        	
+        	
+        	
+//        	if (fail && type!=TYPE_NULL) {
+//        		new Exception("Unable to find type "+type).printStackTrace();
+//        		System.exit(-1);
+//        	}
+        }
+        
+        
         typeTrieCursorPrev = typeTrieCursor;
-        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];  
+        typeTrieCursor = nextIdx;  
         return type;
     }
+    
+    
 
     /**
      * Only called after the record and types have been established from the first pass.
@@ -337,8 +364,11 @@ public class RecordFieldExtractor {
      */
 	public int convertRawTypeToSpecific(int type) {
 		
+		//TODO: must add roll back if the first field type was wrong, must keep chain or all the alternates to recover in that complex template case.
+		
 		//back up to parent cursor location
 		typeTrieCursor=typeTrieCursorPrev;
+		int initType = type;
 		
 		//if type is null???
         if (TYPE_NULL == type) {            
@@ -346,17 +376,28 @@ public class RecordFieldExtractor {
             int i = typeTrieUnit;
             while (--i>=0) {
                 if (TYPE_NULL != i) {                    
-                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {                         
+                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {    
+                    	//System.err.println("swapped null for:"+i);
                         typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+i];  
                     	return i; 
                     }                
                 }                
             } 
+            System.err.println(totalRecords+" now failure on field "+fieldCount);
+            
             System.err.println(Arrays.toString(Arrays.copyOfRange(typeTrie, 0, 100)));
-            System.err.println("unable to find non null! "+Arrays.toString(Arrays.copyOfRange(typeTrie, typeTrieCursor, typeTrieCursor+15)));
+            int[] copyOfRange = Arrays.copyOfRange(typeTrie, typeTrieCursorPrev, typeTrieCursorPrev+15);
+            int k = 0;
+            while (k<TYPE_EOM) {
+            	System.err.println(k+" "+Integer.toBinaryString(copyOfRange[k]));
+            	k++;
+            }
+            
+			System.err.println("AA unable to find non null! at "+typeTrieCursorPrev+" data:"+Arrays.toString(copyOfRange));
         } else {
-        	//if the type is not found then bump it up until it is found
-        	while (totalCount(typeTrieCursor+type, typeTrie, 0)==0) {
+        	////////TYPE CHANGE IS DONE HERE BECAUSE THE TEMPLATE IS FIXED AND WE MUST PARSE INTO IT//////////////
+        	//if the type is not found or it has no valid records down this path then bump it up until one is found
+        	while (0==typeTrie[typeTrieCursor+type] || totalCount(typeTrieCursor+type, typeTrie, 0)==0) {
         		//bump up type
         		int newType = SUPER_TYPE[type];  
                 if (type==newType) {
@@ -364,8 +405,26 @@ public class RecordFieldExtractor {
                 }
         		type = newType;      		        		
         	}
+        	
+        	if (TYPE_NULL==type) {
+        		System.err.println(this.totalRecords);
+        		
+        		if (initType!=type) {
+        			System.err.println("upgraded");
+        			System.err.println("start typte:"+initType);
+        			System.err.println("end type:"+type);
+        			
+        			System.err.println(new String(bytesForLine(Math.max(0, tempBuffer.position()-100))));
+        		}
+        		
+        		System.err.println(Arrays.toString(Arrays.copyOfRange(typeTrie, 0, 100)));
+        		System.err.println("BB unable to find non null! "+Arrays.toString(Arrays.copyOfRange(typeTrie, typeTrieCursor, typeTrieCursor+15)));
+        	}
         }
         typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+type];  
+        
+        
+        
         return type;
 	}
     
@@ -387,37 +446,27 @@ public class RecordFieldExtractor {
 //        }                     
         
         //apply rules to determine field type
-        int type;
-        if (activeLength==0 || activeSum==0) {
+        if (activeLength==0) {
             //null field
-            type = TYPE_NULL; 
+            return TYPE_NULL; 
         } else {        
             if (otherCount>0) {
                 //utf8 or byte array
-                type = TYPE_BYTES;
+                return TYPE_BYTES;
             } else { 
                 if (asciiCount>0 || activeQuote || signCount>1 || dotCount>1 || decimalCount>18) { //NOTE: 18 could be optimized by reading first digit
                     //ascii text
-                    type = TYPE_ASCII;
+                    return TYPE_ASCII;
                 } else {
                     if (dotCount==1) {
                         //decimal 
-                        type = TYPE_DECIMAL;     
                         
                         //        activePostDotCount
                         //TODO: need histogram of the values ? then use percentile to pick
                         int decAfterDot = activePostDotCount>>SHIFT_DOT;
                         histPostDotCount.sample(decAfterDot);
                         
-                       
-                        
-//                        if (decAfterDot>maxPostDotCount) {
-//                            maxPostDotCount = decAfterDot;
-//                            System.err.println("xxx: "+maxPostDotCount);
-//                        }
-                                    
-                        //System.err.println(decAfterDot);
-                        
+                        return TYPE_DECIMAL;                        
                         
                     } else {  
                         //no dot
@@ -425,27 +474,25 @@ public class RecordFieldExtractor {
                             //long
                             if (signCount==0) {
                                 //unsigned
-                                type = TYPE_ULONG;
+                                return TYPE_ULONG;
                             } else {
                                 //signed
-                                type = TYPE_SLONG;
+                                return TYPE_SLONG;
                             }
                         } else {
                             //int
                             if (signCount==0) {
                                 //unsigned
-                                type = TYPE_UINT; //TODO: may need to bump up to long if that is all we find when building records.
+                                return TYPE_UINT; //TODO: may need to bump up to long if that is all we find when building records.
                             } else {
                                 //signed
-                                type = TYPE_SINT;
+                                return TYPE_SINT;
                             }                            
                         }
                     }                
                 }           
             }
         }
-
-        return type;
     }
     
     
@@ -457,6 +504,7 @@ public class RecordFieldExtractor {
     }
     
     public void resetToRecordStart() {
+    	resetFieldSum();
         nullCount = 0;
         utf8Count = 0;
         asciiCount = 0;
@@ -938,14 +986,22 @@ public class RecordFieldExtractor {
         		int token = scripts[i++];        		
         		int type = TokenBuilder.extractType(token);        		
         		
-        		if ((type>>1)<TYPE_NULL) {
-        			
+        		
+        		int simpleType = type>>1;
+        		if (simpleType<TYPE_NULL) {        			
         			
 	        		//System.err.println(TokenBuilder.tokenToString(token)+"  "+type);
 	        		//System.err.println("xx "+(type>>1)+"   "+TokenBuilder.tokenToString(token));
 	        		
 	        		
-	        		appendNewField(((type&1)<<OPTIONAL_SHIFT) | (type>>1));  
+	        		appendNewField(((type&1)<<OPTIONAL_SHIFT) | simpleType);  
+	        		
+	        		if (TYPE_DECIMAL==simpleType) {
+	        			//special case because a decimal takes up two slots, TODO: change to data driven impl?
+	        			i++;	        			
+	        		}
+	        		
+	        		
         		}
         		
         	}   
@@ -955,8 +1011,12 @@ public class RecordFieldExtractor {
         	
         }
 		
-        System.err.println("loaded data:\n"+buildCatalog(false));
-        
+        boolean debug = true;
+        if (debug) {
+	        System.err.println("loaded data:\n"+buildCatalog(false));
+	        printRecursiveReport(0, " ");
+	        System.err.println();
+        }
 	}
 
     //TODO: B, the templates can not parse the byte data type properly, are they not recognized.

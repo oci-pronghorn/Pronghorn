@@ -77,6 +77,9 @@ public class StreamingVisitor implements ExtractionVisitor {
         
     }
         
+    //TODO: if there is a failure, store the position and roll back to there and try the next choice
+    //      best idea out of those so far.
+    
     
     @Override
     public void appendContent(MappedByteBuffer mappedBuffer, int pos, int limit, boolean contentQuoted) {
@@ -114,17 +117,26 @@ public class StreamingVisitor implements ExtractionVisitor {
         
     }
 
+    String lastClosedLine = "";
+    
     @Override
     public void closeRecord(int startPos) {
         
+    	
+    	lastClosedLine = new String(messageTypes.bytesForLine(startPos));
+    	//System.err.println(lastClosedLine);
+    	
+    	
         messageTypes.resetToRecordStart();
+        
         
         //move the pointer up to the next record
         bytePosStartField = ringBuffer.addBytePos.value = bytePosActive;
         
         FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
-        startingMessage = true;        
-       // System.err.println("close record");
+        startingMessage = true;       
+        
+        messageTypes.totalRecords++;
     }
 
     @Override
@@ -141,28 +153,23 @@ public class StreamingVisitor implements ExtractionVisitor {
         switch (fieldType) {
             case RecordFieldExtractor.TYPE_NULL:
             	
+            	System.err.println("last closed line:\n"+lastClosedLine);
             	String example = new String(messageTypes.bytesForLine(startPos));
             	
                 //TODO: what optional types are available? what if there are two then follow the order.
-                new Exception("Require optional field but unable to find one in field "+messageTypes.fieldCount+" example "+example).printStackTrace();;
+                new Exception("Require optional field but unable to find one in field "+messageTypes.fieldCount+" recs "+messageTypes.totalRecords+" example "+example).printStackTrace();;
                 System.exit(-1);
                 
                 break;
             case RecordFieldExtractor.TYPE_UINT:                
-                FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
-                break;            
             case RecordFieldExtractor.TYPE_SINT:
                 FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
-                break;    
+                break;   
             case RecordFieldExtractor.TYPE_ULONG:
-                FASTRingBufferWriter.writeLong(ringBuffer, accumValue*accumSign);  
-                break;    
             case RecordFieldExtractor.TYPE_SLONG:
                 FASTRingBufferWriter.writeLong(ringBuffer, accumValue*accumSign);  
                 break;    
             case RecordFieldExtractor.TYPE_ASCII:
-                FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
-                break;
             case RecordFieldExtractor.TYPE_BYTES:                
                 FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
                 break;
@@ -202,20 +209,29 @@ public class StreamingVisitor implements ExtractionVisitor {
         bytePosStartField = bytePosActive;
         // ** write as we go close out the field
 
-        aftetDot = false;
-        beforeDotValue = 0;
-        accumSign = 1;
-        accumValue = 0;
-        beforeDotValueChars = 0;
-        accumValueChars = 0;
+        resetFieldStateCounters();
         
         
         startingMessage = false;
         
     }
 
+
+	private void resetFieldStateCounters() {
+		aftetDot = false;
+        beforeDotValue = 0;
+        accumSign = 1;
+        accumValue = 0;
+        beforeDotValueChars = 0;
+        accumValueChars = 0;
+	}
+
     @Override
-    public void closeFrame() {        
+    public void closeFrame() {   
+    	boolean debug = true;
+    	if (debug) {
+    		System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine);
+    	}
     }
 
     //TODO: hack test for now this should be a ring buffer of ring buffers.
@@ -223,6 +239,15 @@ public class StreamingVisitor implements ExtractionVisitor {
 
     @Override
     public void openFrame() {
+    	
+    	resetFieldStateCounters();
+    	messageTypes.resetToRecordStart();
+    	//if any partial write of field data is in progress just throw it away because 
+    	//next frame will begin again from the start of the message.
+    	bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
+    	FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
+
+    	
         //get new catalog if is has been changed by the other visitor
         byte[] catBytes = messageTypes.getCatBytes();
         if (!Arrays.equals(this.catBytes, catBytes)) {
@@ -234,19 +259,6 @@ public class StreamingVisitor implements ExtractionVisitor {
             
             //TODO: check assumption that templateID 0 is the one for sending catalogs.
             
-            //if any partial write of field data is in progress just throw it away because 
-            //next frame will begin again from the start of the message.
-            
-         //   System.err.println("A "+ringBuffer.contentRemaining(ringBuffer));
-            
-                        
-            //ignore any byte kept so far in this message
-            bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
-            FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
-            
-         //   System.err.println("B "+ringBuffer.contentRemaining(ringBuffer));
-          
-         //   System.err.println("wrote bytes to position:"+ringBuffer.addBytePos.value);
             
             // Write new catalog to old stream stream so it is the last one written.
             FASTRingBufferWriter.writeInt(ringBuffer, CATALOG_TEMPLATE_ID);        

@@ -21,9 +21,6 @@ public class Extractor {
     byte[]  TEXT_COMMA2 = ",,,".getBytes(); //TODO: can be set externally to allow 1 char as text based on this pattern
     byte[]  TEXT_COMMA4 = ",,,,".getBytes();
         
-    //TODO: add support for string literals as needed
-    final byte[][] temp = new byte[][]{};
-
     
     //TODO: B, Based on this design build another that can parse JSON
     
@@ -48,9 +45,7 @@ public class Extractor {
         this.closeQuote = closeQuote;
         this.escape = escape;
         
-        this.tailPadding =   Math.max(
-                                recordDelimiter.length,
-                                temp.length);
+        this.tailPadding =   recordDelimiter.length;
     }
 
     
@@ -301,20 +296,6 @@ public class Extractor {
                     flushContent(mappedBuffer, visitor, workspace);
                     flushField(visitor, workspace);
                     mappedBuffer.position(mappedBuffer.position()+1);
-                    //the field has finished so check for the special case values //TODO: also do this on line beginning
-                    
-                    int j = temp.length;
-                    while (--j>=0) {
-                        if (foundHere(mappedBuffer,temp[j])) { 
-                            
-                            workspace.contentQuoted = false;
-                            workspace.contentPos = mappedBuffer.position();
-                            mappedBuffer.position(mappedBuffer.position()+temp[j].length);
-                            j=-1;
-                        }
-                    }
-                    
-                    
                 }
             }
            
