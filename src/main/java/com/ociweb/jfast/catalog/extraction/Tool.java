@@ -50,9 +50,9 @@ public class Tool {
         if (null!=fullPath && fullPath.length()>0) {
             File file = new File(fullPath);
             if (file.exists()) {
-                FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
+                FileChannel fileChannel = new RandomAccessFile(file, "r").getChannel();
                 
-                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+                CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
                 
                 try {
                     ex.extract(fileChannel, visitor);
@@ -110,7 +110,7 @@ public class Tool {
             if (file.exists()) {
                 FileChannel fileChannel = new RandomAccessFile(file, "rw").getChannel();
                 
-                Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+                CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
                 
                 try {
                     ex.extract(fileChannel, visitor1, visitor2);  

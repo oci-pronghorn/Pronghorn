@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
-import com.ociweb.jfast.catalog.extraction.Extractor;
+import com.ociweb.jfast.catalog.extraction.CSVTokenizer;
 import com.ociweb.jfast.catalog.extraction.FieldTypeVisitor;
 import com.ociweb.jfast.catalog.extraction.RecordFieldExtractor;
 import com.ociweb.jfast.catalog.extraction.RecordFieldValidator;
@@ -135,13 +135,15 @@ public class FASTUtil {
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
-			Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 30);
+			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 30);
 		    ex.extract(fileChannel, visitor);  
 		    
 		} catch (IOException e) {
 		    System.err.println(e.getLocalizedMessage());
 		    System.exit(-2);
 		}
+		
+		visitor.printResults();
 	}
 
 
@@ -155,7 +157,7 @@ public class FASTUtil {
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
-			Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
 		    ex.extract(fileChannel, visitor1);//, visitor2);  
 
 		    //write out the new final template that was used at the end of the file.

@@ -372,13 +372,22 @@ public class RecordFieldExtractor {
 		
 		//if type is null???
         if (TYPE_NULL == type) {            
-            //select the optional type instead of null
+            //select the first optional type instead of null
             int i = typeTrieUnit;
             while (--i>=0) {
                 if (TYPE_NULL != i) {                    
-                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {    
+                    if (0 != (OPTIONAL_FLAG & ( typeTrie[typeTrieCursor+i]))) {   
+                    	
+                    	
+                    	//record that this choice was made, this is cleared upon new message so we pick something else next time arround.
+                    	
+                    	//store this in a stack that we can pop off later and change
+                    	
+                    	
                     	//System.err.println("swapped null for:"+i);
-                        typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+i];  
+                        
+                    	
+                    	typeTrieCursor = OPTIONAL_LOW_MASK&typeTrie[typeTrieCursor+i];  
                     	return i; 
                     }                
                 }                
@@ -942,7 +951,7 @@ public class RecordFieldExtractor {
     }
 
     public byte[] memoizeCatBytes() {
-         return catBytes = catBytes(new ClientConfig(20,24)); //TODO: A, expose these constants!        
+         return catBytes = catBytes(new ClientConfig(20,26)); //TODO: A, expose these constants!        
     }
     
     public byte[] getCatBytes() {

@@ -96,7 +96,8 @@ public class ExtractorTest {
             }
             
             @Override
-            public void closeField(int startPos) {
+            public boolean closeField(int startPos) {
+            	return true;//this was successful so continue
             }
             
             @Override
@@ -119,9 +120,9 @@ public class ExtractorTest {
             }
         };
               	
-        FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
+        FileChannel fileChannel = new RandomAccessFile(testFile, "r").getChannel();
         
-        Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 3); //8 byte page size
+        CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 3); //8 byte page size
         
         try {
             ex.extract(fileChannel, visitor);
@@ -150,9 +151,9 @@ public class ExtractorTest {
         RecordFieldExtractor typeAccum = new RecordFieldExtractor(RecordFieldValidator.ALL_VALID);   
         FieldTypeVisitor visitor = new FieldTypeVisitor(typeAccum);
 
-        FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
+        FileChannel fileChannel = new RandomAccessFile(testFile, "r").getChannel();
         
-        Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 20);
+        CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 20);
         
         try {
             ex.extract(fileChannel, visitor);
@@ -201,7 +202,7 @@ public class ExtractorTest {
         
         final FileChannel fileChannel = new RandomAccessFile(testFile, "rw").getChannel();
         
-        final Extractor ex = new Extractor(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+        final CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
         
         ///TOOD: need writer to extract ring buffer and write to stream.
         

@@ -8,7 +8,16 @@ import java.util.List;
 
 import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
+import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
+import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
+import com.ociweb.jfast.stream.FASTDynamicWriter;
+import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
 
 public class StreamingVisitor implements ExtractionVisitor {
@@ -124,7 +133,8 @@ public class StreamingVisitor implements ExtractionVisitor {
         
     	
     	lastClosedLine = new String(messageTypes.bytesForLine(startPos));
-    	//System.err.println(lastClosedLine);
+    	
+    	//System.err.println("line:"+lastClosedLine);
     	
     	
         messageTypes.resetToRecordStart();
@@ -137,15 +147,38 @@ public class StreamingVisitor implements ExtractionVisitor {
         startingMessage = true;       
         
         messageTypes.totalRecords++;
+               
+    //    FASTRingBuffer.dump(ringBuffer);
+        
+//    	if (null!=dynamicWriter) {
+//	        while (FASTRingBuffer.canMoveNext(ringBuffer)) {
+//	        	
+//	        	System.err.println(ringBuffer.consumerData.getMessageId());
+//	        	
+//	        	
+//////
+//////	            try{   
+//////	                dynamicWriter.write();
+//////	            } catch (FASTException e) {
+//////	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+//////	                throw e;
+//////	            }                            
+//////
+//	        }
+//    	}
+        
     }
 
     @Override
-    public void closeField(int startPos) {
+    public boolean closeField(int startPos) {
     	
     	if (startingMessage) {
     		 int templateId = 1;
     		 FASTRingBufferWriter.writeInt(ringBuffer, templateId);  
     	}    	
+    	
+    	//TODO: if we have multiple choices we will need branch prediction to try the most likely
+    	//      upon failure mark it and return false to read from the start of the message again.
     	
         //selecting the message type one field at at time as we move forward
         int fieldType = messageTypes.convertRawTypeToSpecific(messageTypes.moveNextField());
@@ -214,6 +247,8 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         startingMessage = false;
         
+        return true;//this was successful so continue
+        
     }
 
 
@@ -226,12 +261,21 @@ public class StreamingVisitor implements ExtractionVisitor {
         accumValueChars = 0;
 	}
 
+    int writeBuffer = 2048;
+    FASTOutputTotals fastOutput = new FASTOutputTotals();
+    PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
+    FASTDynamicWriter dynamicWriter = null;
+    
     @Override
     public void closeFrame() {   
     	boolean debug = true;
     	if (debug) {
     		System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine);
     	}
+    	   
+    	
+    	System.err.println("ringBufferBytes:"+ringBuffer.workingHeadPos.value);
+    	
     }
 
     //TODO: hack test for now this should be a ring buffer of ring buffers.
@@ -246,14 +290,14 @@ public class StreamingVisitor implements ExtractionVisitor {
     	//next frame will begin again from the start of the message.
     	bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
     	FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
-
+   	
     	
         //get new catalog if is has been changed by the other visitor
         byte[] catBytes = messageTypes.getCatBytes();
         if (!Arrays.equals(this.catBytes, catBytes)) {
             this.catBytes = catBytes;        
             catalog = new TemplateCatalogConfig(catBytes);
-        //    System.err.println("new catalog");            
+            System.err.println("new catalog");            
             
             //TODO: A, need to build FieldRectordExtractor so it matches the existing catalog, then we can start with a given catalog and remove this dynamic part.
             
@@ -277,6 +321,13 @@ public class StreamingVisitor implements ExtractionVisitor {
             
             //TODO: chain these ring buffers
              ringBuffer = newRingBuffer;
+             
+
+             //TODO: this fine for the static template but not sure about the dynamic one.
+             FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+             dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
+
+     
             
         }        
     }
@@ -291,5 +342,13 @@ public class StreamingVisitor implements ExtractionVisitor {
 		return ringBufferList.get(index);
 	//	return ringBuffer;
 	}
+
+	public void printResults() {
+		
+		// TODO Auto-generated method stub
+		
+	}
+
+
 
 }

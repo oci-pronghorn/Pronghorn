@@ -256,7 +256,7 @@ public final class FASTRingBuffer {
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
         ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
-        
+   //     System.err.println("messageId :"+ringBufferConsumer.getMessageId());
         //start new message, can not be seq or optional group or end of message.
         ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
         ringBufferConsumer.setNewMessage(true);

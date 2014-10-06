@@ -6,6 +6,8 @@ public class ExtractorWorkspace {
     public int contentPos;
     public boolean contentQuoted;
     private int recordStart;
+       
+    
     public ExtractorWorkspace(boolean inQuote, boolean inEscape, int contentPos, boolean contentQuoted, int recordStart) {
         this.inQuote = inQuote;
         this.inEscape = inEscape;

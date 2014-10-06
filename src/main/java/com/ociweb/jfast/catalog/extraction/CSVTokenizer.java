@@ -5,7 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 
-public class Extractor {
+public class CSVTokenizer {
 
     private final int fieldDelimiter;
     private final byte[] recordDelimiter;
@@ -14,7 +14,7 @@ public class Extractor {
     private final int escape;    
     private final long blockSize;
 
-    final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
+    private final int tailPadding;  //padding required to ensure full length of tokens are not split across mapped blocks
     
     //the next char is a text because of the following text
     byte[]  TEXT_COMMA1 = ", ".getBytes();//TODO: these should not be here, instead recombine after populating the tree structure.
@@ -34,8 +34,21 @@ public class Extractor {
     //zero copy and garbage free
     //visitor may do copy and may produce garbage
 
-    public Extractor(int fieldDelimiter, byte[] recordDelimiter,
-                     int openQuote, int closeQuote, int escape, int pageBits) {
+    /**
+     * 
+     * @param fieldDelimiter only supports a single char
+     * @param recordDelimiter supports an array of bytes so slash n slash r OR only one or the other
+     * @param openQuote only supports a single char
+     * @param closeQuote only supports a single char
+     * @param escape only supports a single char
+     * @param pageBits base 2 to the power of this minus 1 is the size of the memory mapped window that is used to traverse the file.
+     */
+    public CSVTokenizer(int fieldDelimiter, 
+    		            byte[] recordDelimiter,
+                        int openQuote, 
+                        int closeQuote, 
+                        int escape, 
+                        int pageBits) {
     	
     	this.blockSize = (1l<<pageBits)-1;
     	
@@ -69,15 +82,11 @@ public class Extractor {
             }
             
             visitor.openFrame();
-            do {
-                parse(mappedBuffer, visitor, workspace);
+                        
+            do {  
+            	parse(mappedBuffer, visitor, workspace);
             } while (mappedBuffer.remaining()>padding);
-            if (position+mappedBuffer.position()>=fileSize) {
-                if (flushContent(mappedBuffer,visitor, workspace)) {
-                    flushField(visitor, workspace);
-                    flushRecord(visitor, mappedBuffer.position(), workspace);
-                }
-            }
+            //this tokenizer assumes that the file ends with a field delimiter so the last record gets flushed.
             
             
             //notify the visitor that the buffer is probably going to change out from under them
@@ -122,12 +131,7 @@ public class Extractor {
             do {
                 parse(mappedBuffer, visitor1, workspace1);
             } while (mappedBuffer.remaining()>padding);
-            if (position+mappedBuffer.position()>=fileSize) {
-                if (flushContent(mappedBuffer,visitor1, workspace1)) {
-                    flushField(visitor1, workspace1);
-                    flushRecord(visitor1, mappedBuffer.position(), workspace1);
-                }
-            }
+            //this tokenizer assumes that the file ends with a field delimiter so the last record gets flushed.
             
             visitor1.closeFrame();           
             workspace1.reset();//must be done after any calls for data in workspace
@@ -139,14 +143,10 @@ public class Extractor {
             do {
                 parse(mappedBuffer, visitor2, workspace2);
             } while (mappedBuffer.remaining()>padding);
+            //this tokenizer assumes that the file ends with a field delimiter so the last record gets flushed.
+            
             //notify the visitor that the buffer is probably going to change out from under them
             visitor2.closeFrame();
-            if (position+mappedBuffer.position()>=fileSize) {
-                if (flushContent(mappedBuffer,visitor2, workspace2)) {
-                    flushField(visitor2, workspace2);
-                    flushRecord(visitor2, mappedBuffer.position(), workspace2);
-                }
-            }
             
             //only increment by exactly how many bytes were read assuming we started at zero
             position+=workspace2.getRecordStart();//Only done once by the last visitor for this data.
@@ -163,14 +163,12 @@ public class Extractor {
     //      messages that have the same field signatures but define them with different.  Each unique set of labels will need to define
     //      its own TypeTrie
     
-    private boolean flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+    private void flushContent(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (workspace.contentPos>=0 && mappedBuffer.position()>workspace.contentPos) {
             visitor.appendContent(mappedBuffer, workspace.contentPos, mappedBuffer.position(), workspace.contentQuoted);
             workspace.contentPos = -1;
             workspace.contentQuoted = false;
-            return true;
         }
-        return false;
     }
 
     private void flushRecord(ExtractionVisitor visitor, int pos, ExtractorWorkspace workspace) {
@@ -182,17 +180,22 @@ public class Extractor {
        
     }
 
-    private void flushField(ExtractionVisitor visitor, ExtractorWorkspace workspace) {
-        visitor.closeField(workspace.getRecordStart());
+    private boolean flushFieldToVisitor(ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+        return visitor.closeField(workspace.getRecordStart());
     }
 
 
     private void parse(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
-        parseEscape(mappedBuffer, visitor, workspace);
+        
+    	//when set to false enables early frame reset starting at beginning of the active record
+    	//this allows for visitors to request 'replay' from the beginning of the open record
+    	while (!parseEscape(mappedBuffer, visitor, workspace)) {
+    		mappedBuffer.position(workspace.getRecordStart());
+    	}
     }
 
 
-    private void parseEscape(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+    private boolean parseEscape(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (mappedBuffer.get(mappedBuffer.position())==escape) { 
             if (workspace.inEscape) {
                 //starts new content block from this location
@@ -200,17 +203,18 @@ public class Extractor {
                 workspace.contentQuoted = workspace.inQuote;
                 workspace.inEscape = false;
             } else {
+            	workspace.inEscape = true;
                 flushContent(mappedBuffer, visitor, workspace);                
-                workspace.inEscape = true;
             }
             mappedBuffer.position(mappedBuffer.position()+1);
         } else {
-            parseQuote(mappedBuffer, visitor, workspace);
-            workspace.inEscape = false;
+        	workspace.inEscape = false;
+            return parseQuote(mappedBuffer, visitor, workspace);
         }
+        return true;
     }
 
-    private void parseQuote(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+    private boolean parseQuote(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (workspace.inQuote) {
             if (mappedBuffer.get(mappedBuffer.position())==closeQuote) {
                 if (workspace.inEscape) {
@@ -222,11 +226,10 @@ public class Extractor {
                     workspace.inQuote = false;  
                 }
                 mappedBuffer.position(mappedBuffer.position()+1);
+                return true;
             } else {
-                parseRecord(mappedBuffer, visitor, workspace);   
+                return parseRecord(mappedBuffer, visitor, workspace);   
             }
-            
-            
         } else {
             if (mappedBuffer.get(mappedBuffer.position())==openQuote) {
                 if (workspace.inEscape) {
@@ -238,17 +241,17 @@ public class Extractor {
                     workspace.inQuote = true;
                 }
                 mappedBuffer.position(mappedBuffer.position()+1);
+                return true;
             } else {
-                parseRecord(mappedBuffer, visitor, workspace);       
-                
-            }           
-            
+                return parseRecord(mappedBuffer, visitor, workspace);   
+            }   
         }
     }
     
     
-    private void parseRecord(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+    private boolean parseRecord(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
         if (foundHere(mappedBuffer,recordDelimiter)) {
+        	//System.err.println("found delimiter");
             if (workspace.inEscape) {
                 //starts new content block from this location
                 workspace.contentPos = mappedBuffer.position();
@@ -259,15 +262,18 @@ public class Extractor {
                     parseField(mappedBuffer, visitor, workspace);  
                 } else {
                     flushContent(mappedBuffer, visitor, workspace);
-                    flushField(visitor, workspace);
-                    flushRecord(visitor, mappedBuffer.position(), workspace);
+                    if (flushFieldToVisitor(visitor, workspace)) {
+                    	flushRecord(visitor, mappedBuffer.position(), workspace);
+                    } else {
+                    	return false;
+                    }
                 }
             }
             mappedBuffer.position(mappedBuffer.position()+recordDelimiter.length);
         } else {
-            parseField(mappedBuffer, visitor, workspace);       
-            
+            parseField(mappedBuffer, visitor, workspace);  
         }           
+        return true;
     }
    
     //TODO: extract rules for continued content, add and NOT ,,,, and add that these 2 must alreay have content.
@@ -279,7 +285,7 @@ public class Extractor {
         
     }
     
-    private void parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
+    private boolean parseField(MappedByteBuffer mappedBuffer, ExtractionVisitor visitor, ExtractorWorkspace workspace) {
                 
         if (mappedBuffer.get(mappedBuffer.position())==fieldDelimiter && mayBeEndOfField(mappedBuffer, workspace) ) {
             if (workspace.inEscape) {
@@ -294,14 +300,19 @@ public class Extractor {
                     mappedBuffer.position(mappedBuffer.position()+1);
                 } else {                
                     flushContent(mappedBuffer, visitor, workspace);
-                    flushField(visitor, workspace);
-                    mappedBuffer.position(mappedBuffer.position()+1);
+                    if (flushFieldToVisitor(visitor, workspace)) {
+                    	mappedBuffer.position(mappedBuffer.position()+1);
+                    } else {
+                    	return false;
+                    }
+                    
                 }
             }
            
         } else {
             parseContent(mappedBuffer, workspace); 
         }      
+        return true;
     }   
     
     
