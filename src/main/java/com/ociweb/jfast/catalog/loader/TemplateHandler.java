@@ -358,7 +358,7 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             fieldName=null;//ensure it is only used once
-            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = templateId;
 
             
             
@@ -629,12 +629,12 @@ public class TemplateHandler extends DefaultHandler {
             // inside the group.
             catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = 
                                                 (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
-            catalogScriptFieldIds[openGroupIdx++] = 0;
+            openGroupIdx++; //fieldId already populated do not modify
 
             //add closing group to script
             catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize,
                                                             TokenBuilder.MASK_ABSENT_DEFAULT);
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+            catalogTemplateScriptIdx++; //fieldId already populated do not modify
 
             
             // we do need to decrement the stack counter because it was used for

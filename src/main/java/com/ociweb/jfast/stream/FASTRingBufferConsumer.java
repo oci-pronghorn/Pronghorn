@@ -4,7 +4,7 @@ import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.util.Stats;
 
 public class FASTRingBufferConsumer {
-    private int messageId;
+    public int messageId=-1;
     private boolean isNewMessage;
     public boolean waiting;
     private long waitingNextStop;

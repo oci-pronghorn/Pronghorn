@@ -78,10 +78,14 @@ public class TemplateCatalogConfig {
         templateStartIdx = new int[1 << templatePow];
         templateLimitIdx = new int[1 << templatePow];
 
+        //given an index in the script lookup the tokens, fieldIds or fieldNames
         int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
         scriptTokens = new int[fullScriptLength];
         scriptFieldIds = new int[fullScriptLength];
         scriptFieldNames = new String[fullScriptLength];
+        
+        //given the template id from the template file look up the 
+        //script starts and limits
         templatesInCatalog = PrimitiveReader.readIntegerUnsigned(reader);
         templateScriptEntries = new int[templatesInCatalog];
         templateScriptEntryLimits = new int[templatesInCatalog];

@@ -72,6 +72,7 @@ public class RecordFieldExtractor {
     public static final int TYPE_DECIMAL = TypeMask.Decimal>>1;      //  6
     public static final int TYPE_NULL = 7;//no need to use BYTE_ARRAY, its the same as UTF8
     //NOTE: more will be added here for group and sequence once JSON support is added
+    private static final int TYPE_TID = 14; //template id
     private static final int TYPE_EOM = 15;
     
     //                                              
@@ -512,7 +513,13 @@ public class RecordFieldExtractor {
         activeQuote = false;
     }
     
+    public int templateId() {
+    	return typeTrie[typeTrieCursor+TYPE_TID];
+    }
+    
+    
     public void resetToRecordStart() {
+    	    	
     	resetFieldSum();
         nullCount = 0;
         utf8Count = 0;
@@ -985,7 +992,10 @@ public class RecordFieldExtractor {
         int[] limits  = config.templateScriptEntryLimits;
         int[] scripts = config.fullScript();
         
-           
+        int[] fieldIdScript = config.fieldIdScript();
+        String[] fieldNameScript = config.fieldNameScript();
+        
+        
         int j = entries.length;
         while (--j>=0) {
         	resetToRecordStart();
@@ -993,29 +1003,24 @@ public class RecordFieldExtractor {
         	int stop = limits[j];//inclusive
         	while (i<=stop) {
         		int token = scripts[i++];        		
-        		int type = TokenBuilder.extractType(token);        		
-        		
+        		int type = TokenBuilder.extractType(token); 
         		
         		int simpleType = type>>1;
         		if (simpleType<TYPE_NULL) {        			
-        			
-	        		//System.err.println(TokenBuilder.tokenToString(token)+"  "+type);
-	        		//System.err.println("xx "+(type>>1)+"   "+TokenBuilder.tokenToString(token));
-	        		
 	        		
 	        		appendNewField(((type&1)<<OPTIONAL_SHIFT) | simpleType);  
 	        		
-	        		if (TYPE_DECIMAL==simpleType) {
+	        		if (TYPE_DECIMAL == simpleType) {
 	        			//special case because a decimal takes up two slots, TODO: change to data driven impl?
 	        			i++;	        			
-	        		}
-	        		
-	        		
-        		}
-        		
-        	}   
+	        		}	        			        		
+        		}        		
+        	}
+        	//store the template id at the end of the selected sequence.
+        	typeTrie[typeTrieCursor+TYPE_TID] = fieldIdScript[entries[j]];
+        	
         	//add 1 to this message count in order to validate it
-        	 ++typeTrie[typeTrieCursor+TYPE_EOM];
+        	typeTrie[typeTrieCursor+TYPE_EOM]++;
         	
         	
         }

@@ -36,6 +36,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     long accumSign;
     boolean aftetDot;
     boolean startingMessage = true;
+    long offestForTemplateId = -1;
     
     
     static final long[] POW_10;
@@ -134,7 +135,11 @@ public class StreamingVisitor implements ExtractionVisitor {
     	
     	lastClosedLine = new String(messageTypes.bytesForLine(startPos));
     	
-    	//System.err.println("line:"+lastClosedLine);
+    //	System.err.println(offestForTemplateId+" "+messageTypes.templateId()+" old pos "+ringBuffer.headPos+" new pos "+ringBuffer.workingHeadPos.value);
+    	
+    	//write tid to point in stream before we publish.
+    	FASTRingBuffer.setValue(ringBuffer.buffer, ringBuffer.mask, offestForTemplateId, messageTypes.templateId());
+    	offestForTemplateId = -1;
     	
     	
         messageTypes.resetToRecordStart();
@@ -150,22 +155,26 @@ public class StreamingVisitor implements ExtractionVisitor {
                
     //    FASTRingBuffer.dump(ringBuffer);
         
-//    	if (null!=dynamicWriter) {
-//	        while (FASTRingBuffer.canMoveNext(ringBuffer)) {
-//	        	
-//	        	System.err.println(ringBuffer.consumerData.getMessageId());
-//	        	
-//	        	
-//////
-//////	            try{   
-//////	                dynamicWriter.write();
-//////	            } catch (FASTException e) {
-//////	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
-//////	                throw e;
-//////	            }                            
-//////
-//	        }
-//    	}
+    	if (null!=dynamicWriter) {
+	        while (FASTRingBuffer.canMoveNext(ringBuffer)) {
+	        	
+	        //TODO: Why is this message id not reset when I expect?	
+	        	ringBuffer.consumerData.messageId = -1;
+	        	
+	        //	System.err.println(ringBuffer.consumerData.isNewMessage()+" read templateId:"+ringBuffer.consumerData.getMessageId());
+////	        	
+////	        	
+////	        	
+//
+//	            try{   
+//	                dynamicWriter.write();
+//	            } catch (FASTException e) {
+//	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+//	                throw e;
+//	            }                            
+//
+	        }
+    	}
         
     }
 
@@ -173,8 +182,12 @@ public class StreamingVisitor implements ExtractionVisitor {
     public boolean closeField(int startPos) {
     	
     	if (startingMessage) {
-    		 int templateId = 1;
-    		 FASTRingBufferWriter.writeInt(ringBuffer, templateId);  
+    		// int templateId = 64;
+    		 
+    //		 System.err.println("started message and wrote "+templateId);
+    		 offestForTemplateId = ringBuffer.workingHeadPos.value++;
+    		// FASTRingBufferWriter.writeInt(ringBuffer, templateId);
+    		 
     	}    	
     	
     	//TODO: if we have multiple choices we will need branch prediction to try the most likely

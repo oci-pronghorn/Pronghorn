@@ -143,7 +143,7 @@ public final class FASTRingBuffer {
         
         //check if we are only waiting for the ring buffer to clear
         if (ringBufferConsumer.waiting) {
- //       	System.err.println("waiting");
+        //	System.err.println("waiting");
             //only here if we already checked headPos against moveNextStop at least once and failed.
             
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
@@ -157,12 +157,11 @@ public final class FASTRingBuffer {
         ringBuffer.workingTailPos.value = cashWorkingTailPos;
         ringBufferConsumer.activeFragmentDataSize = (0);
         
-        
-        if (ringBufferConsumer.getMessageId()<0) {     
+        if (ringBufferConsumer.messageId<0) {     
         //	System.err.println("aaa");
             return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
-        //	System.err.println("bbb");
+        	//System.err.println("bbb "+ringBufferConsumer.isNewMessage());
             return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
         
@@ -172,6 +171,7 @@ public final class FASTRingBuffer {
 
     private static boolean beginFragment(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, final long cashWorkingTailPos) {
         ringBufferConsumer.setNewMessage(false);
+        
         int lastCursor = ringBufferConsumer.cursor;
         int fragStep = ringBufferConsumer.from.fragScriptSize[lastCursor]; //script jump 
         ringBufferConsumer.cursor = (ringBufferConsumer.cursor + fragStep);
@@ -191,6 +191,19 @@ public final class FASTRingBuffer {
                 return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 
             }
+        } else {
+        	//no sequence length, still check for end of message
+            //detecting end of message
+            int token;//do not set before cursor is checked to ensure it is not after the script length
+            if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
+                    ((((token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor]) >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
+                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
+                    0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
+                
+                return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
+
+            }
+        	
         }
         
         //save the index into these fragments so the reader will be able to find them.
@@ -210,14 +223,13 @@ public final class FASTRingBuffer {
         ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
         
         //do not let client read fragment if it is not fully in the ring buffer.
-    //    new Exception(cashWorkingTailPos+"  "+ ringBufferConsumer.activeFragmentDataSize).printStackTrace();
         ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
         
         //
         if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
-                ringBufferConsumer.waiting = (true);
+                ringBufferConsumer.waiting = true;
                 return false;
             }
         }
@@ -230,7 +242,7 @@ public final class FASTRingBuffer {
     //TODO: C, need to step over the preamble? but how?
     
     private static boolean beginNewMessage(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
-        
+    	ringBufferConsumer.setMessageId(-1);
         //if we can not start to read the next message because it does not have the template id yet
         //then fail fast and do not move the tailPos yet until we know it can be read        
         long needStop = cashWorkingTailPos + 1; //NOTE: do not make this bigger or hangs are likely
@@ -256,7 +268,6 @@ public final class FASTRingBuffer {
         ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
         ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
-   //     System.err.println("messageId :"+ringBufferConsumer.getMessageId());
         //start new message, can not be seq or optional group or end of message.
         ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
         ringBufferConsumer.setNewMessage(true);
@@ -264,7 +275,6 @@ public final class FASTRingBuffer {
         //////
         ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
         return true;
-       // return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
     }
     
     //only called after moving forward.
@@ -387,6 +397,10 @@ public final class FASTRingBuffer {
     //we can push 1gbs more of compressed data for each 10% of cpu freed up.
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value) {
         buffer[rbMask & (int)headCache.value++] = value;
+    } 
+    
+    public static void setValue(int[] buffer, int rbMask, long offset, int value) {
+        buffer[rbMask & (int)offset] = value;
     } 
     
     //long p = headCache.value; //TODO: code gen may want to replace this

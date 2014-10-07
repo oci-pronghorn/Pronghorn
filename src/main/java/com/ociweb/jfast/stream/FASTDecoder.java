@@ -40,9 +40,10 @@ public abstract class FASTDecoder{
    
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
-        this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(), computePMapStackInBytes(catalog), 
-             catalog.getTemplateStartIdx(), catalog.getTemplateLimitIdx(), 
-             catalog.maxTemplatePMapSize(), catalog.clientConfig().getPreableBytes(), catalog.ringBuffers());
+        this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(),
+        	 catalog.getTemplateStartIdx(), 
+             catalog.getTemplateLimitIdx(), catalog.clientConfig().getPreableBytes(), 
+             catalog.ringBuffers());
     }
     
     private static int computePMapStackInBytes(TemplateCatalogConfig catalog) {
@@ -51,9 +52,10 @@ public abstract class FASTDecoder{
     }
     
             
-    private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, int maxPMapCountInBytes,
-            int[] templateStartIdx, int[] templateLimitIdx,
-            int maxTemplatePMapSize, int preambleBytes, RingBuffers ringBuffers) {
+    private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
+    		            int[] templateStartIdx,
+			            int[] templateLimitIdx, int preambleBytes,
+			            RingBuffers ringBuffers) {
 
         this.byteHeap = dcr.byteDictionary();
         
