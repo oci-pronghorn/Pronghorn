@@ -979,6 +979,7 @@ public final class PrimitiveWriter {
             writer.output.flush();
         }
         int len = length-1;
+        //if this causes an array index out of bounds you probably should have called the other one with mask
         System.arraycopy(value, offset, writer.buffer, writer.limit, len);
         writer.limit+=len;
         offset+=len;
@@ -991,7 +992,8 @@ public final class PrimitiveWriter {
         if (0 == length) {
             encodeZeroLengthASCII(writer);
             return;
-        } else if (writer.limit > writer.buffer.length - length) {
+        } 
+        if (writer.limit > writer.buffer.length - length) {
             // if it was not zero and was too long flush
             writer.output.flush();
         }

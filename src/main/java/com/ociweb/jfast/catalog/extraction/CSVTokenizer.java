@@ -88,6 +88,7 @@ public class CSVTokenizer {
             } while (mappedBuffer.remaining()>padding);
             //this tokenizer assumes that the file ends with a field delimiter so the last record gets flushed.
             
+            System.err.println("byte read so far:"+(position+workspace.getRecordStart()));
             
             //notify the visitor that the buffer is probably going to change out from under them
             visitor.closeFrame();

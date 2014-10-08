@@ -155,15 +155,22 @@ public final class FASTRingBuffer {
     //    System.err.println("xx"+ringBuffer.workingTailPos.value+"  "+ringBufferConsumer.activeFragmentDataSize);
         final long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.activeFragmentDataSize;
         ringBuffer.workingTailPos.value = cashWorkingTailPos;
-        ringBufferConsumer.activeFragmentDataSize = (0);
+        ringBufferConsumer.activeFragmentDataSize = 0;
         
+        //Use open record or closed record?  this should match the stack we need for reading? messageId and the hasNewMessage?
+       //TODO: how to know when we reached the end of the message!
+        
+        //TODO: begin new message if the cashWorkingTailPos is after ???
         if (ringBufferConsumer.messageId<0) {     
-        //	System.err.println("aaa");
+     //   	System.err.println("aaa");
             return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
-        	//System.err.println("bbb "+ringBufferConsumer.isNewMessage());
+      //  	System.err.println("bbb "+ringBufferConsumer.isNewMessage());
             return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
+        
+        //reset to -1 but dont if...
+        
         
     }
 
@@ -180,30 +187,17 @@ public final class FASTRingBuffer {
         //////////////
         ////Never call these when we jump back for loop
         //////////////
-        if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {
+        if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {//TokenBuilder.t
             //detecting end of message
             int token;//do not set before cursor is checked to ensure it is not after the script length
             if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
                     ((((token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor]) >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
-                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
-                    0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
+                    	0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) //&& //TODO: B, would be much better with end of MSG bit
+                    	)) {
                 
                 return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 
             }
-        } else {
-        	//no sequence length, still check for end of message
-            //detecting end of message
-            int token;//do not set before cursor is checked to ensure it is not after the script length
-            if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
-                    ((((token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor]) >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
-                    0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) && //TODO: B, would be much better with end of MSG bit
-                    0!=(token & (OperatorMask.Group_Bit_Close<< TokenBuilder.SHIFT_OPER)))) {
-                
-                return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
-
-            }
-        	
         }
         
         //save the index into these fragments so the reader will be able to find them.

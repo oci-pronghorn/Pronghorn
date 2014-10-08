@@ -1,11 +1,13 @@
 package com.ociweb.jfast.catalog.extraction;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import com.esotericsoftware.kryo.io.FastOutput;
 import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
@@ -13,6 +15,7 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
+import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
@@ -158,20 +161,19 @@ public class StreamingVisitor implements ExtractionVisitor {
     	if (null!=dynamicWriter) {
 	        while (FASTRingBuffer.canMoveNext(ringBuffer)) {
 	        	
-	        //TODO: Why is this message id not reset when I expect?	
-	        	ringBuffer.consumerData.messageId = -1;
+
 	        	
 	        //	System.err.println(ringBuffer.consumerData.isNewMessage()+" read templateId:"+ringBuffer.consumerData.getMessageId());
 ////	        	
 ////	        	
 ////	        	
 //
-//	            try{   
-//	                dynamicWriter.write();
-//	            } catch (FASTException e) {
-//	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
-//	                throw e;
-//	            }                            
+	            try{   
+	                dynamicWriter.write();
+	            } catch (FASTException e) {
+	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+	                throw e;
+	            }                            
 //
 	        }
     	}
@@ -274,8 +276,11 @@ public class StreamingVisitor implements ExtractionVisitor {
         accumValueChars = 0;
 	}
 
+	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	FASTOutputStream fastOutput = new FASTOutputStream(baos);
+	//FASTOutputTotals fastOutput = new FASTOutputTotals();
+	
     int writeBuffer = 2048;
-    FASTOutputTotals fastOutput = new FASTOutputTotals();
     PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
     FASTDynamicWriter dynamicWriter = null;
     
@@ -286,8 +291,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     		System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine);
     	}
     	   
-    	
-    	System.err.println("ringBufferBytes:"+ringBuffer.workingHeadPos.value);
+    	System.err.println("ringBuffer Ints:"+ringBuffer.workingHeadPos.value+" written FAST:"+baos.size());
     	
     }
 

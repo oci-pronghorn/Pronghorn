@@ -241,7 +241,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int offset = FASTRingBuffer.readRingBytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
-            PrimitiveWriter.writeTextASCII(buffer, offset, length, writer);
+            PrimitiveWriter.writeTextASCII(buffer, offset, length, rbRingBuffer.byteMask, writer);
         }
     }
     
@@ -252,7 +252,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeNull(writer);
             } else{        
                 int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-                PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), length, writer);
+                PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
             }
         }
     }
