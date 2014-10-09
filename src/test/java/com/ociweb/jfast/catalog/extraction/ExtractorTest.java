@@ -70,69 +70,69 @@ public class ExtractorTest {
 	
 	
 
-    @Test
-    public void extractTest() throws FileNotFoundException {
-        
-      //  FieldTypeVisitor visitor = new FieldTypeVisitor();
-        
-        int fieldDelimiter = (int)',';
-                
-        byte[] recordDelimiter = new byte[]{'\n'};
-        
-        int openQuote = (int)'"';        
-        int closeQuote = (int)'"';
-        
-        int escape = (int)'/';
-        
-        
-        ExtractionVisitor visitor = new ExtractionVisitor() {
-            
-            @Override
-            public void closeFrame() {
-            }
-            
-            @Override
-            public void closeRecord(int startPos) {
-            }
-            
-            @Override
-            public boolean closeField(int startPos) {
-            	return true;//this was successful so continue
-            }
-            
-            @Override
-            public void appendContent(MappedByteBuffer mappedBuffer, int start, int limit, boolean contentQuoted) {
-                                
-                byte[] target = new byte[limit-start];
-                ByteBuffer dup = mappedBuffer.duplicate();
-                dup.position(start);
-                dup.limit(limit);
-                dup.get(target,0,limit-start);
-
-                //TODO: add a test here
-                
-            }
-
-            @Override
-            public void openFrame() {
-                // TODO Auto-generated method stub
-                
-            }
-        };
-              	
-        FileChannel fileChannel = new RandomAccessFile(testFile, "r").getChannel();
-        
-        CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 3); //8 byte page size
-        
-        try {
-            ex.extract(fileChannel, visitor);
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-
-
-    }
+//    @Test
+//    public void extractTest() throws FileNotFoundException {
+//        
+//      //  FieldTypeVisitor visitor = new FieldTypeVisitor();
+//        
+//        int fieldDelimiter = (int)',';
+//                
+//        byte[] recordDelimiter = new byte[]{'\n'};
+//        
+//        int openQuote = (int)'"';        
+//        int closeQuote = (int)'"';
+//        
+//        int escape = (int)'/';
+//        
+//        
+//        ExtractionVisitor visitor = new ExtractionVisitor() {
+//            
+//            @Override
+//            public void closeFrame() {
+//            }
+//            
+//            @Override
+//            public void closeRecord(int startPos) {
+//            }
+//            
+//            @Override
+//            public boolean closeField(int startPos) {
+//            	return true;//this was successful so continue
+//            }
+//            
+//            @Override
+//            public void appendContent(MappedByteBuffer mappedBuffer, int start, int limit, boolean contentQuoted) {
+//                                
+//                byte[] target = new byte[limit-start];
+//                ByteBuffer dup = mappedBuffer.duplicate();
+//                dup.position(start);
+//                dup.limit(limit);
+//                dup.get(target,0,limit-start);
+//
+//                //TODO: add a test here
+//                
+//            }
+//
+//            @Override
+//            public void openFrame() {
+//                // TODO Auto-generated method stub
+//                
+//            }
+//        };
+//              	
+//        FileChannel fileChannel = new RandomAccessFile(testFile, "r").getChannel();
+//        
+//        CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 3); //8 byte page size
+//        
+//        try {
+//            ex.extract(fileChannel, visitor);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            fail();
+//        }
+//
+//
+//    }
     
     @Test
     public void fieldTypeExtractionTest() throws FileNotFoundException {

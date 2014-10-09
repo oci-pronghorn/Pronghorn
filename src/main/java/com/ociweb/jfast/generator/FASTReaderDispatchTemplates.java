@@ -1543,14 +1543,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadASCIIDelta(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-        int trim = PrimitiveReader.readIntegerSigned(reader);
-        if (trim >=0) {
-            StaticGlue.readASCIITail(target, byteHeap, reader, trim); 
-        } else {
-            StaticGlue.readASCIIHead(target, trim, byteHeap, reader);
-        }
-        int len = LocalHeap.valueLength(target,byteHeap);
-        FASTRingBuffer.addLocalHeapValue(target,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+    	{
+	    	int trim = PrimitiveReader.readIntegerSigned(reader);
+	        if (trim >=0) {
+	            StaticGlue.readASCIITail(target, byteHeap, reader, trim); 
+	        } else {
+	            StaticGlue.readASCIIHead(target, trim, byteHeap, reader);
+	        }
+	        int len = LocalHeap.valueLength(target,byteHeap);
+	        FASTRingBuffer.addLocalHeapValue(target,len,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+    	}
     }
 
     protected void genReadASCIICopy(int target, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
@@ -1612,13 +1614,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx, defLen);
             } else {
-                int bytePos = rbRingBuffer.addBytePos.value;
+                int bytePos = rbRingBuffer.addByteWorkingHeadPos.value;
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(byteBuffer,
                                                                     bytePos, 
                                                                     byteMask,
                                                                     reader);
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, bytePos, lenTemp);
-                rbRingBuffer.addBytePos.value = bytePos+lenTemp;                
+                rbRingBuffer.addByteWorkingHeadPos.value = bytePos+lenTemp;                
             }
     }    
 //                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
@@ -1740,7 +1742,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
                 
             if (length<0) {
-                FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addBytePos.value, length);
+                FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addByteWorkingHeadPos.value, length);
                 return;
             }
                     

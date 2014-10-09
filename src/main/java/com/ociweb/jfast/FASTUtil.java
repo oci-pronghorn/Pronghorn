@@ -119,8 +119,21 @@ public class FASTUtil {
     		}
     	} 
     	if (VALUE_DECODE.equalsIgnoreCase(task)) {
+    		File templateFile = new File(templateFilePath);
+    		if (!templateFile.exists()) {
+    			System.err.println("template file not found: "+templateFilePath);
+    			System.exit(-1);
+    			return;
+    		}
+    		File fastFile = new File(fastFilePath);
+    		if (!fastFile.exists()) {
+    			System.err.println("fast file not found: "+fastFilePath);
+    			System.exit(-1);
+    			return;
+    		}
     		
-    		//TODO: BUILD OUT DECODER
+    		
+    		//TODO: BUILD OUT DECODER to test the encoding
     		
     	} 
     }
@@ -135,7 +148,7 @@ public class FASTUtil {
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
-			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 30);
+			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 22);
 		    ex.extract(fileChannel, visitor);  
 		    
 		} catch (IOException e) {
@@ -157,7 +170,7 @@ public class FASTUtil {
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
-			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 29);
+			CSVTokenizer ex = new CSVTokenizer(fieldDelimiter, recordDelimiter, openQuote, closeQuote, escape, 30);
 		    ex.extract(fileChannel, visitor1);//, visitor2);  
 
 		    //write out the new final template that was used at the end of the file.

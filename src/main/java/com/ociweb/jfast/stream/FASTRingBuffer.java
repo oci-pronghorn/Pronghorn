@@ -62,7 +62,10 @@ public final class FASTRingBuffer {
     final int maxByteSize;
     public final int byteMask;
     public final byte[] byteBuffer;
-    public PaddedInt addBytePos = new PaddedInt();//TODO: remove from tail byte position is missing.
+    
+    public final PaddedInt addByteWorkingHeadPos = new PaddedInt();
+    public final PaddedAtomicInteger addBytesHeadPos = new PaddedAtomicInteger();
+    //TODO: A, remove from tail byte position is missing.
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -131,7 +134,8 @@ public final class FASTRingBuffer {
         workingTailPos.value = 0;
         tailPos.set(0);
         headPos.set(0); //System.err.println("reset()");
-        addBytePos.value = 0;
+        addByteWorkingHeadPos.value = 0;
+        addBytesHeadPos.set(0);
         
         FASTRingBufferConsumer.reset(consumerData);
         
@@ -143,34 +147,26 @@ public final class FASTRingBuffer {
         
         //check if we are only waiting for the ring buffer to clear
         if (ringBufferConsumer.waiting) {
-        //	System.err.println("waiting");
             //only here if we already checked headPos against moveNextStop at least once and failed.
             
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             ringBufferConsumer.waiting = (ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
+      //      System.err.println("AAA");
             return !(ringBufferConsumer.waiting);
         }
              
         //finished reading the previous fragment so move the working tail position forward for next fragment to read
-    //    System.err.println("xx"+ringBuffer.workingTailPos.value+"  "+ringBufferConsumer.activeFragmentDataSize);
         final long cashWorkingTailPos = ringBuffer.workingTailPos.value +  ringBufferConsumer.activeFragmentDataSize;
         ringBuffer.workingTailPos.value = cashWorkingTailPos;
         ringBufferConsumer.activeFragmentDataSize = 0;
-        
-        //Use open record or closed record?  this should match the stack we need for reading? messageId and the hasNewMessage?
-       //TODO: how to know when we reached the end of the message!
-        
-        //TODO: begin new message if the cashWorkingTailPos is after ???
-        if (ringBufferConsumer.messageId<0) {     
-     //   	System.err.println("aaa");
+
+        if (ringBufferConsumer.messageId<0) {  
+       // 	System.err.println("BBB");
             return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
-      //  	System.err.println("bbb "+ringBufferConsumer.isNewMessage());
+        //	System.err.println("CCC");
             return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
-        
-        //reset to -1 but dont if...
-        
         
     }
 
@@ -194,7 +190,7 @@ public final class FASTRingBuffer {
                     ((((token = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor]) >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group &&
                     	0==(token & (OperatorMask.Group_Bit_Seq<< TokenBuilder.SHIFT_OPER)) //&& //TODO: B, would be much better with end of MSG bit
                     	)) {
-                
+            //	System.err.println("DDD");
                 return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 
             }
@@ -237,8 +233,12 @@ public final class FASTRingBuffer {
     
     private static boolean beginNewMessage(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
     	ringBufferConsumer.setMessageId(-1);
-        //if we can not start to read the next message because it does not have the template id yet
-        //then fail fast and do not move the tailPos yet until we know it can be read        
+
+        //Now beginning a new message so release the previous one from the ring buffer
+        //This is the only safe place to do this and it must be done before we check for space needed by the next record.
+        ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
+    	    	
+        //if we can not start to read the next message because it does not have the template id yet      
         long needStop = cashWorkingTailPos + 1; //NOTE: do not make this bigger or hangs are likely
         if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
@@ -255,11 +255,6 @@ public final class FASTRingBuffer {
         //Start new stack of fragments because this is a new message
         ringBuffer.activeFragmentStackHead = 0;
         ringBuffer.activeFragmentStack[ringBuffer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
-        
-        
-        //Now beginning a new message so release the previous one from the ring buffer
-        //This is the only safe place to do this and it must be done before we check for space needed by the next record.
-        ringBuffer.tailPos.lazySet(cashWorkingTailPos); 
                
         ringBufferConsumer.setMessageId(FASTRingBufferReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
         //start new message, can not be seq or optional group or end of message.
@@ -349,36 +344,26 @@ public final class FASTRingBuffer {
 
     public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         //int rbMask, int[] rbB  PaddedLong rbPos
-        final int p = rbRingBuffer.addBytePos.value;
+        final int p = rbRingBuffer.addByteWorkingHeadPos.value;
         if (sourceLen > 0) {
-            rbRingBuffer.addBytePos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
+            rbRingBuffer.addByteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
         addValue(rbB, rbMask, rbPos, p);
         addValue(rbB, rbMask, rbPos, sourceLen);
     }
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
-        final int p = rbRingBuffer.addBytePos.value;
+        final int p = rbRingBuffer.addByteWorkingHeadPos.value;
         if (sourceLen > 0) {
             int targetMask = rbRingBuffer.byteMask;
             LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
-            rbRingBuffer.addBytePos.value = p + sourceLen;
+            rbRingBuffer.addByteWorkingHeadPos.value = p + sourceLen;
         }
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
     }
     
     
-
-    // TODO: D, Callback interface for setting the offsets used by the clients, Generate list of FieldId static offsets for use by static reader based on templateId.
- 
-
-
-
-    public void removeForward2(long pos) {
-        workingTailPos.value = pos;
-        tailPos.lazySet(pos);
-    }
 
     //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
     //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
@@ -435,6 +420,7 @@ public final class FASTRingBuffer {
     // these are needed for fast direct READ FROM here
 
     public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
+    //	System.err.println("read len:"+rbB[rbMask & (int)(rbPos.value + fieldPos + 1)]+" from "+rbPos.value+" field "+fieldPos);
         return rbB[rbMask & (int)(rbPos.value + fieldPos + 1)];// second int is always the length
     }
     
@@ -468,12 +454,15 @@ public final class FASTRingBuffer {
         return from.fragScriptSize[consumerData.cursor];
     }
 
-    public static void publishWrites(AtomicLong hp, PaddedLong wrkHdPos) {
-        hp.lazySet(wrkHdPos.value);
+    public static void publishWrites(FASTRingBuffer ringBuffer) {
+    	ringBuffer.headPos.lazySet(ringBuffer.workingHeadPos.value); //publish writes
+    	ringBuffer.addBytesHeadPos.lazySet(ringBuffer.addByteWorkingHeadPos.value);
     }
-    public static void abandonWrites(AtomicLong hp, PaddedLong wrkHdPos) {    
+    
+    public static void abandonWrites(FASTRingBuffer ringBuffer) {    
         //ignore the fact that any of this was written to the ring buffer
-        wrkHdPos.value = hp.longValue();
+    	ringBuffer.workingHeadPos.value = ringBuffer.headPos.longValue();
+    	ringBuffer.addByteWorkingHeadPos.value = ringBuffer.addBytesHeadPos.intValue();
     }
     
 

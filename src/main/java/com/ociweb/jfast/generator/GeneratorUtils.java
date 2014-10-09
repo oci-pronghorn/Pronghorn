@@ -470,6 +470,8 @@ public class GeneratorUtils {
         
         String templateMethodName = trace[0].getMethodName();
         
+       // System.err.println("template method name "+templateMethodName);
+        
         if (generatorData.usages.containsKey(templateMethodName)) {
             generatorData.usages.get(templateMethodName).incrementAndGet();
         } else {

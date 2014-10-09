@@ -1,6 +1,9 @@
 package com.ociweb.jfast.catalog.extraction;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +25,7 @@ import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
+import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 
 public class StreamingVisitor implements ExtractionVisitor {
 
@@ -63,8 +67,30 @@ public class StreamingVisitor implements ExtractionVisitor {
     int bytePosStartField;
     
     FASTRingBuffer ringBuffer;
+ 
+	FileOutputStream fost;	
+	FASTOutputStream fastOutput;
+	
+    int writeBuffer = 2048;
+    PrimitiveWriter writer;
+    FASTDynamicWriter dynamicWriter = null;
+    
     
     public StreamingVisitor(RecordFieldExtractor messageTypes) {
+    	
+        
+    	File fastFile = new File("/home/nate/flat/fastOut2.fast");
+    	
+    	
+    	try {
+			fost = new FileOutputStream(fastFile);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	fastOutput = new FASTOutputStream(fost);
+    	writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
+    	
         
     	//initial ring buffer needed only for the first catalog then we move on from this one.
     	byte[] catBytes = messageTypes.getCatBytes();
@@ -106,6 +132,8 @@ public class StreamingVisitor implements ExtractionVisitor {
         int p = pos;
         while (p<limit) {
             byte b = mappedBuffer.get(p);
+            
+            //TODO: confirm if this is numeric that non of this is kept!
             ringBuffer.byteBuffer[ringBuffer.byteMask&bytePosActive++] = b; //TODO: need to check for the right stop point
                         
             if ('.' == b) {
@@ -149,9 +177,9 @@ public class StreamingVisitor implements ExtractionVisitor {
         
         
         //move the pointer up to the next record
-        bytePosStartField = ringBuffer.addBytePos.value = bytePosActive;
+        bytePosStartField = ringBuffer.addByteWorkingHeadPos.value = bytePosActive;
         
-        FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
+        FASTRingBuffer.publishWrites(ringBuffer);
         startingMessage = true;       
         
         messageTypes.totalRecords++;
@@ -159,23 +187,23 @@ public class StreamingVisitor implements ExtractionVisitor {
     //    FASTRingBuffer.dump(ringBuffer);
         
     	if (null!=dynamicWriter) {
+    		//can move next is NOT moving the working tail to tail until the NEXT call of can move
 	        while (FASTRingBuffer.canMoveNext(ringBuffer)) {
-	        	
 
-	        	
-	        //	System.err.println(ringBuffer.consumerData.isNewMessage()+" read templateId:"+ringBuffer.consumerData.getMessageId());
-////	        	
-////	        	
-////	        	
-//
 	            try{   
 	                dynamicWriter.write();
 	            } catch (FASTException e) {
 	               // System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
 	                throw e;
 	            }                            
-//
+
 	        }
+	        
+	        //the working tail is up to head but its not copied over to tail yet why not?
+	        assert(0==FASTRingBuffer.contentRemaining(ringBuffer));
+	        //NOT sure why this reset is needed. TODO: nothing should be left behind after there is no content.
+	        ringBuffer.reset();
+	        
     	}
         
     }
@@ -184,12 +212,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     public boolean closeField(int startPos) {
     	
     	if (startingMessage) {
-    		// int templateId = 64;
-    		 
-    //		 System.err.println("started message and wrote "+templateId);
-    		 offestForTemplateId = ringBuffer.workingHeadPos.value++;
-    		// FASTRingBufferWriter.writeInt(ringBuffer, templateId);
-    		 
+    		 offestForTemplateId = ringBuffer.workingHeadPos.value++; 
     	}    	
     	
     	//TODO: if we have multiple choices we will need branch prediction to try the most likely
@@ -211,19 +234,38 @@ public class StreamingVisitor implements ExtractionVisitor {
                 break;
             case RecordFieldExtractor.TYPE_UINT:                
             case RecordFieldExtractor.TYPE_SINT:
+//            	if (accumValueChars==0) {
+//            		System.err.println("writing int null");
+//            	}
+            	
                 FASTRingBufferWriter.writeInt(ringBuffer, (int)(accumValue*accumSign));  
                 break;   
             case RecordFieldExtractor.TYPE_ULONG:
             case RecordFieldExtractor.TYPE_SLONG:
+//            	if (accumValueChars==0) {
+//            		System.err.println("writing long null");
+//            	}
                 FASTRingBufferWriter.writeLong(ringBuffer, accumValue*accumSign);  
                 break;    
             case RecordFieldExtractor.TYPE_ASCII:
-            case RecordFieldExtractor.TYPE_BYTES:                
-                FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
+            case RecordFieldExtractor.TYPE_BYTES:  
+//            	if ((bytePosActive-bytePosStartField)==0) {
+//            		//System.err.println("writing text null "+(bytePosActive-bytePosStartField));
+//            		FASTRingBufferWriter.finishWriteBytes(ringBuffer, -1);
+//            	} else {
+            	
+            	//System.err.println("len"+(bytePosActive-bytePosStartField)+" vs "+new String(messageTypes.bytesForLine(startPos)));
+            	
+            		FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
+            //	}
                 break;
             case RecordFieldExtractor.TYPE_DECIMAL:
-                int exponent = messageTypes.globalExponent(); //always positive, positions measured after the dot
-                                
+            	
+            	//TODO: need to know about constant if that is the case
+            	//TODO: using a constant global exponent is a very bad idea for compression size.
+                int exponent = accumValueChars;//messageTypes.globalExponent(); //always positive, positions measured after the dot
+                             
+                
                 if (accumValueChars>=POW_10.length) {
                 	//this caused by bug totaling the chars that no longer happens. but this may be a good idea for long odd values
                 	//they should be ascii instead???
@@ -245,7 +287,11 @@ public class StreamingVisitor implements ExtractionVisitor {
                 	totalValue=totalValue*10;
                 	totalExp++;
                 }
-                 
+                
+//            	if (accumValueChars==0) {
+//            		System.err.println("writing decimal null");
+//            	}
+                
                 FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, totalValue*accumSign);  
                 break;
             
@@ -258,8 +304,7 @@ public class StreamingVisitor implements ExtractionVisitor {
         // ** write as we go close out the field
 
         resetFieldStateCounters();
-        
-        
+                
         startingMessage = false;
         
         return true;//this was successful so continue
@@ -276,22 +321,17 @@ public class StreamingVisitor implements ExtractionVisitor {
         accumValueChars = 0;
 	}
 
-	ByteArrayOutputStream baos = new ByteArrayOutputStream();
-	FASTOutputStream fastOutput = new FASTOutputStream(baos);
-	//FASTOutputTotals fastOutput = new FASTOutputTotals();
-	
-    int writeBuffer = 2048;
-    PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
-    FASTDynamicWriter dynamicWriter = null;
+
     
     @Override
     public void closeFrame() {   
+    	System.err.println("****************** close frame:");
     	boolean debug = true;
     	if (debug) {
     		System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine);
     	}
     	   
-    	System.err.println("ringBuffer Ints:"+ringBuffer.workingHeadPos.value+" written FAST:"+baos.size());
+    	System.err.println("ringBuffer Ints:"+ringBuffer.workingHeadPos.value+" written FAST:"+PrimitiveWriter.totalWritten(writer));
     	
     }
 
@@ -300,15 +340,15 @@ public class StreamingVisitor implements ExtractionVisitor {
 
     @Override
     public void openFrame() {
+    	System.err.println("****************** open frame:");
     	
     	resetFieldStateCounters();
     	messageTypes.resetToRecordStart();
     	//if any partial write of field data is in progress just throw it away because 
     	//next frame will begin again from the start of the message.
-    	bytePosStartField = bytePosActive = ringBuffer.addBytePos.value;
-    	FASTRingBuffer.abandonWrites(ringBuffer.headPos,ringBuffer.workingHeadPos);
-   	
-    	
+    	bytePosStartField = bytePosActive = ringBuffer.addBytesHeadPos.intValue();
+    	FASTRingBuffer.abandonWrites(ringBuffer);
+    	    	
         //get new catalog if is has been changed by the other visitor
         byte[] catBytes = messageTypes.getCatBytes();
         if (!Arrays.equals(this.catBytes, catBytes)) {
@@ -328,7 +368,7 @@ public class StreamingVisitor implements ExtractionVisitor {
 			//System.err.println("length "+catBytes.length);
 			//System.err.println(Arrays.toString(catBytes));
             
-            FASTRingBuffer.publishWrites(ringBuffer.headPos, ringBuffer.workingHeadPos);
+            FASTRingBuffer.publishWrites(ringBuffer);
          //   System.err.println("C "+ringBuffer.contentRemaining(ringBuffer)+"  "+catBytes.length);
             
             //now create new ring buffer and chain them
@@ -341,11 +381,11 @@ public class StreamingVisitor implements ExtractionVisitor {
              
 
              //TODO: this fine for the static template but not sure about the dynamic one.
-             FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+             FASTEncoder writerDispatch = 
+            		// new FASTWriterInterpreterDispatch(catalog);
+            		 DispatchLoader.loadDispatchWriter(catBytes); 
              dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
 
-     
-            
         }        
     }
 
@@ -361,6 +401,8 @@ public class StreamingVisitor implements ExtractionVisitor {
 	}
 
 	public void printResults() {
+		
+		fastOutput.flush();
 		
 		// TODO Auto-generated method stub
 		

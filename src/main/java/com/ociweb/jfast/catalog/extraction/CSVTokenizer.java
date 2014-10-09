@@ -68,8 +68,8 @@ public class CSVTokenizer {
         long fileSize = fileChannel.size();
         long position = 0;
         
-        int loops = 20;//11;
         
+  //      System.err.println("fileSize:"+fileSize);
         
         ExtractorWorkspace workspace = new ExtractorWorkspace(false, false, -1, false, 0);
         
@@ -88,7 +88,6 @@ public class CSVTokenizer {
             } while (mappedBuffer.remaining()>padding);
             //this tokenizer assumes that the file ends with a field delimiter so the last record gets flushed.
             
-            System.err.println("byte read so far:"+(position+workspace.getRecordStart()));
             
             //notify the visitor that the buffer is probably going to change out from under them
             visitor.closeFrame();
@@ -98,10 +97,8 @@ public class CSVTokenizer {
            
             //reset workspace to re-read this record from the beginning
             workspace.reset();
-            
-            if (--loops<=0) { //hack to exit early
-                break;
-            }
+ 
+   //         System.err.println("byte read so far:"+position);
             
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
             

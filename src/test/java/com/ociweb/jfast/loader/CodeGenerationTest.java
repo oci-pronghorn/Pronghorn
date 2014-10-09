@@ -205,10 +205,12 @@ public class CodeGenerationTest {
                 }
                 long newValue1 = queue1.tailPos.get() + 1;
                 assert (newValue1 <=queue1.workingHeadPos.value);
-                queue1.removeForward2(newValue1);
+                queue1.workingTailPos.value = newValue1;
+				queue1.tailPos.lazySet(newValue1);
                 long newValue2 = queue2.tailPos.get() + 1;
                 assert (newValue2 <=queue2.workingHeadPos.value);
-                queue2.removeForward2(newValue2);
+                queue2.workingTailPos.value = newValue2;
+				queue2.tailPos.lazySet(newValue2);
                 i++;
             }
         }

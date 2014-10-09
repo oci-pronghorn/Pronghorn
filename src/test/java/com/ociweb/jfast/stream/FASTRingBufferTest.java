@@ -134,7 +134,7 @@ public class FASTRingBufferTest {
                         
                         //allow writer to write up to new tail position
                         if (0==(i&rb.chunkMask) ) {  
-                            FASTRingBuffer.publishWrites(tp, wrkTlPos);
+                            tp.lazySet(wrkTlPos.value); //publish the writes
                             targetHead = wrkTlPos.value + granularity;
                         }
                         
@@ -173,7 +173,7 @@ public class FASTRingBufferTest {
                 }
                 //allow read thread to read up to new head position
                 if (0==(i&rb.chunkMask) ) {
-                    FASTRingBuffer.publishWrites(hp, wrkHdPos);
+                    hp.lazySet(wrkHdPos.value); //publish writes
                     targetPos = wrkHdPos.value + granularity;
                     targetPos -= rb.maxSize;
                 }

@@ -987,8 +987,10 @@ public final class PrimitiveWriter {
         writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
     }
     
-    public static void writeTextASCII(byte[] value, int offset, int length, int mask,  PrimitiveWriter writer) {
+    public static void writeTextASCII(byte[] value, int offset, int length, int mask, PrimitiveWriter writer) {
 
+    	//System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length);
+    	
         if (0 == length) {
             encodeZeroLengthASCII(writer);
             return;
@@ -996,6 +998,11 @@ public final class PrimitiveWriter {
         if (writer.limit > writer.buffer.length - length) {
             // if it was not zero and was too long flush
             writer.output.flush();
+            //since flush is rare this is a good opportunity to do sanity checking
+            if (writer.limit > writer.buffer.length - length) {
+            	throw new ArrayIndexOutOfBoundsException(length);
+            }
+            //System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
         }
         
         while (--length > 0) {

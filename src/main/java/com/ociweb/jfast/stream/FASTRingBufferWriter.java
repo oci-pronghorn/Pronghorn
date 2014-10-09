@@ -38,11 +38,12 @@ public class FASTRingBufferWriter {
     //Because the stream neeeds to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
     public static void finishWriteBytes(FASTRingBuffer rb, int length) {
-        
-        int p = rb.addBytePos.value;
+            	
+        int p = rb.addByteWorkingHeadPos.value;
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
-        rb.addBytePos.value = p + length;
+   //     System.err.println("write length "+length+" at pos "+rb.workingHeadPos.value);
+        rb.addByteWorkingHeadPos.value = p + length;
         
     }
 
