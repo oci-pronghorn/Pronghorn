@@ -101,7 +101,7 @@ public class Tool {
         
         FieldTypeVisitor visitor1 = new FieldTypeVisitor(typeAccum); //TODO: must use stream to write all the data to FAST data file.
        
-        StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
+        StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, null);
         
         //TODO: should not be part of unit tests, need to make an app for testing files and unit test should check smaller structure.   
         

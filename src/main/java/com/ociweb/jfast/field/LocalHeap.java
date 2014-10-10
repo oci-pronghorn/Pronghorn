@@ -682,6 +682,38 @@ public class LocalHeap {
         return builder.toString();
     }
     
+    public String toASCIIString(int idx) {
+        byte[] buf;
+        int len;
+        int pos;
+        if (idx < 0) {
+            int offset = idx << 1; // this shift left also removes the top bit!
+                                   // sweet.
+
+            pos = initTat[offset];
+            len = initTat[offset + 1] - pos;
+            buf = initBuffer;
+
+        } else {
+
+            int offset = idx << 2;
+
+            pos = tat[offset];
+            len = tat[offset + 1] - pos;
+            buf = data;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        
+        
+        int i = len;
+        while (--i >= 0) {
+            builder.append((char)buf[pos++]);
+        }
+
+        return builder.toString();
+    }
+    
     public static int countHeadMatch(int idx, byte[] source, int sourceIdx, int sourceLength, int sourceMask, LocalHeap heap) {
         int offset = idx << 2;
 

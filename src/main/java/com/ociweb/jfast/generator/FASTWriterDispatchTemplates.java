@@ -1,5 +1,7 @@
 package com.ociweb.jfast.generator;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -95,7 +97,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
-  //      	System.err.println("value to encode for delta:"+     byteHeap.toString(target));
+  
+        //	System.err.println("value to encode for delta:"+     byteHeap.toASCIIString(target)+" len "+byteHeap.length(target, byteHeap));
         	
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);   
             if (length<0) {
@@ -130,7 +133,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextTailOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
-  //      	System.err.println("value to encode for tail:"+     byteHeap.toString(target));
+        	//System.err.println("value to encode for tail:"+     byteHeap.toASCIIString(target));
         	
             int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
@@ -260,7 +263,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (length<0) {
                 PrimitiveWriter.writeNull(writer);
             } else{        
-                int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+                int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);              
                 PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
             }
         }
@@ -813,10 +816,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeNull(writer);
             } // null for default 
         } else {
-            int value = exponentValue>=0?exponentValue+1:exponentValue;
-            if (value == exponentConstDefault) {
+            if (exponentValue == exponentConstDefault) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
+            	int value = exponentValue>=0?exponentValue+1:exponentValue; //moved here but can we do this branch free
                 PrimitiveWriter.writePMapBit((byte)1, writer);
                 PrimitiveWriter.writeIntegerSigned(value, writer);
             }

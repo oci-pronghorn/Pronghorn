@@ -4,6 +4,7 @@
 package com.ociweb.jfast.primitive;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
@@ -1005,11 +1006,16 @@ public final class PrimitiveWriter {
             //System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
         }
         
+        int tmp = writer.limit;
         while (--length > 0) {
             writer.buffer[writer.limit++] = (byte) value[mask & offset++];
         }
         
         writer.buffer[writer.limit++] = (byte) (0x80 | value[mask & offset]);
+        
+//        String examp = new String(Arrays.copyOfRange(writer.buffer, tmp, writer.limit));
+//        System.err.println("NoneWrite:"+examp+" length "+examp.length());
+        
     }
 
     public static void ensureSpace(int bytes, PrimitiveWriter writer) {

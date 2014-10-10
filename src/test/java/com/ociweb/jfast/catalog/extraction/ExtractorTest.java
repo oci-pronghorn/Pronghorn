@@ -196,7 +196,7 @@ public class ExtractorTest {
 	//	writerDispatch.
         System.err.println("Empty catalog before startup: "+ typeAccum.buildCatalog(true));
         
-        final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum);
+        final StreamingVisitor visitor2 = new StreamingVisitor(typeAccum, null);
         
         
         

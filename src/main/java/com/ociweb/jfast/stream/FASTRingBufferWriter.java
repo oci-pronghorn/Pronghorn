@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 public class FASTRingBufferWriter {
@@ -23,12 +25,12 @@ public class FASTRingBufferWriter {
     }
     
     public static void writeLong(FASTRingBuffer rb, long value) {
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)value >>> 32, (int)value & 0xFFFFFFFF );    
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)(value >>> 32), (int)value & 0xFFFFFFFF );    
     }
 
     public static void writeDecimal(FASTRingBuffer rb, int exponent, long mantissa) {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent);   
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int)mantissa >>> 32, (int)mantissa & 0xFFFFFFFF );    
+        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int) (mantissa >>> 32), (int)mantissa & 0xFFFFFFFF );    
     }
 
 
@@ -37,9 +39,14 @@ public class FASTRingBufferWriter {
     
     //Because the stream neeeds to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
-    public static void finishWriteBytes(FASTRingBuffer rb, int length) {
+    public static void finishWriteBytes(FASTRingBuffer rb, int p, int length) {
             	
-        int p = rb.addByteWorkingHeadPos.value;
+//    	        
+//        String val = new String(Arrays.copyOfRange(rb.byteBuffer, p, p+length));
+//        System.err.println("write string:"+val);
+//
+//        
+        
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
    //     System.err.println("write length "+length+" at pos "+rb.workingHeadPos.value);

@@ -98,7 +98,7 @@ public class CSVTokenizer {
             //reset workspace to re-read this record from the beginning
             workspace.reset();
  
-   //         System.err.println("byte read so far:"+position);
+            System.err.println("byte read so far:"+position);
             
             mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, position, Math.min(blockSize, fileSize-position));
             

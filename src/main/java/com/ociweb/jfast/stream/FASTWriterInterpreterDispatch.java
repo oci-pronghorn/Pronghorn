@@ -694,6 +694,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
                
+//        if (null!=writer) {
+//        	System.err.println("outWrote "+(writer.bytesReadyToWrite(writer)+writer.totalWritten(writer))+" token "+TokenBuilder.tokenToString(token) );
+//        }
+        
+//        if (TokenBuilder.tokenToString(token).contains("DecimalOptional:001101/Default:")){
+//        	System.err.println("XX");
+//        }
+        
         
     ///   System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
        

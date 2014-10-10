@@ -16,6 +16,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.generator.DispatchLoader;
+import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
@@ -45,6 +46,7 @@ public class StreamingVisitor implements ExtractionVisitor {
     boolean startingMessage = true;
     long offestForTemplateId = -1;
     
+ //   long totalText = 0;
     
     static final long[] POW_10;
     
@@ -69,26 +71,26 @@ public class StreamingVisitor implements ExtractionVisitor {
     FASTRingBuffer ringBuffer;
  
 	FileOutputStream fost;	
-	FASTOutputStream fastOutput;
+	FASTOutput fastOutput;
 	
     int writeBuffer = 2048;
     PrimitiveWriter writer;
     FASTDynamicWriter dynamicWriter = null;
     
     
-    public StreamingVisitor(RecordFieldExtractor messageTypes) {
-    	
-        
-    	File fastFile = new File("/home/nate/flat/fastOut2.fast");
-    	
-    	
-    	try {
-			fost = new FileOutputStream(fastFile);
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    	fastOutput = new FASTOutputStream(fost);
+    public StreamingVisitor(RecordFieldExtractor messageTypes, File fastFile) {
+    	    	
+    	if (null == fastFile) {
+    		fastOutput = new FASTOutputTotals();
+    	} else {
+	    	try {
+				fost = new FileOutputStream(fastFile);
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    	fastOutput = new FASTOutputStream(fost);
+    	}
     	writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
     	
         
@@ -159,6 +161,10 @@ public class StreamingVisitor implements ExtractionVisitor {
     }
 
     String lastClosedLine = "";
+ //   long prevRecInStream = 0;
+ //   long lastRecInStream = 0;
+    
+  //  long filePos;
     
     @Override
     public void closeRecord(int startPos) {
@@ -182,6 +188,16 @@ public class StreamingVisitor implements ExtractionVisitor {
         FASTRingBuffer.publishWrites(ringBuffer);
         startingMessage = true;       
         
+     //   prevRecInStream = lastRecInStream;
+     //   lastRecInStream = ringBuffer.headPos.get();
+
+     //   System.err.println("est "+totalText+"+"+(4+(4*3))); //worst case
+     //   System.err.println(lastClosedLine);//buffer size is alwways 21 but this is not what I want to measure
+     //   System.err.println("  "+(lastRecInStream-prevRecInStream)+"  workingValue  "+ringBuffer.workingHeadPos.value);
+        
+        //TODO: estimaate the bytes written
+       // totalText = 0;
+        
         messageTypes.totalRecords++;
                
     //    FASTRingBuffer.dump(ringBuffer);
@@ -202,7 +218,17 @@ public class StreamingVisitor implements ExtractionVisitor {
 	        //the working tail is up to head but its not copied over to tail yet why not?
 	        assert(0==FASTRingBuffer.contentRemaining(ringBuffer));
 	        //NOT sure why this reset is needed. TODO: nothing should be left behind after there is no content.
-	        ringBuffer.reset();
+	         ringBuffer.reset();
+	        
+	        PrimitiveWriter.flush(writer);
+	       
+	        
+	       // long newPos = PrimitiveWriter.totalWritten(writer);
+	        
+	   //     System.err.println("last record size "+(newPos-filePos));
+	        
+	   //     filePos = newPos;
+	        
 	        
     	}
         
@@ -214,6 +240,8 @@ public class StreamingVisitor implements ExtractionVisitor {
     	if (startingMessage) {
     		 offestForTemplateId = ringBuffer.workingHeadPos.value++; 
     	}    	
+    	
+    	//long start = ringBuffer.workingHeadPos.value;
     	
     	//TODO: if we have multiple choices we will need branch prediction to try the most likely
     	//      upon failure mark it and return false to read from the start of the message again.
@@ -254,9 +282,14 @@ public class StreamingVisitor implements ExtractionVisitor {
 //            		FASTRingBufferWriter.finishWriteBytes(ringBuffer, -1);
 //            	} else {
             	
-            	//System.err.println("len"+(bytePosActive-bytePosStartField)+" vs "+new String(messageTypes.bytesForLine(startPos)));
+//            	System.err.println("add to ringbuffer len"+(bytePosActive-bytePosStartField)+
+//            			                  " vs "+
+//            			                  new String(messageTypes.bytesForLine(startPos)));
             	
-            		FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosActive-bytePosStartField);
+            	
+         //   	totalText += (bytePosActive-bytePosStartField);
+            	
+            		FASTRingBufferWriter.finishWriteBytes(ringBuffer, bytePosStartField, bytePosActive-bytePosStartField);
             //	}
                 break;
             case RecordFieldExtractor.TYPE_DECIMAL:
@@ -299,6 +332,10 @@ public class StreamingVisitor implements ExtractionVisitor {
                 throw new UnsupportedOperationException("Field was "+fieldType);
         }       
         
+        //long end = ringBuffer.workingHeadPos.value;
+        
+        //System.err.println("field idx:"+start+" to "+end+" templateOffset "+offestForTemplateId);
+        
         //closing field so keep this new active position as the potential start for the next field
         bytePosStartField = bytePosActive;
         // ** write as we go close out the field
@@ -328,10 +365,14 @@ public class StreamingVisitor implements ExtractionVisitor {
     	System.err.println("****************** close frame:");
     	boolean debug = true;
     	if (debug) {
-    		System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine);
+    	//	long added = lastRecInStream-prevRecInStream;
+    		
+    	//	System.err.println(messageTypes.totalRecords+"\n"+lastClosedLine+"  added  "+added);
+    		
+    		System.err.println("ringBuffer Ints:"+ringBuffer.workingHeadPos.value+" written FAST:"+PrimitiveWriter.totalWritten(writer));
+    		
     	}
     	   
-    	System.err.println("ringBuffer Ints:"+ringBuffer.workingHeadPos.value+" written FAST:"+PrimitiveWriter.totalWritten(writer));
     	
     }
 

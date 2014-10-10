@@ -144,7 +144,7 @@ public class FASTUtil {
 		
 		ClientConfig clientConfig = new ClientConfig(22,23);
 		typeAccum.loadTemplate(templateFile, clientConfig);		
-		StreamingVisitor visitor = new StreamingVisitor(typeAccum);
+		StreamingVisitor visitor = new StreamingVisitor(typeAccum,new File("/home/nate/flat/fastOut2.fast"));
 		
 		try {
 			FileChannel fileChannel = new RandomAccessFile(csvFile, "r").getChannel();                	
