@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.FASTUtil;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
@@ -574,7 +573,7 @@ public class ThreadingTest {
     
     private static InputStream testDataInputStream(String resource) {
         
-        InputStream resourceInput = FASTUtil.class.getResourceAsStream(resource);
+        InputStream resourceInput = ThreadingTest.class.getResourceAsStream(resource);
         if (null!=resourceInput) {
             return resourceInput;            
         }
