@@ -20,6 +20,10 @@ public class DispatchLoader {
             return new FASTReaderInterpreterDispatch(catalog);
         }
     }
+    
+    public static FASTDecoder loadDispatchReaderDebug(byte[] catalog) {
+        return new FASTReaderInterpreterDispatch(catalog);
+    }
 
     public static FASTEncoder loadDispatchWriter(byte[] catalog) {
         //always try to load the generated reader because it will be faster 

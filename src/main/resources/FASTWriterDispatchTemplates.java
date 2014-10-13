@@ -98,7 +98,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteTextDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
   
-        	//System.err.println("value to encode for delta:"+     byteHeap.toASCIIString(target)+" len "+byteHeap.length(target, byteHeap));
+        //	System.err.println("value to encode for delta:"+     byteHeap.toASCIIString(target)+" len "+byteHeap.length(target, byteHeap));
         	
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);   
             if (length<0) {

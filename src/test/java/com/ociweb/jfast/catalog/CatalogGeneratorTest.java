@@ -33,17 +33,23 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
+import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
+import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
+import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
+import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
+import com.ociweb.jfast.stream.FASTInputReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
 
 
@@ -95,10 +101,9 @@ public class CatalogGeneratorTest {
     
    
     private final int writeBuffer=4096;
+    private int testRecordCount = 3;//100;//100000; //testing enough to get repeatable results
     
-    //If this test is going to both encode then decode to test both parts of the process this
-    //buffer must be very large in order to hold all the possible permutations
-    private final byte[] buffer = new byte[1<<28];
+
     
     List<byte[]> numericCatalogs;
     List<Integer> numericFieldCounts;
@@ -192,6 +197,7 @@ public class CatalogGeneratorTest {
                
         TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
         
+        
         if (operation!=lastOp) {
             lastOp = operation;
             System.err.println();
@@ -208,24 +214,50 @@ public class CatalogGeneratorTest {
         FASTClassLoader.deleteFiles();
         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder
                         
-   
+        //If this test is going to both encode then decode to test both parts of the process this
+        //buffer must be very large in order to hold all the possible permutations
+        byte[] buffer = new byte[1<<24];
         FASTOutput fastOutput = new FASTOutputByteArray(buffer );
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
                
-        FASTRingBuffer queue = catalog.ringBuffers().buffers[0];
-        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
+        FASTRingBuffer ringBuffer = catalog.ringBuffers().buffers[0];
+        FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
              
         //populate ring buffer with the new records to be written.
         
-        float millionPerSecond = timeEncoding(fieldType, fieldCount, queue, dynamicWriter)/1000000f;        
-
+        float millionPerSecond = timeEncoding(fieldType, fieldCount, ringBuffer, dynamicWriter)/1000000f;        
+        PrimitiveWriter.flush(writer);
+        long bytesWritten = PrimitiveWriter.totalWritten(writer);
+        assertEquals(0, PrimitiveWriter.bytesReadyToWrite(writer));
+        
         //Use as bases for building single giant test file with test values provided, in ascii?
         totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
         
-        long nsLatency = FASTRingBufferConsumer.responseTime(queue.consumerData);
+        long nsLatency = FASTRingBufferConsumer.responseTime(ringBuffer.consumerData);
+     
         //TODO: write to flat file to produce google chart.
-     //   System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+        //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
 
+        
+        //System.err.println("bytes written:"+bytesWritten);
+        
+        //FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
+        PrimitiveReader reader = new PrimitiveReader(buffer);
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); //TODO: it is too complicated to build this up every time need to wrap it up!
+        
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
+        
+        int j = testRecordCount;
+        while (j>0 && FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+        	while (j>0 && FASTRingBuffer.canMoveNext(rb)) {
+        		System.err.println(j);
+        		j--;
+        		
+        	}
+        }
+//        
+//        new Exception("success").printStackTrace();
         
         
         //TODO: B, followed by time decoding
@@ -236,14 +268,13 @@ public class CatalogGeneratorTest {
         
     }
 
-    //TODO A, need the compiled static accessor to greatly simplify the usage of clients
-    //TODO A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
+    //TODO: A, need the compiled static accessor to greatly simplify the usage of clients
+    //TODO: A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
     
 
-    private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer queue, FASTDynamicWriter dynamicWriter) {
-
-        int records = 100;//100000; //testing enough to get repeatable results
-        
+    private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {
+       
+    	int i = testRecordCount;
         int d;
         switch(fieldType) {
             case TypeMask.IntegerUnsigned:
@@ -254,24 +285,23 @@ public class CatalogGeneratorTest {
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
-                    int i = records;
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeInt(queue, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
-                            if (0==d) {
+                            FASTRingBufferWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                            if (0 == d) {
                                 d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
+                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
                         
-                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
+                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
                     long duration = System.nanoTime()-start;
-                    return 1000000000f*records/duration;
+                    return 1000000000f*testRecordCount/duration;
                 }
             case TypeMask.LongUnsigned:
             case TypeMask.LongUnsignedOptional:
@@ -281,23 +311,23 @@ public class CatalogGeneratorTest {
                     long start = System.nanoTime();
                     
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
-                    int i = records;
+                  
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeLong(queue, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            FASTRingBufferWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
+                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
                     long duration = System.nanoTime()-start;
-                    return 1000000000f*records/duration;
+                    return 1000000000f*testRecordCount/duration;
                 }
             case TypeMask.Decimal:
             case TypeMask.DecimalOptional:
@@ -306,23 +336,23 @@ public class CatalogGeneratorTest {
                     
                     int exponent = 2;
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
-                    int i = records;
+          
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeDecimal(queue, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
+                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
                     long duration = System.nanoTime()-start;
-                    return 1000000000f*records/duration;
+                    return 1000000000f*testRecordCount/duration;
                 } 
             case TypeMask.TextASCII:
             case TypeMask.TextASCIIOptional:
@@ -333,24 +363,24 @@ public class CatalogGeneratorTest {
                     
                     int exponent = 2;
                     d = ReaderWriterPrimitiveTest.stringData.length;
-                    int i = records;
+      
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(queue, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
-                            FASTRingBufferWriter.writeBytes(queue, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
+                            FASTRingBufferWriter.writeBytes(ringBuffer, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(queue.headPos,queue.workingHeadPos);
-                        if (FASTRingBuffer.canMoveNext(queue)) {//without move next we get no stats.
+                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
                     long duration = System.nanoTime()-start;
-                    return 1000000000f*records/duration;
+                    return 1000000000f*testRecordCount/duration;
                     
                 }
                 
@@ -375,9 +405,13 @@ public class CatalogGeneratorTest {
         
         StringBuilder builder = cg.appendTo("", new StringBuilder());        
    
-      //         System.err.println(builder);
+        boolean debug = false;
+        if (debug) {
+        	System.err.println(builder);
+        }
+   
         
-        ClientConfig clientConfig = new ClientConfig(13,10);  //keep bits small or the test will take a very long time to run.              
+        ClientConfig clientConfig = new ClientConfig(21,19);  //keep bits small or the test will take a very long time to run.              
         byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);
         return catBytes;
     }

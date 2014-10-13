@@ -57,7 +57,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
             
             //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -1;
+            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
             
             // fragment size plus 1 for template id and preamble data length in bytes
             dispatch.activeScriptLimit = dispatch.templateLimitIdx[ dispatch.templateId];

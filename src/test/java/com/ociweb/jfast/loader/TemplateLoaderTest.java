@@ -37,11 +37,13 @@ import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.generator.GeneratorUtils;
+import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
+import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
@@ -126,11 +128,7 @@ public class TemplateLoaderTest {
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
         long totalTestBytes = sourceDataFile.length();
 
-        int maxPMapCountInBytes = 2 + ((Math.max(
-                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
-
-      
-        PrimitiveReader reader = new PrimitiveReader(buildInputArrayForTesting(sourceDataFile), maxPMapCountInBytes);
+        PrimitiveReader reader = new PrimitiveReader(buildInputArrayForTesting(sourceDataFile), TemplateCatalogConfig.maxPMapCountInBytes(catalog));
         
         FASTClassLoader.deleteFiles();
         
@@ -325,6 +323,63 @@ public class TemplateLoaderTest {
         
         System.err.println(Profile.results());
 
+        
+    }
+    
+    
+    @Test
+    public void testDecodeComplex30000Minimal() {
+        
+        
+        byte[] catBytes = buildRawCatalogData(new ClientConfig());
+        final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
+
+        System.err.println("cat bytes:"+catBytes.length);
+        
+        // connect to file
+        URL sourceData = getClass().getResource("/performance/complex30000.dat");
+        File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
+
+        System.err.println(sourceDataFile.getName()+ " "+sourceDataFile.length());
+        
+        FASTInput fastInput = null;
+		try {
+			FileInputStream fist = new FileInputStream(sourceDataFile);
+			fastInput = new FASTInputStream(fist);
+		} catch (FileNotFoundException e) {
+			
+			throw new RuntimeException(e);
+		}
+    	
+    	int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);
+    	     	
+        PrimitiveReader reader = new PrimitiveReader(4096,fastInput,maxPMapCountInBytes);
+
+        FASTClassLoader.deleteFiles();
+        
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
+    //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
+        
+
+        final AtomicInteger msgs = new AtomicInteger();
+
+                 
+        msgs.set(0);
+
+        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
+        rb.reset();
+
+        while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+            FASTRingBuffer.canMoveNext(rb);
+
+            if (rb.consumerData.isNewMessage()) {
+                int templateId = rb.consumerData.getMessageId();
+                msgs.incrementAndGet();
+            }
+        }
+        System.out.println("total messages:"+msgs);
+       
         
     }
 

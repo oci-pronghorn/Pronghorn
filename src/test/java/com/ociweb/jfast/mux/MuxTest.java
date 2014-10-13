@@ -1,6 +1,6 @@
 package com.ociweb.jfast.mux;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -32,9 +32,9 @@ import com.ociweb.jfast.stream.RingBuffers;
 
 public class MuxTest {
   
-  //TODO B, the example test file is full of long sequences of 1 then a 2,  if the ratio was more balanced this file could be read in parallel with multiple decoders.
-  //TODO B, note that template 1 (the most common) also has a reset on each message, As a result each of these can be done in parallel.
-  //TODO B, build speed loader of file with NIO and add multiple decoders
+  //TODO: B, the example test file is full of long sequences of 1 then a 2,  if the ratio was more balanced this file could be read in parallel with multiple decoders.
+  //TODO: B, note that template 1 (the most common) also has a reset on each message, As a result each of these can be done in parallel.
+  //TODO: B, build speed loader of file with NIO and add multiple decoders
     
     
     @Test
@@ -49,8 +49,8 @@ public class MuxTest {
         //Note: need better aproach
         //need to have these bytes read in while parseing the preamble. the 
         //FASTInput objects (n of these) need to be given the new location in the array to read from
-        //TODO  B, this is sequential and use FASTInput that can use NIO changes that are made up of multiple sources.
-        //TODO B, must compute max parallel in config, Minimum readers is 1 what is the maximum?
+        //TODO: B, this is sequential and use FASTInput that can use NIO changes that are made up of multiple sources.
+        //TODO: B, must compute max parallel in config, Minimum readers is 1 what is the maximum?
         //Must be less than cores or acceptable threads.
         //Must be limited by the maximum parallel structure implied by the catalog. need new compute in catalog for this.
         //Any reset message is isolated and does not limit, any messages that share dictionary fields must be done in one decoder.
@@ -95,8 +95,8 @@ public class MuxTest {
             reactor.start(executor, reader);
         
         } catch (IOException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
+            fail();
         }
         
         
