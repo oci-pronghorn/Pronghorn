@@ -103,7 +103,7 @@ public class CatalogGeneratorTest {
     private final int writeBuffer=4096;
     private int testRecordCount = 3;//100;//100000; //testing enough to get repeatable results
     
-
+    private static final int testTemplateId = 2;
     
     List<byte[]> numericCatalogs;
     List<Integer> numericFieldCounts;
@@ -119,7 +119,7 @@ public class CatalogGeneratorTest {
         numericFieldOperators = new ArrayList<Integer>();
         
         String name = "testTemplate";
-        int id = 2;
+        
         boolean reset = false;
         String dictionary = null;
         boolean fieldPresence = false;     
@@ -134,7 +134,7 @@ public class CatalogGeneratorTest {
                 int fieldType = numericTypes[t];
                 int fieldCount = 1; 
                 while (fieldCount<totalFields) {                 
-                    byte[] catBytes = buildCatBytes(name, id, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, fieldCount);  
+                    byte[] catBytes = buildCatBytes(name, testTemplateId, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, fieldCount);  
                     
                     
                     TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);                    
@@ -239,13 +239,6 @@ public class CatalogGeneratorTest {
         //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
         //System.err.println("bytes written:"+bytesWritten);
         
-        //FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
-        PrimitiveReader reader = new PrimitiveReader(buffer);
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); //TODO: it is too complicated to build this up every time need to wrap it up!
-        
-        
-        //TODO: the Debug edition is not moving the pointer forward on encode and the other edition does!!
-        
 //        //This visual check confirms that the write
 //        int limit = (int) Math.min(bytesWritten, 10);
 //        int q = 0;
@@ -257,9 +250,23 @@ public class CatalogGeneratorTest {
 //        	q++;
 //        	
 //        }
+
+        
+        FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
+        //TODO: fix this bug and simpify construction
+        //PrimitiveReader reader = new PrimitiveReader(4096,fastInput, TemplateCatalogConfig.maxPMapCountInBytes(catalog));
+        PrimitiveReader reader = new PrimitiveReader(buffer);
+        
+        
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); //TODO: it is too complicated to build this up every time need to wrap it up!
+        
+        ///NOTE: when there is only 1 template the compiled dispatch may continue to work if the templateId is wrong
+        //       because it does not do extra checking.  The interpreted one will use the templateId as defined.
+        
+        
         
         assertEquals(0xFF&Integer.parseInt("11000000", 2),0xFF&buffer[0]); //pmap to indicate that we do use template ID
-        assertEquals(0xFF&Integer.parseInt("10000000", 2),0xFF&buffer[1]); //template id of zero
+        assertEquals(0xFF&Integer.parseInt("10000010", 2),0xFF&buffer[1]); //template id of 2
         
         
         FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
@@ -268,9 +275,11 @@ public class CatalogGeneratorTest {
         int j = testRecordCount;
         while (j>0 && FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
         	if (j>0 && FASTRingBuffer.canMoveNext(rb)) {
+        		assertTrue(rb.consumerData.isNewMessage());
+        		assertEquals(testTemplateId, rb.consumerData.messageId);
         		
         		//TODO: add test in here to confirm the values match
-        		//System.err.println("readmsg:"+j);
+        		
         		j--;
         	}
         }
@@ -311,7 +320,7 @@ public class CatalogGeneratorTest {
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             FASTRingBufferWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
@@ -340,7 +349,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                   
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             FASTRingBufferWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -365,7 +374,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
           
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -392,7 +401,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.stringData.length;
       
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, 0);//template Id
+                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
@@ -432,7 +441,7 @@ public class CatalogGeneratorTest {
         
         StringBuilder builder = cg.appendTo("", new StringBuilder());        
    
-        boolean debug = false;
+        boolean debug = true;
         if (debug) {
         	System.err.println(builder);
         }

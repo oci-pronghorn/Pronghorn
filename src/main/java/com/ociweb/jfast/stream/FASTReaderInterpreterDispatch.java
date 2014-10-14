@@ -94,9 +94,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         // /////////////////
         // open message (special type of group)
         int preambleInts = (preambleDataLength+3)>>2;
-        genReadTemplateId(preambleInts, maxTemplatePMapSize, reader, this);
-       // activeScriptLimit = templateLimitIdx[ templateId];//value only needed by this class
-        
+        genReadTemplateId(preambleInts, maxTemplatePMapSize, reader, this);        
         
         //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
         //break out into second half of gen.
@@ -133,11 +131,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
         }
-        
-        // move everything needed in this tight loop to the stack
-        int limit = activeScriptLimit; //TODO: C, remvoe this by using the stackHead depth for all wrapping groups
-        
-    //   System.err.println("read fragment into ring buffer of size "+fragmentSize);
         
         int token = fullScript[activeScriptCursor];
         do {
@@ -211,7 +204,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 
                             } else {
                                 //Close group
-                                
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
                                 break;
@@ -253,18 +245,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     }
                 }
             }
-        } while (++activeScriptCursor < limit); //TODO: must remove limit because it is wrong for unit tests with interpriter.
-        //++activeScriptCursor;
-        //} while (sequenceCountStackHead>0);
-        //System.err.println("******************************"+sequenceCountStackHead+  "  "+activeScriptCursor+" "+limit);
-        
-        
-        //TODO: B, on normal fixed closed this is not needed so the conditional can be skipped.
+            
+            ++activeScriptCursor;           
+            
+        } while (true);
         genReadGroupCloseMessage(reader, this); 
-        
-        //sanity check
-       // System.err.println(fragmentSize+"  vs  "+(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
-        
+                
         //Must do last because this will let the other threads begin to use this data
         FASTRingBuffer.publishWrites(rbRingBuffer); //TODO: B, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
@@ -1610,8 +1596,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     @Override
     public void setActiveScriptLimit(int limit) {
-        activeScriptLimit = limit;
-        
+
     }
 
     @Override

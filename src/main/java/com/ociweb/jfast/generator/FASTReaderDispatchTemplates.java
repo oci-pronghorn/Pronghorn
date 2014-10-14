@@ -60,7 +60,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
             
             // fragment size plus 1 for template id and preamble data length in bytes
-            dispatch.activeScriptLimit = dispatch.templateLimitIdx[ dispatch.templateId];
             dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
             
             //we know the templateId so we now know which ring buffer to use.

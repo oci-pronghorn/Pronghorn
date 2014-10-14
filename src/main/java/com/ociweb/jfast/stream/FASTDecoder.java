@@ -14,10 +14,7 @@ public abstract class FASTDecoder{
     //decimals as well??
     
     public final int[] templateStartIdx; //These constants can be remvoed
-    public final int[] templateLimitIdx;//These constants can be remvoed
      
-
-    public int activeScriptLimit; //TODO: B, remvoe this once limit is removed from iterprister after stack is used for exit flag.
     
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
@@ -42,8 +39,7 @@ public abstract class FASTDecoder{
     public FASTDecoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(),
         	 catalog.getTemplateStartIdx(), 
-             catalog.getTemplateLimitIdx(), catalog.clientConfig().getPreableBytes(), 
-             catalog.ringBuffers());
+             catalog.clientConfig().getPreableBytes(), catalog.ringBuffers());
     }
     
     private static int computePMapStackInBytes(TemplateCatalogConfig catalog) {
@@ -54,8 +50,7 @@ public abstract class FASTDecoder{
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
     		            int[] templateStartIdx,
-			            int[] templateLimitIdx, int preambleBytes,
-			            RingBuffers ringBuffers) {
+			            int preambleBytes, RingBuffers ringBuffers) {
 
         this.byteHeap = dcr.byteDictionary();
         
@@ -64,7 +59,6 @@ public abstract class FASTDecoder{
         this.rLongDictionary = dcr.longDictionary();
         
         this.templateStartIdx = templateStartIdx;
-        this.templateLimitIdx = templateLimitIdx;
         this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;
