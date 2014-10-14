@@ -69,10 +69,10 @@ public class CatalogGeneratorTest {
     };
     
     int[] numericOps = new int[] {
-            OperatorMask.Field_Copy,
-            OperatorMask.Field_Default,
-            OperatorMask.Field_Increment,            
-            OperatorMask.Field_Delta,
+        //    OperatorMask.Field_Copy,
+        //    OperatorMask.Field_Default,
+        //    OperatorMask.Field_Increment,            
+        //    OperatorMask.Field_Delta,
             OperatorMask.Field_None, 
             OperatorMask.Field_Constant,
     };
@@ -237,27 +237,47 @@ public class CatalogGeneratorTest {
      
         //TODO: write to flat file to produce google chart.
         //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
-
-        
         //System.err.println("bytes written:"+bytesWritten);
         
         //FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
         PrimitiveReader reader = new PrimitiveReader(buffer);
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); //TODO: it is too complicated to build this up every time need to wrap it up!
         
+        
+        //TODO: the Debug edition is not moving the pointer forward on encode and the other edition does!!
+        
+//        //This visual check confirms that the write
+//        int limit = (int) Math.min(bytesWritten, 10);
+//        int q = 0;
+//        while (q<limit) {
+//        	//template pmap
+//        	//template id of zero
+//        	//data 0, 1 ,63, 64, 65
+//        	System.err.println(q+"   "+byteString(buffer[q]));
+//        	q++;
+//        	
+//        }
+        
+        assertEquals(0xFF&Integer.parseInt("11000000", 2),0xFF&buffer[0]); //pmap to indicate that we do use template ID
+        assertEquals(0xFF&Integer.parseInt("10000000", 2),0xFF&buffer[1]); //template id of zero
+        
+        
         FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
         FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
         
         int j = testRecordCount;
         while (j>0 && FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-        	while (j>0 && FASTRingBuffer.canMoveNext(rb)) {
-        		System.err.println(j);
-        		j--;
+        	if (j>0 && FASTRingBuffer.canMoveNext(rb)) {
         		
+        		//TODO: add test in here to confirm the values match
+        		//System.err.println("readmsg:"+j);
+        		j--;
         	}
         }
-//        
-//        new Exception("success").printStackTrace();
+        
+       // System.exit(0);
+        
+       // new Exception("success").printStackTrace();
         
         
         //TODO: B, followed by time decoding
@@ -267,6 +287,11 @@ public class CatalogGeneratorTest {
         
         
     }
+
+	private String byteString(int value) {
+		String tmp = "00000000"+Integer.toBinaryString(value);
+		return tmp.substring(tmp.length()-8, tmp.length());
+	}
 
     //TODO: A, need the compiled static accessor to greatly simplify the usage of clients
     //TODO: A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
@@ -290,11 +315,13 @@ public class CatalogGeneratorTest {
                         int j = fieldCount;
                         while (--j>=0) {
                             FASTRingBufferWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                            
                             if (0 == d) {
                                 d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                             }
+                            
                         }
-                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        FASTRingBuffer.publishWrites(ringBuffer);
                         
                         if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
@@ -321,7 +348,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        FASTRingBuffer.publishWrites(ringBuffer);
                         if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
@@ -346,7 +373,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        FASTRingBuffer.publishWrites(ringBuffer);
                         if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
@@ -374,7 +401,7 @@ public class CatalogGeneratorTest {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }
                         }
-                        FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                        FASTRingBuffer.publishWrites(ringBuffer);
                         if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }

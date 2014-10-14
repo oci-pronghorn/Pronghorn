@@ -207,7 +207,7 @@ public class GeneratorUtils {
               
         bsg.generate("    ",builder, doneValues, doneCode);
         if (isReader) {
-            builder.append("    FASTRingBuffer.unBlockFragment(rb.headPos,rb.workingHeadPos);\n");
+            builder.append("    FASTRingBuffer.publishWrites(rb);\n");
             builder.append("    return 1;//read a fragment\n"); 
         } 
         builder.append("}\n");

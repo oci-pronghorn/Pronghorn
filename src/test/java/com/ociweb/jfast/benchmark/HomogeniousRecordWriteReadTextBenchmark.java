@@ -431,7 +431,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
                 FASTRingBuffer.dump(rbRingBufferLocal);
                 byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
                 FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
-                FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.workingHeadPos);
+                FASTRingBuffer.publishWrites(rbRingBufferLocal);
 			    
 				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));

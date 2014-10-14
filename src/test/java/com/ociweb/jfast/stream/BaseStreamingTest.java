@@ -464,7 +464,7 @@ public abstract class BaseStreamingTest {
                 FASTRingBuffer.dump(fw.rbRingBufferLocal);
                 FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                 FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
-                FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                FASTRingBuffer.publishWrites(ringBuffer);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
@@ -527,7 +527,7 @@ public abstract class BaseStreamingTest {
                     FASTRingBuffer.dump(fw.rbRingBufferLocal);
                     FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                     FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
-                    FASTRingBuffer.unBlockFragment(ringBuffer.headPos,ringBuffer.workingHeadPos);
+                    FASTRingBuffer.publishWrites(ringBuffer);
                     int rbPos = 0;
                  
                     // hack until all the classes no longer need this method.

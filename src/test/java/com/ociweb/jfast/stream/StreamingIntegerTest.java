@@ -159,7 +159,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
         //temp solution as the ring buffer is introduce into all the APIs
         FASTRingBuffer.dump(rbRingBufferLocal);
         FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,value);
-        FASTRingBuffer.unBlockFragment(rbRingBufferLocal.headPos,rbRingBufferLocal.workingHeadPos);
+        FASTRingBuffer.publishWrites(rbRingBufferLocal);
         int rbPos = 0;
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {

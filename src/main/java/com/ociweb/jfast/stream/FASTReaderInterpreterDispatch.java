@@ -124,7 +124,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
         
 
-        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers,activeScriptCursor); 
+        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
      
         int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ 1+ rbRingBuffer.from.templateOffset; //plus roomm for next message
@@ -215,7 +215,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
                                 break;
-                                //FASTRingBuffer.unBlockFragment(rbRingBuffer); 
+                                //FASTRingBuffer.publishWrites(rbRingBuffer); 
                                 //return sequenceCountStackHead>=0;//doSequence;
                             }
 
@@ -233,7 +233,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                         readLength(token,jumpToTarget, readFromIdx, reader);
                         
                         break;
-                        //FASTRingBuffer.unBlockFragment(rbRingBuffer);
+                        //FASTRingBuffer.publishWrites(rbRingBuffer);
                         //return sequenceCountStackHead>=0;
                         //return true;
 
@@ -253,7 +253,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     }
                 }
             }
-        } while (++activeScriptCursor < limit);
+        } while (++activeScriptCursor < limit); //TODO: must remove limit because it is wrong for unit tests with interpriter.
+        //++activeScriptCursor;
+        //} while (sequenceCountStackHead>0);
+        //System.err.println("******************************"+sequenceCountStackHead+  "  "+activeScriptCursor+" "+limit);
+        
         
         //TODO: B, on normal fixed closed this is not needed so the conditional can be skipped.
         genReadGroupCloseMessage(reader, this); 
@@ -262,7 +266,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
        // System.err.println(fragmentSize+"  vs  "+(rbRingBuffer.workingHeadPos.value-rbRingBuffer.headPos.get()));
         
         //Must do last because this will let the other threads begin to use this data
-        FASTRingBuffer.unBlockFragment(rbRingBuffer.headPos,rbRingBuffer.workingHeadPos); //TODO: B, may be able to improve performance by doing this occasionally 
+        FASTRingBuffer.publishWrites(rbRingBuffer); //TODO: B, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
     }
 

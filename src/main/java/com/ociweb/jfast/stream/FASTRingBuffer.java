@@ -240,9 +240,9 @@ public final class FASTRingBuffer {
     	    	
         //if we can not start to read the next message because it does not have the template id yet      
         long needStop = cashWorkingTailPos + 1; //NOTE: do not make this bigger or hangs are likely
-        if (needStop>=ringBufferConsumer.getBnmHeadPosCache() ) {  
+        if (needStop>ringBufferConsumer.getBnmHeadPosCache() ) {  
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
-            if (needStop>=ringBufferConsumer.getBnmHeadPosCache()) {
+            if (needStop>ringBufferConsumer.getBnmHeadPosCache()) {
                 ringBufferConsumer.setMessageId(-1);
               return false; 
             }
@@ -397,12 +397,6 @@ public final class FASTRingBuffer {
     } 
     
     
-    // fragment is ready for consumption
-    public static final void unBlockFragment(AtomicLong head, PaddedLong headCache) {
-     
-     //   assert(headCache.value>head.get()) : "Can not set the cache smaller than head";        
-        head.lazySet(headCache.value);
-    }
     
     //TODO: X, Will want to add local cache of atomic in unBlock in order to not lazy set twice because it is called for every close.
     //Called once for every group close, even when nested
@@ -440,10 +434,6 @@ public final class FASTRingBuffer {
     public int readRingByteMask() {
         return byteMask;
     }
-
-//    public final int availableCapacity() {
-//        return maxSize - (int)(headPos.longValue() - tailPos.longValue());
-//    }
 
     
     public static int contentRemaining(FASTRingBuffer rb) {

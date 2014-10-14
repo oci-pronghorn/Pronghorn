@@ -28,7 +28,7 @@ public class FASTRingBufferTest {
         FASTRingBuffer.addByteArray(source, 0, source.length, rb);             
         
         //unblock for reading
-        FASTRingBuffer.unBlockFragment(rb.headPos, rb.workingHeadPos);
+        FASTRingBuffer.publishWrites(rb);
                 
         //read one integer back
         assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb.buffer, rb.mask, rb.workingTailPos)));
