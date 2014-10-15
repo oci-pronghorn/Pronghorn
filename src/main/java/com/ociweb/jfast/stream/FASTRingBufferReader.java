@@ -505,6 +505,10 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
         return pos;
     }
 
+	public static boolean isNewMessage(FASTRingBuffer rb) {
+		return rb.consumerData.isNewMessage();
+	}
+
 
 
 }

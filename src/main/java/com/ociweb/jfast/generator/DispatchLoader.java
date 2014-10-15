@@ -22,6 +22,8 @@ public class DispatchLoader {
     }
     
     public static FASTDecoder loadDispatchReaderDebug(byte[] catalog) {
+        ///NOTE: when there is only 1 template the compiled dispatch may continue to work if the templateId is wrong
+        //       because it does not do extra checking.  The interpreted one will use the templateId as defined.
         return new FASTReaderInterpreterDispatch(catalog);
     }
 

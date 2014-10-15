@@ -25,6 +25,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Test;
 
+import com.ociweb.jfast.FAST;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
@@ -167,7 +168,7 @@ public class TemplateLoaderTest {
             frags = 0;
 
             reactor = new FASTInputReactor(readerDispatch,reader);
-            FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
+            FASTRingBuffer rb = reactor.ringBuffers()[0];
             rb.reset();
 
             while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
@@ -350,24 +351,14 @@ public class TemplateLoaderTest {
 			
 			throw new RuntimeException(e);
 		}
-    	
-    	int maxPMapCountInBytes = TemplateCatalogConfig.maxPMapCountInBytes(catalog);
-    	     	
-        PrimitiveReader reader = new PrimitiveReader(4096,fastInput,maxPMapCountInBytes);
 
         FASTClassLoader.deleteFiles();
-        
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);
-    //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-        
-
         final AtomicInteger msgs = new AtomicInteger();
 
-                 
-        msgs.set(0);
-
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
-        FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
+        FASTInputReactor reactor = FAST.inputReactor(fastInput, catBytes); 
+        
+        assertEquals(1,reactor.ringBuffers().length);
+        FASTRingBuffer rb = reactor.ringBuffers()[0];
         rb.reset();
 
         while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
@@ -578,22 +569,13 @@ public class TemplateLoaderTest {
 
         FASTInputByteArray fastInput = new FASTInputByteArray(testBytesData);
 
-        // New memory mapped solution. No need to cache because we warm up and
-        // OS already has it.
-        // FASTInputByteBuffer fastInput =
-        // buildInputForTestingByteBuffer(sourceDataFile);
 
-        PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);
-        
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
-        
-       // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
-      
-       System.err.println("using: "+readerDispatch.getClass().getSimpleName());
-        
         final AtomicInteger msgs = new AtomicInteger();
-        
+
+        PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);        
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);   
         FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        
         
         FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 

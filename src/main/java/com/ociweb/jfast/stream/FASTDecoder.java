@@ -32,25 +32,26 @@ public abstract class FASTDecoder{
     public int templateId=-1; //must hold between read (wait for space on queue) and write of templateId
     public int preambleA=0; //must hold between read (wait for space on queue) and write (if it happens)
     public int preambleB=0; //must hold between read (wait for space on queue) and write (if it happens)
-            
+    public int maxPMapCountInBytes;       
+    
     public final byte[] preambleData;
    
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
-        this(catalog.dictionaryFactory(), catalog.getMaxGroupDepth(),
+        this(catalog.dictionaryFactory(), 
+        	 catalog.getMaxGroupDepth(),
         	 catalog.getTemplateStartIdx(), 
-             catalog.clientConfig().getPreableBytes(), catalog.ringBuffers());
-    }
-    
-    private static int computePMapStackInBytes(TemplateCatalogConfig catalog) {
-        return 2 + ((Math.max(
-                catalog.maxTemplatePMapSize(), catalog.maxNonTemplatePMapSize()) + 2) * catalog.getMaxGroupDepth());
+             catalog.clientConfig().getPreableBytes(), 
+             catalog.ringBuffers(), 
+             TemplateCatalogConfig.maxPMapCountInBytes(catalog) );
     }
     
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
     		            int[] templateStartIdx,
-			            int preambleBytes, RingBuffers ringBuffers) {
+			            int preambleBytes, 
+			            RingBuffers ringBuffers,
+			            int maxPMapCountInBytes) {
 
         this.byteHeap = dcr.byteDictionary();
         
@@ -62,6 +63,8 @@ public abstract class FASTDecoder{
         this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;
+        
+        this.maxPMapCountInBytes = maxPMapCountInBytes;
         
         assert (rIntDictionary.length < TokenBuilder.MAX_INSTANCE);
         assert (TokenBuilder.isPowerOfTwo(rIntDictionary.length));

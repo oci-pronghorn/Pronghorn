@@ -21,6 +21,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
+import com.ociweb.jfast.FAST;
 import com.ociweb.jfast.catalog.generator.CatalogGenerator;
 import com.ociweb.jfast.catalog.generator.TemplateGenerator;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
@@ -35,13 +36,11 @@ import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
-import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
-import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTInputReactor;
@@ -250,38 +249,35 @@ public class CatalogGeneratorTest {
 //        	q++;
 //        	
 //        }
+        assertEquals(0xFF&Integer.parseInt("11000000", 2),0xFF&buffer[0]); //pmap to indicate that we do use template ID
+        assertEquals(0xFF&Integer.parseInt("10000010", 2),0xFF&buffer[1]); //template id of 2
 
         
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
-        //TODO: fix this bug and simpify construction
-        //PrimitiveReader reader = new PrimitiveReader(4096,fastInput, TemplateCatalogConfig.maxPMapCountInBytes(catalog));
-        PrimitiveReader reader = new PrimitiveReader(buffer);
         
-        
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); //TODO: it is too complicated to build this up every time need to wrap it up!
-        
-        ///NOTE: when there is only 1 template the compiled dispatch may continue to work if the templateId is wrong
-        //       because it does not do extra checking.  The interpreted one will use the templateId as defined.
-        
-        
-        
-        assertEquals(0xFF&Integer.parseInt("11000000", 2),0xFF&buffer[0]); //pmap to indicate that we do use template ID
-        assertEquals(0xFF&Integer.parseInt("10000010", 2),0xFF&buffer[1]); //template id of 2
-        
-        
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
-        FASTRingBuffer rb = RingBuffers.get(readerDispatch.ringBuffers,0);
+
+        FASTInputReactor reactor = FAST.inputReactor(fastInput, catBytes);
+      
+
+        FASTRingBuffer[] buffers = reactor.ringBuffers();
+        int buffersCount = buffers.length;
         
         int j = testRecordCount;
         while (j>0 && FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-        	if (j>0 && FASTRingBuffer.canMoveNext(rb)) {
-        		assertTrue(rb.consumerData.isNewMessage());
-        		assertEquals(testTemplateId, rb.consumerData.messageId);
+        	int k = buffersCount;
+        	while (j>0 && --k>=0) {
+        		if (FASTRingBuffer.canMoveNext(buffers[k])) {
+        			assertTrue(buffers[k].consumerData.isNewMessage());
+        			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
+        			
+        			//TODO: add test in here to confirm the values match
+        			
+        			j--;
+        		}
         		
-        		//TODO: add test in here to confirm the values match
-        		
-        		j--;
         	}
+        	
+        	
         }
         
        // System.exit(0);
@@ -296,6 +292,7 @@ public class CatalogGeneratorTest {
         
         
     }
+
 
 	private String byteString(int value) {
 		String tmp = "00000000"+Integer.toBinaryString(value);

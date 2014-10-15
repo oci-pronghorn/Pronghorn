@@ -467,8 +467,8 @@ public class TemplateCatalogConfig {
     public static int maxPMapCountInBytes(TemplateCatalogConfig catalog) {
         return 2 + ((
                       catalog.maxTemplatePMapSize()>catalog.maxNonTemplatePMapSize() ?
-                      catalog.maxTemplatePMapSize():catalog.maxNonTemplatePMapSize()
-                      + 2) * catalog.getMaxGroupDepth());
+                    		  catalog.maxTemplatePMapSize() + 2:
+                    	      catalog.maxNonTemplatePMapSize() + 2) * catalog.getMaxGroupDepth());
     }
 
 }

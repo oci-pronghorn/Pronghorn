@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URL;
 
 import com.google.caliper.Benchmark;
+import com.ociweb.jfast.FAST;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
@@ -31,7 +32,8 @@ public class Complex30000Benchmark extends Benchmark {
     byte[] testData;
 
     public Complex30000Benchmark() {
-        catalog = new TemplateCatalogConfig(TemplateLoaderTest.buildRawCatalogData(new ClientConfig()));
+        byte[] catBytes = TemplateLoaderTest.buildRawCatalogData(new ClientConfig());
+		catalog = new TemplateCatalogConfig(catBytes);
 
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
@@ -47,11 +49,10 @@ public class Complex30000Benchmark extends Benchmark {
             assertEquals(testData.length, readBytes);
 
             fastInput = new FASTInputByteArray(testData);
-            reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
-            readerDispatch = new FASTReaderInterpreterDispatch(catalog);
             
-            reactor = new FASTInputReactor(readerDispatch,reader);
-            queue = RingBuffers.get(readerDispatch.ringBuffers,0);
+            reactor = FAST.inputReactor(fastInput, catBytes);
+                        
+            queue = reactor.ringBuffers()[0];//RingBuffers.get(readerDispatch.ringBuffers,0);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();

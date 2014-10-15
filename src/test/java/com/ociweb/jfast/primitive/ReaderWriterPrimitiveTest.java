@@ -79,7 +79,8 @@ public class ReaderWriterPrimitiveTest {
 	private float writeDurationIOSpeed;
 	public static final int VERY_LONG_STRING_MASK = 0x0F;//0x7F; 
 	
-	@Test
+	//skipped, causes problems with grabbing the socket
+	//not needed for coverage but was helpful speed comparisons
 	public void testBufferSpeed() {
 		System.gc();
 		Thread.yield();

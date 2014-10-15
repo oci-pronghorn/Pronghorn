@@ -147,5 +147,8 @@ public final class FASTInputReactor {
             return reactor.decoder.decode(reactor.reader);
     }
     
+    public FASTRingBuffer[] ringBuffers() {
+    	return RingBuffers.buffers(decoder.ringBuffers);
+    }
 
 }
