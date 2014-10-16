@@ -693,17 +693,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         int token = fullScript[activeScriptCursor];
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
-               
-//        if (null!=writer) {
-//        	System.err.println("outWrote "+(writer.bytesReadyToWrite(writer)+writer.totalWritten(writer))+" token "+TokenBuilder.tokenToString(token) );
-//        }
+           
         
-//        if (TokenBuilder.tokenToString(token).contains("DecimalOptional:001101/Default:")){
-//        	System.err.println("XX");
-//        }
-        
-        
-    ///   System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
+    //   System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
        
        
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
@@ -1332,8 +1324,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //loop over every cursor position and dispatch to do the right activity
-        int stop = activeScriptLimit; //limit value is inclusive        
-        while (activeScriptCursor<=stop) { 
+        int stop = activeScriptLimit; //limit value is exclusive        
+        while (activeScriptCursor<stop) { 
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message
             };

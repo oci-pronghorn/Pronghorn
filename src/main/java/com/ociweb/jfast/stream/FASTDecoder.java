@@ -59,7 +59,7 @@ public abstract class FASTDecoder{
         this.rIntDictionary = dcr.integerDictionary();
         this.rLongDictionary = dcr.longDictionary();
         
-        this.templateStartIdx = templateStartIdx;
+        this.templateStartIdx = templateStartIdx;        
         this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;

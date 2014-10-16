@@ -273,24 +273,11 @@ public class CatalogGeneratorTest {
         			//TODO: add test in here to confirm the values match
         			
         			j--;
-        		}
-        		
-        	}
-        	
+        		}        		
+        	}       	
         	
         }
-        
-       // System.exit(0);
-        
-       // new Exception("success").printStackTrace();
-        
-        
-        //TODO: B, followed by time decoding
-        //TODO: B, followed by validate values
-        
 
-        
-        
     }
 
 

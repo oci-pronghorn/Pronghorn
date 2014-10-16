@@ -75,7 +75,8 @@ public class TemplateCatalogConfig {
                 
         int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
         assert (templatePow < 32) : "Corrupt catalog file";
-        templateStartIdx = new int[1 << templatePow];
+        
+        templateStartIdx = new int[1 << templatePow];  
         templateLimitIdx = new int[1 << templatePow];
 
         //given an index in the script lookup the tokens, fieldIds or fieldNames

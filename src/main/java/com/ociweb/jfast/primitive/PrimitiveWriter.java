@@ -233,13 +233,10 @@ public final class PrimitiveWriter {
         writer.nextBlockOffset = -1;
         writer.pendingPosition = 0;
 
-        if (0 == writer.safetyStackDepth && 0 == writer.flushSkipsIdxLimit && writer.position == writer.limit) {
+        //if we have old pmaps that are not done yet then even when position hits limit we cant roll back down to zero.
+        if (writer.position == writer.limit && 0 == writer.safetyStackDepth && 0 == writer.flushSkipsIdxLimit) {
             writer.position = writer.limit = 0;
         }
-      //  System.err.println("xxx "+writer.position+" "+writer.limit);
-        //if nextBlock size is not large enought to get to the end of the message eg 255 but need 257 we will have 3 left
-        //TODO: A, must write remaining bytes if it takes us to limit and is smaller than block?
-        
         return nextOffset;
     }
 
@@ -1024,7 +1021,12 @@ public final class PrimitiveWriter {
             writer.output.flush();
         }
         
-    }    
+    }
+
+	public static void assertAllFlushed(PrimitiveWriter writer) {
+		assert(writer.safetyStackDepth==0) : "Check for an open group that does not close, old pmaps are still open.";
+		assert(writer.position==writer.limit) : "Unable to flush all the buffered data";
+	}    
 
    
 

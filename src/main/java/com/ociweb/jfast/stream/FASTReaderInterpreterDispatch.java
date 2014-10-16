@@ -121,7 +121,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             beginMessage(reader); 
         }
         
-
+       
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
      

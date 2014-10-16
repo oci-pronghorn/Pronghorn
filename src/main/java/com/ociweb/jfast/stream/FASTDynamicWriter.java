@@ -33,6 +33,8 @@ public class FASTDynamicWriter {
             
             
             writerDispatch.encode(writer, ringBuffer);
+            
+            
         }
     }
 

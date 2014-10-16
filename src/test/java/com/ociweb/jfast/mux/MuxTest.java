@@ -37,8 +37,8 @@ public class MuxTest {
   //TODO: B, build speed loader of file with NIO and add multiple decoders
     
     
-    @Test
-    public void loadFile() {
+    //still under development
+    public void loadFileTest() {
         
         byte[] catBytes = buildRawCatalogData(new ClientConfig());
         

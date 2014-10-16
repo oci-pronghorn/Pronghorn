@@ -11,7 +11,7 @@ public class FAST {
 	static int DEFAULT_BUFFER_SIZE = 4096;
 
 	public static FASTInputReactor inputReactor(FASTInput fastInput, byte[] catBytes) {
-	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
 	    PrimitiveReader reader = new PrimitiveReader(DEFAULT_BUFFER_SIZE, fastInput, readerDispatch.maxPMapCountInBytes);
 	    FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
 		return reactor;
