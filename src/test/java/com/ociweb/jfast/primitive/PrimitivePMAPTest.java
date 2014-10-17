@@ -257,8 +257,7 @@ public class PrimitivePMAPTest {
         byte[] testData = new byte[] { ((byte) Integer.valueOf("00111010", 2).intValue()),
                 ((byte) Integer.valueOf("10001011", 2).intValue()) };
 
-        FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(testData));
-        PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
+        PrimitiveReader reader = new PrimitiveReader(testData);
 
         int maxPMapSize = testData.length; // in bytes
         // open this pmap
@@ -287,6 +286,30 @@ public class PrimitivePMAPTest {
         PrimitiveReader.closePMap(reader);
 
     }
+    
+    @Test
+    public void testReaderSingleOneByte() {
+
+        byte[] testData = new byte[] { ((byte) Integer.valueOf("10111011", 2).intValue()) };
+
+        PrimitiveReader reader = new PrimitiveReader(testData);
+
+        int maxPMapSize = testData.length; // in bytes
+        // open this pmap
+        PrimitiveReader.openPMap(maxPMapSize, reader);
+
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(0, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        assertEquals(1, PrimitiveReader.readPMapBit(reader));
+        
+        // close
+        PrimitiveReader.closePMap(reader);
+
+    }
 
     @Test
     public void testReaderNested2() {
@@ -296,8 +319,7 @@ public class PrimitivePMAPTest {
                 // second pmap starts here
                 ((byte) Integer.valueOf("00000000", 2).intValue()), ((byte) Integer.valueOf("11111111", 2).intValue()) };
 
-        FASTInputStream input = new FASTInputStream(new ByteArrayInputStream(testData));
-        PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
+        PrimitiveReader reader = new PrimitiveReader(testData);
 
         // open this pmap
         PrimitiveReader.openPMap(2, reader);

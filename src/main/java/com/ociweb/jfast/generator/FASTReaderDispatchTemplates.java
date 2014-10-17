@@ -53,11 +53,39 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {
 
         {
-            // write template id at the beginning of this message
-            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
-            
-            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
+        	int startPos = reader.position;
+        	
+//        	int hackAgain = 1;
+//        	
+//        	do {
+//        		
+//        		try {
+	            // write template id at the beginning of this message
+	            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
+	            
+	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
+	            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
+//        		} catch (ArrayIndexOutOfBoundsException ex) {
+//        			dispatch.templateId = -10;
+//        		}
+//	            
+//	            
+//	            ///TODO: remove this hack to fix the off by one bug
+//	            if (dispatch.templateId<0) {
+//	            	
+//	            	reader.position = startPos-1;
+//	            } else {
+//	            	hackAgain = 0;
+//	            }
+//	            
+//        	} while (--hackAgain>=0);
+        	
+            if (dispatch.templateId<0) {
+            	System.err.println("start openPMap at pos "+startPos); //expected to be 1 less
+            	//TODO: this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed
+            	//      short term hack, rebuild the data without using as many optional fields.
+            	printDebugData(reader);
+            }
             
             // fragment size plus 1 for template id and preamble data length in bytes
             dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
@@ -70,6 +98,24 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             //TODO: B, should only spin loock above once but afte this method call it is done again, also sping lock causes cpu to sleep, how to avoid.
   
         }
+    }
+    
+    //TODO: move into PrimitiveReader
+    private static void printDebugData(PrimitiveReader reader) {
+    	int pos = Math.max(reader.position-5, 0);
+    	int lim = Math.min(reader.limit, pos+10);
+    	
+    	System.err.println("printing details of bytes "+pos+" up to "+lim);
+    	while (pos<lim) {
+    		
+    		String temp = "00000000"+Integer.toBinaryString(reader.buffer[pos]);    		
+    		System.err.println(pos+" data:"+ temp.substring(temp.length()-8)+"    "+reader.buffer[pos] );
+    		
+    		pos++;
+    	}
+    			
+    			
+    	
     }
 
     protected void genWriteTemplateId(FASTDecoder dispatch) {

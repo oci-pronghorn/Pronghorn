@@ -83,13 +83,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         //break out into series of gen calls to save int somewhere. units of 4 only.
         int p = this.preambleDataLength;
         if (p>0) {
+     //   	System.err.println("warnin preamble length "+this.preambleDataLength);
+        	
             genReadPreambleA(reader, this);
              if (p>4) {
                 genReadPreambleB(reader, this);
                 assert(p==8) : "Unsupported large preamble";
             }
         }                                        
-        
         
         // /////////////////
         // open message (special type of group)
@@ -135,6 +136,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         int token = fullScript[activeScriptCursor];
         do {
             token = fullScript[activeScriptCursor];
+  //          System.err.println("reading:"+TokenBuilder.tokenToString(token)+" from "+reader.position);
     
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.

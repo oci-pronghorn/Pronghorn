@@ -27,6 +27,10 @@ public class FASTOutputTotals implements FASTOutput {
         }
     }
     
+    /**
+     * Total bytes that have been consumed by this sink
+     * @return
+     */
     public long total() {
         return total;
     }

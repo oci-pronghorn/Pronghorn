@@ -37,7 +37,7 @@ public final class PrimitiveReader {
 
     private final int resetLimit;  
     private final FASTInput input;
-    private final byte[] buffer;
+    public final byte[] buffer;
     
     private long totalReader;
     
@@ -45,7 +45,7 @@ public final class PrimitiveReader {
     private int invPmapStackDepth;
 
     public int position; 
-    private int limit;
+    public int limit;
     
     public int pmapIdxBitBlock = -1; //idx high in pmap data
     
@@ -96,7 +96,7 @@ public final class PrimitiveReader {
         this.position = 0;
         this.limit = buffer.length;
         //in this case where the full data is provided then we know it can not be larger than the buffer.
-        int maxPMapCountInBytes = buffer.length;
+        int maxPMapCountInBytes = buffer.length+6;
         this.invPmapStack = new byte[maxPMapCountInBytes];//need trailing bytes to avoid conditional when using.
         this.invPmapStackDepth = maxPMapCountInBytes-2;
 
@@ -292,8 +292,12 @@ public final class PrimitiveReader {
         if (reader.limit - rp >= pmapMaxSize) {
             if ((pmapStack[k++] = buffer[rp++]) >= 0) {
                 if ((pmapStack[k++] = buffer[rp++]) >= 0) {
-                    do {
-                    } while ((pmapStack[k++] = buffer[rp++]) >= 0);
+                	try{
+	                    do {
+	                    } while ((pmapStack[k++] = buffer[rp++]) >= 0);
+                	} catch (ArrayIndexOutOfBoundsException outOfBounds) {
+                		throw new FASTException("No high bit set to mark the end of the PMAP");
+                	}
                 }
             }
             reader.position = rp;
