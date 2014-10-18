@@ -13,14 +13,9 @@ import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
 
 //TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
-//TODO: Z, can we send catalog in-band as a byteArray to push dynamic changes,  Need a unit test for this.
 //TODO: B, set the default template for the case when it is undefined in catalog.
 //TODO: C, Must add unit test for message length field start-of-frame testing, FrameLength bytes to read before decoding, is before pmap/templateId
 //TODO: D, perhaps frame support is related to buffer size in primtive write so the right number of bits can be set.
-//TODO: X, Add un-decoded field option so caller can deal with the subtraction of optionals.
-//TODO: X, constants do not need to be written to ring buffer they can be de-ref by the reading static method directly.
-
-//TODO: X, Send Amazon gift card to anyone who can supply another software based project, template, and example file that can run faster than this implementation. (One per project)
 
 //TODO: T, Document, the fact that anything at the end is ignored and can be injected runtime references.
 
@@ -53,11 +48,39 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {
 
         {
-            // write template id at the beginning of this message
-            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
-            
-            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
+        	int startPos = reader.position;
+        	
+//        	int hackAgain = 1;
+//        	
+//        	do {
+//        		
+//        		try {
+	            // write template id at the beginning of this message
+	            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
+	            
+	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
+	            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
+//        		} catch (ArrayIndexOutOfBoundsException ex) {
+//        			dispatch.templateId = -10;
+//        		}
+//	            
+//	            
+//	            ///TODO: remove this hack to fix the off by one bug
+//	            if (dispatch.templateId<0) {
+//	            	
+//	            	reader.position = startPos-1;
+//	            } else {
+//	            	hackAgain = 0;
+//	            }
+//	            
+//        	} while (--hackAgain>=0);
+        	
+            if (dispatch.templateId<0) {
+            	System.err.println("start openPMap at pos "+startPos); //expected to be 1 less
+            	//TODO: A, this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed
+            	//      short term hack, rebuild the data without using as many optional fields.
+            	PrimitiveReader.printDebugData(reader);
+            }
             
             // fragment size plus 1 for template id and preamble data length in bytes
             dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
@@ -71,7 +94,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
   
         }
     }
-
+    
     protected void genWriteTemplateId(FASTDecoder dispatch) {
         {
         FASTRingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  

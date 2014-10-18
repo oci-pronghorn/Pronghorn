@@ -299,7 +299,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 int target = (token & intInstanceMask);
                 int source = readFromIdx > 0 ? readFromIdx & intInstanceMask : target;
                 // copy, increment
-                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
+                if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {                	
                     // copy
                     genWriteIntegerSignedCopy(target, source, rbPos, writer, rIntDictionary, buffer, mask, workingTailPos);
                 } else {
@@ -695,7 +695,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
            
         
-    //   System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
+      // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
        
        
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {

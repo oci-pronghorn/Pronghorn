@@ -165,10 +165,5 @@ public class Stats {
                 + "Max:"+maxValue+" @ "+maxValueIdx+" ";
     }
     
-    
-    
-    //TODO: do this in a read only copy of the data.
-    //TODO: given a raw value return pct "Near"
-    //TODO: given a raw value return pct above and/or below.
-    
+        
 }

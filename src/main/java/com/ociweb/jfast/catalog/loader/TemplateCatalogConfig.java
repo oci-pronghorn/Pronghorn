@@ -41,9 +41,11 @@ public class TemplateCatalogConfig {
     private final int maxPMapDepth;
     private final int maxFieldId; 
 
-    private final int[] templateStartIdx; // TODO: X, these two arrays can be
-                                         // shortened!
+    //these two arrays are as long as the biggest template id
+    //if the template ids are sparse they may "waste" a bunch of space
+    private final int[] templateStartIdx; 
     private final int[] templateLimitIdx;
+    
     
     public final int[] templateScriptEntries;
     public final int[] templateScriptEntryLimits;

@@ -46,7 +46,7 @@ public class BalancedSwitchGenerator {
         assert(splitValues[0].length>0) : "Split bit "+splitBit+"  "+Arrays.toString(splitValues[1]);
         assert(splitValues[1].length>0) : "Split bit "+splitBit+"  "+Arrays.toString(splitValues[0]);
         
-        //TODO: X, if division only pulls off one item and this is the biggest split possible then we should reconsider the strategy for the rest.
+        //TODO: D, if division only pulls off one item and this is the biggest split possible then we should reconsider the strategy for the rest.
         //      go back and check with more than 1 bit in mask and continue until a good split is found.
         
         int maskBit = 1<<splitBit;

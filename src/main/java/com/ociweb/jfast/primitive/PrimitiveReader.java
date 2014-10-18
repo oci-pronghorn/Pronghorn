@@ -67,7 +67,26 @@ public final class PrimitiveReader {
      }
         
     
-    /**
+    //TODO: move into PrimitiveReader
+	public static void printDebugData(PrimitiveReader reader) {
+		int pos = Math.max(reader.position-5, 0);
+		int lim = Math.min(reader.limit, pos+10);
+		
+		System.err.println("printing details of bytes "+pos+" up to "+lim);
+		while (pos<lim) {
+			
+			String temp = "00000000"+Integer.toBinaryString(reader.buffer[pos]);    		
+			System.err.println(pos+" data:"+ temp.substring(temp.length()-8)+"    "+reader.buffer[pos] );
+			
+			pos++;
+		}
+				
+				
+		
+	}
+
+
+	/**
      * 
      * Making the bufferSize large will decrease the number of copies but may increase latency.
      * Making the bufferSize small will decrease latency but may reduce overall throughput.

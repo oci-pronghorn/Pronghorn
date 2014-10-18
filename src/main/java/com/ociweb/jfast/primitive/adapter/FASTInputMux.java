@@ -78,7 +78,7 @@ public class FASTInputMux implements FASTInput {
 		tailC += sourceC.fill(tailC, Math.min( (FETCH_SIZE - (FETCH_MASK & tailC)), count));
 		
 		//
-		//check for matching values, TODO: Z, multi reduntant feeds. Far from the best implementation but good enough for now.
+		//check for matching values, Far from the best implementation but good enough for now.
 		//
 		int tmp = 0;
 		if (posA == sendingPos) {

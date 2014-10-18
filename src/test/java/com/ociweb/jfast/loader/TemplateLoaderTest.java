@@ -432,7 +432,7 @@ public class TemplateLoaderTest {
 
         FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
 
-        // TODO: Z, force this error and add friendly message, when minimize
+        // TODO: B, force this error and add friendly message, when minimize
         // latency set to false these need to be much bigger?
         int writeBuffer = 2048;
         

@@ -3,12 +3,12 @@ package com.ociweb.jfast.catalog.generator;
 public class GroupGenerator implements ItemGenerator {
 
     public GroupGenerator(String name, int id, boolean presence) {
-        // TODO Auto-generated constructor stub
+        
     }
 
     @Override
     public StringBuilder appendTo(String tab, StringBuilder result) {
-        // TODO Auto-generated method stub
+        // TODO still need to implement template generation for groups
         return null;
     }
 

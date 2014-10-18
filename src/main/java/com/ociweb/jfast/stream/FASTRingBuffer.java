@@ -338,12 +338,7 @@ public final class FASTRingBuffer {
 
     }
 
-    // TODO: Z, add consumer/Iterator to go from ring buffer to Object stream
-    // TODO: Z, Map templates to methods for RMI of void methods(eg. one direction).
-    // TODO: Z, add map toIterator method for consuming ring buffer by java8 streams.
-
     public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
-        //int rbMask, int[] rbB  PaddedLong rbPos
         final int p = rbRingBuffer.addByteWorkingHeadPos.value;
         if (sourceLen > 0) {
             rbRingBuffer.addByteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);

@@ -234,7 +234,7 @@ public class CatalogGeneratorTest {
         
         long nsLatency = FASTRingBufferConsumer.responseTime(ringBuffer.consumerData);
      
-        //TODO: write to flat file to produce google chart.
+        //TODO: D, write to flat file to produce google chart.
         //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
         //System.err.println("bytes written:"+bytesWritten);
         
@@ -388,7 +388,7 @@ public class CatalogGeneratorTest {
                         FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            //TODO: this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
+                            //TODO: B, this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
                             FASTRingBufferWriter.writeBytes(ringBuffer, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.stringData.length;

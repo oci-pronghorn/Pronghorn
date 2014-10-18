@@ -122,6 +122,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             beginMessage(reader); 
         }
         
+//        if (reader.position>) {
+//        	
+//        }
+        
+        
        
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
@@ -208,6 +213,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 //Close group
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
+                           //     ++activeScriptCursor;    
                                 break;
                                 //FASTRingBuffer.publishWrites(rbRingBuffer); 
                                 //return sequenceCountStackHead>=0;//doSequence;
@@ -225,7 +231,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
                         readLength(token,jumpToTarget, readFromIdx, reader);
-                        
+                     //   ++activeScriptCursor;    
                         break;
                         //FASTRingBuffer.publishWrites(rbRingBuffer);
                         //return sequenceCountStackHead>=0;
@@ -251,6 +257,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             ++activeScriptCursor;           
             
         } while (true);
+        
         genReadGroupCloseMessage(reader, this); 
                 
         //Must do last because this will let the other threads begin to use this data
@@ -329,7 +336,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
                     int expoConstAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(expoToken));
-                    
+                                        
                     decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 } else {
@@ -443,7 +450,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     //copy
     private void decodeOptionalDecimalCopy(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
-        if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
+        
+    	System.err.println("decode the decimal copy");
+    	
+    	if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
                 int mantissaTarget = mantToken & MAX_LONG_INSTANCE_MASK;

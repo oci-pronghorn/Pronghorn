@@ -144,7 +144,6 @@ public class ThreadingTest {
                           if (rb.consumerData.isNewMessage()) {
                               msgs.incrementAndGet();
                               
-                              //TODO: why does this hang?
                               //processMessage(temp, rb); 
                               
                           } 
