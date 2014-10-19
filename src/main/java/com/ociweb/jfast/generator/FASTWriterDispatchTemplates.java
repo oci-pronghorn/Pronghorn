@@ -860,7 +860,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+    //        System.err.println("t write exponent:"+exponentValue);
             if (exponentValueOfNull == exponentValue) {
+      //      	System.err.println("t nullllll");
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -870,7 +872,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }// null for Copy and Increment 
             } else {        
                 int value = exponentValue>=0?exponentValue+1:exponentValue;
+                
                 if (value == rIntDictionary[exponentSource]) {
+      //          	System.err.println("t pmap");
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
                     PrimitiveWriter.writePMapBit((byte)1, writer);
@@ -878,7 +882,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                long mantissa = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+    //            System.err.println("t write mantissa:"+mantissa);
+				PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = mantissa, writer); 
             }
         }
     }
@@ -1451,6 +1457,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
      protected void genWriteDecimalNoneOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
              int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             System.err.println("write exponent:"+exponentValue);
              if (exponentValueOfNull == exponentValue) {
                  rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1460,6 +1467,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 
                  //mantissa
                  long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 System.err.println("write mantissa:"+value);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {

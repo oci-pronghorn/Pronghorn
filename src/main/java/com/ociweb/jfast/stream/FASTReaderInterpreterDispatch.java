@@ -295,7 +295,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken, FASTRingBuffer rbRingBuffer) {
               
-       // System.err.println("decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
+       System.err.println("MM decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
+      
        //In this method we split out by exponent operator then call the specific method needed
        //for the remaining split by mantissa.
         
@@ -451,7 +452,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     //copy
     private void decodeOptionalDecimalCopy(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         
-    	System.err.println("decode the decimal copy");
+    //	System.err.println("decode the decimal copy");
     	
     	if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta

@@ -965,7 +965,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         int mantissaTarget = (mantissaToken & longInstanceMask);
         int mantissaSource = readFromIdx > 0 ? readFromIdx & longInstanceMask : mantissaTarget;
         
-  //      System.err.println(TokenBuilder.tokenToString(expoToken)+ " "+TokenBuilder.tokenToString(mantissaToken));
+    //    System.err.println("WriteOptionalDecimal: "+TokenBuilder.tokenToString(expoToken)+ " "+TokenBuilder.tokenToString(mantissaToken));
         
         if (0 == (expoToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta

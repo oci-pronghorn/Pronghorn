@@ -501,17 +501,17 @@ public final class PrimitiveReader {
      * 
      */
     public static int readIntegerSigned(PrimitiveReader reader) {
-          if (reader.limit - reader.position >= 10) {// not near end so go fast.
-            byte v = reader.buffer[reader.position++];
-         //   int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;         
-            int accumulator = (~(((v>>6)&1)-1))&0xFFFFFF80;  //branchless                
-            return (v < 0) ? accumulator |(v & 0x7F) : readIntegerSignedTail((accumulator | v) << 7,reader);
-        }
-        return readIntegerSignedSlow(reader);
+    	  if (reader.limit - reader.position >= 10) {// not near end so go fast.
+		    byte v = reader.buffer[reader.position++];
+		 //   int accumulator = ((v & 0x40) == 0) ? 0 : 0xFFFFFF80;         
+		    int accumulator = (~(((v>>6)&1)-1))&0xFFFFFF80;  //branchless                
+		    return (v < 0) ? accumulator |(v & 0x7F) : readIntegerSignedTail((accumulator | v) << 7,reader);
+		}
+		return readIntegerSignedSlow(reader);
     }
-    
 
-    private static int readIntegerSignedSlow(PrimitiveReader reader) {
+
+	private static int readIntegerSignedSlow(PrimitiveReader reader) {
         if (reader.position >= reader.limit) {
             fetch(1, reader);
         }

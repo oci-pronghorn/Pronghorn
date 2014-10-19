@@ -177,6 +177,16 @@ public class FieldReferenceOffsetManager {
             
         }
     }
+    
+    public int fieldCount(int templateId) {
+    	return 1+ limits[templateId]-starts[templateId];
+    }
+    
+    public String fieldName(int templateId, int position) {
+    	return fieldNameScript[starts[templateId]+position];
+    }
+    
+    
 
     public int lookupIDX(int templateId, String target) {
         int x = starts[templateId];

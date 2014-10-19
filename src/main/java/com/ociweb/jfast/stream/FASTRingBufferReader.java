@@ -51,11 +51,11 @@ public class FASTRingBufferReader {//TODO: B, build another static reader that d
     }
 
     public static double readDouble(FASTRingBuffer ring, int idx) {
-        return ((double)readDecimalMantissa(ring,(OFF_MASK&idx)))*powd[64+readDecimalExponent(ring,(OFF_MASK&idx))];
+        return ((double)readDecimalMantissa(ring,(OFF_MASK&idx)))/powd[64+readDecimalExponent(ring,(OFF_MASK&idx))]; //TODO: D, swap table around for performance boost
     }
 
     public static float readFloat(FASTRingBuffer ring, int idx) {
-        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))*powf[64*readDecimalExponent(ring,(OFF_MASK&idx))];
+        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))/powf[64*readDecimalExponent(ring,(OFF_MASK&idx))];
     }
     
     public static int readDecimalExponent(FASTRingBuffer ring, int idx) {

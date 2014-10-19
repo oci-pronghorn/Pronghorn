@@ -1214,7 +1214,12 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadDecimalCopyOptionalMantissaNone(int expoTarget, int expoSource, int expoConstAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         {
-            int xi1 = rIntDictionary[expoTarget] = (0 == PrimitiveReader.readPMapBit(reader) ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
+            boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
+            
+            System.err.println("theBit:"+theBit);//TODO: this bit is false when it should be true, the result is that readInt is called and takes mantissa!!!
+            //because we are not sending exponents because they are all copies, must confirm the bit is written.
+            
+			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
             if (0==xi1) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, expoConstAbsent);
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
