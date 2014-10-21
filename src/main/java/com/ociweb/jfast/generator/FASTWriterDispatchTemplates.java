@@ -865,8 +865,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
       //      	System.err.println("t nullllll");
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
+                    System.err.println("A write map 0 "+exponentValue);
                 } else {
                     rIntDictionary[exponentTarget] = 0;
+                    System.err.println("A write map 1 "+exponentValue);
                     PrimitiveWriter.writePMapBit((byte)1, writer);
                     PrimitiveWriter.writeNull(writer);
                 }// null for Copy and Increment 
@@ -876,8 +878,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 if (value == rIntDictionary[exponentSource]) {
       //          	System.err.println("t pmap");
                     PrimitiveWriter.writePMapBit((byte)0, writer);
+                    System.err.println("B write map 0 "+exponentValue);
                 } else {
                     PrimitiveWriter.writePMapBit((byte)1, writer);
+                    System.err.println("B write map 1 "+exponentValue);
                     PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value, writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));

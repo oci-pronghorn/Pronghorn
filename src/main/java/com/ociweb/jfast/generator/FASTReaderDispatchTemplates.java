@@ -58,8 +58,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            // write template id at the beginning of this message
 	            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
 	            
+	           
+	            dispatch.templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;
+	            
 	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-	            dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
+	            
+	            //NOTE this old implementation reads the bit but then fails to move foreward
+	         //   dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
 //        		} catch (ArrayIndexOutOfBoundsException ex) {
 //        			dispatch.templateId = -10;
 //        		}
@@ -1216,7 +1221,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
             boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
             
-            System.err.println("theBit:"+theBit);//TODO: this bit is false when it should be true, the result is that readInt is called and takes mantissa!!!
+            System.err.println("theBit:"+ (theBit?0:1));//TODO: this bit is false when it should be true, the result is that readInt is called and takes mantissa!!!
             //because we are not sending exponents because they are all copies, must confirm the bit is written.
             
 			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
@@ -1772,8 +1777,9 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addByteWorkingHeadPos.value, length);
                 return;
             }
-                    
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
+            if (length>0) {        
+            	PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
+            }
             FASTRingBuffer.addLocalHeapValue(target, length, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
         }
     }

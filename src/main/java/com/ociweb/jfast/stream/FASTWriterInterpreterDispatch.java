@@ -1247,6 +1247,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         int mask = queue==null?0:queue.mask;
         PaddedLong workingTailPos = queue==null?null:queue.workingTailPos;
 
+        //TODO: here is the encode/decode problems. TODO: must read the first bit for the message.
+        
         genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, buffer, mask, workingTailPos, this);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.

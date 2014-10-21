@@ -215,7 +215,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 closeGroup(token,idx, reader);
                            //     ++activeScriptCursor;    
                                 break;
-                                //FASTRingBuffer.publishWrites(rbRingBuffer); 
+                                
+                                //TODO: what if there is an outer pmap on the tmplate?, then that must call back in?
+                                
+                                //FASTRingBuffer.publishWrites(rbRingBuffer); //TODO: this is a hack test
+                                //return 1;
+                                
+                                
                                 //return sequenceCountStackHead>=0;//doSequence;
                             }
 
@@ -295,7 +301,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken, FASTRingBuffer rbRingBuffer) {
               
-       System.err.println("MM decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
+     //  System.err.println("MM decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
       
        //In this method we split out by exponent operator then call the specific method needed
        //for the remaining split by mantissa.

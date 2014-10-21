@@ -282,6 +282,7 @@ public final class PrimitiveReader {
      */
     
     public static final void openPMap(final int pmapMaxSize, PrimitiveReader reader) {
+
         //TODO: B, pmapMaxSize is a constant for many templates and can be injected.
         // set next bit to read
         if (reader.position >= reader.limit) {
@@ -292,17 +293,16 @@ public final class PrimitiveReader {
         reader.invPmapStack[reader.invPmapStackDepth - 1] = (byte) (reader.pmapIdxBitBlock>>16);  //reader.pmapIdx;
 
         int k = reader.invPmapStackDepth -= (pmapMaxSize + 2);
-        if (k<0) {
-            new Exception("bad k value "+k).printStackTrace();
-            System.exit(0);
-        }
-        
-        //System.err.println("read from posotion:"+reader.position);
-        
+//        if (k<0) {
+//            new Exception("bad k value "+k).printStackTrace();
+//            System.exit(0);
+//        }
+
         reader.pmapIdxBitBlock = (6<<16)|(0xFF&reader.buffer[reader.position]);
         
         k = walkPMapLength(pmapMaxSize, k, reader.invPmapStack, reader, reader.buffer);
         reader.invPmapStack[k] = (byte) (3 + pmapMaxSize + (reader.invPmapStackDepth - k));
+
 
     }
 
@@ -327,6 +327,7 @@ public final class PrimitiveReader {
     }
 
     private static int openPMapSlow(int k, PrimitiveReader reader, byte[] buffer) {
+
         // must use slow path because we are near the end of the buffer.
         while ((reader.invPmapStack[k++] = buffer[reader.position++]) >= 0) {
             if (reader.position >= reader.limit) {
@@ -346,17 +347,17 @@ public final class PrimitiveReader {
      */
     public static byte readPMapBit(PrimitiveReader reader) { 
             if (reader.pmapIdxBitBlock >= 0 ) {    
-                // Frequent, 6 out of every 7 plus the last bit block 
-                    int shft = reader.pmapIdxBitBlock>>16;
-                    reader.pmapIdxBitBlock -= (1<<16);                
-                    return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
-            } else {   
-                return readPMapBitNextByte(reader);               
-            }
+			        // Frequent, 6 out of every 7 plus the last bit block 
+			        int shft = reader.pmapIdxBitBlock>>16;
+			        reader.pmapIdxBitBlock -= (1<<16);                
+			        return (byte) (1 & (reader.pmapIdxBitBlock >>> shft)); 
+			} else {   
+			    return readPMapBitNextByte(reader);               
+			}
     }
-    
 
-    //needed for code generation to eliminate conditional to detect end of 7 bits
+
+	//needed for code generation to eliminate conditional to detect end of 7 bits
     /**
      * Reads the next PMap and moves to the next byte position in the PMap.
      * 
@@ -364,6 +365,8 @@ public final class PrimitiveReader {
      * @return
      */
     public static byte readPMapBitNextByte(PrimitiveReader reader) {
+    	
+    	
         if (((byte)(0xFF&reader.pmapIdxBitBlock)) < 0 ) {
             reader.pmapIdxBitBlock = (6<<16)|0x80;
             return 0;
@@ -382,7 +385,6 @@ public final class PrimitiveReader {
      * @param reader
      */
     public static final void closePMap(PrimitiveReader reader) {
-     //   assert (reader.invPmapStack[reader.invPmapStackDepth + 1] >= 0);
         byte bitBlock = reader.invPmapStack[reader.invPmapStackDepth += (reader.invPmapStack[reader.invPmapStackDepth + 1])];
         reader.pmapIdxBitBlock = (reader.invPmapStack[reader.invPmapStackDepth - 1]<<16)|bitBlock;        
     }

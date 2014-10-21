@@ -826,7 +826,6 @@ public final class PrimitiveWriter {
         // NOTE: pos pos, new position storage so top bits are always unset and
         // no need to set.
 
-  //      System.err.println("open pmap set safety depth "+writer.safetyStackDepth+" value "+writer.limit);
         
         writer.safetyStackPosPos[writer.safetyStackDepth++] = (((long) writer.flushSkipsIdxLimit) << 32) | writer.limit;
         writer.flushSkips[writer.flushSkipsIdxLimit++] = writer.limit + 1;// default minimum size for
@@ -838,13 +837,12 @@ public final class PrimitiveWriter {
         // reset so we can start accumulating bits in the new pmap.
         writer.pMapIdxWorking = 7;
         writer.pMapByteAccum = 0;
-
     }
 
     // called only at the end of a group.
     public static final void closePMap(PrimitiveWriter writer) {
         
-    //    System.err.println("close pmap "+writer.position+" "+writer.limit);
+       // System.err.println("close pmap "+writer.position+" "+writer.limit);
         
         
         // ///
@@ -858,7 +856,10 @@ public final class PrimitiveWriter {
         // final byte to be saved into the feed. //NOTE: pos pos can inc because
         // it does not roll over.
 
-        if (0 != (writer.buffer[(int) (POS_POS_MASK & writer.safetyStackPosPos[s]++)] = (byte) writer.pMapByteAccum)) {
+        //System.err.println("close PMap byte:"+byteBits(writer.pMapByteAccum));
+        
+        byte bValue = writer.buffer[(int) (POS_POS_MASK & writer.safetyStackPosPos[s]++)] = (byte) writer.pMapByteAccum;
+		if (0 != bValue) {
             // close is too late to discover overflow so it is NOT done here.
             //
             long stackFrame = writer.safetyStackPosPos[s];
@@ -875,6 +876,7 @@ public final class PrimitiveWriter {
             // NOTE: pos pos will not roll under so we can just subtract
             long posPos = writer.safetyStackPosPos[writer.safetyStackDepth - 1];
             writer.pMapByteAccum = writer.buffer[(int) (posPos & POS_POS_MASK)];
+           // System.err.println("restore old PMap byte:"+byteBits(writer.pMapByteAccum));
             writer.pMapIdxWorking = (byte) (0xF & (posPos >> POS_POS_SHIFT));
         } 
 
@@ -895,7 +897,14 @@ public final class PrimitiveWriter {
 
     }
 
-    // called by ever field that needs to set a bit either 1 or 0
+    private static String byteBits(int value) {
+    	
+    	String tmp = "00000000"+Integer.toBinaryString(value);
+    	return tmp.substring(tmp.length()-8);
+
+	}
+
+	// called by ever field that needs to set a bit either 1 or 0
     // must be fast because it is frequently called.
     public static final void writePMapBit(byte bit, PrimitiveWriter writer) {
         if (0 == --writer.pMapIdxWorking) { //TODO: B, can remove this conditional the same way it was done in the reader.
