@@ -312,7 +312,11 @@ public class GeneratorUtils {
         generatorData.caseParaVals.clear();
         generatorData.scriptPos = scriptPos;
         generatorData.templateId = templateId;
+
+        //for update of the reader
         generatorData.readerPmapBit = 6;
+        
+        //for update of the writer
         generatorData.writerPmapBit0 = 6;
         generatorData.writerPmapBit1 = 6;
         
@@ -685,8 +689,7 @@ public class GeneratorUtils {
                     generatorData.readerPmapBit=5;
                 } else {
                     //normal bit
-                    template = template.replace("PrimitiveReader.readPMapBit(reader)",  "((1<<"+mapTmp+") & reader.pmapIdxBitBlock)");
-                              
+                    template = template.replace("PrimitiveReader.readPMapBit(reader)",  "((1<<"+mapTmp+") & reader.pmapIdxBitBlock)");                              
                 }  
             }
           //  assert(!template.contains("PrimitiveReader.readPMapBit")) : "check for exact match of arguments.";

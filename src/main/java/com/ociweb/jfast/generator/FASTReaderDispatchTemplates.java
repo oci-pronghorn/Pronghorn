@@ -50,11 +50,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
         	int startPos = reader.position;
         	
-//        	int hackAgain = 1;
-//        	
-//        	do {
-//        		
-//        		try {
+
 	            // write template id at the beginning of this message
 	            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
 	            
@@ -65,20 +61,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            
 	            //NOTE this old implementation reads the bit but then fails to move foreward
 	         //   dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
-//        		} catch (ArrayIndexOutOfBoundsException ex) {
-//        			dispatch.templateId = -10;
-//        		}
-//	            
-//	            
-//	            ///TODO: remove this hack to fix the off by one bug
-//	            if (dispatch.templateId<0) {
-//	            	
-//	            	reader.position = startPos-1;
-//	            } else {
-//	            	hackAgain = 0;
-//	            }
-//	            
-//        	} while (--hackAgain>=0);
+
         	
             if (dispatch.templateId<0) {
             	System.err.println("start openPMap at pos "+startPos); //expected to be 1 less
@@ -1220,10 +1203,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadDecimalCopyOptionalMantissaNone(int expoTarget, int expoSource, int expoConstAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         {
             boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
-            
-            System.err.println("theBit:"+ (theBit?0:1));//TODO: this bit is false when it should be true, the result is that readInt is called and takes mantissa!!!
-            //because we are not sending exponents because they are all copies, must confirm the bit is written.
-            
 			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
             if (0==xi1) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, expoConstAbsent);

@@ -32,9 +32,9 @@ public class GeneratorData {
     
     public final StringBuilder dictionaryBuilderInt;
     public final StringBuilder dictionaryBuilderLong;
-    public int readerPmapBit;
-    public int writerPmapBit0;
-    public int writerPmapBit1;
+    public int readerPmapBit=6;
+    public int writerPmapBit0=6;
+    public int writerPmapBit1=6;
     
     
     static final String END_FIELD_METHOD = "};\n";
