@@ -878,10 +878,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 if (value == rIntDictionary[exponentSource]) {
       //          	System.err.println("t pmap");
                     PrimitiveWriter.writePMapBit((byte)0, writer);
-                    System.err.println("B write map 0 "+exponentValue);
+                    //System.err.println("B write map 0 "+exponentValue);
                 } else {
                     PrimitiveWriter.writePMapBit((byte)1, writer);
-                    System.err.println("B write map 1 "+exponentValue);
+                    //System.err.println("B write map 1 "+exponentValue);
                     PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value, writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));

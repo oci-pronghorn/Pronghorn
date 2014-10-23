@@ -270,7 +270,7 @@ public class CatalogGeneratorTest {
         			assertTrue(buffers[k].consumerData.isNewMessage());
         			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
         			
-        			//TODO: add test in here to confirm the values match
+        			//TODO: B, add test in here to confirm the values match
         			
         			j--;
         		}        		

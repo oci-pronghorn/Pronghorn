@@ -1,5 +1,6 @@
 package com.ociweb.jfast.generator;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
@@ -68,6 +69,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             	//TODO: A, this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed
             	//      short term hack, rebuild the data without using as many optional fields.
             	PrimitiveReader.printDebugData(reader);
+            	throw new FASTException();
             }
             
             // fragment size plus 1 for template id and preamble data length in bytes

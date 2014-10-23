@@ -8,7 +8,7 @@ public class GroupGenerator implements ItemGenerator {
 
     @Override
     public StringBuilder appendTo(String tab, StringBuilder result) {
-        // TODO still need to implement template generation for groups
+        // TODO: B, still need to implement template generation for groups
         return null;
     }
 

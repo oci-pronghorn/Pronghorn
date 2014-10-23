@@ -8,7 +8,7 @@ public class SequenceGenerator implements ItemGenerator {
 
     @Override
     public StringBuilder appendTo(String tab, StringBuilder result) {
-        // TODO Still need to implment template generation for sequences
+        // TODO: B, Still need to implment template generation for sequences
         return null;
     }
 

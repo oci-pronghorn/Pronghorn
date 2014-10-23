@@ -15,9 +15,6 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {
 
-
-    //TODO: X, in this class we can determine when the pmap will switch to the next 7 bits and at runtime this is fixed and need not be computed.
-    
     public int readFromIdx = -1;
     public final int[] rIntInit;
     public final long[] rLongInit;
@@ -213,36 +210,21 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 //Close group
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
-                           //     ++activeScriptCursor;    
                                 break;
-                                
-                                //TODO: what if there is an outer pmap on the tmplate?, then that must call back in?
-                                
-                                //FASTRingBuffer.publishWrites(rbRingBuffer); //TODO: this is a hack test
-                                //return 1;
-                                
-                                
-                                //return sequenceCountStackHead>=0;//doSequence;
                             }
 
                     } else {
                         // 101??
 
-                        
-                        
+                                                
                         // Length Type, no others defined so no need to keep
                         // checking
                         // Only happens once before a node sequence so push it
                         // on the count stack
                         int jumpToTarget = activeScriptCursor + (TokenBuilder.MAX_INSTANCE & fullScript[1+activeScriptCursor]) + 1;
                         //code generator will always return the next step in the script in order to build out all the needed fragments.
-                        readLength(token,jumpToTarget, readFromIdx, reader);
-                     //   ++activeScriptCursor;    
+                        readLength(token,jumpToTarget, readFromIdx, reader); 
                         break;
-                        //FASTRingBuffer.publishWrites(rbRingBuffer);
-                        //return sequenceCountStackHead>=0;
-                        //return true;
-
                     }
                 } else {
                     // 11???
