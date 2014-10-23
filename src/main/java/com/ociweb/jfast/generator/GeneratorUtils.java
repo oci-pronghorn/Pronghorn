@@ -488,7 +488,6 @@ public class GeneratorUtils {
         String comment = "        //"+trace[0].getMethodName()+(Arrays.toString(paraVals).replace('[','(').replace(']', ')'))+"\n";
         
         
-        //TODO: each of the para files must be found in order in the para defs!!
         //System.err.println("ParaVals:"+Arrays.toString(paraVals));
         //System.err.println("ParaDefs:"+Arrays.toString(paraDefs));
         

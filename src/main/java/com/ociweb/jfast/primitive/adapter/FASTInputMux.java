@@ -3,6 +3,7 @@ package com.ociweb.jfast.primitive.adapter;
 import com.ociweb.jfast.primitive.FASTInput;
 
 
+//Do not use, this is very experimental
 
 public class FASTInputMux implements FASTInput {
 

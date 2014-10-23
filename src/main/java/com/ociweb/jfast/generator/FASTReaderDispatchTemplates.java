@@ -54,19 +54,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 
 	            // write template id at the beginning of this message
 	            PrimitiveReader.openPMap(maxTemplatePMapSize, reader);
-	            
+            
 	           
+	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
 	            dispatch.templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;
 	            
-	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-	            
-	            //NOTE this old implementation reads the bit but then fails to move foreward
-	         //   dispatch.templateId = (0 != ((1<<6) & reader.pmapIdxBitBlock)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;//TODO: need to implment if pmap is off
 
-        	
             if (dispatch.templateId<0) {
-            	
-            	
+            	           	
             	
             	System.err.println("start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
             	//TODO: A, this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed

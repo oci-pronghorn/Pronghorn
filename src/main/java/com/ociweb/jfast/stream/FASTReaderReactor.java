@@ -38,7 +38,7 @@ import com.ociweb.jfast.util.Stats;
  * or pushing down fields as it probably changes the meaning of the data. 
  * 
  */
-public final class FASTInputReactor {
+public final class FASTReaderReactor {
 
     /**
      * Read up to the end of the next sequence or message (eg. a repeating
@@ -63,7 +63,7 @@ public final class FASTInputReactor {
     //TODO: single execution service must be used for all and passed in, it also needs extra paused threads for release later.
     //TODO: reactor will add its runnable to to the single service and remove upon dispose.
     
-    public FASTInputReactor(FASTDecoder decoder, PrimitiveReader reader) {
+    public FASTReaderReactor(FASTDecoder decoder, PrimitiveReader reader) {
         this.decoder=decoder;
         this.reader=reader;
         
@@ -107,8 +107,8 @@ public final class FASTInputReactor {
     private Runnable buildRunnable(final ThreadPoolExecutor executorService, final AtomicBoolean isAlive) {
         final Runnable run = new Runnable() {
 
-            final FASTDecoder decoder2 = FASTInputReactor.this.decoder;
-            final PrimitiveReader reader2 = FASTInputReactor.this.reader;
+            final FASTDecoder decoder2 = FASTReaderReactor.this.decoder;
+            final PrimitiveReader reader2 = FASTReaderReactor.this.reader;
 
             @Override
             public void run() {
@@ -143,7 +143,7 @@ public final class FASTInputReactor {
         return run;
     }
 
-    public static int pump(FASTInputReactor reactor) {
+    public static int pump(FASTReaderReactor reactor) {
             return reactor.decoder.decode(reactor.reader);
     }
     

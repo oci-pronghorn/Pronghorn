@@ -194,6 +194,9 @@ public final class PrimitiveReader {
         need = fetchAvail(need, reader);        
         if (need > 0) {     
             reader.blockagePolicy.detectedInputBlockage(need, reader.input);
+            if (reader.limit+need > reader.buffer.length) {
+            	throw new FASTException("buffer for PrimitiveReader is too small");
+            }
             int filled = reader.input.blockingFill(reader.limit, need);
             reader.blockagePolicy.resolvedInputBlockage(reader.input);
             reader.totalReader += filled;

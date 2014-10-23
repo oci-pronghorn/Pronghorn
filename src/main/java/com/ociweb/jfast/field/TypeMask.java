@@ -39,9 +39,7 @@ public final class TypeMask {
     public final static int GroupLength = 0x14;            // 10100 
 
     public final static int Dictionary = 0x18;             // 11000
-    public final static int SpacerGap = 0x1C;              // 11100  //TODO: A, add call to this and gen method.
-    
-    //TODO: A, must add new SpacerGap  into the script as needed, set in the ClientConfig to inject to the template.
+    public final static int SpacerGap = 0x1C;              // 11100  //TODO: C, add call to this and gen method.  must add new SpacerGap  into the script as needed, set in the ClientConfig to inject to the template.
         
     public final static int[] ringBufferFieldSize = new int[] {   1, 1, 1, 1, 
                                                                   2, 2, 2, 2, 

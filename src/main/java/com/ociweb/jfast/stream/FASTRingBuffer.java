@@ -27,7 +27,6 @@ import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
  */
 public final class FASTRingBuffer {
     
-    //TODO: A, change interfaces to use reactive streams design
     
     //TODO: C, load shedding features,  Writer may decide to back up instead of release the headPos if this messsage is "less imporant", Reader may decide to "route" message to null or low priority ring buffer.
     //TODO: C, all overload situations must communicate the specific problem cause back out as far as possible
@@ -377,16 +376,11 @@ public final class FASTRingBuffer {
         buffer[rbMask & (int)offset] = value;
     } 
     
-    //long p = headCache.value; //TODO: code gen may want to replace this
-    // buffer[rbMask & (int)p] = value; //TODO: code gen replace rbMask with constant may help remove check
-    //  headCache.value = p+1;
-    
-    
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2) {
         
         long p = headCache.value; 
-        buffer[rbMask & (int)p] = value1; //TODO: code gen replace rbMask with constant may help remove check
-        buffer[rbMask & (int)(p+1)] = value2; //TODO: code gen replace rbMask with constant may help remove check
+        buffer[rbMask & (int)p] = value1; //TODO: X, code gen replace rbMask with constant may help remove check
+        buffer[rbMask & (int)(p+1)] = value2; //TODO: X, code gen replace rbMask with constant may help remove check
         headCache.value = p+2;
         
     } 

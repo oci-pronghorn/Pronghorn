@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.primitive;
 
-//TODO: A, change interfaces to use reactive streams design
 
 public interface FASTOutput {
 

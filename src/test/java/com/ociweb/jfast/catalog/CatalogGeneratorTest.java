@@ -43,7 +43,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferConsumer;
 import com.ociweb.jfast.stream.FASTRingBufferWriter;
@@ -256,14 +256,14 @@ public class CatalogGeneratorTest {
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
         
 
-        FASTInputReactor reactor = FAST.inputReactor(fastInput, catBytes);
+        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes);
       
 
         FASTRingBuffer[] buffers = reactor.ringBuffers();
         int buffersCount = buffers.length;
         
         int j = testRecordCount;
-        while (j>0 && FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+        while (j>0 && FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
         	int k = buffersCount;
         	while (j>0 && --k>=0) {
         		if (FASTRingBuffer.canMoveNext(buffers[k])) {
@@ -286,8 +286,7 @@ public class CatalogGeneratorTest {
 		return tmp.substring(tmp.length()-8, tmp.length());
 	}
 
-    //TODO: A, need the compiled static accessor to greatly simplify the usage of clients
-    //TODO: A, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
+    //TODO: B, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
     
 
     private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {

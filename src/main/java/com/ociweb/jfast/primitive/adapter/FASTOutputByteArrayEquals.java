@@ -59,8 +59,6 @@ public final class FASTOutputByteArrayEquals implements FASTOutput {
 		    int tIdx = position;
 		    while (i<size) {
 		        
-		        //TODO: convert from internal buffer position into real file position.
-		        
 		        if (sourceBuffer[sIdx+i] != targetBuffer[tIdx+i]) {
 		            String exp = bin(targetBuffer[tIdx+i])+"/"+hex(targetBuffer[tIdx+i])+"/"+ascii(targetBuffer[tIdx+i]);
 		            String fnd = bin(sourceBuffer[sIdx+i])+"/"+hex(sourceBuffer[sIdx+i])+"/"+ascii(sourceBuffer[sIdx+i]);
@@ -160,7 +158,7 @@ public final class FASTOutputByteArrayEquals implements FASTOutput {
     private String tokenDetails(long position) {
         
         
-        position+=1;//TODO: C, BIG HACK for NOW, we can conpenssate for this by scanning and finding the best alignment with top high bits!!!
+        position += 1;//TODO: C, BIG HACK for NOW, we can conpenssate for this by scanning and finding the best alignment with top high bits!!!
         
         
         

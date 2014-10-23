@@ -3,8 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -167,7 +166,6 @@ public class UTF8EncodeDecodeTest {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		char[] target = new char[unicodeTestString.length()];
 		
-		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
         int offset = 0;
@@ -186,6 +184,27 @@ public class UTF8EncodeDecodeTest {
 		
 		assertTrue("chars do not match "+unicodeTestString+" vs "+new String(target), Arrays.equals(unicodeTestString.toCharArray(), target));	
 		
+	}
+	
+	@Test
+	public void testUTF8DecoderArrayTooTightBuffer() {
+		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
+		char[] target = new char[unicodeTestString.length()];
+		
+		//set too small by 1 byte
+		PrimitiveReader reader = new PrimitiveReader(data.length-1, new FASTInputByteArray(data), 0);
+		PrimitiveReader.fetch(reader);
+        int byteCount = data.length;
+		{ 
+            byte[] temp = new byte[byteCount];
+            try {
+            	PrimitiveReader.readByteData(temp,0,byteCount,reader); //read bytes
+            	fail("should have thrown");
+            } catch (FASTException e) {
+            	//ok
+            }
+        }
+
 	}
 	
 	
@@ -229,7 +248,6 @@ public class UTF8EncodeDecodeTest {
 	public void testUTF8DecoderAppendableTightBuffer() {
 		byte[] data = unicodeTestString.getBytes(Charset.forName("UTF8"));
 		
-		//TODO: when this is set too small it should throw.
 		PrimitiveReader reader = new PrimitiveReader(data.length, new FASTInputByteArray(data), 0);
 		PrimitiveReader.fetch(reader);
         int byteCount = data.length;

@@ -21,8 +21,7 @@ public class FASTEncoderTest {
         
         //need to do this in parallel 
         
-        //TODO: A, build a template generator that has 1 field
-        //TODO: A, populate ring buffer with single field.
+        //TODO: T, build a template generator that has 1 field, populate ring buffer with single field.
         
         
         FASTOutput fastOutput2 = new FASTOutputTotals();

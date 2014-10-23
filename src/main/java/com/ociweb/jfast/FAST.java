@@ -4,16 +4,23 @@ import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 
 public class FAST {
 	
 	static int DEFAULT_BUFFER_SIZE = 4096;
 
-	public static FASTInputReactor inputReactor(FASTInput fastInput, byte[] catBytes) {
+	public static FASTReaderReactor inputReactor(FASTInput fastInput, byte[] catBytes) {
 	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
 	    PrimitiveReader reader = new PrimitiveReader(DEFAULT_BUFFER_SIZE, fastInput, readerDispatch.maxPMapCountInBytes);
-	    FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+	    FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
+		return reactor;
+	}
+	
+	public static FASTReaderReactor inputReactor(int bufferSize, FASTInput fastInput, byte[] catBytes) {
+	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
+	    PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, readerDispatch.maxPMapCountInBytes);
+	    FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
 		return reactor;
 	}
 

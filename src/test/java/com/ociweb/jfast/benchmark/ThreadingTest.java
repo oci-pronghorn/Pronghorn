@@ -34,7 +34,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.RingBuffers;
@@ -86,7 +86,7 @@ public class ThreadingTest {
 
               PrimitiveReader.fetch(reader);//Pre-load the file so we only count the parse time.
                             
-              FASTInputReactor reactor = new FASTInputReactor(readerDispatch, reader);
+              FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch, reader);
                             
               msgs.set(0);                    
               
@@ -114,7 +114,7 @@ public class ThreadingTest {
 
       }
 
-    private double singleThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor) {
+    private double singleThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTReaderReactor reactor) {
         
         double start = System.nanoTime();
           
@@ -129,7 +129,7 @@ public class ThreadingTest {
           char[] temp = new char[64];
           while (ok) {
 
-              switch (bufId = FASTInputReactor.pump(reactor)) {
+              switch (bufId = FASTReaderReactor.pump(reactor)) {
                   case -1://end of file
                       ok = false;
                       break;
@@ -171,7 +171,7 @@ public class ThreadingTest {
     public int templateId;
     public int preamble;
     
-    private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTInputReactor reactor, PrimitiveReader reader) {
+    private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTReaderReactor reactor, PrimitiveReader reader) {
 
     //    System.err.println("*************************************************************** multi test instance begin ");
         

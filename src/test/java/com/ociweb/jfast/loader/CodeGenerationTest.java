@@ -35,7 +35,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.stream.DispatchObserver;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -171,14 +171,14 @@ public class CodeGenerationTest {
         final AtomicInteger idx = new AtomicInteger(0);
 
 
-        FASTInputReactor reactor1 = new FASTInputReactor(readerDispatch1, primitiveReader1);
-        FASTInputReactor reactor2 = new FASTInputReactor(readerDispatch2, primitiveReader2);
+        FASTReaderReactor reactor1 = new FASTReaderReactor(readerDispatch1, primitiveReader1);
+        FASTReaderReactor reactor2 = new FASTReaderReactor(readerDispatch2, primitiveReader2);
         
         
         int errCount = 0;
         int i = 0;
-        while (FASTInputReactor.pump(reactor1) >= 0 && //continue if no room to read or read new message
-                FASTInputReactor.pump(reactor2) >= 0) {
+        while (FASTReaderReactor.pump(reactor1) >= 0 && //continue if no room to read or read new message
+                FASTReaderReactor.pump(reactor2) >= 0) {
 
             while (FASTRingBuffer.contentRemaining(queue1)>0 && FASTRingBuffer.contentRemaining(queue2)>0) {
                 int int1 = FASTRingBufferReader.readInt(queue1, 1);

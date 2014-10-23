@@ -26,7 +26,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputSourceChannel;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -90,7 +90,7 @@ public class MuxTest {
             PrimitiveReader reader = new PrimitiveReader(2048, targetChannel[0], maxPMapCountInBytes);
             
             FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
-            FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+            FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
             
             reactor.start(executor, reader);
         

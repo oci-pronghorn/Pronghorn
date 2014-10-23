@@ -25,7 +25,7 @@ import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -59,7 +59,7 @@ public class DispatchLoaderTest {
         
         
         final AtomicInteger records = new AtomicInteger();
-        final FASTInputReactor[] reactor = new FASTInputReactor[1];
+        final FASTReaderReactor[] reactor = new FASTReaderReactor[1];
         final FASTListener[] listener = new FASTListener[1];
         final AtomicBoolean alive = new AtomicBoolean(true);
         
@@ -103,13 +103,13 @@ public class DispatchLoaderTest {
                    
                    if (records.intValue()==switchToCompiled1) {
                        decoder[0] = DispatchLoader.loadDispatchReader(catalog1);
-                       reactor[0] = new FASTInputReactor(decoder[0],reader);
+                       reactor[0] = new FASTReaderReactor(decoder[0],reader);
                       // queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());
                    }
                    if (records.intValue()==switchToCompiled2) {
                        decoder[0] = DispatchLoader.loadDispatchReader(catalog2);
-                       reactor[0] = new FASTInputReactor(decoder[0],reader);
+                       reactor[0] = new FASTReaderReactor(decoder[0],reader);
                      //  queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());
                    }
@@ -124,7 +124,7 @@ public class DispatchLoaderTest {
             
         };
         
-        reactor[0] = new FASTInputReactor(decoder[0], reader);
+        reactor[0] = new FASTReaderReactor(decoder[0], reader);
                 
         //Removed test for now until API is finished changing
 //        records.set(0);

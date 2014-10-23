@@ -52,7 +52,7 @@ import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
-import com.ociweb.jfast.stream.FASTInputReactor;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTListener;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTRingBuffer;
@@ -159,7 +159,7 @@ public class TemplateLoaderTest {
         final AtomicLong totalRingInts = new AtomicLong();
 
         
-        FASTInputReactor reactor=null;
+        FASTReaderReactor reactor=null;
 
         
         int iter = warmup;
@@ -167,11 +167,11 @@ public class TemplateLoaderTest {
             msgs.set(0);
             frags = 0;
 
-            reactor = new FASTInputReactor(readerDispatch,reader);
+            reactor = new FASTReaderReactor(readerDispatch,reader);
             FASTRingBuffer rb = reactor.ringBuffers()[0];
             rb.reset();
 
-            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+            while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
                 FASTRingBuffer.canMoveNext(rb);
 
                 frags++;
@@ -255,7 +255,7 @@ public class TemplateLoaderTest {
                 System.exit(0);
             }
             
-            reactor = new FASTInputReactor(readerDispatch,reader);
+            reactor = new FASTReaderReactor(readerDispatch,reader);
             
             FASTRingBuffer rb = null; 
             rb =  RingBuffers.get(readerDispatch.ringBuffers,0);
@@ -269,9 +269,9 @@ public class TemplateLoaderTest {
                 //are not testing against an always empty buffer.
                 int few = 4;
                 while (--few>=0) {
-                    FASTInputReactor.pump(reactor);
+                    FASTReaderReactor.pump(reactor);
                 }               
-                while (FASTInputReactor.pump(reactor)>=0) { //72-88
+                while (FASTReaderReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
                     if (FASTRingBuffer.canMoveNext(rb)) {
@@ -355,13 +355,13 @@ public class TemplateLoaderTest {
         FASTClassLoader.deleteFiles();
         final AtomicInteger msgs = new AtomicInteger();
 
-        FASTInputReactor reactor = FAST.inputReactor(fastInput, catBytes); 
+        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes); 
         
         assertEquals(1,reactor.ringBuffers().length);
         FASTRingBuffer rb = reactor.ringBuffers()[0];
         rb.reset();
 
-        while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+        while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
             FASTRingBuffer.canMoveNext(rb);
 
             if (rb.consumerData.isNewMessage()) {
@@ -426,7 +426,7 @@ public class TemplateLoaderTest {
         
         final AtomicInteger msgs = new AtomicInteger();
         
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
@@ -469,7 +469,7 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             
-            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
+            while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (FASTRingBuffer.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
@@ -513,7 +513,7 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.byteHeap);
             double start = System.nanoTime();
             
-            while (FASTInputReactor.pump(reactor)>=0) {  
+            while (FASTReaderReactor.pump(reactor)>=0) {  
                     if (FASTRingBuffer.canMoveNext(queue)) {
                        if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
                                 dynamicWriter.write();  
@@ -574,7 +574,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);        
         FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);   
-        FASTInputReactor reactor = new FASTInputReactor(readerDispatch,reader);
+        FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         
         FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
@@ -613,7 +613,7 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             
-            while (FASTInputReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
+            while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (FASTRingBuffer.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
