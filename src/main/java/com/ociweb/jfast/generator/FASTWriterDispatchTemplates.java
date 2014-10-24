@@ -53,14 +53,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     //The responsibility for using the right byte array is up to the writer of the ring buffer.
     protected void genWriteTextDefaultOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             if (0==(rawPos>>>31)) {//use the default whatever it is
                 PrimitiveWriter.writePMapBit((byte)1, writer);
                 int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
                 if (length<0) {
                     PrimitiveWriter.writeNull(writer);
                 } else {
-                    PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
+                    PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
                 }                
             } else {
                 PrimitiveWriter.writePMapBit((byte)0, writer); 
@@ -79,11 +79,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeNull(writer);
                 }
             } else {
-                int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
                 int byteMask = rbRingBuffer.byteMask;
-                int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+                int offset = FASTRingBuffer.bytePosition(rawPos);
                 // constant from heap or dynamic from char ringBuffer
-                byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+                byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
                 if (LocalHeap.equals(target,buffer,offset,length, byteHeap)) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -104,10 +104,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (length<0) {
                 PrimitiveWriter.writeIntegerSigned(0, writer);
             } else {
-                int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-                int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+                int offset = FASTRingBuffer.bytePosition(rawPos);
                 // constant from heap or dynamic from char ringBuffer
-                byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+                byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
                 int byteMask = rbRingBuffer.byteMask;
                 // count matching front or back chars
                 int headCount = LocalHeap.countHeadMatch(target,buffer,offset,length,byteMask,byteHeap);
@@ -135,11 +135,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
         	//System.err.println("value to encode for tail:"+     byteHeap.toASCIIString(target));
         	
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+            int offset = FASTRingBuffer.bytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             if (length<0) {
@@ -162,10 +162,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     //NOTE: assumes that the use of the constant array indicates the default value, it is the responsibility of the ring buffer writer to do this correctly
     protected void genWriteTextDefault(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             if (0==(rawPos>>>31)) {//use the default whatever it is
                 PrimitiveWriter.writePMapBit((byte)1, writer);
-                PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos), rbRingBuffer.byteMask, writer);
+                PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos), FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos), rbRingBuffer.byteMask, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte)0, writer); 
             }            
@@ -174,11 +174,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextCopy(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+            int offset = FASTRingBuffer.bytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
                            
             
@@ -197,11 +197,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
     //    	System.err.println("value to encode for delta:"+     byteHeap.toString(target));
         	
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+            int offset = FASTRingBuffer.bytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             // count matching front or back chars
@@ -228,11 +228,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteTextTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+            int offset = FASTRingBuffer.bytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             
@@ -247,11 +247,11 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteTextNone(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(rawPos);
+            int offset = FASTRingBuffer.bytePosition(rawPos);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer);
+            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             PrimitiveWriter.writeTextASCII(buffer, offset, length, rbRingBuffer.byteMask, writer);
         }
     }
@@ -263,8 +263,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             if (length<0) {
                 PrimitiveWriter.writeNull(writer);
             } else{        
-                int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);              
-                PrimitiveWriter.writeTextASCII(FASTRingBuffer.readRingByteBuffers(rawPos, rbRingBuffer), FASTRingBuffer.readRingBytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
+                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);              
+                PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos), length, rbRingBuffer.byteMask, writer);
             }
         }
     }
@@ -276,12 +276,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     // if (byteHeap.equals(target|INIT_VALUE_MASK, value, offset, length)) {
     protected void genWriteBytesDefault(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
          
-        int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+        int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
         if (0==(rawPos>>>31)) {//use the default whatever it is
             int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len, writer);            
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),len, rbRingBuffer.byteMask, writer); 
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),len, rbRingBuffer.byteMask, writer); 
         } else {
             PrimitiveWriter.writePMapBit((byte)0, writer); 
         }   
@@ -290,14 +290,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteBytesCopy(int target, int fieldPos, LocalHeap byteHeap, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
 
-        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos),rbRingBuffer.byteMask,byteHeap)) {
+        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos),rbRingBuffer.byteMask,byteHeap)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
             
-            int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
             PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, offset, len, rbRingBuffer.byteMask, writer);
             LocalHeap.set(target,rbRingBuffer.byteBuffer,offset,len,rbRingBuffer.byteMask,byteHeap);
         }
@@ -306,7 +306,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     public void genWriteBytesDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
             int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
             int mask = rbRingBuffer.byteMask;
             byte[] value = rbRingBuffer.byteBuffer;
             
@@ -339,7 +339,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     public void genWriteBytesTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         {
             int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
             int mask = rbRingBuffer.byteMask;
             byte[] value = rbRingBuffer.byteBuffer;
             
@@ -361,18 +361,18 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         {
             int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),len, rbRingBuffer.byteMask, writer);
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),len, rbRingBuffer.byteMask, writer);
         }
     }
     
     public void genWriteBytesDefaultOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
        
-        int rawPos = FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+        int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
         if (0==(rawPos>>>31)) {//use the default whatever it is
             int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),len, rbRingBuffer.byteMask, writer);
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),len, rbRingBuffer.byteMask, writer);
              
         } else {
             PrimitiveWriter.writePMapBit((byte)0, writer); 
@@ -382,14 +382,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     public void genWriteBytesCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
         
-        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos),rbRingBuffer.byteMask,byteHeap)) {
+        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos),rbRingBuffer.byteMask,byteHeap)) {
             PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
             int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
             
-            int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
             PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, offset, len, rbRingBuffer.byteMask, writer);
             LocalHeap.set(target,rbRingBuffer.byteBuffer,offset,len,rbRingBuffer.byteMask,byteHeap);
         }
@@ -404,7 +404,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value
             } else {
             
-                int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+                int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
                 int mask = rbRingBuffer.byteMask;
                 byte[] value = rbRingBuffer.byteBuffer;
         
@@ -448,7 +448,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value            
             } else {
             
-                int offset = FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos));
+                int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value));
                 int mask = rbRingBuffer.byteMask;
                 byte[] value = rbRingBuffer.byteBuffer;
                         
@@ -474,7 +474,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value
             } else {
                 PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
-                PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)),len, rbRingBuffer.byteMask, writer);
+                PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value)),len, rbRingBuffer.byteMask, writer);
             }
         }
     }
@@ -878,10 +878,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 if (value == rIntDictionary[exponentSource]) {
       //          	System.err.println("t pmap");
                     PrimitiveWriter.writePMapBit((byte)0, writer);
-                    //System.err.println("B write map 0 "+exponentValue);
+                   // System.err.println("B write map 0 "+exponentValue);
                 } else {
                     PrimitiveWriter.writePMapBit((byte)1, writer);
-                    //System.err.println("B write map 1 "+exponentValue);
+                  //  System.err.println("B write map 1 "+exponentValue+" value written "+value);
                     PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value, writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));

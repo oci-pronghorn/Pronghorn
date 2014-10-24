@@ -46,7 +46,7 @@ public class FASTRingBufferWriter {
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
         FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
    //     System.err.println("write length "+length+" at pos "+rb.workingHeadPos.value);
-        rb.addByteWorkingHeadPos.value = p + length;
+        rb.byteWorkingHeadPos.value = p + length;
         
     }
 

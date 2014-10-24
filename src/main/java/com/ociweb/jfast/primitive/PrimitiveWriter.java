@@ -975,25 +975,7 @@ public final class PrimitiveWriter {
         writer.buffer[writer.limit++] = (byte) 0;
         writer.buffer[writer.limit++] = (byte) 0x80;
     }
-
-    public static void writeTextASCII(byte[] value, int offset, int length, PrimitiveWriter writer) {
-
-        if (0 == length) {
-            encodeZeroLengthASCII(writer);
-            return;
-        } else if (writer.limit > writer.buffer.length - length) {
-            // if it was not zero and was too long flush
-            writer.output.flush();
-        }
-        int len = length-1;
-        //if this causes an array index out of bounds you probably should have called the other one with mask
-        System.arraycopy(value, offset, writer.buffer, writer.limit, len);
-        writer.limit+=len;
-        offset+=len;
-        
-        writer.buffer[writer.limit++] = (byte) (0x80 | value[offset]);
-    }
-    
+   
     public static void writeTextASCII(byte[] value, int offset, int length, int mask, PrimitiveWriter writer) {
 
     	//System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length);
@@ -1014,7 +996,7 @@ public final class PrimitiveWriter {
         
         int tmp = writer.limit;
         while (--length > 0) {
-            writer.buffer[writer.limit++] = (byte) value[mask & offset++];
+            writer.buffer[writer.limit++] = (byte) (0x7F & value[mask & offset++]);//only take low bits, high bit will break encoding!!
         }
         
         writer.buffer[writer.limit++] = (byte) (0x80 | value[mask & offset]);

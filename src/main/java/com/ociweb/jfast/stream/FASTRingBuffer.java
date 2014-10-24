@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
@@ -26,12 +27,8 @@ import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
  * 
  */
 public final class FASTRingBuffer {
-    
-    
-    //TODO: C, load shedding features,  Writer may decide to back up instead of release the headPos if this messsage is "less imporant", Reader may decide to "route" message to null or low priority ring buffer.
-    //TODO: C, all overload situations must communicate the specific problem cause back out as far as possible
-    //TODO: C, dev ops tool to empty (drain) buffers and record the loss.
-    
+ 
+   
 
     public static class PaddedLong {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
@@ -41,6 +38,8 @@ public final class FASTRingBuffer {
         public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
     
+    
+    public final int maxSize;
     public final int[] buffer;
     public final int mask;
     public final PaddedLong workingHeadPos = new PaddedLong();
@@ -49,39 +48,31 @@ public final class FASTRingBuffer {
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
+    final int    byteLimitsShift;
+    final int[]  byteLimitsBPos;
+    final long[] byteLimitsLPos;
     
-    //grouping fragments together gives a clear advantage but more latency
-    //as this gets near half the primary bits size the performance drops off
-    //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
-    public final int chunkBits = 4; 
-    public final int chunkMask = (1<<chunkBits)-1;
-    
-    public final int maxSize;
-
     final int maxByteSize;
-    public final int byteMask;
     public final byte[] byteBuffer;
+    public final int byteMask;
+    public final PaddedInt byteWorkingHeadPos = new PaddedInt();
+//    public final PaddedInt byteWorkingTailPos = new PaddedInt();
     
-    public final PaddedInt addByteWorkingHeadPos = new PaddedInt();
-    public final PaddedAtomicInteger addBytesHeadPos = new PaddedAtomicInteger();
-    //TODO: A, remove from tail byte position is missing.
+    public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger();
+//    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     
     //defined externally and never changes
     final byte[] constByteBuffer;
     final byte[][] bufferLookup;
 
     //TODO: A, X use stack of fragment start offsets for each fragment until full message is completed.
-    //TODO: B, first offset 0 points to the constants after the ring buffer.
+    
     
     //Need to know when the new template starts
     //each fragment size must be known and looked up
+    //this helpful object manages all the complexity so it need not appear here 
     public FieldReferenceOffsetManager from;
-    
-    // 0 - constants?
-    // 1 - start of fragment
-    // 2 - sequence fragment
-    
-    
+        
     final int[] activeFragmentStack;
     int   activeFragmentStackHead = 0;
                
@@ -91,7 +82,23 @@ public final class FASTRingBuffer {
     public final FASTRingBufferConsumer consumerData;
     
     
-
+    /**
+     * Construct simple ring buffer without any assumed data structures
+     * @param primaryBits
+     * @param byteBits
+     */
+    public FASTRingBuffer(byte primaryBits, byte byteBits) {
+    	this(primaryBits,byteBits, null,  FieldReferenceOffsetManager.TEST);
+    }
+    
+    /**
+     * Construct ring buffer with re-usable constants and fragment structures
+     * 
+     * @param primaryBits
+     * @param byteBits
+     * @param byteConstants
+     * @param from
+     */
     public FASTRingBuffer(byte primaryBits, byte byteBits,
     		              byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
@@ -104,7 +111,14 @@ public final class FASTRingBuffer {
         
         this.buffer = new int[maxSize];    
 
-                        
+        this.byteLimitsShift = primaryBits<6? 0 : primaryBits-6;
+        int len = 1<<(primaryBits-byteLimitsShift);
+        this.byteLimitsBPos = new int[len];
+        this.byteLimitsLPos = new long[len];
+        System.err.println("debug: created byteLimts length:"+byteLimitsBPos.length);
+        
+        
+        
         //single text and byte buffers because this is where the variable length data will go.
 
         this.maxByteSize =  1 << byteBits;
@@ -118,7 +132,7 @@ public final class FASTRingBuffer {
         this.activeFragmentStack = new int[from.maximumFragmentStackDepth];
                 
         this.consumerData = new FASTRingBufferConsumer(-1, false, false, -1, -1,
-                                                        -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
+                                                       -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
     }
 
     
@@ -129,12 +143,15 @@ public final class FASTRingBuffer {
      * Empty and restore to original values.
      */
     public void reset() {
-        workingHeadPos.value = 0;
+
+    	workingHeadPos.value = 0;
         workingTailPos.value = 0;
         tailPos.set(0);
-        headPos.set(0); //System.err.println("reset()");
-        addByteWorkingHeadPos.value = 0;
-        addBytesHeadPos.set(0);
+        headPos.set(0); 
+        byteWorkingHeadPos.value = 0;
+        bytesHeadPos.set(0);
+//        byteWorkingTailPos.value = 0;
+//        bytesTailPos.set(0);
         
         FASTRingBufferConsumer.reset(consumerData);
         
@@ -142,7 +159,7 @@ public final class FASTRingBuffer {
     }
     
     public static boolean canMoveNext(FASTRingBuffer ringBuffer) { 
-        FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; 
+        FASTRingBufferConsumer ringBufferConsumer = ringBuffer.consumerData; //TODO: should probably remove this to another object
         
         //check if we are only waiting for the ring buffer to clear
         if (ringBufferConsumer.waiting) {
@@ -150,7 +167,6 @@ public final class FASTRingBuffer {
             
             ringBufferConsumer.setBnmHeadPosCache(ringBuffer.headPos.longValue());
             ringBufferConsumer.waiting = (ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
-      //      System.err.println("AAA");
             return !(ringBufferConsumer.waiting);
         }
              
@@ -160,10 +176,8 @@ public final class FASTRingBuffer {
         ringBufferConsumer.activeFragmentDataSize = 0;
 
         if (ringBufferConsumer.messageId<0) {  
-       // 	System.err.println("BBB");
             return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         } else {
-        //	System.err.println("CCC");
             return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
         }
         
@@ -225,10 +239,9 @@ public final class FASTRingBuffer {
                         
         return true;
     }
-
     
-    //TODO: C, need to get messageId when its the only message and so not written to the ring buffer.
-    //TODO: C, need to step over the preamble? but how?
+    //TODO: X, (optimization) need to get messageId when its the only message and so not written to the ring buffer.
+
     
     private static boolean beginNewMessage(FASTRingBuffer ringBuffer, FASTRingBufferConsumer ringBufferConsumer, long cashWorkingTailPos) {
     	ringBufferConsumer.setMessageId(-1);
@@ -317,15 +330,12 @@ public final class FASTRingBuffer {
         return true;
     }
     
-  
 
-    // TODO: C, add map method which can take data from one ring buffer and
-    // populate another.
-
-    // TODO: C, Promises/Futures/Listeners as possible better fit to stream
-    // processing?
+    // TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
+    // TODO: A: back off write if with in cache line distance of tail (full queue case)
+    // TODO: C, add map method which can take data from one ring buffer and populate another.
     // TODO: C, look at adding reduce method in addition to filter.
-
+    // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
 
     public static int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
@@ -338,31 +348,56 @@ public final class FASTRingBuffer {
     }
 
     public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
-        final int p = rbRingBuffer.addByteWorkingHeadPos.value;
+        final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
-            rbRingBuffer.addByteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
+            rbRingBuffer.byteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
         }
+        
+        //write this position into this slice
+        //this is for collision detection of the byte ring
+        int boff = (int)((rbRingBuffer.mask&rbRingBuffer.workingHeadPos.value)>>rbRingBuffer.byteLimitsShift);
+        rbRingBuffer.byteLimitsBPos[boff] = p;
+        rbRingBuffer.byteLimitsLPos[boff] = rbRingBuffer.workingHeadPos.value;
+        
         addValue(rbB, rbMask, rbPos, p);
         addValue(rbB, rbMask, rbPos, sourceLen);
     }
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
-        final int p = rbRingBuffer.addByteWorkingHeadPos.value;
+    	
+    	
+        final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
-            int targetMask = rbRingBuffer.byteMask;
+//        	//WARNING this may cause contention on tail,  TODO: A, warning this is very experimental
+//        	int boffEnd = (int)((rbRingBuffer.mask&rbRingBuffer.tailPos.get())>>rbRingBuffer.byteLimitsShift);
+        	int proposedEnd = p + sourceLen;
+//        	if (proposedEnd>rbRingBuffer.byteLimitsBPos[boffEnd]) {
+//        		throw new FASTException("RingBuffer is not configured with enought space for bytes");
+//        	}//TODO: needs mask as well
+        	
+        	int targetMask = rbRingBuffer.byteMask;
+        	//System.err.println("write string from position "+(targetMask&p)+" to "+(targetMask&(p+sourceLen)));
+        	
             LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
-            rbRingBuffer.addByteWorkingHeadPos.value = p + sourceLen;
+            rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+
+//            //write this position into this slice
+//            //this is for collision detection of the byte ring
+//            int boff = (int)((rbRingBuffer.mask&rbRingBuffer.workingHeadPos.value)>>rbRingBuffer.byteLimitsShift);
+//            rbRingBuffer.byteLimitsBPos[boff] = p;
+//            rbRingBuffer.byteLimitsLPos[boff] = rbRingBuffer.workingHeadPos.value;
         }
+        
+        
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
     }
     
+
+	public static void addValue(FASTRingBuffer rb, int value) {
+		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
+	}
     
-
-    //TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
-    //TODO: B: build custom add value for long and decimals to avoid second ref out to pos.value
-    //TODO: X, back off write if with in cache line distance of tail (full queue case)
-
    
     //we are only allowed 12% of the time or so for doing this write.
     //this pushes only ~5gbs but if we had 100% it would scale to 45gbs
@@ -406,24 +441,42 @@ public final class FASTRingBuffer {
     //	System.err.println("read len:"+rbB[rbMask & (int)(rbPos.value + fieldPos + 1)]+" from "+rbPos.value+" field "+fieldPos);
         return rbB[rbMask & (int)(rbPos.value + fieldPos + 1)];// second int is always the length
     }
+
+	public static int readRingByteLen(int idx, FASTRingBuffer ring) {
+		return readRingByteLen(idx,ring.buffer,ring.mask,ring.workingTailPos);       
+	}
+	
+	public static int takeRingByteLen(FASTRingBuffer ring) {		
+		return ring.buffer[(int)(ring.mask & (ring.workingTailPos.value++))];// second int is always the length       
+	}
     
-    public static int readRingBytePosition(int rawPos) {
-        return rawPos&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
+    public static int bytePosition(int meta) {
+        return meta&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
     }    
 
-    public static byte[] readRingByteBuffers(int rawPos, FASTRingBuffer rbRingBuffer) {
-        return rbRingBuffer.bufferLookup[rawPos>>>31];
-    }
-
-    public static int readRingByteRawPos(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
-        return rbB[(int)(rbMask & (rbPos.value + fieldPos))];
+    public static byte[] byteBackingArray(int meta, FASTRingBuffer rbRingBuffer) {
+        return rbRingBuffer.bufferLookup[meta>>>31];
     }
     
-
-    public int readRingByteMask() {
-        return byteMask;
+	public static int readRingByteMetaData(int pos, FASTRingBuffer rb) {
+		return readValue(pos,rb.buffer,rb.mask,rb.workingTailPos.value);
+	}
+			
+	public static int takeRingByteMetaData(FASTRingBuffer ring) {
+		return readValue(0,ring.buffer,ring.mask,ring.workingTailPos.value++);
+	}
+	
+    public static int readValue(int fieldPos, int[] rbB, int rbMask, long rbPos) {
+        return rbB[(int)(rbMask & (rbPos + fieldPos))];
     }
-
+   
+    public static int readValue(int idx, FASTRingBuffer ring) {    	
+    	return readValue(idx, ring.buffer,ring.mask,ring.workingTailPos.value);
+    }
+    
+    public static int takeValue(FASTRingBuffer ring) {    	
+    	return readValue(0, ring.buffer,ring.mask,ring.workingTailPos.value++);
+    }
     
     public static int contentRemaining(FASTRingBuffer rb) {
         return (int)(rb.headPos.longValue() - rb.tailPos.longValue()); //must not go past add count because it is not release yet.
@@ -433,19 +486,71 @@ public final class FASTRingBuffer {
         return from.fragScriptSize[consumerData.cursor];
     }
 
-    public static void publishWrites(FASTRingBuffer ringBuffer) {
-    	ringBuffer.headPos.lazySet(ringBuffer.workingHeadPos.value); //publish writes
-    	ringBuffer.addBytesHeadPos.lazySet(ringBuffer.addByteWorkingHeadPos.value);
+    
+    public static void releaseReadLock(FASTRingBuffer ring) {
+    	
+    	//ring.workingTailPos.value = ring.workingTailPos.value & ring.byteMask;
+    	
+    	ring.tailPos.lazySet(ring.workingTailPos.value);
+    	
+    	//TODO: what was the end of the last position used in the byte array?
+    	
+    //	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
+    	
     }
     
-    public static void abandonWrites(FASTRingBuffer ringBuffer) {    
-        //ignore the fact that any of this was written to the ring buffer
-    	ringBuffer.workingHeadPos.value = ringBuffer.headPos.longValue();
-    	ringBuffer.addByteWorkingHeadPos.value = ringBuffer.addBytesHeadPos.intValue();
-    }
-    
+    public static void publishWrites(FASTRingBuffer ring) {
+    	
+    	//prevent long running arrays from rolling over in second byte ring
+    	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
+    	
+    	//TODO: B, need to do primary as well however its a little more complicated because we must also adjust tail.
 
-    //TODO: B, Double check that asserts have been removed because they bump up the byte code size and prevent inline
+    	//publish writes
+    	ring.headPos.lazySet(ring.workingHeadPos.value);
+    	ring.bytesHeadPos.lazySet(ring.byteWorkingHeadPos.value);
+    }
+    
+    public static void abandonWrites(FASTRingBuffer ring) {    
+        //ignore the fact that any of this was written to the ring buffer
+    	ring.workingHeadPos.value = ring.headPos.longValue();
+    	ring.byteWorkingHeadPos.value = ring.bytesHeadPos.intValue();
+    }
+
+
+    //All the spin lock methods share the same implementation. Unfortunately these can not call 
+    //a common implementation because the extra method jump degrades the performance in tight loops
+    //where these spin locks are commonly used.
+    
+    public static long spinBlockOnTailTillMatchesHead(long lastCheckedValue, FASTRingBuffer ringBuffer) {
+    	long targetValue = ringBuffer.headPos.longValue();
+    	do {
+		    lastCheckedValue = ringBuffer.tailPos.longValue();
+		} while ( lastCheckedValue < targetValue);
+		return lastCheckedValue;
+    }
+    
+    public static long spinBlockOnTail(long lastCheckedValue, long targetValue, FASTRingBuffer ringBuffer) {
+    	do {
+		    lastCheckedValue = ringBuffer.tailPos.longValue();
+		} while ( lastCheckedValue < targetValue);
+		return lastCheckedValue;
+    }
+    
+    public static long spinBlockOnHeadTillMatchesTail(long lastCheckedValue, FASTRingBuffer ringBuffer) {
+    	long targetValue = ringBuffer.tailPos.longValue();    	
+    	do {
+		    lastCheckedValue = ringBuffer.headPos.longValue();
+		} while ( lastCheckedValue < targetValue);
+		return lastCheckedValue;
+    }
+    
+    public static long spinBlockOnHead(long lastCheckedValue, long targetValue, FASTRingBuffer ringBuffer) {
+    	do {
+		    lastCheckedValue = ringBuffer.headPos.longValue();
+		} while ( lastCheckedValue < targetValue);
+		return lastCheckedValue;
+    }
     
     public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
         do {
@@ -453,6 +558,31 @@ public final class FASTRingBuffer {
         } while ( lastCheckedValue < targetValue);
         return lastCheckedValue;
     }
+
+	public static int byteMask(FASTRingBuffer ring) {
+		return ring.byteMask;
+	}
+
+	public static long headPosition(FASTRingBuffer ring) {
+		 return ring.headPos.get();
+	}
+
+	public static long tailPosition(FASTRingBuffer ring) {
+		return ring.tailPos.get();
+	}
+
+	public static int primarySize(FASTRingBuffer ring) {
+		return ring.maxSize;
+	}
+	
+
+
+
+
+
+
+
+
 
 
 

@@ -1,56 +1,93 @@
 package com.ociweb.jfast.stream;
 
-import static org.junit.Assert.*;
+import static com.ociweb.jfast.stream.FASTRingBuffer.addByteArray;
+import static com.ociweb.jfast.stream.FASTRingBuffer.addValue;
+import static com.ociweb.jfast.stream.FASTRingBuffer.byteBackingArray;
+import static com.ociweb.jfast.stream.FASTRingBuffer.byteMask;
+import static com.ociweb.jfast.stream.FASTRingBuffer.bytePosition;
+import static com.ociweb.jfast.stream.FASTRingBuffer.dump;
+import static com.ociweb.jfast.stream.FASTRingBuffer.headPosition;
+import static com.ociweb.jfast.stream.FASTRingBuffer.publishWrites;
+import static com.ociweb.jfast.stream.FASTRingBuffer.releaseReadLock;
+import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnHead;
+import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnTail;
+import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnTailTillMatchesHead;
+import static com.ociweb.jfast.stream.FASTRingBuffer.tailPosition;
+import static com.ociweb.jfast.stream.FASTRingBuffer.takeRingByteLen;
+import static com.ociweb.jfast.stream.FASTRingBuffer.takeRingByteMetaData;
+import static com.ociweb.jfast.stream.FASTRingBuffer.takeValue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
-
 public class FASTRingBufferTest {
 
+   //only here outside the scope of the method to prevent escape analysis from detecting that
+   //the timing loop is doing no work and then optimizing it away.
+   int[] data;
+	
+	
     @Test
-    public void bytesWriteRead() {
+    public void simpleBytesWriteRead() {
         
-        FASTRingBuffer rb = new FASTRingBuffer((byte)7, (byte)7, null,  FieldReferenceOffsetManager.TEST);
+    	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
+    	byte byteRingSizeInBits = 7;
+    	
+        FASTRingBuffer ring = new FASTRingBuffer(primaryRingSizeInBits, byteRingSizeInBits);
         
-        byte[] source = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
+        byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
+        int testInt = 7;
         
         //clear out the ring buffer
-        FASTRingBuffer.dump(rb);
+        dump(ring);
         
         //write one integer to the ring buffer
-        FASTRingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos,7);
+        addValue(ring, testInt);       
         
         //write array of bytes to ring buffer
-        FASTRingBuffer.addByteArray(source, 0, source.length, rb);             
+        addByteArray(testArray, 0, testArray.length, ring);             
         
         //unblock for reading
-        FASTRingBuffer.publishWrites(rb);
+        publishWrites(ring);
                 
-        //read one integer back
-        assertEquals(7, FASTRingBuffer.readRingBytePosition(FASTRingBuffer.readRingByteRawPos(0, rb.buffer, rb.mask, rb.workingTailPos)));
+        //read one integer back and confirm it matches
+        assertEquals(testInt, takeValue(ring)); 
+        
         // constant from heap or dynamic from char ringBuffer
-        int rawPos = FASTRingBuffer.readRingByteRawPos(1, rb.buffer, rb.mask, rb.workingTailPos);                     
+        int meta = takeRingByteMetaData(ring); //MUST take this one before the length they come in order       
+                
+        //confirm the length is the same
+        assertEquals(testArray.length, takeRingByteLen(ring)); //MUST take this one second after the meta they come in order    
         
-        //read back the array
-        byte[] data = FASTRingBuffer.readRingByteBuffers(rawPos, rb);
-        int i = 0;
-        while (i<source.length) {            
-            assertEquals("index:"+i,source[i],data[i]);                       
-            i++;
-        }        
-        
-        //assertEquals(source,data);
-        
-        assertEquals(source.length, FASTRingBuffer.readRingByteLen(1,rb.buffer,rb.mask,rb.workingTailPos));
-                        
+        //read back the array and confirm it matches
+        int mask = byteMask(ring); //data often loops around end of array so this mask is required
+        byte[] data = byteBackingArray(meta, ring);
+        int offset = bytePosition(meta);
+        int c = testArray.length;
+        while (--c >= 0) {
+        	int i = c + offset;
+        	assertEquals("index:"+i, testArray[i], data[i & mask]);        	
+        }           
         
     }
     
 
+    /**
+     * Method used to record a baseline of the absolute fastest time possible on this platform.
+     *   
+     * @param size
+     * @param mask
+     * @param test
+     * @return
+     */
     private long timeArrayCopy(int size, int mask, long test) {
         int target[] = new int[size];
 
@@ -59,149 +96,330 @@ public class FASTRingBufferTest {
         while (--i>=0) {
             target[mask&(int)i] = (int)i;
         }
-        data = target;//assignment prevents escape analysis optimization
+        data = target;//assignment prevents escape analysis optimization which would delete all this code at runtime
         return System.nanoTime()-start;
     }
-    int[] data;
+    
+    
 
     @Test
-    public void speedTest() {
+    public void primaryRingSpeedTest() {
         
         int size = 1<<11;
         int mask = size-1;   
-        final int testSize = 20000000;
-        float bits = testSize*4f*8f;  
-        float rate = bits/(float)timeArrayCopy(size, mask, testSize); //bits per nano second.
-        //do it again to get the better value now that it has been optimized
-        rate = Math.max(rate, bits/(float)timeArrayCopy(size, mask, testSize));
+        final int totalMesssages = 2000000;
+        final int intSize = 4;
+        float totalBitsInTest = totalMesssages*intSize*8f;  
+        float rate = totalBitsInTest/(float)timeArrayCopy(size, mask, totalMesssages); //bits per nano second.
+        int k = 1024;
+        while (--k>=0) {
+        	//do it again to get the better value now that it has been runtime optimized
+        	rate = Math.max(rate, totalBitsInTest/(float)timeArrayCopy(size, mask, totalMesssages));
+        }
         float theoreticalMaximumMillionBitsPerSecond = rate*1000; //div top by 1m and bottom by 1b
         
-        System.err.println("theoretical maximum mbps:"+theoreticalMaximumMillionBitsPerSecond);
+        System.out.println("theoretical maximum mbps:"+theoreticalMaximumMillionBitsPerSecond);
+                                   
         
-           
+        //grouping fragments together gives a clear advantage but more latency
+        //as this gets near half the primary bits size the performance drops off
+        //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
+        final int chunkBits = 4; 
+        final int chunkMask = (1<<chunkBits)-1;
+                
+        byte primaryBits = 13;
+        byte charBits = 7;        
         
-        
-        byte primaryBits = 14;
-        byte charBits = 7;
-        
-        final FASTRingBuffer rb = new FASTRingBuffer(primaryBits, charBits, null,  FieldReferenceOffsetManager.TEST);
-        final int rbMask = rb.mask;
-        final int[] rbB = rb.buffer;
-
         final int tests = 3;
-        final int messageSize = 256;//256;//47;
-        final int granularity = messageSize<<rb.chunkBits;
+        final int totalMessageFields = 256;//256;//47;
+        final int granularity = totalMessageFields<<chunkBits;
+        final int fill =  (1<<primaryBits)-granularity;
+                
         
+        
+        ExecutorService exService = Executors.newSingleThreadExecutor();
 
-        
-        Runnable reader = new Runnable() {
-
-            @Override
-            public void run() {
-                int k = tests;
-                while (--k>=0) {
-                    int i = testSize;
-                    
-                    AtomicLong hp = rb.headPos;
-                    AtomicLong tp = rb.tailPos;
-                    
-                    long headPosCache = hp.longValue();
-                    long targetHead =  granularity+tp.longValue();
-                    PaddedLong wrkTlPos = rb.workingTailPos;
-                    
-                    while (--i>=0) {
-                        int j = messageSize;
-                        
-                        //wait for at least n messages to be available 
-                        //waiting for headPos to change
-                        
-                        
-
-                        headPosCache = FASTRingBuffer.spinBlock(hp, headPosCache, targetHead);
-                        
-                        
-                        //read the record
-                        while (--j>=0) {
-                            
-                            //int value = FASTRingBufferReader.readInt(rb, 0); //read from workingTailPosition + 0
-                            int value = FASTRingBufferReader.readInt(rbB, rbMask, wrkTlPos, 0);
-                            if (value!=j) {                                
-                                fail("expected "+j+" but found "+i);
-                            }   
-                            wrkTlPos.value++; //TODO: C, reader has external inc but writer has internal inc
-                            
-                        }
-                        
-                        //allow writer to write up to new tail position
-                        if (0==(i&rb.chunkMask) ) {  
-                            tp.lazySet(wrkTlPos.value); //publish the writes
-                            targetHead = wrkTlPos.value + granularity;
-                        }
-                        
-                    }
-                }
-            }
-            
-        };
-        new Thread(reader).start();
-        
-        int k = tests;
-        while (--k>=0) {
-        
+                
+        int testRunCount = tests;
+        while (--testRunCount>=0) {
+        	 
             long start = System.nanoTime();
             
-            AtomicLong hp = rb.headPos;
-            AtomicLong tp = rb.tailPos;
-            
-            int i = testSize;
-            long tailPosCache = tp.get();
-            long targetPos = hp.longValue()+granularity-rb.maxSize;
-            PaddedLong wrkHdPos = rb.workingHeadPos;
-            while (--i>=0) {
-                
-                int j = messageSize;
-                //wait for room to fit one message
-                //waiting on the tailPosition to move the others are constant for this scope.
-                //workingHeadPositoin is same or greater than headPosition
-                
-                tailPosCache = FASTRingBuffer.spinBlock(tp, tailPosCache, targetPos);
+            final FASTRingBuffer ring = new FASTRingBuffer(primaryBits, charBits);
+            //creating an anonymous inner class that implements runnable so we can hand this
+            //off to the execution service to be run on another thread while this thread does the writing.
+            Runnable reader = new Runnable() {
 
+                @Override
+                public void run() {
+
+                        int messageCount = totalMesssages;
+                        
+                        long headPosCache = spinBlockOnHead(headPosition(ring), tailPosition(ring)+granularity, ring);
+                        
+                        while (--messageCount>=0) {
+                            int messageFieldCount = totalMessageFields;
+                                                    
+                            //read the message
+                            while (--messageFieldCount>=0) {                            
+                                int value = takeValue(ring);                             
+                                //not calling normal unit test method because it will slow down the run
+                                if (value!=messageFieldCount) {                                
+                                    fail("expected "+messageFieldCount+" but found "+messageCount);
+                                }                            
+                            }
+                            
+                            //allow writer to write up to new tail position
+                            if (0==(messageCount&chunkMask) ) {
+                            	releaseReadLock(ring);
+                            	if (messageCount>0) {
+                            		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);
+                            		
+                            	}
+                            }                        
+                        }
+                }            
+            };        
+            
+           
+            exService.submit(reader);//this reader starts running immediately
+                        
+            
+            
+            int messageCount = totalMesssages;
+            
+            //keep local copy of the last time the tail was checked to avoid contention.
+            long tailPosCache = spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
+                        
+            while (--messageCount>=0) {
                 
+                int messageFieldCount = totalMessageFields;                
                 //write the record
-                while (--j>=0) {                    
-                    FASTRingBuffer.addValue(rbB, rbMask, wrkHdPos, j);  
+                while (--messageFieldCount>=0) {                    
+                    addValue(ring, messageFieldCount);  
                 }
-                //allow read thread to read up to new head position
-                if (0==(i&rb.chunkMask) ) {
-                    hp.lazySet(wrkHdPos.value); //publish writes
-                    targetPos = wrkHdPos.value + granularity;
-                    targetPos -= rb.maxSize;
+                
+                if (0==(messageCount&chunkMask) ) {
+                    publishWrites(ring);
+                    //wait for room to fit one message
+                    //waiting on the tailPosition to move the others are constant for this scope.
+                    //workingHeadPositoin is same or greater than headPosition
+                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(ring)-fill, ring);
                 }
             }
-            tailPosCache = FASTRingBuffer.spinBlock(tp, tailPosCache, hp.longValue());
-
+            //wait until the other thread is finished reading
+            tailPosCache = spinBlockOnTailTillMatchesHead(tailPosCache, ring);
+            
             long duration = System.nanoTime()-start;
             
-            float milMessagePerSec = 1000f*(testSize/(float)duration);
-            float milBitsPerSec = milMessagePerSec*messageSize*4*8;
+            float milMessagePerSec = 1000f*(totalMesssages/(float)duration);
+            float milBitsPerSec = milMessagePerSec*totalMessageFields*4*8;
             float pctEff = milBitsPerSec/theoreticalMaximumMillionBitsPerSecond;
             
-            System.err.println();
-            System.err.println("million bits per second:"+milBitsPerSec+" effecient:"+pctEff);
-            System.err.println("million messages per second:"+milMessagePerSec+" duration:"+duration);
-            System.err.println("million fields per second:"+(messageSize*milMessagePerSec));
+            System.out.println();
+            System.out.println("	million bits per second:"+milBitsPerSec+" effecient:"+pctEff);
+            System.out.println("	million messages per second:"+milMessagePerSec+" duration:"+duration);
+            System.out.println("	million fields per second:"+(totalMessageFields*milMessagePerSec));
             
             //given the target gps what pct cpu is free? 
             
-            assertTrue("Must be able to move data from one thread to the next no slower than 60% of a single thread array copy, only got:"+pctEff,pctEff>=.4);
+            assertTrue("Must be able to move data from one thread to the next no slower than 33% of a single thread array copy, only got:"+pctEff,pctEff>=.33);
         }
         
+        //clean shutdown of thread executor
+        exService.shutdown();
+        try {
+			exService.awaitTermination(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			//ignore we are exiting
+		}
+        
+        System.out.println("goodbye");
         
     }
 
 
+    @Test
+    public void byteBlockRingSpeedTest() {
+        
+    	//TODO: making this string long causes collision and ovderwrite!!
+    	final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
+    	
+        final int totalMesssages = 200000;
+                                           
+        //grouping fragments together gives a clear advantage but more latency
+        //as this gets near half the primary bits size the performance drops off
+        //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
+        final int chunkBits = 4; 
+        final int chunkMask = (1<<chunkBits)-1;
+        
+        //must be big enough for the message sizes between publish requests
+        byte primaryBits = 16; 
+        
+        //given maximum bytes used per message and the maximum messages in the above queue how long does the 
+        //inner queue have to be so it does not wrap on its self.
+        int temp = ((1<<(primaryBits-1)))*testArray.length;
+        int b = 0;
+        while (temp!=0) {
+        	b++;
+        	temp>>=1;
+        }
+                
+        //TODO: A, the ring buffer does not check for bytes that overflow into unread messages.  This is on the top list of things to get added.
+        //For the moment if the second byte ring is computed to be large enough (as above) there will be no problem.
+        System.out.println("byte array is defined by "+b+" bits");
+        byte charBits = (byte)b;        
+                
+        
+        final int tests = 3;
+        final int totalMessageFields = 256; //Must not be bigger than primary buffer size
+        final int granularity = totalMessageFields<<chunkBits;
+        final int fill =  (1<<primaryBits)-granularity;
+                
+        ExecutorService exService = Executors.newFixedThreadPool(4);
+
+                                
+        //writes will only hang if the reader has died and there is no room in the queue.
+        
+        int testRunCount = tests;
+        while (--testRunCount>=0) {     
+
+            long start = System.nanoTime();
+            
+            final FASTRingBuffer ring = new FASTRingBuffer(primaryBits, charBits);
+            //creating an anonymous inner class that implements runnable so we can hand this
+            //off to the execution service to be run on another thread while this thread does the writing.
+            Runnable reader = new Runnable() {
+
+                @Override
+                public void run() {           	
+        	
+    	                    int messageCount = totalMesssages;
+    	                    
+    	                    //only enter this block when we know there are records to read
+    	                    long headPosCache = spinBlockOnHead(headPosition(ring), tailPosition(ring)+granularity, ring);	                    
+    	                    while (--messageCount>=0) {
+    	                        //read the message
+    	                    	int messageFieldCount = totalMessageFields;
+    	                        while (--messageFieldCount>=0) {
+    	                        	
+    	                        	int meta = takeRingByteMetaData(ring);
+    	                        	int len = takeRingByteLen(ring);
+
+    	                        	validateBytes(testArray, ring, granularity,	messageFieldCount, meta, len);
+    	                            
+    	                        }
+    	                        
+    	                        //allow writer to write up to new tail position
+    	                        if (0==(messageCount&chunkMask) ) {
+    	                        	releaseReadLock(ring);
+    	                        	if (messageCount>0) {
+    	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);	                        	    	                        		
+    	                        	}
+    	                        }	                        
+    	                    }                    
+                }                
+            };
+            
+            
+            exService.submit(reader);//this reader starts running immediately
+                       
+            
+            int messageCount = totalMesssages;            
+            //keep local copy of the last time the tail was checked to avoid contention.
+            long tailPosCache = spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);                        
+            while (--messageCount>=0) {
+                //write the record
+                int messageFieldCount = totalMessageFields;
+                while (--messageFieldCount>=0) {
+                	addByteArray(testArray, 0, testArray.length, ring);
+                }
+                if (0==(messageCount&chunkMask) ) {
+                    publishWrites(ring);
+                    //wait for room to fit one message
+                    //waiting on the tailPosition to move the others are constant for this scope.
+                    //workingHeadPositoin is same or greater than headPosition
+                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(ring)-fill, ring);
+                }
+                                
+            }
+            //wait until the other thread is finished reading
+            tailPosCache = spinBlockOnTailTillMatchesHead(tailPosCache, ring);
+
+            long duration = System.nanoTime()-start;
+            
+            float milMessagePerSec = 1000f*(totalMesssages/(float)duration);
+            int fieldSize = testArray.length;
+            float milBitsPerSec = milMessagePerSec*totalMessageFields*fieldSize*8;
+            
+            System.out.println("byte transfer test");
+            System.out.println("	million bits per second:"+milBitsPerSec);
+            System.out.println("	million messages per second:"+milMessagePerSec+" duration:"+duration);
+            System.out.println("	million fields per second:"+(totalMessageFields*milMessagePerSec));
+            
+        }
+
+        //clean shutdown of thread executor
+        exService.shutdown();
+        try {
+			exService.awaitTermination(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			//ignore we are exiting
+		}
+    }
     
-    
-    
+	private void validateBytes(final byte[] testArray, final FASTRingBuffer ring, final int granularity,
+			int messageFieldCount, int meta, int len) {
+		
+		try {
+
+			if (meta < 0) {
+				fail("meta should only contain normal values no constants in this test");
+			}
+
+			// not calling normal unit test method because it will slow down the
+			// run
+			if (testArray.length != len) {
+				fail("expected " + testArray.length + " but found " + len
+						+ " gr " + granularity + "   working tail pos "
+						+ ring.workingTailPos.value);
+			}
+
+			// not checking every byte for equals because it would slow down
+			// this test
+			if (0 == (messageFieldCount & 0x3F)) {
+				// read back the array and confirm it matches
+				int mask = byteMask(ring); // data often loops around end of
+											// array so this mask is required
+
+				byte[] data = byteBackingArray(meta, ring);
+				int offset = bytePosition(meta);
+				int c = testArray.length;
+				while (--c >= 0) {
+					int i = offset + c;
+					// System.err.println("c "+c);
+					int tmp = i & mask;
+					if ((int) testArray[c] != (int) data[tmp]) {
+
+						System.err.println(Arrays.toString(Arrays.copyOfRange(
+								data, tmp - 10, tmp))
+								+ " "
+								+ Arrays.toString(Arrays.copyOfRange(data, tmp,
+										tmp + 10)));
+
+						fail(" index:" + c + " expected " + testArray[c]
+								+ " but found " + data[tmp] + " at " + i
+								+ " or " + tmp + " vs " + c);
+					}
+				}
+
+			}
+
+		} catch (Throwable t) {
+			t.printStackTrace();
+			System.exit(-1);
+		}
+		
+	}    
     
 }

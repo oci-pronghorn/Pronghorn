@@ -1202,13 +1202,26 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadDecimalCopyOptionalMantissaNone(int expoTarget, int expoSource, int expoConstAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         {
+        	int tpos = reader.position;
+        	
             boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
+            System.err.println("decimal bit:"+theBit+" prev "+rIntDictionary[expoSource]);
 			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
             if (0==xi1) {
+            	System.err.println("write absent "+expoConstAbsent);
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, expoConstAbsent);
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbPos.value+=2;
             } else {
+            	int tmp = ((-1 + (xi1 + (xi1 >>> 31))));
+            	System.err.println("ex:"+tmp+"  "+tpos);
+            	if (tmp== -16) {
+            		//+PrimitiveReader.totalRead(reader)
+            		
+            		PrimitiveReader.printDebugData(reader);
+            		throw new FASTException();
+            	}
+            	
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, (-1 + (xi1 + (xi1 >>> 31))));
                 //Long signed none
                 long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
@@ -1583,6 +1596,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             } else {
                 tmp=StaticGlue.readASCIIToHeapNone(target, val, byteHeap, reader);
             }
+            
             FASTRingBuffer.addLocalHeapValue(target,tmp,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
         }
     }
@@ -1625,13 +1639,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, defIdx, defLen);
             } else {
-                int bytePos = rbRingBuffer.addByteWorkingHeadPos.value;
+                int bytePos = rbRingBuffer.byteWorkingHeadPos.value;
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(byteBuffer,
                                                                     bytePos, 
                                                                     byteMask,
                                                                     reader);
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, bytePos, lenTemp);
-                rbRingBuffer.addByteWorkingHeadPos.value = bytePos+lenTemp;                
+                rbRingBuffer.byteWorkingHeadPos.value = bytePos+lenTemp;                
             }
     }    
 //                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
@@ -1753,7 +1767,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
                 
             if (length<0) {
-                FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.addByteWorkingHeadPos.value, length);
+                FASTRingBuffer.addValue(rbB, rbMask, rbPos, rbRingBuffer.byteWorkingHeadPos.value, length);
                 return;
             }
             if (length>0) {        

@@ -796,7 +796,7 @@ public class ReaderWriterPrimitiveTest {
 		int i = 0;
 		while (i<stringData.length) {
 		    byte[] value = stringDataBytes[i++];
-			PrimitiveWriter.writeTextASCII(value, 0, value.length, writer);
+			PrimitiveWriter.writeTextASCII(value, 0, value.length, 0xFFFFFF, writer);
 		}
 		
 		PrimitiveWriter.flush(writer);
@@ -841,7 +841,7 @@ public class ReaderWriterPrimitiveTest {
 				i = trunkTestLimit;
 				while (--i>=0) {
 					byte[] value = stringDataBytes[i];
-		            PrimitiveWriter.writeTextASCII(value, 0, value.length, writer);
+		            PrimitiveWriter.writeTextASCII(value, 0, value.length, 0xFFFFFF, writer);
 				}
 			}
 			PrimitiveWriter.flush(writer);
