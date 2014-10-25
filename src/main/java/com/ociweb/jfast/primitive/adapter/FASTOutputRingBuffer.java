@@ -9,8 +9,7 @@ public class FASTOutputRingBuffer implements FASTOutput {
 
 	private final FASTRingBuffer ringBuffer;
 	private DataTransfer dataTransfer;
-	
-	
+		
 	public FASTOutputRingBuffer(FASTRingBuffer ringBuffer) {
 		this.ringBuffer = ringBuffer;
 	}
@@ -21,23 +20,12 @@ public class FASTOutputRingBuffer implements FASTOutput {
 	}
 	
 	@Override
-	public void flush() {
-		
+	public void flush() {		
 		int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
-		while (size>0) {
-			
-			//TODO: A, need to decide which way. What if we send the bytes as a single block?  
-			//  * it would be more natural for the way the ring buffer works.
-			//  * it would enable the downstream systems to chunk more effectively 
-			//  * bytes stay bytes and need not be merged.
-			
-			//ostr.write(dataTransfer.writer.buffer,   PrimitiveWriter.nextOffset(dataTransfer.writer), size);
-			
+		while (size>0) {			
+			FASTRingBuffer.addByteArray(dataTransfer.writer.buffer, PrimitiveWriter.nextOffset(dataTransfer.writer), size, ringBuffer);
 			size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);		
 		}
-		FASTRingBuffer.publishWrites(ringBuffer);
-		
+		FASTRingBuffer.publishWrites(ringBuffer);		
 	}
-
-
 }

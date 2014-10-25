@@ -1,5 +1,6 @@
 package com.ociweb.jfast.catalog.generator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,10 +28,14 @@ public class CatalogGenerator implements ItemGenerator {
     
         
     public String toString() {
-        return appendTo("    ",new StringBuilder()).toString();
+        try {
+			return appendTo("    ",new StringBuilder()).toString();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
     }
 
-    public StringBuilder appendTo(String tab, StringBuilder result) {
+    public Appendable appendTo(String tab, Appendable result) throws IOException {
         result.append(HEADER);
         for(TemplateGenerator g:templates) {
             g.appendTo(tab, result);

@@ -409,7 +409,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.TEST);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;

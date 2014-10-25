@@ -1,5 +1,6 @@
 package com.ociweb.jfast.catalog.generator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +31,11 @@ public class TemplateGenerator implements ItemGenerator {
         
     
     public String toString() {
-        return appendTo("",new StringBuilder()).toString();
+        try {
+			return appendTo("",new StringBuilder()).toString();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
     }
     
     public SequenceGenerator addSequence(String name) {
@@ -58,7 +63,7 @@ public class TemplateGenerator implements ItemGenerator {
     }   
     
 
-    public StringBuilder appendTo(String tab, StringBuilder result) {
+    public Appendable appendTo(String tab, Appendable result) throws IOException {
                 
         result.append(tab);
         openTemplate(result,name, id, reset, dictionary);
@@ -72,14 +77,14 @@ public class TemplateGenerator implements ItemGenerator {
         return result;
     }
 
-    public static void closeTemplate(StringBuilder result) {
+    public static void closeTemplate(Appendable result) throws IOException {
         result.append("</template>\n");
     }
 
-    public static void openTemplate(StringBuilder result, String name, int id, boolean reset, String dictionary) {
+    public static void openTemplate(Appendable result, String name, int id, boolean reset, String dictionary) throws IOException {
         result.append("<template ");
         result.append("name=\"").append(name).append("\" ");
-        result.append("id=\"").append(id).append("\" ");
+        result.append("id=\"").append(Integer.toString(id)).append("\" ");
         if (reset) {
             result.append("reset=\"").append("Y").append("\" ");
         }

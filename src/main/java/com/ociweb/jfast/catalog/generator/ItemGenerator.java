@@ -1,7 +1,9 @@
 package com.ociweb.jfast.catalog.generator;
 
+import java.io.IOException;
+
 public interface ItemGenerator {
     
-    StringBuilder appendTo(String tab, StringBuilder result);
+    Appendable appendTo(String tab, Appendable result) throws IOException;
     
 }

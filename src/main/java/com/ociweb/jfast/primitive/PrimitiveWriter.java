@@ -989,9 +989,10 @@ public final class PrimitiveWriter {
             writer.output.flush();
             //since flush is rare this is a good opportunity to do sanity checking
             if (writer.limit > writer.buffer.length - length) {
+            	//TODO: A, did the messages not get pmap closed on write? can use interpreter until it gets fixed?
+            	System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
             	throw new ArrayIndexOutOfBoundsException(length);
             }
-            //System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
         }
         
         int tmp = writer.limit;

@@ -39,7 +39,7 @@ public class FASTRingBufferTest {
     public void simpleBytesWriteRead() {
         
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
-    	byte byteRingSizeInBits = 7;
+    	byte byteRingSizeInBits = 16;
     	
         FASTRingBuffer ring = new FASTRingBuffer(primaryRingSizeInBits, byteRingSizeInBits);
         
@@ -65,12 +65,13 @@ public class FASTRingBufferTest {
         int meta = takeRingByteMetaData(ring); //MUST take this one before the length they come in order       
                 
         //confirm the length is the same
-        assertEquals(testArray.length, takeRingByteLen(ring)); //MUST take this one second after the meta they come in order    
+        int len = takeRingByteLen(ring);
+        assertEquals(testArray.length, len); //MUST take this one second after the meta they come in order    
         
         //read back the array and confirm it matches
         int mask = byteMask(ring); //data often loops around end of array so this mask is required
         byte[] data = byteBackingArray(meta, ring);
-        int offset = bytePosition(meta);
+        int offset = bytePosition(meta, ring, len);
         int c = testArray.length;
         while (--c >= 0) {
         	int i = c + offset;
@@ -393,7 +394,7 @@ public class FASTRingBufferTest {
 											// array so this mask is required
 
 				byte[] data = byteBackingArray(meta, ring);
-				int offset = bytePosition(meta);
+				int offset = bytePosition(meta, ring, len);
 				int c = testArray.length;
 				while (--c >= 0) {
 					int i = offset + c;

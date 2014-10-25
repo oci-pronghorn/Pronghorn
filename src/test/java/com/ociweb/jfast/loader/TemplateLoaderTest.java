@@ -71,7 +71,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData(new ClientConfig());
-        assertEquals(715, catalogByteArray.length);
+        assertEquals(718, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -443,8 +443,8 @@ public class TemplateLoaderTest {
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
-         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
+        //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); 
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

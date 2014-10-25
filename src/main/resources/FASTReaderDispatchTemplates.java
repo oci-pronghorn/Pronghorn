@@ -1202,6 +1202,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadDecimalCopyOptionalMantissaNone(int expoTarget, int expoSource, int expoConstAbsent, int mantissaTarget, int[] rIntDictionary, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos, long[] rLongDictionary) {
         {
+        	int tpos = reader.position;
+        	
             boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
 			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
             if (0==xi1) {
@@ -1209,6 +1211,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbPos.value+=2;
             } else {
+            	int tmp = ((-1 + (xi1 + (xi1 >>> 31))));
+            	if (tmp== -16) {
+            		//+PrimitiveReader.totalRead(reader)
+            		
+            		PrimitiveReader.printDebugData(reader);
+            		throw new FASTException();
+            	}
+            	
                 FASTRingBuffer.addValue(rbB,rbMask,rbPos, (-1 + (xi1 + (xi1 >>> 31))));
                 //Long signed none
                 long tmpLng=rLongDictionary[mantissaTarget] = PrimitiveReader.readLongSigned(reader);
@@ -1583,6 +1593,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             } else {
                 tmp=StaticGlue.readASCIIToHeapNone(target, val, byteHeap, reader);
             }
+            
             FASTRingBuffer.addLocalHeapValue(target,tmp,rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
         }
     }

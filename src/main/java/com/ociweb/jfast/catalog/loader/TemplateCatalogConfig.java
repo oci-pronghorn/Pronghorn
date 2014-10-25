@@ -305,8 +305,7 @@ public class TemplateCatalogConfig {
         while (--d >= 0) {
             int[] members = tokenIdxMembers[d];
             int h = tokenIdxMemberHeads[d];
-            PrimitiveWriter.writeIntegerUnsigned(h, writer);// length of reset script (eg member
-                                           // list)
+            PrimitiveWriter.writeIntegerUnsigned(h, writer);// length of reset script (eg member list)
             while (--h >= 0) {
                 PrimitiveWriter.writeIntegerSigned(members[h], writer);
             }
@@ -318,8 +317,7 @@ public class TemplateCatalogConfig {
         int dictionaryCount = dictionaryMembers.length;
         int d = dictionaryCount;
         while (--d >= 0) {
-            int h = PrimitiveReader.readIntegerUnsigned(reader);// length of reset script (eg
-                                                 // member list)
+            int h = PrimitiveReader.readIntegerUnsigned(reader);// length of reset script (eg member list)
             int[] members = new int[h];
             while (--h >= 0) {
                 members[h] = PrimitiveReader.readIntegerSigned(reader);

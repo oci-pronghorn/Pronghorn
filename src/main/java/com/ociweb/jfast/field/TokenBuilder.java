@@ -20,27 +20,27 @@ public class TokenBuilder {
      * required arguments. group type operators - Open/Close, Repeats(second
      * int) read type operators - Read from (into next field in use)
      */
-
-    public static final int MAX_INSTANCE = 0x3FFFF; // 2^18 max fields 262144
+	
     // See fast writer for details and mask sizes
     public static final int MASK_TYPE = 0x1F; // 5 bits
 
-    public static final int MAX_FIELD_ID_BITS = 18;
+    public static final int MAX_FIELD_ID_BITS = 19;
     public static final int MAX_FIELD_ID_VALUE = (1 << MAX_FIELD_ID_BITS) - 1;
+    public static final int MAX_INSTANCE = MAX_FIELD_ID_VALUE;
+    
     public static final int MAX_FIELD_MASK = 0xFFFFFFFF ^ MAX_FIELD_ID_VALUE;
 
     public static final int SHIFT_ABSENT = MAX_FIELD_ID_BITS;
-    public static final int BITS_ABSENT = 2;
+    public static final int BITS_ABSENT = 2; //TODO: A, investigate absent to check if this is still needed.
     public static final int SHIFT_OPER = SHIFT_ABSENT + BITS_ABSENT;
-    public static final int BITS_OPER = 6;
+    public static final int BITS_OPER = 5;  
     public static final int SHIFT_TYPE = SHIFT_OPER + BITS_OPER;
     public static final int BITS_TYPE = 5;
 
-    public static final int MASK_ABSENT = 0x3; // 2 bits
-    public static final int MASK_ABSENT_DEFAULT = 0x3; // 2 bits //default value
+    public static final int MASK_ABSENT = (1 << BITS_ABSENT) - 1;
+    public static final int MASK_ABSENT_DEFAULT = 0x3; // 2 bits on //default value
 
-    public static final int MASK_OPER = 0x3F; // 6 bits
-    public static final int MASK_OPER_DECIMAL_EX = 0x07; // 3 bits
+    public static final int MASK_OPER = (1<<BITS_OPER)-1; 
 
     // sequence is stored as a length field type which appears in the stream
     // before the repeating children.
@@ -109,13 +109,7 @@ public class TokenBuilder {
     }
 
     public static boolean isOpperator(int token, int operator) {
-        int type = extractType(token);
-
-        if (type == TypeMask.Decimal || type == TypeMask.DecimalOptional) {
-            return ((token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER_DECIMAL_EX) == operator;
-        } else {
-            return ((token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER) == operator;
-        }
+        return ((token >> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER) == operator;
     }
 
     public static String tokenToString(int token) {

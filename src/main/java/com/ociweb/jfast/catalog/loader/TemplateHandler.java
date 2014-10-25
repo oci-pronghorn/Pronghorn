@@ -27,10 +27,17 @@ public class TemplateHandler extends DefaultHandler {
     
     private final PrimitiveWriter writer;
     
+    //it could be made bigger but this also consumes more memory so we need a good reason
+    //TODO: B, instead of making this larger find a way to make scripts re-use the fragments of other scripts
+    private final static int MAX_SCRIPT_LENGTH = 1<<24;//16M
+    static {
+    	assert(MAX_SCRIPT_LENGTH>TokenBuilder.MAX_FIELD_ID_VALUE) : "script length constant is not large enough";
+    }
+    
     // Catalog represents all the templates supported
-    int[] catalogScriptTokens = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
-    int[] catalogScriptFieldIds = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
-    String[] catalogScriptFieldNames = new String[TokenBuilder.MAX_FIELD_ID_VALUE];
+    int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
+    int[] catalogScriptFieldIds = new int[MAX_SCRIPT_LENGTH];
+    String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
 
     int catalogTemplateScriptIdx = 0;
 
@@ -836,25 +843,51 @@ public class TemplateHandler extends DefaultHandler {
         // identifiers. All cache friendly forward motion.
 
         int dictionaryCount = dictionaryNames.size();
-        tokenIdxMembers = new int[dictionaryCount][TokenBuilder.MAX_FIELD_ID_VALUE];
+        
+        tokenIdxMembers = new int[dictionaryCount][];
+        
         tokenIdxMemberHeads = new int[dictionaryCount];
-
+        
         int j = resetList.size();
         while (--j >= 0) {
             if (!resetList.get(j).isEmpty()) {
-                int d = j >>> TokenBuilder.BITS_TYPE;
+            	final int d = j >>> TokenBuilder.BITS_TYPE;
+        
+        		//only allocate exactly what is needed, when it is needed for the type needed
+                if (null == tokenIdxMembers[d]) {
+                	tokenIdxMembers[d] = new int[lengthOfArrayForThisType(d)];
+                }
+        		
                 int t = j & TokenBuilder.MASK_TYPE;
                 int stopInt = 0xFFFF0000 | t;
                 tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = stopInt;
                 // System.err.println("stopInt:"+stopInt+" "+Integer.toBinaryString(stopInt)+" "+TypeMask.toString(t));
                 for (Integer i : resetList.get(j)) {
-                    tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i;
+                    tokenIdxMembers[d][tokenIdxMemberHeads[d]++] = i.intValue();
                 }
-            }
+                
+                
+            } 
         }
         // tokenIdxMembers are ready to be saved but must be trimmed by heads
-
+        
     }
+
+    
+	private int lengthOfArrayForThisType(int target) {
+		int maxTokens = 0;
+        int j = resetList.size();
+        while (--j >= 0) {
+        	final int d = j >>> TokenBuilder.BITS_TYPE;
+            if (d == target) {    	                
+	        	List<Integer> list = resetList.get(j);        	
+	        	if (!list.isEmpty()) {
+	        		maxTokens = maxTokens + list.size() + 1;
+	        	}
+            }
+        }
+		return maxTokens;
+	}
 
     public void postProcessing() {
 

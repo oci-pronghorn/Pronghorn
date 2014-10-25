@@ -48,18 +48,14 @@ public final class FASTRingBuffer {
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
-    final int    byteLimitsShift;
-    final int[]  byteLimitsBPos;
-    final long[] byteLimitsLPos;
-    
     final int maxByteSize;
     public final byte[] byteBuffer;
     public final int byteMask;
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
-//    public final PaddedInt byteWorkingTailPos = new PaddedInt();
+    public final PaddedInt byteWorkingTailPos = new PaddedInt();
     
     public final PaddedAtomicInteger bytesHeadPos = new PaddedAtomicInteger();
-//    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
+    public final PaddedAtomicInteger bytesTailPos = new PaddedAtomicInteger();
     
     //defined externally and never changes
     final byte[] constByteBuffer;
@@ -110,15 +106,7 @@ public final class FASTRingBuffer {
         this.mask = maxSize - 1;
         
         this.buffer = new int[maxSize];    
-
-        this.byteLimitsShift = primaryBits<6? 0 : primaryBits-6;
-        int len = 1<<(primaryBits-byteLimitsShift);
-        this.byteLimitsBPos = new int[len];
-        this.byteLimitsLPos = new long[len];
-        System.err.println("debug: created byteLimts length:"+byteLimitsBPos.length);
-        
-        
-        
+  
         //single text and byte buffers because this is where the variable length data will go.
 
         this.maxByteSize =  1 << byteBits;
@@ -150,8 +138,8 @@ public final class FASTRingBuffer {
         headPos.set(0); 
         byteWorkingHeadPos.value = 0;
         bytesHeadPos.set(0);
-//        byteWorkingTailPos.value = 0;
-//        bytesTailPos.set(0);
+        byteWorkingTailPos.value = 0;
+        bytesTailPos.set(0);
         
         FASTRingBufferConsumer.reset(consumerData);
         
@@ -351,43 +339,45 @@ public final class FASTRingBuffer {
         final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
             rbRingBuffer.byteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
-        }
-        
-        //write this position into this slice
-        //this is for collision detection of the byte ring
-        int boff = (int)((rbRingBuffer.mask&rbRingBuffer.workingHeadPos.value)>>rbRingBuffer.byteLimitsShift);
-        rbRingBuffer.byteLimitsBPos[boff] = p;
-        rbRingBuffer.byteLimitsLPos[boff] = rbRingBuffer.workingHeadPos.value;
+        }      
         
         addValue(rbB, rbMask, rbPos, p);
         addValue(rbB, rbMask, rbPos, sourceLen);
     }
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, FASTRingBuffer rbRingBuffer) {
-    	
-    	
+    	    	
         final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
-//        	//WARNING this may cause contention on tail,  TODO: A, warning this is very experimental
-//        	int boffEnd = (int)((rbRingBuffer.mask&rbRingBuffer.tailPos.get())>>rbRingBuffer.byteLimitsShift);
-        	int proposedEnd = p + sourceLen;
-//        	if (proposedEnd>rbRingBuffer.byteLimitsBPos[boffEnd]) {
-//        		throw new FASTException("RingBuffer is not configured with enought space for bytes");
-//        	}//TODO: needs mask as well
-        	
         	int targetMask = rbRingBuffer.byteMask;
-        	//System.err.println("write string from position "+(targetMask&p)+" to "+(targetMask&(p+sourceLen)));
+        	int proposedEnd = p + sourceLen;        	
         	
+        	
+        	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
+        	int headPos = p & targetMask;
+        	if (tailPos!=headPos) { //either full or empty can't tell TODO: A, add count? but how?
+	        	if (headPos<tailPos) {
+	        		headPos += (targetMask+1);
+	        	}
+	        	
+	        	int wStart = p & targetMask;
+	        	int wEnd   = (proposedEnd-1) & targetMask;
+	        	if (wEnd < wStart) {
+	        		wEnd += (targetMask+1);
+	        	}
+	        	
+	        	//if it overlaps then we have a problem
+	        	if ((wEnd >= tailPos && wEnd < headPos) ||
+	        		 (wStart >= tailPos && wStart < headPos) ) {	   
+	        		//TODO: A, should block until we can write
+	        		throw new FASTException("byte buffer is not large enough");
+	        	}
+        	}
+        	
+        	        	
             LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
             rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
-
-//            //write this position into this slice
-//            //this is for collision detection of the byte ring
-//            int boff = (int)((rbRingBuffer.mask&rbRingBuffer.workingHeadPos.value)>>rbRingBuffer.byteLimitsShift);
-//            rbRingBuffer.byteLimitsBPos[boff] = p;
-//            rbRingBuffer.byteLimitsLPos[boff] = rbRingBuffer.workingHeadPos.value;
-        }
-        
+        }        
         
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
@@ -447,11 +437,19 @@ public final class FASTRingBuffer {
 	}
 	
 	public static int takeRingByteLen(FASTRingBuffer ring) {		
-		return ring.buffer[(int)(ring.mask & (ring.workingTailPos.value++))];// second int is always the length       
+		return ring.buffer[(int)(ring.mask & (ring.workingTailPos.value++))];// second int is always the length     
 	}
     
-    public static int bytePosition(int meta) {
-        return meta&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
+    public static int bytePosition(int meta, FASTRingBuffer ring, int len) {
+    	
+    	int pos = meta&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
+    	
+    	int end = pos + len; //need this in order to find the tail to detect overlap 	
+    	if (end > ring.byteWorkingTailPos.value) {
+    		ring.byteWorkingTailPos.value = end;
+    	}
+    	
+        return pos; 
     }    
 
     public static byte[] byteBackingArray(int meta, FASTRingBuffer rbRingBuffer) {
@@ -488,14 +486,11 @@ public final class FASTRingBuffer {
 
     
     public static void releaseReadLock(FASTRingBuffer ring) {
-    	
-    	//ring.workingTailPos.value = ring.workingTailPos.value & ring.byteMask;
-    	
+    	    	
     	ring.tailPos.lazySet(ring.workingTailPos.value);
-    	
-    	//TODO: what was the end of the last position used in the byte array?
-    	
-    //	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
+    	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
+    	//unlike the primary ring positions this one requires a clear of the value
+    	ring.byteWorkingTailPos.value = 0;    	
     	
     }
     

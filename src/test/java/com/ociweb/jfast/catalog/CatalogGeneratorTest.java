@@ -29,6 +29,7 @@ import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
+import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
@@ -422,17 +423,22 @@ public class CatalogGeneratorTest {
             template.addField(fieldName, fieldId++, fieldPresence, fieldType, fieldOperator, fieldInitial);        
         }
         
-        StringBuilder builder = cg.appendTo("", new StringBuilder());        
+		try {
+			StringBuilder builder;
+			builder = (StringBuilder) cg.appendTo("", new StringBuilder());
+			boolean debug = true;
+			if (debug) {
+				System.err.println(builder);
+			}
+			
+			
+			ClientConfig clientConfig = new ClientConfig(21,19);  //keep bits small or the test will take a very long time to run.              
+			byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);
+			return catBytes;
+		} catch (IOException e) {
+			throw new FASTException(e);
+		}        
    
-        boolean debug = true;
-        if (debug) {
-        	System.err.println(builder);
-        }
-   
-        
-        ClientConfig clientConfig = new ClientConfig(21,19);  //keep bits small or the test will take a very long time to run.              
-        byte[] catBytes = convertTemplateToCatBytes(builder, clientConfig);
-        return catBytes;
     }
 
 

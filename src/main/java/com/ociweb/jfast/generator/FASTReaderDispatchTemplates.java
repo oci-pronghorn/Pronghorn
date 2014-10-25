@@ -1205,16 +1205,13 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         	int tpos = reader.position;
         	
             boolean theBit = 0 == PrimitiveReader.readPMapBit(reader);
-            System.err.println("decimal bit:"+theBit+" prev "+rIntDictionary[expoSource]);
 			int xi1 = rIntDictionary[expoTarget] = (theBit ? rIntDictionary[expoSource] :  PrimitiveReader.readIntegerSigned(reader));
             if (0==xi1) {
-            	System.err.println("write absent "+expoConstAbsent);
                 FASTRingBuffer.addValue(rbB, rbMask, rbPos, expoConstAbsent);
                 //must still write long even when we skipped reading its pmap bit. but value is undefined.
                 rbPos.value+=2;
             } else {
             	int tmp = ((-1 + (xi1 + (xi1 >>> 31))));
-            	System.err.println("ex:"+tmp+"  "+tpos);
             	if (tmp== -16) {
             		//+PrimitiveReader.totalRead(reader)
             		

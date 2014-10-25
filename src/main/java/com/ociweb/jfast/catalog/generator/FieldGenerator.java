@@ -1,5 +1,7 @@
 package com.ociweb.jfast.catalog.generator;
 
+import java.io.IOException;
+
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TypeMask;
 
@@ -36,13 +38,17 @@ public class FieldGenerator implements ItemGenerator {
     }
     
     public String toString() {
-        return appendTo("",new StringBuilder()).toString();
+        try {
+			return appendTo("",new StringBuilder()).toString();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
     }
     
     @Override
-    public StringBuilder appendTo(String tab, StringBuilder result) {
+    public Appendable appendTo(String tab, Appendable result) throws IOException {
         result.append(tab);
-        result.append("<").append(TypeMask.xmlTypeName[type]).append(" name=\"").append(name).append("\" id=\"").append(id).append("\" ");
+        result.append("<").append(TypeMask.xmlTypeName[type]).append(" name=\"").append(name).append("\" id=\"").append(Integer.toString(id)).append("\" ");
         if (presence) {
             result.append("presence=\"optional\" ");
         }
@@ -77,7 +83,7 @@ public class FieldGenerator implements ItemGenerator {
         return result;
     }
 
-    private void addOperation(String tab, StringBuilder result, int operator, String initial) {
+    private void addOperation(String tab, Appendable result, int operator, String initial) throws IOException {
         
         if (OperatorMask.Field_None != operator) {
             result.append(tab);
