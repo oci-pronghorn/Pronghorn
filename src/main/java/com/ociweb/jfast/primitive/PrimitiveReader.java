@@ -444,6 +444,7 @@ public final class PrimitiveReader {
         return accumulator | (v & 0x7F);
     }
 
+    //TODO: X, a lot of research went into this under 6 & 7, try this a a simple loop and re-test both approaches on Java 8
     //recursive use of the stack turns out to be a good way to unroll this loop.
     private static long readLongUnsignedTail(long a, PrimitiveReader reader) {
         byte v = reader.buffer[reader.position++];

@@ -1457,6 +1457,29 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
+    
+    public int readASCII(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+
+        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
+        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
+
+        // System.out.println("reading "+TokenBuilder.tokenToString(token));
+
+        if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
+                                                            // the work.
+        	readTextASCII(token, reader, ringBuffer);
+        } else {
+        	readTextASCIIOptional(token, reader, ringBuffer);
+        }
+        
+        //NOTE: for testing we need to check what was written
+        int value = FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
+        //if the value is positive it no longer points to the byteHeap so we need
+        //to make a replacement here for testing.
+        return value<0? value : token & MAX_BYTE_INSTANCE_MASK;
+    }
+    
+    
     public void readTextASCII(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
         int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all

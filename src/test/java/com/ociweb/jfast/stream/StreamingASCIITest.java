@@ -30,7 +30,7 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 
-public class StreamingBytesTest extends BaseStreamingTest {
+public class StreamingASCIITest extends BaseStreamingTest {
 
     final int fields = 2000;
     final ByteBuffer[] testData = buildTestData(fields);
@@ -65,209 +65,28 @@ public class StreamingBytesTest extends BaseStreamingTest {
     }
 
     @Test
-    public void bytesTest() {
+    public void asciiTest() {
         int[] types = new int[] { 
-                TypeMask.ByteArray,
-                TypeMask.ByteArrayOptional,
+                TypeMask.TextASCII,
+                TypeMask.TextASCIIOptional,
                 };
         int[] operators = new int[] { 
                 OperatorMask.Field_None, 
-                OperatorMask.Field_Constant, 
+            //    OperatorMask.Field_Constant, 
                 OperatorMask.Field_Copy,
-                OperatorMask.Field_Default,
-                OperatorMask.Field_Delta, 
-                OperatorMask.Field_Tail, 
+      //          OperatorMask.Field_Default,
+      //          OperatorMask.Field_Delta, 
+       //         OperatorMask.Field_Tail, 
                 };
 
-        byteTester(types, operators, "Bytes");
+        asciiTester(types, operators, "ASCII");
     }
 
-    @Test
-    public void TailTest() {
+ 
 
-        byte[] buffer = new byte[2048];
-        FASTOutput output = new FASTOutputByteArray(buffer);
-        PrimitiveWriter writer = new PrimitiveWriter(4096, output, false);
+    private void asciiTester(int[] types, int[] operators, String label) {
 
-        int singleSize = 14;
-        int singleGapSize = 8;
-        int fixedTextItemCount = 16; // must be power of two
-
-        LocalHeap dictionaryWriter = new LocalHeap(singleSize, singleGapSize, fixedTextItemCount);
-
-        int token = TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_Tail, 0,
-                TokenBuilder.MASK_ABSENT_DEFAULT);
-        byte[] value = new byte[] { 1, 2, 3 };
-        int offset = 0;
-        int length = value.length;
-        int instanceMask = null==dictionaryWriter? 0 : Math.min(TokenBuilder.MAX_INSTANCE, (LocalHeap.itemCount(dictionaryWriter)-1));
-        writeBytesTail(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        writeBytesDelta(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        writeBytesConstant();
-
-        PrimitiveWriter.openPMap(1, writer);
-        writeBytesCopy(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        writeBytesDefault(writer, dictionaryWriter, instanceMask, token, value, offset, length);
-        PrimitiveWriter.closePMap(writer);
-        PrimitiveWriter.flush(writer);
-
-        FASTInput input = new FASTInputByteArray(buffer);
-        PrimitiveReader reader = new PrimitiveReader(2048, input, 32);
-
-        LocalHeap dictionaryReader = new LocalHeap(singleSize, singleGapSize, fixedTextItemCount);
-        int byteInstanceMask = null == dictionaryReader ? 0 : Math.min(TokenBuilder.MAX_INSTANCE,
-        LocalHeap.itemCount(dictionaryReader) - 1);
-
-        // read value back
-        int id;
-        int idx = token & byteInstanceMask;
-        id = readBytesTail(idx, reader, dictionaryReader);
-        assertTrue(LocalHeap.equals(id,value,offset,length,0xFFFFFFFF,dictionaryReader));
-        int idx1 = token & byteInstanceMask;
-
-        id = readBytesDelta(idx1, reader, dictionaryReader);
-        assertTrue(LocalHeap.equals(id,value,offset,length,0xFFFFFFFF,dictionaryReader));
-
-        id = token & byteInstanceMask;
-        assertTrue(LocalHeap.equals(id,value,offset,length,0xFFFFFFFF,dictionaryReader));
-
-        PrimitiveReader.openPMap(1, reader);
-        int idx2 = token & byteInstanceMask;
-        if (PrimitiveReader.readPMapBit(reader) != 0) {
-            int length1 = PrimitiveReader.readIntegerUnsigned(reader) - 0;
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(dictionaryReader), LocalHeap.allocate(idx2, length1, dictionaryReader), length1, reader);
-        }
-
-        id = idx2;
-        assertTrue(LocalHeap.equals(id,value,offset,length,0xFFFFFFFF,dictionaryReader));
-        int idx3 = token & byteInstanceMask;
-
-        id = readBytesDefault(idx3, reader, dictionaryReader);
-        assertTrue(LocalHeap.equals(id,value,offset,length,0xFFFFFFFF,dictionaryReader));
-
-        PrimitiveReader.closePMap(reader);
-
-    }
-
-    private int readBytesTail(int idx, PrimitiveReader reader, LocalHeap byteHeap) {
-        int id;
-        int trim = PrimitiveReader.readIntegerUnsigned(reader);
-        int length = PrimitiveReader.readIntegerUnsigned(reader);
-        
-        // append to tail
-        int targetOffset = LocalHeap.makeSpaceForAppend(idx,trim,length,byteHeap);
-        PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), targetOffset, length, reader);
-        id = idx;
-        return id;
-    }
-
-    
-    private int readBytesDefault(int idx3, PrimitiveReader reader, LocalHeap byteHeap) {
-        int id;
-        int result;
-        if (PrimitiveReader.readPMapBit(reader) == 0) {
-            // System.err.println("z");
-            result = idx3 | INIT_VALUE_MASK;// use constant
-        } else {
-            int length = PrimitiveReader.readIntegerUnsigned(reader) - 0;
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(idx3, length, byteHeap), length, reader);
-            result = idx3;
-        }
-        id = result;
-        return id;
-    }
-
-    private int readBytesDelta(int idx1, PrimitiveReader reader, LocalHeap byteHeap) {
-        int id;
-        int trim = PrimitiveReader.readIntegerSigned(reader);
-        int utfLength = PrimitiveReader.readIntegerUnsigned(reader);
-        if (trim >= 0) {
-            // append to tail
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForAppend(idx1,trim,utfLength,byteHeap), utfLength, reader);
-        } else {
-            // append to head
-            PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.makeSpaceForPrepend(idx1,-trim,utfLength,byteHeap), utfLength, reader);
-        }
-        id = idx1;
-        return id;
-    }
-
-    private void writeBytesDefault(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
-        int idx = token & instanceMask;
-        
-        if (LocalHeap.equals(idx|INIT_VALUE_MASK,value,offset,length,0xFFFFFFFF,byteHeap)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        } else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
-        }
-    }
-
-    private void writeBytesCopy(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
-        int idx = token & instanceMask;
-        
-        if (LocalHeap.equals(idx,value,offset,length,0xFFFFFFFF,byteHeap)) {
-            PrimitiveWriter.writePMapBit((byte)0, writer);
-        }
-        else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);
-            PrimitiveWriter.writeIntegerUnsigned(length, writer);
-            PrimitiveWriter.writeByteArrayData(value,offset,length, writer);
-        	LocalHeap.set(idx,value,offset,length,0xFFFFFFFF,byteHeap);
-        }
-    }
-
-    private void writeBytesConstant() {
-    }
-
-    private void writeBytesDelta(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
-        int idx = token & instanceMask;
-        
-        //count matching front or back chars
-        int headCount = LocalHeap.countHeadMatch(idx,value,offset,length,0xFFFFFFFF,byteHeap);
-        int tailCount = LocalHeap.countTailMatch(idx,value,offset+length,length,0xFFFFFFFF,byteHeap);
-        if (headCount>tailCount) {
-        	int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
-        	PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
-            
-            int valueSend = length-headCount;
-            int startAfter = offset+headCount+headCount;
-            
-            PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-            PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-            LocalHeap.appendTail(idx,trimTail,value,startAfter,valueSend,0xFFFFFFFF,byteHeap);
-        } else {
-        	//replace head, tail matches to tailCount
-            int trimHead = LocalHeap.length(idx,byteHeap)-tailCount;
-            PrimitiveWriter.writeIntegerSigned(trimHead==0? 0: -trimHead, writer); 
-            
-            int len = length - tailCount;
-            PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(value, offset, len, writer);
-            
-            LocalHeap.appendHead(idx,trimHead,value,offset,len,0xFFFFFFFF,byteHeap);
-        }
-    }
-
-    private void writeBytesTail(PrimitiveWriter writer, LocalHeap byteHeap, int instanceMask, int token, byte[] value, int offset, int length) {
-        int idx = token & instanceMask;
-        int headCount = LocalHeap.countHeadMatch(idx,value,offset,length,0xFFFFFFFF,byteHeap);
-        
-        int trimTail = LocalHeap.length(idx,byteHeap)-headCount;
-        PrimitiveWriter.writeIntegerUnsigned(trimTail>=0? trimTail+0: trimTail, writer);
-        
-        int valueSend = length-headCount;
-        int startAfter = offset+headCount;
-        
-        PrimitiveWriter.writeIntegerUnsigned(valueSend, writer);
-        PrimitiveWriter.writeByteArrayData(value, startAfter, valueSend, writer);
-        LocalHeap.appendTail(idx,trimTail,value,startAfter,valueSend,0xFFFFFFFF,byteHeap);
-    }
-
-    private void byteTester(int[] types, int[] operators, String label) {
-
-        int singleBytesLength = 2048;
+        int singleBytesLength = 256;
         int fieldsPerGroup = 10;
         int maxMPapBytes = (int) Math.ceil(fieldsPerGroup / 7d);
         int operationIters = 7;
@@ -278,6 +97,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         String writeLabel = "Write " + label + " NoOpp in groups of " + fieldsPerGroup;
 
         int streamByteSize = operationIters * ((maxMPapBytes * (fields / fieldsPerGroup)) + (fields * avgFieldSize));
+                
         int maxGroupCount = operationIters * fields / fieldsPerGroup;
 
         int[] tokenLookup = TestUtil.buildTokens(fields, types, operators);
@@ -348,7 +168,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                         FASTRingBuffer.addByteArray(array, 0, -1, ring);
                         FASTRingBuffer.publishWrites(ring);
                     	
-                        fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring);
+                        fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
                     } else {
                         {
                             byte[] array = testConst;
@@ -361,9 +181,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                             
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                                fw.acceptByteArray(token, writer, fw.byteHeap, 0, ring);
+                                fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);
                             } else {
-                                fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring);
+                                fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
                             }
                         }
                     }
@@ -375,10 +195,10 @@ public class StreamingBytesTest extends BaseStreamingTest {
                         FASTRingBuffer.dump(ring);
                         FASTRingBuffer.addByteArray(array, 0, -1, ring);
                         FASTRingBuffer.publishWrites(ring);
-                        
-                        BaseStreamingTest.write(token, writer, fw); //TODO: this is still not right
-                        // fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring); ///should be using this one
-                        
+                    	
+                    	
+                        //BaseStreamingTest.write(token, writer, fw);
+                        fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
                     } else {
                         {
                             byte[] array = testDataBytes[f];
@@ -392,9 +212,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                             assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
                             
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
-                                fw.acceptByteArray(token, writer, fw.byteHeap, 0, ring);
+                                fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);
                             } else {
-                                fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring);
+                                fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
                             }
                         }
                     }
@@ -445,14 +265,14 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+                        int idx = fr.readASCII(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
                         if (!LocalHeap.isNull(idx,byteHeap)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
                         }
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+                            int textIdx = fr.readASCII(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
 
                             byte[] tdc = testConst;                           
                             
@@ -474,7 +294,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+                        int idx = fr.readASCII(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
                         if (!LocalHeap.isNull(idx,byteHeap)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
                                     + LocalHeap.length(idx,byteHeap), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
@@ -482,7 +302,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int heapIdx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+                            int heapIdx = fr.readASCII(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
 
                             if ((1 & i) == 0) {                              
                                 assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
@@ -518,7 +338,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
     private ByteBuffer[] buildTestData(int count) {
 
-        byte[][] seedData = ReaderWriterPrimitiveTest.byteData;
+        byte[][] seedData = ReaderWriterPrimitiveTest.stringDataBytes;
         int s = seedData.length;
         int i = count;
         ByteBuffer[] target = new ByteBuffer[count];

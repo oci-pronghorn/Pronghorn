@@ -598,6 +598,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 assert (TokenBuilder.isOpperator(token, OperatorMask.Field_Copy)) : "Found "
                         + TokenBuilder.tokenToString(token);
                 
+                //genWriteTextCopy(idx, fieldPos, writer, byteHeap, rbRingBuffer);
                 genWriteTextCopyOptional(idx, fieldPos, writer, byteHeap, rbRingBuffer);
 
             } else {

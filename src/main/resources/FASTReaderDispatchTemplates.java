@@ -1577,7 +1577,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     }
 
     protected void genReadASCIICopy(int target, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {
-            FASTRingBuffer.addLocalHeapValue(target,((PrimitiveReader.readPMapBit(reader)==0) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
+            FASTRingBuffer.addLocalHeapValue(target,((0 == PrimitiveReader.readPMapBit(reader)) ? LocalHeap.valueLength(target,byteHeap) : StaticGlue.readASCIIToHeap(target, reader, byteHeap)),rbMask,rbB, rbPos, byteHeap, rbRingBuffer);
     }
     
     protected void genReadASCIICopyOptional(int target, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, FASTRingBuffer rbRingBuffer) {

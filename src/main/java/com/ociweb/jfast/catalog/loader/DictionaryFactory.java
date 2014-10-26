@@ -56,11 +56,9 @@ public class DictionaryFactory {
     private int[] byteInitIndex;
     private byte[][] byteInitValue;
     private int byteInitTotalLength;
-    
-    int singleTextSize=64;
-    int gapTextSize=8;
-    int singleBytesSize=46; 
-    int gapBytesSize=8;
+
+    private int singleBytesSize=1;//must be no smaller than 1
+    private int gapBytesSize;
     
     LocalHeap byteHeap;    
 
@@ -79,10 +77,16 @@ public class DictionaryFactory {
         this.byteInitValue = new byte[INIT_GROW_STEP][];
     }
 
-    public void setTypeCounts(int integerCount, int longCount, int bytesCount) {
+    public void setTypeCounts(int integerCount, int longCount, int bytesCount, int bytesGap, int bytesNominalLength) {
         this.integerCount = integerCount;
         this.longCount = longCount;
         this.bytesCount = bytesCount;
+        this.gapBytesSize = bytesGap;
+        
+        if (bytesNominalLength<1) {
+            throw new UnsupportedOperationException("Length must be 1 or more.");
+        }
+        this.singleBytesSize = bytesNominalLength;
     }
 
     public DictionaryFactory(PrimitiveReader reader) {

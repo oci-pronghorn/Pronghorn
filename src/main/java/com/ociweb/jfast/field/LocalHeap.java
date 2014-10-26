@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.jfast.error.FASTException;
+
 
 /**
  * Arena memory pattern where we allocate a single block large enough for all the
@@ -585,37 +587,6 @@ public class LocalHeap {
             int offset = idx << 2;
             return heap.data[heap.tat[offset] + at];
         }
-    }
-
-
-    public static boolean equals(int idx, byte[] target, int targetIdx, int length, LocalHeap heap) {
-       // System.err.println(idx +"  "+length);
-        if (idx < 0) {
-            int offset = idx << 1;
-            return eq(target, targetIdx, length, heap.initTat[offset], heap.initTat[offset + 1], heap.initBuffer);
-        } else {
-            int offset = idx << 2;
-            return eq(target, targetIdx, length, heap.tat[offset], heap.tat[offset + 1], heap.data);
-        }
-    }
-
-    private static boolean eq(byte[] target, int targetIdx, int length, int pos, int lim, byte[] buf) {
-        int len = lim - pos;
-        if (len<0) {
-            len = 0;
-        }
-        if (len != length) {
-            return false;
-        }
-        if (len>0) {
-            int i = length;
-            while (--i >= 0) {
-                if (target[targetIdx + i] != buf[pos + i]) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     public static boolean equals(int idx, byte[] target, int targetIdx, int targetLen, int targetMask, LocalHeap heap) {

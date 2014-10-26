@@ -902,7 +902,7 @@ public class TemplateHandler extends DefaultHandler {
         defaultConstValues
                 .setTypeCounts(tokenBuilderIntCount.intValue(), 
                                tokenBuilderLongCount.intValue(),
-                               tokenBuilderByteCount.intValue());
+                               tokenBuilderByteCount.intValue(), 16, 128);
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         

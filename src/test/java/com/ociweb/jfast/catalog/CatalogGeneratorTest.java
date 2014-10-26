@@ -184,6 +184,23 @@ public class CatalogGeneratorTest {
         System.err.println("totalWritten:"+totalWrittenCount.longValue());
             
     }
+    
+//    @Test
+//    public void textFieldTest() {
+//        
+//        AtomicLong totalWrittenCount = new AtomicLong();
+//        int i = textCatalogs.size();
+//        System.out.println("testing "+i+" text configurations");
+//        while (--i>=0) {
+//            testEncoding(textFieldOperators.get(i).intValue(), 
+//            			 textFieldTypes.get(i).intValue(), 
+//            			 textFieldCounts.get(i).intValue(), 
+//            			 textCatalogs.get(i),
+//                         totalWrittenCount);
+//        }
+//        System.err.println("totalWritten:"+totalWrittenCount.longValue());
+//            
+//    }
 
 
     int lastOp = -1;
@@ -426,7 +443,7 @@ public class CatalogGeneratorTest {
 		try {
 			StringBuilder builder;
 			builder = (StringBuilder) cg.appendTo("", new StringBuilder());
-			boolean debug = true;
+			boolean debug = false;
 			if (debug) {
 				System.err.println(builder);
 			}

@@ -46,7 +46,7 @@ public class LocalHeapTest {
 		    byte[] target = new byte[len];	    
 		    LocalHeap.copyToRingBuffer(i, target, 0, 0xFFFFFFFF, th);		    
 		    //Don't trust equals because that is part of what we are testing
-		    assertTrue(LocalHeap.equals(i,testData[i].getBytes(),0,len, th));	   
+		    assertTrue(LocalHeap.equals(i,testData[i].getBytes(),0,len,0xFFFFFFFF,th));	   
 			assertTrue(Arrays.equals(testData[i].getBytes(), target));
 		}
     }
@@ -125,7 +125,7 @@ public class LocalHeapTest {
 		LocalHeapTest.get(2,builder,th);
 		assertEquals(root+replace,builder.toString());
 		String temp = root+replace;
-		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(),0xFFFFFFFF,th));
 		assertEquals(root.length(), LocalHeap.countHeadMatch(2,root.getBytes(),0,root.length(),0xFFFFFFFF,th));
 		assertEquals(replace.length(), LocalHeap.countTailMatch(2,replace.getBytes(),replace.length(),replace.length(),0xFFFFFFFF,th));
 	}
@@ -152,8 +152,8 @@ public class LocalHeapTest {
 		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
 		String temp = replace+root;
-		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
-		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(),0xFFFFFFFF,th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}
@@ -179,8 +179,8 @@ public class LocalHeapTest {
 		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
 		String temp = replace+root;
-		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
-		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(),0xFFFFFFFF,th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}
@@ -207,8 +207,8 @@ public class LocalHeapTest {
 		LocalHeapTest.get(2,builder,th);
 		assertEquals(replace+root,builder.toString());
 		String temp = replace+root;
-		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(), th));
-		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(), th));
+		assertTrue(LocalHeap.equals(2,temp.getBytes(),0,temp.length(),0xFFFFFFFF,th));
+		assertFalse(LocalHeap.equals(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(replace.length(), LocalHeap.countHeadMatch(2,replace.getBytes(),0,replace.length(),0xFFFFFFFF,th));
 		assertEquals(root.length(), LocalHeap.countTailMatch(2,root.getBytes(),root.length(),root.length(),0xFFFFFFFF,th));
 	}

@@ -230,7 +230,7 @@ public abstract class BaseStreamingTest {
 					while (--w>=0) {
 			    
 					    dcr = new DictionaryFactory();
-			            dcr.setTypeCounts(fields, fields, byteFields);
+			            dcr.setTypeCounts(fields, fields, byteFields, 16, 128);
 
 						resetInputReader();
 						
@@ -278,7 +278,7 @@ public abstract class BaseStreamingTest {
 			DictionaryFactory dcr);
 
 	
-	protected long performanceWriteTest(int fields, int byteFields, int singleLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
+	protected long performanceWriteTest(int fields, int byteFields, int byteNominalLength,  int fieldsPerGroup, int maxMPapBytes, int operationIters, int warmup,
 			int sampleSize, String writeLabel, int streamByteSize, int maxGroupCount, int[] tokenLookup, byte[] writeBuffer
 			) {
 				
@@ -301,7 +301,7 @@ public abstract class BaseStreamingTest {
 					while (--w>=0) {
 					
 					    DictionaryFactory dcr = new DictionaryFactory();
-					    dcr.setTypeCounts(fields, fields, byteFields);
+					    dcr.setTypeCounts(fields, fields, byteFields, 16, byteNominalLength);
 					    
 						resetOutputWriter();
 						
