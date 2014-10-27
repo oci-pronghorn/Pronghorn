@@ -899,8 +899,7 @@ public class TemplateHandler extends DefaultHandler {
         // needed by the consumer.
         // this enables fast startup/recovery times that do not produce garbage.
 
-        defaultConstValues
-                .setTypeCounts(tokenBuilderIntCount.intValue(), 
+        defaultConstValues.setTypeCounts(tokenBuilderIntCount.intValue(), 
                                tokenBuilderLongCount.intValue(),
                                tokenBuilderByteCount.intValue(), 16, 128);
 
@@ -909,11 +908,10 @@ public class TemplateHandler extends DefaultHandler {
         // write catalog data.
         TemplateCatalogConfig.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
                 defaultConstValues, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers,
-                tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, catalogTemplateScriptIdx, templateIdx,
-                templateLimit, maxGroupTokenStackDepth + 1 // add one for
-                                                           // surrounding
-                                                           // template
-                    , clientConfig);
+                tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, 
+                catalogScriptFieldNames, catalogTemplateScriptIdx, templateIdx,
+                templateLimit, maxGroupTokenStackDepth + 1, // add one for surrounding template
+                clientConfig);
 
         // close stream.
         PrimitiveWriter.flush(writer);

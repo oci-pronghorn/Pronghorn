@@ -63,6 +63,8 @@ public class LocalHeap {
             throw new UnsupportedOperationException("Text length must be 1 or more.");
         }
         
+        new Exception("text count "+fixedTextItemCount+"  "+singleTextSize).printStackTrace();
+        
         itemCount = fixedTextItemCount;
 
         gapCount = fixedTextItemCount + 1;

@@ -56,9 +56,9 @@ public class DictionaryFactory {
     private int[] byteInitIndex;
     private byte[][] byteInitValue;
     private int byteInitTotalLength;
-
-    private int singleBytesSize=1;//must be no smaller than 1
-    private int gapBytesSize;
+//TODO: A, urgent these two field must be saved and restored with this object
+    private int singleBytesSize= 64;//hack for now 1;//must be no smaller than 1
+    private int gapBytesSize = 8; //hack for now
     
     LocalHeap byteHeap;    
 

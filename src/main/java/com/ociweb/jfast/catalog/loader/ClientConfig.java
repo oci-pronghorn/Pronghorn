@@ -7,8 +7,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 public class ClientConfig {
 
     private short preableBytes;
-    private int textLengthMax;
-    private int textGap;
     private int bytesLengthMax;
     private int bytesGap;
     
@@ -22,6 +20,8 @@ public class ClientConfig {
     public ClientConfig(int primaryRingBits, int textRingBits) {
         this.rbPrimaryRingBits = primaryRingBits;
         this.rbTextRingBits = textRingBits;
+       
+        
     }
     
     
@@ -47,9 +47,6 @@ public class ClientConfig {
     public ClientConfig(PrimitiveReader reader) {
         
         preableBytes = (short)PrimitiveReader.readIntegerUnsigned(reader);
-        
-        textLengthMax = PrimitiveReader.readIntegerUnsigned(reader);
-        textGap = PrimitiveReader.readIntegerUnsigned(reader);
         
         bytesLengthMax = PrimitiveReader.readIntegerUnsigned(reader);
         bytesGap = PrimitiveReader.readIntegerUnsigned(reader);
@@ -83,9 +80,6 @@ public class ClientConfig {
     public void save(PrimitiveWriter writer) {
         
         PrimitiveWriter.writeIntegerUnsigned(preableBytes, writer);
-
-        PrimitiveWriter.writeIntegerUnsigned(textLengthMax, writer);
-        PrimitiveWriter.writeIntegerUnsigned(textGap, writer);
 
         PrimitiveWriter.writeIntegerUnsigned(bytesLengthMax, writer);
         PrimitiveWriter.writeIntegerUnsigned(bytesGap, writer);
@@ -124,23 +118,10 @@ public class ClientConfig {
         this.preableBytes = preableBytes;
     }
     
-    public void setText(int max, int gap) {
-        this.textLengthMax = max;
-        this.textGap = gap;
-    }
-    
     public void setBytes(int max, int gap) {
         this.bytesLengthMax = max;
         this.bytesGap = gap;
     }    
-    
-    public int getTextLength() {
-        return this.textLengthMax;
-    }
-    
-    public int getTextGap() {
-        return this.textGap;
-    }
     
     public int getBytesLength() {
         return this.bytesLengthMax;
