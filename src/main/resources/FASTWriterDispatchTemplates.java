@@ -54,7 +54,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteTextDefault(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         {
             int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            if (0==(rawPos>>>31)) {//use the default whatever it is
+            if (0==(rawPos>>>31)) {
                 PrimitiveWriter.writePMapBit((byte)1, writer);
                 int len = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
                 PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, len), len, rbRingBuffer.byteMask, writer);
@@ -69,7 +69,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteTextDefaultOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
         {
             int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            if (0==(rawPos>>>31)) {//use the default whatever it is
+            if (0==(rawPos>>>31)) {
                 PrimitiveWriter.writePMapBit((byte)1, writer);
                 int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
                 if (length<0) {
@@ -788,7 +788,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
             } else {
                 long delta = value - (long) rIntDictionary[source];//unable to leave as is for client
-                PrimitiveWriter.writeLongSigned( (1+(delta + (delta >>> 63))), writer);
+                PrimitiveWriter.writeLongSigned( (1+(delta + (delta >> 63))), writer);
                 rIntDictionary[target] = value;
             }
         }
@@ -1826,7 +1826,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);           
             PrimitiveWriter.writeLongSigned(value - rLongDictionary[source], writer);
             rLongDictionary[target] = value;
         }
@@ -1932,7 +1932,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeNull(writer);
             } else {
                 long delta = value - rLongDictionary[source];
-                PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
+                PrimitiveWriter.writeLongSigned((1+(delta + (delta >> 63))), writer);
                 rLongDictionary[target] = value;
             }
         }
@@ -2007,7 +2007,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeNull(writer);
             } else {
                 long delta = value - rLongDictionary[source];
-                PrimitiveWriter.writeLongSigned((1+(delta + (delta >>> 63))), writer);
+                PrimitiveWriter.writeLongSigned((1+(delta + (delta >> 63))), writer);
                 rLongDictionary[target] = value;
             }
         }

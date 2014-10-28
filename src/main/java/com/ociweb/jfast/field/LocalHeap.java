@@ -63,8 +63,6 @@ public class LocalHeap {
             throw new UnsupportedOperationException("Text length must be 1 or more.");
         }
         
-        new Exception("text count "+fixedTextItemCount+"  "+singleTextSize).printStackTrace();
-        
         itemCount = fixedTextItemCount;
 
         gapCount = fixedTextItemCount + 1;
@@ -337,9 +335,7 @@ public class LocalHeap {
             if (newStart < 0) {
                 newStart = 0;// will leave more on totalDesired.
             }
-            StringBuilder builder = new StringBuilder();
-            inspectHeap(builder);
-            // System.err.println("before:"+builder.toString());
+
             if (newStart > tat[offset]) {
                 // copy up and save some room.
                 System.arraycopy(data, tat[offset], data, newStart, textLength);
@@ -353,30 +349,12 @@ public class LocalHeap {
                 dataIdx = tat[offset] - leftBound;
             }
 
-            builder.setLength(0);
-            inspectHeap(builder);
-            // System.err.println("after :"+builder.toString());
-
             offset -= 4;
         }
 
         return totalDesired;
     }
 
-    private void inspectHeap(StringBuilder target) {
-        target.append('[');
-        int i = 0;
-        while (i < dataLength) {
-            if (data[i] == 0) {
-                target.append('_');
-            } else {
-                target.append(data[i]);
-            }
-            i++;
-        }
-        target.append(']');
-
-    }
        
     // append chars on to the end of the text after applying trim
     // may need to move existing text or following texts

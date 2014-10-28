@@ -64,14 +64,13 @@ import com.ociweb.jfast.util.Stats;
 
 public class TemplateLoaderTest {
 
-
     
     
     @Test
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData(new ClientConfig());
-        assertEquals(718, catalogByteArray.length);
+        assertEquals(717, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
