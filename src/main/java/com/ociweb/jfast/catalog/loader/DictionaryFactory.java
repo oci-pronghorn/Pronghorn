@@ -56,13 +56,16 @@ public class DictionaryFactory {
     private int[] byteInitIndex;
     private byte[][] byteInitValue;
     private int byteInitTotalLength;
-//TODO: A, urgent these two field must be saved and restored with this object
-    private int singleBytesSize= 64;//hack for now 1;//must be no smaller than 1
-    private int gapBytesSize = 8; //hack for now
+    
+    private int singleBytesSize;
+    private int gapBytesSize;
     
     LocalHeap byteHeap;    
 
     public DictionaryFactory() {
+    	
+        this.singleBytesSize= 64;
+        this.gapBytesSize = 8;
 
         this.integerInitCount = 0;
         this.integerInitIndex = new int[INIT_GROW_STEP];
@@ -91,6 +94,9 @@ public class DictionaryFactory {
 
     public DictionaryFactory(PrimitiveReader reader) {
 
+    	this.singleBytesSize = PrimitiveReader.readIntegerUnsigned(reader);
+    	this.gapBytesSize = PrimitiveReader.readIntegerUnsigned(reader);
+    	
         this.integerCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.longCount = PrimitiveReader.readIntegerUnsigned(reader);
         this.bytesCount = PrimitiveReader.readIntegerUnsigned(reader);
@@ -131,6 +137,9 @@ public class DictionaryFactory {
 
     public void save(PrimitiveWriter writer) {
 
+    	PrimitiveWriter.writeIntegerUnsigned(singleBytesSize, writer);
+    	PrimitiveWriter.writeIntegerUnsigned(gapBytesSize, writer);
+    	
         PrimitiveWriter.writeIntegerUnsigned(integerCount, writer);
         PrimitiveWriter.writeIntegerUnsigned(longCount, writer);
         PrimitiveWriter.writeIntegerUnsigned(bytesCount, writer);

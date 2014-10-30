@@ -104,8 +104,8 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         testValue=TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
+                    	         
                         testValue = testMantConst;
-                        
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -134,7 +134,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
                         BaseStreamingTest.write(token, writer, fw);
                     } else {
-                        long mantissa = testData[f];
+                        
+                    	
+                    	
+                    	long mantissa = testData[f];
                         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -160,6 +163,9 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                             fw.acceptLongSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG, rbPos+1, rbRingBufferLocal, writer);
                           
                         }
+                        
+                        
+                        
                     }
                 }
                 g = groupManagementWrite(fieldsPerGroup, fw, i, g, groupToken, groupToken, f, pmapSize, writer);

@@ -265,13 +265,9 @@ public class FASTRingBufferTest {
         	b++;
         	temp>>=1;
         }
-                
-        //TODO: A, the ring buffer does not check for bytes that overflow into unread messages.  This is on the top list of things to get added.
-        //For the moment if the second byte ring is computed to be large enough (as above) there will be no problem.
-        System.out.println("byte array is defined by "+b+" bits");
+
         byte charBits = (byte)b;        
-                
-        
+                        
         final int tests = 3;
         final int totalMessageFields = 256; //Must not be bigger than primary buffer size
         final int granularity = totalMessageFields<<chunkBits;

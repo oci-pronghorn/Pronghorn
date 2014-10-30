@@ -506,7 +506,7 @@ public class ThreadingTest {
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);
-                       readASCII(rb, 0, temp, 0);  //TODO: A, X need add checking for the byte ring buffer overlap.
+                       readASCII(rb, 0, temp, 0); 
                        
                        long orderQty = readLong(rb, 2);
                        int side = readInt(rb, 4);

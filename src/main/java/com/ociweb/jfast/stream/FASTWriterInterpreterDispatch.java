@@ -21,8 +21,6 @@ import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    public FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
-    
     protected final int[] fieldIdScript;
     protected final String[] fieldNameScript;
     

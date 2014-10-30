@@ -72,10 +72,10 @@ public class StreamingASCIITest extends BaseStreamingTest {
                 };
         int[] operators = new int[] { 
                 OperatorMask.Field_None, 
-            //    OperatorMask.Field_Constant, 
+     //           OperatorMask.Field_Constant, 
                 OperatorMask.Field_Copy,
-      //          OperatorMask.Field_Default,
-      //          OperatorMask.Field_Delta, 
+      //         OperatorMask.Field_Default,
+        //        OperatorMask.Field_Delta, 
        //         OperatorMask.Field_Tail, 
                 };
 
@@ -147,9 +147,9 @@ public class StreamingASCIITest extends BaseStreamingTest {
                 maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
 
         fw.openGroup(groupToken, maxMPapBytes, writer);
+        
 
-
-        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
+        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
         FASTRingBuffer.dump(ring);
         
         while (--i >= 0) {

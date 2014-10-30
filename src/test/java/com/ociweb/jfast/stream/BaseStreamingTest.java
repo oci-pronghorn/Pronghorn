@@ -5,6 +5,7 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
@@ -448,6 +449,8 @@ public abstract class BaseStreamingTest {
     @Deprecated //each write does its  own null now.
     public static void write(int token, PrimitiveWriter writer, FASTWriterInterpreterDispatch fw) {
     
+        
+        
         // only optional field types can use this method.
         assert (0 != (token & (1 << TokenBuilder.SHIFT_TYPE))); 
        // TODO: T, in testing assert(failOnBadArg())
@@ -461,17 +464,18 @@ public abstract class BaseStreamingTest {
                 int idx = token & fw.intInstanceMask;
                 
                 //temp solution as the ring buffer is introduce into all the APIs
-                FASTRingBuffer.dump(fw.rbRingBufferLocal);
-                FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
+                FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+                FASTRingBuffer.dump(rbRingBufferLocal);
+                FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                FASTRingBuffer ringBuffer = rbRingBufferLocal;
                 FASTRingBuffer.publishWrites(ringBuffer);
                 int rbPos = 0;
     
                 // hack until all the classes no longer need this method.
                 if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                    fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                    fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 } else {
-                    fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                    fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                 }
             } else {
                 // long
@@ -523,18 +527,19 @@ public abstract class BaseStreamingTest {
                     // decimal
                     int idx = token & fw.intInstanceMask;
                     
-                    //temp solution as the ring buffer is introduce into all the APIs     
-                    FASTRingBuffer.dump(fw.rbRingBufferLocal);
-                    FASTRingBuffer.addValue(fw.rbRingBufferLocal.buffer, fw.rbRingBufferLocal.mask, fw.rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-                    FASTRingBuffer ringBuffer = fw.rbRingBufferLocal;
+                    //temp solution as the ring buffer is introduce into all the APIs   
+                    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+                    FASTRingBuffer.dump(rbRingBufferLocal);
+                    FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
+                    FASTRingBuffer ringBuffer = rbRingBufferLocal;
                     FASTRingBuffer.publishWrites(ringBuffer);
                     int rbPos = 0;
                  
                     // hack until all the classes no longer need this method.
                     if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
-                        fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                        fw.acceptIntegerUnsignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } else {
-                        fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, fw.rbRingBufferLocal, writer);
+                        fw.acceptIntegerSignedOptional(token, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT, rbPos, rbRingBufferLocal, writer);
                     } 
     
                     int idx1 = token & fw.longInstanceMask;

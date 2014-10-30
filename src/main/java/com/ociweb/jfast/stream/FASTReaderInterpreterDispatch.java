@@ -118,12 +118,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             }  
             beginMessage(reader); 
         }
-        
-//        if (reader.position>) {
-//        	
-//        }
-        
-        
        
         final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
@@ -1501,7 +1495,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // constant
                     int constId = idx | LocalHeap.INIT_VALUE_MASK;
                     int constInit = LocalHeap.initStartOffset(constId, byteHeap)| LocalHeap.INIT_VALUE_MASK;
-                    
                     genReadTextConstant(constInit, LocalHeap.initLength(constId, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos); //always fixed length
                 } else {
                     // delta

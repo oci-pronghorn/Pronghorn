@@ -369,16 +369,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     }
                 } else {
                     if (sendNulls && ((f & 0xF) == 0) && TokenBuilder.isOptional(token)) {
-                    	
-                    	byte[] array = testDataBytes[f];
-                    	
-                        FASTRingBuffer.dump(ring);
-                        FASTRingBuffer.addByteArray(array, 0, -1, ring);
-                        FASTRingBuffer.publishWrites(ring);
                         
-                        BaseStreamingTest.write(token, writer, fw); //TODO: this is still not right
-                        // fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring); ///should be using this one
-                        
+                        BaseStreamingTest.writeNullBytes(token, writer, fw.byteHeap, fw.instanceBytesMask, fw);
+
                     } else {
                         {
                             byte[] array = testDataBytes[f];

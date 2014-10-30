@@ -320,7 +320,6 @@ public final class FASTRingBuffer {
     
 
     // TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
-    // TODO: A: back off write if with in cache line distance of tail (full queue case)
     // TODO: C, add map method which can take data from one ring buffer and populate another.
     // TODO: C, look at adding reduce method in addition to filter.
     // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
