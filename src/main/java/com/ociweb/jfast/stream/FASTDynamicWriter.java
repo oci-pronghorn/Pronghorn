@@ -1,6 +1,7 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 public class FASTDynamicWriter {
 

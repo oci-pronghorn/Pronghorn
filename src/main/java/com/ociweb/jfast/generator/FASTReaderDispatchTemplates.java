@@ -6,10 +6,10 @@ import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBufferConsumer;
+import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferConsumer;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
 

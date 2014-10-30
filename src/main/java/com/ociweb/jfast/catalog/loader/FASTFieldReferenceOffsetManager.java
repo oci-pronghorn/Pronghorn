@@ -6,29 +6,17 @@ import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.GeneratorUtils;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
-public class FieldReferenceOffsetManager {
+//TODO: A, as this becomes more defined need to build a base abstraction that can be used instead of this implementation dependent upon template catalogs
+public class FASTFieldReferenceOffsetManager extends FieldReferenceOffsetManager {
 
-	public static final FieldReferenceOffsetManager TEST = new FieldReferenceOffsetManager();
-	
-    public final int preambleOffset; //-1 if there is no preamble
-    public final int templateOffset;
-    
-    public static final int SEQ     = 0x10000000;
-    public static final int MSG_END = 0x80000000;
-    public final int tokensLen;
-    public final int[] fragDataSize;
-    public final int[] fragScriptSize;
-    public final int[] tokens;
-    public final int[] starts;
-    public final int[] limits;
-    public final String[] fieldNameScript;
-    public final int maximumFragmentStackDepth;
+	public static final FASTFieldReferenceOffsetManager TEST = new FASTFieldReferenceOffsetManager();
     
     /**
      * Constructor is only for unit tests.
      */
-    private FieldReferenceOffsetManager() {
+    private FASTFieldReferenceOffsetManager() {
     	
         //TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
@@ -59,7 +47,7 @@ public class FieldReferenceOffsetManager {
         
     }
     
-    public FieldReferenceOffsetManager(TemplateCatalogConfig config) {
+    public FASTFieldReferenceOffsetManager(TemplateCatalogConfig config) {
         
         //TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
@@ -178,43 +166,6 @@ public class FieldReferenceOffsetManager {
         }
     }
     
-    public int fieldCount(int templateId) {
-    	return 1+ limits[templateId]-starts[templateId];
-    }
-    
-    public String fieldName(int templateId, int position) {
-    	return fieldNameScript[starts[templateId]+position];
-    }
-    
-    
 
-    public int lookupIDX(int templateId, String target) {
-        int x = starts[templateId];
-        int limit = limits[templateId];
-        
-        
-        int UPPER_BITS = 0xF0000000;
-        //System.err.println("looking for "+target+ " between "+x+" and "+limit);
-        //System.err.println(Arrays.toString(fieldNameScript));
-        
-        while (x<=limit) {
-        	//System.err.println("looking at:"+fieldNameScript[x]);
-            if (fieldNameScript[x].equalsIgnoreCase(target)) {
-                
-                if (0==x) {
-                    return UPPER_BITS|0; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
-                } else {
-                    //System.err.println("found at "+x);
-                    //System.err.println(Arrays.toString(fragDataSize));
-                    return UPPER_BITS|fragDataSize[x];                    
-                }
-                
-            }
-            x++;
-            
-        }
-        throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(fieldNameScript));
-        
-    }
 
 }

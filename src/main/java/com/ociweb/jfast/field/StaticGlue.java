@@ -3,9 +3,9 @@ package com.ociweb.jfast.field;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
 
 public class StaticGlue {
 

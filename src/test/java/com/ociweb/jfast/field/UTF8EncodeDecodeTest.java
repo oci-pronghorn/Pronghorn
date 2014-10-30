@@ -17,7 +17,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 
 public class UTF8EncodeDecodeTest {
 

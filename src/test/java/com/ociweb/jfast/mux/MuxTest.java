@@ -18,16 +18,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputSourceChannel;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
-import com.ociweb.jfast.stream.FASTRingBuffer;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class MuxTest {
@@ -73,7 +73,7 @@ public class MuxTest {
         
         
         
-        FASTRingBuffer decoderIdQueue = new FASTRingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.TEST);
+        FASTRingBuffer decoderIdQueue = new FASTRingBuffer((byte)20,(byte)22,null,FASTFieldReferenceOffsetManager.TEST);
         
         
         

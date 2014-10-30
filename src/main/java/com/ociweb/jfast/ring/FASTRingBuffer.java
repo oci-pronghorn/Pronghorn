@@ -1,4 +1,4 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -7,7 +7,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -48,7 +48,7 @@ public final class FASTRingBuffer {
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
-    final int maxByteSize;
+    private final int maxByteSize;
     public final byte[] byteBuffer;
     public final int byteMask;
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();
@@ -59,7 +59,7 @@ public final class FASTRingBuffer {
     
     //defined externally and never changes
     final byte[] constByteBuffer;
-    final byte[][] bufferLookup;
+    private final byte[][] bufferLookup;
 
     //TODO: A, X use stack of fragment start offsets for each fragment until full message is completed.
     
@@ -84,7 +84,7 @@ public final class FASTRingBuffer {
      * @param byteBits
      */
     public FASTRingBuffer(byte primaryBits, byte byteBits) {
-    	this(primaryBits,byteBits, null,  FieldReferenceOffsetManager.TEST);
+    	this(primaryBits,byteBits, null,  FASTFieldReferenceOffsetManager.TEST);
     }
     
     /**
@@ -96,7 +96,7 @@ public final class FASTRingBuffer {
      * @param from
      */
     public FASTRingBuffer(byte primaryBits, byte byteBits,
-    		              byte[] byteConstants, FieldReferenceOffsetManager from) {
+    		              byte[] byteConstants, FASTFieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
         
         assert (primaryBits >= 1);       

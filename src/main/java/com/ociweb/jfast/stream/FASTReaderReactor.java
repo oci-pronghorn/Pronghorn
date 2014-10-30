@@ -3,17 +3,13 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.util.Profile;
-import com.ociweb.jfast.util.Stats;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 
 // TODO: B, Check support for group that may be optional

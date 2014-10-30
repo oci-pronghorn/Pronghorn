@@ -3,7 +3,7 @@ package com.ociweb.jfast.primitive.adapter;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 public class FASTOutputRingBuffer implements FASTOutput {
 

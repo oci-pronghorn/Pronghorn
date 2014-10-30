@@ -12,10 +12,10 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
 
 //This generator makes use of class names whenever possible to allow for obfuscation if needed.
 public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {

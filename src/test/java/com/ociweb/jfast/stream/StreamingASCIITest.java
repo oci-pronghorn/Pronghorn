@@ -13,22 +13,21 @@ import org.junit.AfterClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.benchmark.TestUtil;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.primitive.FASTInput;
-import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 public class StreamingASCIITest extends BaseStreamingTest {
 
@@ -149,7 +148,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
         
 
-        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
+        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FASTFieldReferenceOffsetManager.TEST);
         FASTRingBuffer.dump(ring);
         
         while (--i >= 0) {
@@ -176,10 +175,6 @@ public class StreamingASCIITest extends BaseStreamingTest {
                             FASTRingBuffer.addByteArray(array, 0, array.length, ring);
                             FASTRingBuffer.publishWrites(ring);
                             
-                            assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
-                            assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-                            assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-                            
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                                 fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);
                             } else {
@@ -205,12 +200,8 @@ public class StreamingASCIITest extends BaseStreamingTest {
                             
                             FASTRingBuffer.dump(ring);
                             FASTRingBuffer.addByteArray(array, 0, array.length, ring);
-                            FASTRingBuffer.publishWrites(ring);
-                                                        
-                            assert (0 != (token & (2 << TokenBuilder.SHIFT_TYPE)));
-                            assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-                            assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-                            
+                            FASTRingBuffer.publishWrites(ring);                                                       
+                           
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                                 fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);
                             } else {

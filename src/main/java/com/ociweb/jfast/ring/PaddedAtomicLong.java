@@ -1,4 +1,4 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
 
 import java.util.concurrent.atomic.AtomicLong;
 

@@ -34,12 +34,12 @@ import com.ociweb.jfast.generator.SourceTemplates;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class CodeGenerationTest {

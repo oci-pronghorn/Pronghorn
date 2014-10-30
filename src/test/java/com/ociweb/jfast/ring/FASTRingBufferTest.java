@@ -1,21 +1,21 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
 
-import static com.ociweb.jfast.stream.FASTRingBuffer.addByteArray;
-import static com.ociweb.jfast.stream.FASTRingBuffer.addValue;
-import static com.ociweb.jfast.stream.FASTRingBuffer.byteBackingArray;
-import static com.ociweb.jfast.stream.FASTRingBuffer.byteMask;
-import static com.ociweb.jfast.stream.FASTRingBuffer.bytePosition;
-import static com.ociweb.jfast.stream.FASTRingBuffer.dump;
-import static com.ociweb.jfast.stream.FASTRingBuffer.headPosition;
-import static com.ociweb.jfast.stream.FASTRingBuffer.publishWrites;
-import static com.ociweb.jfast.stream.FASTRingBuffer.releaseReadLock;
-import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnHead;
-import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnTail;
-import static com.ociweb.jfast.stream.FASTRingBuffer.spinBlockOnTailTillMatchesHead;
-import static com.ociweb.jfast.stream.FASTRingBuffer.tailPosition;
-import static com.ociweb.jfast.stream.FASTRingBuffer.takeRingByteLen;
-import static com.ociweb.jfast.stream.FASTRingBuffer.takeRingByteMetaData;
-import static com.ociweb.jfast.stream.FASTRingBuffer.takeValue;
+import static com.ociweb.jfast.ring.FASTRingBuffer.addByteArray;
+import static com.ociweb.jfast.ring.FASTRingBuffer.addValue;
+import static com.ociweb.jfast.ring.FASTRingBuffer.byteBackingArray;
+import static com.ociweb.jfast.ring.FASTRingBuffer.byteMask;
+import static com.ociweb.jfast.ring.FASTRingBuffer.bytePosition;
+import static com.ociweb.jfast.ring.FASTRingBuffer.dump;
+import static com.ociweb.jfast.ring.FASTRingBuffer.headPosition;
+import static com.ociweb.jfast.ring.FASTRingBuffer.publishWrites;
+import static com.ociweb.jfast.ring.FASTRingBuffer.releaseReadLock;
+import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnHead;
+import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnTail;
+import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnTailTillMatchesHead;
+import static com.ociweb.jfast.ring.FASTRingBuffer.tailPosition;
+import static com.ociweb.jfast.ring.FASTRingBuffer.takeRingByteLen;
+import static com.ociweb.jfast.ring.FASTRingBuffer.takeRingByteMetaData;
+import static com.ociweb.jfast.ring.FASTRingBuffer.takeValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -23,10 +23,11 @@ import static org.junit.Assert.fail;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 public class FASTRingBufferTest {
 

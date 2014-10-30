@@ -12,6 +12,7 @@ import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {
 
@@ -1453,9 +1454,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     
     public int readASCII(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
-
-        assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
-        assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
         // System.out.println("reading "+TokenBuilder.tokenToString(token));
 

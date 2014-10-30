@@ -1,4 +1,5 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
+
 
 
 public class FASTRingBufferWriter {

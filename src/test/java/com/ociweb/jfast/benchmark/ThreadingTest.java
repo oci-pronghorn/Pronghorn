@@ -1,12 +1,12 @@
 package com.ociweb.jfast.benchmark;
 
-import static com.ociweb.jfast.stream.FASTRingBufferReader.eqASCII;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readASCII;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readDataLength;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readDecimalExponent;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readDecimalMantissa;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readInt;
-import static com.ociweb.jfast.stream.FASTRingBufferReader.readLong;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.eqASCII;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readASCII;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readDataLength;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readDecimalExponent;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readDecimalMantissa;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readInt;
+import static com.ociweb.jfast.ring.FASTRingBufferReader.readLong;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.FieldReferenceOffsetManager;
+import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;
@@ -33,10 +33,11 @@ import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class ThreadingTest {

@@ -14,8 +14,8 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.jfast.stream.FASTRingBuffer;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
@@ -60,7 +60,7 @@ public class TemplateCatalogConfig {
 
     private final RingBuffers ringBuffers;
 
-    private final FieldReferenceOffsetManager from;
+    private final FASTFieldReferenceOffsetManager from;
     
     public TemplateCatalogConfig(byte[] catBytes) {
         
@@ -116,7 +116,7 @@ public class TemplateCatalogConfig {
        // dictionaryFactory.setTypeCounts(integerCount, longCount, bytesCount, bytesGap, bytesNominalLength);
         
         //must be done after the client config construction
-        from = new FieldReferenceOffsetManager(this);
+        from = new FASTFieldReferenceOffsetManager(this);
         ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, clientConfig);
         
     }
@@ -143,7 +143,7 @@ public class TemplateCatalogConfig {
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = clientConfig;
         
-        this.from = new FieldReferenceOffsetManager(this); //TODO: needs max depth for all
+        this.from = new FASTFieldReferenceOffsetManager(this); //TODO: needs max depth for all
         
         this.ringBuffers = buildRingBuffers(dictionaryFactory,
                                             fullScriptLength, 
@@ -155,7 +155,7 @@ public class TemplateCatalogConfig {
     
     
     private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
-                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, 
+                                                     FASTFieldReferenceOffsetManager from, int[] templateStartIdx, 
                                                      ClientConfig clientConfig) {
         
         int primaryRingBits = clientConfig.getPrimaryRingBits(); 
@@ -463,7 +463,7 @@ public class TemplateCatalogConfig {
         return scriptTokens;
     }
 
-    public FieldReferenceOffsetManager getFROM() {
+    public FASTFieldReferenceOffsetManager getFROM() {
         return from;
     }
 

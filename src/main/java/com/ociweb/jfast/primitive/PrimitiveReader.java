@@ -6,7 +6,7 @@ package com.ociweb.jfast.primitive;
 import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.stream.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 import com.ociweb.jfast.util.Profile;
 
 /**

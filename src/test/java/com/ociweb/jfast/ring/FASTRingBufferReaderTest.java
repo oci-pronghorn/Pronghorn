@@ -1,8 +1,10 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 
 public class FASTRingBufferReaderTest {
 

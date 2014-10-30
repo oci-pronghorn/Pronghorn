@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.stream.FASTRingBuffer;
+import com.ociweb.jfast.ring.FASTRingBuffer;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 

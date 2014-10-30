@@ -1,11 +1,10 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.jfast.ring;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.stream.FASTRingBuffer.PaddedLong;
+import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
 
 /**
  * Public interface for applications desiring to consume data from a FAST feed.
