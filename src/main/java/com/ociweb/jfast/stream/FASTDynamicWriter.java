@@ -1,15 +1,15 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public class FASTDynamicWriter {
 
     private final FASTEncoder writerDispatch;
-    private final FASTRingBuffer ringBuffer;
+    private final RingBuffer ringBuffer;
     final PrimitiveWriter writer;
 
-    public FASTDynamicWriter(PrimitiveWriter primitiveWriter, FASTRingBuffer ringBuffer, FASTEncoder writerDispatch) {
+    public FASTDynamicWriter(PrimitiveWriter primitiveWriter, RingBuffer ringBuffer, FASTEncoder writerDispatch) {
 
         this.writerDispatch = writerDispatch;
         this.ringBuffer = ringBuffer;
@@ -25,7 +25,7 @@ public class FASTDynamicWriter {
 
         // because writer does not move pointer up until full unit is ready to
         // go we only need to check if data is available, not the size.
-        if (FASTRingBuffer.contentRemaining(ringBuffer)>0) {
+        if (RingBuffer.contentRemaining(ringBuffer)>0) {
             
             //TODO: B, must add loop check over ringBuffer, is this an internal or external feature?
             

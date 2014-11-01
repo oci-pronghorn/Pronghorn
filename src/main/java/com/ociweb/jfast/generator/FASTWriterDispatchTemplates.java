@@ -6,9 +6,9 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
-import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.jfast.ring.RingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.RingBuffers;
@@ -37,7 +37,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int p = fieldPos;
             while (i < s) {
                             
-                int d = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, p);;
+                int d = RingReader.readInt(rbB,rbMask,rbPos, p);;
                 preambleData[i++] = (byte) (0xFF & (d >>> 0));
                 preambleData[i++] = (byte) (0xFF & (d >>> 8));
                 preambleData[i++] = (byte) (0xFF & (d >>> 16));
@@ -51,13 +51,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
 
     //NOTE: assumes that the use of the constant array indicates the default value, it is the responsibility of the ring buffer writer to do this correctly
-    protected void genWriteTextDefault(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextDefault(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             if (0==(rawPos>>>31)) {
                 PrimitiveWriter.writePMapBit((byte)1, writer);
-                int len = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-                PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, len), len, rbRingBuffer.byteMask, writer);
+                int len = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+                PrimitiveWriter.writeTextASCII(RingBuffer.byteBackingArray(rawPos, rbRingBuffer), RingBuffer.bytePosition(rawPos, rbRingBuffer, len), len, rbRingBuffer.byteMask, writer);
             } else {
                 PrimitiveWriter.writePMapBit((byte)0, writer); 
             }            
@@ -66,16 +66,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     //NOTE: assumes that the ring buffer will only use the constant array when it is holding the default value
     //The responsibility for using the right byte array is up to the writer of the ring buffer.
-    protected void genWriteTextDefaultOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextDefaultOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             if (0==(rawPos>>>31)) {
                 PrimitiveWriter.writePMapBit((byte)1, writer);
-                int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+                int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
                 if (length<0) {
                     PrimitiveWriter.writeNull(writer);
                 } else {
-                    PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length), length, rbRingBuffer.byteMask, writer);
+                    PrimitiveWriter.writeTextASCII(RingBuffer.byteBackingArray(rawPos, rbRingBuffer), RingBuffer.bytePosition(rawPos, rbRingBuffer, length), length, rbRingBuffer.byteMask, writer);
                 }                
             } else {
                 PrimitiveWriter.writePMapBit((byte)0, writer); 
@@ -84,14 +84,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
 
-    protected void genWriteTextCopy(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextCopy(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-        	int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+        	int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
         	
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;                           
             
             if (LocalHeap.equals(target,buffer,offset,length,byteMask,byteHeap)) {
@@ -104,9 +104,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
     
-    protected void genWriteTextCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         { 
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos); 
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos); 
             if (length<0) {
                 if (LocalHeap.isNull(target,byteHeap)) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -115,10 +115,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeNull(writer);
                 }
             } else {            	
-                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-                int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+                int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+                int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
                 // constant from heap or dynamic from char ringBuffer
-                byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+                byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
                 int byteMask = rbRingBuffer.byteMask;                               
                 
                 if (LocalHeap.equals(target,buffer,offset,length,byteMask,byteHeap)) {
@@ -132,19 +132,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
   
         //	System.err.println("value to encode for delta:"+     byteHeap.toASCIIString(target)+" len "+byteHeap.length(target, byteHeap));
         	
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);   
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);   
             if (length<0) {
                 PrimitiveWriter.writeIntegerSigned(0, writer);
             } else {
-                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-                int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+                int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+                int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
                 // constant from heap or dynamic from char ringBuffer
-                byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+                byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
                 int byteMask = rbRingBuffer.byteMask;
                 // count matching front or back chars
                 int headCount = LocalHeap.countHeadMatch(target,buffer,offset,length,byteMask,byteHeap);
@@ -168,15 +168,15 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextTailOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextTailOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
         	//System.err.println("value to encode for tail:"+     byteHeap.toASCIIString(target));
         	
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             if (length<0) {
@@ -198,15 +198,15 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
 
 
-    protected void genWriteTextDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
     //    	System.err.println("value to encode for delta:"+     byteHeap.toString(target));
         	
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             // count matching front or back chars
@@ -231,13 +231,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
     
-    protected void genWriteTextTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
             
@@ -250,69 +250,69 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteTextNone(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextNone(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
-            int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length);
+            int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
-            byte[] buffer = FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             PrimitiveWriter.writeTextASCII(buffer, offset, length, rbRingBuffer.byteMask, writer);
         }
     }
     
-    protected void genWriteTextNoneOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteTextNoneOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
 
-            int length = FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             if (length<0) {
                 PrimitiveWriter.writeNull(writer);
             } else{        
-                int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);              
-                PrimitiveWriter.writeTextASCII(FASTRingBuffer.byteBackingArray(rawPos, rbRingBuffer), FASTRingBuffer.bytePosition(rawPos, rbRingBuffer, length), length, rbRingBuffer.byteMask, writer);
+                int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);              
+                PrimitiveWriter.writeTextASCII(RingBuffer.byteBackingArray(rawPos, rbRingBuffer), RingBuffer.bytePosition(rawPos, rbRingBuffer, length), length, rbRingBuffer.byteMask, writer);
             }
         }
     }
         
-    protected void genWriteTextConstantOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        PrimitiveWriter.writePMapBit((byte)(1&(1+(FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)>>>31))), writer);//0 for null, 1 for present
+    protected void genWriteTextConstantOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
+        PrimitiveWriter.writePMapBit((byte)(1&(1+(RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)>>>31))), writer);//0 for null, 1 for present
     }
    
     // if (byteHeap.equals(target|INIT_VALUE_MASK, value, offset, length)) {
-    protected void genWriteBytesDefault(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesDefault(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
          
-        int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+        int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
         if (0==(rawPos>>>31)) {//use the default whatever it is
-            int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len, writer);            
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer); 
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer); 
         } else {
             PrimitiveWriter.writePMapBit((byte)0, writer); 
         }   
         
     }
 
-    protected void genWriteBytesCopy(int target, int fieldPos, LocalHeap byteHeap, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesCopy(int target, int fieldPos, LocalHeap byteHeap, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
     	{
-	    	int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
+	    	int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
 	            PrimitiveWriter.writePMapBit((byte)0, writer);
 	        } else {
 	            PrimitiveWriter.writePMapBit((byte)1, writer);
 	            PrimitiveWriter.writeIntegerUnsigned(len, writer);
 	            
-	            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);
+	            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);
 	            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, offset, len, rbRingBuffer.byteMask, writer);
 	            LocalHeap.set(target,rbRingBuffer.byteBuffer,offset,len,rbRingBuffer.byteMask,byteHeap);
 	        }
 	    }
     }
 
-    public void genWriteBytesDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-            int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
+            int length = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
             int mask = rbRingBuffer.byteMask;
             byte[] value = rbRingBuffer.byteBuffer;
             
@@ -342,10 +342,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    public void genWriteBytesTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTail(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-            int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
+            int length = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
             int mask = rbRingBuffer.byteMask;
             byte[] value = rbRingBuffer.byteBuffer;
             
@@ -363,22 +363,22 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesNone(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    protected void genWriteBytesNone(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
-            int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
         }
     }
     
-    public void genWriteBytesDefaultOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDefaultOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
        
-        int rawPos = FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
+        int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
         if (0==(rawPos>>>31)) {//use the default whatever it is
-            int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             PrimitiveWriter.writePMapBit((byte)1, writer);
             PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
-            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
+            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
              
         } else {
             PrimitiveWriter.writePMapBit((byte)0, writer); 
@@ -386,32 +386,32 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     }
 
-    public void genWriteBytesCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
     	{
-	    	int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
+	    	int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
 	            PrimitiveWriter.writePMapBit((byte)0, writer);
 	        } else {
 	            PrimitiveWriter.writePMapBit((byte)1, writer);
 	            PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
 	            
-	            int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);
+	            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);
 	            PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, offset, len, rbRingBuffer.byteMask, writer);
 	            LocalHeap.set(target,rbRingBuffer.byteBuffer,offset,len,rbRingBuffer.byteMask,byteHeap);
 	        }
     	}
     }
 
-    public void genWriteBytesDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesDeltaOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-            int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int length = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             
             if (length<0) {            
                 PrimitiveWriter.writeNull(writer);
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value
             } else {
             
-                int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
+                int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
                 int mask = rbRingBuffer.byteMask;
                 byte[] value = rbRingBuffer.byteBuffer;
         
@@ -443,19 +443,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesConstantOptional(int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer) {
-        PrimitiveWriter.writePMapBit((byte)(1&(1+(FASTRingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)>>>31))), writer);//0 for null, 1 for present
+    protected void genWriteBytesConstantOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
+        PrimitiveWriter.writePMapBit((byte)(1&(1+(RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos)>>>31))), writer);//0 for null, 1 for present
     }
 
-    public void genWriteBytesTailOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, FASTRingBuffer rbRingBuffer) {
+    public void genWriteBytesTailOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-            int length = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int length = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             if (length<0) {
                 PrimitiveWriter.writeNull(writer);
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value            
             } else {
             
-                int offset = FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
+                int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, length);
                 int mask = rbRingBuffer.byteMask;
                 byte[] value = rbRingBuffer.byteBuffer;
                         
@@ -473,22 +473,22 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteBytesNoneOptional(int target, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, LocalHeap byteHeap) {
+    protected void genWriteBytesNoneOptional(int target, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, LocalHeap byteHeap) {
         {
-            int len = FASTRingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+            int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
             if (len<0) {
                 PrimitiveWriter.writeNull(writer);
                 LocalHeap.setNull(target, byteHeap); // no pmap, yes change to last value
             } else {
                 PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
-                PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, FASTRingBuffer.bytePosition(FASTRingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
+                PrimitiveWriter.writeByteArrayData(rbRingBuffer.byteBuffer, RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len, rbRingBuffer.byteMask, writer);
             }
         }
     }
     
     protected void genWriteIntegerSignedDefault(int constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (value == constDefault) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -500,7 +500,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             int incVal;
             if (value == (incVal = rIntDictionary[source] + 1)) {
                 rIntDictionary[target] = incVal;
@@ -515,7 +515,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (value == rIntDictionary[source]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -527,7 +527,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             int last = rIntDictionary[source];
             if (value > 0 == last > 0) { // optimization using int when possible instead of long
                 PrimitiveWriter.writeIntegerSigned(value - last, writer);
@@ -540,12 +540,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteIntegerSignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writeIntegerSigned(rIntDictionary[target] = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos), writer);
+        PrimitiveWriter.writeIntegerSigned(rIntDictionary[target] = RingReader.readInt(rbB,rbMask,rbPos, fieldPos), writer);
     }
     
     protected void genWriteIntegerUnsignedDefault(int constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (value == constDefault) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -557,7 +557,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerUnsignedIncrement( int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             int incVal;
             if (value == (incVal = rIntDictionary[source] + 1)) {
                 rIntDictionary[target] = incVal;
@@ -572,7 +572,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (value == rIntDictionary[source]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -584,19 +584,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {   
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             PrimitiveWriter.writeLongSigned(value - (long) rIntDictionary[source], writer);
             rIntDictionary[target] = value;
         }
     }
 
     protected void genWriteIntegerUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writeIntegerUnsigned(rIntDictionary[target] = FASTRingBufferReader.readInt(rbB, rbMask, rbPos, fieldPos), writer);
+        PrimitiveWriter.writeIntegerUnsigned(rIntDictionary[target] = RingReader.readInt(rbB, rbMask, rbPos, fieldPos), writer);
     }
 
     protected void genWriteIntegerSignedDefaultOptional(int source, int fieldPos, int constDefault, int valueOfNull, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -618,7 +618,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedIncrementOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -643,7 +643,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteIntegerSignedCopyOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
             //TODO: C, these reader calls should all be inlined to remove the object de-ref by passing in the mask and buffer directly as was done in the reader.
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -666,12 +666,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     //this is how a "boolean" is sent using a single bit in the encoding.
     protected void genWriteIntegerSignedConstantOptional(int valueOfNull, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writePMapBit(valueOfNull==FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
+        PrimitiveWriter.writePMapBit(valueOfNull==RingReader.readInt(rbB,rbMask,rbPos, fieldPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
     }
 
     protected void genWriteIntegerSignedDeltaOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 rIntDictionary[target] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -692,7 +692,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedNoneOptional(int target, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 rIntDictionary[target] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -704,7 +704,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerUnsignedCopyOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -729,7 +729,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
    
     protected void genWriteIntegerUnsignedDefaultOptional(int source, int fieldPos, int valueOfNull, int constDefault, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
@@ -754,7 +754,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteIntegerUnsignedIncrementOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {   
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -776,13 +776,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteIntegerUnsignedConstantOptional(int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writePMapBit(valueOfNull==FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
+        PrimitiveWriter.writePMapBit(valueOfNull==RingReader.readInt(rbB,rbMask,rbPos, fieldPos) ? (byte)0 : (byte)1, writer);  // 1 for const, 0 for absent
     }
 
     
     protected void genWriteIntegerUnsignedDeltaOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 rIntDictionary[target] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -796,7 +796,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerUnsignedNoneOptional(int target, int valueOfNull, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, int[] rIntDictionary) {
         {
-            int value = FASTRingBufferReader.readInt(rbB,rbMask,rbPos, fieldPos);
+            int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 rIntDictionary[target] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -812,9 +812,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     //None
     
-      protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
+      protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
       {
-        int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+        int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
         if (exponentValueOfNull == exponentValue) {
             if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -832,14 +832,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             }
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
            
-            PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+            PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
         }
       }
     }
 
-    protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -859,14 +859,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }   
         }
     }
 
-    protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
     //        System.err.println("t write exponent:"+exponentValue);
             if (exponentValueOfNull == exponentValue) {
       //      	System.err.println("t nullllll");
@@ -893,30 +893,30 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                long mantissa = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long mantissa = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
     //            System.err.println("t write mantissa:"+mantissa);
 				PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = mantissa, writer); 
             }
         }
     }
 
-    protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         { 
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull==exponentValue) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer);        
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer);        
             }     
         }
     }
 
-    protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -933,14 +933,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }
         }
     }
 
-    protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -948,7 +948,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
             }
         }
     }
@@ -956,9 +956,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     // DEFAULTS
    
    
-     protected void genWriteDecimalDefaultOptionalDefault(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalDefaultOptionalDefault(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
       {
-        int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+        int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
         if (exponentValueOfNull == exponentValue) {
             if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -975,7 +975,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeIntegerSigned(value, writer);
             }
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-            long value1 = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+            long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
            
             //mantissa
             if (value1 == mantissaConstDefault) {
@@ -988,9 +988,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
       }
     }
 
-    protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+    protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1009,7 +1009,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value, writer);
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value1 = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                
                 //mantissa
                 if (value1 == mantissaConstDefault) {
@@ -1022,9 +1022,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalCopyOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+    protected void genWriteDecimalCopyOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1042,7 +1042,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value, writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value1 = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                
                 //mantissa
                 if (value1 == mantissaConstDefault) {
@@ -1055,15 +1055,15 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalConstantOptionalDefault(int exponentValueOfNull, int mantissaTarget, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+    protected void genWriteDecimalConstantOptionalDefault(int exponentValueOfNull, int mantissaTarget, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         { 
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull==exponentValue) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1076,9 +1076,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalDeltaOptionalDefault(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+    protected void genWriteDecimalDeltaOptionalDefault(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1094,7 +1094,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1107,16 +1107,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         }
     }
 
-    protected void genWriteDecimalNoneOptionalDefault(int exponentTarget, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+    protected void genWriteDecimalNoneOptionalDefault(int exponentTarget, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
             } else {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1133,9 +1133,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     // Increment
     
     
-    protected void genWriteDecimalDefaultOptionalIncrement(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+    protected void genWriteDecimalDefaultOptionalIncrement(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
      {
-       int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+       int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
        if (exponentValueOfNull == exponentValue) {
            if (0 == rIntDictionary[exponentSource]) { // stored value was null;
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1154,7 +1154,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
           
            //mantissa
-           long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+           long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
            if (value == (1 + rLongDictionary[mantissaSource])) {
            PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -1166,9 +1166,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
      }
    }
 
-   protected void genWriteDecimalIncrementOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalIncrementOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1189,7 +1189,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1201,9 +1201,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        }
    }
 
-   protected void genWriteDecimalCopyOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalCopyOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1223,7 +1223,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1235,9 +1235,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        }
    }
 
-   protected void genWriteDecimalConstantOptionalIncrement(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalConstantOptionalIncrement(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        { 
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
            if (exponentValueOfNull==exponentValue) {
                PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
            } else {
@@ -1245,7 +1245,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1257,9 +1257,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        }
    }
 
-   protected void genWriteDecimalDeltaOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalDeltaOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                rIntDictionary[exponentTarget] = 0;
             PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1277,7 +1277,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1289,9 +1289,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        }
    }
 
-   protected void genWriteDecimalNoneOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalNoneOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                rIntDictionary[exponentTarget] = 0;
             PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1300,7 +1300,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1314,9 +1314,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
    //copy
    
-   protected void genWriteDecimalDefaultOptionalCopy(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+   protected void genWriteDecimalDefaultOptionalCopy(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {
-         int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+         int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
          if (exponentValueOfNull == exponentValue) {
              if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1335,7 +1335,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
             
              //mantissa
-             long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);   
+             long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);   
              if (value == rLongDictionary[mantissaSource]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1346,9 +1346,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        }
      }
 
-     protected void genWriteDecimalIncrementOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalIncrementOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1369,7 +1369,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1380,9 +1380,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          }
      }
 
-     protected void genWriteDecimalCopyOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalCopyOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1402,7 +1402,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1413,9 +1413,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          }
      }
 
-     protected void genWriteDecimalConstantOptionalCopy(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalConstantOptionalCopy(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          { 
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
              if (exponentValueOfNull==exponentValue) {
                  PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
              } else {
@@ -1423,7 +1423,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1434,9 +1434,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          }
      }
 
-     protected void genWriteDecimalDeltaOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalDeltaOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
              if (exponentValueOfNull == exponentValue) {
                  rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1454,7 +1454,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1465,9 +1465,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          }
      }
 
-     protected void genWriteDecimalNoneOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalNoneOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
              System.err.println("write exponent:"+exponentValue);
              if (exponentValueOfNull == exponentValue) {
                  rIntDictionary[exponentTarget] = 0;
@@ -1477,7 +1477,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
                  System.err.println("write mantissa:"+value);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1491,9 +1491,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
    
    //constant
   
-     protected void genWriteDecimalDefaultOptionalConstant(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
+     protected void genWriteDecimalDefaultOptionalConstant(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
          {
-           int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1517,9 +1517,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          }
        }
 
-       protected void genWriteDecimalIncrementOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+       protected void genWriteDecimalIncrementOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {
-               int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
                if (exponentValueOfNull == exponentValue) {
                    if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1545,9 +1545,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            }
        }
 
-       protected void genWriteDecimalCopyOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+       protected void genWriteDecimalCopyOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1572,9 +1572,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            }
        }
 
-       protected void genWriteDecimalConstantOptionalConstant(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+       protected void genWriteDecimalConstantOptionalConstant(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            { 
-               int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                if (exponentValueOfNull==exponentValue) {
                    PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
                } else {
@@ -1587,9 +1587,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            }
        }
 
-       protected void genWriteDecimalDeltaOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+       protected void genWriteDecimalDeltaOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1612,9 +1612,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            }
        }
 
-       protected void genWriteDecimalNoneOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, FASTEncoder dispatch) {
+       protected void genWriteDecimalNoneOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1630,9 +1630,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
      
   //delta
        
-       protected void genWriteDecimalDefaultOptionalDelta(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
+       protected void genWriteDecimalDefaultOptionalDelta(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
            {
-             int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1651,16 +1651,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
 
                  //mantissa
-                 long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                   PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                  rLongDictionary[mantissaTarget] = value;
              }
            }
          }
 
-         protected void genWriteDecimalIncrementOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+         protected void genWriteDecimalIncrementOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {
-                 int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
                  if (exponentValueOfNull == exponentValue) {
                      if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                         PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1681,16 +1681,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }   
              }
          }
 
-         protected void genWriteDecimalCopyOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
+         protected void genWriteDecimalCopyOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
              {   
-                 int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                         PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1710,16 +1710,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      longValue[mantissaTarget] = value;
                  }
              }
          }
 
-         protected void genWriteDecimalConstantOptionalDelta(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, FASTRingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
+         protected void genWriteDecimalConstantOptionalDelta(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
              { 
-                 int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                  if (exponentValueOfNull==exponentValue) {
                      PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
                  } else {
@@ -1727,16 +1727,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      longValue[mantissaTarget] = value;
                  }     
              }
          }
 
-         protected void genWriteDecimalDeltaOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+         protected void genWriteDecimalDeltaOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {   
-                 int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      rIntDictionary[exponentTarget] = 0;
                     PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1754,17 +1754,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }
              }
          }
 
-         protected void genWriteDecimalNoneOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, FASTRingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
+         protected void genWriteDecimalNoneOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {  
                  //FASTEncoder dispatch
-                 int exponentValue = FASTRingBufferReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      rIntDictionary[exponentTarget] = 0;
                     PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1773,7 +1773,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = FASTRingBufferReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }
@@ -1787,7 +1787,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteLongUnsignedDefault(long constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {        
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == constDefault) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1799,7 +1799,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             long incVal = rLongDictionary[source] + 1;
             if (value == incVal) {
                 rLongDictionary[target] = incVal;
@@ -1814,7 +1814,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == rLongDictionary[source]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1826,19 +1826,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);           
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);           
             PrimitiveWriter.writeLongSigned(value - rLongDictionary[source], writer);
             rLongDictionary[target] = value;
         }
     }
 
     protected void genWriteLongUnsignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writeLongUnsigned(rLongDictionary[target] = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos), writer);
+        PrimitiveWriter.writeLongUnsigned(rLongDictionary[target] = RingReader.readLong(rbB,rbMask,rbPos,fieldPos), writer);
     }
     
     protected void genWriteLongUnsignedDefaultOptional(long valueOfNull, int target, long constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, long[] rLongDictionary) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == valueOfNull) {
                 if (rLongDictionary[target] == 0) { // stored value was null; //for default
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1860,7 +1860,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedIncrementOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             //for copy and inc
             if (value == valueOfNull) {
                 if (0 == rLongDictionary[target]) { // stored value was null;
@@ -1882,7 +1882,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedCopyOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             //for copy and inc
             if (value == valueOfNull) {
                 if (0 == rLongDictionary[target]) { // stored value was null;
@@ -1906,7 +1906,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     //TODO: B, can optimize be creating FASTRingBufferReader.isLongEqual(rbRingBuffer, fieldPos, valueOfNull)
     protected void genWriteLongUnsignedConstantOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
-            PrimitiveWriter.writePMapBit(FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos)==valueOfNull ? (byte)0 : (byte)1, writer);
+            PrimitiveWriter.writePMapBit(RingReader.readLong(rbB,rbMask,rbPos,fieldPos)==valueOfNull ? (byte)0 : (byte)1, writer);
     }
 
 
@@ -1914,7 +1914,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteLongUnsignedNoneOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
             
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == valueOfNull) {
                 rLongDictionary[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
@@ -1926,7 +1926,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongUnsignedDeltaOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == valueOfNull) {
                 rLongDictionary[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
@@ -1940,7 +1940,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteLongSignedDefault(long constDefault, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == constDefault) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1952,7 +1952,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedIncrement(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == (1 + rLongDictionary[source])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1965,7 +1965,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == rLongDictionary[source]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1976,12 +1976,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     }
 
     protected void genWriteLongSignedNone(int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
-        PrimitiveWriter.writeLongSigned(rLongDictionary[target] = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos), writer);
+        PrimitiveWriter.writeLongSigned(rLongDictionary[target] = RingReader.readLong(rbB,rbMask,rbPos,fieldPos), writer);
     }
 
     protected void genWriteLongSignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             PrimitiveWriter.writeLongSigned(value - rLongDictionary[source], writer);
             rLongDictionary[target] = value;
         }
@@ -1989,7 +1989,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteLongSignedOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == valueOfNull) {
                 rLongDictionary[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
@@ -2001,7 +2001,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedDeltaOptional(long valueOfNull, int target, int source, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             if (value == valueOfNull) {
                 rLongDictionary[target] = 0; //for none and delta
                 PrimitiveWriter.writeNull(writer);
@@ -2015,13 +2015,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     //TODO: B, can optimize with isLongEqual
     protected void genWriteLongSignedConstantOptional(long valueOfNull, int target, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos) {
-            PrimitiveWriter.writePMapBit(FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos) == valueOfNull ? (byte)0 : (byte)1, writer);
+            PrimitiveWriter.writePMapBit(RingReader.readLong(rbB,rbMask,rbPos,fieldPos) == valueOfNull ? (byte)0 : (byte)1, writer);
     }
     
 
     protected void genWriteLongSignedCopyOptional(int target, int source, long valueOfNull, int fieldPos, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             
             
             //for copy and inc
@@ -2047,7 +2047,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedIncrementOptional(int target, int source, int fieldPos, long valueOfNull, PrimitiveWriter writer, long[] rLongDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             
             if (value == valueOfNull) {
                 if (0 == rLongDictionary[target]) { // stored value was null;
@@ -2073,7 +2073,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteLongSignedDefaultOptional(int target, int fieldPos, long valueOfNull, long constDefault, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, long[] rLongDictionary) {
         {
-            long value = FASTRingBufferReader.readLong(rbB,rbMask,rbPos,fieldPos);
+            long value = RingReader.readLong(rbB,rbMask,rbPos,fieldPos);
             
             if (value == valueOfNull) {
                 if (0 == rLongDictionary[target]) { // stored value was null;
@@ -2130,7 +2130,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.openPMap(pmapSize, writer);  //FASTRingBuffer queue, int fieldPos
         // done here for safety to ensure it is always done at group open.
         //TODO: C, finish development of repeated dynamic templates
-        int templateId = FASTRingBufferReader.readInt(rbB, rbMask, rbPos, fieldPos);        
+        int templateId = RingReader.readInt(rbB, rbMask, rbPos, fieldPos);        
         //int top = dispatch.templateStack[dispatch.templateStackHead];
         //if (top == templateId) {
         //    PrimitiveWriter.writePMapBit((byte)0, writer);

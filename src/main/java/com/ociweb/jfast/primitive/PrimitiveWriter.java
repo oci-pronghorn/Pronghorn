@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingReader;
 
 /**
  * PrimitiveWriter

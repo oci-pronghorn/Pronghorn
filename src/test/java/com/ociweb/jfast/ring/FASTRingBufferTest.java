@@ -1,21 +1,21 @@
 package com.ociweb.jfast.ring;
 
-import static com.ociweb.jfast.ring.FASTRingBuffer.addByteArray;
-import static com.ociweb.jfast.ring.FASTRingBuffer.addValue;
-import static com.ociweb.jfast.ring.FASTRingBuffer.byteBackingArray;
-import static com.ociweb.jfast.ring.FASTRingBuffer.byteMask;
-import static com.ociweb.jfast.ring.FASTRingBuffer.bytePosition;
-import static com.ociweb.jfast.ring.FASTRingBuffer.dump;
-import static com.ociweb.jfast.ring.FASTRingBuffer.headPosition;
-import static com.ociweb.jfast.ring.FASTRingBuffer.publishWrites;
-import static com.ociweb.jfast.ring.FASTRingBuffer.releaseReadLock;
-import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnHead;
-import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnTail;
-import static com.ociweb.jfast.ring.FASTRingBuffer.spinBlockOnTailTillMatchesHead;
-import static com.ociweb.jfast.ring.FASTRingBuffer.tailPosition;
-import static com.ociweb.jfast.ring.FASTRingBuffer.takeRingByteLen;
-import static com.ociweb.jfast.ring.FASTRingBuffer.takeRingByteMetaData;
-import static com.ociweb.jfast.ring.FASTRingBuffer.takeValue;
+import static com.ociweb.jfast.ring.RingBuffer.addByteArray;
+import static com.ociweb.jfast.ring.RingBuffer.addValue;
+import static com.ociweb.jfast.ring.RingBuffer.byteBackingArray;
+import static com.ociweb.jfast.ring.RingBuffer.byteMask;
+import static com.ociweb.jfast.ring.RingBuffer.bytePosition;
+import static com.ociweb.jfast.ring.RingBuffer.dump;
+import static com.ociweb.jfast.ring.RingBuffer.headPosition;
+import static com.ociweb.jfast.ring.RingBuffer.publishWrites;
+import static com.ociweb.jfast.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnHead;
+import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnTail;
+import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnTailTillMatchesHead;
+import static com.ociweb.jfast.ring.RingBuffer.tailPosition;
+import static com.ociweb.jfast.ring.RingBuffer.takeRingByteLen;
+import static com.ociweb.jfast.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.jfast.ring.RingBuffer.takeValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public class FASTRingBufferTest {
 
@@ -42,7 +42,7 @@ public class FASTRingBufferTest {
     	byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
     	byte byteRingSizeInBits = 16;
     	
-        FASTRingBuffer ring = new FASTRingBuffer(primaryRingSizeInBits, byteRingSizeInBits);
+        RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits);
         
         byte[] testArray = new byte[]{(byte)1,(byte)2,(byte)3,(byte)4,(byte)5};
         int testInt = 7;
@@ -147,7 +147,7 @@ public class FASTRingBufferTest {
         	 
             long start = System.nanoTime();
             
-            final FASTRingBuffer ring = new FASTRingBuffer(primaryBits, charBits);
+            final RingBuffer ring = new RingBuffer(primaryBits, charBits);
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -284,7 +284,7 @@ public class FASTRingBufferTest {
 
             long start = System.nanoTime();
             
-            final FASTRingBuffer ring = new FASTRingBuffer(primaryBits, charBits);
+            final RingBuffer ring = new RingBuffer(primaryBits, charBits);
             //creating an anonymous inner class that implements runnable so we can hand this
             //off to the execution service to be run on another thread while this thread does the writing.
             Runnable reader = new Runnable() {
@@ -366,7 +366,7 @@ public class FASTRingBufferTest {
 		}
     }
     
-	private void validateBytes(final byte[] testArray, final FASTRingBuffer ring, final int granularity,
+	private void validateBytes(final byte[] testArray, final RingBuffer ring, final int granularity,
 			int messageFieldCount, int meta, int len) {
 		
 		try {

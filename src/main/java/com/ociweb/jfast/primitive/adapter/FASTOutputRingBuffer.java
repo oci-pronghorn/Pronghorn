@@ -3,14 +3,14 @@ package com.ociweb.jfast.primitive.adapter;
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public class FASTOutputRingBuffer implements FASTOutput {
 
-	private final FASTRingBuffer ringBuffer;
+	private final RingBuffer ringBuffer;
 	private DataTransfer dataTransfer;
 		
-	public FASTOutputRingBuffer(FASTRingBuffer ringBuffer) {
+	public FASTOutputRingBuffer(RingBuffer ringBuffer) {
 		this.ringBuffer = ringBuffer;
 	}
 	
@@ -23,9 +23,9 @@ public class FASTOutputRingBuffer implements FASTOutput {
 	public void flush() {		
 		int size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);
 		while (size>0) {			
-			FASTRingBuffer.addByteArray(dataTransfer.writer.buffer, PrimitiveWriter.nextOffset(dataTransfer.writer), size, ringBuffer);
+			RingBuffer.addByteArray(dataTransfer.writer.buffer, PrimitiveWriter.nextOffset(dataTransfer.writer), size, ringBuffer);
 			size = PrimitiveWriter.nextBlockSize(dataTransfer.writer);		
 		}
-		FASTRingBuffer.publishWrites(ringBuffer);		
+		RingBuffer.publishWrites(ringBuffer);		
 	}
 }

@@ -9,7 +9,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingReader;
 
 /**
  * Holds count of how many of each type of field is required and what the

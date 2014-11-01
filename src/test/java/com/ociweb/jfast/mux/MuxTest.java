@@ -22,7 +22,7 @@ import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTInputSourceChannel;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
@@ -70,7 +70,7 @@ public class MuxTest {
         
         
         
-        FASTRingBuffer decoderIdQueue = new FASTRingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.TEST);
+        RingBuffer decoderIdQueue = new RingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.TEST);
         
         
         

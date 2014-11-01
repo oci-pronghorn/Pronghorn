@@ -34,8 +34,8 @@ import com.ociweb.jfast.generator.SourceTemplates;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTDecoder;
@@ -150,7 +150,7 @@ public class CodeGenerationTest {
         FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog);
 
         
-        FASTRingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
+        RingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
 
         FASTInputByteArray fastInput2 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader2 = new PrimitiveReader(2048, fastInput2, maxPMapCountInBytes);
@@ -164,7 +164,7 @@ public class CodeGenerationTest {
         } catch (SecurityException e) {
             fail(e.getMessage());
         }
-        FASTRingBuffer queue2 = RingBuffers.get(readerDispatch2.ringBuffers,0);
+        RingBuffer queue2 = RingBuffers.get(readerDispatch2.ringBuffers,0);
 
         final int keep = 32;
         final int mask = keep - 1;
@@ -180,16 +180,16 @@ public class CodeGenerationTest {
         while (FASTReaderReactor.pump(reactor1) >= 0 && //continue if no room to read or read new message
                 FASTReaderReactor.pump(reactor2) >= 0) {
 
-            while (FASTRingBuffer.contentRemaining(queue1)>0 && FASTRingBuffer.contentRemaining(queue2)>0) {
-                int int1 = FASTRingBufferReader.readInt(queue1, 1);
-                int int2 = FASTRingBufferReader.readInt(queue2, 1);
+            while (RingBuffer.contentRemaining(queue1)>0 && RingBuffer.contentRemaining(queue2)>0) {
+                int int1 = RingReader.readInt(queue1, 1);
+                int int2 = RingReader.readInt(queue2, 1);
 
                 if (int1 != int2) {
                     errCount++;
 
                     if (errCount > 1) {
 
-                        System.err.println("back up  " + FASTRingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer");
+                        System.err.println("back up  " + RingBuffer.contentRemaining(queue1) + " fixed spots in ring buffer");
 
                         int c = idx.get();
 

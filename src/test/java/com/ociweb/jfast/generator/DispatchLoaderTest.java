@@ -24,8 +24,8 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTListener;
@@ -67,10 +67,10 @@ public class DispatchLoaderTest {
         
         listener[0] = new FASTListener() {
                         
-            FASTRingBuffer queue = null;
+            RingBuffer queue = null;
             
             @Override
-            public void fragment(int templateId, FASTRingBuffer queue) {
+            public void fragment(int templateId, RingBuffer queue) {
                      this.queue = queue;
 
             }
@@ -79,10 +79,10 @@ public class DispatchLoaderTest {
             public void fragment() {
                 if (null!=queue) {
                     
-                    int id = FASTRingBufferReader.readInt(queue, MESSAGE_ID_IDX);
+                    int id = RingReader.readInt(queue, MESSAGE_ID_IDX);
                   //  System.err.println(templateId+" "+id);
                     
-                    String version = FASTRingBufferReader.readText(queue, 
+                    String version = RingReader.readText(queue, 
                        VERSION_IDX, 
                        new StringBuilder()).toString();
 
@@ -97,7 +97,7 @@ public class DispatchLoaderTest {
                        assertEquals("2.0",version);
                    }               
                    
-                   FASTRingBuffer.dump(queue); //don't need the data but do need to empty the queue.
+                   RingBuffer.dump(queue); //don't need the data but do need to empty the queue.
                    
                    records.incrementAndGet();
                    
@@ -117,7 +117,7 @@ public class DispatchLoaderTest {
                        alive.set(false);
                    }                    
                     
-                    FASTRingBuffer.dump(queue);
+                    RingBuffer.dump(queue);
                 }
                 queue = null;
             }

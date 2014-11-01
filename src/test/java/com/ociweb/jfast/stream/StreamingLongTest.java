@@ -17,7 +17,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 
@@ -38,7 +38,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)
@@ -136,10 +136,10 @@ public class StreamingLongTest extends BaseStreamingTest {
     public static void writeLong(FASTWriterInterpreterDispatch fw, int token, long value, PrimitiveWriter writer) {
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         //  solution as the ring buffer is introduce into all the APIs
-        FASTRingBuffer.dump(rbRingBufferLocal);            
-        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (value >>> 32));
-        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (value & 0xFFFFFFFF)); 
-        FASTRingBuffer.publishWrites(rbRingBufferLocal);
+        RingBuffer.dump(rbRingBufferLocal);            
+        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (value >>> 32));
+        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (value & 0xFFFFFFFF)); 
+        RingBuffer.publishWrites(rbRingBufferLocal);
         int rbPos = 0;                    
         
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all

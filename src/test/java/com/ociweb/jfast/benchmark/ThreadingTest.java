@@ -1,12 +1,12 @@
 package com.ociweb.jfast.benchmark;
 
-import static com.ociweb.jfast.ring.FASTRingBufferReader.eqASCII;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readASCII;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readDataLength;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readDecimalExponent;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readDecimalMantissa;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readInt;
-import static com.ociweb.jfast.ring.FASTRingBufferReader.readLong;
+import static com.ociweb.jfast.ring.RingReader.eqASCII;
+import static com.ociweb.jfast.ring.RingReader.readASCII;
+import static com.ociweb.jfast.ring.RingReader.readDataLength;
+import static com.ociweb.jfast.ring.RingReader.readDecimalExponent;
+import static com.ociweb.jfast.ring.RingReader.readDecimalMantissa;
+import static com.ociweb.jfast.ring.RingReader.readInt;
+import static com.ociweb.jfast.ring.RingReader.readLong;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -32,8 +32,9 @@ import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.WalkingConsumerState;
+import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
@@ -122,7 +123,7 @@ public class ThreadingTest {
           //Example of single threaded usage
           /////////////////////////////////////
           RingBuffers ringBuffers = readerDispatch.ringBuffers;
-          FASTRingBuffer rb = RingBuffers.get(ringBuffers, 0);  
+          RingBuffer rb = RingBuffers.get(ringBuffers, 0);  
 
           boolean ok = true;
           int bufId;
@@ -139,7 +140,7 @@ public class ThreadingTest {
                       
                       
                       
-                      if (FASTRingBuffer.canMoveNext(rb)) {
+                      if (WalkingConsumerState.canMoveNext(rb)) {
                           
                           if (rb.consumerData.isNewMessage()) {
                               msgs.incrementAndGet();
@@ -175,7 +176,7 @@ public class ThreadingTest {
 
     //    System.err.println("*************************************************************** multi test instance begin ");
         
-        FASTRingBuffer[] buffers = RingBuffers.buffers(readerDispatch.ringBuffers);
+        RingBuffer[] buffers = RingBuffers.buffers(readerDispatch.ringBuffers);
                 
         int reactors = 1;
         final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(reactors+buffers.length); 
@@ -186,7 +187,7 @@ public class ThreadingTest {
 
         int b = buffers.length;
         while (--b>=0) {
-            final FASTRingBuffer rb = buffers[b]; //Too many buffers!
+            final RingBuffer rb = buffers[b]; //Too many buffers!
             Runnable run = new Runnable() {
                 char[] temp = new char[64];
                 
@@ -196,7 +197,7 @@ public class ThreadingTest {
                     do {                        
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
 
-                        if (FASTRingBuffer.canMoveNext(rb)) { 
+                        if (WalkingConsumerState.canMoveNext(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
                                 processMessage(temp, rb);   
@@ -212,7 +213,7 @@ public class ThreadingTest {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (FASTRingBuffer.canMoveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                    while (WalkingConsumerState.canMoveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
                         if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }
@@ -383,15 +384,15 @@ public class ThreadingTest {
     }
     
     private void validate(String message, int expectedOffset, int id) {
-        if (expectedOffset!=(FASTRingBufferReader.OFF_MASK&id)) {
+        if (expectedOffset!=(RingReader.OFF_MASK&id)) {
             System.err.println("expected: "+expectedOffset+" but found "+id+" for "+message);
         }
     }
     
     
-    private void processMessage(char[] temp, FASTRingBuffer rb) {
+    private void processMessage(char[] temp, RingBuffer rb) {
        
-        populateFieldIDs(rb.from); 
+        populateFieldIDs(rb.consumerData.from); 
 
 
         templateId = readInt(rb, IDX_TemplateId);
@@ -419,7 +420,7 @@ public class ThreadingTest {
                 int seqCount = readInt(rb, IDX1_NoMDEntries);
                 // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
                 while (--seqCount >= 0) {
-                    while (!FASTRingBuffer.canMoveNext(rb)) { // keep calling if we
+                    while (!WalkingConsumerState.canMoveNext(rb)) { // keep calling if we
                                                            // have no data?
                     };
                     
@@ -502,7 +503,7 @@ public class ThreadingTest {
                int seqCount2 = readInt(rb, 12);
                
                while (--seqCount2 >= 0) {
-                   while (!FASTRingBuffer.canMoveNext(rb)) { // keep calling if we
+                   while (!WalkingConsumerState.canMoveNext(rb)) { // keep calling if we
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);

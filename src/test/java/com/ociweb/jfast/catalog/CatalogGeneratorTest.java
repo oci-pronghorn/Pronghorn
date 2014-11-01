@@ -38,9 +38,9 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferConsumer;
-import com.ociweb.jfast.ring.FASTRingBufferWriter;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.WalkingConsumerState;
+import com.ociweb.jfast.ring.RingWriter;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
@@ -230,7 +230,7 @@ public class CatalogGeneratorTest {
         FASTOutput fastOutput = new FASTOutputByteArray(buffer );
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
                
-        FASTRingBuffer ringBuffer = catalog.ringBuffers().buffers[0];
+        RingBuffer ringBuffer = catalog.ringBuffers().buffers[0];
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
              
         //populate ring buffer with the new records to be written.
@@ -243,7 +243,7 @@ public class CatalogGeneratorTest {
         //Use as bases for building single giant test file with test values provided, in ascii?
         totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
         
-        long nsLatency = FASTRingBufferConsumer.responseTime(ringBuffer.consumerData);
+        long nsLatency = WalkingConsumerState.responseTime(ringBuffer.consumerData);
      
         //TODO: D, write to flat file to produce google chart.
         //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
@@ -270,14 +270,14 @@ public class CatalogGeneratorTest {
         FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes);
       
 
-        FASTRingBuffer[] buffers = reactor.ringBuffers();
+        RingBuffer[] buffers = reactor.ringBuffers();
         int buffersCount = buffers.length;
         
         int j = testRecordCount;
         while (j>0 && FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
         	int k = buffersCount;
         	while (j>0 && --k>=0) {
-        		if (FASTRingBuffer.canMoveNext(buffers[k])) {
+        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
         			assertTrue(buffers[k].consumerData.isNewMessage());
         			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
         			
@@ -300,7 +300,7 @@ public class CatalogGeneratorTest {
     //TODO: B, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
     
 
-    private float timeEncoding(int fieldType, int fieldCount, FASTRingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {
+    private float timeEncoding(int fieldType, int fieldCount, RingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {
        
     	int i = testRecordCount;
         int d;
@@ -314,19 +314,19 @@ public class CatalogGeneratorTest {
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                            RingWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
                             
                             if (0 == d) {
                                 d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                             }
                             
                         }
-                        FASTRingBuffer.publishWrites(ringBuffer);
+                        RingBuffer.publishWrites(ringBuffer);
                         
-                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -343,16 +343,16 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                   
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            RingWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.publishWrites(ringBuffer);
-                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        RingBuffer.publishWrites(ringBuffer);
+                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -368,16 +368,16 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
           
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
-                            FASTRingBufferWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            RingWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
                         }
-                        FASTRingBuffer.publishWrites(ringBuffer);
-                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        RingBuffer.publishWrites(ringBuffer);
+                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -395,17 +395,17 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.stringData.length;
       
                     while (--i>=0) {
-                        FASTRingBufferWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: B, this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
-                            FASTRingBufferWriter.writeBytes(ringBuffer, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
+                            RingWriter.writeBytes(ringBuffer, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }
                         }
-                        FASTRingBuffer.publishWrites(ringBuffer);
-                        if (FASTRingBuffer.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        RingBuffer.publishWrites(ringBuffer);
+                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }

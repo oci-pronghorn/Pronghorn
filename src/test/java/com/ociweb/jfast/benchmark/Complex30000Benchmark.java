@@ -15,7 +15,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.loader.TemplateLoaderTest;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -27,7 +27,7 @@ public class Complex30000Benchmark extends Benchmark {
     PrimitiveReader reader;
     FASTReaderInterpreterDispatch readerDispatch;
     FASTReaderReactor reactor;
-    FASTRingBuffer queue;
+    RingBuffer queue;
     TemplateCatalogConfig catalog;
     byte[] testData;
 
@@ -62,9 +62,9 @@ public class Complex30000Benchmark extends Benchmark {
     }
 
 
-    private void fastCore(FASTRingBuffer queue) {
+    private void fastCore(RingBuffer queue) {
         while (FASTReaderReactor.pump(reactor)>=0) { //dump if no room to read or if we read a fragment
-            FASTRingBuffer.dump(queue); // must dump values in buffer
+            RingBuffer.dump(queue); // must dump values in buffer
         }
     }
 

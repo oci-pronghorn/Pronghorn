@@ -2,11 +2,11 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public class TestHelper {
 
-    public static long readLong(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer, FASTReaderInterpreterDispatch readerInterpreterDispatch) {
+    public static long readLong(int token, PrimitiveReader reader, RingBuffer ringBuffer, FASTReaderInterpreterDispatch readerInterpreterDispatch) {
     
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
     
@@ -27,10 +27,10 @@ public class TestHelper {
             }
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
+        return RingBuffer.peekLong(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
     }
 
-    public static int readInt(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer, FASTReaderInterpreterDispatch readerInterpreterDispatch) {
+    public static int readInt(int token, PrimitiveReader reader, RingBuffer ringBuffer, FASTReaderInterpreterDispatch readerInterpreterDispatch) {
     
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
@@ -49,7 +49,7 @@ public class TestHelper {
             }
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-1, ringBuffer.mask);
+        return RingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-1, ringBuffer.mask);
     }
 
 }

@@ -27,7 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingReader;
 
 public class ReaderWriterPrimitiveTest {
 
@@ -885,7 +885,7 @@ public class ReaderWriterPrimitiveTest {
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
-                limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
             }
             writer.limit = limit;
 		}
@@ -913,7 +913,7 @@ public class ReaderWriterPrimitiveTest {
                 //convert bytes into chars
                 long charAndPos = 0;        
                 while (charAndPos>>32 < len  ) {
-                    charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                     builder.append((char)charAndPos);
 
                 }
@@ -955,7 +955,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
                     }
                     writer.limit = limit;
 				}
@@ -980,7 +980,7 @@ public class ReaderWriterPrimitiveTest {
                         
                         long charAndPos = 0;        
                         while (charAndPos>>32 < len  ) {//convert bytes to chars
-                            charAndPos = FASTRingBufferReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                            charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                             target[offset++]=(char)charAndPos;
                         }
                     }
@@ -1024,7 +1024,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = FASTRingBufferReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
                     }
                     writer.limit = limit;
 				}

@@ -18,7 +18,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class StreamingDecimalTest extends BaseStreamingTest {
@@ -73,7 +73,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
@@ -112,12 +112,12 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         //bridge solution as the ring buffer is introduce into all the APIs
-                        FASTRingBuffer.dump(rbRingBufferLocal);
+                        RingBuffer.dump(rbRingBufferLocal);
                        
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,testExpConst);
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue >>> 32));
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue & 0xFFFFFFFF)); 
-                        FASTRingBuffer.publishWrites(rbRingBufferLocal);
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,testExpConst);
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue >>> 32));
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (testValue & 0xFFFFFFFF)); 
+                        RingBuffer.publishWrites(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
@@ -144,11 +144,11 @@ public class StreamingDecimalTest extends BaseStreamingTest {
                         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
 
                         //bridge solution as the ring buffer is introduce into all the APIs
-                        FASTRingBuffer.dump(rbRingBufferLocal);
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,1);
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa >>> 32));
-                        FASTRingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa & 0xFFFFFFFF)); 
-                        FASTRingBuffer.publishWrites(rbRingBufferLocal);
+                        RingBuffer.dump(rbRingBufferLocal);
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,1);
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa >>> 32));
+                        RingBuffer.addValue(rbRingBufferLocal.buffer,rbRingBufferLocal.mask,rbRingBufferLocal.workingHeadPos,(int) (mantissa & 0xFFFFFFFF)); 
+                        RingBuffer.publishWrites(rbRingBufferLocal);
                         int rbPos = 0;
 
                         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {                                
@@ -303,7 +303,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         reader = new PrimitiveReader(4096, input, maxGroupCount * 10);
     }
 
-    public static long readDecimalMantissa(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder, FASTRingBuffer ringBuffer) {
+    public static long readDecimalMantissa(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder, RingBuffer ringBuffer) {
         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
@@ -317,10 +317,10 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
         
         //must return what was written
-        return FASTRingBuffer.peekLong(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
+        return RingBuffer.peekLong(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
     }
 
-    public static int readDecimalExponent(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder, FASTRingBuffer ringBuffer) {
+    public static int readDecimalExponent(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder, RingBuffer ringBuffer) {
         assert (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE))) : TokenBuilder.tokenToString(token);
@@ -333,7 +333,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
             decoder.readIntegerSignedOptional(token, decoder.rIntDictionary, decoder.MAX_INT_INSTANCE_MASK, decoder.readFromIdx, reader, RingBuffers.get(decoder.ringBuffers,0));
         }
         //NOTE: for testing we need to check what was written
-        return FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-1, ringBuffer.mask);
+        return RingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-1, ringBuffer.mask);
     }
 
 }

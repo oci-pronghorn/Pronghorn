@@ -20,7 +20,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.BaseStreamingTest;
 import com.ociweb.jfast.stream.FASTDecoder;
@@ -409,7 +409,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.TEST);
+	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.TEST);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;
@@ -428,10 +428,10 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 			int j = textTestData.length;
 			while (--j>=0) {
 			    
-                FASTRingBuffer.dump(rbRingBufferLocal);
+                RingBuffer.dump(rbRingBufferLocal);
                 byte[] data = BaseStreamingTest.byteMe(textTestData[j]);
-                FASTRingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
-                FASTRingBuffer.publishWrites(rbRingBufferLocal);
+                RingBuffer.addByteArray(data, 0, data.length, rbRingBufferLocal);
+                RingBuffer.publishWrites(rbRingBufferLocal);
 			    
 				assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
                 assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -481,7 +481,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
     public int readText(int token, PrimitiveReader reader, FASTReaderInterpreterDispatch decoder) {
         assert (0 == (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
-        FASTRingBuffer rbRingBuffer = RingBuffers.get(decoder.ringBuffers,0);
+        RingBuffer rbRingBuffer = RingBuffers.get(decoder.ringBuffers,0);
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {// compiler does all
                                                             // the work.
             if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -502,7 +502,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
         }
         
         //NOTE: for testing we need to check what was written
-        int value = FASTRingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.workingHeadPos.value-2, rbRingBuffer.mask);
+        int value = RingBuffer.peek(rbRingBuffer.buffer, rbRingBuffer.workingHeadPos.value-2, rbRingBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
         return value<0? value : token & decoder.MAX_BYTE_INSTANCE_MASK;

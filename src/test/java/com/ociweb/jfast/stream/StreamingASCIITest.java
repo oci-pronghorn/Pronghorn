@@ -26,7 +26,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class StreamingASCIITest extends BaseStreamingTest {
@@ -148,8 +148,8 @@ public class StreamingASCIITest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
         
 
-        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
-        FASTRingBuffer.dump(ring);
+        RingBuffer ring = new RingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
+        RingBuffer.dump(ring);
         
         while (--i >= 0) {
             int f = fields;
@@ -163,17 +163,17 @@ public class StreamingASCIITest extends BaseStreamingTest {
                     	
                     	byte[] array = testConst;
                     	
-                        FASTRingBuffer.dump(ring);
-                        FASTRingBuffer.addByteArray(array, 0, -1, ring);
-                        FASTRingBuffer.publishWrites(ring);
+                        RingBuffer.dump(ring);
+                        RingBuffer.addByteArray(array, 0, -1, ring);
+                        RingBuffer.publishWrites(ring);
                     	
                         fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
                     } else {
                         {
                             byte[] array = testConst;
 
-                            FASTRingBuffer.addByteArray(array, 0, array.length, ring);
-                            FASTRingBuffer.publishWrites(ring);
+                            RingBuffer.addByteArray(array, 0, array.length, ring);
+                            RingBuffer.publishWrites(ring);
                             
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                                 fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);
@@ -187,9 +187,9 @@ public class StreamingASCIITest extends BaseStreamingTest {
                     	
                     	byte[] array = testDataBytes[f];
                     	
-                        FASTRingBuffer.dump(ring);
-                        FASTRingBuffer.addByteArray(array, 0, -1, ring);
-                        FASTRingBuffer.publishWrites(ring);
+                        RingBuffer.dump(ring);
+                        RingBuffer.addByteArray(array, 0, -1, ring);
+                        RingBuffer.publishWrites(ring);
                     	
                     	
                         //BaseStreamingTest.write(token, writer, fw);
@@ -198,9 +198,9 @@ public class StreamingASCIITest extends BaseStreamingTest {
                         {
                             byte[] array = testDataBytes[f];
                             
-                            FASTRingBuffer.dump(ring);
-                            FASTRingBuffer.addByteArray(array, 0, array.length, ring);
-                            FASTRingBuffer.publishWrites(ring);                                                       
+                            RingBuffer.dump(ring);
+                            RingBuffer.addByteArray(array, 0, array.length, ring);
+                            RingBuffer.publishWrites(ring);                                                       
                            
                             if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
                                 fw.acceptCharSequenceASCII(token, writer, fw.byteHeap, 0, ring);

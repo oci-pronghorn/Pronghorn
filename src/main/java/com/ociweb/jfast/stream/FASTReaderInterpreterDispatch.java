@@ -12,7 +12,7 @@ import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {
 
@@ -120,10 +120,10 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
             beginMessage(reader); 
         }
        
-        final FASTRingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
+        final RingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
      
-        int fragmentSize = rbRingBuffer.from.fragDataSize[activeScriptCursor]+ 1+ rbRingBuffer.from.templateOffset; //plus roomm for next message
+        int fragmentSize = rbRingBuffer.consumerData.from.fragDataSize[activeScriptCursor]+ 1+ rbRingBuffer.consumerData.from.templateOffset; //plus roomm for next message
        //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
         if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
@@ -244,11 +244,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         genReadGroupCloseMessage(reader, this); 
                 
         //Must do last because this will let the other threads begin to use this data
-        FASTRingBuffer.publishWrites(rbRingBuffer); //TODO: B, may be able to improve performance by doing this occasionally 
+        RingBuffer.publishWrites(rbRingBuffer); //TODO: B, may be able to improve performance by doing this occasionally 
         return 1;//read one fragment 
     }
 
-    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, FASTRingBuffer rbRingBuffer) {
+    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, RingBuffer rbRingBuffer) {
         //The previous dictionary value will need to have two read from values 
         //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
         // 0110? Decimal and DecimalOptional
@@ -276,7 +276,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         readFromIdx = -1; //reset for next field where it might be used. 
     }
 
-    private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimal(PrimitiveReader reader, int expoToken, int mantToken, RingBuffer rbRingBuffer) {
               
      //  System.err.println("MM decode : Exp:"+TokenBuilder.tokenToString(expoToken)+" Mant: "+TokenBuilder.tokenToString(mantToken));
       
@@ -344,7 +344,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }                        
     }
 
-    private void decodeOptionalDecimalDefault(int expoConstAbsent, int expoConstDefault, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalDefault(int expoConstAbsent, int expoConstDefault, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -389,7 +389,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    private void decodeOptionalDecimalIncrement(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalIncrement(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -433,7 +433,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     //copy
-    private void decodeOptionalDecimalCopy(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalCopy(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         
     //	System.err.println("decode the decimal copy");
     	
@@ -479,7 +479,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    private void decodeOptionalDecimalConstant(int expoConstAbsent, int expoConstConst, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalConstant(int expoConstAbsent, int expoConstConst, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -523,7 +523,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     //Delta
-    private void decodeOptionalDecimalDelta(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalDelta(int expoTarget, int expoSource, int expoConstAbsent, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (mantToken & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -566,7 +566,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    private void decodeOptionalDecimalNone(int expoConstAbsent, int mantToken, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void decodeOptionalDecimalNone(int expoConstAbsent, int mantToken, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         
         if (0 == (mantToken & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -679,7 +679,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     void dispatchReadByTokenForText(int token, PrimitiveReader reader) {
         // System.err.println(" CharToken:"+TokenBuilder.tokenToString(token));
 
-        FASTRingBuffer rb = RingBuffers.get(ringBuffers,activeScriptCursor);
+        RingBuffer rb = RingBuffers.get(ringBuffers,activeScriptCursor);
         // 010??
         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
             // 0100?
@@ -702,7 +702,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    private void dispatchReadByTokenForLong(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    private void dispatchReadByTokenForLong(int token, PrimitiveReader reader, RingBuffer ringBuffer) {
         // 001??
         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
             // 0010?
@@ -725,7 +725,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    private void dispatchReadByTokenForInteger(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    private void dispatchReadByTokenForInteger(int token, PrimitiveReader reader, RingBuffer ringBuffer) {
         // 000??
         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
             // 0000?
@@ -748,7 +748,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void readLongSignedOptional(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readLongSignedOptional(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -806,7 +806,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    public void readLongSigned(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readLongSigned(int token, long[] rLongDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -857,7 +857,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void readLongUnsignedOptional(int token, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readLongUnsignedOptional(int token, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -915,7 +915,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    public void readLongUnsigned(int token, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readLongUnsigned(int token, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -967,7 +967,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    public void readIntegerSignedOptional(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readIntegerSignedOptional(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1025,7 +1025,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    public void readIntegerSigned(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readIntegerSigned(int token, int[] rIntDictionary, int instanceMask, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1071,7 +1071,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void readIntegerUnsignedOptional(int token, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readIntegerUnsignedOptional(int token, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1136,7 +1136,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
 
-    public void readIntegerUnsigned(int token, int readFromIdx, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public void readIntegerUnsigned(int token, int readFromIdx, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
@@ -1198,7 +1198,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     private void readLength(int token, int jumpToTarget, int readFromIdx, PrimitiveReader reader) {
         //because the generator hacks this boolean return value it is not helpful here.
         int jumpToNext = activeScriptCursor+1;
-        FASTRingBuffer ringBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
+        RingBuffer ringBuffer = RingBuffers.get(ringBuffers,activeScriptCursor);
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {
             // none, constant, delta
             if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {
@@ -1248,7 +1248,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
     }
     
-    public int readBytes(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public int readBytes(int token, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         assert (0 != (token & (4 << TokenBuilder.SHIFT_TYPE)));
         assert (0 != (token & (8 << TokenBuilder.SHIFT_TYPE)));
@@ -1263,13 +1263,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
         
         //NOTE: for testing we need to check what was written
-        int value = FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
+        int value = RingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
         return value<0? value : token & MAX_BYTE_INSTANCE_MASK;
     }
 
-    private void readByteArray(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void readByteArray(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             // none constant delta tail
@@ -1318,7 +1318,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
 
 
-    private void readByteArrayOptional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    private void readByteArrayOptional(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
             int idx = token & MAX_BYTE_INSTANCE_MASK;
@@ -1401,7 +1401,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
 
 
 
-    public void readTextUTF8Optional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    public void readTextUTF8Optional(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1453,7 +1453,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     
-    public int readASCII(int token, PrimitiveReader reader, FASTRingBuffer ringBuffer) {
+    public int readASCII(int token, PrimitiveReader reader, RingBuffer ringBuffer) {
 
         // System.out.println("reading "+TokenBuilder.tokenToString(token));
 
@@ -1465,14 +1465,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
         
         //NOTE: for testing we need to check what was written
-        int value = FASTRingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
+        int value = RingBuffer.peek(ringBuffer.buffer, ringBuffer.workingHeadPos.value-2, ringBuffer.mask);
         //if the value is positive it no longer points to the byteHeap so we need
         //to make a replacement here for testing.
         return value<0? value : token & MAX_BYTE_INSTANCE_MASK;
     }
     
     
-    public void readTextASCII(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    public void readTextASCII(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1514,7 +1514,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void readTextUTF8(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    public void readTextUTF8(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & (1 << TokenBuilder.SHIFT_OPER))) {// compiler does all
                                                             // the work.
@@ -1562,7 +1562,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         }
     }
 
-    public void readTextASCIIOptional(int token, PrimitiveReader reader, FASTRingBuffer rbRingBuffer) {
+    public void readTextASCIIOptional(int token, PrimitiveReader reader, RingBuffer rbRingBuffer) {
         int idx = token & MAX_BYTE_INSTANCE_MASK;
         if (0 == (token & ((4 | 2 | 1) << TokenBuilder.SHIFT_OPER))) {
             if (0 == (token & (8 << TokenBuilder.SHIFT_OPER))) {

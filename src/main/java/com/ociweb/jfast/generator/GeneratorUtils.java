@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -145,8 +145,8 @@ public class GeneratorUtils {
 	            //exit if the ring buffer is full          
 	            if (isReader) {
 	                
-	                FASTRingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
-	                int fragmentSize = thisRingBuffer.from.fragDataSize[cursorPos]+ thisRingBuffer.from.templateOffset + 1;
+	                RingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
+	                int fragmentSize = thisRingBuffer.consumerData.from.fragDataSize[cursorPos]+ thisRingBuffer.consumerData.from.templateOffset + 1;
 	                
 	            doneCode[j] += 
 	                   " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
@@ -178,7 +178,7 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
-            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", FASTRingBuffer rb) {\n"); 
+            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", "+RingBuffer.class.getSimpleName()+" rb) {\n"); 
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
@@ -201,13 +201,13 @@ public class GeneratorUtils {
         //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
         if (isReader) {
-            builder.append("    "+FASTRingBuffer.class.getSimpleName()+" rb;\n");
+            builder.append("    "+RingBuffer.class.getSimpleName()+" rb;\n");
         }
         
               
         bsg.generate("    ",builder, doneValues, doneCode);
         if (isReader) {
-            builder.append("    FASTRingBuffer.publishWrites(rb);\n");
+            builder.append("    "+RingBuffer.class.getSimpleName()+".publishWrites(rb);\n");
             builder.append("    return 1;//read a fragment\n"); 
         } 
         builder.append("}\n");

@@ -1,15 +1,15 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class RingBuffers {
     
-    public final FASTRingBuffer[] buffers;
-    private FASTRingBuffer[] uniqueBuffers;
+    public final RingBuffer[] buffers;
+    private RingBuffer[] uniqueBuffers;
     
     
-    public RingBuffers(FASTRingBuffer[] buffers) {
+    public RingBuffers(RingBuffer[] buffers) {
         this.buffers = buffers;
         //Many of these buffers are duplicates because they are used by multiple script indexes.
         //Consolidate all the buffers into a single array
@@ -29,7 +29,7 @@ public class RingBuffers {
         //System.err.println("unique buffers:"+count);
               
         
-        this.uniqueBuffers = new FASTRingBuffer[count];
+        this.uniqueBuffers = new RingBuffer[count];
         count = 0;
         i = buffers.length;
         while (--i>=0) {            
@@ -46,7 +46,7 @@ public class RingBuffers {
     }
     
     //package protected
-    FASTRingBuffer[] rawArray() {
+    RingBuffer[] rawArray() {
         return buffers;
     }
 
@@ -59,14 +59,14 @@ public class RingBuffers {
     }
 
     public static FieldReferenceOffsetManager getFrom(RingBuffers ringBuffers) {
-        return ringBuffers.buffers[0].from; //NOTE: all ring buffers have the same instance
+        return ringBuffers.buffers[0].consumerData.from; //NOTE: all ring buffers have the same instance
     }
     
-    public static FASTRingBuffer get(RingBuffers ringBuffers, int idx) {
+    public static RingBuffer get(RingBuffers ringBuffers, int idx) {
         return ringBuffers.buffers[idx];
     }
     
-    public static FASTRingBuffer[] buffers(RingBuffers ringBuffers) {
+    public static RingBuffer[] buffers(RingBuffers ringBuffers) {
         return ringBuffers.uniqueBuffers;
     }
     

@@ -14,8 +14,8 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -164,11 +164,11 @@ public class TemplateCatalogConfig {
         int primaryRingBits = clientConfig.getPrimaryRingBits(); 
         int textRingBits = clientConfig.getTextRingBits();
         
-        FASTRingBuffer[] buffers = new FASTRingBuffer[scriptLength];
+        RingBuffer[] buffers = new RingBuffer[scriptLength];
         //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
         //Move this method into RingBuffers as satic?
         
-        FASTRingBuffer rb = new FASTRingBuffer((byte)primaryRingBits,(byte)textRingBits,DictionaryFactory.initConstantByteArray(dFactory), from);
+        RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,DictionaryFactory.initConstantByteArray(dFactory), from);
         int i = scriptLength;
         while (--i>=0) {
             buffers[i]=rb;            
@@ -214,7 +214,7 @@ public class TemplateCatalogConfig {
                     
                     long charAndPos = 0;  //convert bytes to chars
                     while (charAndPos>>32 < len  ) { 
-                        charAndPos = FASTRingBufferReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
+                        charAndPos = RingReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
                         builder.append((char)charAndPos);
 
                     }
@@ -276,7 +276,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = FASTRingBufferReader.encodeSingleChar((int) key.charAt(c++), writer.buffer, limit);
+                    limit = RingReader.encodeSingleChar((int) key.charAt(c++), writer.buffer, limit);
                 }
                 writer.limit = limit;
             }
@@ -292,7 +292,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = FASTRingBufferReader.encodeSingleChar((int) prop.charAt(c++), writer.buffer, limit);
+                    limit = RingReader.encodeSingleChar((int) prop.charAt(c++), writer.buffer, limit);
                 }
                 writer.limit = limit;
             }
@@ -403,7 +403,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len1) {
-                    limit = FASTRingBufferReader.encodeSingleChar((int) name.charAt(c++), writer.buffer, limit);
+                    limit = RingReader.encodeSingleChar((int) name.charAt(c++), writer.buffer, limit);
                 }
                 writer.limit = limit;
             }

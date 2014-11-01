@@ -48,8 +48,9 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
-import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.jfast.ring.WalkingConsumerState;
+import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -142,7 +143,7 @@ public class TemplateLoaderTest {
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
         System.gc();
         
-        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
+        RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);      
 
         int warmup = 128;
         int count = 512;
@@ -167,11 +168,11 @@ public class TemplateLoaderTest {
             frags = 0;
 
             reactor = new FASTReaderReactor(readerDispatch,reader);
-            FASTRingBuffer rb = reactor.ringBuffers()[0];
+            RingBuffer rb = reactor.ringBuffers()[0];
             rb.reset();
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-                FASTRingBuffer.canMoveNext(rb);
+                WalkingConsumerState.canMoveNext(rb);
 
                 frags++;
                 if (rb.consumerData.isNewMessage()) {
@@ -187,7 +188,7 @@ public class TemplateLoaderTest {
                         int i = 0;
                         int s = preamble.length;
                         while (i < s) {
-                            FASTRingBufferReader.readInt(queue, bufferIdx);
+                            RingReader.readInt(queue, bufferIdx);
                             i += 4;
                             bufferIdx++;
                         }
@@ -205,7 +206,7 @@ public class TemplateLoaderTest {
                         // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 
                         if (isText(token)) {
-                            totalBytesOut.addAndGet(4 * FASTRingBufferReader.readDataLength(queue, bufferIdx));
+                            totalBytesOut.addAndGet(4 * RingReader.readDataLength(queue, bufferIdx));
                         }
 
                         // find the next index after this token.
@@ -256,7 +257,7 @@ public class TemplateLoaderTest {
             
             reactor = new FASTReaderReactor(readerDispatch,reader);
             
-            FASTRingBuffer rb = null; 
+            RingBuffer rb = null; 
             rb =  RingBuffers.get(readerDispatch.ringBuffers,0);
             rb.reset();
             double duration = 0;
@@ -273,13 +274,13 @@ public class TemplateLoaderTest {
                 while (FASTReaderReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    if (FASTRingBuffer.canMoveNext(rb)) {
+                    if (WalkingConsumerState.canMoveNext(rb)) {
                        // rb.tailPos.lazySet(rb.workingTailPos.value);
                     }; //11
                     //Profile.count += (Profile.version.get()-tmp);
                 }
                 //the buffer has extra records in it so we must clean them out here.
-                while (FASTRingBuffer.canMoveNext(rb)) {
+                while (WalkingConsumerState.canMoveNext(rb)) {
                      
                    // rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
@@ -357,11 +358,11 @@ public class TemplateLoaderTest {
         FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes); 
         
         assertEquals(1,reactor.ringBuffers().length);
-        FASTRingBuffer rb = reactor.ringBuffers()[0];
+        RingBuffer rb = reactor.ringBuffers()[0];
         rb.reset();
 
         while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-            FASTRingBuffer.canMoveNext(rb);
+            WalkingConsumerState.canMoveNext(rb);
 
             if (rb.consumerData.isNewMessage()) {
                 int templateId = rb.consumerData.getMessageId();
@@ -427,9 +428,9 @@ public class TemplateLoaderTest {
         
         FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
-        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
+        RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
-        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.consumerData.from.tokens);
 
         // TODO: B, force this error and add friendly message, when minimize
         // latency set to false these need to be much bigger?
@@ -470,14 +471,14 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (FASTRingBuffer.canMoveNext(queue)) {
+                    if (WalkingConsumerState.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
                         try{   
                             dynamicWriter.write();
                         } catch (FASTException e) {
-                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
                         }                            
                         grps++;
@@ -513,7 +514,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
             
             while (FASTReaderReactor.pump(reactor)>=0) {  
-                    if (FASTRingBuffer.canMoveNext(queue)) {
+                    if (WalkingConsumerState.canMoveNext(queue)) {
                        if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
                                 dynamicWriter.write();  
                        }
@@ -576,9 +577,9 @@ public class TemplateLoaderTest {
         FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         
-        FASTRingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
+        RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
-        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.from.tokens);
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.consumerData.from.tokens);
         
                
         int writeBuffer = 16384;
@@ -614,14 +615,14 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (FASTRingBuffer.canMoveNext(queue)) {
+                    if (WalkingConsumerState.canMoveNext(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
                         try{   
                             dynamicWriter.write();
                         } catch (FASTException e) {
-                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
                         }                            
                         grps++;
@@ -683,11 +684,11 @@ public class TemplateLoaderTest {
             if (concurrent) {
                 start = System.nanoTime(); 
                 while (isAlive.get()) {
-                    while (FASTRingBuffer.canMoveNext(queue)) {
+                    while (WalkingConsumerState.canMoveNext(queue)) {
                         dynamicWriter.write();  
                     }   
                 }
-                while (FASTRingBuffer.canMoveNext(queue)) {
+                while (WalkingConsumerState.canMoveNext(queue)) {
                     dynamicWriter.write();  
                 }
                 
@@ -699,7 +700,7 @@ public class TemplateLoaderTest {
                 //now start the timer
                 start = System.nanoTime();            
                 
-                while (FASTRingBuffer.canMoveNext(queue)) {
+                while (WalkingConsumerState.canMoveNext(queue)) {
                         dynamicWriter.write();  
                 } 
             }

@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 
 // TODO: B, Check support for group that may be optional
@@ -143,7 +143,7 @@ public final class FASTReaderReactor {
             return reactor.decoder.decode(reactor.reader);
     }
     
-    public FASTRingBuffer[] ringBuffers() {
+    public RingBuffer[] ringBuffers() {
     	return RingBuffers.buffers(decoder.ringBuffers);
     }
 

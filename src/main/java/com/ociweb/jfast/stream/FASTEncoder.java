@@ -7,7 +7,7 @@ import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
-import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.RingBuffer;
 
 public abstract class FASTEncoder { 
     
@@ -112,7 +112,7 @@ public abstract class FASTEncoder {
         return true;
     }
     
-    public abstract void encode(PrimitiveWriter writer, FASTRingBuffer ringBuffer);
+    public abstract void encode(PrimitiveWriter writer, RingBuffer ringBuffer);
     
 
     public void setActiveScriptCursor(int cursor) {
