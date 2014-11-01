@@ -5,20 +5,18 @@ package com.ociweb.jfast.stream;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.ring.FASTRingBuffer;
-import com.ociweb.jfast.ring.FASTRingBufferReader;
 import com.ociweb.jfast.ring.FASTRingBuffer.PaddedLong;
+import com.ociweb.jfast.ring.FASTRingBufferReader;
 
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 

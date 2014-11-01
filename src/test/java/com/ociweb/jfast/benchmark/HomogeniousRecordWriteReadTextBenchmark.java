@@ -3,25 +3,25 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.benchmark;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.BaseStreamingTest;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -409,7 +409,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)16,null, FASTFieldReferenceOffsetManager.TEST);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.TEST);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;

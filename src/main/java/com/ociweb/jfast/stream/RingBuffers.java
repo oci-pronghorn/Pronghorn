@@ -1,6 +1,5 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.ring.FASTRingBuffer;
 import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 

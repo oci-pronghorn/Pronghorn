@@ -20,7 +20,6 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
@@ -30,6 +29,7 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class StreamingBytesTest extends BaseStreamingTest {
 
@@ -330,7 +330,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
 
 
-        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,null, FASTFieldReferenceOffsetManager.TEST);
+        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
         FASTRingBuffer.dump(ring);
         
         while (--i >= 0) {

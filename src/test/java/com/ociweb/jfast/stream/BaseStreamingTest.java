@@ -5,7 +5,6 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
@@ -14,6 +13,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public abstract class BaseStreamingTest {
 
@@ -465,7 +465,7 @@ public abstract class BaseStreamingTest {
                 int idx = token & fw.intInstanceMask;
                 
                 //temp solution as the ring buffer is introduce into all the APIs
-                FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FASTFieldReferenceOffsetManager.TEST);
+                FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
                 FASTRingBuffer.dump(rbRingBufferLocal);
                 FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                 FASTRingBuffer ringBuffer = rbRingBufferLocal;
@@ -529,7 +529,7 @@ public abstract class BaseStreamingTest {
                     int idx = token & fw.intInstanceMask;
                     
                     //temp solution as the ring buffer is introduce into all the APIs   
-                    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FASTFieldReferenceOffsetManager.TEST);
+                    FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
                     FASTRingBuffer.dump(rbRingBufferLocal);
                     FASTRingBuffer.addValue(rbRingBufferLocal.buffer, rbRingBufferLocal.mask, rbRingBufferLocal.workingHeadPos, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
                     FASTRingBuffer ringBuffer = rbRingBufferLocal;

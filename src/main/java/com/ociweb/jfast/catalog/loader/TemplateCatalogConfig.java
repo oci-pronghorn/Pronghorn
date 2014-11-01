@@ -16,6 +16,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.ring.FASTRingBuffer;
 import com.ociweb.jfast.ring.FASTRingBufferReader;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
@@ -60,7 +61,7 @@ public class TemplateCatalogConfig {
 
     private final RingBuffers ringBuffers;
 
-    private final FASTFieldReferenceOffsetManager from;
+    private final FieldReferenceOffsetManager from;
     
     public TemplateCatalogConfig(byte[] catBytes) {
         
@@ -116,7 +117,8 @@ public class TemplateCatalogConfig {
        // dictionaryFactory.setTypeCounts(integerCount, longCount, bytesCount, bytesGap, bytesNominalLength);
         
         //must be done after the client config construction
-        from = new FASTFieldReferenceOffsetManager(this);
+        from = TemplateCatalogConfig
+				.createFieldReferenceOffsetManager(this);
         ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, clientConfig);
         
     }
@@ -143,7 +145,8 @@ public class TemplateCatalogConfig {
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = clientConfig;
         
-        this.from = new FASTFieldReferenceOffsetManager(this); //TODO: needs max depth for all
+        this.from = TemplateCatalogConfig
+				.createFieldReferenceOffsetManager(this); //TODO: needs max depth for all
         
         this.ringBuffers = buildRingBuffers(dictionaryFactory,
                                             fullScriptLength, 
@@ -155,7 +158,7 @@ public class TemplateCatalogConfig {
     
     
     private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
-                                                     FASTFieldReferenceOffsetManager from, int[] templateStartIdx, 
+                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, 
                                                      ClientConfig clientConfig) {
         
         int primaryRingBits = clientConfig.getPrimaryRingBits(); 
@@ -463,11 +466,23 @@ public class TemplateCatalogConfig {
         return scriptTokens;
     }
 
-    public FASTFieldReferenceOffsetManager getFROM() {
+    public FieldReferenceOffsetManager getFROM() {
         return from;
     }
 
-    public static int maxPMapCountInBytes(TemplateCatalogConfig catalog) {
+    public static FieldReferenceOffsetManager createFieldReferenceOffsetManager(TemplateCatalogConfig config) {
+		
+		
+		return new FieldReferenceOffsetManager(   config.scriptTokens, 
+									        	  config.clientConfig.getPreableBytes(), 
+									              config.getTemplateStartIdx(), 
+									              config.getTemplateLimitIdx(), 
+									              config.fieldNameScript());
+		
+		
+	}
+
+	public static int maxPMapCountInBytes(TemplateCatalogConfig catalog) {
         return 2 + ((
                       catalog.maxTemplatePMapSize()>catalog.maxNonTemplatePMapSize() ?
                     		  catalog.maxTemplatePMapSize() + 2:

@@ -1,15 +1,14 @@
 package com.ociweb.jfast.catalog;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPOutputStream;
@@ -19,19 +18,16 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.xml.sax.SAXException;
 
 import com.ociweb.jfast.FAST;
 import com.ociweb.jfast.catalog.generator.CatalogGenerator;
 import com.ociweb.jfast.catalog.generator.TemplateGenerator;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
@@ -48,9 +44,6 @@ import com.ociweb.jfast.ring.FASTRingBufferWriter;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
-import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
-import com.ociweb.jfast.stream.RingBuffers;
-import com.ociweb.jfast.util.Stats;
 
 
 public class CatalogGeneratorTest {

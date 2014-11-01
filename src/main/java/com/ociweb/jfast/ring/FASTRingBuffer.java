@@ -7,7 +7,6 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -84,7 +83,7 @@ public final class FASTRingBuffer {
      * @param byteBits
      */
     public FASTRingBuffer(byte primaryBits, byte byteBits) {
-    	this(primaryBits,byteBits, null,  FASTFieldReferenceOffsetManager.TEST);
+    	this(primaryBits,byteBits, null,  FieldReferenceOffsetManager.TEST);
     }
     
     /**
@@ -96,7 +95,7 @@ public final class FASTRingBuffer {
      * @param from
      */
     public FASTRingBuffer(byte primaryBits, byte byteBits,
-    		              byte[] byteConstants, FASTFieldReferenceOffsetManager from) {
+    		              byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
         
         assert (primaryBits >= 1);       

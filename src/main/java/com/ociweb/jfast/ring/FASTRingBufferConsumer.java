@@ -1,6 +1,5 @@
 package com.ociweb.jfast.ring;
 
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.util.Stats;
 
 public class FASTRingBufferConsumer {
@@ -27,7 +26,7 @@ public class FASTRingBufferConsumer {
     
     public FASTRingBufferConsumer(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
-                                    long tailCache, FASTFieldReferenceOffsetManager from, int rbMask) {
+                                    long tailCache, FieldReferenceOffsetManager from, int rbMask) {
         this.messageId = messageId;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;

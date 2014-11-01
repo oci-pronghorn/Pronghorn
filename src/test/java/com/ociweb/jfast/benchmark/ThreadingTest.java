@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;

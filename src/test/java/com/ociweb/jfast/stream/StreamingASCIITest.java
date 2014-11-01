@@ -15,7 +15,6 @@ import org.junit.Test;
 import com.ociweb.jfast.benchmark.TestUtil;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
@@ -28,6 +27,7 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class StreamingASCIITest extends BaseStreamingTest {
 
@@ -148,7 +148,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
         
 
-        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FASTFieldReferenceOffsetManager.TEST);
+        FASTRingBuffer ring = new FASTRingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
         FASTRingBuffer.dump(ring);
         
         while (--i >= 0) {

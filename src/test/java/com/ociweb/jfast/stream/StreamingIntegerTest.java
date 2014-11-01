@@ -8,18 +8,18 @@ import static org.junit.Assert.assertEquals;
 import org.junit.AfterClass;
 import org.junit.Test;
 
+import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.DictionaryFactory;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.catalog.loader.ClientConfig;
-import com.ociweb.jfast.catalog.loader.DictionaryFactory;
-import com.ociweb.jfast.catalog.loader.FASTFieldReferenceOffsetManager;
-import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.ring.FASTRingBuffer;
+import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 
 
@@ -154,7 +154,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 
-	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FASTFieldReferenceOffsetManager.TEST);
+	static FASTRingBuffer rbRingBufferLocal = new FASTRingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
 
     public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
