@@ -20,7 +20,7 @@ public class FieldReferenceOffsetManager {
     public int[] fragScriptSize;
     public int[] tokens;
     public int[] starts;
-    public int[] limits;
+
     public String[] fieldNameScript;
     public int maximumFragmentStackDepth;
     
@@ -55,13 +55,22 @@ public class FieldReferenceOffsetManager {
         tokensLen = null==tokens?0:tokens.length;
         
         starts = null;
-        limits = null;
         
         fieldNameScript = null;
         
     }
     
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, int[] startsLocal, int[] limitsLocal, String[] fieldNameScriptLocal) {
+    //scriptToken, array of all tokens of all scripts end to end
+    //fieldNameScrptLocal, same as above except that the name is provided not the token
+    //startsLocal, arrray for radom access by the templateId, provides the start pont into the script token
+    //limitsLocal, same as above except these are limits
+    
+    //TODO: this direct mapping may be a problem for giant sparse templateIDs
+    //TODO: need an easy way to construct these for unit test
+    //TODO: need to move the token types in to ring package?
+    
+    
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, int[] startsLocal, String[] fieldNameScriptLocal) {
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
         
@@ -91,7 +100,6 @@ public class FieldReferenceOffsetManager {
         tokensLen = null==tokens?0:tokens.length;
         
         starts = startsLocal;
-        limits = limitsLocal;
         
         fieldNameScript = fieldNameScriptLocal;
 	}
@@ -175,29 +183,21 @@ public class FieldReferenceOffsetManager {
 	}
     
     
-    
-  //TODO: convert to static
-    public final int fieldCount(int templateId) {
-    	return 1+ limits[templateId]-starts[templateId];
-    }
-    
-  //TODO: convert to static
-    public final String fieldName(int templateId, int position) {
-    	return fieldNameScript[starts[templateId]+position];
+  //TODO: convert to static and swap position for field id.
+    public final String fieldName(int fragmentStart, int position) {
+    	return fieldNameScript[fragmentStart+position];
     }
     
     
     //TODO: convert to static
-    public final int lookupIDX(int templateId, String target) {
-        int x = starts[templateId];
-        int limit = limits[templateId];
-        
+    public final int lookupIDX(String target, int framentStart) {
+        int x = framentStart;
         
         int UPPER_BITS = 0xF0000000;
         //System.err.println("looking for "+target+ " between "+x+" and "+limit);
         //System.err.println(Arrays.toString(fieldNameScript));
         
-        while (x<=limit) {
+        while (true) {
         	//System.err.println("looking at:"+fieldNameScript[x]);
             if (fieldNameScript[x].equalsIgnoreCase(target)) {
                 
@@ -210,8 +210,18 @@ public class FieldReferenceOffsetManager {
                 }
                 
             }
-            x++;
             
+            int type = TokenBuilder.extractType(tokens[x]);
+            boolean isGroup = TypeMask.Group == type;    
+          //  boolean isGroupOpen = isGroup && (0 == (tokens[x] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+            boolean isGroupClosed = isGroup && (0 != (tokens[x] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+            boolean isSeqLength = TypeMask.GroupLength == type;
+            
+            if (isGroupClosed || isSeqLength) {
+            	break;
+            }
+            
+            x++;
         }
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(fieldNameScript));
         

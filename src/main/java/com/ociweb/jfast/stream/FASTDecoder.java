@@ -13,8 +13,7 @@ public abstract class FASTDecoder{
     //all constants always skipped.
     //decimals as well??
     
-    public final int[] templateStartIdx; //These constants can be remvoed
-     
+    public final int[] templateStartIdx; 
     
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
@@ -44,6 +43,7 @@ public abstract class FASTDecoder{
              catalog.clientConfig().getPreableBytes(), 
              catalog.ringBuffers(), 
              TemplateCatalogConfig.maxPMapCountInBytes(catalog) );
+        
     }
     
             
@@ -59,7 +59,8 @@ public abstract class FASTDecoder{
         this.rIntDictionary = dcr.integerDictionary();
         this.rLongDictionary = dcr.longDictionary();
         
-        this.templateStartIdx = templateStartIdx;        
+        this.templateStartIdx = templateStartIdx;  
+        
         this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;
@@ -71,6 +72,7 @@ public abstract class FASTDecoder{
         assert (rLongDictionary.length < TokenBuilder.MAX_INSTANCE);
         assert (TokenBuilder.isPowerOfTwo(rLongDictionary.length));
     }
+    
     
     
     public static void reset(DictionaryFactory dictionaryFactory, FASTDecoder decoder) {
@@ -91,6 +93,11 @@ public abstract class FASTDecoder{
     
 
     public abstract int decode(PrimitiveReader reader);
+
+
+	public static int fragmentStart(int templateId, FASTDecoder decoder) {
+		return decoder.templateStartIdx[templateId];
+	}
         
 
 

@@ -3,7 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
-import com.ociweb.jfast.error.FASTException;
 
 
 /**
@@ -373,7 +372,7 @@ public class LocalHeap {
     
     // never call without calling setZeroLength first then a sequence of these
     // never call without calling offset() for first argument
-    int appendTail(int offset, int nextLimit, byte value) {
+    public int appendTail(int offset, int nextLimit, byte value) {
 
         // setZeroLength was called first so no need to check for null
         if (tat[offset + 1] >= nextLimit) {
@@ -387,11 +386,11 @@ public class LocalHeap {
         return nextLimit;
     }
 
-    void trimTail(int idx, int trim) {
+    public void trimTail(int idx, int trim) {
         tat[(idx << 2) + 1] -= trim;
     }
 
-    void trimHead(int idx, int trim) {
+    public void trimHead(int idx, int trim) {
         int offset = idx << 2;
 
         int tmp = tat[offset] + trim;
@@ -435,7 +434,7 @@ public class LocalHeap {
         }
     }
 
-    void makeSpaceForAppend(int offset, int textLen) { 
+    public void makeSpaceForAppend(int offset, int textLen) { 
 
         int floor = offset - 3 >= 0 ? tat[offset - 3] : 0;
         int need = tat[offset + 1] + textLen - tat[offset];

@@ -476,7 +476,6 @@ public class TemplateCatalogConfig {
 		return new FieldReferenceOffsetManager(   config.scriptTokens, 
 									        	  config.clientConfig.getPreableBytes(), 
 									              config.getTemplateStartIdx(), 
-									              config.getTemplateLimitIdx(), 
 									              config.fieldNameScript());
 		
 		

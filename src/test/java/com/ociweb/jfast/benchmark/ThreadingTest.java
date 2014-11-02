@@ -172,7 +172,7 @@ public class ThreadingTest {
     public int templateId;
     public int preamble;
     
-    private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, FASTReaderReactor reactor, PrimitiveReader reader) {
+    private double multiThreadedExample(FASTDecoder readerDispatch, final AtomicInteger msgs, final FASTReaderReactor reactor, PrimitiveReader reader) {
 
     //    System.err.println("*************************************************************** multi test instance begin ");
         
@@ -200,7 +200,7 @@ public class ThreadingTest {
                         if (WalkingConsumerState.canMoveNext(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
-                                processMessage(temp, rb);   
+                                processMessage(temp, rb, reactor);  
                         } 
 //                        else {
 //                            //must wait on more to be written into the ring buffer before they can be read
@@ -293,44 +293,46 @@ public class ThreadingTest {
     
     boolean isInit;
     
-    public void populateFieldIDs(FieldReferenceOffsetManager from) {
+    public void populateFieldIDs(FieldReferenceOffsetManager from, FASTReaderReactor reactor) {
         
-        
+        //TODO: must also pass reactor to convert tempalteID into bounds for lookup?
         
         
         if (!isInit) {
             
             int templateId;
-            
-            
+            int fragStart;
+
             templateId = 1;
-            IDX1_AppVerId = from.lookupIDX(templateId,"ApplVerID"); 
-            IDX1_MessageType = from.lookupIDX(templateId, "MessageType");
-            IDX1_SenderCompID = from.lookupIDX(templateId, "SenderCompID");
-            IDX1_MsgSeqNum = from.lookupIDX(templateId, "MsgSeqNum");
-            IDX1_SendingTime = from.lookupIDX(templateId, "SendingTime");
-            IDX1_TradeDate = from.lookupIDX(templateId, "TradeDate");            
-            IDX1_NoMDEntries = from.lookupIDX(templateId, "NoMDEntries");
+            fragStart = reactor.fragmentStart(templateId);
             
-            IDX1_MDUpdateAction = from.lookupIDX(templateId, "MDUpdateAction");
-            IDX1_MDPriceLevel = from.lookupIDX(templateId, "MDPriceLevel");            
-            IDX1_MDEntryType = from.lookupIDX(templateId, "MDEntryType");
-            IDX1_OpenCloseSettleFlag = from.lookupIDX(templateId, "OpenCloseSettleFlag");
-            IDX1_SecurityIDSource = from.lookupIDX(templateId, "SecurityIDSource");
-            IDX1_SecurityID = from.lookupIDX(templateId, "SecurityID");
-            IDX1_RptSeq = from.lookupIDX(templateId, "RptSeq");
-            IDX1_MDEntryPx = from.lookupIDX(templateId, "MDEntryPx");            
-            IDX1_MDEntryTime = from.lookupIDX(templateId, "MDEntryTime");
-            IDX1_MDEntrySize = from.lookupIDX(templateId, "MDEntrySize");
-            IDX1_NumberOfOrders = from.lookupIDX(templateId, "NumberOfOrders");
-            IDX1_TradingSessionID = from.lookupIDX(templateId, "TradingSessionID");
-            IDX1_NetChgPrevDay = from.lookupIDX(templateId, "NetChgPrevDay");
-            IDX1_TradeVolume = from.lookupIDX(templateId, "TradeVolume");
-            IDX1_TradeCondition = from.lookupIDX(templateId, "TradeCondition");
-            IDX1_TickDirection = from.lookupIDX(templateId, "TickDirection");
-            IDX1_QuoteCondition = from.lookupIDX(templateId, "QuoteCondition");
-            IDX1_AggressorSide = from.lookupIDX(templateId, "AggressorSide");
-            IDX1_MatchEventIndicator = from.lookupIDX(templateId, "MatchEventIndicator");
+            IDX1_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
+            IDX1_MessageType = from.lookupIDX("MessageType", fragStart);
+            IDX1_SenderCompID = from.lookupIDX("SenderCompID", fragStart);
+            IDX1_MsgSeqNum = from.lookupIDX("MsgSeqNum", fragStart);
+            IDX1_SendingTime = from.lookupIDX("SendingTime", fragStart);
+            IDX1_TradeDate = from.lookupIDX("TradeDate", fragStart);            
+            IDX1_NoMDEntries = from.lookupIDX("NoMDEntries", fragStart);
+            
+            IDX1_MDUpdateAction = from.lookupIDX("MDUpdateAction", fragStart);
+            IDX1_MDPriceLevel = from.lookupIDX("MDPriceLevel", fragStart);            
+            IDX1_MDEntryType = from.lookupIDX("MDEntryType", fragStart);
+            IDX1_OpenCloseSettleFlag = from.lookupIDX("OpenCloseSettleFlag", fragStart);
+            IDX1_SecurityIDSource = from.lookupIDX("SecurityIDSource", fragStart);
+            IDX1_SecurityID = from.lookupIDX("SecurityID", fragStart);
+            IDX1_RptSeq = from.lookupIDX("RptSeq", fragStart);
+            IDX1_MDEntryPx = from.lookupIDX("MDEntryPx", fragStart);            
+            IDX1_MDEntryTime = from.lookupIDX("MDEntryTime", fragStart);
+            IDX1_MDEntrySize = from.lookupIDX("MDEntrySize", fragStart);
+            IDX1_NumberOfOrders = from.lookupIDX("NumberOfOrders", fragStart);
+            IDX1_TradingSessionID = from.lookupIDX("TradingSessionID", fragStart);
+            IDX1_NetChgPrevDay = from.lookupIDX("NetChgPrevDay", fragStart);
+            IDX1_TradeVolume = from.lookupIDX("TradeVolume", fragStart);
+            IDX1_TradeCondition = from.lookupIDX("TradeCondition", fragStart);
+            IDX1_TickDirection = from.lookupIDX("TickDirection", fragStart);
+            IDX1_QuoteCondition = from.lookupIDX("QuoteCondition", fragStart);
+            IDX1_AggressorSide = from.lookupIDX("AggressorSide", fragStart);
+            IDX1_MatchEventIndicator = from.lookupIDX("MatchEventIndicator", fragStart);
             
             
             //TODO: B, this is the beginning of a unit test.
@@ -364,10 +366,12 @@ public class ThreadingTest {
             
             
             templateId = 2;
-            IDX2_AppVerId = from.lookupIDX(templateId,"ApplVerID"); 
-            IDX2_MessageType = from.lookupIDX(templateId, "MessageType");
-            IDX2_SenderCompID = from.lookupIDX(templateId, "SenderCompID");
-            IDX2_MsgSeqNum = from.lookupIDX(templateId, "MsgSeqNum");
+            fragStart = reactor.fragmentStart(templateId);
+            
+            IDX2_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
+            IDX2_MessageType = from.lookupIDX("MessageType", fragStart);
+            IDX2_SenderCompID = from.lookupIDX("SenderCompID", fragStart);
+            IDX2_MsgSeqNum = from.lookupIDX("MsgSeqNum", fragStart);
             
             validate("ApplVerID", 2, IDX2_AppVerId);
             validate("MessageType", 4, IDX2_MessageType);
@@ -375,6 +379,7 @@ public class ThreadingTest {
             validate("MsgSeqNum", 8, IDX2_MsgSeqNum);
             
             templateId = 99;
+            fragStart = reactor.fragmentStart(templateId);
             
             
             
@@ -390,9 +395,9 @@ public class ThreadingTest {
     }
     
     
-    private void processMessage(char[] temp, RingBuffer rb) {
+    private void processMessage(char[] temp, RingBuffer rb, FASTReaderReactor reactor) {
        
-        populateFieldIDs(rb.consumerData.from); 
+        populateFieldIDs(rb.consumerData.from, reactor); 
 
 
         templateId = readInt(rb, IDX_TemplateId);

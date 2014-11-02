@@ -1,4 +1,4 @@
-package com.ociweb.jfast.field;
+package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;

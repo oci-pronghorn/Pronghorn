@@ -9,9 +9,9 @@ import org.junit.Test;
 
 import com.google.caliper.Benchmark;
 import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.StaticGlue;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.StaticGlue;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;

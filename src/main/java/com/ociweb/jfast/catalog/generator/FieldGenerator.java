@@ -37,6 +37,30 @@ public class FieldGenerator implements ItemGenerator {
         this.initial2 = initial2;
     }
     
+    public FieldGenerator clone(int newOperator) {
+    	return new FieldGenerator(name, id, presence, type, newOperator, initial1);
+    }
+    
+    public FieldGenerator clone(int newOperator1, int newOperator2) {
+    	return new FieldGenerator(name, id, presence, type, newOperator1, newOperator2, initial1,initial2);
+    }
+    
+    public boolean isDecimal() {
+    	 return (TypeMask.Decimal==type || TypeMask.DecimalOptional==type );
+    }
+    
+	public boolean isText() {
+		return (TypeMask.TextASCII==type || TypeMask.TextASCIIOptional==type || TypeMask.TextUTF8==type || TypeMask.TextUTF8Optional==type );
+	}
+	
+	public boolean isByteArray() {
+		return (TypeMask.ByteArray==type || TypeMask.ByteArrayOptional==type );
+	}
+    
+    public boolean isLong() {
+   	 return (TypeMask.LongUnsigned==type || TypeMask.LongUnsignedOptional==type || TypeMask.LongSigned==type || TypeMask.LongSignedOptional==type );
+   }
+    
     public String toString() {
         try {
 			return appendTo("",new StringBuilder()).toString();
@@ -95,5 +119,7 @@ public class FieldGenerator implements ItemGenerator {
             result.append("/>\n");
         }
     }
+
+
 
 }
