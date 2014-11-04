@@ -29,6 +29,7 @@ import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
+import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
@@ -304,8 +305,12 @@ public class ThreadingTest {
             int fragStart;
 
             templateId = 1;
-            fragStart = reactor.fragmentStart(templateId);
-            
+            //TODO: AA, swap out templateId here
+            if (GeneratorUtils.USE_RAW_POSITION) {
+            	fragStart = templateId;
+            } else {
+            	fragStart = reactor.fragmentStart(templateId);
+            }
             IDX1_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
             IDX1_MessageType = from.lookupIDX("MessageType", fragStart);
             IDX1_SenderCompID = from.lookupIDX("SenderCompID", fragStart);

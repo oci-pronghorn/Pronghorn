@@ -8,11 +8,6 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public abstract class FASTDecoder{
     
-    //active state, TODO: C, minimize or remove these. 
-    
-    //all constants always skipped.
-    //decimals as well??
-    
     public final int[] templateStartIdx; 
     
     //runtime count of sequence lengths

@@ -63,7 +63,7 @@ public final class PrimitiveReader {
      //only called when we need more data and the input is not providing any
      //TODO: B, this will be refactored again as we add "reactive streams" into this implementation   
      public void setInputPolicy(InputBlockagePolicy is) {
-       blockagePolicy = is; //TODO: this needs to be specific for this instance?
+       blockagePolicy = is; //TODO: B, this needs to be specific for this instance?
      }
         
     

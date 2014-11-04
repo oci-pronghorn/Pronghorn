@@ -66,9 +66,6 @@ public final class PrimitiveWriter {
     
     public PrimitiveWriter(int initBufferSize, FASTOutput output, boolean minimizeLatency) {
 
-        // TODO: X, POS_POS_MASK can be shortened to only match the length of
-        // buffer. but then buffer always must be a power of two.
-
         this.bufferSize=initBufferSize;
         this.buffer = new byte[bufferSize];
         this.position = 0;
@@ -164,7 +161,6 @@ public final class PrimitiveWriter {
 
             // keep accumulating
             if (targetOffset != sourceOffset) {  
-                //TODO: X, direct write without this move would help lower latency but this design helps throughput.
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
             // stop becomes start so we can build a contiguous block
@@ -200,10 +196,8 @@ public final class PrimitiveWriter {
             }
             // keep accumulating
             if (sourceOffset != targetOffset) {
-                //TODO: X, direct write without this move would help lower latency but this design helps throughput.
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
             }
-   //         System.err.println("error here:"+ reqLength+" "+flushRequest+"   "+writer.position+"   "+writer.limit);
             
             writer.nextBlockSize = writer.bufferSize - (reqLength - flushRequest);
             writer.pendingPosition = sourceOffset + flushRequest;
@@ -213,7 +207,6 @@ public final class PrimitiveWriter {
     private static void finishBlockAndLeaveRemaining(int sourceOffset, int targetOffset, int reqLength, PrimitiveWriter writer) {
         // more to flush than we need
         if (sourceOffset != targetOffset) {
-            //TODO: X, direct write without this move would help lower latency but this design helps throughput.
             System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, reqLength);
         }
         writer.nextBlockSize = writer.bufferSize;

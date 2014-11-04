@@ -62,7 +62,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (dispatch.templateId<0) {
             	           	
             	
-            	System.err.println("start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
+            	System.err.println(dispatch.templateId+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
             	//TODO: A, this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed
             	//      short term hack, rebuild the data without using as many optional fields.
             	PrimitiveReader.printDebugData(reader);
@@ -70,7 +70,22 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             }
             
             // fragment size plus 1 for template id and preamble data length in bytes
-            dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
+            //TODO: AA, swap out templateId here
+            if (GeneratorUtils.USE_RAW_POSITION) {
+            	dispatch.activeScriptCursor = dispatch.templateId; 
+            	
+            	//TODO: what is the templateId for this scriptLocation?
+            	int k = dispatch.templateStartIdx.length;//BIG HACK
+            	while (--k>=0) {
+            		if (dispatch.templateStartIdx[k]==dispatch.activeScriptCursor) {
+            			dispatch.templateId = k;
+            			break;
+            		}
+            	}            	
+            	
+            } else {
+            	dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
+            }
             
             //we know the templateId so we now know which ring buffer to use.
             RingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);          

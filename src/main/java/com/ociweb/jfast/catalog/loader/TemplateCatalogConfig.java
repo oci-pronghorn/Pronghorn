@@ -145,8 +145,7 @@ public class TemplateCatalogConfig {
         int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = clientConfig;
         
-        this.from = TemplateCatalogConfig
-				.createFieldReferenceOffsetManager(this); //TODO: needs max depth for all
+        this.from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
         
         this.ringBuffers = buildRingBuffers(dictionaryFactory,
                                             fullScriptLength, 

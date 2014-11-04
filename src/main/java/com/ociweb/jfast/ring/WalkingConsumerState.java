@@ -3,6 +3,7 @@ package com.ociweb.jfast.ring;
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.util.Stats;
 
 public class WalkingConsumerState {
@@ -29,6 +30,12 @@ public class WalkingConsumerState {
 	final int[] activeFragmentStack;
 	int   activeFragmentStackHead = 0;
     
+	
+	public WalkingConsumerState(int mask, FieldReferenceOffsetManager from) {
+		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
+	}
+	
+	
     public WalkingConsumerState(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
                                     long tailCache, FieldReferenceOffsetManager from, int rbMask) {
@@ -133,7 +140,7 @@ public class WalkingConsumerState {
 	}
 
 	public static boolean canMoveNext(RingBuffer ringBuffer) { 
-	    WalkingConsumerState ringBufferConsumer = ringBuffer.consumerData; //TODO: should probably remove this to another object
+	    WalkingConsumerState ringBufferConsumer = ringBuffer.consumerData; //TODO: B, should probably remove this to another object
 	    
 	    //check if we are only waiting for the ring buffer to clear
 	    if (ringBufferConsumer.waiting) {
@@ -223,7 +230,13 @@ public class WalkingConsumerState {
 	           
 	    ringBufferConsumer.setMessageId(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
 	    //start new message, can not be seq or optional group or end of message.
-	    ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
+	    
+	    //TODO: AA, swap out templateId here
+	    if (GeneratorUtils.USE_RAW_POSITION) {
+	    	ringBufferConsumer.cursor = ringBufferConsumer.getMessageId();	    	
+	    } else {
+	    	ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
+	    }
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //////

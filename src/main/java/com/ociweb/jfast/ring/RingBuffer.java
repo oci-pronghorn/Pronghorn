@@ -113,8 +113,7 @@ public final class RingBuffer {
         this.constByteBuffer = byteConstants;
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
                 
-        this.consumerData = new WalkingConsumerState(-1, false, false, -1, -1,
-                                                       -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
+        this.consumerData = new WalkingConsumerState(mask, from);
     }
 
     
@@ -175,7 +174,7 @@ public final class RingBuffer {
         	
         	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
         	int headPos = p & targetMask;
-        	if (tailPos!=headPos) { //either full or empty can't tell TODO: A, add count? but how?
+        	if (tailPos!=headPos) { //either full or empty can't tell TODO: A, use the absolute position.
 	        	if (headPos<tailPos) {
 	        		headPos += (targetMask+1);
 	        	}
@@ -230,12 +229,7 @@ public final class RingBuffer {
         
     } 
     
-    
-    
-    //TODO: X, Will want to add local cache of atomic in unBlock in order to not lazy set twice because it is called for every close.
-    //Called once for every group close, even when nested
-    //TODO: B, write padding message if this unblock is the only fragment in the queue.
-    
+       
     
     public static void dump(RingBuffer rb) {
                        

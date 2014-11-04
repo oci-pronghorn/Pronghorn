@@ -22,6 +22,7 @@ public class GeneratorUtils {
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true;
     
+    public static final boolean USE_RAW_POSITION = false; //TODO: AA, need to modify the generated code before this will work.
     
     //TODO: C, confirm this is a good or bad feature. leave true until we decide on this performance idea.
     public final static boolean WRITE_CONST = true; 
@@ -608,7 +609,7 @@ public class GeneratorUtils {
             generatorData.runningComplexity = 0;
             generatorData.lastFieldParaValues="_";
         } else {
-            //TODO: X, if the previous para values are the same and if the method will not be too large and still in the same group.
+            //if the previous para values are the same and if the method will not be too large and still in the same group.
             // back up field builder and add the new block into the existing method, no field call needs to be added to case/group
             String curFieldParaValues = fieldParaValues.toString();
             int additionalComplexity = complexity(template);

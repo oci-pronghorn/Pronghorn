@@ -19,7 +19,7 @@ public class FieldReferenceOffsetManager {
     public int[] fragDataSize;
     public int[] fragScriptSize;
     public int[] tokens;
-    public int[] starts;
+    public int[] starts; //TODO: make templateID in message the same as the cursor so this lookup will no longer be needed.
 
     public String[] fieldNameScript;
     public int maximumFragmentStackDepth;
@@ -67,7 +67,6 @@ public class FieldReferenceOffsetManager {
     
     //TODO: this direct mapping may be a problem for giant sparse templateIDs
     //TODO: need an easy way to construct these for unit test
-    //TODO: need to move the token types in to ring package?
     
     
 	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, int[] startsLocal, String[] fieldNameScriptLocal) {
