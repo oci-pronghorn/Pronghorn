@@ -1,6 +1,9 @@
 package com.ociweb.jfast.ring;
 
 import static com.ociweb.jfast.ring.RingBuffer.addByteArray;
+import static com.ociweb.jfast.ring.RingBuffer.byteBackingArray;
+import static com.ociweb.jfast.ring.RingBuffer.byteMask;
+import static com.ociweb.jfast.ring.RingBuffer.bytePosition;
 import static com.ociweb.jfast.ring.RingBuffer.headPosition;
 import static com.ociweb.jfast.ring.RingBuffer.publishWrites;
 import static com.ociweb.jfast.ring.RingBuffer.releaseReadLock;
@@ -18,14 +21,12 @@ import org.junit.Test;
 
 public class RingBufferPipeline {
 
+	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 100000;
-	private final int stages = 2;
-	private final byte primaryBits   = 20;
-	private final byte secondaryBits = 26;
-		
-    private final int chunkBits = 4; 
-    private final int chunkMask = (1<<chunkBits)-1;
+	private final int testMessages = 30000000;
+	private final int stages = 5;
+	private final byte primaryBits   = 16;
+	private final byte secondaryBits = 28;//TODO: Warning if this is not big enough it will hang.
     
 	@Test
 	public void pipelineExample() {
@@ -42,15 +43,15 @@ public class RingBufferPipeline {
 		 }
 		 
 		 //start the timer		 
-		 long start = System.nanoTime();
+		 long start = System.currentTimeMillis();
 		 
 		 //add all the stages start running
 		 j = 0;
 		 service.submit(createStage(rings[j]));
-//		 int i = stages-2;
-//		 while (--i>=0) {
-//			 service.submit(copyStage(rings[j++], rings[j]));			 
-//		 }
+		 int i = stages-2;
+		 while (--i>=0) {
+			 service.submit(copyStage(rings[j++], rings[j]));			 
+		 }
 		 service.submit(dumpStage(rings[j]));
 		 
 		 //prevents any new jobs from getting submitted
@@ -61,14 +62,16 @@ public class RingBufferPipeline {
 		 } catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		 }
-		 long duration = System.nanoTime()-start;
+		 long duration = System.currentTimeMillis()-start;
 		 
+		 long bytes = testMessages * testArray.length;
+		 long bpms = (bytes*8)/duration;
+		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages);
 		 
 		 		 
 	}
 
-	 
-	
+	 	
 	 
 	private Runnable createStage(final RingBuffer outputRing) {
 		
@@ -78,7 +81,7 @@ public class RingBufferPipeline {
 			@Override
 			public void run() {
 								
-		      int fill = 2;
+		      int fill =  (1<<(primaryBits>>2));
 		      
 	          int messageCount = testMessages;            
 	          //keep local copy of the last time the tail was checked to avoid contention.
@@ -87,30 +90,86 @@ public class RingBufferPipeline {
 	        	  
 	              //write the record
                   addByteArray(testArray, 0, testArray.length, outputRing);
-
-	              if (0==(messageCount & chunkMask) ) {
-	                  publishWrites(outputRing);
-	                  //wait for room to fit one message
-	                  //waiting on the tailPosition to move the others are constant for this scope.
-	                  //workingHeadPositoin is same or greater than headPosition
-	                  tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
-	              }            
+                  
+                  publishWrites(outputRing);
+                  //wait for room to fit one message
+                  //waiting on the tailPosition to move the others are constant for this scope.
+                  //workingHeadPositoin is same or greater than headPosition
+                  tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
+          
 	          }
 
 	          //send negative length as poison pill to exit all runnables  
 	      	  addByteArray(testArray, 0, -1, outputRing);
+	      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
 	      	  System.out.println("finished writing:"+testMessages);
 			}
 		};
 	}
 
-	private Runnable copyStage(RingBuffer inputRing, RingBuffer outputRing) {
+	//NOTE: this is an example of a stage that reads from one ring buffer and writes to another.
+	private Runnable copyStage(final RingBuffer inputRing, final RingBuffer outputRing) {
 		
-		
-		
-		
-		// TODO Auto-generated method stub
-		return null;
+		return new Runnable() {
+
+			@Override
+			public void run() {
+                //only enter this block when we know there are records to read
+    		    long inputTarget = 2;
+                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
+                
+                int x = -2;
+                
+                //two per message, and we only want half the buffer to be full
+                long outputTarget = 0-(1<<(primaryBits>>2));//this value is negative
+                
+                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
+                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
+                while (true) {
+                    //read the message
+                    // 	System.out.println("reading:"+messageCount);
+                    	
+                	int meta = takeRingByteMetaData(inputRing);
+                	int len = takeRingByteLen(inputRing);
+                	
+                	byte[] data = byteBackingArray(meta, inputRing);
+                	int offset = bytePosition(meta, inputRing, len);
+
+                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
+                	 //write the record
+
+					
+					if (len<0) {
+						releaseReadLock(inputRing);  
+						addByteArray(data, offset, len, outputRing);
+						publishWrites(outputRing);
+						return;
+					}
+					
+					//TODO: there is a more elegant way to do this but ran out of time.
+					if ((offset&mask) > ((offset+len) & mask)) {
+						//rolled over the end of the buffer
+						 int len1 = 1+mask-(offset&mask);
+						 addByteArray(data, offset&mask, len1, outputRing);
+						 addByteArray(data, 0, len-len1 ,outputRing);
+						 outputTarget+=4;
+					} else {						
+						//simple add bytes
+						 addByteArray(data, offset&mask, len, outputRing);
+						 outputTarget+=2;
+					}
+                    publishWrites(outputRing);
+                    
+                    releaseReadLock(inputRing);  
+
+                	
+                	//block until one more byteVector is ready.
+                	inputTarget += 2;
+                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
+                    
+                }  
+			}
+		};
 	}
 	
 	private Runnable dumpStage(final RingBuffer inputRing) {
@@ -122,166 +181,44 @@ public class RingBufferPipeline {
             @Override
             public void run() {           	
     	            	
-            		    int granularity = 4;
-            	
-	                    //only enter this block when we know there are records to read
-	                    long headPosCache = spinBlockOnHead(headPosition(inputRing), tailPosition(inputRing)-granularity, inputRing);	
-	                    long messageCount = 0;
-	                    System.out.println("started");
-	                    while (true) {
-	                        //read the message
-	                   // 	System.out.println(messageCount);
-	                        	
-                        	int meta = takeRingByteMetaData(inputRing);
-                        	int len = takeRingByteLen(inputRing);
+                    //only enter this block when we know there are records to read
+        		    long target = 2;
+                    long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);	
+                    long messageCount = 0;
+                    while (true) {
+                        //read the message
+                        // 	System.out.println("reading:"+messageCount);
                         	
-                        	if (len<0) {
-                        		System.out.println("exited after reading: Msg:" + messageCount+" Bytes:"+total);
-                        		return;
-                        	}
-                        	
-                        	total += len;
-                        	
-                        	//doing nothing with the data
-	                        
-	                        //allow writer to write up to new tail position
-                        	 if (0==(messageCount & chunkMask) ) {
-                        	//	 System.out.println(messageCount);
-                        		 releaseReadLock(inputRing);
-                        		 headPosCache = spinBlockOnHead(headPosCache, tailPosition(inputRing)-granularity, inputRing);	                        	    	                        		
-                        	 }
-	                        messageCount++;
-	                    }   
+                    	int meta = takeRingByteMetaData(inputRing);
+                    	int len = takeRingByteLen(inputRing);
+                    	
+    					byte[] data = byteBackingArray(meta, inputRing);
+    					int offset = bytePosition(meta, inputRing, len);
+    					int mask = byteMask(inputRing);
+   					
+    					
+                    	//doing nothing with the data
+                    	releaseReadLock(inputRing);
+
+                    	if (len<0) {
+                    		System.out.println("exited after reading: Msg:" + messageCount+" Bytes:"+total);
+                    		return;
+                    	}
+                    	
+                    	messageCount++;
+                    	
+                    	total += len;
+
+                    	//block until one more byteVector is ready.
+                    	target += 2;
+                    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
+                        
+                    }   
+                    
             }                
         };
 	}
 
-	
-	
-//    @Test
-//    public void byteBlockRingSpeedTest() {
-//        
-//    	//TODO: making this string long causes collision and ovderwrite!!
-//    	final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-//    	
-//        final int totalMesssages = 200000;
-//                                           
-//        //grouping fragments together gives a clear advantage but more latency
-//        //as this gets near half the primary bits size the performance drops off
-//        //tuning values here can greatly help throughput but should remain <= 1/3 of primary bits
-//        final int chunkBits = 4; 
-//        final int chunkMask = (1<<chunkBits)-1;
-//        
-//        //must be big enough for the message sizes between publish requests
-//        byte primaryBits = 16; 
-//        
-//        //given maximum bytes used per message and the maximum messages in the above queue how long does the 
-//        //inner queue have to be so it does not wrap on its self.
-//        int temp = ((1<<(primaryBits-1)))*testArray.length;
-//        int b = 0;
-//        while (temp!=0) {
-//        	b++;
-//        	temp>>=1;
-//        }
-//
-//        byte charBits = (byte)b;        
-//                        
-//        final int tests = 3;
-//        final int totalMessageFields = 256; //Must not be bigger than primary buffer size
-//        final int granularity = totalMessageFields<<chunkBits;
-//        final int fill =  (1<<primaryBits)-granularity;
-//                
-//        ExecutorService exService = Executors.newFixedThreadPool(4);
-//
-//                                
-//        //writes will only hang if the reader has died and there is no room in the queue.
-//        
-//        int testRunCount = tests;
-//        while (--testRunCount>=0) {     
-//
-//            long start = System.nanoTime();
-//            
-//            final RingBuffer ring = new RingBuffer(primaryBits, charBits);
-//            //creating an anonymous inner class that implements runnable so we can hand this
-//            //off to the execution service to be run on another thread while this thread does the writing.
-//            Runnable reader = new Runnable() {
-//
-//                @Override
-//                public void run() {           	
-//        	
-//    	                    int messageCount = totalMesssages;
-//    	                    
-//    	                    //only enter this block when we know there are records to read
-//    	                    long headPosCache = spinBlockOnHead(headPosition(ring), tailPosition(ring)+granularity, ring);	                    
-//    	                    while (--messageCount>=0) {
-//    	                        //read the message
-//    	                    	int messageFieldCount = totalMessageFields;
-//    	                        while (--messageFieldCount>=0) {
-//    	                        	
-//    	                        	int meta = takeRingByteMetaData(ring);
-//    	                        	int len = takeRingByteLen(ring);
-//
-//    	                        	validateBytes(testArray, ring, granularity,	messageFieldCount, meta, len);
-//    	                            
-//    	                        }
-//    	                        
-//    	                        //allow writer to write up to new tail position
-//    	                        if (0==(messageCount&chunkMask) ) {
-//    	                        	releaseReadLock(ring);
-//    	                        	if (messageCount>0) {
-//    	                        		headPosCache = spinBlockOnHead(headPosCache, tailPosition(ring)+granularity, ring);	                        	    	                        		
-//    	                        	}
-//    	                        }	                        
-//    	                    }                    
-//                }                
-//            };
-//            
-//            
-//            exService.submit(reader);//this reader starts running immediately
-//                       
-//            
-//            int messageCount = totalMesssages;            
-//            //keep local copy of the last time the tail was checked to avoid contention.
-//            long tailPosCache = spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);                        
-//            while (--messageCount>=0) {
-//                //write the record
-//                int messageFieldCount = totalMessageFields;
-//                while (--messageFieldCount>=0) {
-//                	addByteArray(testArray, 0, testArray.length, ring);
-//                }
-//                if (0==(messageCount&chunkMask) ) {
-//                    publishWrites(ring);
-//                    //wait for room to fit one message
-//                    //waiting on the tailPosition to move the others are constant for this scope.
-//                    //workingHeadPositoin is same or greater than headPosition
-//                    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(ring)-fill, ring);
-//                }
-//                                
-//            }
-//            //wait until the other thread is finished reading
-//            tailPosCache = spinBlockOnTailTillMatchesHead(tailPosCache, ring);
-//
-//            long duration = System.nanoTime()-start;
-//            
-//            float milMessagePerSec = 1000f*(totalMesssages/(float)duration);
-//            int fieldSize = testArray.length;
-//            float milBitsPerSec = milMessagePerSec*totalMessageFields*fieldSize*8;
-//            
-//            System.out.println("byte transfer test");
-//            System.out.println("	million bits per second:"+milBitsPerSec);
-//            System.out.println("	million messages per second:"+milMessagePerSec+" duration:"+duration);
-//            System.out.println("	million fields per second:"+(totalMessageFields*milMessagePerSec));
-//            
-//        }
-//
-//        //clean shutdown of thread executor
-//        exService.shutdown();
-//        try {
-//			exService.awaitTermination(10, TimeUnit.SECONDS);
-//		} catch (InterruptedException e) {
-//			//ignore we are exiting
-//		}
-//    }
 	
 	 
 	

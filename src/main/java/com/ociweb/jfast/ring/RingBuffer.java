@@ -295,7 +295,6 @@ public final class RingBuffer {
     }
 
     public static void setWorkingTailPosition(RingBuffer ring, long position) {
-    	System.err.println("set working position");
     	ring.workingTailPos.value = position;
     }
     
@@ -304,7 +303,6 @@ public final class RingBuffer {
     }
     
     public static void releaseReadLock(RingBuffer ring) {
-    	    	
     	ring.tailPos.lazySet(ring.workingTailPos.value);
     	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
     	//unlike the primary ring positions this one requires a clear of the value
