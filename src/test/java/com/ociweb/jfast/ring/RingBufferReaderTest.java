@@ -6,7 +6,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.ring.RingReader;
 
-public class FASTRingBufferReaderTest {
+public class RingBufferReaderTest {
 
     
     @Test

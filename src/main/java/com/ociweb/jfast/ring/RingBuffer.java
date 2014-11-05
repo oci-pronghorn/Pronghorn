@@ -295,6 +295,7 @@ public final class RingBuffer {
     }
 
     public static void setWorkingTailPosition(RingBuffer ring, long position) {
+    	System.err.println("set working position");
     	ring.workingTailPos.value = position;
     }
     

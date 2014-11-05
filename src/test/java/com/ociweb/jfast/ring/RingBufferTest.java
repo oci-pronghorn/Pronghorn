@@ -29,7 +29,7 @@ import org.junit.Test;
 
 import com.ociweb.jfast.ring.RingBuffer;
 
-public class FASTRingBufferTest {
+public class RingBufferTest {
 
    //only here outside the scope of the method to prevent escape analysis from detecting that
    //the timing loop is doing no work and then optimizing it away.
