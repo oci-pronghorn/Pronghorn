@@ -74,7 +74,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             if (GeneratorUtils.USE_RAW_POSITION) {
             	dispatch.activeScriptCursor = dispatch.templateId; 
             	
-            	//TODO: what is the templateId for this scriptLocation?
+            	//TODO: B,  what is the templateId for this scriptLocation?
             	int k = dispatch.templateStartIdx.length;//BIG HACK
             	while (--k>=0) {
             		if (dispatch.templateStartIdx[k]==dispatch.activeScriptCursor) {
@@ -1552,7 +1552,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadLongSignedNoneOptional(long constAbsent, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         {
             long value = PrimitiveReader.readLongSigned(reader);
-            if (0==value) { //TODO: make branchless or move to client side for all cases.
+            if (0==value) {
                 RingBuffer.addValue(rbB,rbMask,rbPos, (int) (constAbsent >>> 32), (int) (constAbsent & 0xFFFFFFFF));
             } else {
                 long tmpLng= (-1 + (value + (value >>> 63)));

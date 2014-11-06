@@ -2,9 +2,7 @@ package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.RingReader;
 import com.ociweb.jfast.ring.RingBuffer.PaddedLong;
 
 public class StaticGlue {
