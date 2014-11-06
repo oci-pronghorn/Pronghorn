@@ -21,8 +21,10 @@ public abstract class BaseStreamingTest {
 	private final float PCT_LIMIT = 200; //if avg is 200 pct above min then fail
 	private final float MAX_X_LIMIT = 40f;//if max is 20x larger than avg then fail
 	
-	private final int sampleSize       = 100000;
-	protected final int fields         = 100;
+	protected int sampleSize           = 100000;
+	protected int warmup               = 10000;
+	protected int fields               = 100;
+	
 	protected final int fieldsPerGroup = 10;
 	protected final int maxMPapBytes   = (int)Math.ceil(fieldsPerGroup/7d);
 	
@@ -32,7 +34,7 @@ public abstract class BaseStreamingTest {
 	protected void tester(int[] types, int[] operators, String label, int byteFields) {	
 		
 		int operationIters = 7;
-		int warmup         = 10000;
+		int warmup         = this.warmup;
 		int singleCharLength = 128;
 		String readLabel = "Read "+label+" groups of "+fieldsPerGroup+" ";
 		String writeLabel = "Write "+label+" groups of "+fieldsPerGroup;

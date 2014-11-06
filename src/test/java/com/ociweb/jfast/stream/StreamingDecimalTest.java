@@ -44,6 +44,11 @@ public class StreamingDecimalTest extends BaseStreamingTest {
 
     FASTReaderInterpreterDispatch fr;
 
+    public StreamingDecimalTest() {
+    	this.sampleSize = 100;
+    	this.fields = 10;
+    }
+    
     // NO PMAP
     // NONE, DELTA, and CONSTANT(non-optional)
 
