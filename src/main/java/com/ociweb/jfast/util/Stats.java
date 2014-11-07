@@ -14,7 +14,7 @@ public class Stats {
     private long min;
     private long max;
     private long step;
-    private long total;
+    private long sampleCount;
     private int compactions;
     private long accum;
     private long maxValue = Long.MIN_VALUE;
@@ -41,50 +41,57 @@ public class Stats {
         this.max = this.min + (this.step*this.buckets.length);        
     }
     
-    public void sample(long value) {
-        
-        if (value>maxValue) {
-            maxValue = value;
-            maxValueIdx = total;
+    public static long accumulatedTotal(Stats me) {
+    	return me.accum;
+    }
+    
+    public static long sampleCount(Stats me) {
+        return me.sampleCount;
+    }
+    
+    public static void sample(long value, Stats me) {
+		//TODO: rewite smaller
+    	
+		me.accum +=value;
+		me.sampleCount++;
+
+		if (value>me.maxValue) {
+			me.maxValue = value;
+			me.maxValueIdx = me.sampleCount;
         }
-        if (value<minValue) {
-            minValue = value;
-            minValueIdx = total;
+        if (value<me.minValue) {
+        	me.minValue = value;
+        	me.minValueIdx = me.sampleCount;
         }
-        
-        accum +=value;
-        total++;
-        
+                
         int bIdx;
-        if (value>hardMax) {
+        if (value>me.hardMax) {
             //do not grow but do count this one
             //values too large will end up pooling in the last bucket
-            bIdx = buckets.length-1;            
+            bIdx = me.buckets.length-1;            
         } else {
-            if (value<hardMin) {
+            if (value<me.hardMin) {
                 //do not grow but do count this one
                 //values too small will end up pooling in the first bucket
                 bIdx = 0;
             } else {
-                while (value>max) {
+                while (value>me.max) {
                     //grow up
-                    newMax();
+                	me.newMax();
                 }
-                while (value<min) {
+                while (value<me.min) {
                     //grow down
-                    newMin();
+                	me.newMin();
                 }
-                bIdx = (int)((value-min)/step);
+                bIdx = (int)((value-me.min)/me.step);
             }
         }
         
-        if (++buckets[bIdx]>COMPACT_LIMIT) {
+        if (++me.buckets[bIdx]>me.COMPACT_LIMIT) {
             //compact
-            compact();
+        	compact(me);
         }
-        
-        
-    }
+	}
 
     private void newMax() {        
       //double up everything to make it fit.
@@ -114,28 +121,25 @@ public class Stats {
         
     }
 
-    private void compact() {
+    private static void compact(Stats me) {
         //halve all the values in order to keep rolling with the data.
         
-        total = total>>1;
-        int i = buckets.length;
+        me.sampleCount = me.sampleCount>>1;
+        int i = me.buckets.length;
         while (--i>=0) {
-            buckets[i] >>= 1;
+        	me.buckets[i] >>= 1;
         }
         
-        compactions++;
+        me.compactions++;
     }
     
     public int compactions() {
         return compactions;
     }
-    
-    public long total() {
-        return total;
-    }
+   
     
     public long valueAtPercent(double pct) {
-        long topDownTarget = total-(long)(pct*total);
+        long topDownTarget = sampleCount-(long)(pct*sampleCount);
         int i = buckets.length;
         long sum = 0;
         int lastValidBucket = -1;
@@ -151,7 +155,7 @@ public class Stats {
     }
     
     public String toString() {
-        double avg = (accum/(float)total);
+        double avg = (accum/(float)sampleCount);
         return "25%["+valueAtPercent(.25)+"] "
                 + "50%["+valueAtPercent(.5)+"] "
                 + "60%["+valueAtPercent(.6)+"] "

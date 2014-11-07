@@ -1391,24 +1391,27 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writePMapBit((byte)1, writer);
                     PrimitiveWriter.writeNull(writer);
                 }// null for Copy and Increment 
-             } else {        
-                 int value1 = (1+(exponentValue + (exponentValue >>> 31)));
-                if (value1 == rIntDictionary[exponentSource]) {
-                    PrimitiveWriter.writePMapBit((byte)0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte)1, writer);
-                    PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value1, writer);
-                }
+             } else {  
+            	 {
+	                int value1 = (1+(exponentValue + (exponentValue >>> 31)));
+	                if (value1 == rIntDictionary[exponentSource]) {
+	                    PrimitiveWriter.writePMapBit((byte)0, writer);
+	                } else {
+	                    PrimitiveWriter.writePMapBit((byte)1, writer);
+	                    PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value1, writer);
+	                }
+            	 }
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                
-                 //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
-                 if (value == rLongDictionary[mantissaSource]) {
-                    PrimitiveWriter.writePMapBit((byte)0, writer);
-                } else {
-                    PrimitiveWriter.writePMapBit((byte)1, writer);
-                    PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = value, writer);
-                }
+                 {
+	                 //mantissa
+	                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+	                 if (value == rLongDictionary[mantissaSource]) {
+	                    PrimitiveWriter.writePMapBit((byte)0, writer);
+	                } else {
+	                    PrimitiveWriter.writePMapBit((byte)1, writer);
+	                    PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = value, writer);
+	                }
+                 }
              }
          }
      }

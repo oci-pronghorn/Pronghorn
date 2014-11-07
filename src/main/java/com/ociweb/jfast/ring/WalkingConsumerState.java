@@ -62,10 +62,10 @@ public class WalkingConsumerState {
                 
         if ((--ringBufferConsumer.rateAvgCnt)<0) {
         
-            ringBufferConsumer.queueFill.sample(ringBufferConsumer.bnmHeadPosCache - newTailPos);
+            Stats.sample(ringBufferConsumer.bnmHeadPosCache - newTailPos, ringBufferConsumer.queueFill);
             long now = System.nanoTime();
             if (ringBufferConsumer.lastTime>0) {
-                ringBufferConsumer.timeBetween.sample(now-ringBufferConsumer.lastTime);
+                Stats.sample(now-ringBufferConsumer.lastTime, ringBufferConsumer.timeBetween);
             }
             ringBufferConsumer.lastTime = now;
             

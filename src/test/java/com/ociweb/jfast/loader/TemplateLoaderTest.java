@@ -291,7 +291,7 @@ public class TemplateLoaderTest {
                System.exit(0);
             }
             if (iter<count) {
-                stats.sample((long)duration);
+                Stats.sample((long)duration, stats);
                 
                 if ((0x7F & iter) == 0) {
                     int ns = (int) stats.valueAtPercent(.60);//duration;
@@ -320,7 +320,7 @@ public class TemplateLoaderTest {
    //         rb.tailPos.lazySet(rb.workingTailPos.value);
 
         }
-        System.err.println(stats.toString()+" ns  total:"+stats.total());
+        System.err.println(stats.toString()+" ns  total:"+Stats.sampleCount(stats));
         
         System.err.println(Profile.results());
 

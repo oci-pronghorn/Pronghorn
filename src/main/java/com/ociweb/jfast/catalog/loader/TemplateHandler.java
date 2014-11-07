@@ -145,6 +145,8 @@ public class TemplateHandler extends DefaultHandler {
         this.activeDictionary = dictionaryNames.indexOf(globalDictionaryName);
 
     }
+    
+    static long counter = 0;
 
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 
@@ -334,6 +336,11 @@ public class TemplateHandler extends DefaultHandler {
             fieldName = attributes.getValue("name");
             
             templateId = Integer.valueOf(attributes.getValue("id"));
+            
+            if (0==(++counter & 0xFFF)) {
+            	System.err.println(counter+" parse template:"+templateId);
+            }
+            
             if (0 != templateIdx[templateId]) {
                 throw new SAXException("Duplicate template id: " + templateId);
             }
@@ -879,7 +886,13 @@ public class TemplateHandler extends DefaultHandler {
         int j = resetList.size();
         while (--j >= 0) {
         	final int d = j >>> TokenBuilder.BITS_TYPE;
-            if (d == target) {    	                
+            if (d == target) {    
+            	
+//            	int size = resetList.get(j).size();
+//            	if (size>0) {
+//            		maxTokens = maxTokens + size + 1;
+//            	}
+            	
 	        	List<Integer> list = resetList.get(j);        	
 	        	if (!list.isEmpty()) {
 	        		maxTokens = maxTokens + list.size() + 1;
@@ -901,7 +914,9 @@ public class TemplateHandler extends DefaultHandler {
 
         defaultConstValues.setTypeCounts(tokenBuilderIntCount.intValue(), 
                                tokenBuilderLongCount.intValue(),
-                               tokenBuilderByteCount.intValue(), 16, 128);
+                               tokenBuilderByteCount.intValue(), 
+                               16, 
+                               128); //TODO: get the max string length.
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         
