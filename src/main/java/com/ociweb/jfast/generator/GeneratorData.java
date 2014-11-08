@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.jfast.util.MurmurHash;
 
 public class GeneratorData {
     public SourceTemplates templates;
@@ -24,6 +25,8 @@ public class GeneratorData {
     public String caseTail;
     public Set<Integer> sequenceStarts;
     public byte[] origCatBytes;
+    public int[] hashedCat;
+    
     public int runningComplexity;
     public String lastFieldParaValues;
     public Map<String, AtomicInteger> usages;
@@ -55,7 +58,10 @@ public class GeneratorData {
             int runningComplexity, 
             String lastFieldParaValues,
             Class clazz) {
-        this.origCatBytes = catBytes;
+    	
+        this.origCatBytes = catBytes;        
+        this.hashedCat = hashCatBytes(catBytes);        
+        
         this.caseParaDefs = new ArrayList<String>();
         this.caseParaVals = new ArrayList<String>();
         this.caseTail = caseTail;
@@ -73,4 +79,29 @@ public class GeneratorData {
         this.dictionaryBuilderInt = new StringBuilder();
         this.dictionaryBuilderLong = new StringBuilder();
     }
+
+	public static int[] hashCatBytes(byte[] catBytes) {
+		int seed = 1111;
+		int step = 512;
+		
+		//TODO: may need to make this more advanced to eliminate chance of collision
+		//TODO: use fixed length of ints and cover the same data with different seeds for each index.
+		//      first must confirm that different seeds cause different collision patterns TODO: needs a simple unit test for this.
+		
+		int[] target = new int[(catBytes.length+step-1)/step];
+		
+		int i = 0;
+		int j = 0;
+		while (i<catBytes.length) {
+			int next = i+step;
+			int len = step;
+			if (next>catBytes.length) {
+				next = catBytes.length;
+				len = next-i;
+			}
+			target[j++] = MurmurHash.hash32(catBytes, i, len, seed);
+			i = next;
+		}
+		return target;
+	}
 }

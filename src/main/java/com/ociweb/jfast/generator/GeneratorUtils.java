@@ -36,9 +36,9 @@ public class GeneratorUtils {
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
         target.append("\n");        
-        target.append("public static byte[] catBytes = new byte[]"+(Arrays.toString(generatorData.origCatBytes).replace('[', '{').replace(']', '}'))+";\n"); //static constant
+        target.append("public static int[] hashedCat = new int[]"+(Arrays.toString(generatorData.hashedCat).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
-        target.append("public "+name+"() {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
+        target.append("public "+name+"(byte[] catBytes) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
         target.append("\n");
 
     }

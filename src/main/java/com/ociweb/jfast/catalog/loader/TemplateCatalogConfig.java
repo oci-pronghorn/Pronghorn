@@ -238,10 +238,10 @@ public class TemplateCatalogConfig {
     // //* delta IntegerDelta | ScaledNumberDelta | ASCIIStringDelta
     // |ByteVectorDelta
 
-    public static void save(PrimitiveWriter writer, int uniqueIds, int biggestId, int uniqueTemplateIds,
-            int biggestTemplateId, DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap,
-            int[][] tokenIdxMembers, int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds,
-            String[] catalogScriptFieldNames, int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, ClientConfig clientConfig) {    
+    public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, int biggestTemplateId,
+            DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap, int[][] tokenIdxMembers,
+            int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
+            int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
                 catalogScriptFieldIds, catalogScriptFieldNames,

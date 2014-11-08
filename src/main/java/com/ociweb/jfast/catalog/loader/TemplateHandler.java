@@ -921,12 +921,11 @@ public class TemplateHandler extends DefaultHandler {
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         
         // write catalog data.
-        TemplateCatalogConfig.save(writer, fieldTokensUnique, fieldIdBiggest, templateIdUnique, templateIdBiggest,
-                defaultConstValues, catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers,
-                tokenIdxMemberHeads, catalogScriptTokens, catalogScriptFieldIds, 
-                catalogScriptFieldNames, catalogTemplateScriptIdx, templateIdx,
-                templateLimit, maxGroupTokenStackDepth + 1, // add one for surrounding template
-                clientConfig);
+        TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
+                catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,
+                catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, 
+                catalogTemplateScriptIdx, templateIdx, templateLimit,
+                maxGroupTokenStackDepth + 1, clientConfig);
 
         // close stream.
         PrimitiveWriter.flush(writer);
