@@ -81,27 +81,13 @@ public class GeneratorData {
     }
 
 	public static int[] hashCatBytes(byte[] catBytes) {
-		int seed = 1111;
-		int step = 512;
+		int[] seeds = new int[]{15485863, 104395301, 217645177, 314606869, 413158551, 512927377, 613651349, 715225739};
 		
-		//TODO: may need to make this more advanced to eliminate chance of collision
-		//TODO: use fixed length of ints and cover the same data with different seeds for each index.
-		//      first must confirm that different seeds cause different collision patterns TODO: needs a simple unit test for this.
-		
-		int[] target = new int[(catBytes.length+step-1)/step];
-		
-		int i = 0;
-		int j = 0;
-		while (i<catBytes.length) {
-			int next = i+step;
-			int len = step;
-			if (next>catBytes.length) {
-				next = catBytes.length;
-				len = next-i;
-			}
-			target[j++] = MurmurHash.hash32(catBytes, i, len, seed);
-			i = next;
+		int j = seeds.length;
+		int[] results = new int[j]; 
+		while (--j>=0) {
+			results[j] = MurmurHash.hash32(catBytes, 0, catBytes.length, seeds[j]);			
 		}
-		return target;
+		return results;	
 	}
 }
