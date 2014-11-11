@@ -83,7 +83,9 @@ public class TemplateGenerator implements ItemGenerator {
 
     public static void openTemplate(Appendable result, String name, int id, boolean reset, String dictionary) throws IOException {
         result.append("<template ");
-        result.append("name=\"").append(name).append("\" ");
+        if (null!=name) {
+        	result.append("name=\"").append(name).append("\" ");
+        }
         result.append("id=\"").append(Integer.toString(id)).append("\" ");
         if (reset) {
             result.append("reset=\"").append("Y").append("\" ");

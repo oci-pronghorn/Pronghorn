@@ -53,7 +53,7 @@ public final class RingBuffer {
     public final AtomicLong tailPos = new PaddedAtomicLong(); // producer is allowed to write up to tailPos
     public final AtomicLong headPos = new PaddedAtomicLong(); // consumer is allowed to read up to headPos
     
-    private final int maxByteSize;
+    public final int maxByteSize;
     public final byte[] byteBuffer;
     public final int byteMask;
     public final PaddedInt byteWorkingHeadPos = new PaddedInt();

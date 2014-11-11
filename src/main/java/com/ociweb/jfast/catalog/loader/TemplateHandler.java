@@ -146,8 +146,6 @@ public class TemplateHandler extends DefaultHandler {
 
     }
     
-    static long counter = 0;
-
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 
         if (qName.equalsIgnoreCase("uint32")) {
@@ -336,10 +334,6 @@ public class TemplateHandler extends DefaultHandler {
             fieldName = attributes.getValue("name");
             
             templateId = Integer.valueOf(attributes.getValue("id"));
-            
-            if (0==(++counter & 0xFFF)) {
-            	System.err.println(counter+" parse template:"+templateId);
-            }
             
             if (0 != templateIdx[templateId]) {
                 throw new SAXException("Duplicate template id: " + templateId);
