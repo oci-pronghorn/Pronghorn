@@ -1,6 +1,7 @@
 package com.ociweb.jfast.catalog.loader;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 
@@ -153,7 +154,15 @@ public class ClientConfig {
     public int getCatalogTemplateId() {
         return catalogId;
     }
+
+
+	public int getAbsent32Value(int token) {
+		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add lookup based on token id
+	}
     
+	public long getAbsent64Value(int token) {
+		return TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add lookup based on token id
+	}
     
     
 }

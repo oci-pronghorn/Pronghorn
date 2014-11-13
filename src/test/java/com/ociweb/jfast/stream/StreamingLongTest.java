@@ -24,7 +24,7 @@ import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
 
 public class StreamingLongTest extends BaseStreamingTest {
 
-	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
+	final int groupToken = TokenBuilder.buildToken(TypeMask.Group,maxMPapBytes>0?OperatorMask.Group_Bit_PMap:0,maxMPapBytes);
 	final long[] testData     = buildTestDataUnsignedLong(fields);
 	final long   testConst    = 0; //must be zero because Dictionary was not init with anything else
 	

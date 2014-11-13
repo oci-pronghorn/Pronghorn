@@ -29,7 +29,7 @@ public class TestUtil {
     		int tokenType = types[typeIdx];
     		int tokenOpp = operators[opsIdx];
     		
-    		lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
+    		lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
     				
     	}
     	return lookup;

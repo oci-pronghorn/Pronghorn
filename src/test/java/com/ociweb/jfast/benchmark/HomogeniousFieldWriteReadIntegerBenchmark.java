@@ -83,9 +83,9 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 	static final int MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length-1));
 		
 	
-	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4, TokenBuilder.MASK_ABSENT_DEFAULT);
-	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2, TokenBuilder.MASK_ABSENT_DEFAULT);
-	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0, TokenBuilder.MASK_ABSENT_DEFAULT);
+	static final int largeGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,4);
+	static final int simpleGroupToken = TokenBuilder.buildToken(TypeMask.Group,OperatorMask.Group_Bit_PMap,2);
+	static final int zeroGroupToken = TokenBuilder.buildToken(TypeMask.Group,0,0);
 	
 	
 	public static int[] buildTokens(int count, int[] types, int[] operators) {
@@ -110,7 +110,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			int tokenType = types[typeIdx];
 			int tokenOpp = operators[opsIdx];
-			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count, TokenBuilder.MASK_ABSENT_DEFAULT);
+			lookup[count] = TokenBuilder.buildToken(tokenType, tokenOpp, count);
 					
 		}
 		return lookup;
@@ -152,7 +152,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken,2);
+						     0), simpleGroupToken,2);
 	}
 	
 	public int timeStaticIntegerSignedConstantWR(int reps) {
@@ -160,7 +160,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken,2);
+						     0), simpleGroupToken,2);
 	}
 
 	public int timeStaticIntegerSignedDeltaOptionalWR(int reps) {
@@ -168,7 +168,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				TokenBuilder.buildToken(
 							TypeMask.IntegerSignedOptional,
 						    OperatorMask.Field_Copy, 
-						     0, TokenBuilder.MASK_ABSENT_DEFAULT), simpleGroupToken, 2);
+						     0), simpleGroupToken, 2);
 	}
 	
 	
@@ -221,6 +221,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fr.reset(dcr); //reset message to clear the previous values
+			int constAbsent = TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT);
 			
 			if (pmapSize>0) {
 					PrimitiveReader.openPMap(pmapSize, reader);
@@ -229,8 +230,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			while (--j>=0) {
 				int readFromIdx = -1;
 				int target = token&MAX_INT_INSTANCE_MASK;
-				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
-				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
+				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;				
 				
 				int value = rIntDictionary[target] = (PrimitiveReader.readPMapBit(reader) == 0 ? rIntDictionary[source] :  PrimitiveReader.readIntegerSigned(reader));
 				result |= (0 == value ? constAbsent: (value>0 ? value-1 : value));
@@ -346,6 +346,7 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 			
 			//Not a normal part of read/write record and will slow down test (would be needed per template)
 			//fr.reset(dcr); //reset message to clear the previous values
+			int constAbsent = TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT);
 			
 			if (pmapSize>0) {
 					PrimitiveReader.openPMap(pmapSize, reader);
@@ -355,7 +356,6 @@ public class HomogeniousFieldWriteReadIntegerBenchmark extends Benchmark {
 				int readFromIdx = -1;
 				int target = token&MAX_INT_INSTANCE_MASK;
 				int source = readFromIdx>0? readFromIdx&MAX_INT_INSTANCE_MASK : target;
-				int constAbsent = TokenBuilder.absentValue32(TokenBuilder.extractAbsent(token));
                 // Delta opp never uses PMAP
                 long value = PrimitiveReader.readLongSigned(reader);
                 int result1;

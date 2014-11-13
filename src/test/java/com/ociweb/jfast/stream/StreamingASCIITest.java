@@ -143,7 +143,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         int g = fieldsPerGroup;
 
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
-                maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
+                maxMPapBytes);
 
         fw.openGroup(groupToken, maxMPapBytes, writer);
         
@@ -242,7 +242,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         }
         int g = fieldsPerGroup;
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
-                maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
+                maxMPapBytes);
 
         fr.openGroup(groupToken, maxMPapBytes, reader);
 

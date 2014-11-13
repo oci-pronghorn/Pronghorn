@@ -96,8 +96,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
         LocalHeap dictionaryWriter = new LocalHeap(singleSize, singleGapSize, fixedTextItemCount);
 
-        int token = TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_Tail, 0,
-                TokenBuilder.MASK_ABSENT_DEFAULT);
+        int token = TokenBuilder.buildToken(TypeMask.ByteArray, OperatorMask.Field_Tail, 0);
         byte[] value = new byte[] { 1, 2, 3 };
         int offset = 0;
         int length = value.length;
@@ -325,7 +324,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         int g = fieldsPerGroup;
 
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
-                maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
+                maxMPapBytes);
 
         fw.openGroup(groupToken, maxMPapBytes, writer);
 
@@ -425,7 +424,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         }
         int g = fieldsPerGroup;
         int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
-                maxMPapBytes, TokenBuilder.MASK_ABSENT_DEFAULT);
+                maxMPapBytes);
 
         fr.openGroup(groupToken, maxMPapBytes, reader);
 

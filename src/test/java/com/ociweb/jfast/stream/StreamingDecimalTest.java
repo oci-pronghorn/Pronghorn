@@ -31,7 +31,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
     // mantissa
     final int pmapSize = maxMPapBytes * 2;
     final int groupToken = TokenBuilder.buildToken(TypeMask.Group, maxMPapBytes > 0 ? OperatorMask.Group_Bit_PMap : 0,
-            pmapSize, TokenBuilder.MASK_ABSENT_DEFAULT);
+            pmapSize);
 
     boolean sendNulls = true;
 

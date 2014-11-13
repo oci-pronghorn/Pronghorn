@@ -24,20 +24,17 @@ public class TokenBuilder {
     // See fast writer for details and mask sizes
     public static final int MASK_TYPE = 0x1F; // 5 bits
 
-    public static final int MAX_FIELD_ID_BITS = 19;
+    public static final int MAX_FIELD_ID_BITS = 21;//fills exactly 3 bytes in FAST int encoding
     public static final int MAX_FIELD_ID_VALUE = (1 << MAX_FIELD_ID_BITS) - 1;
     public static final int MAX_INSTANCE = MAX_FIELD_ID_VALUE;
     
     public static final int MAX_FIELD_MASK = 0xFFFFFFFF ^ MAX_FIELD_ID_VALUE;
 
-    public static final int SHIFT_ABSENT = MAX_FIELD_ID_BITS;
-    public static final int BITS_ABSENT = 2; //TODO: A, investigate absent to check if this is still needed.
-    public static final int SHIFT_OPER = SHIFT_ABSENT + BITS_ABSENT;
+    public static final int SHIFT_OPER = MAX_FIELD_ID_BITS;//SHIFT_ABSENT + BITS_ABSENT;
     public static final int BITS_OPER = 5;  
     public static final int SHIFT_TYPE = SHIFT_OPER + BITS_OPER;
     public static final int BITS_TYPE = 5;
 
-    public static final int MASK_ABSENT = (1 << BITS_ABSENT) - 1;
     public static final int MASK_ABSENT_DEFAULT = 0x3; // 2 bits on //default value
 
     public static final int MASK_OPER = (1<<BITS_OPER)-1; 
@@ -57,8 +54,8 @@ public class TokenBuilder {
         return (token >>> TokenBuilder.SHIFT_OPER) & TokenBuilder.MASK_OPER;
     }
 
-    public static int extractAbsent(int token) {
-        return (token >>> TokenBuilder.SHIFT_ABSENT) & TokenBuilder.MASK_ABSENT;
+    public static int extractId(int token) {
+    	return token & TokenBuilder.MAX_FIELD_ID_VALUE;
     }
 
     public static boolean isOptional(int token) {
@@ -83,7 +80,7 @@ public class TokenBuilder {
     }
 
     // Decimals must pass in both operators in the tokenOpps field together
-    public static int buildToken(int tokenType, int tokenOpps, int count, int absentVal) {
+    public static int buildToken(int tokenType, int tokenOpps, int count) {
         assert (count <= MAX_INSTANCE);
         assert (TypeMask.toString(tokenType).indexOf("unknown") == -1) : "Unknown type of " + tokenType + " "
                 + Integer.toHexString(tokenType);
@@ -92,8 +89,7 @@ public class TokenBuilder {
         assert (tokenOpps >= 0);
         assert (tokenOpps <= MASK_OPER) : "Opps " + Integer.toHexString(tokenOpps);
 
-        return 0x80000000 | (tokenType << TokenBuilder.SHIFT_TYPE) | (tokenOpps << TokenBuilder.SHIFT_OPER)
-                | (absentVal << TokenBuilder.SHIFT_ABSENT) | count & MAX_INSTANCE;
+        return 0x80000000 | (tokenType << TokenBuilder.SHIFT_TYPE) | (tokenOpps << TokenBuilder.SHIFT_OPER) | count & MAX_INSTANCE;
 
     }
 

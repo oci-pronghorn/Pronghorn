@@ -85,6 +85,9 @@ public class TemplateHandler extends DefaultHandler {
     int templateIdBiggest = 0;
     int templateIdUnique = 0;
     // holds offset to template in script
+    
+    //TODO: now that huffmen encoding is in here this array is not long enought.
+    
     int[] templateIdx = new int[TokenBuilder.MAX_FIELD_ID_VALUE]; // checking
                                                                   // for unique
                                                                   // templateId
@@ -282,8 +285,7 @@ public class TemplateHandler extends DefaultHandler {
             // upon close of this element the token at that location in the
             // templateScript must have
             // the Count updated to the right value.
-            int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx,
-                    TokenBuilder.MASK_ABSENT_DEFAULT);
+            int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx);
 
             // this token will tell how to get back to the index in the script
             // to fix it.
@@ -310,7 +312,7 @@ public class TemplateHandler extends DefaultHandler {
             // templateScript must have
             // the Count updated to the right value.
             int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq,
-                    catalogTemplateScriptIdx + 1, TokenBuilder.MASK_ABSENT_DEFAULT);// we
+                    catalogTemplateScriptIdx + 1);// we
                                                                                     // jump
                                                                                     // over
                                                                                     // the
@@ -353,7 +355,7 @@ public class TemplateHandler extends DefaultHandler {
             // templateScript must have
             // the Count updated to the right value.
             boolean hasTemplateId = true;//TODO: where do we get this from?  THIS is ONLY set on the group open the close does not need it.
-            int token = TokenBuilder.buildToken(TypeMask.Group, hasTemplateId ? OperatorMask.Group_Bit_Templ : 0, catalogTemplateScriptIdx,   TokenBuilder.MASK_ABSENT_DEFAULT);
+            int token = TokenBuilder.buildToken(TypeMask.Group, hasTemplateId ? OperatorMask.Group_Bit_Templ : 0, catalogTemplateScriptIdx);
 
             // this token will tell how to get back to the index in the script
             // to fix it.
@@ -381,7 +383,7 @@ public class TemplateHandler extends DefaultHandler {
             if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
                 // add Dictionary command to reset in the script
                 int resetToken = TokenBuilder.buildToken(TypeMask.Dictionary, OperatorMask.Dictionary_Reset,
-                        activeDictionary, TokenBuilder.MASK_ABSENT_DEFAULT);
+                        activeDictionary);
 
                 catalogScriptTokens[catalogTemplateScriptIdx] = resetToken;
                 catalogScriptFieldNames[catalogTemplateScriptIdx] = templateName;
@@ -640,8 +642,7 @@ public class TemplateHandler extends DefaultHandler {
             openGroupIdx++; //fieldId already populated do not modify
 
             //add closing group to script
-            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize,
-                                                            TokenBuilder.MASK_ABSENT_DEFAULT);
+            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
             catalogTemplateScriptIdx++; //fieldId already populated do not modify
 
             
@@ -694,8 +695,7 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptFieldIds[openGroupIdx++] = 0;
 
             //add closing group to script
-            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize,
-                                                                    TokenBuilder.MASK_ABSENT_DEFAULT);
+            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
             fieldName=null;//ensure it is only used once
             
@@ -730,8 +730,7 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptFieldIds[openGroupIdx++] = 0;
 
             //add closing group to script
-            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize,
-                                                            TokenBuilder.MASK_ABSENT_DEFAULT);
+            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
             
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
 
@@ -761,8 +760,7 @@ public class TemplateHandler extends DefaultHandler {
 
             //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
             int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
-            newDTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount,
-                    TokenBuilder.MASK_ABSENT_DEFAULT);
+            newDTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount);
                         
             saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
             fieldTokensUnique++;
@@ -788,8 +786,7 @@ public class TemplateHandler extends DefaultHandler {
                 //Only USE Decimal for the exponent field and USE Long for the Mantissa field            
                 int tokenType = TypeMask.LongSigned==saveAsType? saveAsType : fieldType;
                 
-                dTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount,
-                        TokenBuilder.MASK_ABSENT_DEFAULT);
+                dTokens[activeDictionary] = token = TokenBuilder.buildToken(tokenType, fieldOperator, tokCount);
                 
                 
                 saveResetListMembers(activeDictionary, saveAsType, tokCount, fieldOperator);
