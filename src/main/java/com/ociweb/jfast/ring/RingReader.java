@@ -70,13 +70,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static int readDataLength(RingBuffer ring, int idx) {
         return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx) + 1)];// second int is always the length
     }
-
-    @Deprecated
-    public static Appendable readText(RingBuffer ring, int idx, Appendable target) {
-        
-        return readASCII(ring, idx, target);
-
-    }
     
     public static Appendable readASCII(RingBuffer ring, int idx, Appendable target) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];

@@ -82,9 +82,7 @@ public class DispatchLoaderTest {
                     int id = RingReader.readInt(queue, MESSAGE_ID_IDX);
                   //  System.err.println(templateId+" "+id);
                     
-                    String version = RingReader.readText(queue, 
-                       VERSION_IDX, 
-                       new StringBuilder()).toString();
+                    String version = RingReader.readASCII(queue, VERSION_IDX, new StringBuilder()).toString();
 
                    if (records.intValue()<switchToCompiled1) {
                        //Interpreter

@@ -46,8 +46,11 @@ public class RingStreams {
 		//write to outputStream only when we have data on inputRing.
         long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);
 
+        //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
+        //      That change may however increase latency.
+        
         while (true) {
-            	
+            
         	
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
@@ -121,25 +124,25 @@ public class RingStreams {
 	 * @param output
 	 * @param blockSize
 	 */
-	public static void writeBytesToRing(byte[] data, RingBuffer output, int blockSize) {
+	public static void writeBytesToRing(byte[] data, int dataOffset, int dataLength,  RingBuffer output, int blockSize) {
 		assert (output.consumerData.from == FieldReferenceOffsetManager.RAW_BYTES);
 		
 	 	int fill = 1 + output.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		   
 		long tailPosCache = tailPosition(output);    
 		 
-		int position = 0; //position within the data array
-		while (position<data.length) {
+		int position = dataOffset; //position within the data array
+		int stop = dataOffset+dataLength;
+		while (position<stop) {
 			 
-			   tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output);
+			    tailPosCache = spinBlockOnTail(tailPosCache, headPosition(output)-fill, output);
 
-			    int fragmentLength = (int)Math.min(blockSize, data.length-position);
+			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
 		    	RingBuffer.addByteArray(data, position, fragmentLength, output);
 		    	RingBuffer.publishWrites(output);
 		        
 		    	position+=fragmentLength;
-			 
 			 
 		}
 	}
