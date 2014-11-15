@@ -409,7 +409,7 @@ public class HomogeniousRecordWriteReadTextBenchmark extends Benchmark {
 		return result;
 	}
 	
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.TEST);
+	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)7,(byte)16,null, FieldReferenceOffsetManager.RAW_BYTES);
 	
 	protected long staticWriteReadTextGroup(int reps, int token, int groupToken, int pmapSize) {
 		long result = 0;

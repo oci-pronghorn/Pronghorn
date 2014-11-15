@@ -70,7 +70,7 @@ public class MuxTest {
         
         
         
-        RingBuffer decoderIdQueue = new RingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.TEST);
+        RingBuffer decoderIdQueue = new RingBuffer((byte)20,(byte)22,null,FieldReferenceOffsetManager.RAW_BYTES);
         
         
         

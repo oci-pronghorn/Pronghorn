@@ -148,7 +148,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
         
 
-        RingBuffer ring = new RingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.TEST);
+        RingBuffer ring = new RingBuffer((byte)7,(byte)7,LocalHeap.rawInitAccess(fw.byteHeap), FieldReferenceOffsetManager.RAW_BYTES);
         RingBuffer.dump(ring);
         
         while (--i >= 0) {

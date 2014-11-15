@@ -78,7 +78,7 @@ public class StreamingDecimalTest extends BaseStreamingTest {
         }
 
     }
-    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
 
     @Override
     protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,

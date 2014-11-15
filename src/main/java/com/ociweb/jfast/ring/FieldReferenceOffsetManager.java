@@ -22,52 +22,26 @@ public class FieldReferenceOffsetManager {
     public int[] starts; //TODO: make templateID in message the same as the cursor so this lookup will no longer be needed.
 
     public String[] fieldNameScript;
-    public int maximumFragmentStackDepth;
+    public int maximumFragmentStackDepth;  
     
-    
-	public static final FieldReferenceOffsetManager TEST = new FieldReferenceOffsetManager();
-    
+    private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
+														            OperatorMask.Field_None, 
+														            0)};
+	private static int[] SINGLE_MESSAGE_BYTEARRAY_STARTS = new int[]{0};//there is only 1 message and only one start location.
+	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{"ByteArray"};
+	private static final short ZERO_PREMABLE = 0;
+	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
+			                                                                                    ZERO_PREMABLE, 
+			                                                                                    SINGLE_MESSAGE_BYTEARRAY_STARTS, 
+			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES);
     /**
      * Constructor is only for unit tests.
      */
-    public FieldReferenceOffsetManager() {
-    	
-        //TODO: B, clientConfig must be able to skip reading the preamble,
-        int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
-        
-        //contants for basic test setups.
-        int configPreambleBytes = 0;
-        
-        int pb = PREAMBLE_MASK & configPreambleBytes;
-        if (pb<=0) {
-            preambleOffset = -1;
-            templateOffset = 0;
-        } else {
-            preambleOffset = 0;
-            templateOffset = (pb+3)>>2;
-        }
-         
-        fragDataSize = null;
-        fragScriptSize = null;
-        maximumFragmentStackDepth = 10; //default for testing
-
-        tokens = null;
-        tokensLen = null==tokens?0:tokens.length;
-        
-        starts = null;
-        
-        fieldNameScript = null;
-        
+    private FieldReferenceOffsetManager() {    	
+    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_STARTS, SINGLE_MESSAGE_BYTEARRAY_NAMES);
     }
-    
-    //scriptToken, array of all tokens of all scripts end to end
-    //fieldNameScrptLocal, same as above except that the name is provided not the token
-    //startsLocal, arrray for radom access by the templateId, provides the start pont into the script token
-    //limitsLocal, same as above except these are limits
-    
-    //TODO: this direct mapping may be a problem for giant sparse templateIDs
-    //TODO: need an easy way to construct these for unit test
-    
+
+    //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
     
 	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, int[] startsLocal, String[] fieldNameScriptLocal) {
 		//TODO: B, clientConfig must be able to skip reading the preamble,

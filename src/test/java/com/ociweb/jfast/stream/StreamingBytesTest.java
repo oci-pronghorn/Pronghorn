@@ -329,7 +329,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
         fw.openGroup(groupToken, maxMPapBytes, writer);
 
 
-        RingBuffer ring = new RingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.TEST);
+        RingBuffer ring = new RingBuffer((byte)7,(byte)7,null, FieldReferenceOffsetManager.RAW_BYTES);
         RingBuffer.dump(ring);
         
         while (--i >= 0) {

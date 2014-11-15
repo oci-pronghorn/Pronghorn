@@ -267,7 +267,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
         }
         return result;
     }
-    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+    RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
 
     protected long staticWriteReadDecimalGroup(int reps, int token, int groupToken, int pmapSize) {
         long result = 0;

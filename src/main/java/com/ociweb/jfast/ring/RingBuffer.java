@@ -81,7 +81,10 @@ public final class RingBuffer {
      * @param byteBits
      */
     public RingBuffer(byte primaryBits, byte byteBits) {
-    	this(primaryBits,byteBits, null,  FieldReferenceOffsetManager.TEST);
+    	this(primaryBits, byteBits, null,  FieldReferenceOffsetManager.RAW_BYTES);
+    	if ((primaryBits>>1)>byteBits) {
+    		throw new UnsupportedOperationException("The byteBits value must be at least "+(primaryBits>>1)+" and should be even bigger but it was set to "+byteBits+" alternatively primaryBits could be set to a value less than "+(byteBits<<1));
+    	}    	
     }
     
     /**
@@ -171,27 +174,27 @@ public final class RingBuffer {
         	int targetMask = rbRingBuffer.byteMask;
         	int proposedEnd = p + sourceLen;        	
         	
-        	
-        	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
-        	int headPos = p & targetMask;
-        	if (tailPos!=headPos) { //either full or empty can't tell TODO: A, use the absolute position.
-	        	if (headPos<tailPos) {
-	        		headPos += (targetMask+1);
-	        	}
-	        	
-	        	int wStart = p & targetMask;
-	        	int wEnd   = (proposedEnd-1) & targetMask;
-	        	if (wEnd < wStart) {
-	        		wEnd += (targetMask+1);
-	        	}
-	        	
-	        	//if it overlaps then we have a problem
-	        	if ((wEnd >= tailPos && wEnd < headPos) ||
-	        		 (wStart >= tailPos && wStart < headPos) ) {	   
-	        		//TODO: A, should block until we can write
-	        		throw new FASTException("byte buffer is not large enough");
-	        	}
-        	}
+  //Experimental bounds checking, still under development.    	
+//        	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
+//        	int headPos = p & targetMask;
+//        	if (false && tailPos!=headPos) { //either full or empty can't tell TODO: A, use the absolute position.
+//	        	if (headPos<tailPos) {
+//	        		headPos += (targetMask+1);
+//	        	}
+//	        	
+//	        	int wStart = p & targetMask;
+//	        	int wEnd   = (proposedEnd-1) & targetMask;
+//	        	if (wEnd < wStart) {
+//	        		wEnd += (targetMask+1);
+//	        	}
+//	        	
+//	        	//if it overlaps then we have a problem
+//	        	if ((wEnd >= tailPos && wEnd < headPos) ||
+//	        		 (wStart >= tailPos && wStart < headPos) ) {	   
+//	        		//TODO: A, should block until we can write
+//	        		throw new FASTException("byte buffer is not large enough");
+//	        	}
+//        	}
         	
         	        	
             LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
@@ -305,15 +308,16 @@ public final class RingBuffer {
     public static void releaseReadLock(RingBuffer ring) {
     	ring.tailPos.lazySet(ring.workingTailPos.value);
     	ring.bytesTailPos.lazySet(ring.byteWorkingTailPos.value);
-    	//unlike the primary ring positions this one requires a clear of the value
-    	ring.byteWorkingTailPos.value = 0;    	
-    	
     }
     
     public static void publishWrites(RingBuffer ring) {
     	
     	//prevent long running arrays from rolling over in second byte ring
     	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
+    	ring.byteWorkingTailPos.value = ring.byteMask & ring.byteWorkingTailPos.value;
+    	if (ring.byteWorkingHeadPos.value < ring.byteWorkingTailPos.value ) {
+    		ring.byteWorkingHeadPos.value += (ring.byteMask + 1);
+    	}
     	
     	//TODO: B, need to do primary as well however its a little more complicated because we must also adjust tail.
 

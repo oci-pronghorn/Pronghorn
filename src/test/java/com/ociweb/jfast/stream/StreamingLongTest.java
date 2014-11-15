@@ -38,7 +38,7 @@ public class StreamingLongTest extends BaseStreamingTest {
 
 	int bufferSize = 512;
 	
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
 	
 	//NO PMAP
 	//NONE, DELTA, and CONSTANT(non-optional)

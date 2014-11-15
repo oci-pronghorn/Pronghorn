@@ -154,7 +154,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 		return System.nanoTime() - start;
 	}
 
-	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.TEST);
+	static RingBuffer rbRingBufferLocal = new RingBuffer((byte)2,(byte)2,null, FieldReferenceOffsetManager.RAW_BYTES);
 
     public static void writeInteger(FASTWriterInterpreterDispatch fw, int token, int value, PrimitiveWriter writer) {
         //temp solution as the ring buffer is introduce into all the APIs
