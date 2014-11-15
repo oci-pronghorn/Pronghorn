@@ -135,53 +135,53 @@ public class RingStreamsTest {
 	}
 	
 	
-//	@Test
-//	public void testRingToRingInputStream() {
-//		
-//		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
-//		int blockSize = testRing.byteMask/(testRing.mask>>1);
-//		RingInputStream ringInputStream = new RingInputStream(testRing);
-//		
-//		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
-//		
-//		StringBuilder builder = new StringBuilder();
-//		
-//		while (builder.length()<3000) {
-//			String testString = builder.toString();
-//			assertEquals(0, RingBuffer.contentRemaining(testRing));	
-//			assertEquals(0, RingBuffer.contentRemaining(targetRing));	
-//			
-//
-//			//Write data into the the ring buffer
-//			byte[] testBytes = testString.getBytes();			
-//			RingStreams.writeBytesToRing(testBytes, 0, testBytes.length, testRing, blockSize);
-//			RingStreams.writeEOF(testRing);
-//						
-//			//Here we are reading from one ring and writing to another ring going through an OutputStream
-//			try {
-//				RingStreams.writeToOutputStream(testRing, ringOutputStream);
-//				RingStreams.writeEOF(targetRing);
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//				fail();
-//			}
-//						
-//			//Now read the data off the target ring to confirm it matches
-//			ByteArrayOutputStream baost = new ByteArrayOutputStream();
-//			try {
-//				RingStreams.writeToOutputStream(targetRing, baost);
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//				fail();
-//			}		
-//			
-//			String rebuiltMessage = new String(baost.toByteArray());
-//			assertEquals(testString,rebuiltMessage);
-//			builder.append((char)('A'+(builder.length()&0x7)));
-//						
-//		}		
-//		
-//	}
+	@Test
+	public void testRingToRingInputStream() {
+		
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		int blockSize = testRing.byteMask/(testRing.mask>>1);
+		RingInputStream ringInputStream = new RingInputStream(testRing);
+		
+		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
+		
+		StringBuilder builder = new StringBuilder();
+		
+		while (builder.length()<3000) {
+			String testString = builder.toString();
+			assertEquals(0, RingBuffer.contentRemaining(testRing));	
+			assertEquals(0, RingBuffer.contentRemaining(targetRing));	
+			
+
+			//Write data into the the ring buffer
+			byte[] testBytes = testString.getBytes();			
+			RingStreams.writeBytesToRing(testBytes, 0, testBytes.length, testRing, blockSize);
+			RingStreams.writeEOF(testRing);
+						
+			//Here we are reading from one ring and writing to another ring going through an InputStream
+			try {
+				RingStreams.readFromInputStream(ringInputStream, targetRing);
+				RingStreams.writeEOF(targetRing);
+			} catch (IOException e) {
+				e.printStackTrace();
+				fail();
+	    	}
+			
+			//Now read the data off the target ring to confirm it matches
+			ByteArrayOutputStream baost = new ByteArrayOutputStream();
+			try {
+				RingStreams.writeToOutputStream(targetRing, baost);
+			} catch (IOException e) {
+				e.printStackTrace();
+				fail();
+			}
+			
+			String rebuiltMessage = new String(baost.toByteArray());
+			assertEquals(testString,rebuiltMessage);
+			builder.append((char)('A'+(builder.length()&0x7)));
+						
+		}		
+		
+	}
 	
 	
 }

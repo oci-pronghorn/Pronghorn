@@ -23,8 +23,8 @@ public class RingBufferPipeline {
 
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 30000000;
-	private final int stages = 5;
+	private final int testMessages = 3000000;
+	private final int stages = 3;
 	private final byte primaryBits   = 16;
 	private final byte secondaryBits = 28;//TODO: Warning if this is not big enough it will hang.
     
