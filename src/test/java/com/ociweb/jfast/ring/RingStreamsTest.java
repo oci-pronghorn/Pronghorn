@@ -45,48 +45,45 @@ public class RingStreamsTest {
 		assertEquals(testString,rebuiltMessage);
 	}
 	
-//	@Test
-//	public void testReadFromInputStream() {
-//		
-//		
-//		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
-//		
-//		StringBuilder builder = new StringBuilder();
-//		
-//		while (builder.length()<4096) {
-//			
-//			String testString = builder.toString();
-//			ByteArrayInputStream inputStream = new ByteArrayInputStream(testString.getBytes());
-//		
-//			try {
-//				System.err.println("A");
-//				RingStreams.readFromInputStream(inputStream, testRing);
-//				
-//				ByteArrayOutputStream baost = new ByteArrayOutputStream();
-//				try {
-//					System.err.println("B");
-//					RingStreams.writeToOutputStream(testRing, baost);
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//					fail();
-//				}
-//				System.err.println("C");
-//				
-//				String rebuiltMessage = new String(baost.toByteArray());
-//				assertEquals(testString,rebuiltMessage);
-//				
-//				
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//				fail();
-//			}
-//			
-//			
-//			builder.append((char)('A'+(builder.length()&0x7)));
-//		}
-//		
-//		
-//	}
-	
+	@Test
+	public void testReadFromInputStream() {
+				
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		
+		StringBuilder builder = new StringBuilder();
+		
+		while (builder.length()<2048) {
+			
+			String testString = builder.toString();
+			ByteArrayInputStream inputStream = new ByteArrayInputStream(testString.getBytes());
+		
+			try {
+				RingStreams.readFromInputStream(inputStream, testRing);
+				
+				RingStreams.writeEOF(testRing);
+				
+				ByteArrayOutputStream baost = new ByteArrayOutputStream();
+				try {
+					RingStreams.writeToOutputStream(testRing, baost);
+				} catch (IOException e) {
+					e.printStackTrace();
+					fail();
+				}
+				
+				assertEquals(0, RingBuffer.contentRemaining(testRing));
+				
+				String rebuiltMessage = new String(baost.toByteArray());
+				assertEquals(testString,rebuiltMessage);
+				
+				
+			} catch (IOException e) {
+				e.printStackTrace();
+				fail();
+			}			
+			
+			builder.append((char)('A'+(builder.length()&0x7)));
+		}		
+		
+	}	
 	
 }

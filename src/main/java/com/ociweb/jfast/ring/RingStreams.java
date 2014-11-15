@@ -36,17 +36,15 @@ public class RingStreams {
 		
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
-		System.err.println("yy");
-		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
 		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES || step!=2) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
 		long target = step+tailPosition(inputRing);
+				
+		//write to outputStream only when we have data on inputRing.
         long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);
-        
-        System.err.println("xxx");
 
         while (true) {
             	
@@ -104,16 +102,14 @@ public class RingStreams {
 		int byteMask = outputRing.byteMask;
 		
 		int position = outputRing.byteWorkingHeadPos.value;
-		
 		int size;		
 		while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 			
+			tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 			
 			RingWriter.finishWriteBytes(outputRing, position, size);
 			RingBuffer.publishWrites(outputRing);
 			position += size;
-			
-			tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 		}
 	}
 	
