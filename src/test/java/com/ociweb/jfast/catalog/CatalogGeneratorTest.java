@@ -17,6 +17,7 @@ import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.ociweb.jfast.FAST;
@@ -62,10 +63,10 @@ public class CatalogGeneratorTest {
     };
     
     int[] numericOps = new int[] {
-        //    OperatorMask.Field_Copy,
+        //    OperatorMask.Field_Copy,    //TODO: AAAA, urgent fix 
         //    OperatorMask.Field_Default,
         //    OperatorMask.Field_Increment,            
-        //    OperatorMask.Field_Delta,
+            OperatorMask.Field_Delta,
             OperatorMask.Field_None, 
             OperatorMask.Field_Constant,
     };
@@ -98,18 +99,31 @@ public class CatalogGeneratorTest {
     
     private static final int testTemplateId = 2;
     
-    List<byte[]> numericCatalogs;
+    List<String>  numericCatalogXML;
+    List<byte[]>  numericCatalogs;
     List<Integer> numericFieldCounts;
     List<Integer> numericFieldTypes;
     List<Integer> numericFieldOperators;
     
+    List<byte[]> textCatalogs;
+    List<Integer> textFieldCounts;
+    List<Integer> textFieldTypes;
+    List<Integer> textFieldOperators;
+    
+    
     @Before
     public void buildCatalogs() {
         
+    	numericCatalogXML = new ArrayList<String>();
         numericCatalogs = new ArrayList<byte[]>();
         numericFieldCounts = new ArrayList<Integer>();
         numericFieldTypes = new ArrayList<Integer>();
         numericFieldOperators = new ArrayList<Integer>();
+        
+        textCatalogs = new ArrayList<byte[]>();
+        textFieldCounts = new ArrayList<Integer>();
+        textFieldTypes = new ArrayList<Integer>();
+        textFieldOperators = new ArrayList<Integer>();
         
         String name = "testTemplate";
         
@@ -126,8 +140,9 @@ public class CatalogGeneratorTest {
             while (--t>=0) {               
                 int fieldType = numericTypes[t];
                 int fieldCount = 1; 
-                while (fieldCount<totalFields) {                 
-                    byte[] catBytes = buildCatBytes(name, testTemplateId, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, fieldCount);  
+                while (fieldCount<totalFields) {     
+                	StringBuilder templateXML = new StringBuilder();
+                    byte[] catBytes = buildCatBytes(name, testTemplateId, reset, dictionary, fieldPresence, fieldInitial, fieldOperator, fieldType, fieldCount, templateXML);  
                     
                     
                     TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);                    
@@ -139,6 +154,7 @@ public class CatalogGeneratorTest {
                     }
                     assertEquals(expectedScriptLength,catalog.getScriptTokens().length);
                 
+                    numericCatalogXML.add(templateXML.toString());
                     numericCatalogs.add(catBytes);
                     numericFieldCounts.add(new Integer(fieldCount));
                     numericFieldTypes.add(new Integer(fieldType));
@@ -172,7 +188,7 @@ public class CatalogGeneratorTest {
                          numericFieldTypes.get(i).intValue(), 
                          numericFieldCounts.get(i).intValue(), 
                          numericCatalogs.get(i),
-                         totalWrittenCount);
+                         totalWrittenCount, numericCatalogXML.get(i),numericCatalogs.size()-i);
         }
         System.err.println("totalWritten:"+totalWrittenCount.longValue());
             
@@ -201,28 +217,36 @@ public class CatalogGeneratorTest {
     int lastFieldCount = -1;
     
 
-    public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes, AtomicLong totalWritten) {
+    public void testEncoding(int fieldOperator, int fieldType, int fieldCount, byte[] catBytes, AtomicLong totalWritten, String catalogXML, int ordinal) {
         int type = fieldType;
         int operation = fieldOperator;
                
         TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+                
+        assertEquals(1, catalog.templatesCount());
         
+        FASTClassLoader.deleteFiles();
+        //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder
         
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes); //compiles new encoder
+        
+
+        boolean debug = false;
         if (operation!=lastOp) {
             lastOp = operation;
-            System.err.println();
-            System.err.println("operation:"+OperatorMask.xmlOperatorName[operation]);
+            
+            System.err.println(this.getClass()+" using "+writerDispatch.getClass().getSimpleName()+" testing "+OperatorMask.methodOperatorName[operation]);
+            
         }
         
         if (type!=lastType) {
             lastType = type;
-            System.err.println("type:"+TypeMask.methodTypeName[type]+TypeMask.methodTypeSuffix[type]);           
+            if (debug) {
+            	System.err.println("type:"+TypeMask.methodTypeName[type]+TypeMask.methodTypeSuffix[type]);  
+            }
         }
 
-        assertEquals(1, catalog.templatesCount());
         
-        FASTClassLoader.deleteFiles();
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder
                         
         //If this test is going to both encode then decode to test both parts of the process this
         //buffer must be very large in order to hold all the possible permutations
@@ -260,8 +284,13 @@ public class CatalogGeneratorTest {
 //        	q++;
 //        	
 //        }
-        assertEquals(0xFF&Integer.parseInt("11000000", 2),0xFF&buffer[0]); //pmap to indicate that we do use template ID
-        assertEquals(0xFF&Integer.parseInt("10000010", 2),0xFF&buffer[1]); //template id of 2
+        //TODO: this breaks with the pmap. 
+        assertEquals("test "+ordinal+"\n "+catalogXML,
+        		      0xFF&Integer.parseInt("11000000", 2),
+        		      0xFF&buffer[0]); //pmap to indicate that we do use template ID
+        assertEquals("test "+ordinal+"\n "+catalogXML,
+        		      0xFF&Integer.parseInt("10000010", 2),
+        		      0xFF&buffer[1]); //template id of 2
 
         
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
@@ -422,7 +451,7 @@ public class CatalogGeneratorTest {
 
 
     private byte[] buildCatBytes(String name, int id, boolean reset, String dictionary, boolean fieldPresence,
-            String fieldInitial, int fieldOperator, int fieldType, int f) {
+            String fieldInitial, int fieldOperator, int fieldType, int f, StringBuilder builder) {
         
         int fieldId = 1000;
         
@@ -434,8 +463,7 @@ public class CatalogGeneratorTest {
         }
         
 		try {
-			StringBuilder builder;
-			builder = (StringBuilder) cg.appendTo("", new StringBuilder());
+			builder = (StringBuilder) cg.appendTo("", builder);
 			boolean debug = false;
 			if (debug) {
 				System.err.println(builder);

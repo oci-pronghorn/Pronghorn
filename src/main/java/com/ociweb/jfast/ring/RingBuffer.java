@@ -339,35 +339,35 @@ public final class RingBuffer {
     
     public static long spinBlockOnTailTillMatchesHead(long lastCheckedValue, RingBuffer ringBuffer) {
     	long targetValue = ringBuffer.headPos.longValue();
-    	do {
+    	while ( lastCheckedValue < targetValue) {
     		Thread.yield(); //needed for now but re-evaluate performance impact
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
-		} while ( lastCheckedValue < targetValue);
+		} 
 		return lastCheckedValue;
     }
     
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
-    	do {
+    	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
-		} while ( lastCheckedValue < targetValue);
+		}
 		return lastCheckedValue;
     }
     
     public static long spinBlockOnHeadTillMatchesTail(long lastCheckedValue, RingBuffer ringBuffer) {
     	long targetValue = ringBuffer.tailPos.longValue();    	
-    	do {
+    	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
 		    lastCheckedValue = ringBuffer.headPos.longValue();
-		} while ( lastCheckedValue < targetValue);
+		}
 		return lastCheckedValue;
     }
     
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
-    	do {
+    	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
 		    lastCheckedValue = ringBuffer.headPos.longValue();
-		} while ( lastCheckedValue < targetValue);
+		}
 		return lastCheckedValue;
     }
     

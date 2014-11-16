@@ -45,7 +45,7 @@ public class OperatorMask {
         "increment", "Reserved6", "Reserved7", "tail", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
         "", "", "", "", "", "" };
     
-    public final static String[] methodOperatorName = new String[] { "", "Copy", "Constant", "Default", "Delta",
+    public final static String[] methodOperatorName = new String[] { "None", "Copy", "Constant", "Default", "Delta",
             "Increment", "Reserved6", "Reserved7", "Tail", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
             "", "", "", "", "", "" };
 

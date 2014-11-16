@@ -110,8 +110,10 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 	protected long timeWriteLoop(int fields, int fieldsPerGroup, int maxMPapBytes, int operationIters,
 			int[] tokenLookup, DictionaryFactory dcr) {
 				
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(dcr, 3, new int[0][0], null,
-        64,4, 100, new ClientConfig(8 ,7) ));
+		TemplateCatalogConfig catalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null,	64,4, 100, new ClientConfig(8 ,7) );
+		
+		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(catalog);
+		
 		
 		long start = System.nanoTime();
 		assert(operationIters>3) : "must allow operations to have 3 data points but only had "+operationIters;

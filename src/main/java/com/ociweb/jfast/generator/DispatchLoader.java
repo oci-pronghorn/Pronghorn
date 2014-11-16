@@ -37,6 +37,10 @@ public class DispatchLoader {
         }
     }
     
+    public static FASTEncoder loadDispatchWriterDebug(byte[] catalog) {
+    	return new FASTWriterInterpreterDispatch(catalog);
+    }
+    
     public static <T> T loadGeneratedDispatch(byte[] catBytes, String type)
             throws ReflectiveOperationException, SecurityException {
         
