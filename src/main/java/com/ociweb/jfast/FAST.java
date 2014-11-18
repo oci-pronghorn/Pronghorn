@@ -11,17 +11,27 @@ public class FAST {
 	static int DEFAULT_BUFFER_SIZE = 4096;
 
 	public static FASTReaderReactor inputReactor(FASTInput fastInput, byte[] catBytes) {
-	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
+	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
 	    PrimitiveReader reader = new PrimitiveReader(DEFAULT_BUFFER_SIZE, fastInput, readerDispatch.maxPMapCountInBytes);
-	    FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
-		return reactor;
+	    return new FASTReaderReactor(readerDispatch,reader);
 	}
 	
 	public static FASTReaderReactor inputReactor(int bufferSize, FASTInput fastInput, byte[] catBytes) {
+	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+	    PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, readerDispatch.maxPMapCountInBytes);
+	    return new FASTReaderReactor(readerDispatch,reader);
+	}
+	
+	public static FASTReaderReactor inputReactorDebug(FASTInput fastInput, byte[] catBytes) {
+	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
+	    PrimitiveReader reader = new PrimitiveReader(DEFAULT_BUFFER_SIZE, fastInput, readerDispatch.maxPMapCountInBytes);
+	    return new FASTReaderReactor(readerDispatch,reader);
+	}
+	
+	public static FASTReaderReactor inputReactorDebug(int bufferSize, FASTInput fastInput, byte[] catBytes) {
 	    FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes); 
 	    PrimitiveReader reader = new PrimitiveReader(bufferSize, fastInput, readerDispatch.maxPMapCountInBytes);
-	    FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
-		return reactor;
+	    return new FASTReaderReactor(readerDispatch,reader);
 	}
 
 }

@@ -270,12 +270,12 @@ public class CatalogGeneratorTest {
         long nsLatency = WalkingConsumerState.responseTime(ringBuffer.consumerData);
      
         //TODO: D, write to flat file to produce google chart.
-        //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
+       //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
         //System.err.println("bytes written:"+bytesWritten);
         
-//        //This visual check confirms that the write
-//        int limit = (int) Math.min(bytesWritten, 10);
-//        int q = 0;
+        //This visual check confirms that the write
+        int limit = (int) Math.min(bytesWritten, 10);
+        int q = 0;
 //        while (q<limit) {
 //        	//template pmap
 //        	//template id of zero
@@ -284,38 +284,95 @@ public class CatalogGeneratorTest {
 //        	q++;
 //        	
 //        }
-        //TODO: this breaks with the pmap. 
-        assertEquals("test "+ordinal+"\n "+catalogXML,
-        		      0xFF&Integer.parseInt("11000000", 2),
-        		      0xFF&buffer[0]); //pmap to indicate that we do use template ID
-        assertEquals("test "+ordinal+"\n "+catalogXML,
-        		      0xFF&Integer.parseInt("10000010", 2),
-        		      0xFF&buffer[1]); //template id of 2
-
+        
+        //delta
+//        0   11000000   PMap we need template id
+//        1   10000010   The template id of 2
+//        2   00000111   int32 field1000 delta
+//        3   01111111   int32 field1000
+//        4   01111111   int32 field1000
+//        5   01111111   int32 field1000
+//        6   11110100   int32 field1000
+//        7   00000000   int32 field1001 delta
+//        8   01111111   int32 field1001
+//        9   01111111   int32 field1001
+        
+        //constant
+//        0   11000000   PMap we need template id
+//        1   10000010   The template id of 2
+//        2   11000000   PMap we need template id
+//        3   10000010   The template id of 2
+//        4   11000000
+//        5   10000010
+        
+        //none
+//        0   11000000  PMap we need template id
+//        1   10000010  The template id of 2
+//        2   00000111  int32 field1000 none
+//        3   01111111  int32 field1000
+//        4   01111111  int32 field1000
+//        5   01111111  int32 field1000
+//        6   11111110  int32 field1000
+//        7   00000001  int32 field1001 none
+//        8   00000000  int32 field1001
+//        9   00000000  int32 field1001
+        
+        //Default  with 9 defaults each needing pmap bit set to 1
+//        0   01111111  Top bit set for tempate, following 9 are for default fields
+//        1   11110000  end of pmap has trailing zeros
+//        2   10000010  The template id of 2
+//        3   00000111  int32 field1000 not default
+//        4   01111111  int32 field1000
+//        5   01111111  int32 field1000
+//        6   01111111  int32 field1000
+//        7   11111110  int32 field1000
+//        8   00000001  int32 field1001 not default
+//        9   00000000  int32 field1001
+        
+        //If the message type does not use a pmap then we can confirm the first 2 bytes
+        //otherwise its dependent upon the data so its harder to test.
+        if (OperatorMask.Field_None == fieldOperator ||
+            OperatorMask.Field_Constant == fieldOperator ||
+            OperatorMask.Field_Delta == fieldOperator) {      
+		        
+		        assertEquals("test "+ordinal+"\n "+catalogXML,
+		        		      0xFF&Integer.parseInt("11000000", 2),
+		        		      0xFF&buffer[0]); //pmap to indicate that we do use template ID
+		        assertEquals("test "+ordinal+"\n "+catalogXML,
+		        		      0xFF&Integer.parseInt("10000010", 2),
+		        		      0xFF&buffer[1]); //template id of 2
+        }
+//        if (fieldOperator == OperatorMask.Field_None) {
+//        	throw new RuntimeException(catalogXML);
+//        }
         
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
         
 
-        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes);
+        FASTReaderReactor reactor = FAST.inputReactorDebug(fastInput, catBytes);
       
 
         RingBuffer[] buffers = reactor.ringBuffers();
         int buffersCount = buffers.length;
-        
-        int j = testRecordCount;
-        while (j>0 && FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-        	int k = buffersCount;
-        	while (j>0 && --k>=0) {
-        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
-        			assertTrue(buffers[k].consumerData.isNewMessage());
-        			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
-        			
-        			//TODO: B, add test in here to confirm the values match
-        			
-        			j--;
-        		}        		
-        	}       	
-        	
+        try {
+	        int j = testRecordCount;
+	        while (j>0 && FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
+	        	int k = buffersCount;
+	        	while (j>0 && --k>=0) {
+	        		//System.err.println(j);
+	        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
+	        			assertTrue(buffers[k].consumerData.isNewMessage());
+	        			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
+	        			
+	        			//TODO: B, add test in here to confirm the values match
+	        			
+	        			j--;
+	        		}        		
+	        	}       	
+	        	
+	        }
+        } finally {
+        	//System.err.println("xxx "+  	PrimitiveWriter.totalWritten(writer));
         }
 
     }
@@ -457,10 +514,12 @@ public class CatalogGeneratorTest {
         
         CatalogGenerator cg = new CatalogGenerator();
         TemplateGenerator template = cg.addTemplate(name, id, reset, dictionary);            
+        
         while (--f>=0) {
             String fieldName = "field"+fieldId;
             template.addField(fieldName, fieldId++, fieldPresence, fieldType, fieldOperator, fieldInitial);        
         }
+        
         
 		try {
 			builder = (StringBuilder) cg.appendTo("", builder);
