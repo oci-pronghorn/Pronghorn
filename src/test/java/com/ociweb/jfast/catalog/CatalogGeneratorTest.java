@@ -63,12 +63,12 @@ public class CatalogGeneratorTest {
     };
     
     int[] numericOps = new int[] {
-        //    OperatorMask.Field_Copy,    //TODO: AAAA, urgent fix 
-        //    OperatorMask.Field_Default,
-        //    OperatorMask.Field_Increment,            
-            OperatorMask.Field_Delta,
-            OperatorMask.Field_None, 
-            OperatorMask.Field_Constant,
+    		OperatorMask.Field_Copy,   
+    		OperatorMask.Field_Delta,
+    		OperatorMask.Field_None, 
+    		OperatorMask.Field_Constant,
+            OperatorMask.Field_Default, 
+            OperatorMask.Field_Increment,            
     };
     
     int[] textByteOps = new int[] {
@@ -226,9 +226,8 @@ public class CatalogGeneratorTest {
         assertEquals(1, catalog.templatesCount());
         
         FASTClassLoader.deleteFiles();
-        //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder
-        
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes); //compiles new encoder
+        //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder         
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
         
 
         boolean debug = false;
@@ -274,8 +273,8 @@ public class CatalogGeneratorTest {
         //System.err.println("bytes written:"+bytesWritten);
         
         //This visual check confirms that the write
-        int limit = (int) Math.min(bytesWritten, 10);
-        int q = 0;
+//        int limit = (int) Math.min(bytesWritten, 10);
+//        int q = 0;
 //        while (q<limit) {
 //        	//template pmap
 //        	//template id of zero
@@ -350,7 +349,8 @@ public class CatalogGeneratorTest {
         
 
         FASTReaderReactor reactor = FAST.inputReactorDebug(fastInput, catBytes);
-      
+        //FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes);
+        
 
         RingBuffer[] buffers = reactor.ringBuffers();
         int buffersCount = buffers.length;
@@ -369,10 +369,26 @@ public class CatalogGeneratorTest {
 	        			j--;
 	        		}        		
 	        	}       	
-	        	
+	//        	System.err.println("end of message "+ reactor.reader.position);
 	        }
-        } finally {
-        	//System.err.println("xxx "+  	PrimitiveWriter.totalWritten(writer));
+	        //confirm that the internal stacks have gone back down to zero
+	        assertEquals(0,writer.safetyStackDepth);
+	        assertEquals(0,writer.flushSkipsIdxLimit);
+	        
+        } catch (Exception ex) {
+        	//TODO: the template ID appears to be missing for the new message!!
+            System.err.println(catalogXML);
+        	
+            //dump exactly what was written
+	        int limit = (int) Math.min(bytesWritten, 55);
+	        int q = 0;
+	        while (q<limit) {
+	          	System.err.println(q+"   "+byteString(buffer[q]));
+	          	q++;
+	          	
+	        }
+            
+        	throw new RuntimeException(ex);
         }
 
     }

@@ -54,7 +54,7 @@ public final class FASTReaderReactor {
      */
     
     private final FASTDecoder decoder; 
-    private final PrimitiveReader reader;//the reader is non-blocking but awkward to use directly.
+    public final PrimitiveReader reader;//the reader is non-blocking but awkward to use directly.
     
     //TODO: B, single execution service must be used for all and passed in, it also needs extra paused threads for release later.
     //TODO: B, reactor will add its runnable to to the single service and remove upon dispose.

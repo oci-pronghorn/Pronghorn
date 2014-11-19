@@ -41,7 +41,7 @@ public final class PrimitiveWriter {
                                            // where location of stopBytes+1 and
                                            // end of max pmap length is found.
 
-    private int safetyStackDepth; // maximum depth of the stacks above
+    public int safetyStackDepth; // maximum depth of the stacks above
     private int position;
     public int limit;
 
@@ -54,7 +54,7 @@ public final class PrimitiveWriter {
                                    // of pmaps, may grow large with poor
                                    // templates.
     private final int flushSkipsSize;
-    private int flushSkipsIdxLimit; // where we add the new one, end of the list
+    public int flushSkipsIdxLimit; // where we add the new one, end of the list
     private int flushSkipsIdxPos;// next limit to use. as skips are consumed
                                  // this pointer moves forward.
 
@@ -140,13 +140,13 @@ public final class PrimitiveWriter {
         int localFlushSkipsIdxPos = writer.flushSkipsIdxPos;
 
         int sourceStop = writer.flushSkips[localFlushSkipsIdxPos];
-
+        
         // invariant for the loop
         int temp = writer.flushSkipsSize - 2;
         final int localLastValid = (writer.flushSkipsIdxLimit < temp) ? writer.flushSkipsIdxLimit : temp;
         final int endOfData = writer.limit;
         final int finalStop = targetOffset + reqLength;
-
+        
         int flushRequest = sourceStop - sourceOffset;
         int targetStop = targetOffset + flushRequest;
 
@@ -160,9 +160,10 @@ public final class PrimitiveWriter {
         ) {
 
             // keep accumulating
-            if (targetOffset != sourceOffset) {  
+            if (targetOffset != sourceOffset) { 
                 System.arraycopy(writer.buffer, sourceOffset, writer.buffer, targetOffset, flushRequest);
-            }
+            } 
+            
             // stop becomes start so we can build a contiguous block
             targetOffset = targetStop;
             //
@@ -170,12 +171,14 @@ public final class PrimitiveWriter {
                                                                 // in second
                                                                 // part of flush
                                                                 // skips
+            
+            
             // sourceStop is beginning of new skip.
             targetStop = targetOffset
                     + (flushRequest = (sourceStop = writer.flushSkips[++localFlushSkipsIdxPos]) - sourceOffset);
 
         }
-
+        
         reqLength = finalStop - targetOffset; // remaining bytes required
         writer.flushSkipsIdxPos = localFlushSkipsIdxPos; // write back the local
                                                   // changes
@@ -188,6 +191,7 @@ public final class PrimitiveWriter {
         if (flushRequest >= reqLength) {
             finishBlockAndLeaveRemaining(sourceOffset, targetOffset, reqLength, writer);
         } else {
+        	
             // not enough data to fill full block, we are out of data to push.
 
             // reset to zero to save space if possible
@@ -788,9 +792,6 @@ public final class PrimitiveWriter {
     // called only at the beginning of a group.
     public static final void openPMap(int maxBytes, PrimitiveWriter writer) {
 
-               
-      //  System.err.println("write maxBytes "+maxBytes+" at "+(writer.limit+writer.totalWritten));
-
         assert (maxBytes > 0) : "Do not call openPMap if it is not expected to be used.";
 
         if (writer.limit > writer.buffer.length - maxBytes) {
@@ -821,8 +822,7 @@ public final class PrimitiveWriter {
 
         
         writer.safetyStackPosPos[writer.safetyStackDepth++] = (((long) writer.flushSkipsIdxLimit) << 32) | writer.limit;
-        writer.flushSkips[writer.flushSkipsIdxLimit++] = writer.limit + 1;// default minimum size for
-                                                     // present PMap
+        writer.flushSkips[writer.flushSkipsIdxLimit++] = writer.limit + 1;// default minimum size for present PMap
         writer.flushSkips[writer.flushSkipsIdxLimit++] = (writer.limit += maxBytes);// this will
                                                                // remain as the
                                                                // fixed limit
@@ -851,16 +851,25 @@ public final class PrimitiveWriter {
 
         //System.err.println("close PMap byte:"+byteBits(writer.pMapByteAccum));
         
-        byte bValue = writer.buffer[(int) (POS_POS_MASK & writer.safetyStackPosPos[s]++)] = (byte) writer.pMapByteAccum;
-		if (0 != bValue) {
+        byte bValue = (byte) writer.pMapByteAccum;
+        
+        //do not write if we are staring a new group of bits
+        if (7 != writer.pMapIdxWorking ) {
+        	writer.buffer[(int) (POS_POS_MASK & writer.safetyStackPosPos[s]++)] = bValue;
+        }
+        
+        if (0 != bValue) {
+			//trailing zeros are never set
+			
             // close is too late to discover overflow so it is NOT done here.
             //
-            long stackFrame = writer.safetyStackPosPos[s];
             // set the last known non zero bit so we can avoid scanning for it.
+			long stackFrame = writer.safetyStackPosPos[s];
             writer.buffer[(writer.flushSkips[(int) (stackFrame >> 32)] = (int) (stackFrame & POS_POS_MASK)) - 1] |= 0x80;
         } else {
             // must set stop bit now that we know where pmap stops.
-            writer.buffer[writer.flushSkips[(int) (writer.safetyStackPosPos[s] >> 32)] - 1] |= 0x80;
+        	long stackFrame = writer.safetyStackPosPos[s];
+            writer.buffer[writer.flushSkips[(int) (stackFrame >> 32)] - 1] |= 0x80;
         }
 
         // restore the old working bits if there is a previous pmap.
@@ -882,12 +891,8 @@ public final class PrimitiveWriter {
         
         if (writer.minimizeLatency != 0 || writer.limit > writer.mustFlush ) { 
             writer.output.flush();
-           // System.err.println("flush");
-        }// else {
-         //   System.err.println("no flush "+writer.limit+" "+writer.mustFlush);
-      //  }
+        }
         
-
     }
 
     private static String byteBits(int value) {
@@ -981,14 +986,12 @@ public final class PrimitiveWriter {
             // if it was not zero and was too long flush
             writer.output.flush();
             //since flush is rare this is a good opportunity to do sanity checking
-            if (writer.limit > writer.buffer.length - length) {
-            	//TODO: A, did the messages not get pmap closed on write? can use interpreter until it gets fixed?
+            if (writer.limit > writer.buffer.length - length) {            	
             	System.err.println(writer.limit +"  and  "+offset+"  mask "+mask+"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
             	throw new ArrayIndexOutOfBoundsException(length);
             }
         }
         
-        int tmp = writer.limit;
         while (--length > 0) {
             writer.buffer[writer.limit++] = (byte) (0x7F & value[mask & offset++]);//only take low bits, high bit will break encoding!!
         }

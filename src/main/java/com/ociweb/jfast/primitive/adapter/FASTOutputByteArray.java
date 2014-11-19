@@ -3,6 +3,8 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.primitive.adapter;
 
+import java.util.Arrays;
+
 import com.ociweb.jfast.primitive.DataTransfer;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -45,8 +47,9 @@ public final class FASTOutputByteArray implements FASTOutput {
 		        throw new ArrayIndexOutOfBoundsException(position+size);		        
 		    }
 		    System.arraycopy(writer.buffer, 
-			         		 srcOffset, 
-			         		 buffer, position, 
+			         		 srcOffset, 			         		 
+			         		 buffer,
+			         		 position, 			         		 
 			         		 size);
 			
 			position+=size;

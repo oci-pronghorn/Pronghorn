@@ -2133,12 +2133,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.openPMap(pmapSize, writer);  //FASTRingBuffer queue, int fieldPos
         // done here for safety to ensure it is always done at group open.
         //TODO: C, finish development of repeated dynamic templates
-        int templateId = RingReader.readInt(rbB, rbMask, rbPos, fieldPos);        
+        int templateId = RingReader.readInt(rbB, rbMask, rbPos, fieldPos);  
         //int top = dispatch.templateStack[dispatch.templateStackHead];
         //if (top == templateId) {
         //    PrimitiveWriter.writePMapBit((byte)0, writer);
         //} else {
             PrimitiveWriter.writePMapBit((byte)1, writer);       
+            
             PrimitiveWriter.writeIntegerUnsigned(templateId, writer);
         //    top = templateId;
         //}

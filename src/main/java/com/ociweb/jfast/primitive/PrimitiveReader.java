@@ -69,14 +69,15 @@ public final class PrimitiveReader {
     
     //TODO: move into PrimitiveReader
 	public static void printDebugData(PrimitiveReader reader) {
-		int pos = Math.max(reader.position-5, 0);
-		int lim = Math.min(reader.limit, pos+10);
+		int pos = reader.position;
+		int lim = Math.min(reader.limit, pos+70);
 		
-		System.err.println("printing details of bytes "+pos+" up to "+lim);
+		long base = reader.totalReader-(reader.limit-reader.position)-reader.position;
+		System.err.println("printing details of bytes "+(base+pos)+" up to "+(base+lim));
 		while (pos<lim) {
 			
 			String temp = "00000000"+Integer.toBinaryString(reader.buffer[pos]);    		
-			System.err.println(pos+" data:"+ temp.substring(temp.length()-8)+"    "+reader.buffer[pos] );
+			System.err.println((base+pos)+" data:"+ temp.substring(temp.length()-8)+"    "+reader.buffer[pos] );
 			
 			pos++;
 		}

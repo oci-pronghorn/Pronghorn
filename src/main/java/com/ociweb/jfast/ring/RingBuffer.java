@@ -177,7 +177,7 @@ public final class RingBuffer {
   //Experimental bounds checking, still under development.    	
 //        	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
 //        	int headPos = p & targetMask;
-//        	if (false && tailPos!=headPos) { //either full or empty can't tell TODO: A, use the absolute position.
+//        	if (false && tailPos!=headPos) { //either full or empty can't tell TODO: D, use the absolute position.
 //	        	if (headPos<tailPos) {
 //	        		headPos += (targetMask+1);
 //	        	}

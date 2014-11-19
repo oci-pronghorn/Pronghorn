@@ -847,14 +847,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
                         if (isTemplate) {
-                            
+                        	
                             //must start at a location after the preamble and templateId.
                             fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset+1;
                             
                             openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
-                            
+   //                         System.err.println("open group "+" cursor "+activeScriptCursor);
                             // this is NOT a message/template so the non-template
                             // pmapSize is used.
                             openGroup(token, nonTemplatePMapSize, writer);
@@ -1248,6 +1248,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
         //TODO: here is the encode/decode problems. TODO: must read the first bit for the message.
         
+       
         genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, buffer, mask, workingTailPos, this);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
