@@ -372,10 +372,10 @@ public final class RingBuffer {
     }
     
     public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
-        do {
+    	 while ( lastCheckedValue < targetValue) {
         	Thread.yield();
             lastCheckedValue = atomicLong.longValue();
-        } while ( lastCheckedValue < targetValue);
+        }
         return lastCheckedValue;
     }
 
