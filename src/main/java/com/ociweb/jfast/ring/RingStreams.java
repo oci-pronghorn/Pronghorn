@@ -33,24 +33,27 @@ public class RingStreams {
 	 * @throws IOException
 	 */
 	public static void writeToOutputStream(RingBuffer inputRing, OutputStream outputStream) throws IOException {
-		
+				
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES || step!=2) {
+		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
 		long target = step+tailPosition(inputRing);
 				
 		//write to outputStream only when we have data on inputRing.
-        long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);
+        long headPosCache = headPosition(inputRing);
 
         //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
         //      That change may however increase latency.
         
         while (true) {
-            
+        	        	
+        	//block until one more byteVector is ready.
+        	
+        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
         	
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
@@ -75,9 +78,7 @@ public class RingStreams {
         		releaseReadLock(inputRing);
         	}
         	
-        	//block until one more byteVector is ready.
         	target += step;
-        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
             
         }   
 		

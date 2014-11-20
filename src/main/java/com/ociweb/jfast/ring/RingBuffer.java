@@ -95,8 +95,7 @@ public final class RingBuffer {
      * @param byteConstants
      * @param from
      */
-    public RingBuffer(byte primaryBits, byte byteBits,
-    		              byte[] byteConstants, FieldReferenceOffsetManager from) {
+    public RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
         
         assert (primaryBits >= 1);       

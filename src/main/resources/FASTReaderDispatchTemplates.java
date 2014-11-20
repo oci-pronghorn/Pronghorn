@@ -61,11 +61,8 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            
 
             if (dispatch.templateId<0 || dispatch.templateId>TokenBuilder.MAX_INSTANCE) {
-            	           	
-            	
+            	           	            	
             	System.err.println(dispatch.templateId+" "+Integer.toBinaryString(dispatch.templateId)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
-            	//TODO: A, this is on the 7th  bit of pmap optionals, most likely we are missing a unit test in there that must be fixed
-            	//      short term hack, rebuild the data without using as many optional fields.
             	PrimitiveReader.printDebugData(reader);
             	throw new FASTException();
             }

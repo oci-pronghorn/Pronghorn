@@ -39,6 +39,9 @@ public class WalkingConsumerState {
     public WalkingConsumerState(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
                                     long tailCache, FieldReferenceOffsetManager from, int rbMask) {
+    	if (null==from) {
+    		throw new UnsupportedOperationException();
+    	}
         this.messageId = messageId;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;
