@@ -66,7 +66,8 @@ public final class RingBuffer {
     final byte[] constByteBuffer;
     private final byte[][] bufferLookup;
 
-
+//TODO: check the length and hash to lower the probably of crash.
+    
 
 
     // end of moveNextFields

@@ -25,8 +25,8 @@ public class FieldReferenceOffsetManager {
     public int maximumFragmentStackDepth;  
     
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
-														            OperatorMask.Field_None, 
-														            0)};
+														                                      OperatorMask.Field_None, 
+														                                      0)};
 	private static int[] SINGLE_MESSAGE_BYTEARRAY_STARTS = new int[]{0};//there is only 1 message and only one start location.
 	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{"ByteArray"};
 	private static final short ZERO_PREMABLE = 0;

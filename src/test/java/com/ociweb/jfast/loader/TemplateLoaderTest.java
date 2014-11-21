@@ -444,7 +444,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes); //TODO: AAAA, urgent this should NOT be debug compiled version is broken. 
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -588,7 +588,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);  //TODO: AAAA, urgent this should NOT be debug compiled version is broken. 
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

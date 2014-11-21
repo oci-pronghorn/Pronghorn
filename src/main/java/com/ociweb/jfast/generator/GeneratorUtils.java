@@ -20,7 +20,7 @@ public class GeneratorUtils {
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = true;
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
-    static final boolean OPTIMIZE_PMAP_READ_WRITE = true;
+    static final boolean OPTIMIZE_PMAP_READ_WRITE = true; 
     
     public static final boolean USE_RAW_POSITION = false; //TODO: AA, need to modify the generated code before this will work.
     
@@ -694,6 +694,8 @@ public class GeneratorUtils {
             }
           //  assert(!template.contains("PrimitiveReader.readPMapBit")) : "check for exact match of arguments.";
             
+            if (false) {//TODO: B, fix should be true, this broke when we fixed the pmap so it stopped writing to the extra byte.
+            
             //For writer
             //unlike reader there will be two writers 1 and 0 so the counting will be more difficult.
             //to solve this we use two independent counters
@@ -728,7 +730,7 @@ public class GeneratorUtils {
             }
          //   assert(!template.contains("PrimitiveWriter.writePMapBit")) : "check for exact match of arguments.";
             
-            
+            }
             
         }
         return template;
