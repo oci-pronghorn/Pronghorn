@@ -453,10 +453,12 @@ public class TemplateCatalogConfig {
         return maxPMapDepth;
     }
 
+    @Deprecated
     public int[] getTemplateStartIdx() {
         return templateStartIdx;
     }
 
+    @Deprecated
     public int[] getTemplateLimitIdx() {
         return templateLimitIdx;
     }
@@ -474,7 +476,6 @@ public class TemplateCatalogConfig {
 		
 		return new FieldReferenceOffsetManager(   config.scriptTokens, 
 									        	  config.clientConfig.getPreableBytes(), 
-									              config.getTemplateStartIdx(), 
 									              config.fieldNameScript());
 		
 		

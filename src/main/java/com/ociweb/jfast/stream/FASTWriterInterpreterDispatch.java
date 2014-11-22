@@ -9,13 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.RingReader;
 
 //May drop interface if this causes a performance problem from virtual table 

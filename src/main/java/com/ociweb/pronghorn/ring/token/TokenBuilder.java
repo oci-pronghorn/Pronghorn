@@ -1,7 +1,8 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.field;
+package com.ociweb.pronghorn.ring.token;
+
 
 public class TokenBuilder {
 
@@ -103,10 +104,13 @@ public class TokenBuilder {
         if (isInValidCombo(type, opp)) {
             throw new UnsupportedOperationException("bad token");
         }
-        ;
 
-        return (TypeMask.toString(type) + "/" + OperatorMask.toString(type, opp) + "/" + count);
+        if (TypeMask.Group==type || TypeMask.Dictionary==type) {
+        	return TypeMask.methodTypeName[type] + TypeMask.methodTypeSuffix[type] + "/" + OperatorMask.toString(type, opp) + "/" + count;
+        } else {
+        	return TypeMask.methodTypeName[type] + TypeMask.methodTypeSuffix[type] + "/" + OperatorMask.methodOperatorName[opp] + "/" + count;
         }
+    }
 
 
     /**

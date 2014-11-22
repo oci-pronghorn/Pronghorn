@@ -28,8 +28,6 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateHandler;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.primitive.FASTInput;
@@ -42,6 +40,8 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.WalkingConsumerState;
 import com.ociweb.pronghorn.ring.RingWriter;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
@@ -328,22 +328,7 @@ public class CatalogGeneratorTest {
 //        8   00000001  int32 field1001 not default
 //        9   00000000  int32 field1001
         
-        //If the message type does not use a pmap then we can confirm the first 2 bytes
-        //otherwise its dependent upon the data so its harder to test.
-        if (OperatorMask.Field_None == fieldOperator ||
-            OperatorMask.Field_Constant == fieldOperator ||
-            OperatorMask.Field_Delta == fieldOperator) {      
-		        
-		        assertEquals("test "+ordinal+"\n "+catalogXML,
-		        		      0xFF&Integer.parseInt("11000000", 2),
-		        		      0xFF&buffer[0]); //pmap to indicate that we do use template ID
-		        assertEquals("test "+ordinal+"\n "+catalogXML,
-		        		      0xFF&Integer.parseInt("10000010", 2),
-		        		      0xFF&buffer[1]); //template id of 2
-        }
-//        if (fieldOperator == OperatorMask.Field_None) {
-//        	throw new RuntimeException(catalogXML);
-//        }
+
         
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
         

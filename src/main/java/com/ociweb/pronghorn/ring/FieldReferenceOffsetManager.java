@@ -2,9 +2,9 @@ package com.ociweb.pronghorn.ring;
 
 import java.util.Arrays;
 
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class FieldReferenceOffsetManager {
 	
@@ -18,31 +18,32 @@ public class FieldReferenceOffsetManager {
     public int[] fragDataSize;
     public int[] fragScriptSize;
     public int[] tokens;
-    public int[] starts; //TODO: make templateID in message the same as the cursor so this lookup will no longer be needed.
-
+    
     public String[] fieldNameScript;
     public int maximumFragmentStackDepth;  
     
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
 														                                      OperatorMask.Field_None, 
 														                                      0)};
-	private static int[] SINGLE_MESSAGE_BYTEARRAY_STARTS = new int[]{0};//there is only 1 message and only one start location.
 	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{"ByteArray"};
 	private static final short ZERO_PREMABLE = 0;
 	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
 			                                                                                    ZERO_PREMABLE, 
-			                                                                                    SINGLE_MESSAGE_BYTEARRAY_STARTS, 
 			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES);
     /**
      * Constructor is only for unit tests.
      */
     private FieldReferenceOffsetManager() {    	
-    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_STARTS, SINGLE_MESSAGE_BYTEARRAY_NAMES);
+    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_NAMES);
     }
 
-    //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
+    public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames) {
+    	this(scriptTokens,(short)0,scriptNames);
+    }    
     
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, int[] startsLocal, String[] fieldNameScriptLocal) {
+    //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames) {
+			
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
         
@@ -71,9 +72,9 @@ public class FieldReferenceOffsetManager {
         tokens = scriptTokens;
         tokensLen = null==tokens?0:tokens.length;
         
-        starts = startsLocal;
+ 
         
-        fieldNameScript = fieldNameScriptLocal;
+        fieldNameScript = scriptNames;
 	}
 
     private void buildFragScript(int[] scriptTokens, short preableBytes) {
@@ -152,6 +153,46 @@ public class FieldReferenceOffsetManager {
 	}
     
     
+    public int[] messageStarts() {
+		int countOfNeededStarts = 1; //zero is always a start regardless of the token type found at that location
+		int j = tokens.length;
+		while (--j>0) { //do not process zero we have already counted it
+			int token = tokens[j];			
+			
+			if (TypeMask.Group == TokenBuilder.extractType(token) ) {				
+				int opMask = TokenBuilder.extractOper(token);
+				if ((OperatorMask.Group_Bit_Close & opMask)==0 &&     //this is an OPENING group not a CLOSE
+				    (OperatorMask.Group_Bit_Templ & opMask)!=0 ) {    //this is a special GROUP called a TEMPLATE
+					
+					countOfNeededStarts ++;					
+					
+				}
+			}
+		}
+		
+		int[] result = new int[countOfNeededStarts];
+				
+		j = tokens.length;
+		while (--j>0) { //do not process zero we have already counted it
+			int token = tokens[j];			
+			
+			if (TypeMask.Group == TokenBuilder.extractType(token) ) {				
+				int opMask = TokenBuilder.extractOper(token);
+				if ((OperatorMask.Group_Bit_Close & opMask)==0 &&     //this is an OPENING group not a CLOSE
+				    (OperatorMask.Group_Bit_Templ & opMask)!=0 ) {    //this is a special GROUP called a TEMPLATE
+					
+					result[--countOfNeededStarts] = j;							
+					
+				}
+			}
+		}
+		result[--countOfNeededStarts] = 0;
+		
+		return result;
+		
+    }
+    
+    
   //TODO: convert to static and swap position for field id.
     public final String fieldName(int fragmentStart, int position) {
     	return fieldNameScript[fragmentStart+position];
@@ -195,6 +236,43 @@ public class FieldReferenceOffsetManager {
         throw new UnsupportedOperationException("Unable to find field name: "+target+" in "+Arrays.toString(fieldNameScript));
         
     }
+
+    
+    /**
+     * Helpful debugging method that writes the script in a human readable form out to the console.
+     * 
+     * @param title
+     * @param fullScript
+     */
+	public static void printScript(String title, int[] fullScript) {
+		System.out.println(title);
+		int step = 3;
+		
+		String tab = "                                                 ";
+		int i = 0;
+		int depth = 3;
+		while (i<fullScript.length) {
+			int token = fullScript[i];
+			
+			if (TokenBuilder.extractType(token) ==  TypeMask.Group) {
+				if ((TokenBuilder.extractOper(token)&OperatorMask.Group_Bit_Close)!=0 ) {
+					depth-=step;
+				}				
+			}
+			
+			String row = "00000"+Integer.toString(i);
+			
+			System.out.println(row.substring(row.length()-6)+tab.substring(0,depth)+TokenBuilder.tokenToString(token));		
+			
+			if (TokenBuilder.extractType(token) ==  TypeMask.Group) {
+				if ((TokenBuilder.extractOper(token)&OperatorMask.Group_Bit_Close)==0 ) {
+					depth+=step;
+				} 				
+			}
+			i++;
+		}
+		
+	}
     
     
 }

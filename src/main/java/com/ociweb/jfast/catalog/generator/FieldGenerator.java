@@ -2,8 +2,8 @@ package com.ociweb.jfast.catalog.generator;
 
 import java.io.IOException;
 
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class FieldGenerator implements ItemGenerator {
 

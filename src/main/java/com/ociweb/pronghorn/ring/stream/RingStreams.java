@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring;
+package com.ociweb.pronghorn.ring.stream;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
@@ -13,6 +13,10 @@ import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingWriter;
 
 public class RingStreams {
 

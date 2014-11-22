@@ -1,9 +1,10 @@
 package com.ociweb.pronghorn.ring;
 
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
+import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.util.Stats;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class WalkingConsumerState {
     public int messageId=-1;
@@ -233,13 +234,8 @@ public class WalkingConsumerState {
 	    ringBufferConsumer.setMessageId(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
 	    //start new message, can not be seq or optional group or end of message.
 	    
-	    //TODO: AA, swap out templateId here
-	    boolean useRawPosition = false; //TODO: AAAA, this is a work in progress, ask Nathan
-	    if (useRawPosition) {
-	    	ringBufferConsumer.cursor = ringBufferConsumer.getMessageId();	    	
-	    } else {
-	    	ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);
-	    }
+    	ringBufferConsumer.cursor = ringBufferConsumer.getMessageId();	    	
+
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //////

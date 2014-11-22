@@ -1,7 +1,10 @@
-package com.ociweb.pronghorn.ring;
+package com.ociweb.pronghorn.ring.stream;
 
 import java.io.IOException;
 import java.io.OutputStream;
+
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public class RingOutputStream extends OutputStream {
 

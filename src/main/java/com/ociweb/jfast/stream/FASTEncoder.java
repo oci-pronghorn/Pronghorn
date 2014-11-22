@@ -2,12 +2,13 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public abstract class FASTEncoder { 
     
@@ -36,6 +37,7 @@ public abstract class FASTEncoder {
     public int activeScriptCursor;
     protected int activeScriptLimit;
     protected final int[] fullScript;
+    public final int[] fieldIdScript;
     
     public final LocalHeap byteHeap;
 
@@ -52,23 +54,27 @@ public abstract class FASTEncoder {
     public FASTEncoder(TemplateCatalogConfig catalog) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers(), catalog.clientConfig().getPreableBytes());
+             catalog.fullScript(), catalog.fieldIdScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers(), catalog.clientConfig().getPreableBytes());
     }
     
     public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.getMaxGroupDepth(), ringBuffers, catalog.clientConfig().getPreableBytes());
+             catalog.fullScript(), catalog.fieldIdScript(), catalog.getMaxGroupDepth(), ringBuffers, catalog.clientConfig().getPreableBytes());
     }
     
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
-                                int[][] dictionaryMembers, int[] fullScript, 
+                                int[][] dictionaryMembers, int[] fullScript, int[] fieldIdScript,
                                 int maxNestedGroupDepth, RingBuffers ringBuffers, int preambleBytes) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;
         
+        //FieldReferenceOffsetManager.printScript("debug encoder ", fullScript);
+        
+        this.fieldIdScript = fieldIdScript;
+               
         this.nonTemplatePMapSize = nonTemplatePMapSize;
         this.templatePMapSize = templatePMapSize;
 

@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public class FieldReaderIntegerTest {
 

@@ -304,13 +304,12 @@ public class ThreadingTest {
             int templateId;
             int fragStart;
 
-            templateId = 1;
-            //TODO: AA, swap out templateId here
-            if (GeneratorUtils.USE_RAW_POSITION) {
-            	fragStart = templateId;
-            } else {
-            	fragStart = reactor.fragmentStart(templateId);
-            }
+            
+            int[] msgStarts = from.messageStarts();
+            
+           	fragStart = msgStarts[0];
+           	
+
             IDX1_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
             IDX1_MessageType = from.lookupIDX("MessageType", fragStart);
             IDX1_SenderCompID = from.lookupIDX("SenderCompID", fragStart);
@@ -369,9 +368,7 @@ public class ThreadingTest {
             validate("AggressorSide", 26, IDX1_AggressorSide);
             validate("MatchEventIndicator", 27, IDX1_MatchEventIndicator);
             
-            
-            templateId = 2;
-            fragStart = reactor.fragmentStart(templateId);
+            fragStart = msgStarts[1];
             
             IDX2_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
             IDX2_MessageType = from.lookupIDX("MessageType", fragStart);
@@ -384,7 +381,7 @@ public class ThreadingTest {
             validate("MsgSeqNum", 8, IDX2_MsgSeqNum);
             
             templateId = 99;
-            fragStart = reactor.fragmentStart(templateId);
+            fragStart = msgStarts[3];
             
             
             

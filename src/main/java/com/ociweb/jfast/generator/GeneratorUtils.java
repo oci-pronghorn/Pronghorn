@@ -8,9 +8,9 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -18,12 +18,10 @@ public class GeneratorUtils {
     //TODO: D, schema is flexable and recorded with the data stream.
     
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
-    static final boolean ADD_COMMENTS = true;
+    static final boolean ADD_COMMENTS = false; //set to true if generated code should have helpful comments
     static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true; 
-    
-    public static final boolean USE_RAW_POSITION = false; //TODO: AA, need to modify the generated code before this will work.
-    
+        
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
 
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package

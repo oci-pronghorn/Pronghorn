@@ -1,7 +1,8 @@
 //Copyright 2013, Nathan Tippy
 //See LICENSE file for BSD license details.
 //Send support requests to http://www.ociweb.com/contact
-package com.ociweb.jfast.field;
+package com.ociweb.pronghorn.ring.token;
+
 
 public class OperatorMask {
 
@@ -67,33 +68,33 @@ public class OperatorMask {
         case TypeMask.Group:
             StringBuilder builder = new StringBuilder();
             if (0 != (Group_Bit_Close & opp)) {
-                builder.append("Close:");
+                builder.append("Close");
             } else {
-                builder.append("Open:");
+                builder.append("Open");
             }
 
             if (0 != (Group_Bit_Templ & opp)) {
-                builder.append("DynTempl:");
+                builder.append("Templ");
             }
 
             if (0 != (Group_Bit_Seq & opp)) {
-                builder.append("Seq:");
+                builder.append("Seq");
             }
 
             if (0 != (Group_Bit_PMap & opp)) {
-                builder.append("PMap:");
+                builder.append("PMap");
             }
 
-            return builder + ":" + prefix(6, '0', Integer.toBinaryString(opp));
+            return builder.toString();
 
         case TypeMask.Dictionary:
             switch (opp) {
             case Dictionary_Reset:
-                return "Reset:" + prefix(6, '0', Integer.toBinaryString(opp));
+                return "Reset";
             case Dictionary_Read_From:
-                return "ReadFrom:" + prefix(6, '0', Integer.toBinaryString(opp));
+                return "ReadFrom";
             default:
-                return "unknown operation:" + prefix(6, '0', Integer.toBinaryString(opp));
+                return "unknown operation";
             }
         default:
             switch (opp) {

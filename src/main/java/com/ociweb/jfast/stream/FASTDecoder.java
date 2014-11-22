@@ -1,15 +1,14 @@
 package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public abstract class FASTDecoder{
-    
-    public final int[] templateStartIdx; 
-    
+        
+	public final int[] templateStartIdx;
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
     public final int[] sequenceCountStack;
@@ -23,7 +22,7 @@ public abstract class FASTDecoder{
     protected final LocalHeap byteHeap;
     
     public int activeScriptCursor=-1; //needed by generated code to hold state between calls.
-    public int templateId=-1; //must hold between read (wait for space on queue) and write of templateId
+    public int msgIdx=-1; //must hold between read (wait for space on queue) and write of templateId
     public int preambleA=0; //must hold between read (wait for space on queue) and write (if it happens)
     public int preambleB=0; //must hold between read (wait for space on queue) and write (if it happens)
     public int maxPMapCountInBytes;       
@@ -35,7 +34,7 @@ public abstract class FASTDecoder{
         this(catalog.dictionaryFactory(), 
         	 catalog.getMaxGroupDepth(),
         	 catalog.getTemplateStartIdx(), 
-             catalog.clientConfig().getPreableBytes(), 
+        	 catalog.clientConfig().getPreableBytes(), 
              catalog.ringBuffers(), 
              TemplateCatalogConfig.maxPMapCountInBytes(catalog) );
         
@@ -44,8 +43,8 @@ public abstract class FASTDecoder{
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
     		            int[] templateStartIdx,
-			            int preambleBytes, 
-			            RingBuffers ringBuffers,
+    		            int preambleBytes,
+			            RingBuffers ringBuffers, 
 			            int maxPMapCountInBytes) {
 
         this.byteHeap = dcr.byteDictionary();
@@ -53,9 +52,7 @@ public abstract class FASTDecoder{
         this.sequenceCountStack = new int[maxNestedGroupDepth];
         this.rIntDictionary = dcr.integerDictionary();
         this.rLongDictionary = dcr.longDictionary();
-        
-        this.templateStartIdx = templateStartIdx;  
-        
+        this.templateStartIdx = templateStartIdx; 
         this.preambleData = new byte[preambleBytes];
         
         this.ringBuffers = ringBuffers;
@@ -90,10 +87,7 @@ public abstract class FASTDecoder{
     public abstract int decode(PrimitiveReader reader);
 
 
-	public static int fragmentStart(int templateId, FASTDecoder decoder) {
-		return decoder.templateStartIdx[templateId];
-	}
-        
+       
 
 
 }

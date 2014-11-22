@@ -8,9 +8,6 @@ import java.nio.ByteBuffer;
 import org.junit.Test;
 
 import com.google.caliper.Benchmark;
-import com.ociweb.jfast.field.OperatorMask;
-import com.ociweb.jfast.field.TokenBuilder;
-import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
@@ -24,6 +21,9 @@ import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.stream.StreamingIntegerTest;
 import com.ociweb.jfast.stream.TestHelper;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class HomogeniousRecordWriteReadIntegerBenchmark extends Benchmark {
 

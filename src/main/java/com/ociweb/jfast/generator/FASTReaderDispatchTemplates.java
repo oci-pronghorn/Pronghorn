@@ -2,13 +2,13 @@ package com.ociweb.jfast.generator;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.field.LocalHeap;
-import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.WalkingConsumerState;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Stats;
@@ -57,33 +57,22 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             
 	           
 	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-	            dispatch.templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;
+	            int templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;
 	            
-
-            if (dispatch.templateId<0 || dispatch.templateId>TokenBuilder.MAX_INSTANCE) {
-            	           	            	
-            	System.err.println(dispatch.templateId+" "+Integer.toBinaryString(dispatch.templateId)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
-            	PrimitiveReader.printDebugData(reader);
-            	throw new FASTException();
-            }
+	            		
+		        //because this point does extra checks it often caputres errors long after they have happened. TODO: Need better debugging tools     
+	            if (templateId<0) {
+	            	           	            	
+	            	System.err.println(dispatch.msgIdx+" "+Integer.toBinaryString(dispatch.msgIdx)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
+	            	PrimitiveReader.printDebugData(reader);
+	            	throw new FASTException();
+	            }
+	            
+            //given the template id from the compressed FAST feed what is the script position?
+            dispatch.msgIdx = dispatch.templateStartIdx[templateId];
             
             // fragment size plus 1 for template id and preamble data length in bytes
-            //TODO: AA, swap out templateId here
-            if (GeneratorUtils.USE_RAW_POSITION) {
-            	dispatch.activeScriptCursor = dispatch.templateId; 
-            	
-            	//TODO: B,  what is the templateId for this scriptLocation?
-            	int k = dispatch.templateStartIdx.length;//BIG HACK
-            	while (--k>=0) {
-            		if (dispatch.templateStartIdx[k]==dispatch.activeScriptCursor) {
-            			dispatch.templateId = k;
-            			break;
-            		}
-            	}            	
-            	
-            } else {
-            	dispatch.activeScriptCursor = dispatch.templateStartIdx[ dispatch.templateId];            
-            }
+           	dispatch.activeScriptCursor = dispatch.msgIdx; 
             
             //we know the templateId so we now know which ring buffer to use.
             RingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);          
@@ -98,7 +87,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genWriteTemplateId(FASTDecoder dispatch) {
         {
         RingBuffer rb = RingBuffers.get(dispatch.ringBuffers,dispatch.activeScriptCursor);  
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.templateId);
+        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, dispatch.msgIdx);
         }
     }
 

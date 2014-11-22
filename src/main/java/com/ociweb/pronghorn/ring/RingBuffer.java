@@ -2,6 +2,9 @@ package com.ociweb.pronghorn.ring;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
+import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
+
 
 
 /**

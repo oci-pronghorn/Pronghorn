@@ -9,6 +9,9 @@ import java.io.IOException;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.stream.RingInputStream;
+import com.ociweb.pronghorn.ring.stream.RingOutputStream;
+import com.ociweb.pronghorn.ring.stream.RingStreams;
 
 public class RingStreamsTest {
 

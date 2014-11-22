@@ -147,8 +147,5 @@ public final class FASTReaderReactor {
     	return RingBuffers.buffers(decoder.ringBuffers);
     }
     
-    public int fragmentStart(int templateId) {
-    	return FASTDecoder.fragmentStart(templateId, decoder);
-    }
 
 }
