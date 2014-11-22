@@ -13,7 +13,7 @@ import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates implements GeneratorDriving  {
 

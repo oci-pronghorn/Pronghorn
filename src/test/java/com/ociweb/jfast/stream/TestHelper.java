@@ -2,7 +2,7 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public class TestHelper {
 

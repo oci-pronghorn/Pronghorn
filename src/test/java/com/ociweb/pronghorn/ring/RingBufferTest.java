@@ -1,21 +1,21 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.jfast.ring.RingBuffer.addByteArray;
-import static com.ociweb.jfast.ring.RingBuffer.addValue;
-import static com.ociweb.jfast.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.jfast.ring.RingBuffer.byteMask;
-import static com.ociweb.jfast.ring.RingBuffer.bytePosition;
-import static com.ociweb.jfast.ring.RingBuffer.dump;
-import static com.ociweb.jfast.ring.RingBuffer.headPosition;
-import static com.ociweb.jfast.ring.RingBuffer.publishWrites;
-import static com.ociweb.jfast.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnHead;
-import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnTailTillMatchesHead;
-import static com.ociweb.jfast.ring.RingBuffer.tailPosition;
-import static com.ociweb.jfast.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.jfast.ring.RingBuffer.takeRingByteMetaData;
-import static com.ociweb.jfast.ring.RingBuffer.takeValue;
+import static com.ociweb.pronghorn.ring.RingBuffer.addByteArray;
+import static com.ociweb.pronghorn.ring.RingBuffer.addValue;
+import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
+import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
+import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.dump;
+import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
+import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTailTillMatchesHead;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
+import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.ring.RingBuffer.takeValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public class RingBufferTest {
 

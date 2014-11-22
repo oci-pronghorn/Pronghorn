@@ -37,7 +37,6 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
-import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
@@ -48,9 +47,9 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
-import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.WalkingConsumerState;
-import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.WalkingConsumerState;
+import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -211,9 +210,6 @@ public class TemplateLoaderTest {
 
                         // find the next index after this token.
                         int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-                        if (!GeneratorUtils.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
-                            fSize = 0; //constants are not written
-                        }
                         bufferIdx += fSize;
 
                     }

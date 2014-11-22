@@ -3,6 +3,9 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.field;
 
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+
 
 
 /**
@@ -759,7 +762,22 @@ public class LocalHeap {
         return tat[offset + 1];
     }
 
-    public static void reset(int idx, LocalHeap heap) {
+    public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, RingBuffer.PaddedLong rbPos, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
+	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    if (sourceLen > 0) {
+	        final int offset = heapId << 2;
+			final int pos = byteHeap.tat[offset];
+			final int len = byteHeap.tat[offset + 1] - pos;
+			
+			copyToRingBuffer(rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, pos, len, byteHeap.data);
+			rbRingBuffer.byteWorkingHeadPos.value = p + len;
+	    }      
+	    
+	    RingBuffer.addValue(rbB, rbMask, rbPos, p);
+	    RingBuffer.addValue(rbB, rbMask, rbPos, sourceLen);
+	}
+
+	public static void reset(int idx, LocalHeap heap) {
         int offset = idx << 1; // this shift left also removes the top bit!
                                // sweet.
         int startFrom = heap.initTat[offset];

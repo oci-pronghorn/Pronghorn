@@ -1,11 +1,10 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import java.util.Arrays;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.generator.GeneratorUtils;
 
 public class FieldReferenceOffsetManager {
 	
@@ -133,9 +132,6 @@ public class FieldReferenceOffsetManager {
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             
             int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-            if (!GeneratorUtils.WRITE_CONST && !TokenBuilder.isOptional(token) && TokenBuilder.extractOper(token)==OperatorMask.Field_Constant) {
-                fSize = 0; //constants are not written
-            }
             
             fragDataSize[fragmentStartIdx] += fSize;
             fragScriptSize[fragmentStartIdx]++;

@@ -1,4 +1,4 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

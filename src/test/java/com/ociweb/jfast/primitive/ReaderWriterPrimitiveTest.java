@@ -27,7 +27,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
-import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingReader;
 
 public class ReaderWriterPrimitiveTest {
 

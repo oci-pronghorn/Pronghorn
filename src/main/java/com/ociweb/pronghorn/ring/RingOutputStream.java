@@ -1,4 +1,4 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import java.io.IOException;
 import java.io.OutputStream;

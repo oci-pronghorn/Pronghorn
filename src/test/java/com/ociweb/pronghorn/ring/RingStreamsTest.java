@@ -1,4 +1,4 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import static org.junit.Assert.*;
 
@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.junit.Test;
+
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public class RingStreamsTest {
 

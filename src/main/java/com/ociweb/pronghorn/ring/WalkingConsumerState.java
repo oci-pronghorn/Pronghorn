@@ -1,9 +1,8 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import com.ociweb.jfast.field.OperatorMask;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
-import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.util.Stats;
 
 public class WalkingConsumerState {
@@ -235,7 +234,8 @@ public class WalkingConsumerState {
 	    //start new message, can not be seq or optional group or end of message.
 	    
 	    //TODO: AA, swap out templateId here
-	    if (GeneratorUtils.USE_RAW_POSITION) {
+	    boolean useRawPosition = false; //TODO: AAAA, this is a work in progress, ask Nathan
+	    if (useRawPosition) {
 	    	ringBufferConsumer.cursor = ringBufferConsumer.getMessageId();	    	
 	    } else {
 	    	ringBufferConsumer.cursor = (ringBufferConsumer.from.starts[ringBufferConsumer.getMessageId()]);

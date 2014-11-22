@@ -1,6 +1,6 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public interface RingWraith extends Runnable {
 

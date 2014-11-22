@@ -7,8 +7,8 @@ import java.util.List;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 

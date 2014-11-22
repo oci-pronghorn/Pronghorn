@@ -1,9 +1,8 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.LocalHeap;
+
 
 /**
  * Specialized ring buffer for holding decoded values from a FAST stream. Ring
@@ -157,47 +156,26 @@ public final class RingBuffer {
 
     }
 
-    public static void addLocalHeapValue(int heapId, int sourceLen, int rbMask, int[] rbB, PaddedLong rbPos, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
-        final int p = rbRingBuffer.byteWorkingHeadPos.value;
-        if (sourceLen > 0) {
-            rbRingBuffer.byteWorkingHeadPos.value = LocalHeap.copyToRingBuffer(heapId, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask, byteHeap);
-        }      
-        
-        addValue(rbB, rbMask, rbPos, p);
-        addValue(rbB, rbMask, rbPos, sourceLen);
-    }
-
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	    	
         final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
         	int targetMask = rbRingBuffer.byteMask;
-        	int proposedEnd = p + sourceLen;        	
-        	
-  //Experimental bounds checking, still under development.    	
-//        	int tailPos = rbRingBuffer.bytesTailPos.get() & targetMask;
-//        	int headPos = p & targetMask;
-//        	if (false && tailPos!=headPos) { //either full or empty can't tell TODO: D, use the absolute position.
-//	        	if (headPos<tailPos) {
-//	        		headPos += (targetMask+1);
-//	        	}
-//	        	
-//	        	int wStart = p & targetMask;
-//	        	int wEnd   = (proposedEnd-1) & targetMask;
-//	        	if (wEnd < wStart) {
-//	        		wEnd += (targetMask+1);
-//	        	}
-//	        	
-//	        	//if it overlaps then we have a problem
-//	        	if ((wEnd >= tailPos && wEnd < headPos) ||
-//	        		 (wStart >= tailPos && wStart < headPos) ) {	   
-//	        		//TODO: A, should block until we can write
-//	        		throw new FASTException("byte buffer is not large enough");
-//	        	}
-//        	}
-        	
-        	        	
-            LocalHeap.copyToRingBuffer(rbRingBuffer.byteBuffer, p, targetMask, sourceIdx, sourceLen, source);
+        	int proposedEnd = p + sourceLen;
+			byte[] target = rbRingBuffer.byteBuffer;        	
+			
+			//NOTE: we are not checking for overflow but if we did it would be here
+			
+            int tStop = (p + sourceLen) & targetMask;
+			int tStart = p & targetMask;
+			if (tStop > tStart) {
+			    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
+			} else {
+			    // done as two copies
+			    int firstLen = 1+ targetMask - tStart;
+			    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
+			    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			}
             rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
         }        
         

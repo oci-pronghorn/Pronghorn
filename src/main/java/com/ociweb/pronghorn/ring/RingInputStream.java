@@ -1,13 +1,13 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.jfast.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.jfast.ring.RingBuffer.bytePosition;
-import static com.ociweb.jfast.ring.RingBuffer.headPosition;
-import static com.ociweb.jfast.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.jfast.ring.RingBuffer.spinBlockOnHead;
-import static com.ociweb.jfast.ring.RingBuffer.tailPosition;
-import static com.ociweb.jfast.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.jfast.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
+import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
+import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 
 import java.io.IOException;
 import java.io.InputStream;

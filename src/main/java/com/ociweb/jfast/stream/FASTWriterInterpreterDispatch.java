@@ -14,9 +14,9 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.field.TypeMask;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.RingBuffer.PaddedLong;
-import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingReader;
 
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 

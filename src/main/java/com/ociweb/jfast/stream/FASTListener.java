@@ -1,6 +1,6 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 public interface FASTListener {
 

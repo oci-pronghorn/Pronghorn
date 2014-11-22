@@ -1,10 +1,9 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 
 /**
  * Public interface for applications desiring to consume data from a FAST feed.
@@ -90,7 +89,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                 target.append((char)buffer[pos++]);
             }
         } catch (IOException e) {
-           throw new FASTException(e);
+           throw new RuntimeException(e);
         }
         return target;
     }
@@ -104,7 +103,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
                 target.append((char)buffer[mask & pos++]);
             }
         } catch (IOException e) {
-           throw new FASTException(e);
+           throw new RuntimeException(e);
         }
         return target;
     }

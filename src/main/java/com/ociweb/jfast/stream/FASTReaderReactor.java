@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.InputBlockagePolicy;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 
 
 // TODO: B, Check support for group that may be optional

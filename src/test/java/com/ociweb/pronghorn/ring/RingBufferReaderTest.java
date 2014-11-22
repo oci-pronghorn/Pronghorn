@@ -1,10 +1,10 @@
-package com.ociweb.jfast.ring;
+package com.ociweb.pronghorn.ring;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingReader;
 
 public class RingBufferReaderTest {
 

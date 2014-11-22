@@ -6,7 +6,7 @@ package com.ociweb.jfast.primitive;
 import java.io.IOException;
 
 import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.jfast.util.Profile;
 
 /**

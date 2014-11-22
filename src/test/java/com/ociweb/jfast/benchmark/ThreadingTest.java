@@ -1,12 +1,12 @@
 package com.ociweb.jfast.benchmark;
 
-import static com.ociweb.jfast.ring.RingReader.eqASCII;
-import static com.ociweb.jfast.ring.RingReader.readASCII;
-import static com.ociweb.jfast.ring.RingReader.readDataLength;
-import static com.ociweb.jfast.ring.RingReader.readDecimalExponent;
-import static com.ociweb.jfast.ring.RingReader.readDecimalMantissa;
-import static com.ociweb.jfast.ring.RingReader.readInt;
-import static com.ociweb.jfast.ring.RingReader.readLong;
+import static com.ociweb.pronghorn.ring.RingReader.eqASCII;
+import static com.ociweb.pronghorn.ring.RingReader.readASCII;
+import static com.ociweb.pronghorn.ring.RingReader.readDataLength;
+import static com.ociweb.pronghorn.ring.RingReader.readDecimalExponent;
+import static com.ociweb.pronghorn.ring.RingReader.readDecimalMantissa;
+import static com.ociweb.pronghorn.ring.RingReader.readInt;
+import static com.ociweb.pronghorn.ring.RingReader.readLong;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
@@ -33,10 +33,10 @@ import com.ociweb.jfast.generator.GeneratorUtils;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.WalkingConsumerState;
-import com.ociweb.jfast.ring.RingReader;
-import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.WalkingConsumerState;
+import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.RingBuffers;

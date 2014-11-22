@@ -12,8 +12,8 @@ import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
-import com.ociweb.jfast.ring.RingBuffer;
-import com.ociweb.jfast.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 
 public abstract class BaseStreamingTest {
 

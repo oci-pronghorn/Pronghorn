@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.TokenBuilder;
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -23,10 +23,6 @@ public class GeneratorUtils {
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true; 
     
     public static final boolean USE_RAW_POSITION = false; //TODO: AA, need to modify the generated code before this will work.
-    
-    //TODO: C, confirm this is a good or bad feature. leave true until we decide on this performance idea.
-    public final static boolean WRITE_CONST = true; 
-
     
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
 
