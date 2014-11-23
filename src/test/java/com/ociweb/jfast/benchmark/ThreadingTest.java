@@ -310,33 +310,33 @@ public class ThreadingTest {
            	fragStart = msgStarts[0];
            	
 
-            IDX1_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
-            IDX1_MessageType = from.lookupIDX("MessageType", fragStart);
-            IDX1_SenderCompID = from.lookupIDX("SenderCompID", fragStart);
-            IDX1_MsgSeqNum = from.lookupIDX("MsgSeqNum", fragStart);
-            IDX1_SendingTime = from.lookupIDX("SendingTime", fragStart);
-            IDX1_TradeDate = from.lookupIDX("TradeDate", fragStart);            
-            IDX1_NoMDEntries = from.lookupIDX("NoMDEntries", fragStart);
+            IDX1_AppVerId = FieldReferenceOffsetManager.lookupFieldLocator("ApplVerID", fragStart, from); 
+            IDX1_MessageType = FieldReferenceOffsetManager.lookupFieldLocator("MessageType", fragStart, from);
+            IDX1_SenderCompID = FieldReferenceOffsetManager.lookupFieldLocator("SenderCompID", fragStart, from);
+            IDX1_MsgSeqNum = FieldReferenceOffsetManager.lookupFieldLocator("MsgSeqNum", fragStart, from);
+            IDX1_SendingTime = FieldReferenceOffsetManager.lookupFieldLocator("SendingTime", fragStart, from);
+            IDX1_TradeDate = FieldReferenceOffsetManager.lookupFieldLocator("TradeDate", fragStart, from);            
+            IDX1_NoMDEntries = FieldReferenceOffsetManager.lookupFieldLocator("NoMDEntries", fragStart, from);
             
-            IDX1_MDUpdateAction = from.lookupIDX("MDUpdateAction", fragStart);
-            IDX1_MDPriceLevel = from.lookupIDX("MDPriceLevel", fragStart);            
-            IDX1_MDEntryType = from.lookupIDX("MDEntryType", fragStart);
-            IDX1_OpenCloseSettleFlag = from.lookupIDX("OpenCloseSettleFlag", fragStart);
-            IDX1_SecurityIDSource = from.lookupIDX("SecurityIDSource", fragStart);
-            IDX1_SecurityID = from.lookupIDX("SecurityID", fragStart);
-            IDX1_RptSeq = from.lookupIDX("RptSeq", fragStart);
-            IDX1_MDEntryPx = from.lookupIDX("MDEntryPx", fragStart);            
-            IDX1_MDEntryTime = from.lookupIDX("MDEntryTime", fragStart);
-            IDX1_MDEntrySize = from.lookupIDX("MDEntrySize", fragStart);
-            IDX1_NumberOfOrders = from.lookupIDX("NumberOfOrders", fragStart);
-            IDX1_TradingSessionID = from.lookupIDX("TradingSessionID", fragStart);
-            IDX1_NetChgPrevDay = from.lookupIDX("NetChgPrevDay", fragStart);
-            IDX1_TradeVolume = from.lookupIDX("TradeVolume", fragStart);
-            IDX1_TradeCondition = from.lookupIDX("TradeCondition", fragStart);
-            IDX1_TickDirection = from.lookupIDX("TickDirection", fragStart);
-            IDX1_QuoteCondition = from.lookupIDX("QuoteCondition", fragStart);
-            IDX1_AggressorSide = from.lookupIDX("AggressorSide", fragStart);
-            IDX1_MatchEventIndicator = from.lookupIDX("MatchEventIndicator", fragStart);
+            IDX1_MDUpdateAction = FieldReferenceOffsetManager.lookupFieldLocator("MDUpdateAction", fragStart, from);
+            IDX1_MDPriceLevel = FieldReferenceOffsetManager.lookupFieldLocator("MDPriceLevel", fragStart, from);            
+            IDX1_MDEntryType = FieldReferenceOffsetManager.lookupFieldLocator("MDEntryType", fragStart, from);
+            IDX1_OpenCloseSettleFlag = FieldReferenceOffsetManager.lookupFieldLocator("OpenCloseSettleFlag", fragStart, from);
+            IDX1_SecurityIDSource = FieldReferenceOffsetManager.lookupFieldLocator("SecurityIDSource", fragStart, from);
+            IDX1_SecurityID = FieldReferenceOffsetManager.lookupFieldLocator("SecurityID", fragStart, from);
+            IDX1_RptSeq = FieldReferenceOffsetManager.lookupFieldLocator("RptSeq", fragStart, from);
+            IDX1_MDEntryPx = FieldReferenceOffsetManager.lookupFieldLocator("MDEntryPx", fragStart, from);            
+            IDX1_MDEntryTime = FieldReferenceOffsetManager.lookupFieldLocator("MDEntryTime", fragStart, from);
+            IDX1_MDEntrySize = FieldReferenceOffsetManager.lookupFieldLocator("MDEntrySize", fragStart, from);
+            IDX1_NumberOfOrders = FieldReferenceOffsetManager.lookupFieldLocator("NumberOfOrders", fragStart, from);
+            IDX1_TradingSessionID = FieldReferenceOffsetManager.lookupFieldLocator("TradingSessionID", fragStart, from);
+            IDX1_NetChgPrevDay = FieldReferenceOffsetManager.lookupFieldLocator("NetChgPrevDay", fragStart, from);
+            IDX1_TradeVolume = FieldReferenceOffsetManager.lookupFieldLocator("TradeVolume", fragStart, from);
+            IDX1_TradeCondition = FieldReferenceOffsetManager.lookupFieldLocator("TradeCondition", fragStart, from);
+            IDX1_TickDirection = FieldReferenceOffsetManager.lookupFieldLocator("TickDirection", fragStart, from);
+            IDX1_QuoteCondition = FieldReferenceOffsetManager.lookupFieldLocator("QuoteCondition", fragStart, from);
+            IDX1_AggressorSide = FieldReferenceOffsetManager.lookupFieldLocator("AggressorSide", fragStart, from);
+            IDX1_MatchEventIndicator = FieldReferenceOffsetManager.lookupFieldLocator("MatchEventIndicator", fragStart, from);
             
             
             //TODO: B, this is the beginning of a unit test.
@@ -370,10 +370,10 @@ public class ThreadingTest {
             
             fragStart = msgStarts[1];
             
-            IDX2_AppVerId = from.lookupIDX("ApplVerID", fragStart); 
-            IDX2_MessageType = from.lookupIDX("MessageType", fragStart);
-            IDX2_SenderCompID = from.lookupIDX("SenderCompID", fragStart);
-            IDX2_MsgSeqNum = from.lookupIDX("MsgSeqNum", fragStart);
+            IDX2_AppVerId = FieldReferenceOffsetManager.lookupFieldLocator("ApplVerID", fragStart, from); 
+            IDX2_MessageType = FieldReferenceOffsetManager.lookupFieldLocator("MessageType", fragStart, from);
+            IDX2_SenderCompID = FieldReferenceOffsetManager.lookupFieldLocator("SenderCompID", fragStart, from);
+            IDX2_MsgSeqNum = FieldReferenceOffsetManager.lookupFieldLocator("MsgSeqNum", fragStart, from);
             
             validate("ApplVerID", 2, IDX2_AppVerId);
             validate("MessageType", 4, IDX2_MessageType);
@@ -405,7 +405,7 @@ public class ThreadingTest {
         templateId = readInt(rb, IDX_TemplateId);
         preamble = readInt(rb, IDX_Preamble);
 
-        switch (rb.consumerData.getMessageId()) {
+        switch (rb.consumerData.getMsgIdx()) {
             case 1:
                 
                 if (!eqASCII(rb, IDX1_AppVerId, "1.0")) {
@@ -539,7 +539,7 @@ public class ThreadingTest {
     
                 break;
             default:
-                System.err.println("Did not expect " + rb.consumerData.getMessageId());
+                System.err.println("Did not expect " + rb.consumerData.getMsgIdx());
         }
     }
 

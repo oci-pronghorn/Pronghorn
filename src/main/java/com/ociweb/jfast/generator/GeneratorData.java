@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
-import com.ociweb.jfast.util.MurmurHash;
+import com.ociweb.pronghorn.ring.util.MurmurHash;
 
 public class GeneratorData {
     public SourceTemplates templates;

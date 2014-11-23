@@ -114,8 +114,10 @@ public class TokenBuilder {
 
 
     /**
-     * Computes the absent values as needed. 00 -> 1 01 -> 0 10 -> -1 11 ->
-     * TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT
+     * Computes the absent values as needed. 00 -> 1 
+     *                                       01 -> 0 
+     *                                       10 -> -1 
+     *                                       11 -> Integer.MAX_VALUE
      * 
      * 0 1 11111111111111111111111111111111 1111111111111111111111111111111
      * 
@@ -135,8 +137,10 @@ public class TokenBuilder {
     }
 
     /**
-     * Computes the absent values as needed. 00 -> 1 01 -> 0 10 -> -1 11 ->
-     * TemplateCatalog.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG
+     * Computes the absent values as needed. 00 -> 1 
+     *                                       01 -> 0 
+     *                                       10 -> -1 
+     *                                       11 -> Long.MAX_VALUE
      * 
      * 0 1 1111111111111111111111111111111111111111111111111111111111111111
      * 111111111111111111111111111111111111111111111111111111111111111

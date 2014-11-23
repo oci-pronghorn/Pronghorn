@@ -50,6 +50,7 @@ import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
+import com.ociweb.pronghorn.ring.util.Histogram;
 import com.ociweb.jfast.stream.DispatchObserver;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTDynamicWriter;
@@ -60,7 +61,6 @@ import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
 import com.ociweb.jfast.stream.RingBuffers;
 import com.ociweb.jfast.util.Profile;
-import com.ociweb.jfast.util.Stats;
 
 public class TemplateLoaderTest {
 
@@ -136,7 +136,7 @@ public class TemplateLoaderTest {
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
-        Stats stats = new Stats(100000,13000000,1000000,100000000);    
+        Histogram stats = new Histogram(100000,13000000,1000000,100000000);    
         
         
         System.err.println("using: "+readerDispatch.getClass().getSimpleName());
@@ -175,7 +175,7 @@ public class TemplateLoaderTest {
 
                 frags++;
                 if (rb.consumerData.isNewMessage()) {
-                    int msgIdx = rb.consumerData.getMessageId();
+                    int msgIdx = rb.consumerData.getMsgIdx();
                     
                     msgs.incrementAndGet();
                     
@@ -297,7 +297,7 @@ public class TemplateLoaderTest {
                System.exit(0);
             }
             if (iter<count) {
-                Stats.sample((long)duration, stats);
+                Histogram.sample((long)duration, stats);
                 
                 if ((0x7F & iter) == 0) {
                     int ns = (int) stats.valueAtPercent(.60);//duration;
@@ -326,7 +326,7 @@ public class TemplateLoaderTest {
    //         rb.tailPos.lazySet(rb.workingTailPos.value);
 
         }
-        System.err.println(stats.toString()+" ns  total:"+Stats.sampleCount(stats));
+        System.err.println(stats.toString()+" ns  total:"+Histogram.sampleCount(stats));
         
         System.err.println(Profile.results());
 
@@ -371,7 +371,7 @@ public class TemplateLoaderTest {
             WalkingConsumerState.canMoveNext(rb);
 
             if (rb.consumerData.isNewMessage()) {
-                int templateId = rb.consumerData.getMessageId();
+                int templateId = rb.consumerData.getMsgIdx();
                 msgs.incrementAndGet();
             }
         }
@@ -521,7 +521,7 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) {  
                     if (WalkingConsumerState.canMoveNext(queue)) {
-                       if (queue.consumerData.getMessageId()>=0) { //skip if we are waiting for more content.
+                       if (queue.consumerData.getMsgIdx()>=0) { //skip if we are waiting for more content.
                                 dynamicWriter.write();  
                        }
                     }

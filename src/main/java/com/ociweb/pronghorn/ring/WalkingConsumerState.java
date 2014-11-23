@@ -1,13 +1,12 @@
 package com.ociweb.pronghorn.ring;
 
-import com.ociweb.jfast.generator.GeneratorUtils;
-import com.ociweb.jfast.util.Stats;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
+import com.ociweb.pronghorn.ring.util.Histogram;
 
 public class WalkingConsumerState {
-    public int messageId=-1;
+    private int msgIdx=-1;
     private boolean isNewMessage;
     public boolean waiting;
     private long waitingNextStop;
@@ -19,8 +18,8 @@ public class WalkingConsumerState {
     public long tailCache;
     public final FieldReferenceOffsetManager from;
     
-    public final Stats queueFill;
-    public final Stats timeBetween;
+    public final Histogram queueFill;
+    public final Histogram timeBetween;
     //keep the queue fill size for Little's law 
     //MeanResponseTime = MeanNumberInSystem / MeanThroughput
     private long lastTime = 0;
@@ -36,13 +35,13 @@ public class WalkingConsumerState {
 	}
 	
 	
-    public WalkingConsumerState(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
+    private WalkingConsumerState(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
                                     long tailCache, FieldReferenceOffsetManager from, int rbMask) {
     	if (null==from) {
     		throw new UnsupportedOperationException();
     	}
-        this.messageId = messageId;
+        this.msgIdx = messageId;
         this.isNewMessage = isNewMessage;
         this.waiting = waiting;
         this.waitingNextStop = waitingNextStop;
@@ -53,8 +52,8 @@ public class WalkingConsumerState {
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
         this.from = from;
-        this.queueFill  =  new Stats(10000, rbMask>>1, 0, rbMask+1);
-        this.timeBetween = new Stats(10000, 20, 0, 10000000000l);
+        this.queueFill  =  new Histogram(10000, rbMask>>1, 0, rbMask+1);
+        this.timeBetween = new Histogram(10000, 20, 0, 10000000000l);
         this.activeFragmentStack = new int[from.maximumFragmentStackDepth];
         
     }
@@ -65,10 +64,10 @@ public class WalkingConsumerState {
                 
         if ((--ringBufferConsumer.rateAvgCnt)<0) {
         
-            Stats.sample(ringBufferConsumer.bnmHeadPosCache - newTailPos, ringBufferConsumer.queueFill);
+            Histogram.sample(ringBufferConsumer.bnmHeadPosCache - newTailPos, ringBufferConsumer.queueFill);
             long now = System.nanoTime();
             if (ringBufferConsumer.lastTime>0) {
-                Stats.sample(now-ringBufferConsumer.lastTime, ringBufferConsumer.timeBetween);
+                Histogram.sample(now-ringBufferConsumer.lastTime, ringBufferConsumer.timeBetween);
             }
             ringBufferConsumer.lastTime = now;
             
@@ -84,12 +83,12 @@ public class WalkingConsumerState {
         
     }
     
-    public int getMessageId() {
-        return messageId;
+    public int getMsgIdx() {
+        return msgIdx;
     }
 
-    public void setMessageId(int messageId) {
-        this.messageId = messageId;
+    public void setMsgIdx(int idx) {
+        this.msgIdx = idx;
     }
 
     public boolean isNewMessage() {
@@ -159,7 +158,7 @@ public class WalkingConsumerState {
 	    RingBuffer.setWorkingTailPosition(ringBuffer, cashWorkingTailPos);
 	    ringBufferConsumer.activeFragmentDataSize = 0;
 	
-	    if (ringBufferConsumer.messageId<0) {  
+	    if (ringBufferConsumer.msgIdx<0) {  
 	        return beginNewMessage(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 	    } else {
 	        return beginFragment(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
@@ -205,7 +204,7 @@ public class WalkingConsumerState {
 	}
 
 	static boolean beginNewMessage(RingBuffer ringBuffer, WalkingConsumerState ringBufferConsumer, long cashWorkingTailPos) {
-		ringBufferConsumer.setMessageId(-1);
+		ringBufferConsumer.setMsgIdx(-1);
 	
 		//Now beginning a new message so release the previous one from the ring buffer
 		//This is the only safe place to do this and it must be done before we check for space needed by the next record.
@@ -218,7 +217,7 @@ public class WalkingConsumerState {
 	    if (needStop>ringBufferConsumer.getBnmHeadPosCache() ) {  
 	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
 	        if (needStop>ringBufferConsumer.getBnmHeadPosCache()) {
-	            ringBufferConsumer.setMessageId(-1);
+	            ringBufferConsumer.setMsgIdx(-1);
 	          return false; 
 	        }
 	    }
@@ -231,11 +230,10 @@ public class WalkingConsumerState {
 	    ringBufferConsumer.activeFragmentStackHead = 0;
 	    ringBufferConsumer.activeFragmentStack[ringBufferConsumer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
 	           
-	    ringBufferConsumer.setMessageId(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
+	    ringBufferConsumer.setMsgIdx(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
 	    //start new message, can not be seq or optional group or end of message.
 	    
-    	ringBufferConsumer.cursor = ringBufferConsumer.getMessageId();	    	
-
+    	ringBufferConsumer.cursor = ringBufferConsumer.getMsgIdx(); //this is from the stream not the ring buffer.
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //////
@@ -323,7 +321,7 @@ public class WalkingConsumerState {
         consumerData.cursor = (-1);
         consumerData.setSeqStackHead(-1);
         
-        consumerData.setMessageId(-1);
+        consumerData.setMsgIdx(-1);
         consumerData.setNewMessage(false);
         consumerData.activeFragmentDataSize = (0);
         

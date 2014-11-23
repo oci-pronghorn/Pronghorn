@@ -290,22 +290,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int expoConstAbsent = clientConfig.getAbsent32Value(expoToken);
-                    
+                	
+                	int expoConstAbsent = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
+                                        
                     decodeOptionalDecimalNone(expoConstAbsent, mantToken, reader, rbRingBuffer);
                     
                 } else {
                     // delta
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent =  clientConfig.getAbsent32Value(expoToken);
+                    int expoConstAbsent =  rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
                     
                     decodeOptionalDecimalDelta(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
                 // constant
-                int expoConstAbsent = clientConfig.getAbsent32Value(expoToken);
+                int expoConstAbsent = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
                 int expoConstConst = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
                 decodeOptionalDecimalConstant(expoConstAbsent,expoConstConst,mantToken, reader, rbRingBuffer);
@@ -320,7 +321,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent = clientConfig.getAbsent32Value(expoToken);
+                    int expoConstAbsent = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
                                         
                     decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
@@ -328,14 +329,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // increment
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent = clientConfig.getAbsent32Value(expoToken);
+                    int expoConstAbsent = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
                     
                     decodeOptionalDecimalIncrement(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
                 // default
-                int expoConstAbsent = clientConfig.getAbsent32Value(expoToken);
+                int expoConstAbsent = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
                 int expoConstDefault = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK] == 0 ? expoConstAbsent
                         : rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
@@ -757,20 +758,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongSignedNoneOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongSignedDeltaOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                long constAbsent = clientConfig.getAbsent64Value(token);
+                long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
                 long constConst = rLongDictionary[token & instanceMask];
 
                 genReadLongSignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -784,20 +785,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongSignedCopyOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongSignedIncrementOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                long constAbsent = clientConfig.getAbsent64Value(token);
+                long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
                 long constDefault = rLongDictionary[token & instanceMask] == 0 ? constAbsent
                         : rLongDictionary[token & instanceMask];
 
@@ -866,20 +867,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongUnsignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongUnsignedDeltaOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                long constAbsent = clientConfig.getAbsent64Value(token);
+                long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
                 long constConst = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
                 genReadLongUnsignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -893,20 +894,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongUnsignedCopyOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = clientConfig.getAbsent64Value(token);
+                    long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
 
                     genReadLongUnsignedIncrementOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                long constAbsent = clientConfig.getAbsent64Value(token);
+                long constAbsent = ringBuffer.consumerData.from.getAbsent64Value(token);
                 long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK] == 0 ? constAbsent
                         : rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
@@ -976,20 +977,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerSignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                int constAbsent = clientConfig.getAbsent32Value(token);
+                int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
                 int constConst = rIntDictionary[token & instanceMask];
 
                 genReadIntegerSignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1003,20 +1004,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerSignedCopyOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerSignedIncrementOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                int constAbsent = clientConfig.getAbsent32Value(token);
+                int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
                 int constDefault = rIntDictionary[token & instanceMask] == 0 ? constAbsent
                         : rIntDictionary[token & instanceMask];
 
@@ -1081,20 +1082,20 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                     assert (readFromIdx < 0);
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerUnsignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                int constAbsent = clientConfig.getAbsent32Value(token);
+                int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
                 int constConst = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 
                 genReadIntegerUnsignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1108,14 +1109,14 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     genReadIntegerUnsignedCopyOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = clientConfig.getAbsent32Value(token);
+                    int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
 
                     if (target==source) {
                         genReadIntegerUnsignedIncrementOptionalTS(target, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1127,7 +1128,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // default
                 int target = token & MAX_INT_INSTANCE_MASK;
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                int constAbsent = clientConfig.getAbsent32Value(token);
+                int constAbsent = ringBuffer.consumerData.from.getAbsent32Value(token);
                 int t = rIntDictionary[source];
                 int constDefault = t == 0 ? constAbsent : t - 1;
 

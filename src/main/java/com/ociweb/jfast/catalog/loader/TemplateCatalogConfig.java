@@ -17,6 +17,8 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.util.IntHashTable;
+import com.ociweb.pronghorn.ring.util.IntHashTableVisitor;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
@@ -241,11 +243,11 @@ public class TemplateCatalogConfig {
     public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, int biggestTemplateId,
             DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap, int[][] tokenIdxMembers,
             int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
-            int scriptLength, int[] templateIdx, int[] templateLimit, int maxPMapDepth, ClientConfig clientConfig) {    
+            int scriptLength,  IntHashTable templateToOffset, int[] templateToLimit, int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
                 catalogScriptFieldIds, catalogScriptFieldNames,
-                scriptLength, templateIdx, templateLimit);
+                scriptLength, templateToOffset, templateToLimit);
 
         saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
 
@@ -347,9 +349,9 @@ public class TemplateCatalogConfig {
      * @param catalogScriptFieldNames 
      * @param scripts
      */
-    private static void saveTemplateScripts(PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
-            int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, int[] templateStartIdx,
-            int[] templateLimitIdx) {
+    private static void saveTemplateScripts(final PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
+            int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, 
+            IntHashTable templateToOffset, final int[] templateToLimit) {
         // what size array will we need for template lookup. this must be a
         // power of two
         // therefore we will only store the exponent given a base of two.
@@ -369,23 +371,22 @@ public class TemplateCatalogConfig {
         // total number of templates are are defining here in the catalog
         PrimitiveWriter.writeIntegerUnsigned(uniqueTemplateIds, writer);
         // write each template index
-        int i = templateStartIdx.length;
-        while (--i >= 0) {
-            if (0 != templateStartIdx[i]) {
-                PrimitiveWriter.writeIntegerUnsigned(i, writer);
-                PrimitiveWriter.writeIntegerUnsigned(templateStartIdx[i] - 1, writer); // return
-                                                                      // the
-                                                                      // index
-                                                                      // to its
-                                                                      // original
-                                                                      // value
-                                                                      // (-1)
-                PrimitiveWriter.writeIntegerUnsigned(templateLimitIdx[i], writer);
-            }
-        }
+        
+        IntHashTable.visit(templateToOffset, new IntHashTableVisitor() {
+
+			@Override
+			public void visit(int key, int value) {
+				
+				PrimitiveWriter.writeIntegerUnsigned(key, writer);
+				// return the index to its original value (-1)
+                PrimitiveWriter.writeIntegerUnsigned(value - 1, writer);
+                PrimitiveWriter.writeIntegerUnsigned(templateToLimit[key], writer);
+				
+			}} );
+               
 
         // write the scripts
-        i = scriptLength;
+        int i = scriptLength;
         while (--i >= 0) {
             PrimitiveWriter.writeIntegerSigned(catalogScriptTokens[i], writer);
             PrimitiveWriter.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
@@ -453,7 +454,6 @@ public class TemplateCatalogConfig {
         return maxPMapDepth;
     }
 
-    @Deprecated
     public int[] getTemplateStartIdx() {
         return templateStartIdx;
     }

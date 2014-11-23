@@ -1,4 +1,4 @@
-package com.ociweb.jfast.util;
+package com.ociweb.pronghorn.ring.util;
 
 import java.nio.ByteBuffer;
 
@@ -105,5 +105,14 @@ public class MurmurHash {
         return h;
     }
     
+    public static int hash32finalizer(int value)
+    {
+    	value ^= value >> 16;
+        value *= 0x85ebca6b;
+        value ^= value >> 13;
+        value *= 0xc2b2ae35;
+        value ^= value >> 16;
+        return value;
+    }
     
 }

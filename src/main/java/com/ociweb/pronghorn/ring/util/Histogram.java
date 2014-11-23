@@ -1,6 +1,9 @@
-package com.ociweb.jfast.util;
+package com.ociweb.pronghorn.ring.util;
 
-public class Stats {
+
+//Needs work to clean it up and make it more effecient but it gets the job done in general.
+
+public class Histogram {
 
     private final long[] buckets;
     private final long COMPACT_LIMIT = Long.MAX_VALUE>>1;//room for the double up process 
@@ -28,7 +31,7 @@ public class Stats {
      * @param lowEst May grow lower with additional data
      * @param highEst May grow larger with additional data
      */
-    public Stats(int bucketsCount, long expectedAvg, long hardMin, long hardMax) {
+    public Histogram(int bucketsCount, long expectedAvg, long hardMin, long hardMax) {
         this.hardMin = hardMin;
         this.hardMax = hardMax;
         this.buckets = new long[bucketsCount<<1];//must be divisible by two
@@ -41,15 +44,15 @@ public class Stats {
         this.max = this.min + (this.step*this.buckets.length);        
     }
     
-    public static long accumulatedTotal(Stats me) {
+    public static long accumulatedTotal(Histogram me) {
     	return me.accum;
     }
     
-    public static long sampleCount(Stats me) {
+    public static long sampleCount(Histogram me) {
         return me.sampleCount;
     }
     
-    public static void sample(long value, Stats me) {
+    public static void sample(long value, Histogram me) {
 		//TODO: rewite smaller
     	
 		me.accum +=value;
@@ -121,7 +124,7 @@ public class Stats {
         
     }
 
-    private static void compact(Stats me) {
+    private static void compact(Histogram me) {
         //halve all the values in order to keep rolling with the data.
         
         me.sampleCount = me.sampleCount>>1;

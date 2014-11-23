@@ -153,16 +153,6 @@ public class ClientConfig {
     
     public int getCatalogTemplateId() {
         return catalogId;
-    }
-
-
-	public int getAbsent32Value(int token) {
-		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add lookup based on token id
-	}
-    
-	public long getAbsent64Value(int token) {
-		return TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add lookup based on token id
-	}
-    
+    }   
     
 }

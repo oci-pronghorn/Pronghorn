@@ -9,6 +9,8 @@ import java.util.Set;
 
 import org.junit.Test;
 
+import com.ociweb.pronghorn.ring.util.MurmurHash;
+
 public class MurmurHashTest {
 
 	

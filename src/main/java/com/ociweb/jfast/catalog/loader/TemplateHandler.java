@@ -18,6 +18,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
+import com.ociweb.pronghorn.ring.util.IntHashTable;
 
 public class TemplateHandler extends DefaultHandler {
 
@@ -86,11 +87,9 @@ public class TemplateHandler extends DefaultHandler {
     int templateIdUnique = 0;
     // holds offset to template in script
     
-    //TODO: now that huffmen encoding is in here this array is not long enought.
-    
-    int[] templateIdx = new int[TokenBuilder.MAX_FIELD_ID_VALUE]; // checking
-                                                                  // for unique
-                                                                  // templateId
+    //can only support 64K unique keys but the actual values can be much larger 32 bit ints
+    IntHashTable templateToOffset = new IntHashTable(16); 
+
     int[] templateLimit = new int[TokenBuilder.MAX_FIELD_ID_VALUE]; // checking
                                                                     // for
                                                                     // unique
@@ -335,12 +334,13 @@ public class TemplateHandler extends DefaultHandler {
             int templateOffset = catalogTemplateScriptIdx + 1;
             fieldName = attributes.getValue("name");
             
-            templateId = Integer.valueOf(attributes.getValue("id"));
+            //NOTE: this would be very nice if long were supported for the ID.
+            templateId = Integer.parseInt(attributes.getValue("id"));
             
-            if (0 != templateIdx[templateId]) {
-                throw new SAXException("Duplicate template id: " + templateId);
-            }
-            templateIdx[templateId] = templateOffset;
+            if (!IntHashTable.setItem(templateToOffset, templateId, templateOffset)) {
+            	throw new SAXException("Duplicate template id: " + templateId);
+            }          
+            
             if (templateId < 0) {
                 throw new SAXException("Template Id must be positive: " + templateId);
             } else {
@@ -915,7 +915,7 @@ public class TemplateHandler extends DefaultHandler {
         TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
                 catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,
                 catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, 
-                catalogTemplateScriptIdx, templateIdx, templateLimit,
+                catalogTemplateScriptIdx,  templateToOffset, templateLimit,
                 maxGroupTokenStackDepth + 1, clientConfig);
 
         // close stream.

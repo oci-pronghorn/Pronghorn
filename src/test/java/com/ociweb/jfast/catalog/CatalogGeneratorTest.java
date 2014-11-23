@@ -347,7 +347,7 @@ public class CatalogGeneratorTest {
 	        		//System.err.println(j);
 	        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
 	        			assertTrue(buffers[k].consumerData.isNewMessage());
-	        			assertEquals(testTemplateId, buffers[k].consumerData.messageId);
+	        			assertEquals(testTemplateId, buffers[k].consumerData.getMsgIdx());
 	        			
 	        			//TODO: B, add test in here to confirm the values match
 	        			

@@ -9,9 +9,9 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.WalkingConsumerState;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.util.Histogram;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.RingBuffers;
-import com.ociweb.jfast.util.Stats;
 
 //TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
 //TODO: B, set the default template for the case when it is undefined in catalog.
