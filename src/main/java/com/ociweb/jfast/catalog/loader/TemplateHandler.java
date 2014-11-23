@@ -89,11 +89,7 @@ public class TemplateHandler extends DefaultHandler {
     
     //can only support 64K unique keys but the actual values can be much larger 32 bit ints
     IntHashTable templateToOffset = new IntHashTable(16); 
-
-    int[] templateLimit = new int[TokenBuilder.MAX_FIELD_ID_VALUE]; // checking
-                                                                    // for
-                                                                    // unique
-                                                                    // templateId
+    IntHashTable templateToLimit = new IntHashTable(16);
 
     String templateName;
     String templateXMLns;
@@ -611,7 +607,9 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("template")) {
 
-            templateLimit[templateId] = catalogTemplateScriptIdx;//warning this limit is inclusive not exclusive
+        	if (!IntHashTable.setItem(templateToLimit,templateId, catalogTemplateScriptIdx)) {
+        		throw new RuntimeException("internal parse error");
+        	}
 
             // templates always add 1 more for the templateId in the pmap
             int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead] + 1;
@@ -915,7 +913,7 @@ public class TemplateHandler extends DefaultHandler {
         TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
                 catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,
                 catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, 
-                catalogTemplateScriptIdx,  templateToOffset, templateLimit,
+                catalogTemplateScriptIdx,  templateToOffset, templateToLimit ,
                 maxGroupTokenStackDepth + 1, clientConfig);
 
         // close stream.

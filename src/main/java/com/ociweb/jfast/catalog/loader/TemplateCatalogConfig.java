@@ -243,7 +243,7 @@ public class TemplateCatalogConfig {
     public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, int biggestTemplateId,
             DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap, int[][] tokenIdxMembers,
             int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
-            int scriptLength,  IntHashTable templateToOffset, int[] templateToLimit, int maxPMapDepth, ClientConfig clientConfig) {    
+            int scriptLength,  IntHashTable templateToOffset, IntHashTable templateToLimit , int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
                 catalogScriptFieldIds, catalogScriptFieldNames,
@@ -351,7 +351,7 @@ public class TemplateCatalogConfig {
      */
     private static void saveTemplateScripts(final PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
             int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, 
-            IntHashTable templateToOffset, final int[] templateToLimit) {
+            IntHashTable templateToOffset, final IntHashTable templateToLimit ) {
         // what size array will we need for template lookup. this must be a
         // power of two
         // therefore we will only store the exponent given a base of two.
@@ -380,7 +380,7 @@ public class TemplateCatalogConfig {
 				PrimitiveWriter.writeIntegerUnsigned(key, writer);
 				// return the index to its original value (-1)
                 PrimitiveWriter.writeIntegerUnsigned(value - 1, writer);
-                PrimitiveWriter.writeIntegerUnsigned(templateToLimit[key], writer);
+                PrimitiveWriter.writeIntegerUnsigned(IntHashTable.getItem(templateToLimit, key), writer);
 				
 			}} );
                
