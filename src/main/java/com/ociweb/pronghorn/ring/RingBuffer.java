@@ -28,7 +28,6 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 
 // TODO: X, (optimization) need to get messageId when its the only message and so not written to the ring buffer.
-// TODO: B: (optimization)finish the field lookup so the constants need not be written to the loop! 
 // TODO: C, add map method which can take data from one ring buffer and populate another.
 // TODO: C, look at adding reduce method in addition to filter.
 // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
@@ -299,8 +298,6 @@ public final class RingBuffer {
     	if (ring.byteWorkingHeadPos.value < ring.byteWorkingTailPos.value ) {
     		ring.byteWorkingHeadPos.value += (ring.byteMask + 1);
     	}
-    	
-    	//TODO: B, need to do primary as well however its a little more complicated because we must also adjust tail.
 
     	//publish writes
     	ring.headPos.lazySet(ring.workingHeadPos.value);

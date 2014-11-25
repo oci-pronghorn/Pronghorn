@@ -1,16 +1,12 @@
 package com.ociweb.pronghorn.ring.util;
 
-import java.util.Arrays;
-
-
 /**
  * Non-Thread safe simple fast hash for int to int mapping.
  * 
  * No set is allowed unless no previous value is found.
  * To change previous value replace must be called.
  * Remove can not be supported.
- * 
- * key must not be zero.
+ * Key must not be zero.
  * 
  * @author Nathan Tippy
  *
@@ -21,19 +17,21 @@ public class IntHashTable {
 
 	private final int mask;
 	private final long[] data;
-	private int memberCount = 0;
+	private int space;
 	
 	public IntHashTable(int bits) {
 		int size = 1<<bits;
 		mask = size-1;
+		space = mask; //this is 1 less by design
 		
 		data = new long[size];
-		int j = size;		
+		int j = size;
+		
 	}
 		
 	public static boolean setItem(IntHashTable ht, int key, int value)
 	{
-		if (key==0 || ht.memberCount>=ht.mask) { //gives up 1 spot as a stopper for get.
+		if (0==key || 0==ht.space) { 
 			return false;
 		}
 				
@@ -49,11 +47,10 @@ public class IntHashTable {
 		
 		if (0 != temp) {
 			return false; //do not set item if it holds a previous value.
-		}
-		
+		}		
 		
 		ht.data[hash&mask] = block;
-		ht.memberCount++;
+		ht.space--;//gives up 1 spot as a stopper for get.
 		
 		return true;
 	}
@@ -96,11 +93,7 @@ public class IntHashTable {
 			   int value = (int)(block>>32);			   
 			   visitor.visit(key,value);
 		   }		   
-	   }
-	   
-	   
-   }
-	
-	
+	   }	   
+   }	
 	
 }

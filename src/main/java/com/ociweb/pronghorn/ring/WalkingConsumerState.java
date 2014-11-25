@@ -254,7 +254,7 @@ public class WalkingConsumerState {
 	            int seqLength = RingReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
 	            if (seqLength == 0) {
 	//                int jump = (TokenBuilder.MAX_INSTANCE&from.tokens[cursor-jumpSize])+2;
-	                int fragJump = consumerData.from.fragScriptSize[consumerData.cursor+1]; //script jump  //TODO: not sure this is right whenthey are nested?
+	                int fragJump = consumerData.from.fragScriptSize[consumerData.cursor+1]; //script jump  //TODO: not sure this is right when they are nested?
 	//                System.err.println(jump+" vs "+fragJump);
 	         //       System.err.println("******************** jump over seq");
 	                //TODO: B, need to build a test case, this does not appear in the current test data.

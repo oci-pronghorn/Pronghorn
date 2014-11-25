@@ -111,17 +111,13 @@ public class TemplateCatalogConfig {
         maxPMapDepth = PrimitiveReader.readIntegerUnsigned(reader);
 
         dictionaryFactory = new DictionaryFactory(reader);
-
                 
         clientConfig = new ClientConfig(reader);
-        
-        //TODO: A, this must be set here or set when the dictionary was built
-       // dictionaryFactory.setTypeCounts(integerCount, longCount, bytesCount, bytesGap, bytesNominalLength);
         
         //must be done after the client config construction
         from = TemplateCatalogConfig
 				.createFieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory,fullScriptLength, from, templateStartIdx, clientConfig);
+        ringBuffers = buildRingBuffers(dictionaryFactory, fullScriptLength, from, templateStartIdx, clientConfig);
         
     }
     

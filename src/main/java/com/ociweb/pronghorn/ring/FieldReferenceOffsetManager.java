@@ -70,7 +70,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             
             fragScriptSize = new int[scriptTokens.length];
-            //TODO: D, could be optimized after the fragments are given the expected locations, for now this works fine.
+            
             maximumFragmentStackDepth = scriptTokens.length;
             			
 			buildFragScript(scriptTokens, preableBytes);
@@ -113,7 +113,7 @@ public class FieldReferenceOffsetManager {
                 fragmentStartIdx = i;       
                 
                 boolean isSeq = (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
-                //TODO: if optional group it will also need to be zero like seq
+                //TODO: B, if optional group it will also need to be zero like seq
                 
                 //must be a group open only for a new message 
                 if (!isSeq && isGroupOpen) { 
@@ -293,7 +293,7 @@ public class FieldReferenceOffsetManager {
 	}
     
 	public int getAbsent32Value(int token) {
-		//TODO: we should discuss what the default value for on the ring should be we have 4 choices
+		//TODO: A, we should discuss what the default value for on the ring should be we have 4 choices
 		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add array lookup based on token id
 	}
     

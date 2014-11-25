@@ -30,9 +30,6 @@ public class RingWriter {
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int) (mantissa >>> 32), (int)mantissa & 0xFFFFFFFF );    
     }
 
-
-    
-    //TODO: need helper method to append text as we go so that logic remains here, temp bytes write
     
     //Because the stream neeeds to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
