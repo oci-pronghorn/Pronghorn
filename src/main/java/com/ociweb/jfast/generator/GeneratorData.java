@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
-import com.ociweb.pronghorn.ring.util.MurmurHash;
+import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
 public class GeneratorData {
     public SourceTemplates templates;

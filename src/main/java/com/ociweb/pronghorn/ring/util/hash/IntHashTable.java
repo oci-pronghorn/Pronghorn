@@ -1,4 +1,5 @@
-package com.ociweb.pronghorn.ring.util;
+package com.ociweb.pronghorn.ring.util.hash;
+
 
 /**
  * Non-Thread safe simple fast hash for int to int mapping.

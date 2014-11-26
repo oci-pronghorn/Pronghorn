@@ -17,8 +17,8 @@ import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.util.IntHashTable;
-import com.ociweb.pronghorn.ring.util.IntHashTableVisitor;
+import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
+import com.ociweb.pronghorn.ring.util.hash.IntHashTableVisitor;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {

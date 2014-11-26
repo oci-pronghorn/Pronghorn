@@ -18,7 +18,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
-import com.ociweb.pronghorn.ring.util.IntHashTable;
+import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
 public class TemplateHandler extends DefaultHandler {
 

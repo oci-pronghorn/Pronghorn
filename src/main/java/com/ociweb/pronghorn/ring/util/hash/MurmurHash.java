@@ -1,4 +1,4 @@
-package com.ociweb.pronghorn.ring.util;
+package com.ociweb.pronghorn.ring.util.hash;
 
 import java.nio.ByteBuffer;
 
