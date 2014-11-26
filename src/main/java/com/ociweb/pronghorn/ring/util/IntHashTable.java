@@ -66,6 +66,17 @@ public class IntHashTable {
 		return (int)(block >> 32);
 	}
 	    
+	public static boolean hasItem(IntHashTable ht, int key) {
+
+		int mask = ht.mask;
+		int hash = MurmurHash.hash32finalizer(key);
+		long block = ht.data[hash & mask];
+		while (((int)block) != key && block != 0) { 			
+			block = ht.data[++hash & mask];
+		}
+		return 0==block;
+	}
+	
 	public static boolean replaceItem(IntHashTable ht, int key, int newValue) {
 
 		int mask = ht.mask;

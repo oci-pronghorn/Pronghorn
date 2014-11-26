@@ -22,6 +22,8 @@ import com.ociweb.pronghorn.ring.util.IntHashTable;
 
 public class TemplateHandler extends DefaultHandler {
 
+	//TODO: AA, add support for TemplateRef so the templates can be much much smaller
+	
     private static final String SPECIAL_PREFIX = "'>";
 
     //TODO: C, simplify this and find all the common methods that can be pulled out.

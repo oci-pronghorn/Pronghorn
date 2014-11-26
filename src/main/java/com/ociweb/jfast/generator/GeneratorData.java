@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.pronghorn.ring.util.MurmurHash;
 
 public class GeneratorData {
@@ -23,7 +24,7 @@ public class GeneratorData {
     public String fieldPrefix;
     public int fieldMethodCount;
     public String caseTail;
-    public Set<Integer> sequenceStarts;
+    public IntWriteOnceOrderedSet sequenceStarts;
     public byte[] origCatBytes;
     public int[] hashedCat;
     
@@ -62,10 +63,10 @@ public class GeneratorData {
         this.origCatBytes = catBytes;        
         this.hashedCat = hashCatBytes(catBytes);        
         
-        this.caseParaDefs = new ArrayList<String>();
-        this.caseParaVals = new ArrayList<String>();
+        this.caseParaDefs = new ArrayList<String>(1<<16);
+        this.caseParaVals = new ArrayList<String>(1<<16);
         this.caseTail = caseTail;
-        this.sequenceStarts = new HashSet<Integer>();
+        this.sequenceStarts = new IntWriteOnceOrderedSet(17);
         this.runningComplexity = runningComplexity;
         this.lastFieldParaValues = lastFieldParaValues;
         this.usages = new HashMap<String,AtomicInteger>();

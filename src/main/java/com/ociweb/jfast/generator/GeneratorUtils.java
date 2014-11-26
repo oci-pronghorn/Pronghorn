@@ -11,6 +11,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -64,52 +65,45 @@ public class GeneratorUtils {
         target.append('}');
     }
 
-    static String getSingleFragmentMethod(List<String> doneScriptsParas, 
-                                        List<String> caseParaDefs, 
-                                        List<String> caseParaVals,
-                                        int scriptPos, StringBuilder groupMethodBuilder, String caseTail, StringBuilder fieldMethodBuilder) {
+    static String getSingleFragmentMethod(List<String> doneScriptsParas, GeneratorData generatorData) {
+    	
+    	String paraDefs = generatorData.caseParaDefs.toString().substring(1);        
+        String paraVals = generatorData.caseParaVals.toString().substring(1);
 
-        String paraDefs = caseParaDefs.toString().substring(1);
-        paraDefs = paraDefs.substring(0, paraDefs.length()-1);
-        
-        String paraVals = caseParaVals.toString().substring(1);
-        paraVals = paraVals.substring(0, paraVals.length()-1);
-        doneScriptsParas.add(paraVals);
+        doneScriptsParas.add(paraVals.substring(0, paraVals.length()-1));
         
         StringBuilder signatureLine = new StringBuilder();
         signatureLine.append("private static void ")
                      .append(GeneratorData.FRAGMENT_METHOD_NAME)
-                     .append(scriptPos)
+                     .append(generatorData.scriptPos)
                      .append("(")
-                     .append(paraDefs)
+                     .append(paraDefs.substring(0, paraDefs.length()-1))
                      .append(") {\n");
           
-        return signatureLine.toString()+groupMethodBuilder.toString()+caseTail+fieldMethodBuilder.toString();
+        return signatureLine.toString()+generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
     }
     
     
     //Called only once for generating full source file
     public static void buildEntryDispatchMethod(int preambleLength,
-                                                List<Integer> doneScripts, List<String> doneScriptsParas, 
+    											IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, 
                                                 Appendable builder, String entryMethodName,
                                                 Class primClass, RingBuffers ringBuffers) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";
         
-        
-        
-        assert(doneScripts.size() == doneScriptsParas.size());
         int j = 0;
         int m = 0;
-        
-        //Removes all the duplicates
-        Set<Integer> uniqueTotal = new HashSet<Integer>();
-        uniqueTotal.addAll(doneScripts);
-                
-        int[] doneValues = new int[uniqueTotal.size()];
-        String[] doneCode = new String[uniqueTotal.size()];
-        for(Integer cursorPos:doneScripts) {
+                       
+        int stop = IntWriteOnceOrderedSet.itemCount(doneScripts);
+        int[] doneValues = new int[stop];
+        String[] doneCode = new String[stop];
+
+        int i = 0;
+        while (i<stop) {
+        	
+        	int cursorPos = IntWriteOnceOrderedSet.getItem(doneScripts,i++);
         	
             String methodCallArgs = doneScriptsParas.get(m++)
                                     .replace("dispatch","this")
@@ -128,36 +122,15 @@ public class GeneratorUtils {
             int k = j;
             boolean found = false;
             while (--k >= 0) {
-            	found |= (doneValues[k]==cursorPos.intValue());
+            	found |= (doneValues[k]==cursorPos);
             }
             if (!found) {
-	            doneCode[j] = "\n\r"+
-	                          " "+ //TODO: B, Clean up this is very messy
-	                              (isReader?
-	                               " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
-	                                   "\n\r");
-	                    
-	            //exit if the ring buffer is full          
-	            if (isReader) {
-	                
-	                RingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
-	                int fragmentSize = thisRingBuffer.consumerData.from.fragDataSize[cursorPos]+ thisRingBuffer.consumerData.from.templateOffset + 1;
-	                
-	            doneCode[j] += 
-	                   " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
-	                   
-	                   " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
-	                   "       return 0;//nothing read\n\r" +
-	                   " }\n\r";
-	            } 
-	                                                        	
-            	doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
-            	doneValues[j++] = cursorPos;
-            	
-            }
-            
+	            createDispatchPoint(ringBuffers, isReader, j, doneValues, doneCode, cursorPos, methodCallArgs);
+            	j++;
+            }            
             
         }
+        
         BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
       
 
@@ -208,6 +181,33 @@ public class GeneratorUtils {
         builder.append("}\n");
     
     }
+
+	private static void createDispatchPoint(RingBuffers ringBuffers,
+			boolean isReader, int j, int[] doneValues, String[] doneCode,
+			int cursorPos, String methodCallArgs) {
+		doneCode[j] = "\n\r"+
+		              " "+ //TODO: B, Clean up this is very messy
+		                  (isReader?
+		                   " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
+		                       "\n\r");
+		        
+		//exit if the ring buffer is full          
+		if (isReader) {
+		    
+		    RingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
+		    int fragmentSize = thisRingBuffer.consumerData.from.fragDataSize[cursorPos]+ thisRingBuffer.consumerData.from.templateOffset + 1;
+		    
+		doneCode[j] += 
+		       " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
+		       
+		       " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
+		       "       return 0;//nothing read\n\r" +
+		       " }\n\r";
+		} 
+		                                            	
+		doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
+		doneValues[j] = cursorPos;
+	}
 
     /**
      * Reports back to the developer that one of the template methods were not captured for generation.
@@ -347,14 +347,13 @@ public class GeneratorUtils {
             //record the 'next' cursor index in case this message has stopped early at the end of a fragment.
             //this value is stored as a potential fragment start to ensure every entry point is covered.
             if (scriptor.getActiveScriptCursor()+1<scriptor.scriptLength()) {
-                generatorData.sequenceStarts.add(scriptor.getActiveScriptCursor()+1);
+            	IntWriteOnceOrderedSet.addItem(generatorData.sequenceStarts, scriptor.getActiveScriptCursor()+1);
             }
             
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
-        return getSingleFragmentMethod(doneScriptsParas, generatorData.caseParaDefs, generatorData.caseParaVals, 
-                                    generatorData.scriptPos, generatorData.groupMethodBuilder, generatorData.caseTail, generatorData.fieldMethodBuilder);
+        return getSingleFragmentMethod(doneScriptsParas, generatorData);
     }
 
     static String generateOpenTemplate(GeneratorData generatorData, GeneratorDriving scriptor) {
@@ -411,7 +410,7 @@ public class GeneratorUtils {
         
     }
 
-    public static void buildGroupMethods(TemplateCatalogConfig catalog, List<Integer> doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData) throws IOException {
+    public static void buildGroupMethods(TemplateCatalogConfig catalog, IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData) throws IOException {
         
         //A Group may be a full message or sequence item or group.
     
@@ -430,29 +429,32 @@ public class GeneratorUtils {
                 continue;//skip this one it was not at an entry point
             }
             
-            doneScripts.add(fragmentStart);
-            
-            String block;
-            
-            block = buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
-            
-            builder.append("\n");
-            builder.append(block);
+            if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
+	            
+	            String block = buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
+	            
+	            builder.append("\n");
+	            builder.append(block);
+            }
             
             //do additional case methods if needed.
             
-            //generatorData.sequenceStarts.
+//            //generatorData.sequenceStarts.
+//            
+//            IntWriteOnceOrderedSet.clone(generatorData.sequenceStarts);
+//            //Must make copy because we will be modifying this set inside the loop
+//            Set<Integer> clonedStarts = new HashSet<Integer>(generatorData.sequenceStarts);
+//           // System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
             
             
-            //Must make copy because we will be modifying this set inside the loop
-            Set<Integer> clonedStarts = new HashSet<Integer>(generatorData.sequenceStarts);
-           // System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
-            
-            for(int seqStart:clonedStarts) {
-                if (!doneScripts.contains(seqStart)) {
-                    doneScripts.add(seqStart);
+            //keep this stop because new elements are added while we walk over these
+            final int stop = IntWriteOnceOrderedSet.itemCount(generatorData.sequenceStarts);
+            int j = 0;
+            while (j<stop) {
+                int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
+            	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
                     
-                    block = buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
+                    String block = buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
                     
                     builder.append("\n");
                     builder.append(block);

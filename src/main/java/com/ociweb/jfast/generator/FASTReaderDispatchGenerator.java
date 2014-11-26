@@ -14,6 +14,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 
@@ -34,8 +35,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         
     
     public <T extends Appendable> T generateFullReaderSource(T target) throws IOException {
-        List<Integer> doneScripts = new ArrayList<Integer>();
-        List<String> doneScriptsParas = new ArrayList<String>();
+    	IntWriteOnceOrderedSet doneScripts = new IntWriteOnceOrderedSet(17);
+        List<String> doneScriptsParas = new ArrayList<String>(1<<17);
                 
         GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
         GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);       
