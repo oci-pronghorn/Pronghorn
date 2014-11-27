@@ -148,38 +148,22 @@ public class TemplateHandler extends DefaultHandler {
     
     public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
 
-        if (qName.equalsIgnoreCase("uint32")) {
-            fieldOperator = OperatorMask.Field_None;
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional
-                    : TypeMask.IntegerUnsigned;
-
+        if (qName.equalsIgnoreCase("uint32")) {            
+            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerUnsignedOptional : TypeMask.IntegerUnsigned;
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("int32")) {
-            fieldOperator = OperatorMask.Field_None;
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional
-                    : TypeMask.IntegerSigned;
-
+            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.IntegerSignedOptional : TypeMask.IntegerSigned;
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("uint64")) {
-            fieldOperator = OperatorMask.Field_None;
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional
-                    : TypeMask.LongUnsigned;
-
+            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongUnsignedOptional : TypeMask.LongUnsigned;
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
         } else if (qName.equalsIgnoreCase("int64")) {
-            fieldOperator = OperatorMask.Field_None;
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional
-                    : TypeMask.LongSigned;
-
+            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.LongSignedOptional : TypeMask.LongSigned;
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG);
         } else if (qName.equalsIgnoreCase("length")) {
-            fieldOperator = OperatorMask.Field_None;
             fieldType = TypeMask.GroupLength;// NOTE: length is not optional
-
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
-
         } else if (qName.equalsIgnoreCase("string")) {
-            fieldOperator = OperatorMask.Field_None;
             if ("unicode".equals(attributes.getValue("charset"))) {
                 // default is required
                 fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.TextUTF8Optional
@@ -191,13 +175,8 @@ public class TemplateHandler extends DefaultHandler {
             }
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
         } else if (qName.equalsIgnoreCase("decimal")) {
-            fieldOperator = OperatorMask.Field_None; // none is zero and the
-                                                     // same for twin and single
-                                                     // types
             fieldPMapInc = 2; // any operators must count as two PMap fields.
-            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional
-                    : TypeMask.Decimal;
-
+            fieldType = "optional".equals(attributes.getValue("presence")) ? TypeMask.DecimalOptional  : TypeMask.Decimal;
             commonIdAttributes(attributes, TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT);
 
             fieldExponentOperator = OperatorMask.Field_None;
@@ -248,7 +227,6 @@ public class TemplateHandler extends DefaultHandler {
             if ((fieldType & 1) != 0) {
                 groupOpenTokenPMapStack[groupTokenStackHead] += fieldPMapInc;
             }
-
         } else if (qName.equalsIgnoreCase("default")) {
             fieldOperator = OperatorMask.Field_Default;
             fieldOperatorValue = attributes.getValue("value");
@@ -392,6 +370,8 @@ public class TemplateHandler extends DefaultHandler {
             setActiveDictionary(attributes);
             templatesXMLns = attributes.getValue("xmlns");
 
+        } else if (qName.equalsIgnoreCase("templateRef")) {
+        	throw new UnsupportedOperationException("templateRef is unsupported at this time");
         }
     }
 
@@ -419,6 +399,7 @@ public class TemplateHandler extends DefaultHandler {
     }
 
     private void commonIdAttributes(Attributes attributes, long defaultAbsent) throws SAXException {
+    	fieldOperator = OperatorMask.Field_None;
         fieldId = Integer.parseInt(attributes.getValue("id"));
         if (fieldId < 0) {
             throw new SAXException("Field Id must be positive: " + fieldId);

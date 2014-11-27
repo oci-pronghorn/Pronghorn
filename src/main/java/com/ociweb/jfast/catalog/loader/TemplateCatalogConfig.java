@@ -172,7 +172,6 @@ public class TemplateCatalogConfig {
         }        
         return new RingBuffers(buffers);
         
-        //TODO: B, build  null ring buffer to drop messages.
     }
     
     public RingBuffers ringBuffers() {

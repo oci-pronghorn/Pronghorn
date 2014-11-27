@@ -38,8 +38,8 @@ public class TemplateGenerator implements ItemGenerator {
 		}
     }
     
-    public SequenceGenerator addSequence(String name) {
-        SequenceGenerator field = new SequenceGenerator(name);
+    public SequenceGenerator addSequence(String name, int id, String lengthName, int lengthId, int lengthOperator) {
+        SequenceGenerator field = new SequenceGenerator(name, id, lengthName, lengthId, lengthOperator);
         items.add(field);
         return field;
     }

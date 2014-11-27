@@ -502,8 +502,7 @@ public class GeneratorUtils {
         //template details to add as comments
         int token = scriptor.getActiveToken();
         int fieldId = scriptor.getActiveFieldId(); 
-        String fieldName = scriptor.getActiveFieldName();     
-        comment+="        //name='"+fieldName+"' id="+fieldId+" token="+TokenBuilder.tokenToString(token)+"\n";
+        comment+="        //name='"+scriptor.getActiveFieldName()+"' id="+fieldId+" token="+TokenBuilder.tokenToString(token)+"\n";
     
         
         //replace variables with constants

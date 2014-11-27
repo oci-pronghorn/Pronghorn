@@ -33,6 +33,8 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
 // TODO: B, must add way of selecting what field to skip writing for the consumer.
 
+//TODO: B, build  null ring buffer to drop messages.
+
 public final class RingBuffer {
    
 
