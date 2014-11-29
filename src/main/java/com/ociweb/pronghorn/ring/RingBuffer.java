@@ -351,14 +351,6 @@ public final class RingBuffer {
 		return lastCheckedValue;
     }
     
-    public static long spinBlock(AtomicLong atomicLong, long lastCheckedValue, long targetValue) {
-    	 while ( lastCheckedValue < targetValue) {
-        	Thread.yield();
-            lastCheckedValue = atomicLong.longValue();
-        }
-        return lastCheckedValue;
-    }
-
 	public static int byteMask(RingBuffer ring) {
 		return ring.byteMask;
 	}

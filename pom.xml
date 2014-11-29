@@ -22,6 +22,24 @@
 		</dependency>
   </dependencies>
   
+  <repositories>
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+        <checksumPolicy>warn</checksumPolicy>
+      </snapshots>
+      <id>ssh-repository</id>
+      <url>scpexe://extranet.ociweb.com/pronghorn/repo</url>
+      <layout>default</layout>
+    </repository>
+  </repositories>
+  
   <distributionManagement>
     <repository>
       <id>ssh-repository</id>
