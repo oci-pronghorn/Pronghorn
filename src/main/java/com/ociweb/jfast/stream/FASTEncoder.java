@@ -35,8 +35,7 @@ public abstract class FASTEncoder {
 
     protected DispatchObserver observer;
     public int activeScriptCursor;
-    @Deprecated
-    protected int activeScriptLimit;
+
     
     protected final int[] fullScript;
     public final int[] fieldIdScript;
@@ -129,10 +128,6 @@ public abstract class FASTEncoder {
     
     public int getActiveScriptCursor() {
         return activeScriptCursor;
-    }
-
-    public void setActiveScriptLimit(int limit) { //TODO: B, find a way to remove this? only needed by generation as an inclusive limit
-        activeScriptLimit = limit;
     }
     
     

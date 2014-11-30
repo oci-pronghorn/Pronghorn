@@ -1612,11 +1612,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     @Override
-    public void setActiveScriptLimit(int limit) {
-
-    }
-
-    @Override
     public int getActiveToken() {
         return fullScript[activeScriptCursor];
     }

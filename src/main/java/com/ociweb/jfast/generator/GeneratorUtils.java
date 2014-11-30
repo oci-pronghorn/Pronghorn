@@ -25,7 +25,7 @@ public class GeneratorUtils {
     static final boolean ADD_COMMENTS = false; //set to true if generated code should have helpful comments
     static final int COMPLEXITY_LIMITY_PER_METHOD = 24;//30;//28;//10050;//22;//18 25;
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true; 
-    static final boolean COMPILE_TO_SINGLE_CLASS = true;
+    static final boolean COMPILE_TO_SINGLE_CLASS = false;
     
         
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
@@ -136,11 +136,7 @@ public class GeneratorUtils {
             }            
             
         }
-        
-        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
-      
 
-        
         
         //if this is the beginning of a new template we use this special logic to pull the template id
         if (isReader) {
@@ -175,11 +171,36 @@ public class GeneratorUtils {
         //now that the cursor position / template id is known do normal processing
         builder.append("    int x = activeScriptCursor;\n");
         if (isReader) {
-            builder.append("    "+RingBuffer.class.getSimpleName()+" rb;\n");
+            builder.append("    "+RingBuffer.class.getSimpleName()+" rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,x);\n" ); 
+            
+		    //TODO: AAAA, simplify this to do less runtime work.
+			builder.append(" {int fragmentSize = rb.consumerData.from.fragDataSize[x]+ rb.consumerData.from.templateOffset + 1;\n\r")
+			       .append(" long neededTailStop = rb.workingHeadPos.value - (rb.maxSize-fragmentSize);\n\r")
+			       .append(" if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r")
+			       .append("       return 0;//nothing read\n\r")
+			       .append(" }}\n\r");
+            
         }
         
-              
-        bsg.generate("    ",builder, doneValues, doneCode);
+        //TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
+        //           need to break it down into multiple methods.  It would be be best to leave the high frequency messges but how would one know these?
+        
+        //for small sets a nested set of conditionals is faster
+        if (doneValues.length<32) {
+        	BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
+        	bsg.generate("    ",builder, doneValues, doneCode);
+        } else {
+        	//for large sets the switch is faster and easier to read
+        	builder.append("switch(x) {\n");        	
+        	int k = doneValues.length;
+        	while (--k>=0) {
+        		builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
+        	}        	
+        	builder.append("}\n");
+        	
+        }
+        
+        
         if (isReader) {
             builder.append("    "+RingBuffer.class.getSimpleName()+".publishWrites(rb);\n");
             builder.append("    return 1;//read a fragment\n"); 
@@ -191,32 +212,14 @@ public class GeneratorUtils {
 	private static void createDispatchPoint(RingBuffers ringBuffers,
 											boolean isReader, int j, int[] doneValues, String[] doneCode,
 											int cursorPos, String methodCallArgs, GeneratorData generatorData) {
-		doneCode[j] = "\n\r"+
-		              " "+ //TODO: B, Clean up this is very messy
-		                  (isReader?
-		                   " rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,"+cursorPos+");\n\r":
-		                       "\n\r");
+		doneCode[j] = "";
 		        
-		//exit if the ring buffer is full          
-		if (isReader) {
-		    
-		    RingBuffer thisRingBuffer = RingBuffers.get(ringBuffers,cursorPos);
-		    int fragmentSize = thisRingBuffer.consumerData.from.fragDataSize[cursorPos]+ thisRingBuffer.consumerData.from.templateOffset + 1;
-		    
-		doneCode[j] += 
-		       " long neededTailStop = rb.workingHeadPos.value - "+(thisRingBuffer.maxSize-fragmentSize)+";\n\r"+ 
-		       
-		       " if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r"+  
-		       "       return 0;//nothing read\n\r" +
-		       " }\n\r";
-		} 
-		
 		String methodCall = GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r"; 
 		
 		if (COMPILE_TO_SINGLE_CLASS) {
 			doneCode[j] += methodCall;			
 		} else {
-			String fragmentClassName = "com.ociweb.jfast.generator."+generatorData.dispatchType+cursorPos;			
+			String fragmentClassName = generatorData.dispatchType+cursorPos;			
 			doneCode[j] += fragmentClassName+"."+methodCall;
 		}
 		
@@ -355,7 +358,6 @@ public class GeneratorUtils {
     		                                       GeneratorData generatorData, List<JavaFileObject> alsoCompileTarget) {
         beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
-        scriptor.setActiveScriptLimit(limit); 
         try {
             scriptor.runFromCursor();//Generate the code, if any method was missed a null pointer will result.
             //
@@ -470,7 +472,6 @@ public class GeneratorUtils {
             }
             
             if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
-	            assert(fragmentStart == generatorData.scriptPos);
 	            builder.append(buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
             }
             

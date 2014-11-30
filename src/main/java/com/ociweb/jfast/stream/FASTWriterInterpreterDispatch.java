@@ -11,6 +11,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
@@ -1316,7 +1317,6 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         if (null!=rbRingBuffer) {
             //cursor and limit already set
             setActiveScriptCursor(rbRingBuffer.consumerData.cursor); 
-            setActiveScriptLimit(rbRingBuffer.consumerData.cursor + rbRingBuffer.consumerData.fragmentSteps(rbRingBuffer));
             fieldPos = 0;//needed for fragments in interpreter but is not called when generating
         }
         
@@ -1326,18 +1326,24 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //loop over every cursor position and dispatch to do the right activity
-        int stop = Math.min(activeScriptLimit, fullScript.length); //limit value is exclusive        
+        int stop = fullScript.length;       
         while (activeScriptCursor<stop) {
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message
-            }            
+            }          
+            
             if (
             	(TokenBuilder.extractType(fullScript[activeScriptCursor]) == TypeMask.Group &&
-            	 0 != (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Close)) ) {
-            	break;
+            	0 != (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Close) &&
+            	0 == (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Seq)) ) {
+            	//System.err.println("would break but did not at "+activeScriptCursor+"  "+TokenBuilder.tokenToString(fullScript[activeScriptCursor]));
+        		break;
             }
+            
             activeScriptCursor++; 
+            
         }
+        
         
     }
 

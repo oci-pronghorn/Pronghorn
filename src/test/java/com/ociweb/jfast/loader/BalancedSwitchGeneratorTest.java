@@ -16,7 +16,7 @@ public class BalancedSwitchGeneratorTest {
         
         StringBuilder target = new StringBuilder();
         
-        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
+        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
         bsg.generate("",target, values, code);
         
         String str = target.toString();
@@ -37,7 +37,7 @@ public class BalancedSwitchGeneratorTest {
         
         StringBuilder target = new StringBuilder();
         
-        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator();
+        BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
         bsg.generate("",target, values, code);
         
         String str = target.toString();

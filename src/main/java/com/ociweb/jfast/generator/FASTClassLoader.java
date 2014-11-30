@@ -17,6 +17,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
 import com.ociweb.jfast.error.FASTException;
+import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
     public class FASTClassLoader extends ClassLoader{
 
@@ -26,11 +27,12 @@ import com.ociweb.jfast.error.FASTException;
         
         public static final String READER = GENERATED_PACKAGE+'.'+SIMPLE_READER_NAME;
         public static final String WRITER = GENERATED_PACKAGE+'.'+SIMPLE_WRITER_NAME;
-        
+                
         final byte[] catBytes;// serialized catalog for the desired templates XML
         final boolean forceCompile;
         final boolean exportSource;
-
+        public static boolean fullCompiled = false;
+        
         static final File workingFolder = new File(new File(System.getProperty("java.io.tmpdir")),"jFAST");
         static {
             workingFolder.mkdirs();
@@ -46,22 +48,25 @@ import com.ociweb.jfast.error.FASTException;
             this.exportSource = Boolean.getBoolean("FAST.exportSource");
             this.forceCompile = forceCompile | exportSource | Boolean.getBoolean("FAST.forceCompile");
             Supervisor.log("Created new FASTClassLoader forceCompile:"+forceCompile+" exportSource:"+exportSource);
+            
         }        
         
         @SuppressWarnings("boxing")
         @Override
         public Class loadClass(String name) throws ClassNotFoundException {
             //if we want a normal class use the normal class loader
-            if(!(READER.equals(name) || WRITER.equals(name))) {
+            if(!name.contains("GeneratedDispatch") || !name.contains("jfast.generator.FAST")) {
                 return super.loadClass(name);
             }
             
             //if class is found and matches use it.
-            String className = READER.equals(name) ? SIMPLE_READER_NAME : SIMPLE_WRITER_NAME;
+            String simpleClassName = name.substring(name.lastIndexOf('.')+1);
             
             
-            File classFile = targetFile(className, "class");
-            if (!forceCompile && classFile.exists()) {
+            File classFile = targetFile(simpleClassName, "class");
+            
+            //CAUTION: only use force compile when you need deep testing it can be very slow.
+            if ((fullCompiled || !forceCompile) && classFile.exists()) {
                 Supervisor.log("Reading class from: "+classFile);
                 
                 byte[] classData = readClassBytes(classFile);
@@ -98,7 +103,7 @@ import com.ociweb.jfast.error.FASTException;
 									             										       writeGenerator.generateFullSource(new StringBuilder()));
 					toCompile.add(sourceWriterFileObject);
                 }
-                
+                System.err.println("Begin full compile of "+toCompile.size()+" files");
                 
                 if (exportSource) {
                 	for(JavaFileObject jfo:toCompile) {
@@ -111,9 +116,13 @@ import com.ociweb.jfast.error.FASTException;
                 }
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 
+                
                 if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
                     byte[] classData = readClassBytes(classFile);
-                    return defineClass(name, classData , 0, classData.length);
+                    Class result =  defineClass(name, classData , 0, classData.length);
+                    fullCompiled = true; //only set after success
+                    System.err.println("Finished full compile");
+                    return result;
                 } else {
                     reportCompileError(diagnostics.getDiagnostics());      
                 }
@@ -123,6 +132,7 @@ import com.ociweb.jfast.error.FASTException;
 
         private void reportCompileError(List<Diagnostic<? extends JavaFileObject>> diagnosticList)
                 throws ClassNotFoundException {
+        	
             Supervisor.logCompileError(diagnosticList);
             //did not compile due to error
             if (!diagnosticList.isEmpty()) {
@@ -148,7 +158,7 @@ import com.ociweb.jfast.error.FASTException;
         private void exportSourceToClassFolder(String name, String content) {
             try {
                 File sourceFile = targetFile(name, "java");
-                System.err.println("Wrote source to: "+sourceFile);
+               // System.err.println("Wrote source to: "+sourceFile);
                 FileWriter out = new FileWriter(sourceFile);
                 out.write(content);
                 out.close();

@@ -14,18 +14,39 @@ import java.nio.channels.FileChannel;
 
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
+import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
 public class SourceTemplates {
 
     final Class clazz;
     String templateText;
     
+    //5 bits for type 5 bits for operators 3 bits for extra space
+    IntHashTable cacheOfIdx = new IntHashTable(13);
+    
     public SourceTemplates(Class clazz) {
         this.clazz = clazz;
         
-    }
-    
-    
+    }    
+	private int findIndexOf(String methodName) {
+		
+		int seed = 7;
+		byte[] bytes = methodName.getBytes();
+		int key = MurmurHash.hash32(bytes, 0, bytes.length, seed);	
+		int value = IntHashTable.getItem(cacheOfIdx, key);
+		if (value>0) {
+			//since hash is used we must confirm for sure that this is a match
+			if (getRawSource().substring(value, value+methodName.length()).equals(methodName)) {
+				return value;
+			}			
+		}		
+		int idx = getRawSource().indexOf(methodName);
+		if (0==value) {
+			IntHashTable.setItem(cacheOfIdx, key, idx);
+		}
+		return idx;
+	}
 
     public String getRawSource() {
         if (null==templateText) {
@@ -87,7 +108,7 @@ public class SourceTemplates {
     }
     
     public String template(String methodName) {
-        int idx = getRawSource().indexOf(methodName);
+        int idx = findIndexOf(methodName);
         //start from idx and find the first {
         int start = getRawSource().indexOf('{', idx)+1;
         while (getRawSource().charAt(start)=='\n' || getRawSource().charAt(start)=='\r') {
@@ -110,14 +131,14 @@ public class SourceTemplates {
         //
         return getRawSource().substring(start,stop);
     }
-    
+   
     public String imports() {
         String source = getRawSource();
         return source.substring(source.indexOf("import"), source.indexOf("public abstract class "+clazz.getSimpleName()));
     }
     
     public String[] params(String methodName) {
-        int idx = getRawSource().indexOf(methodName);
+        int idx = findIndexOf(methodName);
         //start from idx and find the first (
         int start = getRawSource().indexOf('(', idx)+1;
         int stop = getRawSource().indexOf(')',start);
@@ -132,7 +153,7 @@ public class SourceTemplates {
     }
     
     public String[] defs(String methodName) {
-        int idx = getRawSource().indexOf(methodName);
+        int idx = findIndexOf(methodName);
         //start from idx and find the first (
         int start = getRawSource().indexOf('(', idx)+1;
         int stop = getRawSource().indexOf(')',start);

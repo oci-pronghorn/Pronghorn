@@ -113,7 +113,7 @@ public class CodeGenerationTest {
         SimpleSourceFileObject file = 
         		new SimpleSourceFileObject(FASTClassLoader.SIMPLE_READER_NAME,
         				new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList()).generateFullSource(new StringBuilder()));
-        		//new FASTReaderSourceFileObject(new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList()));
+
         assertEquals(Kind.SOURCE, file.getKind());
         CharSequence seq;
         try {

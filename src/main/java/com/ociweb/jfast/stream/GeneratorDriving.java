@@ -6,7 +6,6 @@ public interface GeneratorDriving {
     int getActiveScriptCursor();
     void setActiveScriptCursor(int cursor);
     
-    void setActiveScriptLimit(int limit);
         
     void runBeginMessage();
     void runFromCursor();

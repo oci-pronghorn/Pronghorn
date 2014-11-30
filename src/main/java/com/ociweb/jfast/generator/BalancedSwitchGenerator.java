@@ -5,11 +5,15 @@ import java.util.Arrays;
 
 public class BalancedSwitchGenerator {
     
-    final String varName = "x";
+    final String varName;
     final String tabSize = "    ";
     final int bits = 32;
     int[] counts = new int[bits];
     final boolean validate = false;
+    
+    public BalancedSwitchGenerator(String varName) {
+    	this.varName = varName;
+    }
     
     public Appendable generate(String tab, Appendable target, int[] values, String[] code) {
         if (values.length>0) {

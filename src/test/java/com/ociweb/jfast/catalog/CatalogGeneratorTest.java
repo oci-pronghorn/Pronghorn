@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPOutputStream;
@@ -37,6 +38,7 @@ import com.ociweb.jfast.primitive.ReaderWriterPrimitiveTest;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.WalkingConsumerState;
 import com.ociweb.pronghorn.ring.RingWriter;
@@ -98,6 +100,8 @@ public class CatalogGeneratorTest {
     private int testRecordCount = 3;//100;//100000; //testing enough to get repeatable results
     
     private static final int testTemplateId = 2;
+    private static final int testMessageIdx = 0;
+    
     
     List<String>  numericCatalogXML;
     List<byte[]>  numericCatalogs;
@@ -188,7 +192,9 @@ public class CatalogGeneratorTest {
                          numericFieldTypes.get(i).intValue(), 
                          numericFieldCounts.get(i).intValue(), 
                          numericCatalogs.get(i),
-                         totalWrittenCount, numericCatalogXML.get(i),numericCatalogs.size()-i);
+                         totalWrittenCount, 
+                         numericCatalogXML.get(i),
+                         numericCatalogs.size()-i);
         }
         System.err.println("totalWritten:"+totalWrittenCount.longValue());
             
@@ -347,7 +353,7 @@ public class CatalogGeneratorTest {
 	        		//System.err.println(j);
 	        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
 	        			assertTrue(buffers[k].consumerData.isNewMessage());
-	        			assertEquals(testTemplateId, buffers[k].consumerData.getMsgIdx());
+	        			assertEquals(testMessageIdx, buffers[k].consumerData.getMsgIdx());
 	        			
 	        			//TODO: B, add test in here to confirm the values match
 	        			
@@ -387,8 +393,13 @@ public class CatalogGeneratorTest {
     //TODO: B, need to review all misconfigured error messages to ensure that they are helpful and point in the right direction.
     
 
-    private float timeEncoding(int fieldType, int fieldCount, RingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {
+    private float timeEncoding(int fieldType, final int fieldCount, RingBuffer ringBuffer, FASTDynamicWriter dynamicWriter) {
        
+//    	System.err.println("field Count:"+fieldCount);
+//    	FieldReferenceOffsetManager.printScript("timeEncoding", ringBuffer.consumerData.from);
+//    	System.err.println(Arrays.toString(ringBuffer.consumerData.from.fragScriptSize));
+    	
+    	
     	int i = testRecordCount;
         int d;
         switch(fieldType) {
@@ -401,7 +412,8 @@ public class CatalogGeneratorTest {
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testMessageIdx);
+                        
                         int j = fieldCount;
                         while (--j>=0) {
                             RingWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
@@ -430,7 +442,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                   
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             RingWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -455,7 +467,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
           
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             RingWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
@@ -482,7 +494,7 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.stringData.length;
       
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testTemplateId);//template Id
+                        RingWriter.writeInt(ringBuffer, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: B, this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
