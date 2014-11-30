@@ -1,6 +1,5 @@
 package com.ociweb.jfast.stream;
 
-import com.ociweb.jfast.primitive.PrimitiveReader;
 
 public interface GeneratorDriving {
 

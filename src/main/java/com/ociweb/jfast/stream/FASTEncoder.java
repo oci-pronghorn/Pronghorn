@@ -35,7 +35,9 @@ public abstract class FASTEncoder {
 
     protected DispatchObserver observer;
     public int activeScriptCursor;
+    @Deprecated
     protected int activeScriptLimit;
+    
     protected final int[] fullScript;
     public final int[] fieldIdScript;
     
@@ -108,7 +110,7 @@ public abstract class FASTEncoder {
     }
 
 
-    protected static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
+    public static boolean notifyFieldPositions(PrimitiveWriter writer, int activeScriptCursor) {
         
         if (null!=writer && writer.output instanceof FASTOutputByteArrayEquals) {
             FASTOutputByteArrayEquals testingOutput = (FASTOutputByteArrayEquals)writer.output;

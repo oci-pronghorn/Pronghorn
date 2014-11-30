@@ -42,7 +42,6 @@ public class FASTDynamicWriter {
     public void reset(boolean clearData) {
 
         writerDispatch.activeScriptCursor = 0;
-        writerDispatch.activeScriptLimit = 0;
 
         if (clearData) {
             writerDispatch.dictionaryFactory.reset(writerDispatch.rIntDictionary);

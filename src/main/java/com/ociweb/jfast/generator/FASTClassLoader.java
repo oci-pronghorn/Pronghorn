@@ -83,25 +83,32 @@ import com.ociweb.jfast.error.FASTException;
                                                 ));                
 
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
-                FASTReaderSourceFileObject sourceReaderFileObject = new FASTReaderSourceFileObject(catBytes);
-                FASTWriterSourceFileObject sourceWriterFileObject = new FASTWriterSourceFileObject(catBytes);
-                
-                if (exportSource) {          
-                    try {
-                        exportSourceToClassFolder(SIMPLE_READER_NAME,sourceReaderFileObject.getCharContent(false).toString());
-                    } catch (IOException e) {
-                        throw new FASTException(e);
-                    }
-                    
-                    try {
-                        exportSourceToClassFolder(SIMPLE_WRITER_NAME, sourceWriterFileObject.getCharContent(false).toString());
-                    } catch (Throwable e) {
-                        throw new FASTException(e);
-                    }
+
+                {//scoped to help GC 
+                	FASTReaderDispatchGenerator readGenerator = new FASTReaderDispatchGenerator(catBytes, toCompile);
+                	SimpleSourceFileObject sourceReaderFileObject = new SimpleSourceFileObject(FASTClassLoader.SIMPLE_READER_NAME,
+                													   						   readGenerator.generateFullSource(new StringBuilder()));
+                	toCompile.add(sourceReaderFileObject);
+                	
                 }
                 
-                toCompile.add(sourceReaderFileObject);
-                toCompile.add(sourceWriterFileObject);
+                {//scoped to help GC
+                	FASTWriterDispatchGenerator writeGenerator = new FASTWriterDispatchGenerator(catBytes, toCompile);
+                	SimpleSourceFileObject sourceWriterFileObject = new SimpleSourceFileObject(FASTClassLoader.SIMPLE_WRITER_NAME,
+									             										       writeGenerator.generateFullSource(new StringBuilder()));
+					toCompile.add(sourceWriterFileObject);
+                }
+                
+                
+                if (exportSource) {
+                	for(JavaFileObject jfo:toCompile) {
+                        try {
+                            exportSourceToClassFolder(jfo.getName(),jfo.getCharContent(false).toString());
+                        } catch (IOException e) {
+                            throw new FASTException(e);
+                        }	                		
+                	}
+                }
                 DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
                 
                 if (compiler.getTask(null, null, diagnostics, optionList, null, toCompile).call()) {
@@ -141,7 +148,7 @@ import com.ociweb.jfast.error.FASTException;
         private void exportSourceToClassFolder(String name, String content) {
             try {
                 File sourceFile = targetFile(name, "java");
-                Supervisor.log("Wrote source to: "+sourceFile);
+                System.err.println("Wrote source to: "+sourceFile);
                 FileWriter out = new FileWriter(sourceFile);
                 out.write(content);
                 out.close();

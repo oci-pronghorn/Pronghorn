@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -20,13 +23,16 @@ public class GeneratorUtils {
     
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false; //set to true if generated code should have helpful comments
-    static final int COMPLEXITY_LIMITY_PER_METHOD = 30;//28;//10050;//22;//18 25;
+    static final int COMPLEXITY_LIMITY_PER_METHOD = 24;//30;//28;//10050;//22;//18 25;
     static final boolean OPTIMIZE_PMAP_READ_WRITE = true; 
+    static final boolean COMPILE_TO_SINGLE_CLASS = true;
+    
         
     public static void generateHead(GeneratorData generatorData, Appendable target, String name, String base) throws IOException {
 
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");
+        target.append("import com.ociweb.jfast.generator.*;\n"); //TODO: not sure this is really needed.
         target.append(generatorData.templates.imports()); //imports
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
@@ -73,7 +79,7 @@ public class GeneratorUtils {
         doneScriptsParas.add(paraVals.substring(0, paraVals.length()-1));
         
         StringBuilder signatureLine = new StringBuilder();
-        signatureLine.append("private static void ")
+        signatureLine.append("public static void ")
                      .append(GeneratorData.FRAGMENT_METHOD_NAME)
                      .append(generatorData.scriptPos)
                      .append("(")
@@ -88,7 +94,7 @@ public class GeneratorUtils {
     public static void buildEntryDispatchMethod(int preambleLength,
     											IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, 
                                                 Appendable builder, String entryMethodName,
-                                                Class primClass, RingBuffers ringBuffers) throws IOException {
+                                                Class primClass, RingBuffers ringBuffers, GeneratorData generatorData) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";
@@ -125,7 +131,7 @@ public class GeneratorUtils {
             	found |= (doneValues[k]==cursorPos);
             }
             if (!found) {
-	            createDispatchPoint(ringBuffers, isReader, j, doneValues, doneCode, cursorPos, methodCallArgs);
+	            createDispatchPoint(ringBuffers, isReader, j, doneValues, doneCode, cursorPos, methodCallArgs, generatorData);
             	j++;
             }            
             
@@ -183,8 +189,8 @@ public class GeneratorUtils {
     }
 
 	private static void createDispatchPoint(RingBuffers ringBuffers,
-			boolean isReader, int j, int[] doneValues, String[] doneCode,
-			int cursorPos, String methodCallArgs) {
+											boolean isReader, int j, int[] doneValues, String[] doneCode,
+											int cursorPos, String methodCallArgs, GeneratorData generatorData) {
 		doneCode[j] = "\n\r"+
 		              " "+ //TODO: B, Clean up this is very messy
 		                  (isReader?
@@ -204,8 +210,16 @@ public class GeneratorUtils {
 		       "       return 0;//nothing read\n\r" +
 		       " }\n\r";
 		} 
-		                                            	
-		doneCode[j] += GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r";            	
+		
+		String methodCall = GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r"; 
+		
+		if (COMPILE_TO_SINGLE_CLASS) {
+			doneCode[j] += methodCall;			
+		} else {
+			String fragmentClassName = "com.ociweb.jfast.generator."+generatorData.dispatchType+cursorPos;			
+			doneCode[j] += fragmentClassName+"."+methodCall;
+		}
+		
 		doneValues[j] = cursorPos;
 	}
 
@@ -337,7 +351,8 @@ public class GeneratorUtils {
         
     }
 
-    public static String buildSingleFragmentMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData) {
+    public static String buildSingleFragmentMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor,
+    		                                       GeneratorData generatorData, List<JavaFileObject> alsoCompileTarget) {
         beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         scriptor.setActiveScriptLimit(limit); 
@@ -353,7 +368,32 @@ public class GeneratorUtils {
         } catch (NullPointerException npe) {
             reportErrorDetails(npe);
         }
-        return getSingleFragmentMethod(doneScriptsParas, generatorData);
+        
+
+        String fragmentMethods = getSingleFragmentMethod(doneScriptsParas, generatorData);    
+        
+        if (!COMPILE_TO_SINGLE_CLASS) {
+        	final String fragmentClassName = generatorData.dispatchType+fragmentStart;
+            
+        	final StringBuilder fragmentClassBody = new StringBuilder();
+        	fragmentClassBody.append("package com.ociweb.jfast.generator;\n");
+        	fragmentClassBody.append("import com.ociweb.pronghorn.ring.*;\n");
+        	fragmentClassBody.append("import com.ociweb.pronghorn.ring.RingBuffer.*;\n");
+        	fragmentClassBody.append("import com.ociweb.jfast.stream.*;\n");
+        	fragmentClassBody.append("import com.ociweb.jfast.primitive.*;\n");
+            fragmentClassBody.append("import com.ociweb.jfast.error.FASTException;\n");
+        	fragmentClassBody.append("import com.ociweb.jfast.field.LocalHeap;\n");
+        	fragmentClassBody.append("public final class ").append(fragmentClassName).append(" {\n");
+        	fragmentClassBody.append(fragmentMethods);
+        	fragmentClassBody.append("}");
+        	//add this to be compiled later as something needed by the main dispatch method
+        	alsoCompileTarget.add(new SimpleSourceFileObject(fragmentClassName,fragmentClassBody));
+        	return "";
+        } else {
+        	return "\n"+fragmentMethods;
+        	
+        }
+        
     }
 
     static String generateOpenTemplate(GeneratorData generatorData, GeneratorDriving scriptor) {
@@ -410,7 +450,7 @@ public class GeneratorUtils {
         
     }
 
-    public static void buildGroupMethods(TemplateCatalogConfig catalog, IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData) throws IOException {
+    public static void buildGroupMethods(TemplateCatalogConfig catalog, IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData, List<JavaFileObject> alsoCompileTarget) throws IOException {
         
         //A Group may be a full message or sequence item or group.
     
@@ -430,11 +470,8 @@ public class GeneratorUtils {
             }
             
             if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
-	            
-	            String block = buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData);
-	            
-	            builder.append("\n");
-	            builder.append(block);
+	            assert(fragmentStart == generatorData.scriptPos);
+	            builder.append(buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
             }
             
             //do additional case methods if needed.
@@ -453,13 +490,8 @@ public class GeneratorUtils {
             while (j<stop) {
                 int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
             	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
-                    
-                    String block = buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData);
-                    
-                    builder.append("\n");
-                    builder.append(block);
+                    builder.append(buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));    	            
                 }
-                
             }
             
         }

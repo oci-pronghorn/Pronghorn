@@ -8,15 +8,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject.Kind;
-import javax.tools.ToolProvider;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -27,20 +24,17 @@ import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.generator.FASTClassLoader;
 import com.ociweb.jfast.generator.FASTReaderDispatchGenerator;
 import com.ociweb.jfast.generator.FASTReaderDispatchTemplates;
-import com.ociweb.jfast.generator.FASTReaderSourceFileObject;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
+import com.ociweb.jfast.generator.SimpleSourceFileObject;
 import com.ociweb.jfast.generator.SourceTemplates;
-import com.ociweb.jfast.primitive.FASTInput;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.token.TokenBuilder;
-import com.ociweb.jfast.stream.DispatchObserver;
-import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
+import com.ociweb.jfast.stream.FASTReaderReactor;
 import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingReader;
 
 public class CodeGenerationTest {
 
@@ -116,7 +110,10 @@ public class CodeGenerationTest {
         
         byte[] buildRawCatalogData = TemplateLoaderTest.buildRawCatalogData(new ClientConfig());
         
-        FASTReaderSourceFileObject file = new FASTReaderSourceFileObject(buildRawCatalogData);
+        SimpleSourceFileObject file = 
+        		new SimpleSourceFileObject(FASTClassLoader.SIMPLE_READER_NAME,
+        				new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList()).generateFullSource(new StringBuilder()));
+        		//new FASTReaderSourceFileObject(new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList()));
         assertEquals(Kind.SOURCE, file.getKind());
         CharSequence seq;
         try {

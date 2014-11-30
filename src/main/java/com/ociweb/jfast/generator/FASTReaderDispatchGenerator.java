@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.tools.JavaFileObject;
+
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
@@ -25,24 +27,27 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     
     private static final String ENTRY_METHOD_NAME = "decode";
     private final GeneratorData generatorData;
+    private final List<JavaFileObject> alsoCompileTarget;
 
-
-    public FASTReaderDispatchGenerator(byte[] catBytes) {
+    public FASTReaderDispatchGenerator(byte[] catBytes, List<JavaFileObject> alsoCompileTarget) {
         super(new TemplateCatalogConfig(catBytes));
-        generatorData = new GeneratorData(catBytes,FASTReaderDispatchTemplates.class);
-
+        this.generatorData = new GeneratorData(catBytes,FASTReaderDispatchTemplates.class);
+        this.alsoCompileTarget = alsoCompileTarget;
     }
         
     
-    public <T extends Appendable> T generateFullReaderSource(T target) throws IOException {
+    public <T extends Appendable> T generateFullSource(T target) throws RuntimeException {
     	IntWriteOnceOrderedSet doneScripts = new IntWriteOnceOrderedSet(17);
         List<String> doneScriptsParas = new ArrayList<String>(1<<17);
                 
-        GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
-        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);       
-        GeneratorUtils.buildEntryDispatchMethod(clientConfig.getPreableBytes(),doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,ringBuffers);
-        GeneratorUtils.generateTail(generatorData, target);
-        
+        try {
+	        GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
+	        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData, alsoCompileTarget);       
+	        GeneratorUtils.buildEntryDispatchMethod(clientConfig.getPreableBytes(),doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,ringBuffers,generatorData);
+	        GeneratorUtils.generateTail(generatorData, target);
+        } catch (IOException ioex) {
+        	throw new RuntimeException(ioex);
+        }
         return target;
     }
 
@@ -51,7 +56,6 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this);
     }
     
-    //TODO: C, Add API for getting class/source and for setting class file.
     
     @Override
     protected void genReadTemplateId(int preambleDataLength, int maxTemplatePMapSize, PrimitiveReader reader, FASTDecoder dispatch) {

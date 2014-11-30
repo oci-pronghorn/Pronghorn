@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.tools.JavaFileObject;
+
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
@@ -17,24 +19,29 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     
     private static final String ENTRY_METHOD_NAME = "encode";
     private final GeneratorData generatorData;
+    private final List<JavaFileObject> alsoCompileTarget;
+    
 
-    public FASTWriterDispatchGenerator(byte[] catBytes) {
+    public FASTWriterDispatchGenerator(byte[] catBytes, List<JavaFileObject> alsoCompileTarget) {
         super(new TemplateCatalogConfig(catBytes));
 
-        generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
-
+        this.generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
+        this.alsoCompileTarget = alsoCompileTarget;
     }
         
     
-    public <T extends Appendable> T generateFullReaderSource(T target) throws IOException {
+    public <T extends Appendable> T generateFullSource(T target) throws RuntimeException {
     	IntWriteOnceOrderedSet doneScripts = new IntWriteOnceOrderedSet(17);
         List<String> doneScriptsParas = new ArrayList<String>(1<<17);
         
-        GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
-        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData);        
-        GeneratorUtils.buildEntryDispatchMethod(preambleData.length,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers);
-        GeneratorUtils.generateTail(generatorData, target);
-        
+        try {
+		    GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
+		    GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData, alsoCompileTarget);        
+		    GeneratorUtils.buildEntryDispatchMethod(preambleData.length,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers,generatorData);
+		    GeneratorUtils.generateTail(generatorData, target);
+        }  catch (IOException ioex) {
+        	throw new RuntimeException(ioex);
+        }
         return target;
     }
 

@@ -1326,13 +1326,19 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //loop over every cursor position and dispatch to do the right activity
-        int stop = activeScriptLimit; //limit value is exclusive        
-        while (activeScriptCursor<stop) { 
+        int stop = Math.min(activeScriptLimit, fullScript.length); //limit value is exclusive        
+        while (activeScriptCursor<stop) {
             if (dispatchWriteByToken(writer,rbRingBuffer)) {
                 break;//for stops for fragments in the middle of a message
-            };
+            }            
+            if (
+            	(TokenBuilder.extractType(fullScript[activeScriptCursor]) == TypeMask.Group &&
+            	 0 != (TokenBuilder.extractOper(fullScript[activeScriptCursor])&OperatorMask.Group_Bit_Close)) ) {
+            	break;
+            }
             activeScriptCursor++; 
         }
+        
     }
 
     @Override

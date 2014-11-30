@@ -23,6 +23,10 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 public class TemplateHandler extends DefaultHandler {
 
 	//TODO: AA, add support for TemplateRef so the templates can be much much smaller
+	//TODO: AA, add support for not repeating the template id if message of same time are in sequence.
+	
+	//TODO: AA, fix compile of very large template fromm ingestor.
+	
 	
     private static final String SPECIAL_PREFIX = "'>";
 

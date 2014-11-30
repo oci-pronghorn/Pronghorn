@@ -9,6 +9,7 @@ public class BalancedSwitchGenerator {
     final String tabSize = "    ";
     final int bits = 32;
     int[] counts = new int[bits];
+    final boolean validate = false;
     
     public Appendable generate(String tab, Appendable target, int[] values, String[] code) {
         if (values.length>0) {
@@ -24,7 +25,9 @@ public class BalancedSwitchGenerator {
     private void split(String tab, Appendable target, int[] values, String[] code) throws IOException {
 
         if (values.length==1) {
-            target.append(tab).append("assert(").append(Integer.toString(values[0])).append("==").append(varName).append(") : \"found value of \"+").append(varName).append(";\n");
+            if (validate) {
+            	target.append(tab).append("assert(").append(Integer.toString(values[0])).append("==").append(varName).append(") : \"found value of \"+").append(varName).append(";\n");
+            }
             target.append(tab).append(code[0].replace("\n\r", "\n"+tab));
             return;
         }
