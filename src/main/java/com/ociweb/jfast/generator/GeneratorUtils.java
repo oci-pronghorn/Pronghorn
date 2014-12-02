@@ -131,8 +131,7 @@ public class GeneratorUtils {
             	found |= (doneValues[k]==cursorPos);
             }
             if (!found) {
-	            createDispatchPoint(ringBuffers, isReader, j, doneValues, doneCode, cursorPos, methodCallArgs, generatorData);
-            	j++;
+	            createDispatchPoint(j++, doneValues, doneCode, cursorPos, methodCallArgs, generatorData);
             }            
             
         }
@@ -185,6 +184,9 @@ public class GeneratorUtils {
         //TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
         //           need to break it down into multiple methods.  It would be be best to leave the high frequency messges but how would one know these?
         
+         
+        
+        
         //for small sets a nested set of conditionals is faster
         if (doneValues.length<32) {
         	BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
@@ -209,20 +211,25 @@ public class GeneratorUtils {
     
     }
 
-	private static void createDispatchPoint(RingBuffers ringBuffers,
-											boolean isReader, int j, int[] doneValues, String[] doneCode,
-											int cursorPos, String methodCallArgs, GeneratorData generatorData) {
-		doneCode[j] = "";
-		        
+	private static void createDispatchPoint(int j,
+											int[] doneValues, String[] doneCode, int cursorPos, String methodCallArgs,
+											GeneratorData generatorData) {
+		
 		String methodCall = GeneratorData.FRAGMENT_METHOD_NAME+cursorPos+"("+methodCallArgs+");\n\r"; 
 		
-		if (COMPILE_TO_SINGLE_CLASS) {
-			doneCode[j] += methodCall;			
-		} else {
-			String fragmentClassName = generatorData.dispatchType+cursorPos;			
-			doneCode[j] += fragmentClassName+"."+methodCall;
+		//find the insert spot to keep these lists in order
+		int i = j;
+		while (--i>=0 && doneValues[i]<cursorPos) {	
+			doneValues[i+1] = doneValues[i];
+			doneCode[i+1] = doneCode[i];	
+			j--;
 		}
 		
+		if (COMPILE_TO_SINGLE_CLASS) {
+			doneCode[j] = methodCall;			
+		} else {			
+			doneCode[j] = generatorData.dispatchType+cursorPos+"."+methodCall;
+		}		
 		doneValues[j] = cursorPos;
 	}
 
