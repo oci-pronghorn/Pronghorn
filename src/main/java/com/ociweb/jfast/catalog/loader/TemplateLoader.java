@@ -3,6 +3,7 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.catalog.loader;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -151,4 +152,15 @@ public class TemplateLoader {
         System.exit(MISSING_REQ_ARG);
         return null;
     }
+
+	public static byte[] buildCatBytes(String source, ClientConfig clientConfig) {
+		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
+	    try {
+	        buildCatalog(catalogBuffer, source, clientConfig);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	    assert(catalogBuffer.size() > 0);
+	    return catalogBuffer.toByteArray();
+	}
 }
