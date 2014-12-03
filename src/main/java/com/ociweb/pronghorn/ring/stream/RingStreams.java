@@ -88,6 +88,75 @@ public class RingStreams {
 		
 	}
 		
+	/**
+	 * Copies all bytes from the inputRing to each of the outputStreams.  Will continue to do this until the inputRing
+	 * provides a byteArray reference with negative length.
+	 * 
+	 * Upon exit the RingBuffer and OutputStream are NOT closed so this method can be called again if needed.
+	 * 
+	 * For example the same connection can be left open for sending multiple files in sequence.
+	 * 
+	 * 
+	 * @param inputRing
+	 * @param outputStreams the streams we want to write the data to.
+	 * @throws IOException
+	 */
+	public static void writeToOutputStreams(RingBuffer inputRing, OutputStream... outputStreams) throws IOException {
+				
+		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		
+		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
+		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
+		}
+		
+		long target = step+tailPosition(inputRing);
+				
+		//write to outputStream only when we have data on inputRing.
+        long headPosCache = headPosition(inputRing);
+
+        //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
+        //      That change may however increase latency.
+        
+        while (true) {
+        	        	
+        	//block until one more byteVector is ready.
+        	
+        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        	                   	
+        	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+        	int len = takeRingByteLen(inputRing);
+        				
+        	if (len<0) { //exit logic
+        		releaseReadLock(inputRing);
+          		return;
+        	} else {                    	
+        		int byteMask = inputRing.byteMask;
+				byte[] data = byteBackingArray(meta, inputRing);
+				int offset = bytePosition(meta,inputRing,len);        					
+	
+				int adjustedOffset = offset & byteMask;
+				int adjustedEnd = (offset + len) & byteMask;
+				int adjustedLength = 1 + byteMask - adjustedOffset;
+
+				for(OutputStream os : outputStreams) {
+					if ( adjustedOffset > adjustedEnd) {
+						//rolled over the end of the buffer
+					 	os.write(data, adjustedOffset, adjustedLength);
+						os.write(data, 0, len - adjustedLength);
+					} else {						
+					 	//simple add bytes
+						 os.write(data, adjustedOffset, len); 
+					}
+				}
+				
+        		releaseReadLock(inputRing);
+        	}
+        	
+        	target += step;
+            
+        }   
+		
+	}
 	
 	/**
 	 * Copies all bytes from the inputStream to the outputRing.
