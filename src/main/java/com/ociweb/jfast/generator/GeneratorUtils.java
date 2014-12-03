@@ -138,8 +138,13 @@ public class GeneratorUtils {
 
         
         //if this is the beginning of a new template we use this special logic to pull the template id
+        String methodArgsDef;
+        String methodArgsCall;
+        
         if (isReader) {
-            builder.append("public final int "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+") {\n");
+        	methodArgsDef = primClass.getSimpleName()+" "+primVarName;
+        	methodArgsCall = primVarName;
+            builder.append("public final int "+entryMethodName+"("+methodArgsDef+") {\n");
             builder.append("    if (activeScriptCursor<0) {\n");
             builder.append("        if (PrimitiveReader.isEOF("+primVarName+")) { \n");
             builder.append("            return -1;//end of file\n");
@@ -147,7 +152,9 @@ public class GeneratorUtils {
             builder.append("        beginMessage("+primVarName+",this);\n");
             builder.append("    }\n");
         } else {
-            builder.append("public final void "+entryMethodName+"("+primClass.getSimpleName()+" "+primVarName+", "+RingBuffer.class.getSimpleName()+" rb) {\n"); 
+        	methodArgsDef = primClass.getSimpleName()+" "+primVarName+", "+RingBuffer.class.getSimpleName()+" rb";
+        	methodArgsCall = primVarName+", rb";
+            builder.append("public final void "+entryMethodName+"("+methodArgsDef+") {\n"); 
             
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
@@ -181,35 +188,87 @@ public class GeneratorUtils {
             
         }
         
-        //TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
-        //           need to break it down into multiple methods.  It would be be best to leave the high frequency messges but how would one know these?
-        
-         
-        
+        StringBuilder extraMethods = new StringBuilder();
         
         //for small sets a nested set of conditionals is faster
         if (doneValues.length<32) {
         	BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
         	bsg.generate("    ",builder, doneValues, doneCode);
         } else {
-        	//for large sets the switch is faster and easier to read
-        	builder.append("switch(x) {\n");        	
-        	int k = doneValues.length;
-        	while (--k>=0) {
-        		builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
-        	}        	
-        	builder.append("}\n");
+        	
+        //	if (doneValues.length<1024) {
+        		
+        		//for large sets the switch is faster and easier to read
+        		builder.append("switch(x) {\n");        	
+        		int k = doneValues.length;
+        		while (--k>=0) {
+        			builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
+        		}        	
+        		builder.append("}\n");        	
+        		
+//        	} else {
+//        		
+//        		
+//        		//TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
+//        		//           need to break it down into multiple methods.  
+//        		
+        		//Do first call here?
+        		
+//        		recursiveDispatchBuild(builder, doneValues, doenCodes, 0, doneValues.length, extraMethods, methodArgsDef, methodArgsCall);
+//        		
+//        		
+//        		
+//        		
+//        	}
+        	
         	
         }
         
         
         if (isReader) {
-            builder.append("    "+RingBuffer.class.getSimpleName()+".publishWrites(rb);\n");
+            builder.append("    ").append(RingBuffer.class.getSimpleName()).append(".publishWrites(rb);\n");
             builder.append("    return 1;//read a fragment\n"); 
         } 
         builder.append("}\n");
+        
+        builder.append(extraMethods);
+        
+        
+        
     
     }
+
+	private static void recursiveDispatchBuild(Appendable builder,
+												int[] doneValues, String[] doneCode, int start, int stop, 
+												StringBuilder extraMethods,
+												String methodArgsDef, String methodArgsCall) throws IOException {
+		if (stop-start<1024) {
+    		
+			
+			
+			
+    		//for large sets the switch is faster and easier to read
+    		builder.append("switch(x) {\n");        	
+    		int k = doneValues.length;
+    		while (--k>=0) {
+    			builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
+    		}        	
+    		builder.append("}\n");        	
+    		
+    	} else {
+    		
+    		
+    		//TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
+    		//           need to break it down into multiple methods.  
+    		
+    		recursiveDispatchBuild(builder, doneValues, doneCode, 0, doneValues.length, extraMethods, methodArgsDef, methodArgsCall);
+    		
+    		
+    		
+    		
+    	}
+		
+	}
 
 	private static void createDispatchPoint(int j,
 											int[] doneValues, String[] doneCode, int cursorPos, String methodCallArgs,

@@ -26,6 +26,8 @@ public class WalkingConsumerState {
     private final int rateAvgBit = 5;
     private final int rateAvgCntInit = 1<<rateAvgBit;
     private int rateAvgCnt = rateAvgCntInit;
+    
+    //TODO: AA, need unit test and finish implementation of the stack
 	final int[] activeFragmentStack;
 	int   activeFragmentStackHead = 0;
     
