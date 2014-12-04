@@ -37,4 +37,8 @@ public class RingOutputStream extends OutputStream {
 		RingStreams.writeBytesToRing(b, off, len, ring, blockSize);
 	}
 
+	@Override
+	public void close() throws IOException {
+		RingStreams.writeEOF(ring);
+	}
 }
