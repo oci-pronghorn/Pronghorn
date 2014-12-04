@@ -378,7 +378,10 @@ public class GeneratorUtils {
 
     public static boolean validateMethodSize(String comment, int additionalComplexity) {
         if (additionalComplexity>40) {
-            System.err.print("too big for inline try to make method smaller. "+additionalComplexity+"  "+comment);
+        	boolean debug = false;
+            if (debug) {
+            	System.err.print("too big for inline try to make method smaller. "+additionalComplexity+"  "+comment);
+            }
         }
         return true;
     }
@@ -531,7 +534,7 @@ public class GeneratorUtils {
         int i = 0;
         while (i<startCursor.length) {
             int fragmentStart = startCursor[i];
-            int limit = limitCursor[i++];
+            int limit = limitCursor[i++]; //TODO: AAA, add same stop logic as other decoders to remove  the limit cursor.
                         
             if (0==fragmentStart && 0==limit) {
                 continue;//skip this one it was not at an entry point
@@ -600,7 +603,7 @@ public class GeneratorUtils {
         
         //template details to add as comments
         int token = scriptor.getActiveToken();
-        int fieldId = scriptor.getActiveFieldId(); 
+        long fieldId = scriptor.getActiveFieldId(); 
         comment+="        //name='"+scriptor.getActiveFieldName()+"' id="+fieldId+" token="+TokenBuilder.tokenToString(token)+"\n";
     
         

@@ -38,7 +38,7 @@ public abstract class FASTEncoder {
 
     
     protected final int[] fullScript;
-    public final int[] fieldIdScript;
+    public final long[] fieldIdScript;
     
     public final LocalHeap byteHeap;
 
@@ -66,7 +66,7 @@ public abstract class FASTEncoder {
     
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
-                                int[][] dictionaryMembers, int[] fullScript, int[] fieldIdScript,
+                                int[][] dictionaryMembers, int[] fullScript, long[] fieldIdScript,
                                 int maxNestedGroupDepth, RingBuffers ringBuffers, int preambleBytes) {
 
         this.fullScript = fullScript;

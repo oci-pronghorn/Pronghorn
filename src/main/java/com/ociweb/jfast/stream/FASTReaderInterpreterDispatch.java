@@ -32,7 +32,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     public final int[][] dictionaryMembers;
     
     //required for code generation and other documentation/debugging.
-    protected final int[] fieldIdScript;
+    protected final long[] fieldIdScript;
     protected final String[] fieldNameScript;
     
     protected final int[] fullScript;
@@ -1617,7 +1617,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     @Override
-    public int getActiveFieldId() {
+    public long getActiveFieldId() {
         return fieldIdScript[activeScriptCursor];
     }
 

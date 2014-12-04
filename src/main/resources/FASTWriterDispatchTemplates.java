@@ -2139,7 +2139,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //    PrimitiveWriter.writePMapBit((byte)0, writer);
         //} else {
             PrimitiveWriter.writePMapBit((byte)1, writer);                   
-            PrimitiveWriter.writeIntegerUnsigned(dispatch.fieldIdScript[msgIdx], writer);
+            PrimitiveWriter.writeLongUnsigned(dispatch.fieldIdScript[msgIdx], writer);
         //    top = templateId;
         //}
         //

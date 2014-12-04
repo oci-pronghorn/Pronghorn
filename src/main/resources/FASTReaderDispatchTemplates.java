@@ -57,7 +57,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             
 	           
 	            //NOTE: we are assuming the first bit is the one for the templateId identifier (from the spec)
-	            int templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readIntegerUnsigned(reader) : -42;
+	            long templateId = (0 !=  PrimitiveReader.readPMapBit(reader)) ? PrimitiveReader.readLongUnsigned(reader) : -42;
 	            
 	            		
 		        //because this point does extra checks it often caputres errors long after they have happened. TODO: Need better debugging tools     
@@ -69,7 +69,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            }
 	            
             //given the template id from the compressed FAST feed what is the script position?
-            dispatch.msgIdx = dispatch.templateStartIdx[templateId];
+            dispatch.msgIdx = dispatch.templateStartIdx[(int)templateId]; //TODO: AAA, convert this to a hash lookup or huffman lookp.
             
             // fragment size plus 1 for template id and preamble data length in bytes
            	dispatch.activeScriptCursor = dispatch.msgIdx; 

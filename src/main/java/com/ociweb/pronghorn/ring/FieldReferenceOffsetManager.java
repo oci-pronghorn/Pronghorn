@@ -20,32 +20,35 @@ public class FieldReferenceOffsetManager {
     public int[] tokens;
     public int[] messageStarts;
     
-    public String[] fieldNameScript;
+    public final String[] fieldNameScript;
+    public final long[] fieldIdScript;
     public int maximumFragmentStackDepth;  
     
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
 														                                      OperatorMask.Field_None, 
 														                                      0)};
 	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{"ByteArray"};
+	private static long[] SINGLE_MESSAGE_BYTEARRAY_IDS = new long[]{0};
 	private static final short ZERO_PREMABLE = 0;
 	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
 			                                                                                    ZERO_PREMABLE, 
-			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES);
+			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES, 
+			                                                                                    SINGLE_MESSAGE_BYTEARRAY_IDS);
 	private final static int[] EMPTY = new int[0];
 	
     /**
      * Constructor is only for unit tests.
      */
     private FieldReferenceOffsetManager() {    	
-    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_NAMES);
+    	this(SINGLE_MESSAGE_BYTEARRAY_TOKENS, ZERO_PREMABLE, SINGLE_MESSAGE_BYTEARRAY_NAMES, SINGLE_MESSAGE_BYTEARRAY_IDS);
     }
 
-    public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames) {
-    	this(scriptTokens,(short)0,scriptNames);
+    public FieldReferenceOffsetManager(int[] scriptTokens, String[] scriptNames, long[] scriptIds) {
+    	this(scriptTokens,(short)0,scriptNames,scriptIds);
     }    
     
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames) {
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds) {
 				
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
@@ -80,6 +83,7 @@ public class FieldReferenceOffsetManager {
         
         
         fieldNameScript = scriptNames;
+        fieldIdScript = scriptIds;
         messageStarts = computeMessageStarts(); 
 	}
 

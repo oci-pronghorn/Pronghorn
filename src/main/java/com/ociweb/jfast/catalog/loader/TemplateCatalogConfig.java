@@ -54,7 +54,7 @@ public class TemplateCatalogConfig {
     public final int[] templateScriptEntryLimits;
 
     final int[] scriptTokens;
-    final int[] scriptFieldIds;
+    final long[] scriptFieldIds;
     private final String[] scriptFieldNames;
     private final int templatesInCatalog;
 
@@ -87,7 +87,7 @@ public class TemplateCatalogConfig {
         //given an index in the script lookup the tokens, fieldIds or fieldNames
         int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
         scriptTokens = new int[fullScriptLength];
-        scriptFieldIds = new int[fullScriptLength];
+        scriptFieldIds = new long[fullScriptLength];
         scriptFieldNames = new String[fullScriptLength];
         
         //given the template id from the template file look up the 
@@ -433,7 +433,7 @@ public class TemplateCatalogConfig {
     public int[] fullScript() {
         return getScriptTokens();
     }
-    public int[] fieldIdScript() {
+    public long[] fieldIdScript() {
         return scriptFieldIds;
     }
     public String[] fieldNameScript() {
@@ -450,7 +450,7 @@ public class TemplateCatalogConfig {
     }
 
     public int[] getTemplateStartIdx() {
-        return templateStartIdx;
+        return templateStartIdx; //TODO: this should return a lookup service not an array?? can we do better?
     }
 
     @Deprecated
@@ -471,7 +471,8 @@ public class TemplateCatalogConfig {
 		
 		return new FieldReferenceOffsetManager(   config.scriptTokens, 
 									        	  config.clientConfig.getPreableBytes(), 
-									              config.fieldNameScript());
+									              config.fieldNameScript(),
+									              config.fieldIdScript());
 		
 		
 	}

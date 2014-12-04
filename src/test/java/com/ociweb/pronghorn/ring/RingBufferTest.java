@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -104,7 +105,7 @@ public class RingBufferTest {
     
     
 
-    @Test
+    @Ignore
     public void primaryRingSpeedTest() {
         
         int size = 1<<11;
@@ -241,7 +242,7 @@ public class RingBufferTest {
     }
 
 
-    @Test
+    @Ignore
     public void byteBlockRingSpeedTest() {
         
     	//TODO: making this string long causes collision and ovderwrite!!

@@ -11,7 +11,7 @@ public interface GeneratorDriving {
     void runFromCursor();
     
     int getActiveToken();
-    int getActiveFieldId();
+    long getActiveFieldId();
     String getActiveFieldName();
     int scriptLength();
     

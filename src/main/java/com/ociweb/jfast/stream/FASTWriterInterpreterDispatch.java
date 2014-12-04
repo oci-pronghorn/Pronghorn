@@ -22,7 +22,7 @@ import com.ociweb.pronghorn.ring.RingReader;
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    protected final int[] fieldIdScript;
+    protected final long[] fieldIdScript;
     protected final String[] fieldNameScript;
     
     public FASTWriterInterpreterDispatch(byte[] catBytes) {
@@ -1300,7 +1300,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
     @Override
-    public int getActiveFieldId() {
+    public long getActiveFieldId() {
         return fieldIdScript[activeScriptCursor];
     }
 
