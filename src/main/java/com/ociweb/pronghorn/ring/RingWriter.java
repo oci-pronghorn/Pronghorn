@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
+import java.nio.ByteBuffer;
+
 
 
 public class RingWriter {
@@ -44,6 +46,17 @@ public class RingWriter {
 
     public static void writeBytes(RingBuffer rb, byte[] source) {
         RingBuffer.addByteArray(source, 0, source.length, rb);
+    }
+    
+	
+    public static void writeBytes(RingBuffer rb, ByteBuffer source, int position, int length) {
+    	if ((position&rb.byteMask) > ((position+length)&rb.byteMask)) {
+    		int temp = 1 + rb.mask - (position & rb.mask);
+    		source.get(rb.byteBuffer, position & rb.byteMask, temp);
+    		source.get(rb.byteBuffer, 0, length - temp);					    		
+    	} else {					    	
+    		source.get(rb.byteBuffer, position&rb.byteMask, length);
+    	}
     }
     
 }
