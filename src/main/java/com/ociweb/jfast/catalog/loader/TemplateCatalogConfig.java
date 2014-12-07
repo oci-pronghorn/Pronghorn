@@ -46,9 +46,7 @@ public class TemplateCatalogConfig {
 
     //these two arrays are as long as the biggest template id
     //if the template ids are sparse they may "waste" a bunch of space
-    private final int[] templateStartIdx; 
-    private final int[] templateLimitIdx;
-    
+    private final int[] templateStartIdx;     
     
     public final int[] templateScriptEntries;
     public final int[] templateScriptEntryLimits;
@@ -82,7 +80,6 @@ public class TemplateCatalogConfig {
         assert (templatePow < 32) : "Corrupt catalog file";
         
         templateStartIdx = new int[1 << templatePow];  
-        templateLimitIdx = new int[1 << templatePow];
 
         //given an index in the script lookup the tokens, fieldIds or fieldNames
         int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
@@ -132,7 +129,6 @@ public class TemplateCatalogConfig {
         this.maxPMapDepth = maxNestedGroupDepth;
         this.templatesInCatalog=templatesCount;
         this.templateStartIdx=null;
-        this.templateLimitIdx=null;
         this.scriptFieldNames=null;
         this.templateScriptEntries=null;
         this.templateScriptEntryLimits=null;
@@ -188,7 +184,7 @@ public class TemplateCatalogConfig {
             // look up for script index given the templateId
             int templateId = PrimitiveReader.readIntegerUnsigned(reader);
             templateScriptEntries[i] = templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
-            templateScriptEntryLimits[i] = templateLimitIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            templateScriptEntryLimits[i] = PrimitiveReader.readIntegerUnsigned(reader);
         }
         
         //Must be ordered in order to be useful 
@@ -450,12 +446,7 @@ public class TemplateCatalogConfig {
     }
 
     public int[] getTemplateStartIdx() {
-        return templateStartIdx; //TODO: this should return a lookup service not an array?? can we do better?
-    }
-
-    @Deprecated
-    public int[] getTemplateLimitIdx() {
-        return templateLimitIdx;
+        return templateStartIdx; //TODO: AA, this should return a lookup service not an array?? can we do better?
     }
 
     public int[] getScriptTokens() {

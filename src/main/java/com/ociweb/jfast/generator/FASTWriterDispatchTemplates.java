@@ -642,7 +642,6 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteIntegerSignedCopyOptional(int target, int source, int fieldPos, int valueOfNull, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
-            //TODO: C, these reader calls should all be inlined to remove the object de-ref by passing in the mask and buffer directly as was done in the reader.
             int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
             if (valueOfNull == value) {
                 if (0 == rIntDictionary[source]) { // stored value was null;

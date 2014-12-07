@@ -106,7 +106,6 @@ public final class PrimitiveReader {
         this.invPmapStackDepth = maxPMapCountInBytes-2;
         input.init(this.buffer);
     }
-    //TODO: C, validate valid template switch over can only happen when PmapStack is empty!
     
     public PrimitiveReader(byte[] buffer) {
         this.input = null; //TODO: C, may want dummy impl for this.

@@ -214,7 +214,7 @@ public class ThreadingTest {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (WalkingConsumerState.canMoveNext(rb)) { //TODO: C, move next is called 2x times than addValue, but add value should be called 47 times per fragment, why?
+                    while (WalkingConsumerState.canMoveNext(rb)) { 
                         if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }

@@ -13,13 +13,14 @@ import javax.tools.SimpleJavaFileObject;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class GeneratorUtils {
-    //TODO: D, schema is flexable and recorded with the data stream.
     
     static final boolean REMOVE_ARRAY = false; //TODO: B, not working for writer. still testing this idea, must decide after writer is finished 
     static final boolean ADD_COMMENTS = false; //set to true if generated code should have helpful comments
@@ -423,8 +424,8 @@ public class GeneratorUtils {
         
     }
 
-    public static String buildSingleFragmentMethod(int i, int fragmentStart, int limit, List<String> doneScriptsParas, GeneratorDriving scriptor,
-    		                                       GeneratorData generatorData, List<JavaFileObject> alsoCompileTarget) {
+    public static String buildSingleFragmentMethod(int i, int fragmentStart, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData,
+    		                                       List<JavaFileObject> alsoCompileTarget) {
         beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         try {
@@ -530,38 +531,33 @@ public class GeneratorUtils {
         
         
         int[] startCursor = catalog.getTemplateStartIdx();
-        int[] limitCursor = catalog.getTemplateLimitIdx();
         int i = 0;
         while (i<startCursor.length) {
-            int fragmentStart = startCursor[i];
-            int limit = limitCursor[i++]; //TODO: AAA, add same stop logic as other decoders to remove  the limit cursor.
+            int fragmentStart = startCursor[i++];
                         
-            if (0==fragmentStart && 0==limit) {
-                continue;//skip this one it was not at an entry point
+            int token = catalog.fullScript()[fragmentStart];
+            
+            //only process the rest if the token is Group/OpenTempl
+            if (TokenBuilder.extractType(token) != TypeMask.Group ||
+            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Templ) == 0 ||
+            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Close) !=0) {
+            	continue;
             }
             
             if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
-	            builder.append(buildSingleFragmentMethod(i, fragmentStart, limit, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
+	            builder.append(buildSingleFragmentMethod(i, fragmentStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
             }
-            
-            //do additional case methods if needed.
-            
-//            //generatorData.sequenceStarts.
-//            
-//            IntWriteOnceOrderedSet.clone(generatorData.sequenceStarts);
-//            //Must make copy because we will be modifying this set inside the loop
-//            Set<Integer> clonedStarts = new HashSet<Integer>(generatorData.sequenceStarts);
-//           // System.err.println("seq starts:"+generatorData.sequenceStarts+" "+generatorData.dispatchType);
-            
             
             //keep this stop because new elements are added while we walk over these
             final int stop = IntWriteOnceOrderedSet.itemCount(generatorData.sequenceStarts);
             int j = 0;
-            while (j<stop) {
+            while (j < stop) {
                 int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
+                
             	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
-                    builder.append(buildSingleFragmentMethod(i, seqStart, limit, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));    	            
-                }
+                    builder.append(buildSingleFragmentMethod(i, seqStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));    	            
+                }            	            	
+            	
             }
             
         }

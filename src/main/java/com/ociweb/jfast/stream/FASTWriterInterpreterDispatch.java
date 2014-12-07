@@ -684,9 +684,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         PrimitiveWriter.flush(writer);
     }
 
-    
-    private static Map<String, AtomicInteger> tokenCount = new HashMap<String, AtomicInteger>();
-    
+      
     
     private boolean dispatchWriteByToken(PrimitiveWriter writer, RingBuffer rbRingBuffer) {
 
@@ -812,7 +810,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
                         } else {
                             //exponent is optional so the mantissa may or may not be written.
-                            acceptOptionalDecimal(fieldPos, writer, expoToken, fieldPos, rbRingBuffer);
+                            acceptOptionalDecimal(writer, expoToken, fieldPos, rbRingBuffer);
                             activeScriptCursor++;
                         }
                                                 
@@ -953,11 +951,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
 
 
-    private void acceptOptionalDecimal(int fieldPos, PrimitiveWriter writer, int expoToken, int rbPos, RingBuffer rbRingBuffer) {
-        //TODO: must call specific gen method.
-        
+    private void acceptOptionalDecimal(PrimitiveWriter writer, int expoToken, int rbPos, RingBuffer rbRingBuffer) {
         int mantissaToken = fullScript[1+activeScriptCursor];
-        int exponentValueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT; //TODO: B, neeed to inject
+        
+     //   int exponentValueOfNull = null==rbRingBuffer ?   : rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
+        int exponentValueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT; //TODO: AA, neeed to inject from from but we dont have it at compile time.
         
         int exponentTarget = (expoToken & intInstanceMask);
         int exponentSource = readFromIdx > 0 ? readFromIdx & intInstanceMask : exponentTarget;
