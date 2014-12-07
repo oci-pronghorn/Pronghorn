@@ -2127,12 +2127,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         // must always pop because open will always push
         dispatch.templateStackHead--;
     }    
-
-    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
+    
+    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, int msgIdx, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
         PrimitiveWriter.openPMap(pmapSize, writer);  //FASTRingBuffer queue, int fieldPos
         // done here for safety to ensure it is always done at group open.
-        //TODO: C, finish development of repeated dynamic templates
-        int msgIdx = RingReader.readInt(rbB, rbMask, rbPos, fieldPos);  
+        //TODO: A, finish development of repeated dynamic templates
+
         //int top = dispatch.templateStack[dispatch.templateStackHead];
         //if (top == msgIdx) {
         //    PrimitiveWriter.writePMapBit((byte)0, writer);

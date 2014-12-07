@@ -1,5 +1,7 @@
 package com.ociweb.jfast.stream;
 
+import com.ociweb.pronghorn.ring.RingBuffer;
+
 
 public interface GeneratorDriving {
 
@@ -8,7 +10,7 @@ public interface GeneratorDriving {
     
         
     void runBeginMessage();
-    void runFromCursor();
+    void runFromCursor(RingBuffer mockRB);
     
     int getActiveToken();
     long getActiveFieldId();

@@ -848,12 +848,16 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         if (isTemplate) {
                         	
                             //must start at a location after the preamble and templateId.
-                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset+1;
+                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset;
+                            
+                            //only add the offset for the templateId if and when they are used
+                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(rbRingBuffer.consumerData.from)) {
+                            	fieldPos = fieldPos+1;
+                            }
                             
                             openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
                                                         
                         } else {
-   //                         System.err.println("open group "+" cursor "+activeScriptCursor);
                             // this is NOT a message/template so the non-template
                             // pmapSize is used.
                             openGroup(token, nonTemplatePMapSize, writer);
@@ -954,9 +958,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     private void acceptOptionalDecimal(PrimitiveWriter writer, int expoToken, int rbPos, RingBuffer rbRingBuffer) {
         int mantissaToken = fullScript[1+activeScriptCursor];
         
-     //   int exponentValueOfNull = null==rbRingBuffer ?   : rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
-        int exponentValueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT; //TODO: AA, neeed to inject from from but we dont have it at compile time.
-        
+        int exponentValueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
         int exponentTarget = (expoToken & intInstanceMask);
         int exponentSource = readFromIdx > 0 ? readFromIdx & intInstanceMask : exponentTarget;
         
@@ -1235,20 +1237,13 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         return true;
     }
     
-    private void openMessage(int token, int pmapSize, int fieldPos,  PrimitiveWriter writer, RingBuffer queue) {
+    private void openMessage(int token, int pmapSize, int fieldPos,  PrimitiveWriter writer, RingBuffer rb) {
         assert (token < 0);
         assert (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
         assert (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
 
-        //add 1 bit to pmap and write the templateId
-        int[] buffer = queue==null?null:queue.buffer;
-        int mask = queue==null?0:queue.mask;
-        PaddedLong workingTailPos = queue==null?null:queue.workingTailPos;
+       	genWriteOpenTemplatePMap(pmapSize, fieldPos, activeScriptCursor, writer, rb.buffer, rb.mask, rb.workingTailPos, this);
 
-        //TODO: here is the encode/decode problems. TODO: must read the first bit for the message.
-        
-       
-        genWriteOpenTemplatePMap(pmapSize, fieldPos, writer, buffer, mask, workingTailPos, this);
         if (0 == (token & (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER))) {
             //group does not require PMap so we will close our 1 bit PMap now when we use it.
             //NOTE: if this was not done here it would add the full latency of the entire message encode before transmit
@@ -1286,10 +1281,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     }
     
     @Override
-    public void runFromCursor() {
+    public void runFromCursor(RingBuffer mockRB) {
          //NOTE: openMessage has fieldPos set based on constant in encode, if not this default value will stand
          fieldPos = 0;//value only needed for start of fragments that are NOT messages
-         encode(null,null);               
+         //The ring buffer will not be written to because this is for code generation only however it must exist and contain the FROM
+         encode(null,mockRB);               
     }
 
     @Override
@@ -1312,14 +1308,14 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     public void encode(PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         
         //set the cursor positions for the interpreter if we are not generating code
-        if (null!=rbRingBuffer) {
+        if (rbRingBuffer.mask!=0) { //TODO: D, optimize, checks if this is not the code generation
             //cursor and limit already set
             setActiveScriptCursor(rbRingBuffer.consumerData.cursor); 
             fieldPos = 0;//needed for fragments in interpreter but is not called when generating
         }
         
         //start new message with preamble if needed        
-        if (null!=rbRingBuffer && rbRingBuffer.consumerData.isNewMessage()) {                
+        if (rbRingBuffer.mask!=0 && rbRingBuffer.consumerData.isNewMessage()) {     //TODO: D, optimize, checks that this is not the code generation           
             callBeginMessage(writer, rbRingBuffer);
         }
         

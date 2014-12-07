@@ -114,7 +114,7 @@ public class TemplateCatalogConfig {
         //must be done after the client config construction
         from = TemplateCatalogConfig
 				.createFieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory, fullScriptLength, from, templateStartIdx, clientConfig);
+        ringBuffers = buildRingBuffers(dictionaryFactory, fullScriptLength, from, clientConfig);
         
     }
     
@@ -143,16 +143,14 @@ public class TemplateCatalogConfig {
         
         this.ringBuffers = buildRingBuffers(dictionaryFactory,
                                             fullScriptLength, 
-                                            from, templateStartIdx,
-                                            clientConfig);
+                                            from, clientConfig);
         
         //must be done after the client config construction
     }
     
     
     private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
-                                                     FieldReferenceOffsetManager from, int[] templateStartIdx, 
-                                                     ClientConfig clientConfig) {
+                                                     FieldReferenceOffsetManager from, ClientConfig clientConfig) {
         
         int primaryRingBits = clientConfig.getPrimaryRingBits(); 
         int textRingBits = clientConfig.getTextRingBits();
@@ -182,7 +180,7 @@ public class TemplateCatalogConfig {
         int i = templatesInCatalog;
         while (--i >= 0) {
             // look up for script index given the templateId
-            int templateId = PrimitiveReader.readIntegerUnsigned(reader);
+            int templateId = PrimitiveReader.readIntegerUnsigned(reader);//TODO: AAAA for large template (64 bits this will not work)
             templateScriptEntries[i] = templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
             templateScriptEntryLimits[i] = PrimitiveReader.readIntegerUnsigned(reader);
         }
@@ -368,7 +366,7 @@ public class TemplateCatalogConfig {
 			@Override
 			public void visit(int key, int value) {
 				
-				PrimitiveWriter.writeIntegerUnsigned(key, writer);
+				PrimitiveWriter.writeIntegerUnsigned(key, writer); //TODO: AAAA, this is the template and must be long
 				// return the index to its original value (-1)
                 PrimitiveWriter.writeIntegerUnsigned(value - 1, writer);
                 PrimitiveWriter.writeIntegerUnsigned(IntHashTable.getItem(templateToLimit, key), writer);
@@ -446,7 +444,7 @@ public class TemplateCatalogConfig {
     }
 
     public int[] getTemplateStartIdx() {
-        return templateStartIdx; //TODO: AA, this should return a lookup service not an array?? can we do better?
+        return templateStartIdx; //TODO: AAA, this should return a lookup service not an array?? can we do better?
     }
 
     public int[] getScriptTokens() {

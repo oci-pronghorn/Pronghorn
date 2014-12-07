@@ -102,7 +102,7 @@ public final class RingBuffer {
     public RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
         
-        assert (primaryBits >= 1);       
+        assert (primaryBits >= 0); //zero is a special case for a mock ring       
                 
         //single buffer size for every nested set of groups, must be set to support the largest need.
         this.maxSize = 1 << primaryBits;
@@ -121,8 +121,6 @@ public final class RingBuffer {
                 
         this.consumerData = new WalkingConsumerState(mask, from);
     }
-
-    
 
     
     /**

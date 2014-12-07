@@ -8,7 +8,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.pronghorn.ring.util.hash.MurmurHash;
 
@@ -39,6 +42,8 @@ public class GeneratorData {
     public int readerPmapBit=6;
     public int writerPmapBit0=6;
     public int writerPmapBit1=6;
+	public final FieldReferenceOffsetManager from;
+	public final RingBuffer mockRB;
     
     
     static final String END_FIELD_METHOD = "};\n";
@@ -79,6 +84,13 @@ public class GeneratorData {
         this.fieldMethodCount = 0;
         this.dictionaryBuilderInt = new StringBuilder();
         this.dictionaryBuilderLong = new StringBuilder();
+        
+        //NOTE: this does produce some extra garbage that could be avoided if the caller passed in the catalog
+        TemplateCatalogConfig template = new TemplateCatalogConfig(catBytes);
+        this.from = template.getFROM();
+        //must be zero size to make the mask also zero
+        this.mockRB = new RingBuffer((byte)0,(byte)0,null,this.from);
+        
     }
 
 	public static int[] hashCatBytes(byte[] catBytes) {

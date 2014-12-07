@@ -92,7 +92,6 @@ public class FieldReferenceOffsetManager {
         boolean debug = false;       
         int i = 0;      
         int fragmentStartIdx=0;
-        
         int depth = 0; //need script jump number
         
         boolean nextTokenOpensFragment = false;
@@ -103,10 +102,11 @@ public class FieldReferenceOffsetManager {
             //first position is always part of a new template
             
             //sequences and optional groups will always have group tags.
-            int type = TokenBuilder.extractType(scriptTokens[i]);
+            int tempToken = scriptTokens[i];
+        	int type = TokenBuilder.extractType(tempToken);
             boolean isGroup = TypeMask.Group == type;    
-            boolean isGroupOpen = isGroup && (0 == (scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
-            boolean isGroupClosed = isGroup && (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+            boolean isGroupOpen = isGroup && (0 == (tempToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
+            boolean isGroupClosed = isGroup && (0 != (tempToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
             boolean isSeqLength = TypeMask.GroupLength == type;
                       
             if (isGroupOpen || nextTokenOpensFragment) {
@@ -114,7 +114,7 @@ public class FieldReferenceOffsetManager {
                     System.err.println();
                 }
                 depth++;                
-                fragmentStartIdx = i;       
+                fragmentStartIdx = i;    
                 
                 boolean isSeq = (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
                 //TODO: B, if optional group it will also need to be zero like seq
@@ -167,6 +167,9 @@ public class FieldReferenceOffsetManager {
     	return messageStarts;
     }
     
+    public static boolean hasSingleMessageTemplate(FieldReferenceOffsetManager from) {
+    	return 1 == from.messageStarts.length;
+    }
     
     private int[] computeMessageStarts() {
 		int countOfNeededStarts = 1; //zero is always a start regardless of the token type found at that location

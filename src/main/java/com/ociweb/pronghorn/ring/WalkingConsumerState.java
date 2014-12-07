@@ -231,8 +231,13 @@ public class WalkingConsumerState {
 	    //Start new stack of fragments because this is a new message
 	    ringBufferConsumer.activeFragmentStackHead = 0;
 	    ringBufferConsumer.activeFragmentStack[ringBufferConsumer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
-	           
-	    ringBufferConsumer.setMsgIdx(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId
+	      
+	    if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBufferConsumer.from)) {
+	    	ringBufferConsumer.setMsgIdx(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId    	
+	    } else {
+	    	ringBufferConsumer.setMsgIdx(0);
+	    }
+	    
 	    //start new message, can not be seq or optional group or end of message.
 	    
     	ringBufferConsumer.cursor = ringBufferConsumer.getMsgIdx(); //this is from the stream not the ring buffer.

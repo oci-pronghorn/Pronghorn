@@ -903,8 +903,8 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
 
     @Override
-    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
-        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, pmapSize, fieldPos);
+    protected void genWriteOpenTemplatePMap(int pmapSize, int fieldPos, int msgIdx, PrimitiveWriter writer, int[] rbB, int rbMask, PaddedLong rbPos, FASTEncoder dispatch) {
+        GeneratorUtils.generator(new Exception().getStackTrace(), generatorData, this, pmapSize, fieldPos, msgIdx);
         
     }
 

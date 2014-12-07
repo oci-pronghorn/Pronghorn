@@ -10,6 +10,7 @@ import com.ociweb.jfast.catalog.loader.ClientConfig;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -124,8 +125,13 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         final RingBuffer rbRingBuffer = RingBuffers.get(ringBuffers, activeScriptCursor); 
            
      
-        int fragmentSize = rbRingBuffer.consumerData.from.fragDataSize[activeScriptCursor]+ 1+ rbRingBuffer.consumerData.from.templateOffset; //plus roomm for next message
-       //Waiting for tail position to change! can cache the value, must make same change in compiled code.
+        int fragmentSize = rbRingBuffer.consumerData.from.fragDataSize[activeScriptCursor]+rbRingBuffer.consumerData.from.templateOffset; //plus roomm for next message
+    
+        if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(rbRingBuffer.consumerData.from)) {
+        	fragmentSize = fragmentSize+1;//one for the templateId that will be needed.
+        }
+        
+        //Waiting for tail position to change! can cache the value, must make same change in compiled code.
         long neededTailStop = rbRingBuffer.workingHeadPos.value   - rbRingBuffer.maxSize + fragmentSize;
         if (rbRingBuffer.consumerData.tailCache < neededTailStop && ((rbRingBuffer.consumerData.tailCache=rbRingBuffer.tailPos.longValue()) < neededTailStop) ) {
               return 0; //no space to read data and start new message so read nothing
@@ -1627,7 +1633,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     }
 
     @Override
-    public void runFromCursor() {
+    public void runFromCursor(RingBuffer mockRB) {
         decode(null);
     }
 

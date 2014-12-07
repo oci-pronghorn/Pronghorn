@@ -180,7 +180,7 @@ public class GeneratorUtils {
         if (isReader) {
             builder.append("    "+RingBuffer.class.getSimpleName()+" rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,x);\n" ); 
             
-		    //TODO: AAAA, simplify this to do less runtime work.
+		    //TODO: A, simplify this to do less runtime work.
 			builder.append(" {int fragmentSize = rb.consumerData.from.fragDataSize[x]+ rb.consumerData.from.templateOffset + 1;\n\r")
 			       .append(" long neededTailStop = rb.workingHeadPos.value - (rb.maxSize-fragmentSize);\n\r")
 			       .append(" if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r")
@@ -429,7 +429,9 @@ public class GeneratorUtils {
         beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         try {
-            scriptor.runFromCursor();//Generate the code, if any method was missed a null pointer will result.
+        	
+        	//Generate the code, if any method was missed a null pointer will result due to lack of primitiveWriter.
+            scriptor.runFromCursor(generatorData.mockRB);
             //
             //record the 'next' cursor index in case this message has stopped early at the end of a fragment.
             //this value is stored as a potential fragment start to ensure every entry point is covered.
