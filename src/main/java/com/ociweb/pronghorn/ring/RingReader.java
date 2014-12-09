@@ -405,7 +405,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return target;
     }
     
-    public static void readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset) {
+    public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = RingReader.readBytesLength(ring, idx);
         if (pos < 0) {
@@ -413,6 +413,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         } else {
             readBytesRing(ring,len,target, targetOffset,pos);
         }
+        return len;
     }
     
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetIdx, int pos) {

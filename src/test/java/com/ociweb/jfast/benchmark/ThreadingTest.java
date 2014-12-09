@@ -34,7 +34,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.WalkingConsumerState;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.jfast.stream.FASTDecoder;
@@ -141,7 +141,7 @@ public class ThreadingTest {
                       
                       
                       
-                      if (WalkingConsumerState.canMoveNext(rb)) {
+                      if (RingWalker.tryReadFragment(rb)) {
                           
                           if (rb.consumerData.isNewMessage()) {
                               msgs.incrementAndGet();
@@ -198,7 +198,7 @@ public class ThreadingTest {
                     do {                        
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
 
-                        if (WalkingConsumerState.canMoveNext(rb)) { 
+                        if (RingWalker.tryReadFragment(rb)) { 
                                 assert(rb.consumerData.isNewMessage()) : "";
                                 totalMessages++;
                                 processMessage(temp, rb, reactor);  
@@ -214,7 +214,7 @@ public class ThreadingTest {
                     } while (totalMessages<30000 || isAlive.get());
                     
                     //is alive is done writing but we need to empty out
-                    while (WalkingConsumerState.canMoveNext(rb)) { 
+                    while (RingWalker.tryReadFragment(rb)) { 
                         if (rb.consumerData.isNewMessage()) {
                             totalMessages++;
                         }
@@ -427,7 +427,7 @@ public class ThreadingTest {
                 int seqCount = readInt(rb, IDX1_NoMDEntries);
                 // System.err.println(sendingTime+" "+tradeDate+" "+seqCount);
                 while (--seqCount >= 0) {
-                    while (!WalkingConsumerState.canMoveNext(rb)) { // keep calling if we
+                    while (!RingWalker.tryReadFragment(rb)) { // keep calling if we
                                                            // have no data?
                     };
                     
@@ -510,7 +510,7 @@ public class ThreadingTest {
                int seqCount2 = readInt(rb, 12);
                
                while (--seqCount2 >= 0) {
-                   while (!WalkingConsumerState.canMoveNext(rb)) { // keep calling if we
+                   while (!RingWalker.tryReadFragment(rb)) { // keep calling if we
                                                           // have no data?
                       
                        len = readDataLength(rb, 0);

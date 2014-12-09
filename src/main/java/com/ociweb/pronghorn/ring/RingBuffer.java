@@ -76,7 +76,7 @@ public final class RingBuffer {
     // end of moveNextFields
 
     static final int JUMP_MASK = 0xFFFFF;
-    public final WalkingConsumerState consumerData;
+    public final RingWalker consumerData;
     
     
     /**
@@ -119,7 +119,7 @@ public final class RingBuffer {
         this.constByteBuffer = byteConstants;
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
                 
-        this.consumerData = new WalkingConsumerState(mask, from);
+        this.consumerData = new RingWalker(mask, from);
     }
 
     
@@ -137,7 +137,7 @@ public final class RingBuffer {
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
         
-        WalkingConsumerState.reset(consumerData);
+        RingWalker.reset(consumerData);
         
 
     }

@@ -45,7 +45,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.jfast.primitive.adapter.FASTOutputTotals;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.WalkingConsumerState;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
@@ -171,7 +171,7 @@ public class TemplateLoaderTest {
             rb.reset();
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-                WalkingConsumerState.canMoveNext(rb);
+                RingWalker.tryReadFragment(rb);
 
                 frags++;
                 if (rb.consumerData.isNewMessage()) {
@@ -280,13 +280,13 @@ public class TemplateLoaderTest {
                 while (FASTReaderReactor.pump(reactor)>=0) { //72-88
                  //   FASTRingBuffer.dump(rb);
                     //int tmp = Profile.version.get();
-                    if (WalkingConsumerState.canMoveNext(rb)) {
+                    if (RingWalker.tryReadFragment(rb)) {
                        // rb.tailPos.lazySet(rb.workingTailPos.value);
                     }; //11
                     //Profile.count += (Profile.version.get()-tmp);
                 }
                 //the buffer has extra records in it so we must clean them out here.
-                while (WalkingConsumerState.canMoveNext(rb)) {
+                while (RingWalker.tryReadFragment(rb)) {
                      
                    // rb.tailPos.lazySet(rb.workingTailPos.value);
                 }
@@ -368,7 +368,7 @@ public class TemplateLoaderTest {
         rb.reset();
 
         while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-            WalkingConsumerState.canMoveNext(rb);
+            RingWalker.tryReadFragment(rb);
 
             if (rb.consumerData.isNewMessage()) {
                 int templateId = rb.consumerData.getMsgIdx();
@@ -477,7 +477,7 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (WalkingConsumerState.canMoveNext(queue)) {
+                    if (RingWalker.tryReadFragment(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
@@ -520,7 +520,7 @@ public class TemplateLoaderTest {
             double start = System.nanoTime();
             
             while (FASTReaderReactor.pump(reactor)>=0) {  
-                    if (WalkingConsumerState.canMoveNext(queue)) {
+                    if (RingWalker.tryReadFragment(queue)) {
                        if (queue.consumerData.getMsgIdx()>=0) { //skip if we are waiting for more content.
                                 dynamicWriter.write();  
                        }
@@ -621,7 +621,7 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
-                    if (WalkingConsumerState.canMoveNext(queue)) {
+                    if (RingWalker.tryReadFragment(queue)) {
                         if (queue.consumerData.isNewMessage()) {
                             msgs.incrementAndGet();
                         }
@@ -690,11 +690,11 @@ public class TemplateLoaderTest {
             if (concurrent) {
                 start = System.nanoTime(); 
                 while (isAlive.get()) {
-                    while (WalkingConsumerState.canMoveNext(queue)) {
+                    while (RingWalker.tryReadFragment(queue)) {
                         dynamicWriter.write();  
                     }   
                 }
-                while (WalkingConsumerState.canMoveNext(queue)) {
+                while (RingWalker.tryReadFragment(queue)) {
                     dynamicWriter.write();  
                 }
                 
@@ -706,7 +706,7 @@ public class TemplateLoaderTest {
                 //now start the timer
                 start = System.nanoTime();            
                 
-                while (WalkingConsumerState.canMoveNext(queue)) {
+                while (RingWalker.tryReadFragment(queue)) {
                         dynamicWriter.write();  
                 } 
             }

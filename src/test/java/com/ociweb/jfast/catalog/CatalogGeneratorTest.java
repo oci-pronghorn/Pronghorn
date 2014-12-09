@@ -40,7 +40,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.WalkingConsumerState;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -272,7 +272,7 @@ public class CatalogGeneratorTest {
         //Use as bases for building single giant test file with test values provided, in ascii?
         totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
         
-        long nsLatency = WalkingConsumerState.responseTime(ringBuffer.consumerData);
+        long nsLatency = RingWalker.responseTime(ringBuffer.consumerData);
      
         //TODO: D, write to flat file to produce google chart.
        //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
@@ -351,7 +351,7 @@ public class CatalogGeneratorTest {
 	        	int k = buffersCount;
 	        	while (j>0 && --k>=0) {
 	        		//System.err.println(j);
-	        		if (WalkingConsumerState.canMoveNext(buffers[k])) {
+	        		if (RingWalker.tryReadFragment(buffers[k])) {
 	        			assertTrue(buffers[k].consumerData.isNewMessage());
 	        			assertEquals(testMessageIdx, buffers[k].consumerData.getMsgIdx());
 	        			
@@ -425,7 +425,7 @@ public class CatalogGeneratorTest {
                         }
                         RingBuffer.publishWrites(ringBuffer);
                         
-                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -451,7 +451,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         RingBuffer.publishWrites(ringBuffer);
-                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -476,7 +476,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         RingBuffer.publishWrites(ringBuffer);
-                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }
@@ -504,7 +504,7 @@ public class CatalogGeneratorTest {
                             }
                         }
                         RingBuffer.publishWrites(ringBuffer);
-                        if (WalkingConsumerState.canMoveNext(ringBuffer)) {//without move next we get no stats.
+                        if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
                             dynamicWriter.write();
                         }
                     }

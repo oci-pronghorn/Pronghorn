@@ -5,7 +5,7 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.util.Histogram;
 
-public class WalkingConsumerState {
+public class RingWalker {
     private int msgIdx=-1;
     private boolean isNewMessage;
     public boolean waiting;
@@ -32,12 +32,12 @@ public class WalkingConsumerState {
 	int   activeFragmentStackHead = 0;
     
 	
-	public WalkingConsumerState(int mask, FieldReferenceOffsetManager from) {
+	public RingWalker(int mask, FieldReferenceOffsetManager from) {
 		this(-1, false, false, -1, -1, -1, 0, new int[from.maximumFragmentStackDepth], -1, -1, from, mask);
 	}
 	
 	
-    private WalkingConsumerState(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
+    private RingWalker(int messageId, boolean isNewMessage, boolean waiting, long waitingNextStop,
                                     long bnmHeadPosCache, int cursor, int activeFragmentDataSize, int[] seqStack, int seqStackHead,
                                     long tailCache, FieldReferenceOffsetManager from, int rbMask) {
     	if (null==from) {
@@ -60,7 +60,7 @@ public class WalkingConsumerState {
         
     }
 
-    public static void recordRates(WalkingConsumerState ringBufferConsumer, long newTailPos) {
+    public static void recordRates(RingWalker ringBufferConsumer, long newTailPos) {
         
         //MeanResponseTime = MeanNumberInSystem / MeanThroughput
                 
@@ -78,7 +78,7 @@ public class WalkingConsumerState {
         
     }
     
-    public static long responseTime(WalkingConsumerState ringBufferConsumer) {
+    public static long responseTime(RingWalker ringBufferConsumer) {
         //Latency in ns
        // System.err.println("inputs:" +ringBufferConsumer.queueFill.valueAtPercent(.5)+"x"+ringBufferConsumer.timeBetween.valueAtPercent(.5)); 
         return (ringBufferConsumer.queueFill.valueAtPercent(.5)*ringBufferConsumer.timeBetween.valueAtPercent(.5))>>ringBufferConsumer.rateAvgBit;
@@ -143,8 +143,8 @@ public class WalkingConsumerState {
 	    return from.fragScriptSize[cursor];
 	}
 
-	public static boolean canMoveNext(RingBuffer ringBuffer) { 
-	    WalkingConsumerState ringBufferConsumer = ringBuffer.consumerData; //TODO: B, should probably remove this to another object
+	public static boolean tryReadFragment(RingBuffer ringBuffer) { 
+	    RingWalker ringBufferConsumer = ringBuffer.consumerData; //TODO: B, should probably remove this to another object
 	    
 	    //check if we are only waiting for the ring buffer to clear
 	    if (ringBufferConsumer.waiting) {
@@ -168,7 +168,7 @@ public class WalkingConsumerState {
 	    
 	}
 
-	static boolean beginFragment(RingBuffer ringBuffer, WalkingConsumerState ringBufferConsumer, final long cashWorkingTailPos) {
+	static boolean beginFragment(RingBuffer ringBuffer, RingWalker ringBufferConsumer, final long cashWorkingTailPos) {
 	    ringBufferConsumer.setNewMessage(false);
 	    
 	    ///TODO: B, add optional groups to this implementation
@@ -205,7 +205,7 @@ public class WalkingConsumerState {
 	    return checkForContent(ringBuffer, ringBufferConsumer, cashWorkingTailPos);
 	}
 
-	static boolean beginNewMessage(RingBuffer ringBuffer, WalkingConsumerState ringBufferConsumer, long cashWorkingTailPos) {
+	static boolean beginNewMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long cashWorkingTailPos) {
 		ringBufferConsumer.setMsgIdx(-1);
 	
 		//Now beginning a new message so release the previous one from the ring buffer
@@ -249,7 +249,7 @@ public class WalkingConsumerState {
 	}
 
 		//only called after moving forward.
-	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, WalkingConsumerState consumerData) {
+	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, RingWalker consumerData) {
 	        if(0==consumerData.cursor) {
 	            return false;
 	        }
@@ -300,7 +300,7 @@ public class WalkingConsumerState {
 	        return true;
 	    }
 
-	static boolean checkForContent(RingBuffer ringBuffer, WalkingConsumerState ringBufferConsumer, long cashWorkingTailPos) {
+	static boolean checkForContent(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long cashWorkingTailPos) {
 	    //after alignment with front of fragment, may be zero because we need to find the next message?
 	    ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
 	    
@@ -318,7 +318,7 @@ public class WalkingConsumerState {
 	    return true;
 	}
 
-	public static void reset(WalkingConsumerState consumerData) {
+	public static void reset(RingWalker consumerData) {
         consumerData.waiting = (false);
         consumerData.setWaitingNextStop(-1);
         consumerData.setBnmHeadPosCache(-1);
@@ -333,6 +333,22 @@ public class WalkingConsumerState {
         consumerData.activeFragmentDataSize = (0);
         
     }
+
+	public static boolean isNewMessage(RingBuffer ring) {
+		return ring.consumerData.isNewMessage();
+	}
+
+
+	public static int messageIdx(RingBuffer ring) {
+		return ring.consumerData.getMsgIdx();
+	}
+
+
+	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
+		
+		return (ring.maxSize - RingBuffer.contentRemaining(ring)) >= ring.consumerData.from.fragDataSize[cursorPosition];
+
+	}
 
    
 }
