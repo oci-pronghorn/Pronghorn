@@ -356,11 +356,12 @@ public class RingWalker {
 			  RingWriter.writeInt(ring, cursorPosition); //TODO: AAA,  this is moving the position and probably a very bad idea as it has side effect
 			  
 		  }
-		}
-		
+		}		
 		return result;
-
 	}
+	
+	
+	
 
    
 }

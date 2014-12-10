@@ -61,33 +61,36 @@ public class FieldReferenceOffsetManager {
             preambleOffset = 0;
             templateOffset = (pb+3)>>2;
         }
-         
+                
+        
 		if (null == scriptTokens) {
+			tokens = EMPTY;
+			messageStarts = computeMessageStarts(); 
+			
 			//Not convinced we should support this degenerate case (null script) but it does make some unit tests much easer to write.
             fragDataSize = null;
             fragScriptSize = null;
             maximumFragmentStackDepth = 0;
-            tokens = EMPTY;
         } else {
-        
+        	tokens = scriptTokens;
+        	messageStarts = computeMessageStarts(); 
+        	 
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
             
             fragScriptSize = new int[scriptTokens.length];
             
             maximumFragmentStackDepth = scriptTokens.length;
             			
-			buildFragScript(scriptTokens, preableBytes);
-			tokens = scriptTokens;
+			buildFragScript(scriptTokens, preableBytes, messageStarts.length>1);
         }
         tokensLen = null==tokens?0:tokens.length;
         
         
         fieldNameScript = scriptNames;
         fieldIdScript = scriptIds;
-        messageStarts = computeMessageStarts(); 
 	}
 
-    private void buildFragScript(int[] scriptTokens, short preableBytes) {
+    private void buildFragScript(int[] scriptTokens, short preableBytes, boolean hasMultipleTemplates) {
 		int scriptLength = scriptTokens.length;        
         boolean debug = false;       
         int i = 0;      
@@ -122,7 +125,9 @@ public class FieldReferenceOffsetManager {
                 //must be a group open only for a new message 
                 if (!isSeq && isGroupOpen) { 
 					int preambleInts = (preableBytes+3)>>2;
-                    int templateInt = 1;
+                                
+                    int templateInt = hasMultipleTemplates ? 1 : 0;
+                                    
                     fragDataSize[fragmentStartIdx] = preambleInts+templateInt;
                 }
                 
@@ -210,6 +215,17 @@ public class FieldReferenceOffsetManager {
 		
     }
     
+    public static int lookupTemplateLocator(String name, FieldReferenceOffsetManager from) {
+    	int i = from.messageStarts.length;
+    	while(--i>=0) {
+    		if (name.equals(from.fieldNameScript[from.messageStarts[i]])) {
+    			return from.messageStarts[i];
+    		}
+    	}
+    	throw new UnsupportedOperationException("Unable to find template name: "+name);
+    }
+    
+    
     public static String lookupFieldName(int fragmentStart, int position, FieldReferenceOffsetManager from) {
 		return from.fieldNameScript[fragmentStart+position];
 	}
@@ -227,8 +243,6 @@ public class FieldReferenceOffsetManager {
 		int x = framentStart;
         
         int UPPER_BITS = 0xF0000000;
-        //System.err.println("looking for "+target+ " between "+x+" and "+limit);
-        //System.err.println(Arrays.toString(fieldNameScript));
         
         while (true) {
         	//System.err.println("looking at:"+fieldNameScript[x]);
@@ -237,8 +251,6 @@ public class FieldReferenceOffsetManager {
                 if (0==x) {
                     return UPPER_BITS|0; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
                 } else {
-                    //System.err.println("found at "+x);
-                    //System.err.println(Arrays.toString(fragDataSize));
                     return UPPER_BITS|from.fragDataSize[x];                    
                 }
                 

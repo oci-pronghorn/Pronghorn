@@ -18,7 +18,9 @@ public class RingWriter {
         
                 
     }
-
+    
+//long i = ring.workingHeadPos.value + (OFF_MASK&idx);  
+    
     public static void writeInt(RingBuffer rb, int value) {
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);        
     }

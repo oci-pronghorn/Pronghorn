@@ -144,10 +144,6 @@ public final class RingBuffer {
     
     
 
-
-    
-
-
     public static int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
     }
@@ -206,8 +202,8 @@ public final class RingBuffer {
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2) {
         
         long p = headCache.value; 
-        buffer[rbMask & (int)p] = value1; //TODO: X, code gen replace rbMask with constant may help remove check
-        buffer[rbMask & (int)(p+1)] = value2; //TODO: X, code gen replace rbMask with constant may help remove check
+        buffer[rbMask & (int)p] = value1;
+        buffer[rbMask & (int)(p+1)] = value2;
         headCache.value = p+2;
         
     } 
