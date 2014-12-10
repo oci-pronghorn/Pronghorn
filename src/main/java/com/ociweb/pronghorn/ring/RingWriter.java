@@ -38,7 +38,7 @@ public class RingWriter {
     //Because the stream neeeds to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
     public static void finishWriteBytes(RingBuffer rb, int p, int length) {
-
+    	rb.validateVarLength(length);
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
 
@@ -47,11 +47,13 @@ public class RingWriter {
     }
 
     public static void writeBytes(RingBuffer rb, byte[] source) {
+    	rb.validateVarLength(source.length);
         RingBuffer.addByteArray(source, 0, source.length, rb);
     }
     
 	
     public static void writeBytes(RingBuffer rb, ByteBuffer source, int position, int length) {
+    	rb.validateVarLength(length);
     	if ((position&rb.byteMask) > ((position+length)&rb.byteMask)) {
     		int temp = 1 + rb.mask - (position & rb.mask);
     		source.get(rb.byteBuffer, position & rb.byteMask, temp);

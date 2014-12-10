@@ -23,6 +23,7 @@ public class FieldReferenceOffsetManager {
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
     public int maximumFragmentStackDepth;  
+    public final float maxVarFieldPerUnit;
     
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
 														                                      OperatorMask.Field_None, 
@@ -71,6 +72,7 @@ public class FieldReferenceOffsetManager {
             fragDataSize = null;
             fragScriptSize = null;
             maximumFragmentStackDepth = 0;
+            maxVarFieldPerUnit = .5f;
         } else {
         	tokens = scriptTokens;
         	messageStarts = computeMessageStarts(); 
@@ -81,7 +83,7 @@ public class FieldReferenceOffsetManager {
             
             maximumFragmentStackDepth = scriptTokens.length;
             			
-			buildFragScript(scriptTokens, preableBytes, messageStarts.length>1);
+            maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes, messageStarts.length>1 ? 1 : 0);
         }
         tokensLen = null==tokens?0:tokens.length;
         
@@ -90,16 +92,22 @@ public class FieldReferenceOffsetManager {
         fieldIdScript = scriptIds;
 	}
 
-    private void buildFragScript(int[] scriptTokens, short preableBytes, boolean hasMultipleTemplates) {
+    private float buildFragScript(int[] scriptTokens, short preableBytes, int spaceForTemplateId) {
 		int scriptLength = scriptTokens.length;        
         boolean debug = false;       
         int i = 0;      
         int fragmentStartIdx=0;
         int depth = 0; //need script jump number
         
-        boolean nextTokenOpensFragment = false;
+        boolean nextTokenOpensFragment = true;// false; //must capture simple case when we do not have wrapping group?
         
-        while (i<scriptLength) {            
+        //must count these to ensure that var field writes stay small enough to never cause a problem in the byte ring.
+        int varLenFieldCount = 0;
+        float varLenMaxDensity = 0; //max varLength fields per int on outer ring buffer than can ever happen
+        
+        while (i<scriptLength) {          
+    //    	System.err.println("loading script at "+i);
+        	
             //now past the end of the template so 
             //close it because this index starts a new one
             //first position is always part of a new template
@@ -116,6 +124,22 @@ public class FieldReferenceOffsetManager {
                 if (debug) {
                     System.err.println();
                 }
+       //         System.err.println("new fragmetn at "+i);
+                if (varLenFieldCount>0) {
+                	//Caution: do not modify this logic unless you take into account the fact that
+                	//         * messages are made up of fragments and that some fragments are repeated others skipped
+                	//         * messages are not always complete and only some (head or tail) fragments may be in the buffer
+                	float varFieldPerUnit = varLenFieldCount/ (float)fragDataSize[fragmentStartIdx];
+                	assert(varFieldPerUnit<=.5) : "It takes 2 units to write a var field so this will never be larger than .5";
+                	
+                	if (varFieldPerUnit>varLenMaxDensity) {
+                		varLenMaxDensity = varFieldPerUnit;                		
+                	}                	
+                }
+                
+                //NOTE: need performance test after rounding up the fragment size to the next nearest cache line. 
+                //fragDataSize[fragmentStartIdx] 
+                
                 depth++;                
                 fragmentStartIdx = i;    
                 
@@ -124,12 +148,14 @@ public class FieldReferenceOffsetManager {
                 
                 //must be a group open only for a new message 
                 if (!isSeq && isGroupOpen) { 
-					int preambleInts = (preableBytes+3)>>2;
-                                
-                    int templateInt = hasMultipleTemplates ? 1 : 0;
-                                    
-                    fragDataSize[fragmentStartIdx] = preambleInts+templateInt;
+					int preambleInts = (preableBytes+3)>>2;                               
+                                                       
+                    fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
+                } else {
+                	
+                	fragDataSize[fragmentStartIdx] = 0; //these are the starts of fragments that are not message starts
                 }
+                varLenFieldCount = 0;//reset to zero so we can count the number of var fields for this next fragment
                 
                 
                 nextTokenOpensFragment = false;
@@ -147,7 +173,9 @@ public class FieldReferenceOffsetManager {
             
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
             
-            int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+            int tokenType = TokenBuilder.extractType(token);
+			int fSize = TypeMask.ringBufferFieldSize[tokenType];
+			varLenFieldCount += TypeMask.ringBufferFieldVarLen[tokenType];
             
             fragDataSize[fragmentStartIdx] += fSize;
             fragScriptSize[fragmentStartIdx]++;
@@ -159,12 +187,26 @@ public class FieldReferenceOffsetManager {
             
             i++;
         }
+        //must also add the very last fragment 
+        if (varLenFieldCount>0) {
+        	//Caution: do not modify this logic unless you take into account the fact that
+        	//         * messages are made up of fragments and that some fragments are repeated others skipped
+        	//         * messages are not always complete and only some (head or tail) fragments may be in the buffer
+        	float varFieldPerUnit = varLenFieldCount/ (float)fragDataSize[fragmentStartIdx];
+        	assert(varFieldPerUnit<=.5) : "It takes 2 units to write a var field so this will never be larger than .5";
+        	
+        	if (varFieldPerUnit>varLenMaxDensity) {
+        		varLenMaxDensity = varFieldPerUnit;                		
+        	}                	
+        }
+        
                 
         if (debug) {
             System.err.println(Arrays.toString(fragDataSize));
             System.err.println(Arrays.toString(fragScriptSize));
             
         }
+        return varLenMaxDensity;
 	}
     
     

@@ -68,10 +68,9 @@ public final class RingBuffer {
     //defined externally and never changes
     final byte[] constByteBuffer;
     private final byte[][] bufferLookup;
-
-//TODO: check the length and hash to lower the probably of crash.
     
-
+    public final int maxAvgVarLen; 
+    private int varLenMovingAverage = 0;//this is an exponential moving average
 
     // end of moveNextFields
 
@@ -120,7 +119,37 @@ public final class RingBuffer {
         this.bufferLookup = new byte[][] {byteBuffer,constByteBuffer};
                 
         this.consumerData = new RingWalker(mask, from);
+        
+        if (0 == from.maxVarFieldPerUnit || 0==primaryBits) { //zero bits is for the dummy mock case
+        	maxAvgVarLen = 0; //no fragments had any variable length fields so we never allow any
+        } else {
+        	//given outer ring buffer this is the maximum number of var fields that can exist at the same time.
+        	int maxVarCount = (int)Math.ceil(maxSize*from.maxVarFieldPerUnit);
+        	//we require at least 2 fields to ensure that the average approach works in all cases
+        	if (maxVarCount < 2) {
+        		// 2 = size * perUnit
+        		int minSize = (int)Math.ceil(2f/from.maxVarFieldPerUnit);
+        		int minBits = 32 - Integer.numberOfLeadingZeros(minSize - 1);
+        		throw new UnsupportedOperationException("primary buffer is too small it must be at least "+minBits+" bits"); 
+        	}
+        	//to allow more almost 2x more flexibility in variable length bytes we track pairs of writes and ensure the 
+        	//two together are below the threshold rather than each alone
+        	maxAvgVarLen = maxByteSize/maxVarCount;
+        }
+        
+             
+        
     }
+    
+	public void validateVarLength(int length) {
+		
+		int newAvg = (length+varLenMovingAverage)>>1;
+        if (newAvg>maxAvgVarLen)	{
+        	float pct = 100f*((newAvg/(float)maxAvgVarLen)-1f);
+        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". Please make the byte buffer "+pct+"% larger.");
+        }
+        varLenMovingAverage = newAvg;
+	}
 
     
     /**
@@ -360,5 +389,7 @@ public final class RingBuffer {
 	public static int primarySize(RingBuffer ring) {
 		return ring.maxSize;
 	}
+
+
 	
 }

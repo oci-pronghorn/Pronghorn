@@ -61,12 +61,12 @@ public class RingStreams {
         	
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
+        	int byteMask = inputRing.byteMask;
         				
         	if (len<0) { //exit logic
         		releaseReadLock(inputRing);
           		return;
         	} else {                    	
-        		int byteMask = inputRing.byteMask;
 				byte[] data = byteBackingArray(meta, inputRing);
 				int offset = bytePosition(meta,inputRing,len);        					
 				

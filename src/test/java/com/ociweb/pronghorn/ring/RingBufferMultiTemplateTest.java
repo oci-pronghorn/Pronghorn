@@ -63,15 +63,14 @@ public class RingBufferMultiTemplateTest {
 		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
 		
 		//Setup the test data sizes derived from the templates used
-		int MAX_VAR_FIELDS_PER_MESSAGE = 1; 
-		int SMALLEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_RESET_LOC];
-		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];
-		int varDataMax = (MAX_VAR_FIELDS_PER_MESSAGE*ring.byteMask/(ring.mask>>1))/SMALLEST_MESSAGE_SIZE; //TODO: AA, move this math into ring or from        
-        byte[] target = new byte[varDataMax];
+		byte[] target = new byte[ring.maxAvgVarLen];
+		
+		
+		int LARGEST_MESSAGE_SIZE = FROM.fragDataSize[MSG_SAMPLE_LOC];      
         int testSize = (1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE;
         
 
-        populateRingBufferWithBytes(ring, varDataMax, testSize);
+        populateRingBufferWithBytes(ring, ring.maxAvgVarLen, testSize);
 
        
         //now read the data back
@@ -79,7 +78,7 @@ public class RingBufferMultiTemplateTest {
         while (tryReadFragment(ring)) {
         	if (isNewMessage(ring)) {
         		--k;
-        		int expectedLength = (varDataMax*k)/testSize;	
+        		int expectedLength = (ring.maxAvgVarLen*k)/testSize;	
         		
         		int msgLoc = messageIdx(ring);
         		

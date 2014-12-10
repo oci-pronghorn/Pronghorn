@@ -48,6 +48,12 @@ public final class TypeMask {
                                                                   0, 0, 0, 0,
                                                                   1, 0, 0, 0, 0};
 
+    public final static int[] ringBufferFieldVarLen = new int[] {   0, 0, 0, 0, 
+															        0, 0, 0, 0, 
+															        1, 1, 1, 1, 
+															        0, 0, 1, 1,  //Decimal only counts exponent part
+															        0, 0, 0, 0,
+															        0, 0, 0, 0, 0};
 
     public final static String[] xmlTypeName = new String[] { "uInt32", "uInt32", "int32", "int32", "uInt64", "uInt64", "int64", "int64",
         "string", "string", "string", "string", "decimal", "decimal", "byteVector", "byteVector",

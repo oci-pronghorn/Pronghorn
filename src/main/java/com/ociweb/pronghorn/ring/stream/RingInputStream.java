@@ -79,6 +79,8 @@ public class RingInputStream extends InputStream {
 			target+=recordSize;
 		    headPosCache = spinBlockOnHead(headPosCache, target, ring);
 		    returnLength = sendNewContent(targetData, targetOffset, targetLength);
+		    
+		    
 		} while (returnLength==0); //Must block until at least 1 byte was read or -1 EOF detected
 		return returnLength;
 	}
@@ -101,7 +103,7 @@ public class RingInputStream extends InputStream {
 			int targetLength, int meta, int sourceLength) {
 		byte[] sourceData = byteBackingArray(meta, ring);
 		int sourceOffset = bytePosition(meta,ring,sourceLength);        					
-							
+								
 		if (sourceLength<=targetLength) {
 			//the entire block can be sent
 			copyData(targetData, targetOffset, sourceLength, sourceData, sourceOffset);
@@ -155,12 +157,12 @@ public class RingInputStream extends InputStream {
 
 	private void copyData(byte[] targetData, int targetOffset, int sourceLength,
 			byte[] sourceData, int sourceOffset) {
-		
+
 		if ((sourceOffset&sourceByteMask) > ((sourceOffset+sourceLength) & sourceByteMask)) {
 			//rolled over the end of the buffer
 			 int len1 = 1+sourceByteMask-(sourceOffset&sourceByteMask);
 			 System.arraycopy(sourceData, sourceOffset&sourceByteMask, targetData, targetOffset, len1);
-			 System.arraycopy(sourceData, 0, targetData, targetOffset, sourceLength-len1);
+			 System.arraycopy(sourceData, 0,                           targetData, targetOffset+len1, sourceLength-len1);
 		} else {						
 			 //simple add bytes
 			 System.arraycopy(sourceData, sourceOffset&sourceByteMask, targetData, targetOffset, sourceLength); 

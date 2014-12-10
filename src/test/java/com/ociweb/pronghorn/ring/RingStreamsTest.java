@@ -53,7 +53,7 @@ public class RingStreamsTest {
 	@Test
 	public void testReadFromInputStream() {
 				
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)14);
 		
 		StringBuilder builder = new StringBuilder();
 		
@@ -147,7 +147,7 @@ public class RingStreamsTest {
 		int blockSize = testRing.byteMask/(testRing.mask>>1);
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
+		RingBuffer targetRing = new RingBuffer((byte)4, (byte)13);
 		
 		StringBuilder builder = new StringBuilder();
 		
@@ -181,7 +181,7 @@ public class RingStreamsTest {
 			}
 			
 			String rebuiltMessage = new String(baost.toByteArray());
-			assertEquals(testString,rebuiltMessage);
+			assertEquals("len:"+builder.length(),testString,rebuiltMessage);
 			builder.append((char)('A'+(builder.length()&0x7)));
 						
 		}		
