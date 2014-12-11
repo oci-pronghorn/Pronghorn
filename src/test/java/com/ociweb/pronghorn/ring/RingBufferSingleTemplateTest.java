@@ -34,7 +34,7 @@ public class RingBufferSingleTemplateTest {
         int k = testSize;
         while (tryReadFragment(ring)) {
         	if (isNewMessage(ring)) {
-        		assertEquals(0, ring.consumerData.getMsgIdx());
+        		assertEquals(0, RingWalker.messageIdx(ring));
         		
 	        	int expectedLength = (varDataMax*(--k))/testSize;	
 	        	int actualLength = RingReader.readBytes(ring, BYTE_LOC, target, 0); //read bytes as normal code would do

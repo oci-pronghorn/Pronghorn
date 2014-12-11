@@ -28,6 +28,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.RingReader;
+import com.ociweb.pronghorn.ring.RingWriter;
 
 public class ReaderWriterPrimitiveTest {
 
@@ -885,7 +886,7 @@ public class ReaderWriterPrimitiveTest {
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
-                limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
             }
             writer.limit = limit;
 		}
@@ -955,7 +956,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
                     }
                     writer.limit = limit;
 				}
@@ -1024,7 +1025,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = RingReader.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
                     }
                     writer.limit = limit;
 				}

@@ -200,8 +200,6 @@ public final class RingBuffer {
         	int proposedEnd = p + sourceLen;
 			byte[] target = rbRingBuffer.byteBuffer;        	
 			
-			//NOTE: we are not checking for overflow but if we did it would be here
-			
             int tStop = (p + sourceLen) & targetMask;
 			int tStart = p & targetMask;
 			if (tStop > tStart) {
@@ -219,8 +217,7 @@ public final class RingBuffer {
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
     }
     
-
-	public static void addValue(RingBuffer rb, int value) {
+    public static void addValue(RingBuffer rb, int value) {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
 	}
     

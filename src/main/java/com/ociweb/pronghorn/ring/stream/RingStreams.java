@@ -183,7 +183,7 @@ public class RingStreams {
 		while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
 			tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 			
-			RingWriter.finishWriteBytes(outputRing, position, size);
+			RingWriter.finishWriteBytesAlreadyStarted(outputRing, position, size);
 			RingBuffer.publishWrites(outputRing);
 			position += size;
 		}

@@ -107,14 +107,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         }
         return target;
     }
-    
-    public static void readText(RingBuffer ring, int idx, char[] target, int targetOffset) {
-        //if ascii
-        readASCII(ring,idx,target,targetOffset);
-        //else
-        //readUTF8(ring,idx,target,targetOffset);
-    }
-    
+       
     public static void readASCII(RingBuffer ring, int idx, char[] target, int targetOffset) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = RingReader.readDataLength(ring, idx);
@@ -457,47 +450,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
 
-    public static int encodeSingleChar(int c, byte[] buffer, int pos) {
-        if (c <= 0x007F) {
-            // code point 7
-            buffer[pos++] = (byte) c;
-        } else {
-            if (c <= 0x07FF) {
-                // code point 11
-                buffer[pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-            } else {
-                if (c <= 0xFFFF) {
-                    // code point 16
-                    buffer[pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-                } else {
-                    if (c < 0x1FFFFF) {
-                        // code point 21
-                        buffer[pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
-                    } else {
-                        if (c < 0x3FFFFFF) {
-                            // code point 26
-                            buffer[pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
-                        } else {
-                            if (c < 0x7FFFFFFF) {
-                                // code point 31
-                                buffer[pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
-                            } else {
-                                throw new UnsupportedOperationException("can not encode char with value: " + c);
-                            }
-                            buffer[pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
-                        }
-                        buffer[pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
-                    }
-                    buffer[pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
-                }
-                buffer[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
-            }
-            buffer[pos++] = (byte) (0x80 | ((c) & 0x3F));
-        }
-        return pos;
-    }
-
-	public static boolean isNewMessage(RingBuffer rb) {
+    public static boolean isNewMessage(RingBuffer rb) {
 		return rb.consumerData.isNewMessage();
 	}
 
