@@ -90,6 +90,9 @@ public final class RingBuffer {
     	}    	
     }
     
+    private final byte pBits;
+    private final byte bBits;
+    
     /**
      * Construct ring buffer with re-usable constants and fragment structures
      * 
@@ -101,6 +104,9 @@ public final class RingBuffer {
     public RingBuffer(byte primaryBits, byte byteBits, byte[] byteConstants, FieldReferenceOffsetManager from) {
         //constant data will never change and is populated externally.
         
+    	this.pBits = primaryBits;
+    	this.bBits = byteBits;
+    	
         assert (primaryBits >= 0); //zero is a special case for a mock ring       
                 
         //single buffer size for every nested set of groups, must be set to support the largest need.
@@ -145,8 +151,11 @@ public final class RingBuffer {
 		
 		int newAvg = (length+varLenMovingAverage)>>1;
         if (newAvg>maxAvgVarLen)	{
-        	float pct = 100f*((newAvg/(float)maxAvgVarLen)-1f);
-        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". Please make the byte buffer "+pct+"% larger.");
+        	
+        	int bytesPerInt = (int)Math.ceil(length*consumerData.from.maxVarFieldPerUnit);
+        	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
+        	
+        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+pBits+","+bBits);
         }
         varLenMovingAverage = newAvg;
 	}

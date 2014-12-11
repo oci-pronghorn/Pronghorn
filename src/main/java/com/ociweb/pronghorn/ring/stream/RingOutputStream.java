@@ -14,7 +14,7 @@ public class RingOutputStream extends OutputStream {
 	
 	public RingOutputStream(RingBuffer ring) {
 		this.ring = ring;
-		blockSize = ring.byteMask/(ring.mask>>1);
+		blockSize = ring.maxAvgVarLen;
 		
 		if (ring.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
@@ -23,7 +23,7 @@ public class RingOutputStream extends OutputStream {
 	
 	@Override
 	public void write(int b) throws IOException {
-		oneByte[0] = (byte)b;
+		oneByte[0] = (byte)(0xFF&b);
 		RingStreams.writeBytesToRing(oneByte, 0, 1, ring, blockSize);
 	}
 

@@ -5,7 +5,9 @@ import static org.junit.Assert.*;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.ociweb.pronghorn.ring.RingBuffer;
@@ -19,7 +21,7 @@ public class RingStreamsTest {
 	@Test
 	public void testWriteToOutputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)13);
 		
 		StringBuilder builder = new StringBuilder();
 		
@@ -35,7 +37,7 @@ public class RingStreamsTest {
 		
 		byte[] testBytes = testString.getBytes();
 		
-		int blockSize = testRing.byteMask/(testRing.mask>>1);
+		int blockSize = testRing.maxAvgVarLen;
 		RingStreams.writeBytesToRing(testBytes, 0, testBytes.length, testRing, blockSize);
 	    RingStreams.writeEOF(testRing);
 
@@ -55,12 +57,13 @@ public class RingStreamsTest {
 				
 		RingBuffer testRing = new RingBuffer((byte)4,(byte)14);
 		
-		StringBuilder builder = new StringBuilder();
+		int testSize = 3000;
+		byte[] testData = new byte[testSize];
+		int testIdx = 0;
 		
-		while (builder.length()<2048) {
+		while (testIdx<testSize) {
 			
-			String testString = builder.toString();
-			ByteArrayInputStream inputStream = new ByteArrayInputStream(testString.getBytes());
+			ByteArrayInputStream inputStream = new ByteArrayInputStream(Arrays.copyOfRange(testData, 0, testIdx));
 		
 			try {
 				RingStreams.readFromInputStream(inputStream, testRing);
@@ -77,40 +80,42 @@ public class RingStreamsTest {
 				
 				assertEquals(0, RingBuffer.contentRemaining(testRing));
 				
-				String rebuiltMessage = new String(baost.toByteArray());
-				assertEquals(testString,rebuiltMessage);
-				
-				
+				assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+								
 			} catch (IOException e) {
 				e.printStackTrace();
 				fail();
 			}			
 			
-			builder.append((char)('A'+(builder.length()&0x7)));
+			testData[testIdx] = (byte)(testIdx&0xFF);
+			testIdx++;
 		}		
 		
 	}	
 	
+	
+	
 	@Test
 	public void testRingToRingOutputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
-		int blockSize = testRing.byteMask/(testRing.mask>>1);
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)13);
+		int blockSize = testRing.maxAvgVarLen;
 		
-		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
+		RingBuffer targetRing = new RingBuffer((byte)4, (byte)13);
 		RingOutputStream ringOutputStream = new RingOutputStream(targetRing);
 		
-		StringBuilder builder = new StringBuilder();
+		int testSize = 3000;
+		byte[] testData = new byte[testSize];
+		int testIdx = 0;
 		
-		while (builder.length()<3000) {
-			String testString = builder.toString();
+		while (testIdx<testSize) {
+			
 			assertEquals(0, RingBuffer.contentRemaining(testRing));	
 			assertEquals(0, RingBuffer.contentRemaining(targetRing));	
 			
 
-			//Write data into the the ring buffer
-			byte[] testBytes = testString.getBytes();			
-			RingStreams.writeBytesToRing(testBytes, 0, testBytes.length, testRing, blockSize);
+			//Write data into the the ring buffer			
+			RingStreams.writeBytesToRing(testData, 0, testIdx, testRing, blockSize);
 			RingStreams.writeEOF(testRing);
 						
 			//Here we are reading from one ring and writing to another ring going through an OutputStream
@@ -130,11 +135,12 @@ public class RingStreamsTest {
 				e.printStackTrace();
 				fail();
 			}		
+				
+			assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
 			
-			String rebuiltMessage = new String(baost.toByteArray());
-			assertEquals(testString,rebuiltMessage);
-			builder.append((char)('A'+(builder.length()&0x7)));
-						
+			testData[testIdx] = (byte)(testIdx&0xFF);
+			testIdx++;
+			
 		}		
 		
 	}
@@ -144,22 +150,23 @@ public class RingStreamsTest {
 	public void testRingToRingInputStream() {
 		
 		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
-		int blockSize = testRing.byteMask/(testRing.mask>>1);
+		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		RingBuffer targetRing = new RingBuffer((byte)4, (byte)13);
+		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
 		
-		StringBuilder builder = new StringBuilder();
+		int testSize = 3000;
+		byte[] testData = new byte[testSize];
+		int testIdx = 0;
 		
-		while (builder.length()<3000) {
-			String testString = builder.toString();
+		while (testIdx<testSize) {
+			
 			assertEquals(0, RingBuffer.contentRemaining(testRing));	
 			assertEquals(0, RingBuffer.contentRemaining(targetRing));	
 			
 
-			//Write data into the the ring buffer
-			byte[] testBytes = testString.getBytes();			
-			RingStreams.writeBytesToRing(testBytes, 0, testBytes.length, testRing, blockSize);
+			//Write data into the the ring buffer			
+			RingStreams.writeBytesToRing(testData, 0, testIdx, testRing, blockSize);
 			RingStreams.writeEOF(testRing);
 						
 			//Here we are reading from one ring and writing to another ring going through an InputStream
@@ -178,15 +185,123 @@ public class RingStreamsTest {
 			} catch (IOException e) {
 				e.printStackTrace();
 				fail();
-			}
+			}			
 			
-			String rebuiltMessage = new String(baost.toByteArray());
-			assertEquals("len:"+builder.length(),testString,rebuiltMessage);
-			builder.append((char)('A'+(builder.length()&0x7)));
-						
+			assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+			
+			testData[testIdx] = (byte)(testIdx&0xFF);
+			testIdx++;
+			
+			
 		}		
 		
 	}
 	
+	
+	@Test
+	public void testRingToRingInputStreamBytes() {
+		
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		int blockSize = testRing.maxAvgVarLen;
+		RingInputStream ringInputStream = new RingInputStream(testRing);
+		
+		int testSize = 2048;
+		byte[] testData = new byte[testSize];
+		int testIdx = 0;
+		
+		while (testIdx<testSize) {
+			
+			assertEquals(0, RingBuffer.contentRemaining(testRing));				
+
+			int j = 10;
+			while (--j>=0) {
+			
+				//Write data into the the ring buffer			
+				RingStreams.writeBytesToRing(testData, 0, testIdx, testRing, blockSize);
+				RingStreams.writeEOF(testRing);
+											
+				ByteArrayOutputStream baost = new ByteArrayOutputStream();
+				
+				int value;
+				try {
+					while ( (value=ringInputStream.read())>=0  ) {
+						baost.write(value);
+					}
+					ringInputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+					fail();
+				}		
+				
+				assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+			}
+			
+			
+			testData[testIdx] = (byte)(testIdx&0xFF);
+			testIdx++;
+			
+			
+		}		
+		
+	}
+	
+	@Test
+	public void testRingToRingInputStreamToggleMethods() {
+		
+		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		int blockSize = testRing.maxAvgVarLen;
+		RingInputStream ringInputStream = new RingInputStream(testRing);
+		
+		int testSize = 2048;
+		byte[] testData = new byte[testSize];
+		int testIdx = 0;
+		
+		while (testIdx<testSize) {
+			
+			assertEquals(0, RingBuffer.contentRemaining(testRing));				
+
+			int j = 10;
+			while (--j>=0) {
+			
+				//Write data into the the ring buffer			
+				RingStreams.writeBytesToRing(testData, 0, testIdx, testRing, blockSize);
+				RingStreams.writeEOF(testRing);
+											
+				ByteArrayOutputStream baost = new ByteArrayOutputStream();
+				
+				int value;
+				try {
+					int buf = 7;
+					byte[] tempBuf = new byte[buf];
+					
+					//This test is toggling between the two primary ways to read from a stream this
+					//causes the remaining bytes code inside the input stream to get exercised as it 
+					//must span these to calls.
+					while ( (value=ringInputStream.read(tempBuf))>=0  ) { //using array read
+						baost.write(tempBuf,0,value); 
+						
+						if ( (value=ringInputStream.read())>=0  ) { //using single byte read
+							baost.write(value);
+						} else {
+							break;
+						}
+					}
+					ringInputStream.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+					fail();
+				}		
+				
+				assertTrue("len:"+testIdx, Arrays.equals(Arrays.copyOfRange(testData,0,testIdx), baost.toByteArray()));
+			}
+			
+			
+			testData[testIdx] = (byte)(testIdx&0xFF);
+			testIdx++;
+			
+			
+		}		
+		
+	}
 	
 }

@@ -64,7 +64,7 @@ public class RingBufferSingleTemplateTest {
         		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
-        		Thread.currentThread();
+        		Thread.yield();
         	}        	
         	
         }

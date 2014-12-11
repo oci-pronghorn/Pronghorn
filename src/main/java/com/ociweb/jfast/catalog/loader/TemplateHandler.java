@@ -889,7 +889,7 @@ public class TemplateHandler extends DefaultHandler {
                                tokenBuilderLongCount.intValue(),
                                tokenBuilderByteCount.intValue(), 
                                16, 
-                               128); //TODO: get the max string length.
+                               512); //TODO: AAA, get the max string length.
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         

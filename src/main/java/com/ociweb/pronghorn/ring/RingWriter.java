@@ -61,6 +61,7 @@ public class RingWriter {
     	} else {					    	
     		source.get(rb.byteBuffer, position&rb.byteMask, length);
     	}
+    	finishWriteBytes(rb, position, length);
     }
     
 }

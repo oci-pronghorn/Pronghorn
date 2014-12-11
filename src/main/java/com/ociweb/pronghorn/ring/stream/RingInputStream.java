@@ -24,6 +24,7 @@ public class RingInputStream extends InputStream {
 	private int remainingSourceLength = -1;
 	private int remainingSourceMeta;
 	private int remainingSourceOffset;
+	private byte[] oneByte = new byte[1]; 
 	
 	public RingInputStream(RingBuffer ring) {
 		this.ring = ring;
@@ -37,13 +38,14 @@ public class RingInputStream extends InputStream {
 	public int read() throws IOException {
 		//this array does not escape the scope of this method so it will
 		//probably be removed by the runtime compiler and directly use stack space
-		byte[] oneByte = new byte[1]; 
 		
 		if (remainingSourceLength <= 0) {
-			return blockForNewContent(oneByte, 0, 1) <  0 ? -1 : oneByte[0];
+			return blockForNewContent(oneByte, 0, 1) <  0 ? -1 : 0xFF&oneByte[0];
 		} else {		
-			sendRemainingContent(oneByte, 0, 1);
-			return oneByte[0];
+			if (sendRemainingContent(oneByte, 0, 1)!=1) {
+				throw new UnsupportedOperationException();
+			}
+			return 0xFF&oneByte[0];
 		}
 	}
 

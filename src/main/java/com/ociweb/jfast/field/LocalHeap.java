@@ -205,7 +205,7 @@ public class LocalHeap {
             totalDesired = makeRoomAfterFirst(offsetNeedingRoom, totalDesired);
         }
         if (totalDesired > 0) {
-            throw new RuntimeException("LocalHeap must be initialized with more ram for required text");
+            throw new RuntimeException("LocalHeap must be initialized larger for required text of length "+totalDesired);
         }
     }
 

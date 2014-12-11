@@ -171,7 +171,7 @@ public class RingStreams {
 	public static void readFromInputStream(InputStream inputStream, RingBuffer outputRing) throws IOException {
 		assert (outputRing.consumerData.from == FieldReferenceOffsetManager.RAW_BYTES);
 		int fill =  1 + outputRing.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
-		int maxBlockSize = outputRing.byteMask / (outputRing.mask>>1);
+		int maxBlockSize = outputRing.maxAvgVarLen;
 		
 		long tailPosCache = spinBlockOnTail(tailPosition(outputRing), headPosition(outputRing)-fill, outputRing);    
 		
@@ -181,7 +181,6 @@ public class RingStreams {
 		int position = outputRing.byteWorkingHeadPos.value;
 		int size;		
 		while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
-			
 			tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 			
 			RingWriter.finishWriteBytes(outputRing, position, size);

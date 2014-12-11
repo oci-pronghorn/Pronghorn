@@ -11,8 +11,8 @@ public class ClientConfig {
     private int bytesLengthMax;
     private int bytesGap;
     
-    private int rbPrimaryRingBits = 10;
-    private int rbTextRingBits = 8;
+    private int rbPrimaryRingBits = 8;
+    private int rbTextRingBits = 12;
     
     private static final int NONE = -1;
     private int catalogId = NONE;
