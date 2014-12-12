@@ -53,22 +53,32 @@ public class RingInputStream extends InputStream {
 	public int read(byte[] b) throws IOException {
 		//favor true as the most frequent branch and keep the happy path first
 		//this helps branch prediction and pre-fetch
+		int result;
 		if (remainingSourceLength <= 0) {
-			return blockForNewContent(b, 0, b.length);
+			result = blockForNewContent(b, 0, b.length);
 		} else {		
-			return sendRemainingContent(b, 0, b.length);
+			result = sendRemainingContent(b, 0, b.length);
 		}
+		if (0==result) {
+			new Exception("BAD ZERO RETURN").printStackTrace();
+		}
+		return result;
 	}
 
 	@Override
 	public int read(byte[] targetData, int targetOffset, int targetLength) throws IOException {
 		//favor true as the most frequent branch and keep the happy path first
 		//this helps branch prediction and pre-fetch
+		int result;
 		if (remainingSourceLength <= 0) {
-			return blockForNewContent(targetData, targetOffset, targetLength);
+			result = blockForNewContent(targetData, targetOffset, targetLength);
 		} else {		
-			return sendRemainingContent(targetData, targetOffset, targetLength);
+			result = sendRemainingContent(targetData, targetOffset, targetLength);
 		}
+		if (0==result) {
+			new Exception("BAD ZERO RETURN2").printStackTrace();
+		}
+		return result;
 	}
 
 	private int blockForNewContent(byte[] targetData, int targetOffset,
@@ -76,6 +86,9 @@ public class RingInputStream extends InputStream {
 		int returnLength = 0;
 		long target = tailPosition(ring);
 		long headPosCache = headPosition(ring);
+		
+		//System.err.println("block for new");
+		
 		do {
 			//block until we have something to read
 			target+=recordSize;
@@ -86,6 +99,18 @@ public class RingInputStream extends InputStream {
 		} while (returnLength==0); //Must block until at least 1 byte was read or -1 EOF detected
 		return returnLength;
 	}
+	
+//	private int noBlockForNewContent(byte[] targetData, int targetOffset,
+//			int targetLength) {
+//		
+//		long tailPos = tailPosition(ring);
+//		long headPos = headPosition(ring);
+//		if (tailPos<=headPos-recordSize) {
+//			return sendNewContent(targetData, targetOffset, targetLength);
+//		} else {
+//			return 0;
+//		}
+//	}
 
 	private int sendNewContent(byte[] targetData, int targetOffset,
 			int targetLength) {
@@ -101,8 +126,7 @@ public class RingInputStream extends InputStream {
 		}
 	}
 
-	private int beginNewContent(byte[] targetData, int targetOffset,
-			int targetLength, int meta, int sourceLength) {
+	private int beginNewContent(byte[] targetData, int targetOffset, int targetLength, int meta, int sourceLength) {
 		byte[] sourceData = byteBackingArray(meta, ring);
 		int sourceOffset = bytePosition(meta,ring,sourceLength);        					
 								
@@ -129,7 +153,18 @@ public class RingInputStream extends InputStream {
 		//send the rest of the data that we could not last time 
 		//we assume that ending remaining content happens more frequently than the continuation
 		if (remainingSourceLength<=targetLength) {
-			return endRemainingContent(targetData, targetOffset);
+			int result = endRemainingContent(targetData, targetOffset);
+			
+			//if (targetLength>result) {
+				//TODO: should look for more content???!!
+			///	return result + noBlockForNewContent(targetData, targetOffset + result, targetLength - result);
+				
+			//} else {
+				return result;
+			//}
+			
+			
+			
 		} else {
 			return continueRemainingContent(targetData, targetOffset, targetLength);				
 		}
@@ -154,13 +189,14 @@ public class RingInputStream extends InputStream {
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
 		releaseReadLock(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
+//		System.err.println("endRemainingContent "+len);
 		return len;
 	}
 
 	private void copyData(byte[] targetData, int targetOffset, int sourceLength,
 			byte[] sourceData, int sourceOffset) {
 
-		if ((sourceOffset&sourceByteMask) > ((sourceOffset+sourceLength) & sourceByteMask)) {
+		if ((sourceOffset&sourceByteMask) > ((sourceOffset+sourceLength-1) & sourceByteMask)) {
 			//rolled over the end of the buffer
 			 int len1 = 1+sourceByteMask-(sourceOffset&sourceByteMask);
 			 System.arraycopy(sourceData, sourceOffset&sourceByteMask, targetData, targetOffset, len1);

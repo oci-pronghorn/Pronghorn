@@ -70,7 +70,7 @@ public class RingStreams {
 				byte[] data = byteBackingArray(meta, inputRing);
 				int offset = bytePosition(meta,inputRing,len);        					
 				
-				if ((offset&byteMask) > ((offset+len) & byteMask)) {
+				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {
 					//rolled over the end of the buffer
 					 int len1 = 1+byteMask-(offset&byteMask);
 					 outputStream.write(data, offset&byteMask, len1);
@@ -103,6 +103,8 @@ public class RingStreams {
 	 */
 	public static void writeToOutputStreams(RingBuffer inputRing, OutputStream... outputStreams) throws IOException {
 				
+		new Exception("LOOK MA, this code is used").printStackTrace();
+		
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
@@ -179,13 +181,25 @@ public class RingStreams {
 		int byteMask = outputRing.byteMask;
 		
 		int position = outputRing.byteWorkingHeadPos.value;
-		int size;		
-		while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
-			tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
-			
-			RingWriter.finishWriteBytesAlreadyStarted(outputRing, position, size);
-			RingBuffer.publishWrites(outputRing);
-			position += size;
+
+		int size = 0;	
+		try{
+			while ( (size=inputStream.read(buffer,position&byteMask,((position&byteMask) > ((position+maxBlockSize-1) & byteMask)) ? 1+byteMask-(position&byteMask) : maxBlockSize))>=0 ) {	
+				if (size>0) {
+					//block until there is a slot to write into
+					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
+					
+					RingWriter.finishWriteBytesAlreadyStarted(outputRing, position, size);
+					RingBuffer.publishWrites(outputRing);
+					position += size;
+				} else {
+					Thread.yield();
+				}
+			}
+		} catch (IOException ioex) {
+			System.err.println("FAILURE detected at position: "+position+" last known sizes: "+size+" byteMask: "+outputRing.byteMask+
+					" rolloever "+((position&byteMask) >= ((position+maxBlockSize-1) & byteMask))+"  "+(position&byteMask)+" > "+((position+maxBlockSize-1) & byteMask));
+			throw ioex;
 		}
 	}
 	
