@@ -108,7 +108,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return target;
     }
        
-    public static void readASCII(RingBuffer ring, int idx, char[] target, int targetOffset) {
+    public static int readASCII(RingBuffer ring, int idx, char[] target, int targetOffset) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = RingReader.readDataLength(ring, idx);
         if (pos < 0) {
@@ -124,6 +124,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         } else {
             readASCIIRing(ring,len,target, targetOffset,pos);
         }
+        return len;
     }
     
 
@@ -132,7 +133,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         while (--len >= 0) {
             char c = (char)buffer[pos++];
             target[targetIdx++] = c;
-        };
+        }
+        
     }
     
 //    private static void readUTF8Const(FASTRingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
@@ -154,7 +156,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         byte[] buffer = ring.byteBuffer;
         int mask = ring.byteMask;
         while (--len >= 0) {
-            target[targetIdx]=(char)buffer[mask & pos++];
+            target[targetIdx++]=(char)buffer[mask & pos++];
         }
     }
     
@@ -320,12 +322,6 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return true;
     }
     
-    @Deprecated
-    private static boolean eqTextRing(RingBuffer ring, int len, CharSequence seq, int pos) {
-            
-        return eqASCIIRing(ring,len,seq,pos);
-        
-    }
     
     private static boolean eqASCIIRing(RingBuffer ring, int len, CharSequence seq, int pos) {
         

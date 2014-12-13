@@ -122,9 +122,8 @@ public class RingWriter {
 	    	int proposedEnd = p + sourceLen;
 			byte[] target = rbRingBuffer.byteBuffer;        	
 			
-	        int tStop = (p + sourceLen) & targetMask;
-			int tStart = p & targetMask;
-			if (tStop > tStart) {
+	        int tStart = p & targetMask;
+			if (tStart < ((p + sourceLen - 1) & targetMask)) {
 				RingWriter.copyASCIIToByte(source, 0, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
@@ -167,7 +166,7 @@ public class RingWriter {
 	}
 	
 	private static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
-		int i = len;
+		int i = len; //System.err.println("write len:"+len);
 		while (--i>=0) {
 			target[targetIdx+i] = (byte)(0xFF&source.charAt(sourceIdx+i));
 		}
