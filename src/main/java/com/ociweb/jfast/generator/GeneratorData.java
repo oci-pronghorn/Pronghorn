@@ -23,7 +23,7 @@ public class GeneratorData {
     public List<String> caseParaDefs;
     public List<String> caseParaVals;
     public int scriptPos;
-    public int templateId;
+    public long templateId;
     public String fieldPrefix;
     public int fieldMethodCount;
     public String caseTail;

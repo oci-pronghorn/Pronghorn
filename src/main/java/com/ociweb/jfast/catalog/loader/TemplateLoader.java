@@ -102,7 +102,7 @@ public class TemplateLoader {
 		    }
 		}
 		
-		handler.postProcessing();
+		handler.postProcessing(clientConfig.getBytesGap(), clientConfig.getBytesLength());
 		gZipOutputStream.close();
     }
 
@@ -119,7 +119,7 @@ public class TemplateLoader {
 
 		sp.parse(inputStream, handler);
 
-		handler.postProcessing();
+		handler.postProcessing(clientConfig.getBytesGap(), clientConfig.getBytesLength());
 		gZipOutputStream.close();
 	}
     

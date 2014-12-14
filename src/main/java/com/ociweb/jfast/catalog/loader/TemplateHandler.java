@@ -19,6 +19,7 @@ import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 
 public class TemplateHandler extends DefaultHandler {
 
@@ -40,7 +41,7 @@ public class TemplateHandler extends DefaultHandler {
     
     // Catalog represents all the templates supported
     int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
-    int[] catalogScriptFieldIds = new int[MAX_SCRIPT_LENGTH];
+    long[] catalogScriptFieldIds = new long[MAX_SCRIPT_LENGTH];
     String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
 
     int catalogTemplateScriptIdx = 0;
@@ -85,14 +86,14 @@ public class TemplateHandler extends DefaultHandler {
     // Templates never nest and only appear one after the other. Therefore
     // these fields never need to be in a stack and the values put here by the
     // start will still be there for end.
-    int templateId;
-    int templateIdBiggest = 0;
+    long templateId;
+    long templateIdBiggest = 0;
     int templateIdUnique = 0;
     // holds offset to template in script
     
     //can only support 64K unique keys but the actual values can be much larger 32 bit ints
-    IntHashTable templateToOffset = new IntHashTable(16); 
-    IntHashTable templateToLimit = new IntHashTable(16);
+    LongHashTable templateToOffset = new LongHashTable(17); 
+    LongHashTable templateToLimit = new LongHashTable(17);
 
     String templateName;
     String templateXMLns;
@@ -314,7 +315,7 @@ public class TemplateHandler extends DefaultHandler {
             //NOTE: this would be very nice if long were supported for the ID.
             templateId = Integer.parseInt(attributes.getValue("id"));
             
-            if (!IntHashTable.setItem(templateToOffset, templateId, templateOffset)) {
+            if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
             	throw new SAXException("Duplicate template id: " + templateId);
             }          
             
@@ -591,7 +592,7 @@ public class TemplateHandler extends DefaultHandler {
 
         } else if (qName.equalsIgnoreCase("template")) {
 
-        	if (!IntHashTable.setItem(templateToLimit,templateId, catalogTemplateScriptIdx)) {
+        	if (!LongHashTable.setItem(templateToLimit,templateId, catalogTemplateScriptIdx)) {
         		throw new RuntimeException("internal parse error");
         	}
 
@@ -875,7 +876,7 @@ public class TemplateHandler extends DefaultHandler {
 		return maxTokens;
 	}
 
-    public void postProcessing() {
+    public void postProcessing(int byteGap, int maxByteLength) {
 
 
         buildDictionaryMemberLists();
@@ -888,8 +889,8 @@ public class TemplateHandler extends DefaultHandler {
         defaultConstValues.setTypeCounts(tokenBuilderIntCount.intValue(), 
                                tokenBuilderLongCount.intValue(),
                                tokenBuilderByteCount.intValue(), 
-                               16, 
-                               512); //TODO: AAA, get the max string length.
+                               byteGap, 
+                               maxByteLength); 
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         

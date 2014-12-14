@@ -14,7 +14,7 @@ package com.ociweb.pronghorn.ring.util.hash;
  *  TODO: needs more unit tests urgently.
  *
  */
-public class IntHashTable { //TODO: AAA need something to map long keys to ints
+public class IntHashTable {
 
 	private final int mask;
 	private final long[] data;

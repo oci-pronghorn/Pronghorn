@@ -713,8 +713,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     } else {
 
                         // optional
-                        //TODO: B, Add lookup for value of absent/null instead of this constant.
-                        int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                        int valueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(token);
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
                             acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);                            
                         } else {        
@@ -735,8 +734,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptLongSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        //TODO: B, Add lookup for value of absent/null instead of this constant.
-                        long valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_LONG;
+                        long valueOfNull = rbRingBuffer.consumerData.from.getAbsent64Value(token);
 
                         // optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -878,8 +876,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                     } else {
                         // optional
-                        //TODO: B, Add lookup for value of absent/null instead of this constant.
-                        int valueOfNull = TemplateCatalogConfig.DEFAULT_CLIENT_SIDE_ABSENT_VALUE_INT;
+                        int valueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(token);
                         acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                     }
                     

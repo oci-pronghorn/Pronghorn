@@ -8,11 +8,12 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 public class ClientConfig {
 
     private short preableBytes;
-    private int bytesLengthMax;
-    private int bytesGap;
+    
+    private int bytesLengthMax = 512; //TODO: AA, must set these extrnaly from the template Id.
+    private int bytesGap = 16;
     
     private int rbPrimaryRingBits = 8;
-    private int rbTextRingBits = 12;
+    private int rbTextRingBits = 16;
     
     private static final int NONE = -1;
     private int catalogId = NONE;
@@ -118,11 +119,6 @@ public class ClientConfig {
     public void setPreableBytes(short preableBytes) {
         this.preableBytes = preableBytes;
     }
-    
-    public void setBytes(int max, int gap) {
-        this.bytesLengthMax = max;
-        this.bytesGap = gap;
-    }    
     
     public int getBytesLength() {
         return this.bytesLengthMax;

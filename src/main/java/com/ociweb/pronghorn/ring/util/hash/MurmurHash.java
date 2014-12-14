@@ -105,6 +105,11 @@ public class MurmurHash {
         return h;
     }
     
+    public static int hash64finalizer(long value) {
+    	return hash32finalizer( ((int)(value>>32)) | (int)value );
+    }
+    
+    
     public static int hash32finalizer(int value)
     {
     	value ^= value >> 16;
@@ -114,5 +119,6 @@ public class MurmurHash {
         value ^= value >> 16;
         return value;
     }
+    
     
 }

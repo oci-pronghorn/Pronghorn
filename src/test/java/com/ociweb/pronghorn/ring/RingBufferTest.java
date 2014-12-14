@@ -245,7 +245,6 @@ public class RingBufferTest {
     @Ignore
     public void byteBlockRingSpeedTest() {
         
-    	//TODO: making this string long causes collision and ovderwrite!!
     	final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
     	
         final int totalMesssages = 200000;

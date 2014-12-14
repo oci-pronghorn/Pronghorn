@@ -17,6 +17,8 @@ import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
 import com.ociweb.jfast.stream.GeneratorDriving;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -387,7 +389,7 @@ public class GeneratorUtils {
         return true;
     }
 
-    public static void beginSingleFragmentMethod(int scriptPos, int templateId, GeneratorData generatorData) {
+    public static void beginSingleFragmentMethod(int scriptPos, long templateId, GeneratorData generatorData) {
         generatorData.fieldMethodBuilder.setLength(0);
         generatorData.groupMethodBuilder.setLength(0);
         generatorData.caseParaDefs.clear();
@@ -404,7 +406,7 @@ public class GeneratorUtils {
         
         
         //each field method will start with the templateId for easy debugging later.
-        generatorData.fieldPrefix = Integer.toString(templateId);
+        generatorData.fieldPrefix = Long.toString(templateId);
         while (generatorData.fieldPrefix.length()<4) {
             generatorData.fieldPrefix = "0"+generatorData.fieldPrefix;
         }        
@@ -424,9 +426,9 @@ public class GeneratorUtils {
         
     }
 
-    public static String buildSingleFragmentMethod(int i, int fragmentStart, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData,
+    public static String buildSingleFragmentMethod(long templateId, int fragmentStart, List<String> doneScriptsParas, GeneratorDriving scriptor, GeneratorData generatorData,
     		                                       List<JavaFileObject> alsoCompileTarget) {
-        beginSingleFragmentMethod(fragmentStart,i-1, generatorData);
+        beginSingleFragmentMethod(fragmentStart, templateId, generatorData);
         scriptor.setActiveScriptCursor(fragmentStart);
         try {
         	
@@ -524,7 +526,8 @@ public class GeneratorUtils {
         
     }
 
-    public static void buildGroupMethods(TemplateCatalogConfig catalog, IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, Appendable builder, GeneratorDriving scriptor, GeneratorData generatorData, List<JavaFileObject> alsoCompileTarget) throws IOException {
+    public static void buildGroupMethods(final TemplateCatalogConfig catalog, final IntWriteOnceOrderedSet doneScripts, final List<String> doneScriptsParas, 
+    		       final Appendable builder, final GeneratorDriving scriptor, final GeneratorData generatorData, final List<JavaFileObject> alsoCompileTarget) throws IOException {
         
         //A Group may be a full message or sequence item or group.
     
@@ -532,37 +535,82 @@ public class GeneratorUtils {
         builder.append(generateOpenTemplate(generatorData, scriptor));
         
         
-        int[] startCursor = catalog.getTemplateStartIdx();
-        int i = 0;
-        while (i<startCursor.length) {
-            int fragmentStart = startCursor[i++];
-                        
-            int token = catalog.fullScript()[fragmentStart];
-            
-            //only process the rest if the token is Group/OpenTempl
-            if (TokenBuilder.extractType(token) != TypeMask.Group ||
-            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Templ) == 0 ||
-            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Close) !=0) {
-            	continue;
-            }
-            
-            if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
-	            builder.append(buildSingleFragmentMethod(i, fragmentStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
-            }
-            
-            //keep this stop because new elements are added while we walk over these
-            final int stop = IntWriteOnceOrderedSet.itemCount(generatorData.sequenceStarts);
-            int j = 0;
-            while (j < stop) {
-                int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
-                
-            	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
-                    builder.append(buildSingleFragmentMethod(i, seqStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));    	            
-                }            	            	
-            	
-            }
-            
-        }
+        LongHashTable startCursor = catalog.getTemplateStartIdx();        
+        LongHashTable.visit(startCursor, new LongHashTableVisitor() {
+			
+			@Override
+			public void visit(long key, int value) {
+				
+				int fragmentStart = value;
+				long templateId = key;
+				
+	            int token = catalog.fullScript()[fragmentStart];
+	            
+	            //only process the rest if the token is Group/OpenTempl
+	            if (TokenBuilder.extractType(token) != TypeMask.Group ||
+	            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Templ) == 0 ||
+	            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Close) !=0) {
+	            	//continue;
+	            } else {
+	            
+		            if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
+			            try {
+							builder.append(buildSingleFragmentMethod(templateId, fragmentStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						}
+		            }
+		            
+		            //keep this stop because new elements are added while we walk over these
+		            final int stop = IntWriteOnceOrderedSet.itemCount(generatorData.sequenceStarts);
+		            int j = 0;
+		            while (j < stop) {
+		                int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
+		                
+		            	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
+		                    try {
+								builder.append(buildSingleFragmentMethod(templateId, seqStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
+							} catch (IOException e) {
+								throw new RuntimeException(e);
+							}    	            
+		                }            	            	
+		            	
+		            }
+	            }
+			}
+		});
+        
+        
+//        int i = 0;
+//        while (i<startCursor.length) {
+//            int fragmentStart = startCursor[i++];
+//                        
+//            int token = catalog.fullScript()[fragmentStart];
+//            
+//            //only process the rest if the token is Group/OpenTempl
+//            if (TokenBuilder.extractType(token) != TypeMask.Group ||
+//            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Templ) == 0 ||
+//            	(TokenBuilder.extractOper(token) & OperatorMask.Group_Bit_Close) !=0) {
+//            	continue;
+//            }
+//            
+//            if (IntWriteOnceOrderedSet.addItem(doneScripts, fragmentStart)) {
+//	            builder.append(buildSingleFragmentMethod(i, fragmentStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));
+//            }
+//            
+//            //keep this stop because new elements are added while we walk over these
+//            final int stop = IntWriteOnceOrderedSet.itemCount(generatorData.sequenceStarts);
+//            int j = 0;
+//            while (j < stop) {
+//                int seqStart = IntWriteOnceOrderedSet.getItem(generatorData.sequenceStarts,j++);
+//                
+//            	if (IntWriteOnceOrderedSet.addItem(doneScripts, seqStart)) {
+//                    builder.append(buildSingleFragmentMethod(i, seqStart, doneScriptsParas, scriptor, generatorData, alsoCompileTarget));    	            
+//                }            	            	
+//            	
+//            }
+//            
+//        }
     }
 
     static Set<String> statsNames = new HashSet<String>();

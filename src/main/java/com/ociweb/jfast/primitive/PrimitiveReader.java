@@ -67,7 +67,6 @@ public final class PrimitiveReader {
      }
         
     
-    //TODO: move into PrimitiveReader
 	public static void printDebugData(PrimitiveReader reader) {
 		int pos = reader.position;
 		int lim = Math.min(reader.limit, pos+70);

@@ -10,6 +10,7 @@ import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.util.Histogram;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.RingBuffers;
 
@@ -69,7 +70,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 	            }
 	            
             //given the template id from the compressed FAST feed what is the script position?
-            dispatch.msgIdx = dispatch.templateStartIdx[(int)templateId]; //TODO: AAA, convert this to a hash lookup or huffman lookp.
+            dispatch.msgIdx = LongHashTable.getItem(dispatch.templateStartIdx,templateId); 
             
             // fragment size plus 1 for template id and preamble data length in bytes
            	dispatch.activeScriptCursor = dispatch.msgIdx; 

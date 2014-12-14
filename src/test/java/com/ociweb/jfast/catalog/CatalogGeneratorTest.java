@@ -566,7 +566,7 @@ public class CatalogGeneratorTest {
             TemplateHandler handler = new TemplateHandler(output, clientConfig);            
             sp.parse(stream, handler);
     
-            handler.postProcessing();
+            handler.postProcessing(clientConfig.getBytesGap(), clientConfig.getBytesLength());
             gZipOutputStream.close();            
             
         } catch (Exception ex) {

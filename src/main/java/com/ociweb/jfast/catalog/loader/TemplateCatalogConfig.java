@@ -20,6 +20,8 @@ import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTableVisitor;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
 import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
@@ -44,10 +46,8 @@ public class TemplateCatalogConfig {
     private final int maxNonTemplatePMapSize;
     private final int maxPMapDepth;
     private final int maxFieldId; 
-
-    //these two arrays are as long as the biggest template id
-    //if the template ids are sparse they may "waste" a bunch of space
-    private final int[] templateStartIdx;     
+ 
+    private final LongHashTable templateToStartIdx;
     
     public final int[] templateScriptEntries;
     public final int[] templateScriptEntryLimits;
@@ -76,14 +76,9 @@ public class TemplateCatalogConfig {
         
         PrimitiveReader reader = new PrimitiveReader(1024, inputStream, 0);
 
-                
-        int templatePow = PrimitiveReader.readIntegerUnsigned(reader);
-        assert (templatePow < 32) : "Corrupt catalog file";
-        
-        templateStartIdx = new int[1 << templatePow];  
-
         //given an index in the script lookup the tokens, fieldIds or fieldNames
         int fullScriptLength = PrimitiveReader.readIntegerUnsigned(reader);
+                        
         scriptTokens = new int[fullScriptLength];
         scriptFieldIds = new long[fullScriptLength];
         scriptFieldNames = new String[fullScriptLength];
@@ -91,6 +86,13 @@ public class TemplateCatalogConfig {
         //given the template id from the template file look up the 
         //script starts and limits
         templatesInCatalog = PrimitiveReader.readIntegerUnsigned(reader);
+        
+        //how many bits would be needed to store this many templateIds
+        int bitsForTemplates = 32 - Integer.numberOfLeadingZeros(templatesInCatalog - 1);
+        
+        templateToStartIdx = new LongHashTable(bitsForTemplates+2); //add 2 so we have plenty of extra room for hashes
+        
+        
         templateScriptEntries = new int[templatesInCatalog];
         templateScriptEntryLimits = new int[templatesInCatalog];
         
@@ -129,7 +131,7 @@ public class TemplateCatalogConfig {
         this.dictionaryMembers = dictionaryMembers;
         this.maxPMapDepth = maxNestedGroupDepth;
         this.templatesInCatalog=templatesCount;
-        this.templateStartIdx=null;
+        this.templateToStartIdx=null;
         this.scriptFieldNames=null;
         this.templateScriptEntries=null;
         this.templateScriptEntryLimits=null;
@@ -181,8 +183,8 @@ public class TemplateCatalogConfig {
         int i = templatesInCatalog;
         while (--i >= 0) {
             // look up for script index given the templateId
-            int templateId = PrimitiveReader.readIntegerUnsigned(reader);//TODO: AAAA for large template (64 bits this will not work)
-            templateScriptEntries[i] = templateStartIdx[templateId] = PrimitiveReader.readIntegerUnsigned(reader);
+            long templateId = PrimitiveReader.readLongUnsigned(reader);
+            LongHashTable.setItem(templateToStartIdx, templateId, templateScriptEntries[i] = PrimitiveReader.readIntegerUnsigned(reader));
             templateScriptEntryLimits[i] = PrimitiveReader.readIntegerUnsigned(reader);
         }
         
@@ -230,10 +232,10 @@ public class TemplateCatalogConfig {
     // //* delta IntegerDelta | ScaledNumberDelta | ASCIIStringDelta
     // |ByteVectorDelta
 
-    public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, int biggestTemplateId,
+    public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, long biggestTemplateId,
             DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap, int[][] tokenIdxMembers,
-            int[] tokenIdxMemberHeads, int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
-            int scriptLength,  IntHashTable templateToOffset, IntHashTable templateToLimit , int maxPMapDepth, ClientConfig clientConfig) {    
+            int[] tokenIdxMemberHeads, int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
+            int scriptLength,  LongHashTable templateToOffset, LongHashTable templateToLimit , int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
                 catalogScriptFieldIds, catalogScriptFieldNames,
@@ -339,38 +341,31 @@ public class TemplateCatalogConfig {
      * @param catalogScriptFieldNames 
      * @param scripts
      */
-    private static void saveTemplateScripts(final PrimitiveWriter writer, int uniqueTemplateIds, int biggestTemplateId,
-            int[] catalogScriptTokens, int[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, 
-            IntHashTable templateToOffset, final IntHashTable templateToLimit ) {
+    private static void saveTemplateScripts(final PrimitiveWriter writer, int uniqueTemplateIds, long biggestTemplateId,
+            int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, 
+            LongHashTable templateToOffset, final LongHashTable templateToLimit ) {
         // what size array will we need for template lookup. this must be a
         // power of two
         // therefore we will only store the exponent given a base of two.
         // this is not so much for making the file smaller but rather to do the
         // computation
         // now instead of at runtime when latency is an issue.
-        int pow = 0;
-        int tmp = biggestTemplateId;
-        while (tmp != 0) {
-            pow++;
-            tmp = tmp >> 1;
-        }
-        assert (pow < 32);
-        PrimitiveWriter.writeIntegerUnsigned(pow, writer);// will be < 32
+
         PrimitiveWriter.writeIntegerUnsigned(scriptLength, writer);
 
         // total number of templates are are defining here in the catalog
         PrimitiveWriter.writeIntegerUnsigned(uniqueTemplateIds, writer);
         // write each template index
         
-        IntHashTable.visit(templateToOffset, new IntHashTableVisitor() {
+        LongHashTable.visit(templateToOffset, new LongHashTableVisitor() {
 
 			@Override
-			public void visit(int key, int value) {
+			public void visit(long key, int value) {
 				
-				PrimitiveWriter.writeIntegerUnsigned(key, writer); //TODO: AAAA, this is the template and must be long
+				PrimitiveWriter.writeLongUnsigned(key, writer); 
 				// return the index to its original value (-1)
                 PrimitiveWriter.writeIntegerUnsigned(value - 1, writer);
-                PrimitiveWriter.writeIntegerUnsigned(IntHashTable.getItem(templateToLimit, key), writer);
+                PrimitiveWriter.writeLongUnsigned(LongHashTable.getItem(templateToLimit, key), writer);
 				
 			}} );
                
@@ -379,7 +374,7 @@ public class TemplateCatalogConfig {
         int i = scriptLength;
         while (--i >= 0) {
             PrimitiveWriter.writeIntegerSigned(catalogScriptTokens[i], writer);
-            PrimitiveWriter.writeIntegerUnsigned(catalogScriptFieldIds[i], writer); 
+            PrimitiveWriter.writeLongUnsigned(catalogScriptFieldIds[i], writer); 
             String name = catalogScriptFieldNames[i];
             
             int len = null==name?0:name.length();
@@ -398,7 +393,6 @@ public class TemplateCatalogConfig {
                 writer.limit = limit;
             }
         }
-
     }
 
     public DictionaryFactory dictionaryFactory() {
@@ -444,8 +438,8 @@ public class TemplateCatalogConfig {
         return maxPMapDepth;
     }
 
-    public int[] getTemplateStartIdx() {
-        return templateStartIdx; //TODO: AAA, this should return a lookup service not an array?? can we do better?
+    public LongHashTable getTemplateStartIdx() {
+        return templateToStartIdx;
     }
 
     public int[] getScriptTokens() {

@@ -5,10 +5,11 @@ import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 
 public abstract class FASTDecoder{
         
-	public final int[] templateStartIdx;
+	public final LongHashTable templateStartIdx;
     //runtime count of sequence lengths
     public int sequenceCountStackHead = -1;
     public final int[] sequenceCountStack;
@@ -42,7 +43,7 @@ public abstract class FASTDecoder{
     
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
-    		            int[] templateStartIdx,
+    		            LongHashTable templateStartIdx,
     		            int preambleBytes,
 			            RingBuffers ringBuffers, 
 			            int maxPMapCountInBytes) {
