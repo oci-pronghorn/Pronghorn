@@ -175,6 +175,7 @@ public class FieldReferenceOffsetManager {
             
             int tokenType = TokenBuilder.extractType(token);
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
+
 			varLenFieldCount += TypeMask.ringBufferFieldVarLen[tokenType];
             
             fragDataSize[fragmentStartIdx] += fSize;

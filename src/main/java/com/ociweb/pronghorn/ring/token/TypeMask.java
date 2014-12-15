@@ -44,7 +44,7 @@ public final class TypeMask {
     public final static int[] ringBufferFieldSize = new int[] {   1, 1, 1, 1, 
                                                                   2, 2, 2, 2, 
                                                                   2, 2, 2, 2, 
-                                                                  1, 1, 2, 2,  //Decimal only counts exponent part
+                                                                  1, 1, 2, 2, //Decimals are represented as 2 tokens in the script this size only need show the first  
                                                                   0, 0, 0, 0,
                                                                   1, 0, 0, 0, 0};
 

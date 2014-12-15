@@ -70,7 +70,7 @@ public class RingBufferMultiTemplateTest {
         int testSize = (1<<primaryRingSizeInBits)/LARGEST_MESSAGE_SIZE;
         
 
-        populateRingBufferWithBytes(ring, ring.maxAvgVarLen, testSize);
+        populateRingBuffer(ring, ring.maxAvgVarLen, testSize);
 
        
         //now read the data back
@@ -130,7 +130,7 @@ public class RingBufferMultiTemplateTest {
         }    
     }
 
-	private void populateRingBufferWithBytes(RingBuffer ring, int blockSize, int testSize) {
+	private void populateRingBuffer(RingBuffer ring, int blockSize, int testSize) {
 		
 		int[] templateIds = new int[] {2,1,4};
 		int j = testSize;

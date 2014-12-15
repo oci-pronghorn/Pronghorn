@@ -12,9 +12,10 @@ public class RingBufferReaderTest {
     @Test
     public void powCenters() {
         
-        assertEquals(1d,RingReader.powd[64],.000001d);
-        assertEquals(1f,RingReader.powf[64],.00001f);
+        assertEquals(1d,RingReader.powdi[64],.000001d);
+        assertEquals(1f,RingReader.powfi[64],.00001f);
         
     }
+
     
 }
