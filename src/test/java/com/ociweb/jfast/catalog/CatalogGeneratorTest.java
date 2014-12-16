@@ -426,7 +426,7 @@ public class CatalogGeneratorTest {
                         RingBuffer.publishWrites(ringBuffer);
                         
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         }
                     }
                     long duration = System.nanoTime()-start;
@@ -452,7 +452,7 @@ public class CatalogGeneratorTest {
                         }
                         RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         }
                     }
                     long duration = System.nanoTime()-start;
@@ -477,7 +477,7 @@ public class CatalogGeneratorTest {
                         }
                         RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         }
                     }
                     long duration = System.nanoTime()-start;
@@ -505,7 +505,7 @@ public class CatalogGeneratorTest {
                         }
                         RingBuffer.publishWrites(ringBuffer);
                         if (RingWalker.tryReadFragment(ringBuffer)) {//without move next we get no stats.
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         }
                     }
                     long duration = System.nanoTime()-start;

@@ -2,6 +2,7 @@ package com.ociweb.jfast.stream;
 
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingWalker;
 
 public class FASTDynamicWriter {
 
@@ -17,26 +18,9 @@ public class FASTDynamicWriter {
         
     }
 
-    // non blocking write, returns if there is nothing to do.
-    public void write() {
-        // write from the the queue/ringBuffer
-        // queue will contain one full unit to be processed.
-        // Unit: 1 Template/Message or 1 EntryInSequence
-
-        // because writer does not move pointer up until full unit is ready to
-        // go we only need to check if data is available, not the size.
-        if (RingBuffer.contentRemaining(ringBuffer)>0) {
-            
-            //TODO: B, must add loop check over ringBuffer, is this an internal or external feature?
-            
-            //NOTE: multiple writers to one location is NEVER allowed therefore
-            //this MUST support reading from multiple locations.
-            
-            
-            writerDispatch.encode(writer, ringBuffer);
-            
-            
-        }
+    // this method must never be called unless RingWalker.tryReadFragment(ringBuffer) has returned true
+    public static void write(FASTDynamicWriter dynamicWriter) {
+    	dynamicWriter.writerDispatch.encode(dynamicWriter.writer, dynamicWriter.ringBuffer);
     }
 
     public void reset(boolean clearData) {

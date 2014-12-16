@@ -482,7 +482,7 @@ public class TemplateLoaderTest {
                             msgs.incrementAndGet();
                         }
                         try{   
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
@@ -522,7 +522,7 @@ public class TemplateLoaderTest {
             while (FASTReaderReactor.pump(reactor)>=0) {  
                     if (RingWalker.tryReadFragment(queue)) {
                        if (queue.consumerData.getMsgIdx()>=0) { //skip if we are waiting for more content.
-                                dynamicWriter.write();  
+                                FASTDynamicWriter.write(dynamicWriter);  
                        }
                     }
             }
@@ -626,7 +626,7 @@ public class TemplateLoaderTest {
                             msgs.incrementAndGet();
                         }
                         try{   
-                            dynamicWriter.write();
+                            FASTDynamicWriter.write(dynamicWriter);
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
@@ -691,11 +691,11 @@ public class TemplateLoaderTest {
                 start = System.nanoTime(); 
                 while (isAlive.get()) {
                     while (RingWalker.tryReadFragment(queue)) {
-                        dynamicWriter.write();  
+                        FASTDynamicWriter.write(dynamicWriter);  
                     }   
                 }
                 while (RingWalker.tryReadFragment(queue)) {
-                    dynamicWriter.write();  
+                    FASTDynamicWriter.write(dynamicWriter);  
                 }
                 
             } else {
@@ -707,7 +707,7 @@ public class TemplateLoaderTest {
                 start = System.nanoTime();            
                 
                 while (RingWalker.tryReadFragment(queue)) {
-                        dynamicWriter.write();  
+                        FASTDynamicWriter.write(dynamicWriter);  
                 } 
             }
             double duration = System.nanoTime() - start;
