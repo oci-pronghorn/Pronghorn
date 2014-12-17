@@ -355,12 +355,11 @@ public class FieldReferenceOffsetManager {
 	}
     
 	public int getAbsent32Value(int token) {
-		//TODO: A, we should discuss what the default value for on the ring should be we have 4 choices
-		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add array lookup based on token id
+		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //TODO: HACK until we add array lookup based on token id
 	}
     
 	public long getAbsent64Value(int token) {
-		return TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); //HACK until we add array lookup based on token id
+		return TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); //TODO: HACK until we add array lookup based on token id
 	}
     
 }

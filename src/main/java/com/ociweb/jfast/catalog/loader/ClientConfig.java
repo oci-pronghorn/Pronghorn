@@ -9,7 +9,7 @@ public class ClientConfig {
 
     private short preableBytes;
     
-    private int bytesLengthMax = 4096; //TODO: AA, must set these extrnaly from the template Id.
+    private int bytesLengthMax = 4096;
     private int bytesGap = 64;
     
     private int rbPrimaryRingBits = 8;
@@ -22,7 +22,13 @@ public class ClientConfig {
     public ClientConfig(int primaryRingBits, int textRingBits) {
         this.rbPrimaryRingBits = primaryRingBits;
         this.rbTextRingBits = textRingBits;
-       
+    }
+    
+    public ClientConfig(int primaryRingBits, int textRingBits, int bytesLength, int bytesGap) {
+        this.rbPrimaryRingBits = primaryRingBits;
+        this.rbTextRingBits = textRingBits;
+        this.bytesLengthMax = bytesLength;
+        this.bytesGap = bytesGap;
         
     }
     
