@@ -9,8 +9,8 @@ public class ClientConfig {
 
     private short preableBytes;
     
-    private int bytesLengthMax = 512; //TODO: AA, must set these extrnaly from the template Id.
-    private int bytesGap = 16;
+    private int bytesLengthMax = 4096; //TODO: AA, must set these extrnaly from the template Id.
+    private int bytesGap = 64;
     
     private int rbPrimaryRingBits = 8;
     private int rbTextRingBits = 16;

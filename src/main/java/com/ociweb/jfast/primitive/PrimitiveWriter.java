@@ -948,9 +948,9 @@ public final class PrimitiveWriter {
     }
     
    
-    public static final void writeTextASCIIBefore(byte[] value, int valueOffset, int valueMask, int stop, PrimitiveWriter writer) {
+    public static final void writeTextASCIIBefore(byte[] value, int valueOffset, int valueMask, int sentLen, PrimitiveWriter writer) {
 
-        int length = stop;
+        int length = sentLen; 
         if (0 == length) {
             encodeZeroLengthASCII(writer);
             return;

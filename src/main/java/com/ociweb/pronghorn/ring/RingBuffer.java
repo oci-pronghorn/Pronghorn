@@ -77,6 +77,13 @@ public final class RingBuffer {
     static final int JUMP_MASK = 0xFFFFF;
     public final RingWalker consumerData;
     
+    private final byte pBits;
+    private final byte bBits;
+    
+    
+    public RingBuffer(RingBufferConfig config) {
+    	this(config.primaryBits, config.byteBits, config.byteConst, config.from);
+    }
     
     /**
      * Construct simple ring buffer without any assumed data structures
@@ -90,8 +97,6 @@ public final class RingBuffer {
     	}    	
     }
     
-    private final byte pBits;
-    private final byte bBits;
     
     /**
      * Construct ring buffer with re-usable constants and fragment structures

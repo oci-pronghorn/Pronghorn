@@ -224,8 +224,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 int trimHead = LocalHeap.length(target,byteHeap) - tailCount;
                 PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
                 
-                int sentLen = length - tailCount;
-                PrimitiveWriter.writeTextASCIIBefore(buffer,offset,byteMask, sentLen, writer);
+                int sentLen = length - tailCount;                
+                PrimitiveWriter.writeTextASCIIBefore(buffer,offset, byteMask, sentLen, writer);
                 LocalHeap.appendHead(target,trimHead,buffer,offset,sentLen,byteMask,byteHeap);
             }
         }
