@@ -7,7 +7,7 @@ import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public class ClientConfig {
 
-    private short preableBytes;
+    private short preambleBytes;
     
     private int bytesLengthMax = 4096;
     private int bytesGap = 64;
@@ -54,7 +54,7 @@ public class ClientConfig {
 
     public ClientConfig(PrimitiveReader reader) {
         
-        preableBytes = (short)PrimitiveReader.readIntegerUnsigned(reader);
+        preambleBytes = (short)PrimitiveReader.readIntegerUnsigned(reader);
         
         bytesLengthMax = PrimitiveReader.readIntegerUnsigned(reader);
         bytesGap = PrimitiveReader.readIntegerUnsigned(reader);
@@ -87,7 +87,7 @@ public class ClientConfig {
 
     public void save(PrimitiveWriter writer) {
         
-        PrimitiveWriter.writeIntegerUnsigned(preableBytes, writer);
+        PrimitiveWriter.writeIntegerUnsigned(preambleBytes, writer);
 
         PrimitiveWriter.writeIntegerUnsigned(bytesLengthMax, writer);
         PrimitiveWriter.writeIntegerUnsigned(bytesGap, writer);
@@ -119,11 +119,11 @@ public class ClientConfig {
     }
     
     public short getPreableBytes() {
-        return preableBytes;
+        return preambleBytes;
     }
 
     public void setPreableBytes(short preableBytes) {
-        this.preableBytes = preableBytes;
+        this.preambleBytes = preableBytes;
     }
     
     public int getBytesLength() {
@@ -134,10 +134,12 @@ public class ClientConfig {
         return this.bytesGap;
     }
 
+    @Deprecated
     public int getPrimaryRingBits() {
         return rbPrimaryRingBits;
     }
 
+    @Deprecated
     public int getTextRingBits() {
         return rbTextRingBits;
     }
