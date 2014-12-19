@@ -438,21 +438,13 @@ public class TemplateLoaderTest {
 
         FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.consumerData.from.tokens);
 
-        // TODO: B, force this error and add friendly message, when minimize
-        // latency set to false these need to be much bigger?
-        int writeBuffer = 2048;
-        
-        int maxGroupCount = catalog.getScriptTokens().length; //overkill but its fine for testing. 
-        // NOTE: may need to be VERY large if minimize
-        // latency is turned off!!
-        
-        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
+        int writeBuffer = 256;        
+        PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, false);
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
-
-        System.err.println("using: "+writerDispatch.getClass().getSimpleName());
+        //System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
 
@@ -674,8 +666,6 @@ public class TemplateLoaderTest {
             
             final ThreadPoolExecutor executor = (ThreadPoolExecutor)Executors.newFixedThreadPool(1); 
 
-            
-            //TODO: B,  build a test that uses the ring buffer to move integers from the decoder to the encoder ring buffers (separate) this is much more in keeping with how it will be used. 
             //note this test is never something that represents a normal use case but it is good for testing the encoding only time.
             //      
             //TODO: X, allow decoding in parallel by n cores into n ring buffers but let each one use different techniques.  The first one done is the value used. Would support runtime optimizations.

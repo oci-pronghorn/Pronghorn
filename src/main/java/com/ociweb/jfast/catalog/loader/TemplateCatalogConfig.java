@@ -15,6 +15,7 @@ import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingWriter;
@@ -115,9 +116,8 @@ public class TemplateCatalogConfig {
         clientConfig = new ClientConfig(reader);
         
         //must be done after the client config construction
-        from = TemplateCatalogConfig
-				.createFieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(dictionaryFactory, fullScriptLength, from, clientConfig);
+        from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
+        ringBuffers = buildRingBuffers(DictionaryFactory.initConstantByteArray(dictionaryFactory), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
         
     }
     
@@ -144,32 +144,26 @@ public class TemplateCatalogConfig {
         
         this.from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
         
-        this.ringBuffers = buildRingBuffers(dictionaryFactory,
-                                            fullScriptLength, 
-                                            from, clientConfig);
+        this.ringBuffers = buildRingBuffers(DictionaryFactory.initConstantByteArray(dcr), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
         
         //must be done after the client config construction
     }
     
     
-    private static RingBuffers buildRingBuffers(DictionaryFactory dFactory, int scriptLength, 
-                                                     FieldReferenceOffsetManager from, ClientConfig clientConfig) {
-        
-        int primaryRingBits = clientConfig.getPrimaryRingBits(); 
-        int textRingBits = clientConfig.getTextRingBits();
-        
-        RingBuffer[] buffers = new RingBuffer[scriptLength];
+    public static RingBuffers buildRingBuffers(byte[] initConstantByteArray,
+			int scriptLength, int primaryRingBits, int textRingBits,
+			FieldReferenceOffsetManager from) {
+		RingBuffer[] buffers = new RingBuffer[scriptLength];
         //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
         //Move this method into RingBuffers as satic?
         
-        RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,DictionaryFactory.initConstantByteArray(dFactory), from);
+		RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,initConstantByteArray, from);
         int i = scriptLength;
         while (--i>=0) {
             buffers[i]=rb;            
         }        
         return new RingBuffers(buffers);
-        
-    }
+	}
     
     public RingBuffers ringBuffers() {
         return ringBuffers;
