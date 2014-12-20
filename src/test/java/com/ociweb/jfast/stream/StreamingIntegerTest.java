@@ -17,6 +17,7 @@ import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -112,7 +113,8 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 				
 		TemplateCatalogConfig catalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null,	64,4, 100, new ClientConfig(8 ,7) );
 		
-		FASTWriterInterpreterDispatch fw = new FASTWriterInterpreterDispatch(catalog);
+		FASTWriterInterpreterDispatch fw = FASTWriterInterpreterDispatch
+				.createFASTWriterInterpreterDispatch(catalog);
 		
 		
 		long start = System.nanoTime();

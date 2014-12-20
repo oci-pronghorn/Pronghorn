@@ -6,13 +6,13 @@ import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.util.Histogram;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.jfast.stream.FASTDecoder;
-import com.ociweb.jfast.stream.RingBuffers;
 
 //TODO: B, needs support for messageRef where we can inject template in another and return to the previouslocation. Needs STACK in dispatch!
 //TODO: B, set the default template for the case when it is undefined in catalog.
@@ -39,11 +39,11 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     * @param catalog
     */
     public FASTReaderDispatchTemplates(TemplateCatalogConfig catalog) {
-        super(catalog);
+        super(catalog, RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ));
     }
     
     public FASTReaderDispatchTemplates(byte[] catBytes) {
-        super(new TemplateCatalogConfig(catBytes));
+        this(new TemplateCatalogConfig(catBytes));
     }
     
 

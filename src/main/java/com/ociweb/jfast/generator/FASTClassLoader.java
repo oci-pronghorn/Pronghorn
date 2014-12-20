@@ -16,6 +16,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
@@ -98,7 +99,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
                 }
                 
                 {//scoped to help GC
-                	FASTWriterDispatchGenerator writeGenerator = new FASTWriterDispatchGenerator(catBytes, toCompile);
+                	FASTWriterDispatchGenerator writeGenerator = new FASTWriterDispatchGenerator(catBytes, new TemplateCatalogConfig(catBytes), toCompile);
                 	SimpleSourceFileObject sourceWriterFileObject = new SimpleSourceFileObject(FASTClassLoader.SIMPLE_WRITER_NAME,
 									             										       writeGenerator.generateFullSource(new StringBuilder()));
 					toCompile.add(sourceWriterFileObject);

@@ -14,8 +14,8 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingWriter;
@@ -23,7 +23,6 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTableVisitor;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
-import com.ociweb.jfast.stream.RingBuffers;
 
 public class TemplateCatalogConfig {
 
@@ -117,7 +116,7 @@ public class TemplateCatalogConfig {
         
         //must be done after the client config construction
         from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
-        ringBuffers = buildRingBuffers(DictionaryFactory.initConstantByteArray(dictionaryFactory), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
+        ringBuffers = RingBuffers.buildNoFanRingBuffers(ringByteConstants(), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
         
     }
     
@@ -139,37 +138,22 @@ public class TemplateCatalogConfig {
         this.maxTemplatePMapSize = maxTemplatePMapSize;
         this.maxFieldId=-1;
         this.dictionaryFactory = dcr;
-        int fullScriptLength = null==fullScript?1:fullScript.length;
         this.clientConfig = clientConfig;
         
         this.from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
         
-        this.ringBuffers = buildRingBuffers(DictionaryFactory.initConstantByteArray(dcr), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
+        this.ringBuffers = RingBuffers.buildNoFanRingBuffers(ringByteConstants(), scriptLength(), clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
         
         //must be done after the client config construction
     }
-    
-    
-    public static RingBuffers buildRingBuffers(byte[] initConstantByteArray,
-			int scriptLength, int primaryRingBits, int textRingBits,
-			FieldReferenceOffsetManager from) {
-		RingBuffer[] buffers = new RingBuffer[scriptLength];
-        //TODO: B, Same layout can be shared but every dispatch must have its OWN set of ring buffers, then for muxing the client will round robin. 1Producer to  1Consumer
-        //Move this method into RingBuffers as satic?
-        
-		RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,initConstantByteArray, from);
-        int i = scriptLength;
-        while (--i>=0) {
-            buffers[i]=rb;            
-        }        
-        return new RingBuffers(buffers);
+
+	public byte[] ringByteConstants() {
+		return DictionaryFactory.initConstantByteArray(dictionaryFactory);
 	}
-    
-    public RingBuffers ringBuffers() {
-        return ringBuffers;
-    }
-    
-    
+
+	public int scriptLength() {
+		return null==scriptTokens?1:scriptTokens.length;
+	}
 
     // Assumes that the tokens are already loaded and ready for use.
     private void loadTemplateScripts(PrimitiveReader reader) {

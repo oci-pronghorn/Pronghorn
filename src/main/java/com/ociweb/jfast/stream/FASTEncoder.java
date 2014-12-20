@@ -8,6 +8,7 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public abstract class FASTEncoder { 
@@ -52,10 +53,11 @@ public abstract class FASTEncoder {
     
     public final byte[] preambleData;
     
+    
     public FASTEncoder(TemplateCatalogConfig catalog) {
-        this(catalog.dictionaryFactory(), catalog.templatesCount(),
-             catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.fieldIdScript(), catalog.getMaxGroupDepth(), catalog.ringBuffers(), catalog.clientConfig().getPreableBytes());
+        this(catalog, 
+             RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ) );
+        
     }
     
     public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {

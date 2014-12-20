@@ -4,6 +4,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.DictionaryFactory;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 
@@ -32,15 +33,20 @@ public abstract class FASTDecoder{
    
         
     public FASTDecoder(TemplateCatalogConfig catalog) {
+        this(catalog, 
+             RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ) );
+        
+    }
+    
+    public FASTDecoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), 
         	 catalog.getMaxGroupDepth(),
         	 catalog.getTemplateStartIdx(), 
         	 catalog.clientConfig().getPreableBytes(), 
-             catalog.ringBuffers(), 
+             ringBuffers, 
              TemplateCatalogConfig.maxPMapCountInBytes(catalog) );
         
     }
-    
             
     private FASTDecoder(DictionaryFactory dcr, int maxNestedGroupDepth, 
     		            LongHashTable templateStartIdx,

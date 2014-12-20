@@ -12,6 +12,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -28,7 +29,6 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     
     public final int nonTemplatePMapSize;
     public final int maxTemplatePMapSize;
-    protected final ClientConfig clientConfig;
     
     public final int[][] dictionaryMembers;
     
@@ -37,6 +37,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     protected final String[] fieldNameScript;
     
     protected final int[] fullScript;
+    protected final int prembleBytes;
 
         
     public FASTReaderInterpreterDispatch(byte[] catBytes) {
@@ -54,7 +55,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         this.nonTemplatePMapSize = catalog.maxNonTemplatePMapSize();
         this.maxTemplatePMapSize = catalog.maxTemplatePMapSize();
-        this.clientConfig = catalog.clientConfig();
+        this.prembleBytes = catalog.clientConfig().getPreableBytes();;
         
         this.dictionaryMembers = catalog.dictionaryResetMembers();
         this.MAX_INT_INSTANCE_MASK = Math.min(TokenBuilder.MAX_INSTANCE, (rIntDictionary.length - 1));
@@ -81,7 +82,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         
         //break out into series of gen calls to save int somewhere. units of 4 only.
-        int p = this.clientConfig.getPreableBytes();
+        int p = this.prembleBytes;
         if (p>0) {
      //   	System.err.println("warnin preamble length "+this.preambleDataLength);
         	
@@ -94,12 +95,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         
         // /////////////////
         // open message (special type of group)
-        int preambleInts = (clientConfig.getPreableBytes()+3)>>2;
+        int preambleInts = (prembleBytes+3)>>2;
         genReadTemplateId(preambleInts, maxTemplatePMapSize, reader, this);        
         
         //TODO: X, add mode for reading the preamble above but NOT writing to ring buffer because it is not needed.
         //break out into second half of gen.
-        p = this.clientConfig.getPreableBytes();
+        p = this.prembleBytes;
         if (p>0) {
             genWritePreambleA(this); //No need to spin lock because it was done by genReadTemplateId
             if (p>4) {

@@ -10,6 +10,7 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.FASTEncoder;
@@ -22,8 +23,9 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     private final List<JavaFileObject> alsoCompileTarget;
     
 
-    public FASTWriterDispatchGenerator(byte[] catBytes, List<JavaFileObject> alsoCompileTarget) {
-        super(new TemplateCatalogConfig(catBytes));
+    public FASTWriterDispatchGenerator(byte[] catBytes, TemplateCatalogConfig catalog, List<JavaFileObject> alsoCompileTarget) {
+        super(catalog,
+        		RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ) );
 
         this.generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
         this.alsoCompileTarget = alsoCompileTarget;

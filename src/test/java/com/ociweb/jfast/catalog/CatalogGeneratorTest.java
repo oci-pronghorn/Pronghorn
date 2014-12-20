@@ -40,6 +40,7 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
@@ -259,7 +260,10 @@ public class CatalogGeneratorTest {
         FASTOutput fastOutput = new FASTOutputByteArray(buffer );
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
                
-        RingBuffer ringBuffer = catalog.ringBuffers().buffers[0];
+        
+        RingBuffers ringBuffers = RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM());
+        
+        RingBuffer ringBuffer = RingBuffers.get(ringBuffers,0);
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
              
         //populate ring buffer with the new records to be written.

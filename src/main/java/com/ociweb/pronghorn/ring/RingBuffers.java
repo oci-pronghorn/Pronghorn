@@ -1,7 +1,5 @@
-package com.ociweb.jfast.stream;
+package com.ociweb.pronghorn.ring;
 
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 
 public class RingBuffers {
     
@@ -25,9 +23,7 @@ public class RingBuffers {
                 }
             }
             count += (j>>>31); //add the high bit because this is negative              
-        }
-        //System.err.println("unique buffers:"+count);
-              
+        }              
         
         this.uniqueBuffers = new RingBuffer[count];
         count = 0;
@@ -44,13 +40,21 @@ public class RingBuffers {
         }        
                 
     }
-    
-    //package protected
-    RingBuffer[] rawArray() {
-        return buffers;
-    }
 
-    public static void reset(RingBuffers ringBuffers) {
+    public static RingBuffers buildNoFanRingBuffers(byte[] initConstantByteArray, int scriptLength, int primaryRingBits, int textRingBits,
+			FieldReferenceOffsetManager from) {
+		RingBuffer[] buffers = new RingBuffer[scriptLength];
+	    
+		RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,initConstantByteArray, from);
+	
+		int i = scriptLength;
+	    while (--i>=0) {
+	        buffers[i]=rb;            
+	    }        
+	    return new RingBuffers(buffers);
+	}
+
+	public static void reset(RingBuffers ringBuffers) {
         //reset all ringbuffers
         int j = ringBuffers.buffers.length;
         while (--j>=0) {

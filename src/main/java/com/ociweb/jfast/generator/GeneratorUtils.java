@@ -13,6 +13,7 @@ import javax.tools.SimpleJavaFileObject;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -20,7 +21,6 @@ import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
 import com.ociweb.jfast.stream.GeneratorDriving;
-import com.ociweb.jfast.stream.RingBuffers;
 
 public class GeneratorUtils {
     
@@ -44,7 +44,7 @@ public class GeneratorUtils {
         target.append("\n");
         target.append("public "+name+"(byte[] catBytes) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
         target.append("\n");
-
+      
     }
 
     public static int complexity(CharSequence seq) {

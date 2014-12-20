@@ -3,10 +3,6 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.stream;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.generator.FASTWriterDispatchTemplates;
@@ -14,29 +10,28 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingBuffers;
+import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
-import com.ociweb.pronghorn.ring.RingReader;
 
 //May drop interface if this causes a performance problem from virtual table 
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
-    protected final long[] fieldIdScript;
+    public static FASTWriterInterpreterDispatch createFASTWriterInterpreterDispatch(TemplateCatalogConfig catalog) {
+		return new FASTWriterInterpreterDispatch(catalog, 
+				       RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ));
+	}
+
+	protected final long[] fieldIdScript;
     protected final String[] fieldNameScript;
     
-    public FASTWriterInterpreterDispatch(byte[] catBytes) {
-        this(new TemplateCatalogConfig(catBytes));
+    public FASTWriterInterpreterDispatch(byte[] catBytes, RingBuffers ringBuffers) {
+        this(new TemplateCatalogConfig(catBytes), ringBuffers);
     }    
-    
-    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog) {
-        super(catalog, catalog.ringBuffers());
-        this.fieldIdScript = catalog.fieldIdScript();
-        this.fieldNameScript = catalog.fieldNameScript();
-    } 
-    
-    
-    //Constructor is very useful for adding new message or dropping messages without any modification of messages.
+  
+
     public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, RingBuffers buffers) {
         super(catalog, buffers);
         this.fieldIdScript = catalog.fieldIdScript();

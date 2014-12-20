@@ -1,24 +1,19 @@
 package com.ociweb.jfast.generator;
 
-import java.util.Arrays;
-
-import com.ociweb.jfast.error.FASTException;
-import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
+import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
-import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
-import com.ociweb.pronghorn.ring.util.Histogram;
 import com.ociweb.jfast.stream.FASTEncoder;
-import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
-import com.ociweb.jfast.stream.RingBuffers;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingBuffers;
+import com.ociweb.pronghorn.ring.RingReader;
 
 
 public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog) {
-        super(catalog);
+        super(catalog, RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ));
     }    
     
     public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, RingBuffers ringBuffers) {

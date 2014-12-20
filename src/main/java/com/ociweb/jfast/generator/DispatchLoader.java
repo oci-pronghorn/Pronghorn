@@ -2,10 +2,12 @@ package com.ociweb.jfast.generator;
 
 import java.util.Arrays;
 
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
+import com.ociweb.pronghorn.ring.RingBuffers;
 
 public class DispatchLoader {
 
@@ -33,12 +35,14 @@ public class DispatchLoader {
             return loadGeneratedDispatch(catalog, FASTClassLoader.WRITER);
         } catch (Exception e) {
             Supervisor.err("Attempted to load dispatch reader.", e);
-            return new FASTWriterInterpreterDispatch(catalog);
+            return loadDispatchWriterDebug(catalog);
         }
     }
     
-    public static FASTEncoder loadDispatchWriterDebug(byte[] catalog) {
-    	return new FASTWriterInterpreterDispatch(catalog);
+    public static FASTEncoder loadDispatchWriterDebug(byte[] catBytes) {
+    	TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+    	return new FASTWriterInterpreterDispatch(catalog, 
+    			          RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ));
     }
     
     public static <T> T loadGeneratedDispatch(byte[] catBytes, String type)
