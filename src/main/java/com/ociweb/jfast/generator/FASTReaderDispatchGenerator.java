@@ -16,6 +16,7 @@ import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
@@ -29,8 +30,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     private final GeneratorData generatorData;
     private final List<JavaFileObject> alsoCompileTarget;
 
-    public FASTReaderDispatchGenerator(byte[] catBytes, List<JavaFileObject> alsoCompileTarget) {
-        super(new TemplateCatalogConfig(catBytes));
+    public FASTReaderDispatchGenerator(byte[] catBytes, List<JavaFileObject> alsoCompileTarget, RingBuffers ringBuffers) {
+        super(catBytes,ringBuffers);
         this.generatorData = new GeneratorData(catBytes,FASTReaderDispatchTemplates.class);
         this.alsoCompileTarget = alsoCompileTarget;
     }

@@ -132,7 +132,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers()); 
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
@@ -361,7 +361,7 @@ public class TemplateLoaderTest {
         FASTClassLoader.deleteFiles();
         final AtomicInteger msgs = new AtomicInteger();
 
-        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes); 
+        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes, catalog.buildRingBuffers()); 
         
         assertEquals(1,reactor.ringBuffers().length);
         RingBuffer rb = reactor.ringBuffers()[0];
@@ -424,7 +424,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers()); 
         
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
       
@@ -443,7 +443,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, catalog.buildRingBuffers());
         //System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
@@ -570,8 +570,9 @@ public class TemplateLoaderTest {
 
         final AtomicInteger msgs = new AtomicInteger();
 
-        PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);        
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes);   
+        PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);     
+        
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers());   
         FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         
@@ -586,7 +587,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, catalog.buildRingBuffers());
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
@@ -740,7 +741,7 @@ public class TemplateLoaderTest {
 
     }
 
-    static byte[] buildInputArrayForTesting(File fileSource) {
+	static byte[] buildInputArrayForTesting(File fileSource) {
         byte[] fileData = null;
         try {
             // do not want to time file access so copy file to memory

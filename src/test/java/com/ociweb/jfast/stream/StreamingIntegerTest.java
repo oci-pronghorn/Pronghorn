@@ -189,7 +189,7 @@ public class StreamingIntegerTest extends BaseStreamingTest {
 			                      int operationIters, int[] tokenLookup, DictionaryFactory dcr) {
 		
 	    TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64,maxGroupCount * 10, -1, new ClientConfig(8 ,7));
-		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
+		FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, testCatalog.buildRingBuffers());
 		
 		long start = System.nanoTime();
 		if (operationIters<3) {

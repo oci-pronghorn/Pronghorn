@@ -56,7 +56,7 @@ public abstract class FASTEncoder {
     
     public FASTEncoder(TemplateCatalogConfig catalog) {
         this(catalog, 
-             RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ) );
+             RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
         
     }
     

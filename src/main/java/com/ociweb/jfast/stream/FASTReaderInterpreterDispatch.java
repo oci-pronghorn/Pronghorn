@@ -40,12 +40,12 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     protected final int prembleBytes;
 
         
-    public FASTReaderInterpreterDispatch(byte[] catBytes) {
-        this(new TemplateCatalogConfig(catBytes));
+    public FASTReaderInterpreterDispatch(byte[] catBytes, RingBuffers ringBuffers) {
+        this(new TemplateCatalogConfig(catBytes), ringBuffers);
     }    
     
-    public FASTReaderInterpreterDispatch(TemplateCatalogConfig catalog) {
-        super(catalog);
+    public FASTReaderInterpreterDispatch(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
+        super(catalog, ringBuffers);
         
         this.fieldIdScript = catalog.fieldIdScript();
         this.fieldNameScript = catalog.fieldNameScript();

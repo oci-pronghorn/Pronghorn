@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import com.ociweb.jfast.catalog.loader.ClientConfig;
+import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.catalog.loader.TemplateLoader;
 import com.ociweb.jfast.generator.DispatchLoader;
 import com.ociweb.jfast.primitive.FASTInput;
@@ -86,7 +87,7 @@ public class MuxTest {
             int maxPMapCountInBytes=32;
             PrimitiveReader reader = new PrimitiveReader(2048, targetChannel[0], maxPMapCountInBytes);
             
-            FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes); 
+            FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, TemplateCatalogConfig.buildRingBuffers(catBytes)); 
             FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
             
             reactor.start(executor, reader);

@@ -39,11 +39,16 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     * @param catalog
     */
     public FASTReaderDispatchTemplates(TemplateCatalogConfig catalog) {
-        super(catalog, RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM() ));
+        super(catalog, 
+        	  RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
     }
     
-    public FASTReaderDispatchTemplates(byte[] catBytes) {
-        this(new TemplateCatalogConfig(catBytes));
+    public FASTReaderDispatchTemplates(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
+        super(catalog, ringBuffers);
+    }
+    
+    public FASTReaderDispatchTemplates(byte[] catBytes, RingBuffers ringBuffers) {
+        this(new TemplateCatalogConfig(catBytes), ringBuffers);
     }
     
 

@@ -231,7 +231,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
         PrimitiveReader.reset(reader);
         TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dcr, 3, new int[0][0], null, 64, maxGroupCount * 10, -1,  new ClientConfig(8 ,7));
         
-        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog);
+        FASTReaderInterpreterDispatch fr = new FASTReaderInterpreterDispatch(testCatalog, testCatalog.buildRingBuffers());
         LocalHeap byteHeap = fr.byteHeap;
 
         int token = 0;

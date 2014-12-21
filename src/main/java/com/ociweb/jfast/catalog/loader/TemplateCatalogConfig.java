@@ -14,6 +14,7 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
+import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingReader;
@@ -59,8 +60,6 @@ public class TemplateCatalogConfig {
 
     
     private final int[][] dictionaryMembers;
-
-    private final RingBuffers ringBuffers;
 
     private final FieldReferenceOffsetManager from;
     
@@ -116,7 +115,6 @@ public class TemplateCatalogConfig {
         
         //must be done after the client config construction
         from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
-        ringBuffers = RingBuffers.buildNoFanRingBuffers(ringByteConstants(), fullScriptLength, clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
         
     }
     
@@ -141,10 +139,7 @@ public class TemplateCatalogConfig {
         this.clientConfig = clientConfig;
         
         this.from = TemplateCatalogConfig.createFieldReferenceOffsetManager(this);
-        
-        this.ringBuffers = RingBuffers.buildNoFanRingBuffers(ringByteConstants(), scriptLength(), clientConfig.getPrimaryRingBits(), clientConfig.getTextRingBits(), from);
-        
-        //must be done after the client config construction
+
     }
 
 	public byte[] ringByteConstants() {
@@ -428,7 +423,19 @@ public class TemplateCatalogConfig {
         return from;
     }
 
-    public static FieldReferenceOffsetManager createFieldReferenceOffsetManager(TemplateCatalogConfig config) {
+    public RingBuffers buildRingBuffers() {
+		return RingBuffers.buildNoFanRingBuffers(scriptLength(),
+	    								new RingBuffer((byte)clientConfig().getPrimaryRingBits(),(byte)clientConfig().getTextRingBits(),ringByteConstants(), getFROM()));
+	}
+
+    public static RingBuffers buildRingBuffers(byte[] catBytes) {
+    	TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
+		return RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(),
+	    								new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
+		
+	}
+    
+	public static FieldReferenceOffsetManager createFieldReferenceOffsetManager(TemplateCatalogConfig config) {
 		
 		
 		return new FieldReferenceOffsetManager(   config.scriptTokens, 

@@ -233,8 +233,11 @@ public class CatalogGeneratorTest {
         assertEquals(1, catalog.templatesCount());
         
         FASTClassLoader.deleteFiles();
+        
+        RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
+                
         //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder         
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes, ringBuffers);
         
 
         boolean debug = false;
@@ -259,10 +262,7 @@ public class CatalogGeneratorTest {
         byte[] buffer = new byte[1<<24];
         FASTOutput fastOutput = new FASTOutputByteArray(buffer );
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, true);
-               
-        
-        RingBuffers ringBuffers = RingBuffers.buildNoFanRingBuffers(catalog.ringByteConstants(), catalog.scriptLength(), catalog.clientConfig().getPrimaryRingBits(), catalog.clientConfig().getTextRingBits(), catalog.getFROM());
-        
+
         RingBuffer ringBuffer = RingBuffers.get(ringBuffers,0);
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, ringBuffer, writerDispatch);
              
@@ -343,7 +343,7 @@ public class CatalogGeneratorTest {
         FASTInput fastInput = new FASTInputByteArray(buffer, (int)bytesWritten);
         
 
-        FASTReaderReactor reactor = FAST.inputReactorDebug(fastInput, catBytes);
+        FASTReaderReactor reactor = FAST.inputReactorDebug(fastInput, catBytes, ringBuffers);
         //FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes);
         
 

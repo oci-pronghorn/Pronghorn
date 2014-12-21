@@ -91,7 +91,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
                 List<JavaFileObject> toCompile = new ArrayList<JavaFileObject>();
 
                 {//scoped to help GC 
-                	FASTReaderDispatchGenerator readGenerator = new FASTReaderDispatchGenerator(catBytes, toCompile);
+                	FASTReaderDispatchGenerator readGenerator = new FASTReaderDispatchGenerator(catBytes, toCompile, TemplateCatalogConfig.buildRingBuffers(catBytes));
                 	SimpleSourceFileObject sourceReaderFileObject = new SimpleSourceFileObject(FASTClassLoader.SIMPLE_READER_NAME,
                 													   						   readGenerator.generateFullSource(new StringBuilder()));
                 	toCompile.add(sourceReaderFileObject);

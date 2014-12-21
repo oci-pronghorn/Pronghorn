@@ -41,12 +41,8 @@ public class RingBuffers {
                 
     }
 
-    public static RingBuffers buildNoFanRingBuffers(byte[] initConstantByteArray, int scriptLength, int primaryRingBits, int textRingBits,
-			FieldReferenceOffsetManager from) {
+    public static RingBuffers buildNoFanRingBuffers(int scriptLength, RingBuffer rb) {
 		RingBuffer[] buffers = new RingBuffer[scriptLength];
-	    
-		RingBuffer rb = new RingBuffer((byte)primaryRingBits,(byte)textRingBits,initConstantByteArray, from);
-	
 		int i = scriptLength;
 	    while (--i>=0) {
 	        buffers[i]=rb;            

@@ -42,9 +42,9 @@ public class GeneratorUtils {
         target.append("\n");        
         target.append("public static int[] hashedCat = new int[]"+(Arrays.toString(generatorData.hashedCat).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
-        target.append("public "+name+"(byte[] catBytes) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor
+        target.append("public "+name+"(byte[] catBytes, "+RingBuffers.class.getSimpleName()+" ringBuffers) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes),ringBuffers);}");//constructor
         target.append("\n");
-      
+
     }
 
     public static int complexity(CharSequence seq) {
