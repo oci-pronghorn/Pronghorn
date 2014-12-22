@@ -234,7 +234,7 @@ public class CatalogGeneratorTest {
         
         FASTClassLoader.deleteFiles();
         
-        RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
+        RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
                 
         //FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes); //compiles new encoder         
         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes, ringBuffers);

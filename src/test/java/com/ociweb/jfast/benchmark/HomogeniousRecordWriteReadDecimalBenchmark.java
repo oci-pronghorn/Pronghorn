@@ -84,7 +84,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
     
     static final TemplateCatalogConfig testCatalog = new TemplateCatalogConfig(dictionaryFactory, 3, new int[0][0], null, 64,  maxGroupCount * 10, -1, new ClientConfig(8, 7));
     
-    static RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(testCatalog.scriptLength(), new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM()));
+    static RingBuffers ringBuffers= RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)testCatalog.clientConfig().getPrimaryRingBits(),(byte)testCatalog.clientConfig().getTextRingBits(),testCatalog.ringByteConstants(), testCatalog.getFROM()));
         
     static final FASTReaderInterpreterDispatch staticReader = new FASTReaderInterpreterDispatch(testCatalog, ringBuffers);
 

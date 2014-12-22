@@ -25,7 +25,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
 
     public FASTWriterDispatchGenerator(byte[] catBytes, TemplateCatalogConfig catalog, List<JavaFileObject> alsoCompileTarget) {
         super(catalog,
-        		RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
+        		RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
 
         this.generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
         this.alsoCompileTarget = alsoCompileTarget;

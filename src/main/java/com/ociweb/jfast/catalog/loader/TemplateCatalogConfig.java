@@ -146,10 +146,6 @@ public class TemplateCatalogConfig {
 		return DictionaryFactory.initConstantByteArray(dictionaryFactory);
 	}
 
-	public int scriptLength() {
-		return null==scriptTokens?1:scriptTokens.length;
-	}
-
     // Assumes that the tokens are already loaded and ready for use.
     private void loadTemplateScripts(PrimitiveReader reader) {
 
@@ -424,14 +420,17 @@ public class TemplateCatalogConfig {
     }
 
     public RingBuffers buildRingBuffers() {
-		return RingBuffers.buildNoFanRingBuffers(scriptLength(),
-	    								new RingBuffer((byte)clientConfig().getPrimaryRingBits(),(byte)clientConfig().getTextRingBits(),ringByteConstants(), getFROM()));
+		FieldReferenceOffsetManager from2 = getFROM();
+				
+		return RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)clientConfig().getPrimaryRingBits(),(byte)clientConfig().getTextRingBits(),ringByteConstants(), from2));
 	}
 
     public static RingBuffers buildRingBuffers(byte[] catBytes) {
     	TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
-		return RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(),
-	    								new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
+    	
+		FieldReferenceOffsetManager from2 = catalog.getFROM();
+				
+		return RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), from2));
 		
 	}
     

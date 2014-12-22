@@ -41,8 +41,11 @@ public class RingBuffers {
                 
     }
 
-    public static RingBuffers buildNoFanRingBuffers(int scriptLength, RingBuffer rb) {
-		RingBuffer[] buffers = new RingBuffer[scriptLength];
+    public static RingBuffers buildNoFanRingBuffers(RingBuffer rb) {
+    	FieldReferenceOffsetManager from = rb.consumerData.from;
+    	int scriptLength = 0==from.tokens.length ? 1 : from.tokens.length;
+		
+    	RingBuffer[] buffers = new RingBuffer[scriptLength];
 		int i = scriptLength;
 	    while (--i>=0) {
 	        buffers[i]=rb;            
