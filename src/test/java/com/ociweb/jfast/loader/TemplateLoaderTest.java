@@ -132,7 +132,7 @@ public class TemplateLoaderTest {
         
         FASTClassLoader.deleteFiles();
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers()); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
     //    FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
         
 
@@ -361,7 +361,7 @@ public class TemplateLoaderTest {
         FASTClassLoader.deleteFiles();
         final AtomicInteger msgs = new AtomicInteger();
 
-        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes, catalog.buildRingBuffers()); 
+        FASTReaderReactor reactor = FAST.inputReactor(fastInput, catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
         
         assertEquals(1,reactor.ringBuffers().length);
         RingBuffer rb = reactor.ringBuffers()[0];
@@ -424,7 +424,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers()); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
         
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
       
@@ -443,7 +443,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, catalog.buildRingBuffers());
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
         //System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
@@ -572,7 +572,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(4096, fastInput, maxPMapCountInBytes);     
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers());   
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));   
         FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
         
         
@@ -587,7 +587,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, catalog.buildRingBuffers());
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

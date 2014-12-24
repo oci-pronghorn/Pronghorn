@@ -54,7 +54,7 @@ public class DispatchLoaderTest {
         
         //Base class reference, known at static compile time.        
         final FASTDecoder[] decoder = new FASTDecoder[1]; 
-        decoder[0] = new FASTReaderInterpreterDispatch(catalog1, TemplateCatalogConfig.buildRingBuffers(catalog1));
+        decoder[0] = new FASTReaderInterpreterDispatch(catalog1, TemplateCatalogConfig.buildRingBuffers(new TemplateCatalogConfig(catalog1), (byte)8, (byte)18));
         System.err.println("Created new "+decoder.getClass().getSimpleName());
         
         
@@ -100,13 +100,13 @@ public class DispatchLoaderTest {
                    records.incrementAndGet();
                    
                    if (records.intValue()==switchToCompiled1) {
-                       decoder[0] = DispatchLoader.loadDispatchReader(catalog1, TemplateCatalogConfig.buildRingBuffers(catalog1));
+                       decoder[0] = DispatchLoader.loadDispatchReader(catalog1, TemplateCatalogConfig.buildRingBuffers(new TemplateCatalogConfig(catalog1), (byte)8, (byte)18));
                        reactor[0] = new FASTReaderReactor(decoder[0],reader);
                       // queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());
                    }
                    if (records.intValue()==switchToCompiled2) {
-                       decoder[0] = DispatchLoader.loadDispatchReader(catalog2, TemplateCatalogConfig.buildRingBuffers(catalog2));
+                       decoder[0] = DispatchLoader.loadDispatchReader(catalog2, TemplateCatalogConfig.buildRingBuffers(new TemplateCatalogConfig(catalog2), (byte)8, (byte)18));
                        reactor[0] = new FASTReaderReactor(decoder[0],reader);
                      //  queue = decoder[0].ringBuffer(0);
                        System.err.println("Created new "+decoder.getClass().getSimpleName());

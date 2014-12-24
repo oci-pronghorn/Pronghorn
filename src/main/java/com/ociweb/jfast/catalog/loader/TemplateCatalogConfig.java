@@ -419,19 +419,8 @@ public class TemplateCatalogConfig {
         return from;
     }
 
-    public RingBuffers buildRingBuffers() {
-		FieldReferenceOffsetManager from2 = getFROM();
-				
-		return RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)clientConfig().getPrimaryRingBits(),(byte)clientConfig().getTextRingBits(),ringByteConstants(), from2));
-	}
-
-    public static RingBuffers buildRingBuffers(byte[] catBytes) {
-    	TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
-    	
-		FieldReferenceOffsetManager from2 = catalog.getFROM();
-				
-		return RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), from2));
-		
+    public static RingBuffers buildRingBuffers(TemplateCatalogConfig catalog, byte primaryBits, byte secondaryBits) {
+		return RingBuffers.buildNoFanRingBuffers(new RingBuffer(primaryBits, secondaryBits, catalog.ringByteConstants(), catalog.getFROM()));
 	}
     
 	public static FieldReferenceOffsetManager createFieldReferenceOffsetManager(TemplateCatalogConfig config) {

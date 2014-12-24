@@ -70,7 +70,7 @@ public class ThreadingTest {
           
           FASTClassLoader.deleteFiles();
    
-          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, catalog.buildRingBuffers());
+          FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
        //  FASTDecoder readerDispatch = new FASTReaderInterpreterDispatch(catBytes); 
          
          System.out.println("Using: "+readerDispatch.getClass().getSimpleName());

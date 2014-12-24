@@ -112,7 +112,7 @@ public class CodeGenerationTest {
         
         SimpleSourceFileObject file = 
         		new SimpleSourceFileObject(FASTClassLoader.SIMPLE_READER_NAME,
-        				new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList(), TemplateCatalogConfig.buildRingBuffers(buildRawCatalogData)).generateFullSource(new StringBuilder()));
+        				new FASTReaderDispatchGenerator(buildRawCatalogData, new ArrayList(), TemplateCatalogConfig.buildRingBuffers(new TemplateCatalogConfig(buildRawCatalogData), (byte)8, (byte)18)).generateFullSource(new StringBuilder()));
 
         assertEquals(Kind.SOURCE, file.getKind());
         CharSequence seq;
@@ -144,7 +144,7 @@ public class CodeGenerationTest {
 
         FASTInputByteArray fastInput1 = new FASTInputByteArray(TemplateLoaderTest.buildInputArrayForTesting(sourceDataFile));
         final PrimitiveReader primitiveReader1 = new PrimitiveReader(2048, fastInput1, maxPMapCountInBytes);
-        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, catalog.buildRingBuffers());
+        FASTReaderInterpreterDispatch readerDispatch1 = new FASTReaderInterpreterDispatch(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
 
         
         RingBuffer queue1 = RingBuffers.get(readerDispatch1.ringBuffers,0);
@@ -154,7 +154,7 @@ public class CodeGenerationTest {
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedDispatch(catBytes, FASTClassLoader.READER, catalog.buildRingBuffers());
+            readerDispatch2 = DispatchLoader.loadGeneratedDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());

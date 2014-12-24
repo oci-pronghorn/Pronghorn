@@ -136,12 +136,17 @@ public class ClientConfig {
 
     @Deprecated
     public int getPrimaryRingBits() {
-        return rbPrimaryRingBits;
+    	//return 10;//
+    	//System.err.println("p:"+rbPrimaryRingBits); //22
+       return rbPrimaryRingBits; //must be big enought to hold full file?
+       //return 18;
     }
 
     @Deprecated
     public int getTextRingBits() {
-        return rbTextRingBits;
+        //return 20;//
+    	//System.err.println("s:"+rbTextRingBits);
+    	return rbTextRingBits;
     }
 
     public void setCatalogTemplateId(int id) {

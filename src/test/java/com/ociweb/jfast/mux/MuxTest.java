@@ -87,7 +87,7 @@ public class MuxTest {
             int maxPMapCountInBytes=32;
             PrimitiveReader reader = new PrimitiveReader(2048, targetChannel[0], maxPMapCountInBytes);
             
-            FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, TemplateCatalogConfig.buildRingBuffers(catBytes)); 
+            FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, TemplateCatalogConfig.buildRingBuffers(new TemplateCatalogConfig(catBytes), (byte)8, (byte)18)); 
             FASTReaderReactor reactor = new FASTReaderReactor(readerDispatch,reader);
             
             reactor.start(executor, reader);
