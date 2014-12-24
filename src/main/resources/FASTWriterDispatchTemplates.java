@@ -199,6 +199,12 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         	
             int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
+            
+    //        System.err.println("text length is:"+length+" limit is"+rbRingBuffer.maxAvgVarLen);
+            if (length>rbRingBuffer.maxAvgVarLen) {
+            	throw new UnsupportedOperationException("Text is too long found length:"+length);
+            }
+            
             int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
@@ -219,7 +225,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 int trimHead = LocalHeap.length(target,byteHeap) - tailCount;
                 PrimitiveWriter.writeIntegerSigned(0 == trimHead ? 0 : -trimHead, writer);
                 
-                int sentLen = length - tailCount;                
+                int sentLen = length - tailCount;             
                 PrimitiveWriter.writeTextASCIIBefore(buffer,offset, byteMask, sentLen, writer);
                 LocalHeap.appendHead(target,trimHead,buffer,offset,sentLen,byteMask,byteHeap);
             }

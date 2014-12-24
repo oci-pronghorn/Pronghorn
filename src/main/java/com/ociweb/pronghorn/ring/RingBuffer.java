@@ -154,6 +154,8 @@ public final class RingBuffer {
     
 	public void validateVarLength(int length) {
 		
+	//	System.err.println("write len:"+length+" max is  "+maxAvgVarLen);
+		
 		int newAvg = (length+varLenMovingAverage)>>1;
         if (newAvg>maxAvgVarLen)	{
         	

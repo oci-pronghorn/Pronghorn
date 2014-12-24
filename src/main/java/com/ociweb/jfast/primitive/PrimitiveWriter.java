@@ -954,10 +954,18 @@ public final class PrimitiveWriter {
         if (0 == length) {
             encodeZeroLengthASCII(writer);
             return;
-        } else if (writer.limit > writer.buffer.length - length) {
+        } 
+        if (writer.limit > writer.buffer.length - length) {
             // if it was not zero and was too long flush
             writer.output.flush();
-        }
+            
+            //since flush is rare this is a good opportunity to do sanity checking
+            if (writer.limit > writer.buffer.length - length) {            	
+            	System.err.println(writer.limit +"  wbl:"+writer.buffer.length+" length:"+length+"  "+value.length+ "   post flush ");
+            	throw new ArrayIndexOutOfBoundsException(length);
+            }
+        }       
+        
         int c = valueOffset;
         while (--length > 0) {
             writer.buffer[writer.limit++] = (byte) value[valueMask&c++];

@@ -52,6 +52,7 @@ public class RingWriter {
     //to set the new byte pos, pos/len ints as a separate call
     public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
     	rb.validateVarLength(length);
+    	
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
 
