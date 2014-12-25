@@ -201,8 +201,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             
     //        System.err.println("text length is:"+length+" limit is"+rbRingBuffer.maxAvgVarLen);
-            if (length>rbRingBuffer.maxAvgVarLen) {
-            	throw new UnsupportedOperationException("Text is too long found length:"+length);
+            if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
+            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize);
             }
             
             int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);

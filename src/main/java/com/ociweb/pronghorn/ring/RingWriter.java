@@ -54,6 +54,7 @@ public class RingWriter {
     	rb.validateVarLength(length);
     	
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
+ //       System.err.println("writeLen:"+length+" at "+rb.workingHeadPos.value+" mod "+(rb.mask&rb.workingHeadPos.value));
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
 
         rb.byteWorkingHeadPos.value = p + length;

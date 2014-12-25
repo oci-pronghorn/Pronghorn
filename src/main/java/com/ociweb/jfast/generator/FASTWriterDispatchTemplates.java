@@ -200,16 +200,19 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             
-    //        System.err.println("text length is:"+length+" limit is"+rbRingBuffer.maxAvgVarLen);
-            if (length>rbRingBuffer.maxAvgVarLen) {
-            	throw new UnsupportedOperationException("Text is too long found length:"+length);
-            }
             
             int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
+//            System.err.println("text length is:"+length+" read from pos in ring "+rbRingBuffer.workingTailPos.value+" plus pos "+fieldPos+" mask "+rbRingBuffer.mask+" bytePos:"+rbRingBuffer.byteWorkingTailPos.value);
+     	
+            
+            if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
+            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize);
+            }
+
             // count matching front or back chars
             int headCount = LocalHeap.countHeadMatch(target,buffer,offset,length,byteMask,byteHeap);
             int tailCount = LocalHeap.countTailMatch(target,buffer,offset,length,byteMask,byteHeap);

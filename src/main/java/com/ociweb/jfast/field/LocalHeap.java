@@ -469,6 +469,10 @@ public class LocalHeap {
     }
 
     public static int makeSpaceForPrepend(int idx, int trimHead, int sourceLen, LocalHeap heap) {
+    	if (sourceLen>heap.dataLength) {
+    		throw new ArrayIndexOutOfBoundsException("Need to make space for "+sourceLen+" but the max size is "+heap.dataLength);
+    	}
+    	
         int textLength = sourceLen - trimHead;
         if (textLength < 0) {
             textLength = 0;
