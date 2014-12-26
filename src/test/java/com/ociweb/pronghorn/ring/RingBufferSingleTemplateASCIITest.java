@@ -78,7 +78,7 @@ public class RingBufferSingleTemplateASCIITest {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingWriter.writeASCII(ring, testString); //data for each field is written in order (TODO: May need better random write solution)
+        			RingWriter.writeASCII(ring, testString); //data for each field is written in order (TODO: Need solution to allow for write out of order of fields)
         		} else {
         			if (0 == (j&2)) {
         				RingWriter.writeASCII(ring, testString.toCharArray());

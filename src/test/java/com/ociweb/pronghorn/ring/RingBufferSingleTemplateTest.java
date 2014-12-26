@@ -59,7 +59,7 @@ public class RingBufferSingleTemplateTest {
         		        		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
-        		RingWriter.writeBytes(ring, arrayData); //data for each field is written in order (TODO: May need better random write solution)
+        		RingWriter.writeBytes(ring, arrayData); //data for each field is written in order
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		
         	} else {

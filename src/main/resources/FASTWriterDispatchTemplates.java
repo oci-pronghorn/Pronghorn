@@ -200,16 +200,16 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             
-    //        System.err.println("text length is:"+length+" limit is"+rbRingBuffer.maxAvgVarLen);
-            if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
-            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize);
-            }
             
             int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;
             
+            if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
+            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize);
+            }
+
             // count matching front or back chars
             int headCount = LocalHeap.countHeadMatch(target,buffer,offset,length,byteMask,byteHeap);
             int tailCount = LocalHeap.countTailMatch(target,buffer,offset,length,byteMask,byteHeap);
@@ -574,6 +574,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteIntegerUnsignedCopy(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {
             int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
+        //    System.err.println("copy int to write:"+value+" dictionary "+rIntDictionary[source]);
             if (value == rIntDictionary[source]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -586,6 +587,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteIntegerUnsignedDelta(int target, int source, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, int[] rbB, int rbMask, PaddedLong rbPos) {
         {   
             int value = RingReader.readInt(rbB,rbMask,rbPos, fieldPos);
+         //   System.err.println("delta int to write:"+value);
             PrimitiveWriter.writeLongSigned(value - (long) rIntDictionary[source], writer);
             rIntDictionary[target] = value;
         }

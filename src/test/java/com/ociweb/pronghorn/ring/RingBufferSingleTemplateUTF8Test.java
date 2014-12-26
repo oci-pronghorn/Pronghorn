@@ -78,7 +78,7 @@ public class RingBufferSingleTemplateUTF8Test {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingWriter.writeUTF8(ring, testString); //data for each field is written in order (TODO: May need better random write solution)
+        			RingWriter.writeUTF8(ring, testString); //data for each field is written in order 
         		} else {
         			if (0 == (j&2)) {
         				RingWriter.writeUTF8(ring, testString.toCharArray());

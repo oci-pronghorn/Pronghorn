@@ -688,7 +688,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
            
         
-      // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token));
+      // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
        
        
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
@@ -1266,10 +1266,11 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             fieldPos += (preambleData.length+3)>>2;//must adjust this because it is meta data and when generating it will be used.
         };
 
-        // template processing (can these be nested?)
-      //  int templateId = FASTRingBufferReader.readInt(ringBuffer, idx);
+        //only template id in message if the from has more than 1 template
+        if (null==ringBuffer || !FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBuffer.consumerData.from)) {
+        	fieldPos++;          	
+        }
         
-        fieldPos++;  
     }
     
     @Override
@@ -1307,7 +1308,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         }
         
         //start new message with preamble if needed        
-        if (rbRingBuffer.mask!=0 && rbRingBuffer.consumerData.isNewMessage()) {     //TODO: D, optimize, checks that this is not the code generation           
+        if (rbRingBuffer.mask!=0 && rbRingBuffer.consumerData.isNewMessage()) {     //TODO: D, optimize, checks that this is not the code generation    
             callBeginMessage(writer, rbRingBuffer);
         }
         
