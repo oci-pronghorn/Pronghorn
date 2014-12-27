@@ -35,7 +35,6 @@ public class GeneratorUtils {
 
         target.append("package "+FASTClassLoader.GENERATED_PACKAGE+";\n"); //package
         target.append("\n");
-        target.append("import com.ociweb.jfast.generator.*;\n"); //TODO: not sure this is really needed.
         target.append(generatorData.templates.imports()); //imports
         target.append("\n");
         target.append("public final class "+name+" extends "+base+" {"); //open class
@@ -92,6 +91,7 @@ public class GeneratorUtils {
         return signatureLine.toString()+generatorData.groupMethodBuilder.toString()+generatorData.caseTail+generatorData.fieldMethodBuilder.toString();
     }
     
+    private final static int MAX_SWITCH_SIZE = 2048;
     
     //Called only once for generating full source file
     public static void buildEntryDispatchMethod(int preambleLength,
@@ -182,7 +182,7 @@ public class GeneratorUtils {
         if (isReader) {
             builder.append("    "+RingBuffer.class.getSimpleName()+" rb="+RingBuffers.class.getSimpleName()+".get(ringBuffers,x);\n" ); 
             
-		    //TODO: A, simplify this to do less runtime work.
+		    //TODO: B, simplify this to do less runtime work.
 			builder.append(" {int fragmentSize = rb.consumerData.from.fragDataSize[x]+ rb.consumerData.from.templateOffset + 1;\n\r")
 			       .append(" long neededTailStop = rb.workingHeadPos.value - (rb.maxSize-fragmentSize);\n\r")
 			       .append(" if (rb.consumerData.tailCache < neededTailStop && ((rb.consumerData.tailCache=rb.tailPos.longValue()) < neededTailStop) ) {\n\r")
@@ -198,32 +198,24 @@ public class GeneratorUtils {
         	BalancedSwitchGenerator bsg = new BalancedSwitchGenerator("x");
         	bsg.generate("    ",builder, doneValues, doneCode);
         } else {
-        	
-        //	if (doneValues.length<1024) {
+        	        	
+        	if (doneValues.length<MAX_SWITCH_SIZE) {
         		
         		//for large sets the switch is faster and easier to read
-        		builder.append("switch(x) {\n");        	
-        		int k = doneValues.length;
-        		while (--k>=0) {
-        			builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
-        		}        	
-        		builder.append("}\n");        	
+        		int start = 0;
+        		int limit = doneValues.length;
         		
-//        	} else {
-//        		
-//        		
-//        		//TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
-//        		//           need to break it down into multiple methods.  
-//        		
-        		//Do first call here?
+        	    buildSwitch(builder, doneValues, doneCode, start, limit);        	
         		
-//        		recursiveDispatchBuild(builder, doneValues, doenCodes, 0, doneValues.length, extraMethods, methodArgsDef, methodArgsCall);
-//        		
-//        		
-//        		
-//        		
-//        	}
-        	
+        	} else {
+        		if (isReader) {
+        			methodArgsDef += ",RingBuffer rb";
+        			methodArgsCall+= ",rb";
+        		}
+        		builder.append("dispatch"+Integer.toString(doneValues[0])+"_"+Integer.toString(doneValues[doneValues.length-1])+"("+methodArgsCall+");\n");        		
+        		
+        		recursiveDispatchBuild(extraMethods, doneValues, doneCode, 0, doneValues.length-1, methodArgsDef, methodArgsCall);
+        	}        	
         	
         }
         
@@ -234,43 +226,54 @@ public class GeneratorUtils {
         } 
         builder.append("}\n");
         
-        builder.append(extraMethods);
-        
-        
+        builder.append(extraMethods);              
         
     
     }
 
+
 	private static void recursiveDispatchBuild(Appendable builder,
 												int[] doneValues, String[] doneCode, int start, int stop, 
-												StringBuilder extraMethods,
 												String methodArgsDef, String methodArgsCall) throws IOException {
-		if (stop-start<1024) {
+		
+		
+		builder.append("private void dispatch"+doneValues[start]+"_"+doneValues[stop]+"("+methodArgsDef+") {\n");
+		int middle = 0;
+		if (stop-start<MAX_SWITCH_SIZE) {
     		
-			
-			
-			
-    		//for large sets the switch is faster and easier to read
-    		builder.append("switch(x) {\n");        	
-    		int k = doneValues.length;
-    		while (--k>=0) {
-    			builder.append("  case ").append(Integer.toString(doneValues[k])).append(": ").append(doneCode[k].trim()).append(" break;\n");
-    		}        	
-    		builder.append("}\n");        	
+			   buildSwitch(builder, doneValues, doneCode, start, stop);   
+			   builder.append("};\n");
+			   return;  	
     		
     	} else {
+    		//call left and right
+    		middle = (start+stop)/2;
     		
-    		
-    		//TODO: AAA, Java has a built in limit per method of 64K byte codes if this switch is going to very very large we will
-    		//           need to break it down into multiple methods.  
-    		
-    		recursiveDispatchBuild(builder, doneValues, doneCode, 0, doneValues.length, extraMethods, methodArgsDef, methodArgsCall);
-    		
-    		
-    		
+    		builder.append("if (activeScriptCursor>").append(Integer.toString(doneValues[middle])).append(") {\n");
+    			builder.append("dispatch"+Integer.toString(doneValues[start])+"_"+Integer.toString(doneValues[middle])+"("+methodArgsCall+");\n");
+    		builder.append("} else {\n");
+    			builder.append("dispatch"+Integer.toString(doneValues[middle])+"_"+Integer.toString(doneValues[stop])+"("+methodArgsCall+");\n");
+    		builder.append("};\n");
     		
     	}
 		
+		builder.append("};\n");
+		
+		recursiveDispatchBuild(builder, doneValues, doneCode, start, middle, methodArgsDef, methodArgsCall);
+		recursiveDispatchBuild(builder, doneValues, doneCode, middle, stop, methodArgsDef, methodArgsCall);
+		
+		
+	}
+	
+
+	private static void buildSwitch(Appendable builder, int[] doneValues,
+			String[] doneCode, int start, int limit) throws IOException {
+		builder.append("switch(activeScriptCursor) {\n");        	
+		int k = limit-start;
+		while (--k>=0) {
+			builder.append("  case ").append(Integer.toString(doneValues[start+k])).append(": ").append(doneCode[start+k].trim()).append(" break;\n");
+		}        	
+		builder.append("}\n");
 	}
 
 	private static void createDispatchPoint(int j,

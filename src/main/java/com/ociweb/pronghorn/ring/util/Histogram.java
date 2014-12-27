@@ -53,7 +53,7 @@ public class Histogram {
     }
     
     public static void sample(long value, Histogram me) {
-		//TODO: rewite smaller
+		//TODO: B, rewite smaller/faster
     	
 		me.accum +=value;
 		me.sampleCount++;

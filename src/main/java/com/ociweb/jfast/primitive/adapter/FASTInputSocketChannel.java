@@ -52,7 +52,7 @@ public class FASTInputSocketChannel implements FASTInput {
 
 	@Override
 	public boolean isEOF() {
-		return !socketChannel.isOpen();//isConnected(); //TODO: need testing to see if isOpen is the right thing
+		return !socketChannel.isOpen();
 	}
 
     @Override

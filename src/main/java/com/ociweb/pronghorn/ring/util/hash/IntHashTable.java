@@ -11,8 +11,6 @@ package com.ociweb.pronghorn.ring.util.hash;
  * 
  * @author Nathan Tippy
  *
- *  TODO: needs more unit tests urgently.
- *
  */
 public class IntHashTable {
 
