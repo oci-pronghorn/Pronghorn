@@ -687,6 +687,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
            
+    	//TODO: AA, add decode stack for templateRef in both read and write
         
       // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
        

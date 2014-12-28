@@ -114,7 +114,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     // -1 end of file, 0 no data, 1 loaded
     public int decode(PrimitiveReader reader) {
         
-        
+    	//TODO: AA, add decode stack for templateRef in both read and write
+    	
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
                // System.err.println("EOF");

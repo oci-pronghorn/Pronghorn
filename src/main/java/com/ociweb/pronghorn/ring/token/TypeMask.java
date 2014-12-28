@@ -33,7 +33,9 @@ public final class TypeMask {
     public final static int ByteArray = 0x0E;              // 01110
     public final static int ByteArrayOptional = 0x0F;      // 01111
 
-    public final static int Group = 0x10;                  // 10000
+    public final static int Group = 0x10;                  // 10000 //TOOD: May want to use 10001 for optional group.
+    
+    public final static int TemplateRef = 0x12;            // 10010
     // 1
     //for sequence this is an uint32
     public final static int GroupLength = 0x14;            // 10100 

@@ -23,7 +23,6 @@ import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 
 public class TemplateHandler extends DefaultHandler {
 
-	//TODO: AA, add support for TemplateRef so the templates can be much much smaller
 	//TODO: AA, add support for not repeating the template id if message of same time are in sequence.
 	
     private static final String SPECIAL_PREFIX = "'>";
@@ -252,25 +251,9 @@ public class TemplateHandler extends DefaultHandler {
             // Never uses pmap
 
         } else if (qName.equalsIgnoreCase("group")) {
+        	int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx);
             
-            fieldName = attributes.getValue("name");
-            setActiveDictionary(attributes);
-            // Token must hold the max bytes needed for the PMap but this is the
-            // start element
-            // and that data is not ready yet. So in the Count field we will put
-            // the templateScriptIdx.
-            // upon close of this element the token at that location in the
-            // templateScript must have
-            // the Count updated to the right value.
-            int token = TokenBuilder.buildToken(TypeMask.Group, 0, catalogTemplateScriptIdx);
-
-            // this token will tell how to get back to the index in the script
-            // to fix it.
-            // this value will also be needed for the back jump value in the
-            // closing task.
-            groupOpenTokenStack[++groupTokenStackHead] = token;
-            maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
-            groupOpenTokenPMapStack[groupTokenStackHead] = 0;
+            basicGroupStart(attributes, token);
 
             catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
@@ -278,31 +261,9 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id for group
 
         } else if (qName.equalsIgnoreCase("sequence")) {
+        	int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq, catalogTemplateScriptIdx + 1);
 
-            fieldName = attributes.getValue("name");
-            setActiveDictionary(attributes);
-            // Token must hold the max bytes needed for the PMap but this is the
-            // start element
-            // and that data is not ready yet. So in the Count field we will put
-            // the templateScriptIdx.
-            // upon close of this element the token at that location in the
-            // templateScript must have
-            // the Count updated to the right value.
-            int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq,
-                    catalogTemplateScriptIdx + 1);// we
-                                                                                    // jump
-                                                                                    // over
-                                                                                    // the
-                                                                                    // length
-                                                                                    // field
-
-            // this token will tell how to get back to the index in the script
-            // to fix it.
-            // this value will also be needed for the back jump value in the
-            // closing task.
-            groupOpenTokenStack[++groupTokenStackHead] = token;
-            maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
-            groupOpenTokenPMapStack[groupTokenStackHead] = 0;
+            basicGroupStart(attributes, token);
 
             // sequence token is not added to the script until the Length field
             // is seen
@@ -373,9 +334,37 @@ public class TemplateHandler extends DefaultHandler {
             templatesXMLns = attributes.getValue("xmlns");
 
         } else if (qName.equalsIgnoreCase("templateRef")) {
-        	throw new UnsupportedOperationException("templateRef is unsupported at this time");
+        	//a templateRef is NOT a group but it is LIKE one as far as building its script is concerned
+        	
+        	int token = TokenBuilder.buildToken(TypeMask.TemplateRef, 0, catalogTemplateScriptIdx);
+            basicGroupStart(attributes, token);
+
+            catalogScriptTokens[    catalogTemplateScriptIdx] = token;
+            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            fieldName=null;//ensure it is only used once
+            catalogScriptFieldIds[  catalogTemplateScriptIdx++] = 0; // Zero id 
         }
     }
+
+	private void basicGroupStart(Attributes attributes, int token) {
+		fieldName = attributes.getValue("name");
+		setActiveDictionary(attributes);
+		// Token must hold the max bytes needed for the PMap but this is the
+		// start element
+		// and that data is not ready yet. So in the Count field we will put
+		// the templateScriptIdx.
+		// upon close of this element the token at that location in the
+		// templateScript must have
+		// the Count updated to the right value.
+
+		// this token will tell how to get back to the index in the script
+		// to fix it.
+		// this value will also be needed for the back jump value in the
+		// closing task.
+		groupOpenTokenStack[++groupTokenStackHead] = token;
+		maxGroupTokenStackDepth = Math.max(maxGroupTokenStackDepth, groupTokenStackHead);
+		groupOpenTokenPMapStack[groupTokenStackHead] = 0;
+	}
 
     //template, templates, sequence, group, ops - copy,inc,delta,tail all set dictionary.
     //TODO: B, must pop and return the previous dictionary at end of scope.
@@ -653,78 +642,57 @@ public class TemplateHandler extends DefaultHandler {
             catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
 
         } else if (qName.equalsIgnoreCase("sequence")) {
-
-            int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
-            int pmapMaxBytes = (pmapMaxBits + 6) / 7; // if bits is zero this
-                                                      // will be zero.
-            // System.err.println("x pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
-            catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap, pmapMaxBytes);
-
-            int opMask = OperatorMask.Group_Bit_Close | OperatorMask.Group_Bit_Seq;
-            int openToken = groupOpenTokenStack[groupTokenStackHead];
-            if (pmapMaxBytes > 0) {
-                opMask |= OperatorMask.Group_Bit_PMap;
-                openToken |= (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER);
-            }
-
-            //
-            int openGroupIdx = TokenBuilder.MAX_INSTANCE & openToken;
-            int groupSize = catalogTemplateScriptIdx - openGroupIdx;
-
-            // change open token so it has the total number of script steps
-            // inside the group.
-            catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] =
-                                        (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
-            catalogScriptFieldIds[openGroupIdx++] = 0;
-
-            //add closing group to script
-            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-            catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-            fieldName=null;//ensure it is only used once
-            
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
-
-            groupTokenStackHead--;// pop this group off the stack to work on the
-                                  // previous.
+        	int opMask = OperatorMask.Group_Bit_Close | OperatorMask.Group_Bit_Seq;
+            basicGroupClose(opMask);
 
         } else if (qName.equalsIgnoreCase("group")) {
-
-            int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
-            int pmapMaxBytes = (pmapMaxBits + 6) / 7; // if bits is zero this
-                                                      // will be zero.
-            // System.err.println("y pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
-            catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap, pmapMaxBytes);
-
-            int opMask = OperatorMask.Group_Bit_Close;
-            int openToken = groupOpenTokenStack[groupTokenStackHead];
-            if (pmapMaxBytes > 0) {
-                opMask |= OperatorMask.Group_Bit_PMap;
-                openToken |= (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER);
-            }
-
-            //
-            int openGroupIdx = TokenBuilder.MAX_INSTANCE & openToken;
-            int groupSize = catalogTemplateScriptIdx - openGroupIdx;
-
-            // change open token so it has the total number of script steps
-            // inside the group.
-            catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = 
-                                                (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
-            catalogScriptFieldIds[openGroupIdx++] = 0;
-
-            //add closing group to script
-            catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-            
-            catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
-
-            groupTokenStackHead--;// pop this group off the stack to work on the
-                                  // previous.
+        	int opMask = OperatorMask.Group_Bit_Close;
+            basicGroupClose(opMask);
 
         } else if (qName.equalsIgnoreCase("templates")) {
             templatesXMLns = null;
+        } else if (qName.equalsIgnoreCase("templateRef")) {
+        	//tempalateRef is NOT a group but it is closed with the same flag
+        	int opMask = OperatorMask.Group_Bit_Close;
+            basicGroupClose(opMask);
         }
 
     }
+
+	private void basicGroupClose(int opMask) {
+		int pmapMaxBits = groupOpenTokenPMapStack[groupTokenStackHead];
+		int pmapMaxBytes = (pmapMaxBits + 6) / 7; // if bits is zero this
+		                                          // will be zero.
+		// System.err.println("y pmap bits "+pmapMaxBits+" "+pmapMaxBytes);
+		catalogLargestNonTemplatePMap = Math.max(catalogLargestNonTemplatePMap, pmapMaxBytes);
+
+		int openToken = groupOpenTokenStack[groupTokenStackHead];
+		if (pmapMaxBytes > 0) {
+		    opMask |= OperatorMask.Group_Bit_PMap;
+		    openToken |= (OperatorMask.Group_Bit_PMap << TokenBuilder.SHIFT_OPER);
+		}
+
+		//
+		int openGroupIdx = TokenBuilder.MAX_INSTANCE & openToken;
+		int groupSize = catalogTemplateScriptIdx - openGroupIdx;
+
+		// change open token so it has the total number of script steps
+		// inside the group.
+		catalogScriptTokens[openGroupIdx] = (groupOpenTokenStack[groupTokenStackHead] = 
+		                                    (TokenBuilder.MAX_FIELD_MASK & openToken) | (TokenBuilder.MAX_FIELD_ID_VALUE & groupSize));
+		catalogScriptFieldIds[openGroupIdx++] = 0;
+
+		//add closing group to script
+		catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
+		
+		catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+		fieldName=null;//ensure it is only used once
+		
+		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
+
+		groupTokenStackHead--;// pop this group off the stack to work on the
+		                      // previous.
+	}
 
     private int buildToken(AtomicInteger count) throws SAXException {
         int token;

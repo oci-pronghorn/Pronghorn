@@ -6,7 +6,7 @@ package com.ociweb.pronghorn.ring.token;
 
 public class OperatorMask {
 
-    // 4 bits required for operator
+    // 5 bits required for operator
 
     public static final int Field_None = 0x00; // 0000 //group
     public static final int Field_Copy = 0x01; // 0001 //field copy open/close
@@ -33,10 +33,10 @@ public class OperatorMask {
                                                     // otherwise pmap max bytes.
     public static final int Group_Bit_Templ = 0x02; // template must be found
                                                     // before this group
-    public static final int Group_Bit_Seq = 0x04; // use length field and use
-                                                  // jump back logic
-    public static final int Group_Bit_PMap = 0x08; // group requires a pmap
-    public static final int Group_Bit_Msg = 0x10;//TODO: should be used in building new tokens to help processing messages.
+    public static final int Group_Bit_Seq =   0x04; // use length field and use
+                                                    // jump back logic
+    public static final int Group_Bit_PMap =  0x08; // group requires a pmap
+    public static final int Group_Bit_Msg =   0x10;//TODO: should be used in building new tokens to help processing messages. however saving 1 bit might be a better idea?
 
     // group, sequence, message or ...??
     // pmap is only in group or sequence never message
