@@ -346,17 +346,25 @@ public class RingWalker {
 
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		
-		boolean result = (ring.maxSize - RingBuffer.contentRemaining(ring)) >= ring.consumerData.from.fragDataSize[cursorPosition];
+		//TODO: based on fragment sizes can predict the head position at this call
 		
-		//TODO: this is too complex and will be simplified shortly
-		if (result && ring.consumerData.from.messageStarts.length>0) {
-		  if ((0 !=	(ring.consumerData.from.tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
-				  ((ring.consumerData.from.tokens[cursorPosition]  >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE)==TypeMask.Group) {
-			  //add template loc in prep for write
-			  RingWriter.writeInt(ring, cursorPosition); //TODO: AAA,  this is moving the position and probably a very bad idea as it has side effect
-			  
-		  }
-		}		
+		int fragSize = ring.consumerData.from.fragDataSize[cursorPosition];
+		boolean result = (ring.maxSize - (int)(ring.headPos.longValue() - ring.tailPos.longValue())) >= fragSize;
+		
+		if (result) {
+			
+						
+			//TODO: this is too complex and will be simplified 
+			if (ring.consumerData.from.messageStarts.length>0) {
+			  if ((0 !=	(ring.consumerData.from.tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
+				        (ring.consumerData.from.tokens[cursorPosition] & (TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE ))==(TypeMask.Group<<TokenBuilder.SHIFT_TYPE)) {
+				  
+				  //add template loc in prep for write
+				  RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
+				  
+			  }
+			}		
+		}
 		return result;
 	}
 	

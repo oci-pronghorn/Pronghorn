@@ -2,6 +2,7 @@ package com.ociweb.pronghorn.ring;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 
@@ -134,24 +135,15 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	
     public static int readUTF8(RingBuffer ring, int idx, char[] target, int targetOffset) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readDataLength(ring, idx);
+        int bytesLength = RingReader.readDataLength(ring, idx);
         if (pos < 0) {
-            try {
-                readUTF8Const(ring,len,target, targetOffset, 0x7FFFFFFF & pos);
-            } catch (Exception e) {
-                
-                e.printStackTrace();
-                System.err.println("pos now :"+(0x7FFFFFFF & pos)+" len "+len);                
-                System.exit(0);
-                
-            }
+            return readUTF8Const(ring,bytesLength,target, targetOffset, 0x7FFFFFFF & pos);
         } else {
-            readUTF8Ring(ring,len,target, targetOffset,pos);
+            return readUTF8Ring(ring,bytesLength,target, targetOffset,pos);
         }
-        return len;
     }
     
-	private static void readUTF8Const(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
+	private static int readUTF8Const(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
 	  
 	  long charAndPos = ((long)ringPos)<<32;
 	  long limit = ((long)ringPos+bytesLen)<<32;
@@ -163,21 +155,25 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	      target[i++] = (char)charAndPos;
 	
 	  }
-	         
+	  return i - targetIdx;    
 	}
     
-	private static void readUTF8Ring(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
+	private static int readUTF8Ring(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
 		  
 		  long charAndPos = ((long)ringPos)<<32;
 		  long limit = ((long)ringPos+bytesLen)<<32;
-				  
+				
+		  System.err.println("byteslen "+bytesLen);
+		  
 		  int i = targetIdx;
 		  while (charAndPos<limit) {
 		      
-		      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);            
+		      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
+		  //    System.err.println((short)charAndPos+"  "+(charAndPos>>>32));
 		      target[i++] = (char)charAndPos;
 		
 		  }
+		  return i - targetIdx;
 		         
 	}
 	
@@ -256,7 +252,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
    * 
    */
   public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
-      
+      //TODO: these masks appear to be wrong.
+	  
     int sourcePos = (int)(posAndChar >> 32); 
       
     byte b;   
@@ -266,14 +263,19 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     } 
     
     int result;
+    System.err.println("b:"+Integer.toBinaryString(b));
     if (((byte) (0xFF & (b << 2))) >= 0) {
-        if ((b & 0x40) == 0) {
+        if ((b & 0x40) == 0) {        	
             ++sourcePos;
             return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
         }
+   //     System.err.println("double ");//+Arrays.toString(Arrays.copyOfRange(source, sourcePos-3, sourcePos+5)));
         // code point 11
-        result = (b & 0x1F);
+        result = (b & 0x1F); //5 bits
     } else {
+    	//this Did not switch to tripple and it should!
+    	
+    	System.err.println("tripple");
         if (((byte) (0xFF & (b << 3))) >= 0) {
             // code point 16
             result = (b & 0x0F);
@@ -321,10 +323,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         result = (result << 6) | (source[mask&sourcePos++] & 0x3F);
     }
     if ((source[sourcePos] & 0xC0) != 0x80) {
-        sourcePos += 1;
-        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+       sourcePos += 1;
+       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
     }
-    int chr = ((result << 6) | (source[mask&sourcePos++] & 0x3F));
+    int chr = ((result << 6) | (source[mask&sourcePos++] & 0x3F)); //7 bits
+    System.err.println("decoded char :"+chr);
     return (((long)sourcePos)<<32) | chr;
   }
     

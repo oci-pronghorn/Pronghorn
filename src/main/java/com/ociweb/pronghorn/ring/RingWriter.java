@@ -172,6 +172,7 @@ public class RingWriter {
 		
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    int sourceLen = source.length();
+	    int byteLength = 0;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
 	    	int proposedEnd = p + sourceLen;
@@ -180,18 +181,19 @@ public class RingWriter {
 	        int tStop = (p + sourceLen) & targetMask;
 			int tStart = p & targetMask;
 			if (tStop > tStart) {
-				RingWriter.copyUTF8ToByte(source, 0, target, tStart, sourceLen);
+				byteLength = RingWriter.copyUTF8ToByte(source, 0, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
 			    int firstLen = 1+ targetMask - tStart;
-			    RingWriter.copyUTF8ToByte(source, 0, target, tStart, firstLen);
-			    RingWriter.copyUTF8ToByte(source, firstLen, target, 0, sourceLen - firstLen);
+			    byteLength = RingWriter.copyUTF8ToByte(source, 0, target, tStart, firstLen);
+			    byteLength += RingWriter.copyUTF8ToByte(source, firstLen, target, 0, sourceLen - firstLen);
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
 	    }        
 	    
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
+	    //NOTE: for UTF8 write the length is NOT the number of chars but rather the number of bytes 
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, byteLength);
 	}
 	
 	private static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
@@ -201,19 +203,20 @@ public class RingWriter {
 		}
 	}
 	
-	private static void copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
 
         int pos = targetIdx;
         int c = 0;        
 	    while (c < len) {
 	        pos = RingWriter.encodeSingleChar((int) source.charAt(sourceIdx+c++), target, pos);
 	    }		
-
+	    return pos - targetIdx;
 	}
 	
 	private static void addUTF8ToRing(char[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
 		
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    int byteLength = 0;
 	    if (sourceLen > 0) {
 	    	int targetMask = rbRingBuffer.byteMask;
 	    	int proposedEnd = p + sourceLen;
@@ -222,28 +225,28 @@ public class RingWriter {
 	        int tStop = (p + sourceLen) & targetMask;
 			int tStart = p & targetMask;
 			if (tStop > tStart) {
-				RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, sourceLen);
+				byteLength = RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
 			    int firstLen = 1+ targetMask - tStart;
-			    RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, firstLen);
-			    RingWriter.copyUTF8ToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			    byteLength = RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, firstLen);
+			    byteLength += RingWriter.copyUTF8ToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
 	    }        
 	    
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, byteLength);
 	}
 	
-	private static void copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
 
         int pos = targetIdx;
         int c = 0;        
-	    while (c < len) {
+	    while (c < len) {	    	
 	        pos = RingWriter.encodeSingleChar((int) source[sourceIdx+c++], target, pos);
 	    }		
-
+	    return pos - targetIdx;
 	}
 
 	public static int encodeSingleChar(int c, byte[] buffer, int pos) {
@@ -254,10 +257,12 @@ public class RingWriter {
 	        if (c <= 0x07FF) {
 	            // code point 11
 	            buffer[pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+	  //          System.err.println("wrote double: "+buffer[pos-1]+" "+c);
 	        } else {
 	            if (c <= 0xFFFF) {
 	                // code point 16
 	                buffer[pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+	  //              System.err.println("wrote tripple: "+buffer[pos-1]+" "+c);
 	            } else {
 	                if (c < 0x1FFFFF) {
 	                    // code point 21

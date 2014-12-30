@@ -14,7 +14,7 @@ public class RingBufferSingleTemplateUTF8Test {
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
 	final int FRAG_LOC = 0;
 	
-	final byte primaryRingSizeInBits = 7; //this ring is 2^7 eg 128
+	final byte primaryRingSizeInBits = 6; 
 	final byte byteRingSizeInBits = 18;
 	
     @Test
@@ -41,20 +41,24 @@ public class RingBufferSingleTemplateUTF8Test {
         		target.setLength(0);;
         		assertEquals(0, RingWalker.messageIdx(ring));
         		
-	        	int expectedLength = (varDataMax*(--k))/testSize;	
-	        	String testString = buildTestString(expectedLength);
+	        	int expectedCharLength = (varDataMax*(--k))/testSize;	
+	        	String testString = buildTestString(expectedCharLength);
+	        	assert(testString.length()==expectedCharLength);
 	        	
 	        	if (0==(k&1)) {
 		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, BYTE_LOC, target)).length();
-		        	assertEquals(expectedLength,actualLength);
+		        	assertEquals(expectedCharLength,actualLength);
+		       // 	System.err.println("a len :"+expectedCharLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
 		        	int actualLength = RingReader.readUTF8(ring, BYTE_LOC, target2, 0);
-		        	assertEquals(expectedLength,actualLength);
-		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
-		        			    Arrays.equals(testString.toCharArray(), 
-		        			                 Arrays.copyOfRange(target2, 0, actualLength)
-		        			                 )
+		        //	System.err.println("b len :"+actualLength);
+		     //   	System.err.println("exp:"+testString);
+		      //  	System.err.println("fnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)));
+		        	
+		        	assertEquals(expectedCharLength,actualLength);
+		        	assertTrue("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)),		        			    
+		        			    Arrays.equals(testString.toCharArray(), Arrays.copyOfRange(target2, 0, expectedCharLength) )
 		        			   );	        		
 	        	}        	
 	        	
@@ -74,16 +78,17 @@ public class RingBufferSingleTemplateUTF8Test {
      		
         		int stringSize = (--j*blockSize)/testSize;
         		String testString = buildTestString(stringSize);
-        		        		
+        		char[] testChars = testString.toCharArray();
+        		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
         			RingWriter.writeUTF8(ring, testString); //data for each field is written in order 
         		} else {
         			if (0 == (j&2)) {
-        				RingWriter.writeUTF8(ring, testString.toCharArray());
+        				RingWriter.writeUTF8(ring, testChars);
         			} else {
-        				RingWriter.writeUTF8(ring, testString.toCharArray(),0,stringSize);
+        				RingWriter.writeUTF8(ring, testChars,0,stringSize);
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
@@ -97,10 +102,10 @@ public class RingBufferSingleTemplateUTF8Test {
 	}
 
 	private String buildTestString(int arraySize) {
-		byte[] arrayData = new byte[arraySize];
+		char[] arrayData = new char[arraySize];
 		int i = arrayData.length;
 		while (--i >= 0) {
-			arrayData[i] = (byte)('0'+ (i&0x1F));
+			arrayData[i] = (char)(i&0x7F);//(i&0xFF7F);//TODO: the ASCII end must be in here causing problems somewhere.
 		}
 		return new String(arrayData);
 	}
