@@ -161,15 +161,12 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	private static int readUTF8Ring(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
 		  
 		  long charAndPos = ((long)ringPos)<<32;
-		  long limit = ((long)ringPos+bytesLen)<<32;
-				
-		  System.err.println("byteslen "+bytesLen);
-		  
+		  long limit = ((long)(ringPos+bytesLen))<<32;
+						  
 		  int i = targetIdx;
 		  while (charAndPos<limit) {
 		      
 		      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
-		  //    System.err.println((short)charAndPos+"  "+(charAndPos>>>32));
 		      target[i++] = (char)charAndPos;
 		
 		  }
@@ -254,80 +251,81 @@ public class RingReader {//TODO: B, build another static reader that does auto c
   public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
       //TODO: these masks appear to be wrong.
 	  
+	  // 7  //high bit zero all others its 1
+	  // 5 6
+	  // 4 6 6
+	  // 3 6 6 6
+	  // 2 6 6 6 6
+	  // 1 6 6 6 6 6
+	  
     int sourcePos = (int)(posAndChar >> 32); 
-      
+    
     byte b;   
     if ((b = source[mask&sourcePos++]) >= 0) {
         // code point 7
-        return (((long)sourcePos)<<32) | b;
+        return (((long)sourcePos)<<32) | (long)b; //1 byte result of 7 bits with high zero
     } 
     
     int result;
-    System.err.println("b:"+Integer.toBinaryString(b));
     if (((byte) (0xFF & (b << 2))) >= 0) {
         if ((b & 0x40) == 0) {        	
             ++sourcePos;
             return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
         }
-   //     System.err.println("double ");//+Arrays.toString(Arrays.copyOfRange(source, sourcePos-3, sourcePos+5)));
         // code point 11
         result = (b & 0x1F); //5 bits
     } else {
-    	//this Did not switch to tripple and it should!
-    	
-    	System.err.println("tripple");
         if (((byte) (0xFF & (b << 3))) >= 0) {
             // code point 16
-            result = (b & 0x0F);
+            result = (b & 0x0F); //4 bits
         } else {
             if (((byte) (0xFF & (b << 4))) >= 0) {
                 // code point 21
-                result = (b & 0x07);
+                result = (b & 0x07); //3 bits
             } else {
                 if (((byte) (0xFF & (b << 5))) >= 0) {
                     // code point 26
-                    result = (b & 0x03);
+                    result = (b & 0x03); // 2 bits
                 } else {
                     if (((byte) (0xFF & (b << 6))) >= 0) {
                         // code point 31
-                        result = (b & 0x01);
+                        result = (b & 0x01); // 1 bit
                     } else {
-                        // System.err.println("odd byte :"+Integer.toBinaryString(b)+" at pos "+(offset-1));
                         // the high bit should never be set
                         sourcePos += 5;
                         return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                     }
 
-                    if ((source[sourcePos] & 0xC0) != 0x80) {
+                    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                         sourcePos += 5;
                         return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                     }
-                    result = (result << 6) | (source[mask&sourcePos++] & 0x3F);
+                    result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
                 }
-                if ((source[sourcePos] & 0xC0) != 0x80) {
+                if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                     sourcePos += 4;
                     return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
                 }
-                result = (result << 6) | (source[mask&sourcePos++] & 0x3F);
+                result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
             }
-            if ((source[sourcePos] & 0xC0) != 0x80) {
+            if ((source[mask&sourcePos] & 0xC0) != 0x80) {
                 sourcePos += 3;
                 return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
             }
-            result = (result << 6) | (source[mask&sourcePos++] & 0x3F);
+            result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
         }
-        if ((source[sourcePos] & 0xC0) != 0x80) {
+        if ((source[mask&sourcePos] & 0xC0) != 0x80) {
             sourcePos += 2;
             return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
         }
-        result = (result << 6) | (source[mask&sourcePos++] & 0x3F);
+        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
     }
-    if ((source[sourcePos] & 0xC0) != 0x80) {
+    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+       System.err.println("Invalid encoding, low byte must have bits of 10xxxxxx but we find "+Integer.toBinaryString(source[mask&sourcePos]));
        sourcePos += 1;
        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
     }
-    int chr = ((result << 6) | (source[mask&sourcePos++] & 0x3F)); //7 bits
-    System.err.println("decoded char :"+chr);
+    long chr = ((result << 6) | (int)(source[mask&sourcePos++] & 0x3F)); //6 bits
     return (((long)sourcePos)<<32) | chr;
   }
     

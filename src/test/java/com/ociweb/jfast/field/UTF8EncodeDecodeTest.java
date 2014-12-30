@@ -48,7 +48,7 @@ public class UTF8EncodeDecodeTest {
         int limit = writer.limit;
         int c = 0;
         while (c < len) {
-            limit = RingWriter.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, limit);
+            limit = RingWriter.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, 0xFFFFFFFF, limit);
         }
         writer.limit = limit;
 		PrimitiveWriter.flush(writer);
@@ -72,7 +72,7 @@ public class UTF8EncodeDecodeTest {
         int limit = writer.limit;
         int c = 0;
         while (c < len) {
-            limit = RingWriter.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, limit);
+            limit = RingWriter.encodeSingleChar((int) unicodeTestString.charAt(c++), buffer, 0xFFFFFFFF, limit);
         }
         writer.limit = limit;
 		PrimitiveWriter.flush(writer);
@@ -96,7 +96,7 @@ public class UTF8EncodeDecodeTest {
         int limit = writer.limit;
                 
         while (--length >= 0) {
-            limit = RingWriter.encodeSingleChar((int) temp[offset++], writer.buffer, limit);
+            limit = RingWriter.encodeSingleChar((int) temp[offset++], writer.buffer, 0xFFFFFFFF, limit);
         }
         writer.limit = limit;
         PrimitiveWriter.flush(writer);
@@ -120,7 +120,7 @@ public class UTF8EncodeDecodeTest {
         int limit = writer.limit;
                 
         while (--length >= 0) {
-            limit = RingWriter.encodeSingleChar((int) temp[offset++], writer.buffer, limit);
+            limit = RingWriter.encodeSingleChar((int) temp[offset++], writer.buffer, 0xFFFFFFFF, limit);
         }
         writer.limit = limit;
 		PrimitiveWriter.flush(writer);

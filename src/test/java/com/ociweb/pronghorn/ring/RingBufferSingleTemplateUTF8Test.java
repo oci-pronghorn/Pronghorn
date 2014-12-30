@@ -15,17 +15,15 @@ public class RingBufferSingleTemplateUTF8Test {
 	final int FRAG_LOC = 0;
 	
 	final byte primaryRingSizeInBits = 6; 
-	final byte byteRingSizeInBits = 18;
+	final byte byteRingSizeInBits = 17;
 	
     @Test
     public void simpleBytesWriteRead() {
         	
 		RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
-    	
-        int messageSize = FROM.fragDataSize[FRAG_LOC];
-        
-        int varDataMax = ((ring.byteMask/(ring.mask>>1))/messageSize) >> 3; //fewer chars for UTF8        
-        int testSize = (1<<primaryRingSizeInBits)/messageSize;
+    	        
+        int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
+        int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 
 
         populateRingBufferWithUTF8(ring, varDataMax, testSize);
         
@@ -33,7 +31,7 @@ public class RingBufferSingleTemplateUTF8Test {
         int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
         
         StringBuilder target = new StringBuilder();
-        char[] target2 = new char[varDataMax];
+        char[] target2 = new char[varDataMax << 1]; //HACK
         
         int k = testSize;
         while (tryReadFragment(ring)) {
@@ -41,21 +39,17 @@ public class RingBufferSingleTemplateUTF8Test {
         		target.setLength(0);;
         		assertEquals(0, RingWalker.messageIdx(ring));
         		
-	        	int expectedCharLength = (varDataMax*(--k))/testSize;	
+	        	int expectedCharLength = (varDataMax*(--k))/testSize;
+	        		        	
 	        	String testString = buildTestString(expectedCharLength);
 	        	assert(testString.length()==expectedCharLength);
 	        	
 	        	if (0==(k&1)) {
 		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, BYTE_LOC, target)).length();
 		        	assertEquals(expectedCharLength,actualLength);
-		       // 	System.err.println("a len :"+expectedCharLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
 		        	int actualLength = RingReader.readUTF8(ring, BYTE_LOC, target2, 0);
-		        //	System.err.println("b len :"+actualLength);
-		     //   	System.err.println("exp:"+testString);
-		      //  	System.err.println("fnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)));
-		        	
 		        	assertEquals(expectedCharLength,actualLength);
 		        	assertTrue("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)),		        			    
 		        			    Arrays.equals(testString.toCharArray(), Arrays.copyOfRange(target2, 0, expectedCharLength) )
@@ -77,6 +71,7 @@ public class RingBufferSingleTemplateUTF8Test {
         	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int stringSize = (--j*blockSize)/testSize;
+        		
         		String testString = buildTestString(stringSize);
         		char[] testChars = testString.toCharArray();
         		
@@ -105,7 +100,7 @@ public class RingBufferSingleTemplateUTF8Test {
 		char[] arrayData = new char[arraySize];
 		int i = arrayData.length;
 		while (--i >= 0) {
-			arrayData[i] = (char)(i&0x7F);//(i&0xFF7F);//TODO: the ASCII end must be in here causing problems somewhere.
+			arrayData[i] = (char)(i&0xFFFF);//short
 		}
 		return new String(arrayData);
 	}
@@ -115,12 +110,9 @@ public class RingBufferSingleTemplateUTF8Test {
     
 
     	final RingBuffer ring = new RingBuffer(primaryRingSizeInBits, byteRingSizeInBits, null,  FROM);
-    	
-        final int messageSize = FROM.fragDataSize[FRAG_LOC];
-         
-        final int varDataMax = ((ring.byteMask/(ring.mask>>1))/messageSize) >> 3; //fewer chars for UTF8    
-        
-        final int testSize = (1<<primaryRingSizeInBits)/messageSize;
+    	        
+        final int varDataMax = ring.maxAvgVarLen >> 3; //fewer chars for UTF8        
+        final int testSize = (1<<byteRingSizeInBits)/ring.maxAvgVarLen; 
                 
     	Thread t = new Thread(new Runnable(){
 

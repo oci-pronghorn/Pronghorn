@@ -238,7 +238,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = RingWriter.encodeSingleChar((int) key.charAt(c++), writer.buffer, limit);
+                    limit = RingWriter.encodeSingleChar((int) key.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                 }
                 writer.limit = limit;
             }
@@ -254,7 +254,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = RingWriter.encodeSingleChar((int) prop.charAt(c++), writer.buffer, limit);
+                    limit = RingWriter.encodeSingleChar((int) prop.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                 }
                 writer.limit = limit;
             }
@@ -357,7 +357,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len1) {
-                    limit = RingWriter.encodeSingleChar((int) name.charAt(c++), writer.buffer, limit);
+                    limit = RingWriter.encodeSingleChar((int) name.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                 }
                 writer.limit = limit;
             }

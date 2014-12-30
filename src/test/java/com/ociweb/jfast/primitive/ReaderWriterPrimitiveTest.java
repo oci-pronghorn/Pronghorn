@@ -886,7 +886,7 @@ public class ReaderWriterPrimitiveTest {
             int limit = writer.limit;
             int c = 0;
             while (c < len) {
-                limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
             }
             writer.limit = limit;
 		}
@@ -956,7 +956,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                     }
                     writer.limit = limit;
 				}
@@ -1025,7 +1025,7 @@ public class ReaderWriterPrimitiveTest {
                     int limit = writer.limit;
                     int c = 0;
                     while (c < len) {
-                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, limit);
+                        limit = RingWriter.encodeSingleChar((int) temp.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                     }
                     writer.limit = limit;
 				}

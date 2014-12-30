@@ -174,21 +174,8 @@ public class RingWriter {
 	    int sourceLen = source.length();
 	    int byteLength = 0;
 	    if (sourceLen > 0) {
-	    	int targetMask = rbRingBuffer.byteMask;
-	    	int proposedEnd = p + sourceLen;
-			byte[] target = rbRingBuffer.byteBuffer;        	
-			
-	        int tStop = (p + sourceLen) & targetMask;
-			int tStart = p & targetMask;
-			if (tStop > tStart) {
-				byteLength = RingWriter.copyUTF8ToByte(source, 0, target, tStart, sourceLen);
-			} else {
-			    // done as two copies
-			    int firstLen = 1+ targetMask - tStart;
-			    byteLength = RingWriter.copyUTF8ToByte(source, 0, target, tStart, firstLen);
-			    byteLength += RingWriter.copyUTF8ToByte(source, firstLen, target, 0, sourceLen - firstLen);
-			}
-	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+			byteLength = RingWriter.copyUTF8ToByte(source, 0, rbRingBuffer.byteBuffer, rbRingBuffer.byteMask, p, sourceLen);
+	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
 	    }        
 	    
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
@@ -203,12 +190,12 @@ public class RingWriter {
 		}
 	}
 	
-	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 
         int pos = targetIdx;
         int c = 0;        
-	    while (c < len) {
-	        pos = RingWriter.encodeSingleChar((int) source.charAt(sourceIdx+c++), target, pos);
+	    while (c < charCount) {
+	        pos = RingWriter.encodeSingleChar((int) source.charAt(sourceIdx+c++), target, targetMask, pos);
 	    }		
 	    return pos - targetIdx;
 	}
@@ -218,76 +205,64 @@ public class RingWriter {
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    int byteLength = 0;
 	    if (sourceLen > 0) {
-	    	int targetMask = rbRingBuffer.byteMask;
-	    	int proposedEnd = p + sourceLen;
-			byte[] target = rbRingBuffer.byteBuffer;        	
-			
-	        int tStop = (p + sourceLen) & targetMask;
-			int tStart = p & targetMask;
-			if (tStop > tStart) {
-				byteLength = RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, sourceLen);
-			} else {
-			    // done as two copies
-			    int firstLen = 1+ targetMask - tStart;
-			    byteLength = RingWriter.copyUTF8ToByte(source, sourceIdx, target, tStart, firstLen);
-			    byteLength += RingWriter.copyUTF8ToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
-			}
-	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+			byteLength = RingWriter.copyUTF8ToByte(source, sourceIdx, rbRingBuffer.byteBuffer, rbRingBuffer.byteMask, p, sourceLen);
+
+	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
 	    }        
 	    
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, byteLength);
 	}
 	
-	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
+	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
 
         int pos = targetIdx;
         int c = 0;        
-	    while (c < len) {	    	
-	        pos = RingWriter.encodeSingleChar((int) source[sourceIdx+c++], target, pos);
+	    while (c < charCount) {	    	
+	        pos = RingWriter.encodeSingleChar((int) source[sourceIdx+c++], target, targetMask, pos);
 	    }		
 	    return pos - targetIdx;
 	}
 
-	public static int encodeSingleChar(int c, byte[] buffer, int pos) {
+	public static int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
+
 	    if (c <= 0x007F) {
 	        // code point 7
-	        buffer[pos++] = (byte) c;
+	        buffer[mask&pos++] = (byte) c;
 	    } else {
 	        if (c <= 0x07FF) {
 	            // code point 11
-	            buffer[pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
-	  //          System.err.println("wrote double: "+buffer[pos-1]+" "+c);
+	            buffer[mask&pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
 	        } else {
 	            if (c <= 0xFFFF) {
 	                // code point 16
-	                buffer[pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
-	  //              System.err.println("wrote tripple: "+buffer[pos-1]+" "+c);
+	                buffer[mask&pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
 	            } else {
 	                if (c < 0x1FFFFF) {
 	                    // code point 21
-	                    buffer[pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
+	                    buffer[mask&pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
 	                } else {
 	                    if (c < 0x3FFFFFF) {
 	                        // code point 26
-	                        buffer[pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
+	                        buffer[mask&pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
 	                    } else {
 	                        if (c < 0x7FFFFFFF) {
 	                            // code point 31
-	                            buffer[pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
+	                            buffer[mask&pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
 	                        } else {
 	                            throw new UnsupportedOperationException("can not encode char with value: " + c);
 	                        }
-	                        buffer[pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
+	                        buffer[mask&pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
 	                    }
-	                    buffer[pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
+	                    buffer[mask&pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
 	                }
-	                buffer[pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
+	                buffer[mask&pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
 	            }
-	            buffer[pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+	            buffer[mask&pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
 	        }
-	        buffer[pos++] = (byte) (0x80 | ((c) & 0x3F));
+	        buffer[mask&pos++] = (byte) (0x80 | (c & 0x3F));	        
 	    }
+
 	    return pos;
 	}
     
