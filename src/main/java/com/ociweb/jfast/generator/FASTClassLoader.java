@@ -134,7 +134,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
         private void reportCompileError(List<Diagnostic<? extends JavaFileObject>> diagnosticList)
                 throws ClassNotFoundException {
         	
-            Supervisor.logCompileError(diagnosticList);
+            FASTClassLoader.logCompileError(diagnosticList);
             //did not compile due to error
             if (!diagnosticList.isEmpty()) {
                 throw new ClassNotFoundException(diagnosticList.get(0).toString());
@@ -168,7 +168,14 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
             }
         }
         
-        private static File targetFile(String name, String ext) {
+        public static void logCompileError(List<Diagnostic<? extends JavaFileObject>> diagnostics) {
+		    Iterator<Diagnostic<? extends JavaFileObject>> iter = diagnostics.iterator();
+		    while (iter.hasNext()) {
+		        System.err.println(iter.next());
+		    }
+		}
+
+		private static File targetFile(String name, String ext) {
             return new File(workingFolder,GENERATED_PACKAGE.replace('.', File.separatorChar)+File.separatorChar+name+"."+ext);
         }
 

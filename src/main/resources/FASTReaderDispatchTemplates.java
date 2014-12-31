@@ -317,13 +317,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             RingBuffer.addValue(rbB, rbMask, rbPos, (constAbsent&mask) | ((~mask)&value) );
         }
     }
-//branching version            
-//            int xi1 = PrimitiveReader.readIntegerUnsignedCopy(target, source, rIntDictionary, reader);
-//            if (0 == xi1) {
-//                //FASTRingBuffer.addValue(rbB, rbMask, rbPos, constAbsent);  
-//            } else {                
-//                //FASTRingBuffer.addValue(rbB,rbMask,rbPos, xi1 - 1);
-//            }
 
     protected void genReadIntegerUnsignedConstantOptional(int constAbsent, int constConst, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
         RingBuffer.addValue(rbB,rbMask,rbPos, (0 == PrimitiveReader.readPMapBit(reader) ? constAbsent : constConst));
@@ -1622,7 +1615,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             RingBuffer.addValue(rbB, rbMask, rbPos, constValue, constValueLen);
         }
     }
-
     
     protected void genReadASCIIDefault(int target, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer) {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
@@ -1637,12 +1629,6 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
                 rbRingBuffer.byteWorkingHeadPos.value = bytePos+lenTemp;                
             }
     }    
-//                //TODO: B: old code we only want if this default field is read from another, eg dictionary sharing.
-//                int len = StaticGlue.readASCIIToHeap(target, reader, byteHeap);
-//                FASTRingBuffer.addValue(rbB,rbMask,rbPos, FASTRingBuffer.writeTextToRingBuffer(target, len, byteHeap, rbRingBuffer));
-//                FASTRingBuffer.addValue(rbB, rbMask, rbPos, len);
-     
-    
     
     protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
             RingBuffer.addValue(rbB, rbMask, rbPos, constIdx, constLen);

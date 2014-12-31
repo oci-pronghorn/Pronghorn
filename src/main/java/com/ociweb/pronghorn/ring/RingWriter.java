@@ -30,8 +30,7 @@ public class RingWriter {
     }
 
     public static void writeDecimal(RingBuffer rb, int exponent, long mantissa) {
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent);   
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, (int) (mantissa >>> 32), (int)mantissa & 0xFFFFFFFF );    
+        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent, (int) (mantissa >>> 32), (int)mantissa & 0xFFFFFFFF );    
     }
 
     public static void writeFloatToIntBits(RingBuffer rb, float value) {
@@ -53,9 +52,7 @@ public class RingWriter {
     public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
     	rb.validateVarLength(length);
     	
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p);
- //       System.err.println("writeLen:"+length+" at "+rb.workingHeadPos.value+" mod "+(rb.mask&rb.workingHeadPos.value));
-        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, length);
+        RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, p, length);
 
         rb.byteWorkingHeadPos.value = p + length;
         
@@ -131,8 +128,7 @@ public class RingWriter {
 	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
 	    }        
 	    
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
 	}
 
 	private static void copyASCIIToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
@@ -163,8 +159,7 @@ public class RingWriter {
 	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
 	    }        
 	    
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
 	}
 
 	
@@ -178,9 +173,8 @@ public class RingWriter {
 	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
 	    }        
 	    
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
 	    //NOTE: for UTF8 write the length is NOT the number of chars but rather the number of bytes 
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, byteLength);
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, byteLength);
 	}
 	
 	private static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
@@ -210,8 +204,7 @@ public class RingWriter {
 	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
 	    }        
 	    
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, byteLength);
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, byteLength);
 	}
 	
 	private static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {

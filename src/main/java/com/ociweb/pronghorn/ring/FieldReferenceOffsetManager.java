@@ -34,8 +34,11 @@ public class FieldReferenceOffsetManager {
 	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
 			                                                                                    ZERO_PREMABLE, 
 			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES, 
-			                                                                                    SINGLE_MESSAGE_BYTEARRAY_IDS);
+			                                                                                    SINGLE_MESSAGE_BYTEARRAY_IDS,
+			                                                                                    "Chunked Stream");
+		
 	private final static int[] EMPTY = new int[0];
+	private final String name;
 	
     /**
      * Constructor is only for unit tests.
@@ -48,9 +51,13 @@ public class FieldReferenceOffsetManager {
     	this(scriptTokens,(short)0,scriptNames,scriptIds);
     }    
     
+    public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds) {
+    	this(scriptTokens,preableBytes,scriptNames,scriptIds,null);
+    }
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds) {
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String name) {
 				
+		this.name = name;
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
         
@@ -92,6 +99,14 @@ public class FieldReferenceOffsetManager {
         fieldIdScript = scriptIds;
 	}
 
+	public String toString() {
+		if (null==name) {
+			return fieldNameScript.length<20 ? Arrays.toString(fieldNameScript) : "ScriptLen:"+fieldNameScript.length; //TODO: find a better way to "make up" a name
+		} else {
+			return name;
+		}
+	}
+	
     private float buildFragScript(int[] scriptTokens, short preableBytes, int spaceForTemplateId) {
 		int scriptLength = scriptTokens.length;        
         boolean debug = false;       

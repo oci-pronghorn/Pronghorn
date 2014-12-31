@@ -296,12 +296,9 @@ public class ThreadingTest {
     
     public void populateFieldIDs(FieldReferenceOffsetManager from, FASTReaderReactor reactor) {
         
-        //TODO: must also pass reactor to convert tempalteID into bounds for lookup?
-        
         
         if (!isInit) {
             
-            int templateId;
             int fragStart;
 
             

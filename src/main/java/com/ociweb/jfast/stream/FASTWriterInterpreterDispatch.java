@@ -686,12 +686,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         int token = fullScript[activeScriptCursor];
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
-           
-    	//TODO: AA, add decode stack for templateRef in both read and write
-        
+                   
       // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
-       
-       
+              
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
             if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
@@ -835,31 +832,51 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                 // 10???
                 if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
                     // 100??
-                    // Group Type, no others defined so no need to keep checking
-                    if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
-
-                        boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
-                        if (isTemplate) {
-                        	
-                            //must start at a location after the preamble and templateId.
-                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset;
-                            
-                            //only add the offset for the templateId if and when they are used
-                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(rbRingBuffer.consumerData.from)) {
-                            	fieldPos = fieldPos+1;
-                            }
-                            
-                            openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
-                                                        
-                        } else {
-                            // this is NOT a message/template so the non-template
-                            // pmapSize is used.
-                            openGroup(token, nonTemplatePMapSize, writer);
-                            
-                        }
-                    } else {                        
-                        closeGroup(token, writer);
-                    }
+                	                	
+                	if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                		// 1000??
+                		
+	                    // Group Type, no others defined so no need to keep checking
+	                    if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
+	
+	                        boolean isTemplate = (0 != (token & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER)));
+	                        if (isTemplate) {
+	                        	
+	                            //must start at a location after the preamble and templateId.
+	                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset;
+	                            
+	                            //only add the offset for the templateId if and when they are used
+	                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(rbRingBuffer.consumerData.from)) {
+	                            	fieldPos = fieldPos+1;
+	                            }
+	                            
+	                            openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
+	                                                        
+	                        } else {
+	                            // this is NOT a message/template so the non-template
+	                            // pmapSize is used.
+	                            openGroup(token, nonTemplatePMapSize, writer);
+	                            
+	                        }
+	                    } else {                        
+	                        closeGroup(token, writer);
+	                    }
+                	} else {
+                		// 1001??
+                		
+                		//template ref
+                		if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
+                			//TODO: A, write open template ref
+                			//push current position on the stack before we start processing this new location
+                			
+                		} else {
+                			//TODO: A, write close template ref
+                			//pop the old position back to continue on from where we left off
+                			
+                			
+                		}
+                		
+                	}
 
                 } else {
                                         

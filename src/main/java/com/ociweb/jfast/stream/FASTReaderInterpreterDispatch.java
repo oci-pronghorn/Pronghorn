@@ -113,9 +113,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     //TODO: MUST only call when we know there is room for the biggest known fragment, must avoid additional checks.
     // -1 end of file, 0 no data, 1 loaded
     public int decode(PrimitiveReader reader) {
-        
-    	//TODO: AA, add decode stack for templateRef in both read and write
-    	
+
         if (activeScriptCursor<0) {
             if (PrimitiveReader.isEOF(reader)) { 
                // System.err.println("EOF");
@@ -187,10 +185,11 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (token & (8 << TokenBuilder.SHIFT_TYPE))) {
                     // 10???
                     if (0 == (token & (4 << TokenBuilder.SHIFT_TYPE))) {
-                        
-                        //group.
-                        
-                            // 100??
+                    	// 100??
+                    	
+                    	if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
+                    		// 1000??                    	
+                    	
                             // Group Type, no others defined so no need to keep
                             // checking
                             if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
@@ -215,11 +214,25 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 int idx = TokenBuilder.MAX_INSTANCE & token;
                                 closeGroup(token,idx, reader);
                                 break;
-                            }
+                            }                            
+                            
+                    	} else {
+                    		// 1001??  
+                    		
+                    		//template ref
+                    		if (0 == (token & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))) {
+                    			//TODO: A, read open template ref
+                    			
+                    		} else {
+                    			//TODO: A, read close template ref
+                    			
+                    		}
+                    		
+                    	}
+                            
 
                     } else {
                         // 101??
-
                                                 
                         // Length Type, no others defined so no need to keep
                         // checking

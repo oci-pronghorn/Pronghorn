@@ -25,9 +25,6 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
  * 
  */
 
-
-
-// TODO: X, (optimization) need to get messageId when its the only message and so not written to the ring buffer.
 // TODO: C, add map method which can take data from one ring buffer and populate another.
 // TODO: C, look at adding reduce method in addition to filter.
 // TODO: X, dev ops tool to empty (drain) buffers and record the loss.
@@ -36,7 +33,7 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 //TODO: B, build  null ring buffer to drop messages.
 
 public final class RingBuffer {
-   
+   //TODO: AAA, need to add error message prop and flag to let other end know to shut down.
 
     public static class PaddedLong {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
@@ -220,8 +217,7 @@ public final class RingBuffer {
             rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
         }        
         
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p);
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, sourceLen);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
     }
     
     public static void addValue(RingBuffer rb, int value) {
@@ -250,7 +246,16 @@ public final class RingBuffer {
         
     } 
     
-       
+    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
+        
+        long p = headCache.value; 
+        buffer[rbMask & (int)p++] = value1;
+        buffer[rbMask & (int)p++] = value2;
+        buffer[rbMask & (int)p++] = value3;
+        headCache.value = p;
+        
+    }    
+    
     
     public static void dump(RingBuffer rb) {
                        
