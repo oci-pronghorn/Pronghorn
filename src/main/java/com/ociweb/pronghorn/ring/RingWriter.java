@@ -64,16 +64,21 @@ public class RingWriter {
     }
     
 	
-    public static void writeBytes(RingBuffer rb, ByteBuffer source, int position, int length) {
+    public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
+    	
+    	int bytePos = rb.byteWorkingHeadPos.value;    	
+    	
     	rb.validateVarLength(length);
-    	if ((position&rb.byteMask) > ((position+length-1)&rb.byteMask)) {
-    		int temp = 1 + rb.mask - (position & rb.mask);
-    		source.get(rb.byteBuffer, position & rb.byteMask, temp);
+    	if ((bytePos&rb.byteMask) > ((bytePos+length-1)&rb.byteMask)) {
+    		int temp = 1 + rb.mask - (bytePos & rb.mask);
+    		
+    		source.get(rb.byteBuffer, bytePos & rb.byteMask, temp);
     		source.get(rb.byteBuffer, 0, length - temp);					    		
     	} else {					    	
-    		source.get(rb.byteBuffer, position&rb.byteMask, length);
+    		source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
     	}
-    	finishWriteBytesAlreadyStarted(rb, position, length);
+    	rb.byteWorkingHeadPos.value = bytePos+length;
+    	finishWriteBytesAlreadyStarted(rb, bytePos, length);
     }
     
     

@@ -3,10 +3,10 @@ package com.ociweb.pronghorn.ring.stream;
 import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
 import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
 import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
 
@@ -20,7 +20,8 @@ import com.ociweb.pronghorn.ring.RingWriter;
 
 public class RingStreams {
 
-	
+
+	private static final byte[] EMPTY = new byte[0];
 	
 	
 	/**
@@ -234,13 +235,63 @@ public class RingStreams {
 		}
 	}
 
-	private static final byte[] EMPTY = new byte[0];
-
 	public static void writeEOF(RingBuffer ring) {
 		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
 		RingBuffer.addByteArray(EMPTY, 0 , -1, ring);
 		RingBuffer.publishWrites(ring);		
+	}
+
+	public static void visitBytes(RingBuffer inputRing, ByteVisitor visitor) {
+		
+		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+		
+		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
+		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
+		}
+		
+		long target = step+tailPosition(inputRing);
+				
+		//write to outputStream only when we have data on inputRing.
+	    long headPosCache = headPosition(inputRing);
+	
+	    //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
+	    //      That change may however increase latency.
+	    
+	    while (true) {
+	    	        	
+	    	//block until one more byteVector is ready.
+	    	
+	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
+	    	
+	    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
+	    	int len = takeRingByteLen(inputRing);
+	    	int byteMask = inputRing.byteMask;
+	    				
+	    	if (len<0) { //exit logic
+	    		releaseReadLock(inputRing);
+	    		visitor.close();
+	      		return;
+	    	} else {                    	
+				byte[] data = byteBackingArray(meta, inputRing);
+				int offset = bytePosition(meta,inputRing,len);        					
+				
+				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {
+					//rolled over the end of the buffer
+					 int len1 = 1+byteMask-(offset&byteMask);
+					 visitor.visit(data, offset&byteMask, len1, 0, len-len1);
+				} else {						
+					 //simple add bytes
+					 visitor.visit(data, offset&byteMask, len); 
+				}
+	    		releaseReadLock(inputRing);
+	    	}
+	    	
+	    	target += step;
+	        
+	    }   
+		
 	}
 
 	
