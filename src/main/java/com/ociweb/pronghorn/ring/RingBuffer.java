@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ociweb.pronghorn.ring.util.PaddedAtomicInteger;
@@ -33,8 +34,7 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 //TODO: B, build  null ring buffer to drop messages.
 
 public final class RingBuffer {
-   //TODO: AAA, need to add error message prop and flag to let other end know to shut down.
-
+   
     public static class PaddedLong {
         public long value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
@@ -76,6 +76,8 @@ public final class RingBuffer {
     
     private final byte pBits;
     private final byte bBits;
+    
+    private final AtomicBoolean shutDown = new AtomicBoolean(false);
     
     
     public RingBuffer(RingBufferConfig config) {
@@ -195,6 +197,14 @@ public final class RingBuffer {
         return (((long) buf[mask & (int)pos]) << 32) | (((long) buf[mask & (int)(pos + 1)]) & 0xFFFFFFFFl);
 
     }
+    
+    public static boolean isShutDown(RingBuffer ring) {
+    	return ring.shutDown.get();
+    }
+    
+    public static void shutDown(RingBuffer ring) {
+    	ring.shutDown.set(true);
+    }    
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	    	
@@ -362,6 +372,9 @@ public final class RingBuffer {
     	long targetValue = ringBuffer.headPos.longValue();
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield(); //needed for now but re-evaluate performance impact
+    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
 		} 
 		return lastCheckedValue;
@@ -370,6 +383,9 @@ public final class RingBuffer {
     public static long spinBlockOnTail(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
+    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
 		    lastCheckedValue = ringBuffer.tailPos.longValue();
 		}
 		return lastCheckedValue;
@@ -379,6 +395,9 @@ public final class RingBuffer {
     	long targetValue = ringBuffer.tailPos.longValue();    	
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
+    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
@@ -387,6 +406,9 @@ public final class RingBuffer {
     public static long spinBlockOnHead(long lastCheckedValue, long targetValue, RingBuffer ringBuffer) {
     	while ( lastCheckedValue < targetValue) {
     		Thread.yield();//needed for now but re-evaluate performance impact
+    		if (isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
 		    lastCheckedValue = ringBuffer.headPos.longValue();
 		}
 		return lastCheckedValue;
