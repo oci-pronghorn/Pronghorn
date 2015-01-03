@@ -63,6 +63,11 @@ public class RingWriter {
         RingBuffer.addByteArray(source, 0, source.length, rb);
     }
     
+    public static void writeBytes(RingBuffer rb, byte[] source, int offset, int length) {
+    	rb.validateVarLength(length);
+        RingBuffer.addByteArray(source, offset, length, rb);
+    }
+    
 	
     public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
     	

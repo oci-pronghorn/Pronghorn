@@ -42,7 +42,7 @@ public class RingBuffers {
     }
 
     public static RingBuffers buildNoFanRingBuffers(RingBuffer rb) {
-    	FieldReferenceOffsetManager from = rb.consumerData.from;
+    	FieldReferenceOffsetManager from = RingBuffer.from(rb);
     	int scriptLength = 0==from.tokens.length ? 1 : from.tokens.length;
 		
     	RingBuffer[] buffers = new RingBuffer[scriptLength];
@@ -62,7 +62,7 @@ public class RingBuffers {
     }
 
     public static FieldReferenceOffsetManager getFrom(RingBuffers ringBuffers) {
-        return ringBuffers.buffers[0].consumerData.from; //NOTE: all ring buffers have the same instance
+        return RingBuffer.from(ringBuffers.buffers[0]); //NOTE: all ring buffers have the same instance
     }
     
     public static RingBuffer get(RingBuffers ringBuffers, int idx) {

@@ -77,7 +77,7 @@ public final class RingBuffer {
     private final byte pBits;
     private final byte bBits;
     
-    private final AtomicBoolean shutDown = new AtomicBoolean(false);
+    private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: AAA, create unit test examples for using this.
     
     
     public RingBuffer(RingBufferConfig config) {
@@ -158,7 +158,7 @@ public final class RingBuffer {
 		int newAvg = (length+varLenMovingAverage)>>1;
         if (newAvg>maxAvgVarLen)	{
         	
-        	int bytesPerInt = (int)Math.ceil(length*consumerData.from.maxVarFieldPerUnit);
+        	int bytesPerInt = (int)Math.ceil(length*RingBuffer.from(this).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
         	
         	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+pBits+","+bBits);
@@ -210,25 +210,30 @@ public final class RingBuffer {
     	    	
         final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
-        	int targetMask = rbRingBuffer.byteMask;
         	int proposedEnd = p + sourceLen;
-			byte[] target = rbRingBuffer.byteBuffer;        	
-			
-            int tStop = (p + sourceLen) & targetMask;
-			int tStart = p & targetMask;
-			if (tStop > tStart) {
-			    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
-			} else {
-			    // done as two copies
-			    int firstLen = 1+ targetMask - tStart;
-			    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
-			    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
-			}
+        	appendPartialBytesArray(rbRingBuffer, p, source, sourceIdx,	sourceLen);
             rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
         }        
         
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
     }
+
+	public static void appendPartialBytesArray(RingBuffer rbRingBuffer,
+			final int targetBytePos, byte[] source, int sourceIdx, int sourceLen) {
+		int targetMask = rbRingBuffer.byteMask;
+		byte[] target = rbRingBuffer.byteBuffer;        	
+		
+		int tStop = (targetBytePos + sourceLen) & targetMask;
+		int tStart = targetBytePos & targetMask;
+		if (tStop > tStart) {
+		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
+		} else {
+		    // done as two copies
+		    int firstLen = 1+ targetMask - tStart;
+		    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
+		    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+		}
+	}
     
     public static void addValue(RingBuffer rb, int value) {
 		 addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);		
@@ -430,6 +435,9 @@ public final class RingBuffer {
 		return ring.maxSize;
 	}
 
+	public static FieldReferenceOffsetManager from(RingBuffer ring) {
+		return ring.consumerData.from;
+	}
 
 	
 }

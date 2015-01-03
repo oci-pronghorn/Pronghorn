@@ -16,7 +16,7 @@ public class RingOutputStream extends OutputStream {
 		this.ring = ring;
 		blockSize = ring.maxAvgVarLen;
 		
-		if (ring.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (RingBuffer.from(ring) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}

@@ -29,7 +29,7 @@ public class RingInputStream extends InputStream {
 	public RingInputStream(RingBuffer ring) {
 		this.ring = ring;
 		this.sourceByteMask = ring.byteMask;
-		if (ring.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (RingBuffer.from(ring) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 	}

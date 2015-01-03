@@ -42,7 +42,7 @@ public class RingStreams {
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
@@ -109,7 +109,7 @@ public class RingStreams {
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		
@@ -172,7 +172,7 @@ public class RingStreams {
 	 * @throws IOException
 	 */
 	public static void readFromInputStream(InputStream inputStream, RingBuffer outputRing) throws IOException {
-		assert (outputRing.consumerData.from == FieldReferenceOffsetManager.RAW_BYTES);
+		assert (RingBuffer.from(outputRing) == FieldReferenceOffsetManager.RAW_BYTES);
 		int fill =  1 + outputRing.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		int maxBlockSize = outputRing.maxAvgVarLen;
 		
@@ -213,7 +213,7 @@ public class RingStreams {
 	 * @param blockSize
 	 */
 	public static void writeBytesToRing(byte[] data, int dataOffset, int dataLength,  RingBuffer output, int blockSize) {
-		assert (output.consumerData.from == FieldReferenceOffsetManager.RAW_BYTES);
+		assert (RingBuffer.from(output) == FieldReferenceOffsetManager.RAW_BYTES);
 		
 	 	int fill = 1 + output.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		   
@@ -247,7 +247,7 @@ public class RingStreams {
 		long step =  FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		
 		 //this blind byte copy only works for this simple message type, it is not appropriate for other complex types
-		if (inputRing.consumerData.from != FieldReferenceOffsetManager.RAW_BYTES) {
+		if (RingBuffer.from(inputRing) != FieldReferenceOffsetManager.RAW_BYTES) {
 			throw new UnsupportedOperationException("This method can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		

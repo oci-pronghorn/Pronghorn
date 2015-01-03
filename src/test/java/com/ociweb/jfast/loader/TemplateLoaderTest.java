@@ -436,7 +436,7 @@ public class TemplateLoaderTest {
         
         RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
-        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.consumerData.from.tokens);
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,RingBuffer.from(queue).tokens);
 
         int writeBuffer = 256;        
         PrimitiveWriter writer = new PrimitiveWriter(writeBuffer, fastOutput, false);
@@ -476,7 +476,7 @@ public class TemplateLoaderTest {
                         try{   
                             FASTDynamicWriter.write(dynamicWriter);
                         } catch (FASTException e) {
-                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
                         }                            
                         grps++;
@@ -578,7 +578,7 @@ public class TemplateLoaderTest {
         
         RingBuffer queue = RingBuffers.get(readerDispatch.ringBuffers,0);
 
-        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,queue.consumerData.from.tokens);
+        FASTOutputByteArrayEquals fastOutput = new FASTOutputByteArrayEquals(testBytesData,RingBuffer.from(queue).tokens);
         
                
         int writeBuffer = 16384;
@@ -621,7 +621,7 @@ public class TemplateLoaderTest {
                         try{   
                             FASTDynamicWriter.write(dynamicWriter);
                         } catch (FASTException e) {
-                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(queue.consumerData.from.tokens[writerDispatch.getActiveScriptCursor()]));
+                            System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
                         }                            
                         grps++;

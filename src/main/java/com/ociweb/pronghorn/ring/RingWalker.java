@@ -1,5 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingWalker.tryWriteFragment;
+
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -249,11 +251,11 @@ public class RingWalker {
 	}
 
 		//only called after moving forward.
-	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, RingWalker consumerData) {
-	        if(0==consumerData.cursor) {
+	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, RingWalker ringWalker) {
+	        if(0==ringWalker.cursor) {
 	            return false;
 	        }
-	        int endingToken = consumerData.from.tokens[consumerData.cursor-1];
+	        int endingToken = ringWalker.from.tokens[ringWalker.cursor-1];
 	        
 	        //if last token of last fragment was length then begin new sequence
 	        int type = (endingToken >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE;
@@ -261,19 +263,19 @@ public class RingWalker {
 	            int seqLength = RingReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
 	            if (seqLength == 0) {
 	//                int jump = (TokenBuilder.MAX_INSTANCE&from.tokens[cursor-jumpSize])+2;
-	                int fragJump = consumerData.from.fragScriptSize[consumerData.cursor+1]; //script jump  //TODO: not sure this is right when they are nested?
+	                int fragJump = ringWalker.from.fragScriptSize[ringWalker.cursor+1]; //script jump  //TODO: not sure this is right when they are nested?
 	//                System.err.println(jump+" vs "+fragJump);
 	         //       System.err.println("******************** jump over seq");
 	                //TODO: B, need to build a test case, this does not appear in the current test data.
 	                //do nothing and jump over the sequence
 	                //there is no data in the ring buffer so do not adjust position
-	                consumerData.cursor = (consumerData.cursor + (fragJump&RingBuffer.JUMP_MASK));
+	                ringWalker.cursor = (ringWalker.cursor + (fragJump&RingBuffer.JUMP_MASK));
 	                //done so move to the next item
 	                
 	                return true;
 	            } else {
 	                assert(seqLength>=0) : "The previous fragment has already been replaced or modified and it was needed for the length counter";
-	                consumerData.getSeqStack()[consumerData.incSeqStackHead()]=seqLength;
+	                ringWalker.getSeqStack()[ringWalker.incSeqStackHead()]=seqLength;
 	                //this is the first run so we are already positioned at the top   
 	            }
 	            return false;   
@@ -287,13 +289,13 @@ public class RingWalker {
 	            0 != (endingToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))            
 	                ) {
 	            //check top of the stack
-	            if (--consumerData.getSeqStack()[consumerData.getSeqStackHead()]>0) {
+	            if (--ringWalker.getSeqStack()[ringWalker.getSeqStackHead()]>0) {
 	                int jump = (TokenBuilder.MAX_INSTANCE&endingToken)+1;
-	               consumerData.cursor = (consumerData.cursor - jump);
+	               ringWalker.cursor = (ringWalker.cursor - jump);
 	               return false;
 	            } else {
 	                //done, already positioned to continue
-	                consumerData.setSeqStackHead(consumerData.getSeqStackHead() - 1);                
+	                ringWalker.setSeqStackHead(ringWalker.getSeqStackHead() - 1);                
 	                return true;
 	            }
 	        }                   
@@ -343,21 +345,28 @@ public class RingWalker {
 		return ring.consumerData.getMsgIdx();
 	}
 
-
+    /**
+     * Non blocking call to write fragmement to ring buffer.
+     * Returns false if there is not enough room for the fragment.
+     * 
+     * @param ring
+     * @param cursorPosition
+     * @return
+     */
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		
 		//TODO: based on fragment sizes can predict the head position at this call
 		
-		int fragSize = ring.consumerData.from.fragDataSize[cursorPosition];
+		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
 		boolean result = (ring.maxSize - (int)(ring.headPos.longValue() - ring.tailPos.longValue())) >= fragSize;
 		
 		if (result) {
 			
 						
 			//TODO: this is too complex and will be simplified 
-			if (ring.consumerData.from.messageStarts.length>0) {
-			  if ((0 !=	(ring.consumerData.from.tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
-				        (ring.consumerData.from.tokens[cursorPosition] & (TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE ))==(TypeMask.Group<<TokenBuilder.SHIFT_TYPE)) {
+			if (RingBuffer.from(ring).messageStarts.length>0) {
+			  if ((0 !=	(RingBuffer.from(ring).tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
+				        (RingBuffer.from(ring).tokens[cursorPosition] & (TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE ))==(TypeMask.Group<<TokenBuilder.SHIFT_TYPE)) {
 				  
 				  //add template loc in prep for write
 				  RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
@@ -368,7 +377,37 @@ public class RingWalker {
 		return result;
 	}
 	
+	/**
+	 * Blocking call that waits for the needed room for writing this fragment.  
+	 * Also write the message Id if that is needed
+	 * 
+	 * @param ring
+	 * @param cursorPosition
+	 */
+	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
+		while (!tryWriteFragment(ring, cursorPosition)) {
+			Thread.yield();
+			if (RingBuffer.isShutDown(ring) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
+        }
+	}
 	
+	/**
+	 * Blocking call however it will also call run on other work each time it runs out of work todo.
+	 * 
+	 * @param ring
+	 * @param cursorPosition
+	 * @param otherWork
+	 */
+	public static void blockWriteFragment(RingBuffer ring, int cursorPosition, Runnable otherWork) {
+		while (!tryWriteFragment(ring, cursorPosition)) {
+			if (RingBuffer.isShutDown(ring) || Thread.currentThread().isInterrupted()) {
+    			throw new RingBufferException("Unexpected shutdown");
+    		}
+			otherWork.run();
+        }
+	}
 	
 
    

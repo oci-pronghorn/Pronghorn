@@ -706,7 +706,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     } else {
 
                         // optional
-                        int valueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(token);
+                        int valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(token);
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
                             acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);                            
                         } else {        
@@ -727,7 +727,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptLongSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        long valueOfNull = rbRingBuffer.consumerData.from.getAbsent64Value(token);
+                        long valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent64Value(token);
 
                         // optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -846,7 +846,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 	                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset;
 	                            
 	                            //only add the offset for the templateId if and when they are used
-	                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(rbRingBuffer.consumerData.from)) {
+	                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(RingBuffer.from(rbRingBuffer))) {
 	                            	fieldPos = fieldPos+1;
 	                            }
 	                            
@@ -889,7 +889,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                     } else {
                         // optional
-                        int valueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(token);
+                        int valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(token);
                         acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                     }
                     
@@ -968,7 +968,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
     private void acceptOptionalDecimal(PrimitiveWriter writer, int expoToken, int rbPos, RingBuffer rbRingBuffer) {
         int mantissaToken = fullScript[1+activeScriptCursor];
         
-        int exponentValueOfNull = rbRingBuffer.consumerData.from.getAbsent32Value(expoToken);
+        int exponentValueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
         int exponentTarget = (expoToken & intInstanceMask);
         int exponentSource = readFromIdx > 0 ? readFromIdx & intInstanceMask : exponentTarget;
         
@@ -1285,7 +1285,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         };
 
         //only template id in message if the from has more than 1 template
-        if (null==ringBuffer || !FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBuffer.consumerData.from)) {
+        if (null==ringBuffer || !FieldReferenceOffsetManager.hasSingleMessageTemplate(RingBuffer.from(ringBuffer))) {
         	fieldPos++;          	
         }
         
