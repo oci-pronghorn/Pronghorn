@@ -222,7 +222,10 @@ public class RingWalker {
 	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
 	        if (needStop>ringBufferConsumer.getBnmHeadPosCache()) {
 	            ringBufferConsumer.setMsgIdx(-1);
-	          return false; 
+	            if (RingBuffer.isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+	    			throw new RingBufferException("Unexpected shutdown");
+	    		}
+	            return false; 
 	        }
 	    }
 	          
@@ -314,6 +317,9 @@ public class RingWalker {
 	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
 	        if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
 	            ringBufferConsumer.waiting = true;
+	            if (RingBuffer.isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
+	    			throw new RingBufferException("Unexpected shutdown");
+	    		}
 	            return false;
 	        }
 	    }                        

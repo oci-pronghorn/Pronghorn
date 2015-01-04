@@ -52,7 +52,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
     public static double readDouble(RingBuffer ring, int idx) {
-        return ((double)readDecimalMantissa(ring,(OFF_MASK&idx)))*powdi[readDecimalExponent(ring,(OFF_MASK&idx))];
+        return ((double)readDecimalMantissa(ring,(OFF_MASK&idx)))*powdi[64 + readDecimalExponent(ring,(OFF_MASK&idx))];
     }
 
     public static double readLongBitsToDouble(RingBuffer ring, int idx) {
@@ -60,7 +60,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }    
     
     public static float readFloat(RingBuffer ring, int idx) {
-        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))*powfi[readDecimalExponent(ring,(OFF_MASK&idx))];
+        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))*powfi[64 + readDecimalExponent(ring,(OFF_MASK&idx))];
     }
     
     public static float readIntBitsToFloat(RingBuffer ring, int idx) {
@@ -447,13 +447,22 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     //Bytes
     
-    public static int readBytesLength(RingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx) + 1)];// second int is always the length
+    public static int readBytesLength(RingBuffer ring, int loc) {
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc) + 1)];// second int is always the length
+    }
+    
+    public static int readBytesPosition(RingBuffer ring, int loc) {
+        return 0x7FFFFFFF & ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc) )];// first int is always the length
     }
 
-    public static ByteBuffer readBytes(RingBuffer ring, int idx, ByteBuffer target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + idx)];
-        int len = RingReader.readBytesLength(ring, idx);
+    public static byte[] readBytesBackingArray(RingBuffer ring, int loc) {
+    	 int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
+    	 return pos<0 ? ring.constByteBuffer :  ring.byteBuffer;
+    }
+    
+    public static ByteBuffer readBytes(RingBuffer ring, int loc, ByteBuffer target) {
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
+        int len = RingReader.readBytesLength(ring, loc);
         if (pos < 0) {
             return readBytesConst(ring,len,target,0x7FFFFFFF & pos);
         } else {
