@@ -102,6 +102,11 @@ public class RingWriter {
         RingWriter.addASCIIToRing(source, rb);
     }
     
+    public static void writeASCII(RingBuffer rb, CharSequence source, int offset, int length) {
+    	rb.validateVarLength(source.length());
+        RingWriter.addASCIIToRing(source, offset, length, rb);
+    }
+    
     public static void writeUTF8(RingBuffer rb, char[] source) {
     	rb.validateVarLength(source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         RingWriter.addUTF8ToRing(source, 0, source.length, rb);
@@ -117,6 +122,11 @@ public class RingWriter {
         RingWriter.addUTF8ToRing(source, rb);
     }
 
+    public static void writeUTF8(RingBuffer rb, CharSequence source, int offset, int length) {
+    	rb.validateVarLength(source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+        RingWriter.addUTF8ToRing(source, offset, length, rb);
+    }
+    
 	private static void addASCIIToRing(char[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
 		
 	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
@@ -172,6 +182,29 @@ public class RingWriter {
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
 	}
 
+     private static void addASCIIToRing(CharSequence source, int sourceIdx, int sourceLength, RingBuffer rbRingBuffer) {
+		
+	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    int sourceLen = sourceLength;
+	    if (sourceLen > 0) {
+	    	int targetMask = rbRingBuffer.byteMask;
+	    	int proposedEnd = p + sourceLen;
+			byte[] target = rbRingBuffer.byteBuffer;        	
+			
+	        int tStart = p & targetMask;
+			if (tStart < ((p + sourceLen - 1) & targetMask)) {
+				RingWriter.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
+			} else {
+			    // done as two copies
+			    int firstLen = 1+ targetMask - tStart;
+			    RingWriter.copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
+			    RingWriter.copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			}
+	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+	    }        
+	    
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
+	}
 	
 	private static void addUTF8ToRing(CharSequence source, RingBuffer rbRingBuffer) {
 		
@@ -180,6 +213,20 @@ public class RingWriter {
 	    int byteLength = 0;
 	    if (sourceLen > 0) {
 			byteLength = RingWriter.copyUTF8ToByte(source, 0, rbRingBuffer.byteBuffer, rbRingBuffer.byteMask, p, sourceLen);
+	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
+	    }        
+	    
+	    //NOTE: for UTF8 write the length is NOT the number of chars but rather the number of bytes 
+	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, byteLength);
+	}
+	
+	private static void addUTF8ToRing(CharSequence source, int sourceOffset, int sourceLen, RingBuffer rbRingBuffer) {
+		
+	    final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    
+	    int byteLength = 0;
+	    if (sourceLen > 0) {
+			byteLength = RingWriter.copyUTF8ToByte(source, sourceOffset, rbRingBuffer.byteBuffer, rbRingBuffer.byteMask, p, sourceLen);
 	        rbRingBuffer.byteWorkingHeadPos.value = p+byteLength;
 	    }        
 	    

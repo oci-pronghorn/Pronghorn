@@ -86,9 +86,7 @@ public class RingInputStream extends InputStream {
 		int returnLength = 0;
 		long target = tailPosition(ring);
 		long headPosCache = headPosition(ring);
-		
-		//System.err.println("block for new");
-		
+				
 		do {
 			//block until we have something to read
 			target+=recordSize;
@@ -100,20 +98,7 @@ public class RingInputStream extends InputStream {
 		return returnLength;
 	}
 	
-//	private int noBlockForNewContent(byte[] targetData, int targetOffset,
-//			int targetLength) {
-//		
-//		long tailPos = tailPosition(ring);
-//		long headPos = headPosition(ring);
-//		if (tailPos<=headPos-recordSize) {
-//			return sendNewContent(targetData, targetOffset, targetLength);
-//		} else {
-//			return 0;
-//		}
-//	}
-
-	private int sendNewContent(byte[] targetData, int targetOffset,
-			int targetLength) {
+	private int sendNewContent(byte[] targetData, int targetOffset,	int targetLength) {
 		
 		int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
 		int sourceLength = takeRingByteLen(ring);
@@ -153,18 +138,7 @@ public class RingInputStream extends InputStream {
 		//send the rest of the data that we could not last time 
 		//we assume that ending remaining content happens more frequently than the continuation
 		if (remainingSourceLength<=targetLength) {
-			int result = endRemainingContent(targetData, targetOffset);
-			
-			//if (targetLength>result) {
-				//TODO: should look for more content???!!
-			///	return result + noBlockForNewContent(targetData, targetOffset + result, targetLength - result);
-				
-			//} else {
-				return result;
-			//}
-			
-			
-			
+			return endRemainingContent(targetData, targetOffset);
 		} else {
 			return continueRemainingContent(targetData, targetOffset, targetLength);				
 		}
@@ -189,7 +163,6 @@ public class RingInputStream extends InputStream {
 		copyData(targetData, targetOffset, len, byteBackingArray(remainingSourceMeta, ring), remainingSourceOffset);
 		releaseReadLock(ring);
 		remainingSourceLength = -1; //clear because we are now done with the remaining content
-//		System.err.println("endRemainingContent "+len);
 		return len;
 	}
 

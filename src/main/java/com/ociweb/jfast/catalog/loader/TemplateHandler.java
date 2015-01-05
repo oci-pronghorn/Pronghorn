@@ -828,13 +828,7 @@ public class TemplateHandler extends DefaultHandler {
         int j = resetList.size();
         while (--j >= 0) {
         	final int d = j >>> TokenBuilder.BITS_TYPE;
-            if (d == target) {    
-            	
-//            	int size = resetList.get(j).size();
-//            	if (size>0) {
-//            		maxTokens = maxTokens + size + 1;
-//            	}
-            	
+            if (d == target) {
 	        	List<Integer> list = resetList.get(j);        	
 	        	if (!list.isEmpty()) {
 	        		maxTokens = maxTokens + list.size() + 1;
@@ -854,11 +848,11 @@ public class TemplateHandler extends DefaultHandler {
         // needed by the consumer.
         // this enables fast startup/recovery times that do not produce garbage.
 
-        defaultConstValues.setTypeCounts(tokenBuilderIntCount.intValue(), 
-                               tokenBuilderLongCount.intValue(),
-                               tokenBuilderByteCount.intValue(), 
-                               byteGap, 
-                               maxByteLength); 
+        defaultConstValues.setTypeCounts(  tokenBuilderIntCount.intValue(), 
+			                               tokenBuilderLongCount.intValue(),
+			                               tokenBuilderByteCount.intValue(), 
+			                               byteGap, 
+			                               maxByteLength); 
 
        //System.err.println("Names:"+ Arrays.toString(catalogScriptFieldNames));
         
@@ -871,7 +865,6 @@ public class TemplateHandler extends DefaultHandler {
 
         // close stream.
         PrimitiveWriter.flush(writer);
-        // System.err.println("wrote:"+writer.totalWritten());
 
     }
 
