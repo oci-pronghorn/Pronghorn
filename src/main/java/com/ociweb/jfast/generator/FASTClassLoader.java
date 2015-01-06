@@ -16,12 +16,17 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.error.FASTException;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 
     public class FASTClassLoader extends ClassLoader{
 
+    	private static final Logger log = LoggerFactory.getLogger(FASTClassLoader.class);
+    	
         public static final String GENERATED_PACKAGE = "com.ociweb.jfast.generator";
         public static final String SIMPLE_READER_NAME = "FASTReaderGeneratedDispatch";
         public static final String SIMPLE_WRITER_NAME = "FASTWriterGeneratedDispatch";
@@ -48,7 +53,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
             this.catBytes = catBytes;
             this.exportSource = Boolean.getBoolean("FAST.exportSource");
             this.forceCompile = forceCompile | exportSource | Boolean.getBoolean("FAST.forceCompile");
-            Supervisor.log("Created new FASTClassLoader forceCompile:"+forceCompile+" exportSource:"+exportSource);
+            log.trace("Created new FASTClassLoader forceCompile:"+forceCompile+" exportSource:"+exportSource);
             
         }        
         
@@ -68,7 +73,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
             
             //CAUTION: only use force compile when you need deep testing it can be very slow.
             if ((fullCompiled || !forceCompile) && classFile.exists()) {
-                Supervisor.log("Reading class from: "+classFile);
+                log.trace("Reading class from: {}",classFile);
                 
                 byte[] classData = readClassBytes(classFile);
                                     
@@ -79,7 +84,7 @@ import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
             //if we have a compiler then regenerate the source and class based on the templates.
             JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
             if (null!=compiler && compiler.getSourceVersions().contains(SourceVersion.RELEASE_6)) {
-                Supervisor.log("Compile class to: "+classFile);
+                log.trace("Compile class to: {}",classFile);
                 
                 List<String> optionList = new ArrayList<String>();
                 optionList.addAll(Arrays.asList("-classpath", System.getProperty("java.class.path"),

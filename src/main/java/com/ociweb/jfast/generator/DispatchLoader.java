@@ -2,24 +2,27 @@ package com.ociweb.jfast.generator;
 
 import java.util.Arrays;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.stream.FASTDecoder;
 import com.ociweb.jfast.stream.FASTEncoder;
 import com.ociweb.jfast.stream.FASTReaderInterpreterDispatch;
 import com.ociweb.jfast.stream.FASTWriterInterpreterDispatch;
-import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffers;
 
 public class DispatchLoader {
 
     private static final boolean FORCE_COMPILE = true;
+    private static final Logger log = LoggerFactory.getLogger(DispatchLoader.class);
 
     public static FASTDecoder loadDispatchReader(byte[] catalog, RingBuffers ringBuffers) {
         //always try to load the generated reader because it will be faster 
         try {
             return loadGeneratedDispatch(catalog, FASTClassLoader.READER, ringBuffers);
         } catch (Exception e) {
-            Supervisor.err("Attempted to load dispatch reader.", e);
+        	log.error("Attempted to load dispatch reader.", e);
             return new FASTReaderInterpreterDispatch(catalog, ringBuffers);
         }
     }
@@ -35,7 +38,7 @@ public class DispatchLoader {
         try {
             return loadGeneratedDispatch(catalog, FASTClassLoader.WRITER, ringBuffers);
         } catch (Exception e) {
-            Supervisor.err("Attempted to load dispatch reader.", e);
+        	log.error("Attempted to load dispatch reader.", e);
             return loadDispatchWriterDebug(catalog, ringBuffers);
         }
     }
@@ -59,7 +62,7 @@ public class DispatchLoader {
             int[] expectedHash = GeneratorData.hashCatBytes(catBytes);
             
             if (!Arrays.equals(catHash, expectedHash)) {
-                Supervisor.log("Catalog mistmatch, attempting source regeneration and recompile.");
+            	log.trace("Catalog mistmatch, attempting source regeneration and recompile.");
                 //the templates catalog this was generated for does not match the current value so force a recompile
                 generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
             }
@@ -67,7 +70,7 @@ public class DispatchLoader {
             
             return (T)generatedClass.getConstructor(catBytes.getClass(), ringBuffers.getClass()).newInstance(catBytes, ringBuffers);
         } catch (Throwable t) {
-            Supervisor.err("Error in creating instance, attempting source regeneration and recompile.", t);
+        	log.error("Error in creating instance, attempting source regeneration and recompile.", t);
             //can not create instance because the class is no longer compatible with the rest of the code base so force a recompile
             Class generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
             return (T)generatedClass.getConstructor(catBytes.getClass(), ringBuffers.getClass()).newInstance(catBytes, ringBuffers);

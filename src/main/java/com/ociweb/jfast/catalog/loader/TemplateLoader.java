@@ -10,21 +10,23 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Properties;
 import java.util.zip.GZIPOutputStream;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import com.ociweb.jfast.generator.Supervisor;
 import com.ociweb.jfast.primitive.FASTOutput;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 
 public class TemplateLoader {
 
+	private static final Logger log = LoggerFactory.getLogger(TemplateLoader.class);
+	
     private static final int BUILDING_EXCEPTION = -6;
     private static final int FILE_NOT_FOUND = -5;
     private static final int FILE_REQUIRED_NOT_DIRECTORY = -4;
@@ -73,8 +75,7 @@ public class TemplateLoader {
 
     public static void buildCatalog(OutputStream outputStream, String source, ClientConfig clientConfig) throws ParserConfigurationException,
             SAXException, IOException {
-        
-        Supervisor.templateSource(source);                
+        log.trace("source file:{}",source);               
         InputStream sourceInputStream = TemplateLoader.class.getResourceAsStream(source);     
         
         File folder = null;
