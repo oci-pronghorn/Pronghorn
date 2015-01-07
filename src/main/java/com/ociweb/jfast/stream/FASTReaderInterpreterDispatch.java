@@ -308,7 +308,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (expoToken & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                 	
-                	int expoConstAbsent = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+                	FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+					int expoConstAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                                         
                     decodeOptionalDecimalNone(expoConstAbsent, mantToken, reader, rbRingBuffer);
                     
@@ -316,14 +317,16 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // delta
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent =  RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+					FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+                    int expoConstAbsent =  FieldReferenceOffsetManager.getAbsent32Value(r);
                     
                     decodeOptionalDecimalDelta(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
                 // constant
-                int expoConstAbsent = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+                FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+				int expoConstAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int expoConstConst = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
                 decodeOptionalDecimalConstant(expoConstAbsent,expoConstConst,mantToken, reader, rbRingBuffer);
@@ -338,7 +341,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+					FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+                    int expoConstAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                                         
                     decodeOptionalDecimalCopy(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
@@ -346,14 +350,16 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // increment
                     int expoTarget = expoToken & MAX_INT_INSTANCE_MASK;
                     int expoSource = readFromIdx > 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : expoTarget;
-                    int expoConstAbsent = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+					FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+                    int expoConstAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                     
                     decodeOptionalDecimalIncrement(expoTarget,expoSource,expoConstAbsent,mantToken, reader, rbRingBuffer);
                     
                 }
             } else {
                 // default
-                int expoConstAbsent = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+                FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+				int expoConstAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int expoConstDefault = rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK] == 0 ? expoConstAbsent
                         : rIntDictionary[expoToken & MAX_INT_INSTANCE_MASK];
                 
@@ -776,20 +782,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                    FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+					long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongSignedNoneOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongSignedDeltaOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
                 long constConst = rLongDictionary[token & instanceMask];
 
                 genReadLongSignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -803,20 +812,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongSignedCopyOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongSignedIncrementOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
                 long constDefault = rLongDictionary[token & instanceMask] == 0 ? constAbsent
                         : rLongDictionary[token & instanceMask];
 
@@ -885,20 +897,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                    FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+					long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongUnsignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongUnsignedDeltaOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
                 long constConst = rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
                 genReadLongUnsignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -912,20 +927,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongUnsignedCopyOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & MAX_LONG_INSTANCE_MASK;
                     int source = readFromIdx > 0 ? readFromIdx & MAX_LONG_INSTANCE_MASK : target;
-                    long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                     genReadLongUnsignedIncrementOptional(target, source, constAbsent, rLongDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                long constAbsent = RingBuffer.from(ringBuffer).getAbsent64Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				long constAbsent = FieldReferenceOffsetManager.getAbsent64Value(r);
                 long constDefault = rLongDictionary[token & MAX_LONG_INSTANCE_MASK] == 0 ? constAbsent
                         : rLongDictionary[token & MAX_LONG_INSTANCE_MASK];
 
@@ -995,20 +1013,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // none, delta
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+                    FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+					int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerSignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerSignedDeltaOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int constConst = rIntDictionary[token & instanceMask];
 
                 genReadIntegerSignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1022,20 +1043,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerSignedCopyOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & instanceMask;
                     int source = readFromIdx > 0 ? readFromIdx & instanceMask : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerSignedIncrementOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // default
-                int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int constDefault = rIntDictionary[token & instanceMask] == 0 ? constAbsent
                         : rIntDictionary[token & instanceMask];
 
@@ -1100,20 +1124,23 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 if (0 == (token & (4 << TokenBuilder.SHIFT_OPER))) {
                     // none
                     assert (readFromIdx < 0);
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerUnsignedOptional(constAbsent, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // delta
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerUnsignedDeltaOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 }
             } else {
                 // constant
-                int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+                FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+				int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int constConst = rIntDictionary[token & MAX_INT_INSTANCE_MASK];
 
                 genReadIntegerUnsignedConstantOptional(constAbsent, constConst, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1127,14 +1154,16 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // copy
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     genReadIntegerUnsignedCopyOptional(target, source, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
                 } else {
                     // increment
                     int target = token & MAX_INT_INSTANCE_MASK;
                     int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                    int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+					FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                    int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
 
                     if (target==source) {
                         genReadIntegerUnsignedIncrementOptionalTS(target, constAbsent, rIntDictionary, ringBuffer.buffer, ringBuffer.mask, reader, ringBuffer.workingHeadPos);
@@ -1146,7 +1175,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                 // default
                 int target = token & MAX_INT_INSTANCE_MASK;
                 int source = readFromIdx >= 0 ? readFromIdx & MAX_INT_INSTANCE_MASK : target;
-                int constAbsent = RingBuffer.from(ringBuffer).getAbsent32Value(token);
+				FieldReferenceOffsetManager r = RingBuffer.from(ringBuffer);
+                int constAbsent = FieldReferenceOffsetManager.getAbsent32Value(r);
                 int t = rIntDictionary[source];
                 int constDefault = t == 0 ? constAbsent : t - 1;
 

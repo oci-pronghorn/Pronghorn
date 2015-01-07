@@ -211,25 +211,22 @@ public final class RingBuffer {
         final int p = rbRingBuffer.byteWorkingHeadPos.value;
         if (sourceLen > 0) {
         	int proposedEnd = p + sourceLen;
-        	appendPartialBytesArray(rbRingBuffer, p, source, sourceIdx,	sourceLen);
+        	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask);
             rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
         }        
         
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
     }
 
-	public static void appendPartialBytesArray(RingBuffer rbRingBuffer,
-			final int targetBytePos, byte[] source, int sourceIdx, int sourceLen) {
-		int targetMask = rbRingBuffer.byteMask;
-		byte[] target = rbRingBuffer.byteBuffer;        	
-		
-		int tStop = (targetBytePos + sourceLen) & targetMask;
+	public static void appendPartialBytesArray(byte[] source, int sourceIdx, int sourceLen,
+			                                   byte[] target, final int targetBytePos, int targetMask) {
+		int tStop = (targetBytePos + sourceLen -1) & targetMask;
 		int tStart = targetBytePos & targetMask;
-		if (tStop > tStart) {
+		if (tStop >= tStart) {
 		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
 		} else {
 		    // done as two copies
-		    int firstLen = 1+ targetMask - tStart;
+		    int firstLen = (1+ targetMask) - tStart;
 		    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
 		    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
 		}

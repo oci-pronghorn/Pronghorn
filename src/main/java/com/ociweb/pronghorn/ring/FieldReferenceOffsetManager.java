@@ -25,6 +25,12 @@ public class FieldReferenceOffsetManager {
     public int maximumFragmentStackDepth;  
     public final float maxVarFieldPerUnit;
     
+    //TODO: B, set these upon construction if needed.
+    //      for a given template/schema there is only 1 absent value that can be supported
+	private final int absentInt = TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT);
+	private final long absentLong = TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); 
+	
+    
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
 														                                      OperatorMask.Field_None, 
 														                                      0)};
@@ -365,16 +371,15 @@ public class FieldReferenceOffsetManager {
 				} 				
 			}
 			i++;
-		}
-		
+		}		
 	}
     
-	public int getAbsent32Value(int token) {
-		return TokenBuilder.absentValue32(TokenBuilder.MASK_ABSENT_DEFAULT); //TODO: HACK until we add array lookup based on token id
+	public static int getAbsent32Value(FieldReferenceOffsetManager from) {
+		return from.absentInt;
 	}
-    
-	public long getAbsent64Value(int token) {
-		return TokenBuilder.absentValue64(TokenBuilder.MASK_ABSENT_DEFAULT); //TODO: HACK until we add array lookup based on token id
+	
+	public static long getAbsent64Value(FieldReferenceOffsetManager from) {
+		return from.absentLong;
 	}
     
 }

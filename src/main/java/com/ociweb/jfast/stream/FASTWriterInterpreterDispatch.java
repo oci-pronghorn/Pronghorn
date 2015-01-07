@@ -706,7 +706,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                     } else {
 
                         // optional
-                        int valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(token);
+                        FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+						int valueOfNull = FieldReferenceOffsetManager.getAbsent32Value(r);
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {                            
                             acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);                            
                         } else {        
@@ -727,7 +728,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                             acceptLongSigned(token, fieldPos, rbRingBuffer, writer);
                         }
                     } else {
-                        long valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent64Value(token);
+                        FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+						long valueOfNull = FieldReferenceOffsetManager.getAbsent64Value(r);
 
                         // optional
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
@@ -889,7 +891,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
                         acceptIntegerUnsigned(token, fieldPos, rbRingBuffer, writer);
                     } else {
                         // optional
-                        int valueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(token);
+                        FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
+						int valueOfNull = FieldReferenceOffsetManager.getAbsent32Value(r);
                         acceptIntegerUnsignedOptional(token, valueOfNull, fieldPos, rbRingBuffer, writer);
                     }
                     
@@ -967,8 +970,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 
     private void acceptOptionalDecimal(PrimitiveWriter writer, int expoToken, int rbPos, RingBuffer rbRingBuffer) {
         int mantissaToken = fullScript[1+activeScriptCursor];
+		FieldReferenceOffsetManager r = RingBuffer.from(rbRingBuffer);
         
-        int exponentValueOfNull = RingBuffer.from(rbRingBuffer).getAbsent32Value(expoToken);
+        int exponentValueOfNull = FieldReferenceOffsetManager.getAbsent32Value(r);
         int exponentTarget = (expoToken & intInstanceMask);
         int exponentSource = readFromIdx > 0 ? readFromIdx & intInstanceMask : exponentTarget;
         

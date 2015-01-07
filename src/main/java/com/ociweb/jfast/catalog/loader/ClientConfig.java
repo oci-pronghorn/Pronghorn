@@ -18,6 +18,7 @@ public class ClientConfig {
     private static final int NONE = -1;
     private int catalogId = NONE;
 
+    //TODO: AA,  these will be injected at runtime and should not be part of the saved cat bytes?
     
     public ClientConfig(int primaryRingBits, int textRingBits) {
         this.rbPrimaryRingBits = primaryRingBits;
@@ -155,13 +156,5 @@ public class ClientConfig {
         }
         catalogId = id;
     }
-    
-    public boolean hasCatalogTemplate() {
-        return NONE!=catalogId;
-    }
-    
-    public int getCatalogTemplateId() {
-        return catalogId;
-    }   
-    
+
 }
