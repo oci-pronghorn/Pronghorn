@@ -1,17 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingBuffer.addByteArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.byteBackingArray;
-import static com.ociweb.pronghorn.ring.RingBuffer.byteMask;
-import static com.ociweb.pronghorn.ring.RingBuffer.bytePosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.headPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.publishWrites;
-import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnHead;
-import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
-import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteLen;
-import static com.ociweb.pronghorn.ring.RingBuffer.takeRingByteMetaData;
+import static com.ociweb.pronghorn.ring.RingBuffer.*;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,15 +12,15 @@ public class RingBufferPipeline {
 
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 3000000;
+	private final int testMessages = 9000000;
 	private final int stages = 3;
-	private final byte primaryBits   = 16;
-	private final byte secondaryBits = 28;//TODO: Warning if this is not big enough it will hang.
+	private final byte primaryBits   = 19;
+	private final byte secondaryBits = 27;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	@Test
-	public void pipelineExample() {
-		 		 
-				 
+	public void pipelineExample() {		 		 
+		 boolean highLevelAPI = false;		 
+		
 		 //create all the threads, one for each stage
 		 ExecutorService service = Executors.newFixedThreadPool(stages);
 		 
@@ -47,7 +36,7 @@ public class RingBufferPipeline {
 		 
 		 //add all the stages start running
 		 j = 0;
-		 service.submit(createStage(rings[j]));
+		 service.submit(simpleFirstStage(rings[j], highLevelAPI));
 		 int i = stages-2;
 		 while (--i>=0) {
 			 service.submit(copyStage(rings[j++], rings[j]));			 
@@ -73,38 +62,60 @@ public class RingBufferPipeline {
 
 	 	
 	 
-	private Runnable createStage(final RingBuffer outputRing) {
+	private Runnable simpleFirstStage(final RingBuffer outputRing, boolean highLevelAPI) {
 		
 		
-		return new Runnable() {
-
-			@Override
-			public void run() {
-								
-		      int fill =  (1<<(primaryBits>>2));
-		      
-	          int messageCount = testMessages;            
-	          //keep local copy of the last time the tail was checked to avoid contention.
-	          long tailPosCache = spinBlockOnTail(tailPosition(outputRing), headPosition(outputRing)-fill, outputRing);                        
-	          while (--messageCount>=0) {
-	        	  
-	              //write the record
-                  addByteArray(testArray, 0, testArray.length, outputRing);
-                  
-                  publishWrites(outputRing);
-                  //wait for room to fit one message
-                  //waiting on the tailPosition to move the others are constant for this scope.
-                  //workingHeadPositoin is same or greater than headPosition
-                  tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
-          
-	          }
-
-	          //send negative length as poison pill to exit all runnables  
-	      	  addByteArray(testArray, 0, -1, outputRing);
-	      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
-	      	  System.out.println("finished writing:"+testMessages);
-			}
-		};
+		if (highLevelAPI) {
+			return new Runnable() {
+				final int MESSAGE_IDX = 0;
+				
+				@Override
+				public void run() {
+					 int messageCount = testMessages;  
+					 while (--messageCount>=0) {
+						 RingWalker.blockWriteFragment(outputRing, MESSAGE_IDX);
+						 RingWriter.writeBytes(outputRing, testArray);
+		                 publishWrites(outputRing);
+					 }
+					 addNullByteArray(outputRing);
+			      	 publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+			      	 System.out.println("finished writing:"+testMessages);
+				}
+			};		
+		} else {
+			return new Runnable() {
+	
+				@Override
+				public void run() {
+									
+				  int messageSize = 2;	
+			      int fill =  (1<<primaryBits)-messageSize;
+			      
+		          int messageCount = testMessages;            
+		          //keep local copy of the last time the tail was checked to avoid contention.
+		          long head = -fill;
+		          long tailPosCache = spinBlockOnTail(tailPosition(outputRing), head, outputRing);                        
+		          while (--messageCount>=0) {
+		        	  
+		              //write the record
+	                  addByteArray(testArray, 0, testArray.length, outputRing);
+	                  
+	                  publishWrites(outputRing);
+	                  head +=messageSize;
+	                  //wait for room to fit one message
+	                  //waiting on the tailPosition to move the others are constant for this scope.
+	                  //workingHeadPositoin is same or greater than headPosition
+	                  tailPosCache = spinBlockOnTail(tailPosCache, head, outputRing);
+	          
+		          }
+	
+		          //send negative length as poison pill to exit all runnables  
+		      	  addNullByteArray(outputRing);
+		      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+		      	  System.out.println("finished writing:"+testMessages);
+				}
+			};
+		}
 	}
 
 	//NOTE: this is an example of a stage that reads from one ring buffer and writes to another.
@@ -117,11 +128,9 @@ public class RingBufferPipeline {
                 //only enter this block when we know there are records to read
     		    long inputTarget = 2;
                 long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
-                
-                int x = -2;
-                
+                                
                 //two per message, and we only want half the buffer to be full
-                long outputTarget = 0-(1<<(primaryBits>>2));//this value is negative
+                long outputTarget = 2-(1<<primaryBits);//this value is negative
                 
                 int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
                 long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
@@ -141,23 +150,28 @@ public class RingBufferPipeline {
 					
 					if (len<0) {
 						releaseReadLock(inputRing);  
-						addByteArray(data, offset, len, outputRing);
+						addNullByteArray(outputRing);
 						publishWrites(outputRing);
 						return;
 					}
+
 					
 					//TODO: there is a more elegant way to do this but ran out of time.
-					if ((offset&mask) > ((offset+len) & mask)) {
+					if ((offset&mask) > ((offset+len-1) & mask)) {
+						
 						//rolled over the end of the buffer
 						 int len1 = 1+mask-(offset&mask);
 						 addByteArray(data, offset&mask, len1, outputRing);
 						 addByteArray(data, 0, len-len1 ,outputRing);
-						 outputTarget+=4;
+						 outputTarget+=4; 
+						 
 					} else {						
+						
 						//simple add bytes
 						 addByteArray(data, offset&mask, len, outputRing);
 						 outputTarget+=2;
 					}
+					
                     publishWrites(outputRing);
                     
                     releaseReadLock(inputRing);  

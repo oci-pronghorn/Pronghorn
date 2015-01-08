@@ -238,7 +238,7 @@ public class RingStreams {
 	public static void writeEOF(RingBuffer ring) {
 		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
-		RingBuffer.addByteArray(EMPTY, 0 , -1, ring);
+		RingBuffer.addNullByteArray(ring);
 		RingBuffer.publishWrites(ring);		
 	}
 

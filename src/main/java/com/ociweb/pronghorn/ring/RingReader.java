@@ -533,7 +533,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
             byte[] buffer = ring.byteBuffer;
             int mask = ring.byteMask;
-            while (--len >= 0) {
+            while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
                 target[targetMask & targetIdx]=buffer[mask & pos++];
             }
     }

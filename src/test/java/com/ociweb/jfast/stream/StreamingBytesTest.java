@@ -347,7 +347,7 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     	byte[] array = testConst;
                     	
                         RingBuffer.dump(ring);
-                        RingBuffer.addByteArray(array, 0, -1, ring);
+                        RingBuffer.addNullByteArray(ring);
                         RingBuffer.publishWrites(ring);
                     	
                         fw.acceptByteArrayOptional(token, writer, fw.byteHeap, 0, ring);

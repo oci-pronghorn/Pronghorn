@@ -166,7 +166,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
                     	byte[] array = testConst;
                     	
                         RingBuffer.dump(ring);
-                        RingBuffer.addByteArray(array, 0, -1, ring);
+                        RingBuffer.addNullByteArray(ring);
                         RingBuffer.publishWrites(ring);
                     	
                         fw.acceptCharSequenceASCIIOptional(token, writer, fw.byteHeap, 0, ring);
@@ -190,7 +190,7 @@ public class StreamingASCIITest extends BaseStreamingTest {
                     	byte[] array = testDataBytes[f];
                     	
                         RingBuffer.dump(ring);
-                        RingBuffer.addByteArray(array, 0, -1, ring);
+                        RingBuffer.addNullByteArray(ring);
                         RingBuffer.publishWrites(ring);
                     	
                     	

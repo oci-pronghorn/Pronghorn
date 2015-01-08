@@ -207,25 +207,28 @@ public final class RingBuffer {
     }    
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
-    	    	
-        final int p = rbRingBuffer.byteWorkingHeadPos.value;
-        if (sourceLen > 0) {
-        	int proposedEnd = p + sourceLen;
-        	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, p, rbRingBuffer.byteMask);
-            rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
-        }        
-        
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
+    	
+		    	assert(sourceLen>=0);
+		        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
+		        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask& rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+		        rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
+		
     }
+    
+    public static void addNullByteArray(RingBuffer rbRingBuffer) {
+
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value, -1);
+    }
+    
 
 	public static void appendPartialBytesArray(byte[] source, int sourceIdx, int sourceLen,
 			                                   byte[] target, final int targetBytePos, int targetMask) {
-		int tStop = (targetBytePos + sourceLen -1) & targetMask;
+		int tStop = (targetBytePos + sourceLen) & targetMask;
 		int tStart = targetBytePos & targetMask;
 		if (tStop >= tStart) {
 		    System.arraycopy(source, sourceIdx, target, tStart, sourceLen);
 		} else {
-		    // done as two copies
+			// done as two copies
 		    int firstLen = (1+ targetMask) - tStart;
 		    System.arraycopy(source, sourceIdx, target, tStart, firstLen);
 		    System.arraycopy(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
