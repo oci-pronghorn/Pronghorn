@@ -513,30 +513,68 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             }
     }
     
-    public static void readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
+    public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int len = RingReader.readBytesLength(ring, idx);
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
         } else {
-            readBytesRing(ring,len,target, targetOffset,targetMask, pos);
+            readBytesRing(ring.byteBuffer, pos, ring.byteMask, target, targetOffset, targetMask,	len);
         }
+        return len;
     }
     
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
             byte[] buffer = ring.constByteBuffer;
-            while (--len >= 0) {
+            while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
                 target[targetMask & targetIdx++]=buffer[pos++];
             };
     }
 
-    private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
-            byte[] buffer = ring.byteBuffer;
-            int mask = ring.byteMask;
-            while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
-                target[targetMask & targetIdx]=buffer[mask & pos++];
-            }
-    }
+    public static void readBytesRing(byte[] source, int sourceIdx,
+			int sourceMask, byte[] target, int targetIdx, int targetMask,
+			int length) {
+		int tStop = (targetIdx + length) & targetMask;
+		int tStart = targetIdx & targetMask;
+		int rStop = (sourceIdx + length) & sourceMask;
+		int rStart = sourceIdx & sourceMask;
+		if (tStop >= tStart) {
+			if (rStop >= rStart) {
+				//the source and target do not wrap
+				System.arraycopy(source, sourceIdx, target, tStart, length);
+			} else {
+				//the source is wrapping but not the target
+				int srcFirstLen = (1 + sourceMask) - rStart;
+				System.arraycopy(source, sourceIdx, target, tStart, srcFirstLen);
+				System.arraycopy(source, 0, target, tStart+srcFirstLen, length-srcFirstLen);
+			}    			
+		} else {
+			if (rStop >= rStart) {
+				//the source does not wrap but the target does
+				// done as two copies
+			    int targFirstLen = (1 + targetMask) - tStart;
+			    System.arraycopy(source, sourceIdx, target, tStart, targFirstLen);
+			    System.arraycopy(source, sourceIdx + targFirstLen, target, 0, length - targFirstLen);
+			} else {
+		        if (length>0) {
+					//both the target and the source wrap
+					int srcFirstLen = (1 + sourceMask) - rStart;
+				    int targFirstLen = (1 + targetMask) - tStart;
+				    if (srcFirstLen<targFirstLen) {
+				    	//split on src first
+				    	System.arraycopy(source, sourceIdx, target, tStart, srcFirstLen);
+				    	System.arraycopy(source, 0, target, tStart+srcFirstLen, targFirstLen - srcFirstLen);
+				    	System.arraycopy(source, targFirstLen - srcFirstLen, target, 0, length - targFirstLen);    			    	
+				    } else {
+				    	//split on targ first
+				    	System.arraycopy(source, sourceIdx, target, tStart, targFirstLen);
+				    	System.arraycopy(source, sourceIdx + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
+				    	System.arraycopy(source, 0, target, srcFirstLen - targFirstLen, length - srcFirstLen);
+				    }
+		        }
+			}
+		}
+	}
 
 
     public static boolean isNewMessage(RingBuffer rb) {

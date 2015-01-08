@@ -208,10 +208,15 @@ public final class RingBuffer {
 
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	
-		    	assert(sourceLen>=0);
-		        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
-		        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask& rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
-		        rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
+    	assert(sourceLen>=0);
+    	if (sourceLen<0) {
+    		new Exception("Only pass in positive lengths").printStackTrace(); //remove this code once all the projects have had it a while.
+    		addNullByteArray(rbRingBuffer);
+    		return;
+    	}
+        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask& rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+        rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
     }
     

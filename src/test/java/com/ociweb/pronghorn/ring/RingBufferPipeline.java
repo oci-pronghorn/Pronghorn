@@ -9,7 +9,6 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 
 public class RingBufferPipeline {
-
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
 	private final int testMessages = 9000000;
@@ -63,8 +62,7 @@ public class RingBufferPipeline {
 	 	
 	 
 	private Runnable simpleFirstStage(final RingBuffer outputRing, boolean highLevelAPI) {
-		
-		
+				
 		if (highLevelAPI) {
 			return new Runnable() {
 				final int MESSAGE_IDX = 0;
@@ -120,70 +118,120 @@ public class RingBufferPipeline {
 
 	//NOTE: this is an example of a stage that reads from one ring buffer and writes to another.
 	private Runnable copyStage(final RingBuffer inputRing, final RingBuffer outputRing) {
+		boolean highLevelAPI = false;
 		
-		return new Runnable() {
-
-			@Override
-			public void run() {
-                //only enter this block when we know there are records to read
-    		    long inputTarget = 2;
-                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
-                                
-                //two per message, and we only want half the buffer to be full
-                long outputTarget = 2-(1<<primaryBits);//this value is negative
-                
-                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
-                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
-                while (true) {
-                    //read the message
-                    // 	System.out.println("reading:"+messageCount);
-                    	
-                	int meta = takeRingByteMetaData(inputRing);
-                	int len = takeRingByteLen(inputRing);
-                	
-                	byte[] data = byteBackingArray(meta, inputRing);
-                	int offset = bytePosition(meta, inputRing, len);
-
-                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
-                	 //write the record
-
-					
-					if (len<0) {
-						releaseReadLock(inputRing);  
-						addNullByteArray(outputRing);
-						publishWrites(outputRing);
-						return;
-					}
-
-					
-					//TODO: there is a more elegant way to do this but ran out of time.
-					if ((offset&mask) > ((offset+len-1) & mask)) {
+		if (highLevelAPI) {
+			return new Runnable() {
+				
+				@Override
+				public void run() {
+	                //only enter this block when we know there are records to read
+	    		    long inputTarget = 2;
+	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
+	                                
+	                //two per message, and we only want half the buffer to be full
+	                long outputTarget = 2-(1<<primaryBits);//this value is negative
+	                
+	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
+	                while (true) {
+	                    //read the message
+	
+	                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
+	                	 //write the record
+	
+						//High level API example
+						int length = RingReader.readBytes(inputRing, 0, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
+						if (length<0) {
+							releaseReadLock(inputRing);  
+							addNullByteArray(outputRing);
+							publishWrites(outputRing);
+							return;
+						}
+						RingWriter.finishWriteBytesAlreadyStarted(outputRing, outputRing.byteWorkingHeadPos.value, length);
 						
-						//rolled over the end of the buffer
-						 int len1 = 1+mask-(offset&mask);
-						 addByteArray(data, offset&mask, len1, outputRing);
-						 addByteArray(data, 0, len-len1 ,outputRing);
-						 outputTarget+=4; 
-						 
-					} else {						
+					    outputRing.byteWorkingHeadPos.value += length;
+					    inputRing.workingTailPos.value += 2;
+					    
+					    outputTarget+=2;
 						
-						//simple add bytes
-						 addByteArray(data, offset&mask, len, outputRing);
-						 outputTarget+=2;
-					}
-					
-                    publishWrites(outputRing);
-                    
-                    releaseReadLock(inputRing);  
-
-                	
-                	//block until one more byteVector is ready.
-                	inputTarget += 2;
-                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
-                    
-                }  
-			}
-		};
+	                    publishWrites(outputRing);
+	                    
+	                    releaseReadLock(inputRing);  
+		                	
+	                	//block until one more byteVector is ready.
+	                	inputTarget += 2;
+	                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
+	                    
+	                }  
+				}
+			};
+			
+		} else {
+				
+			return new Runnable() {
+	
+				@Override
+				public void run() {
+	                //only enter this block when we know there are records to read
+	    		    long inputTarget = 2;
+	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
+	                                
+	                //two per message, and we only want half the buffer to be full
+	                long outputTarget = 2-(1<<primaryBits);//this value is negative
+	                
+	                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
+	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
+	                while (true) {
+	                    //read the message
+	                    // 	System.out.println("reading:"+messageCount);
+	                    	
+	                	int meta = takeRingByteMetaData(inputRing);
+	                	int len = takeRingByteLen(inputRing);
+	                	
+	                	byte[] data = byteBackingArray(meta, inputRing);
+	                	int offset = bytePosition(meta, inputRing, len);
+	
+	                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
+	                	 //write the record
+	
+						
+						if (len<0) {
+							releaseReadLock(inputRing);  
+							addNullByteArray(outputRing);
+							publishWrites(outputRing);
+							return;
+						}
+	
+						
+						//TODO: there is a more elegant way to do this but ran out of time.
+						if ((offset&mask) > ((offset+len-1) & mask)) {
+							
+							//rolled over the end of the buffer
+							 int len1 = 1+mask-(offset&mask);
+							 addByteArray(data, offset&mask, len1, outputRing);
+							 addByteArray(data, 0, len-len1 ,outputRing);
+							 outputTarget+=4; 
+							 
+						} else {						
+							
+							//simple add bytes
+							 addByteArray(data, offset&mask, len, outputRing);
+							 outputTarget+=2;
+						}
+						
+	                    publishWrites(outputRing);
+	                    
+	                    releaseReadLock(inputRing);  
+	
+	                	
+	                	//block until one more byteVector is ready.
+	                	inputTarget += 2;
+	                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
+	                    
+	                }  
+				}
+			};
+		}
 	}
 	
 	private Runnable dumpStage(final RingBuffer inputRing) {
