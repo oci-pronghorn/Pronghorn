@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.RingWriter;
 
 public class AppendableASCIIRing implements Appendable {
@@ -20,6 +21,7 @@ public class AppendableASCIIRing implements Appendable {
 	
 	@Override
 	public Appendable append(CharSequence csq) throws IOException {
+		RingWalker.blockWriteFragment(ringBuffer, 0);
 		RingWriter.writeASCII(ringBuffer, csq);
 		RingBuffer.publishWrites(ringBuffer);
 		return this;
@@ -28,13 +30,15 @@ public class AppendableASCIIRing implements Appendable {
 	@Override
 	public Appendable append(CharSequence csq, int start, int end)
 			throws IOException {
-		RingWriter.writeASCII(ringBuffer, csq, start, end);
+		RingWalker.blockWriteFragment(ringBuffer, 0);
+		RingWriter.writeASCII(ringBuffer, csq, start, end-start);
 		RingBuffer.publishWrites(ringBuffer);
 		return this;
 	}
 
 	@Override
 	public Appendable append(char c) throws IOException {
+		RingWalker.blockWriteFragment(ringBuffer, 0);
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
 		RingWriter.writeASCII(ringBuffer, temp);
 		RingBuffer.publishWrites(ringBuffer);
@@ -42,6 +46,7 @@ public class AppendableASCIIRing implements Appendable {
 	}
 
 	public void flush() {
+		RingWalker.blockWriteFragment(ringBuffer, 0);
 		RingStreams.writeEOF(ringBuffer);
 	}
 }

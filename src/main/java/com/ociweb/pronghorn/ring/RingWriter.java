@@ -41,12 +41,58 @@ public class RingWriter {
     	writeLong(rb, Double.doubleToLongBits(value));
     }    
     
-//    public static float readFloat(RingBuffer ring, int idx) {
-//        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))
-//        		         *powfi[64*readDecimalExponent(ring,(OFF_MASK&idx))];
-//    }
+    //requires 12 bytes!
+    public static void writeIntAsText(RingBuffer rb, int value) {
+		rb.validateVarLength(12);
+    	
+    	byte[] target = rb.byteBuffer;
+    	int max = 12+rb.byteWorkingHeadPos.value;
+    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+    	//this will leave a gap but that is not a problem.
+    	int idx=max;
+    	int tmp = value;    	
+    	while (tmp!=0) {
+    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+    		int t = tmp/10;
+    		int r = tmp%10;
+    		target[rb.byteMask&--idx] = (byte)('0'+r);
+    		tmp = t;
+    	}
+    	target[rb.byteMask& (idx-1)] = (byte)'-';
+    	//to make it positive we jump over the sign.
+    	idx -= (1&(value>>31));
+    	
+    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
+    	rb.byteWorkingHeadPos.value = max;    	
+	}
+    
+    //requires 24 bytes????  TODO: AAA, what is the real length!
+    public static void writeLongAsText(RingBuffer rb, long value) {
+		rb.validateVarLength(24);
+    	
+    	byte[] target = rb.byteBuffer;
+    	int max = 12+rb.byteWorkingHeadPos.value;
+    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+    	//this will leave a gap but that is not a problem.
+    	int idx=max;
+    	long tmp = value;    	
+    	while (tmp!=0) {
+    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+    		long t = tmp/10;
+    		long r = tmp%10;
+    		target[rb.byteMask&--idx] = (byte)('0'+r);
+    		tmp = t;
+    	}
+    	target[rb.byteMask& (idx-1)] = (byte)'-';
+    	//to make it positive we jump over the sign.
+    	idx -= (1&(value>>31));
+    	
+    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
+    	rb.byteWorkingHeadPos.value = max;    	
+	}    
     
     
+        
     //Because the stream needs to be safe and write the bytes ahead to the buffer we need 
     //to set the new byte pos, pos/len ints as a separate call
     public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
@@ -168,7 +214,7 @@ public class RingWriter {
 			byte[] target = rbRingBuffer.byteBuffer;        	
 			
 	        int tStart = p & targetMask;
-			if (tStart < ((p + sourceLen - 1) & targetMask)) {
+			if (tStart < ((p + sourceLen ) & targetMask)) {
 				RingWriter.copyASCIIToByte(source, 0, target, tStart, sourceLen);
 			} else {
 			    // done as two copies
@@ -315,6 +361,7 @@ public class RingWriter {
 
 	    return pos;
 	}
-    
+
+	
     
 }

@@ -374,6 +374,7 @@ public class FieldReferenceOffsetManager {
 		}		
 	}
     
+	//TODO: C, if this really really needs more specific values we may be able to give custom values per column #.
 	public static int getAbsent32Value(FieldReferenceOffsetManager from) {
 		return from.absentInt;
 	}

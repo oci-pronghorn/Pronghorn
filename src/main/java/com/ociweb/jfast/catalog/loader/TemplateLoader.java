@@ -108,8 +108,8 @@ public class TemplateLoader {
     }
 
 	public static void buildCatalog(OutputStream outputStream,
-			InputStream inputStream, ClientConfig clientConfig)
-			throws ParserConfigurationException, SAXException, IOException {
+									InputStream inputStream, ClientConfig clientConfig)
+									throws ParserConfigurationException, SAXException, IOException {
 
 		GZIPOutputStream gZipOutputStream = new GZIPOutputStream(outputStream);
 		FASTOutput output = new FASTOutputStream(gZipOutputStream);
@@ -158,6 +158,17 @@ public class TemplateLoader {
 		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
 	    try {
 	        buildCatalog(catalogBuffer, source, clientConfig);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	    assert(catalogBuffer.size() > 0);
+	    return catalogBuffer.toByteArray();
+	}
+	
+	public static byte[] buildCatBytes(InputStream input, ClientConfig clientConfig) {
+		ByteArrayOutputStream catalogBuffer = new ByteArrayOutputStream(4096);
+	    try {
+	        buildCatalog(catalogBuffer, input, clientConfig);
 	    } catch (Exception e) {
 	        e.printStackTrace();
 	    }
