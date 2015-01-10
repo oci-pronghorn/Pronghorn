@@ -185,10 +185,27 @@ public final class RingBuffer {
         
 
     }
-    
-    
+        
 
-    public static int peek(int[] buf, long pos, int mask) {
+    public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
+		if ((offset&mask) <= ((offset+len-1) & mask)) {
+			
+			//simple add bytes
+			addByteArray(data, offset&mask, len, outputRing);
+			 
+		} else {						
+			
+			//rolled over the end of the buffer
+			int len1 = 1+mask-(offset&mask);
+			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
+			appendPartialBytesArray(data, 0, len-len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
+			
+			addValue(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
+			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
+		}
+	}
+
+	public static int peek(int[] buf, long pos, int mask) {
         return buf[mask & (int)pos];
     }
 
@@ -209,11 +226,6 @@ public final class RingBuffer {
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	
     	assert(sourceLen>=0);
-    	if (sourceLen<0) {
-    		new Exception("Only pass in positive lengths").printStackTrace(); //remove this code once all the projects have had it a while.
-    		addNullByteArray(rbRingBuffer);
-    		return;
-    	}
         appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask& rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		

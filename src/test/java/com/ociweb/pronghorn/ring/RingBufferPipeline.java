@@ -16,6 +16,10 @@ public class RingBufferPipeline {
 	private final byte primaryBits   = 19;
 	private final byte secondaryBits = 27;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
+	//The limiting factor for these tests is not the data copy but it is the contention over the hand-off when the head/tail are modified.
+	//so by setting matchMask to reduce the calls to publish a dramatic performance increase can be seen.  This will increase latency.
+	private final int batchMask = 0;//0xFFF;
+	
 	@Test
 	public void pipelineExample() {		 		 
 		 boolean highLevelAPI = false;		 
@@ -73,7 +77,10 @@ public class RingBufferPipeline {
 					 while (--messageCount>=0) {
 						 RingWalker.blockWriteFragment(outputRing, MESSAGE_IDX);
 						 RingWriter.writeBytes(outputRing, testArray);
-		                 publishWrites(outputRing);
+						 
+						 if (0==(batchMask&messageCount)) {
+							 publishWrites(outputRing);
+						 }
 					 }
 					 addNullByteArray(outputRing);
 			      	 publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
@@ -98,7 +105,9 @@ public class RingBufferPipeline {
 		              //write the record
 	                  addByteArray(testArray, 0, testArray.length, outputRing);
 	                  
-	                  publishWrites(outputRing);
+				 	  if (0==(batchMask&messageCount)) {
+						 publishWrites(outputRing);
+				 	  }
 	                  head +=messageSize;
 	                  //wait for room to fit one message
 	                  //waiting on the tailPosition to move the others are constant for this scope.
@@ -128,7 +137,8 @@ public class RingBufferPipeline {
 	                //only enter this block when we know there are records to read
 	    		    long inputTarget = 2;
 	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
-	                                
+	                int msgCount = testMessages;   
+	                
 	                //two per message, and we only want half the buffer to be full
 	                long outputTarget = 2-(1<<primaryBits);//this value is negative
 	                
@@ -154,7 +164,9 @@ public class RingBufferPipeline {
 					    
 					    outputTarget+=2;
 						
-	                    publishWrites(outputRing);
+						 if (0==(batchMask& --msgCount)) {
+							 publishWrites(outputRing);
+						 }
 	                    
 	                    releaseReadLock(inputRing);  
 		                	
@@ -175,7 +187,8 @@ public class RingBufferPipeline {
 	                //only enter this block when we know there are records to read
 	    		    long inputTarget = 2;
 	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
-	                                
+	                int msgCount = testMessages;   
+	                
 	                //two per message, and we only want half the buffer to be full
 	                long outputTarget = 2-(1<<primaryBits);//this value is negative
 	                
@@ -202,24 +215,12 @@ public class RingBufferPipeline {
 							return;
 						}
 	
+						RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);						
+						outputTarget+=2;
 						
-						//TODO: there is a more elegant way to do this but ran out of time.
-						if ((offset&mask) > ((offset+len-1) & mask)) {
-							
-							//rolled over the end of the buffer
-							 int len1 = 1+mask-(offset&mask);
-							 addByteArray(data, offset&mask, len1, outputRing);
-							 addByteArray(data, 0, len-len1 ,outputRing);
-							 outputTarget+=4; 
-							 
-						} else {						
-							
-							//simple add bytes
-							 addByteArray(data, offset&mask, len, outputRing);
-							 outputTarget+=2;
-						}
-						
-	                    publishWrites(outputRing);
+						 if (0==(batchMask& --msgCount)) {
+							 publishWrites(outputRing);
+						 }
 	                    
 	                    releaseReadLock(inputRing);  
 	
