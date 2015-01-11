@@ -42,6 +42,8 @@ public class TemplateHandler extends DefaultHandler {
     int[] catalogScriptTokens = new int[MAX_SCRIPT_LENGTH];
     long[] catalogScriptFieldIds = new long[MAX_SCRIPT_LENGTH];
     String[] catalogScriptFieldNames = new String[MAX_SCRIPT_LENGTH];
+    String[] catalogScriptDictionaryNames = new String[MAX_SCRIPT_LENGTH];
+    
 
     int catalogTemplateScriptIdx = 0;
 
@@ -128,12 +130,10 @@ public class TemplateHandler extends DefaultHandler {
     // groups can be nested and need a stack, this includes sequence and
     // template.
 
+    //TODO: B, Make these smaller they do not need to be this big
     int[] groupOpenTokenPMapStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
-    int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];// Need
-                                                                         // not
-                                                                         // be
-                                                                         // this
-                                                                         // big.
+    int[] groupOpenTokenStack = new int[TokenBuilder.MAX_FIELD_ID_VALUE];
+    
     int groupTokenStackHead = -1;
     int maxGroupTokenStackDepth;
     final ClientConfig clientConfig;
@@ -273,8 +273,7 @@ public class TemplateHandler extends DefaultHandler {
             int templateOffset = catalogTemplateScriptIdx + 1;
             fieldName = attributes.getValue("name");
             
-            //NOTE: this would be very nice if long were supported for the ID.
-            templateId = Integer.parseInt(attributes.getValue("id"));
+            templateId = Long.parseLong(attributes.getValue("id"));
             
             if (!LongHashTable.setItem(templateToOffset, templateId, templateOffset)) {
             	throw new SAXException("Duplicate template id: " + templateId);
@@ -306,6 +305,10 @@ public class TemplateHandler extends DefaultHandler {
 
             catalogScriptTokens[    catalogTemplateScriptIdx] = token;
             catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
+            
+            String dictionaryName = setActiveDictionary(attributes);
+            catalogScriptDictionaryNames[catalogTemplateScriptIdx] = dictionaryName;
+            
             fieldName=null;//ensure it is only used once
             catalogScriptFieldIds[  catalogTemplateScriptIdx++] = templateId;
 
@@ -317,7 +320,6 @@ public class TemplateHandler extends DefaultHandler {
             templateXMLns = attributes.getValue("xmlns");
             templateName = attributes.getValue("name");
 
-            setActiveDictionary(attributes);
 
             if ("Y".equalsIgnoreCase(attributes.getValue("reset"))) {
                 // add Dictionary command to reset in the script
@@ -368,11 +370,11 @@ public class TemplateHandler extends DefaultHandler {
 
     //template, templates, sequence, group, ops - copy,inc,delta,tail all set dictionary.
     //TODO: B, must pop and return the previous dictionary at end of scope.
-    private void setActiveDictionary(Attributes attributes) {
+    private String setActiveDictionary(Attributes attributes) {
         String dictionaryName = attributes.getValue("dictionary");
         if (null==dictionaryName) {
             //Do not change activeDictionary if dictionary attribute does not appear.
-            return;
+            return activeDictionary>=0? dictionaryNames.get(activeDictionary) : globalDictionaryName;
         }
         if ("template".equalsIgnoreCase(dictionaryName)) {
             dictionaryName = SPECIAL_PREFIX + templateId;
@@ -387,6 +389,7 @@ public class TemplateHandler extends DefaultHandler {
         } else {
             activeDictionary = idx;
         }
+        return dictionaryName;
     }
 
     private void commonIdAttributes(Attributes attributes, long defaultAbsent) throws SAXException {
@@ -859,7 +862,7 @@ public class TemplateHandler extends DefaultHandler {
         // write catalog data.
         TemplateCatalogConfig.save(writer, fieldIdBiggest, templateIdUnique, templateIdBiggest, defaultConstValues,
                 catalogLargestTemplatePMap, catalogLargestNonTemplatePMap, tokenIdxMembers, tokenIdxMemberHeads,
-                catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, 
+                catalogScriptTokens, catalogScriptFieldIds, catalogScriptFieldNames, catalogScriptDictionaryNames,
                 catalogTemplateScriptIdx,  templateToOffset, templateToLimit ,
                 maxGroupTokenStackDepth + 1, clientConfig);
 

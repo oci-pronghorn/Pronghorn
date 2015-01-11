@@ -22,6 +22,7 @@ public class FieldReferenceOffsetManager {
     
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
+    public final String[] dictionaryNameScript;
     public int maximumFragmentStackDepth;  
     public final float maxVarFieldPerUnit;
     
@@ -58,11 +59,17 @@ public class FieldReferenceOffsetManager {
     }    
     
     public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds) {
-    	this(scriptTokens,preableBytes,scriptNames,scriptIds,null);
+    	this(scriptTokens,preableBytes,scriptNames,scriptIds,(String)null);
     }
+    
+    public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames) {
+    	this(scriptTokens,preableBytes,scriptNames,scriptIds,(String)null);
+    	//dictionary names provide a back channel to pass information that relates to template choices when decoding/encoding object    	
+    }
+    
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
 	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String name) {
-				
+			
 		this.name = name;
 		//TODO: B, clientConfig must be able to skip reading the preamble,
         int PREAMBLE_MASK = 0xFFFFFFFF;//Set to zero when we are not sending the preamble
@@ -86,6 +93,7 @@ public class FieldReferenceOffsetManager {
             fragScriptSize = null;
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
+            dictionaryNameScript = null;
         } else {
         	tokens = scriptTokens;
         	messageStarts = computeMessageStarts(); 
@@ -97,12 +105,15 @@ public class FieldReferenceOffsetManager {
             maximumFragmentStackDepth = scriptTokens.length;
             			
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes, messageStarts.length>1 ? 1 : 0);
+            //consumer of this need not check for null because it is always created.
+            dictionaryNameScript = new String[scriptTokens.length];
         }
         tokensLen = null==tokens?0:tokens.length;
         
         
         fieldNameScript = scriptNames;
         fieldIdScript = scriptIds;
+	
 	}
 
 	public String toString() {

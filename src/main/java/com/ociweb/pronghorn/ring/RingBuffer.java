@@ -33,6 +33,9 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 //TODO: B, build  null ring buffer to drop messages.
 
+//TODO: AA, check if low level api will update stats
+//TODO: AA, auto optimized publish rate based on ring buffer status and full frequency
+
 public final class RingBuffer {
    
     public static class PaddedLong {

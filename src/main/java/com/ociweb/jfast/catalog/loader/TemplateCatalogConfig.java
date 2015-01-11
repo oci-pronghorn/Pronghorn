@@ -56,6 +56,7 @@ public class TemplateCatalogConfig {
     final int[] scriptTokens;
     final long[] scriptFieldIds;
     private final String[] scriptFieldNames;
+    private final String[] scriptDictionaryNames;
     private final int templatesInCatalog;
 
     
@@ -81,6 +82,7 @@ public class TemplateCatalogConfig {
         scriptTokens = new int[fullScriptLength];
         scriptFieldIds = new long[fullScriptLength];
         scriptFieldNames = new String[fullScriptLength];
+        scriptDictionaryNames = new String[fullScriptLength];
         
         //given the template id from the template file look up the 
         //script starts and limits
@@ -130,6 +132,7 @@ public class TemplateCatalogConfig {
         this.templatesInCatalog=templatesCount;
         this.templateToStartIdx=null;
         this.scriptFieldNames=null;
+        this.scriptDictionaryNames=null;
         this.templateScriptEntries=null;
         this.templateScriptEntryLimits=null;
         this.scriptFieldIds=null;
@@ -166,30 +169,36 @@ public class TemplateCatalogConfig {
         while (--i >= 0) {
             getScriptTokens()[i] = PrimitiveReader.readIntegerSigned(reader);
             scriptFieldIds[i] = PrimitiveReader.readIntegerUnsigned(reader);
-            int len = PrimitiveReader.readIntegerUnsigned(reader);
-            String name ="";
-            if (len>0) {
-                builder.setLength(0);
-                {
-                    byte[] tmp = new byte[len];                    
-                    PrimitiveReader.readByteData(tmp,0,len,reader); //read bytes into array
-                    
-                    long charAndPos = 0;  //convert bytes to chars
-                    while (charAndPos>>32 < len  ) { 
-                        charAndPos = RingReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
-                        builder.append((char)charAndPos);
-
-                    }
-                }
-                name = builder.toString();
-            }
-            scriptFieldNames[i] = name;
+            scriptFieldNames[i] = readUTF8(reader, builder);;
+            scriptDictionaryNames[i] = readUTF8(reader, builder);;
+            
         }
 
         // System.err.println("script tokens/fields "+scriptTokens.length);//46
         // System.err.println("templateId idx start/stop count "+this.templateStartIdx.length);//128
 
     }
+
+	public String readUTF8(PrimitiveReader reader, StringBuilder builder) {
+		int len = PrimitiveReader.readIntegerUnsigned(reader);
+		String name ="";
+		if (len>0) {
+		    builder.setLength(0);
+		    {
+		        byte[] tmp = new byte[len];                    
+		        PrimitiveReader.readByteData(tmp,0,len,reader); //read bytes into array
+		        
+		        long charAndPos = 0;  //convert bytes to chars
+		        while (charAndPos>>32 < len  ) { 
+		            charAndPos = RingReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
+		            builder.append((char)charAndPos);
+
+		        }
+		    }
+		    name = builder.toString();
+		}
+		return name;
+	}
 
     // // stream message* | block*
     // // block BlockSize message+
@@ -203,11 +212,11 @@ public class TemplateCatalogConfig {
 
     public static void save(PrimitiveWriter writer, int biggestId, int uniqueTemplateIds, long biggestTemplateId,
             DictionaryFactory df, int maxTemplatePMap, int maxNonTemplatePMap, int[][] tokenIdxMembers,
-            int[] tokenIdxMemberHeads, int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames,
+            int[] tokenIdxMemberHeads, int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames, String[] dictionaryNames,
             int scriptLength,  LongHashTable templateToOffset, LongHashTable templateToLimit , int maxPMapDepth, ClientConfig clientConfig) {    
         
         saveTemplateScripts(writer, uniqueTemplateIds, biggestTemplateId, catalogScriptTokens, 
-                catalogScriptFieldIds, catalogScriptFieldNames,
+                catalogScriptFieldIds, catalogScriptFieldNames, dictionaryNames,
                 scriptLength, templateToOffset, templateToLimit);
 
         saveDictionaryMembers(writer, tokenIdxMembers, tokenIdxMemberHeads);
@@ -311,8 +320,8 @@ public class TemplateCatalogConfig {
      * @param scripts
      */
     private static void saveTemplateScripts(final PrimitiveWriter writer, int uniqueTemplateIds, long biggestTemplateId,
-            int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames, int scriptLength, 
-            LongHashTable templateToOffset, final LongHashTable templateToLimit ) {
+            int[] catalogScriptTokens, long[] catalogScriptFieldIds, String[] catalogScriptFieldNames, String[] dictionaryNames,
+            int scriptLength, LongHashTable templateToOffset, final LongHashTable templateToLimit ) {
         // what size array will we need for template lookup. this must be a
         // power of two
         // therefore we will only store the exponent given a base of two.
@@ -344,25 +353,30 @@ public class TemplateCatalogConfig {
         while (--i >= 0) {
             PrimitiveWriter.writeIntegerSigned(catalogScriptTokens[i], writer);
             PrimitiveWriter.writeLongUnsigned(catalogScriptFieldIds[i], writer); 
-            String name = catalogScriptFieldNames[i];
+           
+            writeUTF8(writer, catalogScriptFieldNames[i]);
+            writeUTF8(writer, dictionaryNames[i]);
             
-            int len = null==name?0:name.length();
-            PrimitiveWriter.writeIntegerUnsigned(len, writer);
-            if (len>0) {
-                PrimitiveWriter.ensureSpace(name.length(),writer);
-                
-                //convert from chars to bytes
-                //writeByteArrayData()
-                int len1 = name.length();
-                int limit = writer.limit;
-                int c = 0;
-                while (c < len1) {
-                    limit = RingWriter.encodeSingleChar((int) name.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
-                }
-                writer.limit = limit;
-            }
         }
     }
+
+	public static void writeUTF8(final PrimitiveWriter writer, String name) {
+		int len = null==name?0:name.length();
+		PrimitiveWriter.writeIntegerUnsigned(len, writer);
+		if (len>0) {
+		    PrimitiveWriter.ensureSpace(name.length(),writer);
+		    
+		    //convert from chars to bytes
+		    //writeByteArrayData()
+		    int len1 = name.length();
+		    int limit = writer.limit;
+		    int c = 0;
+		    while (c < len1) {
+		        limit = RingWriter.encodeSingleChar((int) name.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
+		    }
+		    writer.limit = limit;
+		}
+	}
 
     public DictionaryFactory dictionaryFactory() {
         return dictionaryFactory;
@@ -429,9 +443,14 @@ public class TemplateCatalogConfig {
 		return new FieldReferenceOffsetManager(   config.scriptTokens, 
 									        	  config.clientConfig.getPreableBytes(), 
 									              config.fieldNameScript(),
-									              config.fieldIdScript());
+									              config.fieldIdScript(),
+									              config.dictionaryScript());
 		
 		
+	}
+
+	private String[] dictionaryScript() {
+		return scriptDictionaryNames;
 	}
 
 	public static int maxPMapCountInBytes(TemplateCatalogConfig catalog) {

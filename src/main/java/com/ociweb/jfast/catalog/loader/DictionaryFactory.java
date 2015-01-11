@@ -3,13 +3,9 @@
 //Send support requests to http://www.ociweb.com/contact
 package com.ociweb.jfast.catalog.loader;
 
-import java.util.Arrays;
-
-import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
-import com.ociweb.pronghorn.ring.RingReader;
 
 /**
  * Holds count of how many of each type of field is required and what the
