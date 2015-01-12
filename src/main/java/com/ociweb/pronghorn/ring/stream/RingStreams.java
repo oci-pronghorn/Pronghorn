@@ -19,10 +19,6 @@ import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingWriter;
 
 public class RingStreams {
-
-
-	private static final byte[] EMPTY = new byte[0];
-	
 	
 	/**
 	 * Copies all bytes from the inputRing to the outputStream.  Will continue to do this until the inputRing

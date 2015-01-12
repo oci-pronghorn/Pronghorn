@@ -524,6 +524,17 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return len;
     }
     
+	public static int copyBytes(final RingBuffer inputRing,	final RingBuffer outputRing, int fieldId) {
+		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask
+		int length = readBytes(inputRing, fieldId, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
+		outputRing.validateVarLength(length);							
+		
+		int p = outputRing.byteWorkingHeadPos.value;
+		RingBuffer.addValue(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, p, length);							
+		outputRing.byteWorkingHeadPos.value = p + length;
+		return length;
+	}
+    
     private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
@@ -580,7 +591,5 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public static boolean isNewMessage(RingBuffer rb) {
 		return rb.consumerData.isNewMessage();
 	}
-
-
 
 }

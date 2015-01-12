@@ -116,11 +116,11 @@ public class RingWriter {
     
 	
     public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
-    	
+    	assert(length>=0);
     	int bytePos = rb.byteWorkingHeadPos.value;    	
     	
     	rb.validateVarLength(length);
-    	if ((bytePos&rb.byteMask) > ((bytePos+length-1)&rb.byteMask)) {
+    	if ((bytePos&rb.byteMask) > ((bytePos+length)&rb.byteMask)) {
     		int temp = 1 + rb.mask - (bytePos & rb.mask);
     		
     		source.get(rb.byteBuffer, bytePos & rb.byteMask, temp);

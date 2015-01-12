@@ -14,7 +14,7 @@ public class RingBufferPipeline {
 	private final int testMessages = 9000000;
 	private final int stages = 3;
 	private final byte primaryBits   = 19;
-	private final byte secondaryBits = 27;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte secondaryBits = 24;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	//The limiting factor for these tests is not the data copy but it is the contention over the hand-off when the head/tail are modified.
 	//so by setting matchMask to reduce the calls to publish a dramatic performance increase can be seen.  This will increase latency.
@@ -22,7 +22,7 @@ public class RingBufferPipeline {
 	
 	@Test
 	public void pipelineExample() {		 		 
-		 boolean highLevelAPI = false;		 
+		 boolean highLevelAPI = true;		 
 		
 		 //create all the threads, one for each stage
 		 ExecutorService service = Executors.newFixedThreadPool(stages);
@@ -42,7 +42,7 @@ public class RingBufferPipeline {
 		 service.submit(simpleFirstStage(rings[j], highLevelAPI));
 		 int i = stages-2;
 		 while (--i>=0) {
-			 service.submit(copyStage(rings[j++], rings[j]));			 
+			 service.submit(copyStage(rings[j++], rings[j], highLevelAPI));			 
 		 }
 		 service.submit(dumpStage(rings[j]));
 		 
@@ -56,7 +56,7 @@ public class RingBufferPipeline {
 		 }
 		 long duration = System.currentTimeMillis()-start;
 		 
-		 long bytes = testMessages * testArray.length;
+		 long bytes = testMessages * (long)testArray.length;
 		 long bpms = (bytes*8)/duration;
 		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages);
 		 
@@ -126,55 +126,42 @@ public class RingBufferPipeline {
 	}
 
 	//NOTE: this is an example of a stage that reads from one ring buffer and writes to another.
-	private Runnable copyStage(final RingBuffer inputRing, final RingBuffer outputRing) {
-		boolean highLevelAPI = false;
-		
+	private Runnable copyStage(final RingBuffer inputRing, final RingBuffer outputRing, boolean highLevelAPI) {
+
 		if (highLevelAPI) {
 			return new Runnable() {
 				
+				final int MSG_ID = 0;
+				final int FIELD_ID = 0;
+				
 				@Override
 				public void run() {
-	                //only enter this block when we know there are records to read
-	    		    long inputTarget = 2;
-	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
-	                int msgCount = testMessages;   
-	                
-	                //two per message, and we only want half the buffer to be full
-	                long outputTarget = 2-(1<<primaryBits);//this value is negative
-	                
-	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
-	                while (true) {
-	                    //read the message
-	
-	                	tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, outputRing);
-	                	 //write the record
-	
-						//High level API example
-						int length = RingReader.readBytes(inputRing, 0, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
-						if (length<0) {
-							releaseReadLock(inputRing);  
-							addNullByteArray(outputRing);
-							publishWrites(outputRing);
-							return;
+										
+					int length = 0;
+					do {
+						if (RingWalker.tryReadFragment(inputRing)) {
+							assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
+							
+							//wait until the target ring has room for this message
+							if (RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
+								
+								//copy this message from one ring to the next
+								//NOTE: in the normal world I would expect the data to be modified before getting moved.
+								length = RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
+														
+								//release the data from the input ring we are done with this message
+								releaseReadLock(inputRing);  
+								
+								//publish the new message to the next ring buffer
+								publishWrites(outputRing);
+							} else {
+								Thread.yield();//do something meaningful while we wait for space to write our new data
+							}
+						} else {
+							Thread.yield();//do something meaningful while we wait for new data
 						}
-						RingWriter.finishWriteBytesAlreadyStarted(outputRing, outputRing.byteWorkingHeadPos.value, length);
-						
-					    outputRing.byteWorkingHeadPos.value += length;
-					    inputRing.workingTailPos.value += 2;
-					    
-					    outputTarget+=2;
-						
-						 if (0==(batchMask& --msgCount)) {
-							 publishWrites(outputRing);
-						 }
-	                    
-	                    releaseReadLock(inputRing);  
-		                	
-	                	//block until one more byteVector is ready.
-	                	inputTarget += 2;
-	                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
-	                    
-	                }  
+						//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
+					} while (length>=0);		
 				}
 			};
 			
@@ -238,11 +225,10 @@ public class RingBufferPipeline {
 	private Runnable dumpStage(final RingBuffer inputRing) {
 		
 		return new Runnable() {
-
-			long total = 0;
 			
             @Override
             public void run() {           	
+             	    long total = 0;
     	            	
                     //only enter this block when we know there are records to read
         		    long target = 2;

@@ -361,24 +361,21 @@ public class RingWalker {
 		
 		//TODO: based on fragment sizes can predict the head position at this call
 		
-		int fragSize = RingBuffer.from(ring).fragDataSize[cursorPosition];
-		boolean result = (ring.maxSize - (int)(ring.headPos.longValue() - ring.tailPos.longValue())) >= fragSize;
+		//TODO: hitting head and tail are an area to look at for improvement
+		boolean hasRoom = (ring.maxSize - (int)(ring.headPos.longValue() - ring.tailPos.longValue())) >=  RingBuffer.from(ring).fragDataSize[cursorPosition];
 		
-		if (result) {
-			
-						
-			//TODO: this is too complex and will be simplified 
-			if (RingBuffer.from(ring).messageStarts.length>0) {
+		if (hasRoom && RingBuffer.from(ring).messageStarts.length>1) {
+		      //TODO: this is too complex and will be simplified 
 			  if ((0 !=	(RingBuffer.from(ring).tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
 				        (RingBuffer.from(ring).tokens[cursorPosition] & (TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE ))==(TypeMask.Group<<TokenBuilder.SHIFT_TYPE)) {
-				  
+
 				  //add template loc in prep for write
 				  RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
 				  
 			  }
-			}		
+	
 		}
-		return result;
+		return hasRoom;
 	}
 	
 	/**
