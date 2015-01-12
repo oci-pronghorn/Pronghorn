@@ -80,7 +80,7 @@ public final class RingBuffer {
     private final byte pBits;
     private final byte bBits;
     
-    private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: AAA, create unit test examples for using this.
+    private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
     
     
     public RingBuffer(RingBufferConfig config) {

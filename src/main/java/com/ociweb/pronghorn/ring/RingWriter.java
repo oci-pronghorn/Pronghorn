@@ -66,9 +66,8 @@ public class RingWriter {
     	rb.byteWorkingHeadPos.value = max;    	
 	}
     
-    //requires 24 bytes????  TODO: AAA, what is the real length!
     public static void writeLongAsText(RingBuffer rb, long value) {
-		rb.validateVarLength(24);
+		rb.validateVarLength(21);
     	
     	byte[] target = rb.byteBuffer;
     	int max = 12+rb.byteWorkingHeadPos.value;
@@ -128,8 +127,9 @@ public class RingWriter {
     	} else {					    	
     		source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
     	}
-    	rb.byteWorkingHeadPos.value = bytePos+length;
-    	finishWriteBytesAlreadyStarted(rb, bytePos, length);
+		RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, bytePos, length);
+		
+		rb.byteWorkingHeadPos.value = bytePos + length;
     }
     
     

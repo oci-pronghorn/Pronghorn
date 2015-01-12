@@ -350,7 +350,7 @@ public class RingWalker {
 	}
 
     /**
-     * Non blocking call to write fragmement to ring buffer.
+     * Non blocking call to write fragment to ring buffer.
      * Returns false if there is not enough room for the fragment.
      * 
      * @param ring
@@ -362,7 +362,8 @@ public class RingWalker {
 		//TODO: based on fragment sizes can predict the head position at this call
 		
 		//TODO: hitting head and tail are an area to look at for improvement
-		boolean hasRoom = (ring.maxSize - (int)(ring.headPos.longValue() - ring.tailPos.longValue())) >=  RingBuffer.from(ring).fragDataSize[cursorPosition];
+		boolean hasRoom = (ring.maxSize - RingBuffer.from(ring).fragDataSize[cursorPosition]) >=  (ring.headPos.longValue() - ring.tailPos.longValue()) ;
+		
 		
 		if (hasRoom && RingBuffer.from(ring).messageStarts.length>1) {
 		      //TODO: this is too complex and will be simplified 
