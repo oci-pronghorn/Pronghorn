@@ -79,23 +79,24 @@ public class RingWalker {
     }
     
     public static long responseTime(RingWalker ringBufferConsumer) {
-        //Latency in ns
-       // System.err.println("inputs:" +ringBufferConsumer.queueFill.valueAtPercent(.5)+"x"+ringBufferConsumer.timeBetween.valueAtPercent(.5)); 
+        //Latency in ns for the 50th percentile.
         return (ringBufferConsumer.queueFill.valueAtPercent(.5)*ringBufferConsumer.timeBetween.valueAtPercent(.5))>>ringBufferConsumer.rateAvgBit;
         
     }
     
-    public int getMsgIdx() {
-        return msgIdx;
-    }
+    public static int getMsgIdx(RingWalker rw) {
+		return rw.msgIdx;
+	}
 
-    public void setMsgIdx(int idx) {
-        this.msgIdx = idx;
-    }
+    public static void setMsgIdx(RingWalker rw, int idx) {
+		assert(idx<rw.from.fragDataSize.length) : "Corrupt stream, expected message idx < "+rw.from.fragDataSize.length+" however found "+idx;
+		assert(idx>-2);
+        rw.msgIdx = idx;
+	}
 
-    public boolean isNewMessage() {
-        return isNewMessage;
-    }
+    public static boolean isNewMessage(RingWalker rw) {
+		return rw.isNewMessage;
+	}
 
     public void setNewMessage(boolean isNewMessage) {
         this.isNewMessage = isNewMessage;
@@ -206,7 +207,7 @@ public class RingWalker {
 	}
 
 	static boolean beginNewMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long cashWorkingTailPos) {
-		ringBufferConsumer.setMsgIdx(-1);
+		RingWalker.setMsgIdx(ringBufferConsumer,-1);
 	
 		//Now beginning a new message so release the previous one from the ring buffer
 		//This is the only safe place to do this and it must be done before we check for space needed by the next record.
@@ -219,7 +220,7 @@ public class RingWalker {
 	    if (needStop>ringBufferConsumer.getBnmHeadPosCache() ) {  
 	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
 	        if (needStop>ringBufferConsumer.getBnmHeadPosCache()) {
-	            ringBufferConsumer.setMsgIdx(-1);
+	            RingWalker.setMsgIdx(ringBufferConsumer,-1);
 	            if (RingBuffer.isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
 	    			throw new RingBufferException("Unexpected shutdown");
 	    		}
@@ -236,14 +237,14 @@ public class RingWalker {
 	    ringBufferConsumer.activeFragmentStack[ringBufferConsumer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
 	      
 	    if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBufferConsumer.from)) {
-	    	ringBufferConsumer.setMsgIdx(RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId    	
+	    	RingWalker.setMsgIdx(ringBufferConsumer,RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId    	
 	    } else {
-	    	ringBufferConsumer.setMsgIdx(0);
+	    	RingWalker.setMsgIdx(ringBufferConsumer,0);
 	    }
 	    
 	    //start new message, can not be seq or optional group or end of message.
 	    
-    	ringBufferConsumer.cursor = ringBufferConsumer.getMsgIdx(); //this is from the stream not the ring buffer.
+    	ringBufferConsumer.cursor = RingWalker.getMsgIdx(ringBufferConsumer); //this is from the stream not the ring buffer.
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //////
@@ -334,19 +335,19 @@ public class RingWalker {
         consumerData.cursor = (-1);
         consumerData.setSeqStackHead(-1);
         
-        consumerData.setMsgIdx(-1);
+        RingWalker.setMsgIdx(consumerData,-1);
         consumerData.setNewMessage(false);
         consumerData.activeFragmentDataSize = (0);
         
     }
 
 	public static boolean isNewMessage(RingBuffer ring) {
-		return ring.consumerData.isNewMessage();
+		return isNewMessage(ring.consumerData);
 	}
 
 
 	public static int messageIdx(RingBuffer ring) {
-		return ring.consumerData.getMsgIdx();
+		return getMsgIdx(ring.consumerData);
 	}
 
     /**
@@ -362,7 +363,7 @@ public class RingWalker {
 		//TODO: based on fragment sizes can predict the head position at this call
 		
 		//TODO: hitting head and tail are an area to look at for improvement
-		boolean hasRoom = (ring.maxSize - RingBuffer.from(ring).fragDataSize[cursorPosition]) >=  (ring.headPos.longValue() - ring.tailPos.longValue()) ;
+		boolean hasRoom = (ring.maxSize - RingBuffer.from(ring).fragDataSize[cursorPosition]) >=  (ring.workingHeadPos.value - ring.tailPos.longValue()) ;
 		
 		
 		if (hasRoom && RingBuffer.from(ring).messageStarts.length>1) {

@@ -356,8 +356,10 @@ public class CatalogGeneratorTest {
 	        	while (j>0 && --k>=0) {
 	        		//System.err.println(j);
 	        		if (RingWalker.tryReadFragment(buffers[k])) {
-	        			assertTrue(buffers[k].consumerData.isNewMessage());
-	        			assertEquals(testMessageIdx, buffers[k].consumerData.getMsgIdx());
+	        			RingWalker r1 = buffers[k].consumerData;
+						assertTrue(RingWalker.isNewMessage(r1));
+						RingWalker r = buffers[k].consumerData;
+	        			assertEquals(testMessageIdx, RingWalker.getMsgIdx(r));
 	        			
 	        			//TODO: B, add test in here to confirm the values match
 	        			

@@ -12,8 +12,10 @@ import javax.tools.SimpleJavaFileObject;
 
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveReader;
+import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffers;
+import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -162,18 +164,22 @@ public class GeneratorUtils {
             builder.append("fieldPos = 0;\n");
             builder.append("\n");
             builder.append("setActiveScriptCursor(rb.consumerData.cursor);\n");        
-            
-            //TODO: X, optimization to remove this conditional. if we only have 1 fragment it is always a new message
-            
-            builder.append("if (rb.consumerData.isNewMessage()) {\n");                
-            
+
+            boolean singleMessageFragment = FieldReferenceOffsetManager.hasSingleMessageTemplate(generatorData.from);
+                        
+            //only wrap the beginMessage call with this conditional IFF the template supports multiple fragments where
+            //we may or may not begin a message.  TODO: C, can optimize further if there are multiple messages but all are 1 fragment long
+            if (!singleMessageFragment) {
+            	builder.append("if ("+RingWalker.class.getCanonicalName()+".isNewMessage(rb.consumerData)) {\n");                
+            }
             if (preambleLength==0) {
                 builder.append("    beginMessage(this);\n");
             } else {
                 builder.append("    beginMessage(writer, rb.buffer, rb.mask, rb.workingTailPos, this);\n");
             }
-            
-            builder.append("}\n"); 
+            if (!singleMessageFragment) {
+            	builder.append("}\n"); 
+            }
 
         }
         

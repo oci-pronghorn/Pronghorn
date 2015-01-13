@@ -50,6 +50,9 @@ public class RingStreams {
         //NOTE: This can be made faster by looping and summing all the lengths to do one single copy to the output stream
         //      That change may however increase latency.
         
+        int byteMask = inputRing.byteMask;
+        int byteSize = byteMask+1;
+        
         while (true) {
         	        	
         	//block until one more byteVector is ready.
@@ -58,23 +61,22 @@ public class RingStreams {
         	
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
-        	int byteMask = inputRing.byteMask;
         				
         	if (len<0) { //exit logic
         		releaseReadLock(inputRing);
           		return;
         	} else {                    	
 				byte[] data = byteBackingArray(meta, inputRing);
-				int offset = bytePosition(meta,inputRing,len);        					
+				int off = bytePosition(meta,inputRing,len)&byteMask;        					
 				
-				if ((offset&byteMask) > ((offset+len-1) & byteMask)) {
-					//rolled over the end of the buffer
-					 int len1 = 1+byteMask-(offset&byteMask);
-					 outputStream.write(data, offset&byteMask, len1);
-					 outputStream.write(data, 0, len-len1);
+				int len1 = byteSize-off;
+				if (len1>=len) {
+					//simple add bytes
+					outputStream.write(data, off, len); 
 				} else {						
-					 //simple add bytes
-					 outputStream.write(data, offset&byteMask, len); 
+					//rolled over the end of the buffer
+					outputStream.write(data, off, len1);
+					outputStream.write(data, 0, len-len1);
 				}
         		releaseReadLock(inputRing);
         	}

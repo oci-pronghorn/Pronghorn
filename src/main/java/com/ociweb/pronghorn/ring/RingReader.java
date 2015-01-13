@@ -589,7 +589,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 
 
     public static boolean isNewMessage(RingBuffer rb) {
-		return rb.consumerData.isNewMessage();
+		return RingWalker.isNewMessage(rb.consumerData);
 	}
 
 }

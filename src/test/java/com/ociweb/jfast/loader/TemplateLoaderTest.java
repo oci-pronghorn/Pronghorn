@@ -174,8 +174,8 @@ public class TemplateLoaderTest {
                 RingWalker.tryReadFragment(rb);
 
                 frags++;
-                if (rb.consumerData.isNewMessage()) {
-                    int msgIdx = rb.consumerData.getMsgIdx();
+                if (RingWalker.isNewMessage(rb.consumerData)) {
+                    int msgIdx = RingWalker.getMsgIdx(rb.consumerData);
                     
                     msgs.incrementAndGet();
                     
@@ -370,8 +370,8 @@ public class TemplateLoaderTest {
         while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
             RingWalker.tryReadFragment(rb);
 
-            if (rb.consumerData.isNewMessage()) {
-                int templateId = rb.consumerData.getMsgIdx();
+            if (RingWalker.isNewMessage(rb.consumerData)) {
+                int templateId = RingWalker.getMsgIdx(rb.consumerData);
                 msgs.incrementAndGet();
             }
         }
@@ -470,7 +470,7 @@ public class TemplateLoaderTest {
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (RingWalker.tryReadFragment(queue)) {
-                        if (queue.consumerData.isNewMessage()) {
+                        if (RingWalker.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();
                         }
                         try{   
@@ -513,7 +513,7 @@ public class TemplateLoaderTest {
             
             while (FASTReaderReactor.pump(reactor)>=0) {  
                     if (RingWalker.tryReadFragment(queue)) {
-                       if (queue.consumerData.getMsgIdx()>=0) { //skip if we are waiting for more content.
+                       if (RingWalker.getMsgIdx(queue.consumerData)>=0) { //skip if we are waiting for more content.
                                 FASTDynamicWriter.write(dynamicWriter);  
                        }
                     }
@@ -615,7 +615,7 @@ public class TemplateLoaderTest {
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
                     if (RingWalker.tryReadFragment(queue)) {
-                        if (queue.consumerData.isNewMessage()) {
+                        if (RingWalker.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();
                         }
                         try{   

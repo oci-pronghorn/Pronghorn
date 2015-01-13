@@ -143,7 +143,7 @@ public class ThreadingTest {
                       
                       if (RingWalker.tryReadFragment(rb)) {
                           
-                          if (rb.consumerData.isNewMessage()) {
+                          if (RingWalker.isNewMessage(rb.consumerData)) {
                               msgs.incrementAndGet();
                               
                               //processMessage(temp, rb); 
@@ -199,7 +199,7 @@ public class ThreadingTest {
                         //NOTE: the stats object shows that this is empty 75% of the time, eg needs more
 
                         if (RingWalker.tryReadFragment(rb)) { 
-                                assert(rb.consumerData.isNewMessage()) : "";
+                                assert(RingWalker.isNewMessage(rb.consumerData)) : "";
                                 totalMessages++;
                                 processMessage(temp, rb, reactor);  
                         } 
@@ -215,7 +215,7 @@ public class ThreadingTest {
                     
                     //is alive is done writing but we need to empty out
                     while (RingWalker.tryReadFragment(rb)) { 
-                        if (rb.consumerData.isNewMessage()) {
+                        if (RingWalker.isNewMessage(rb.consumerData)) {
                             totalMessages++;
                         }
                     }
@@ -402,7 +402,7 @@ public class ThreadingTest {
         templateId = readInt(rb, IDX_TemplateId);
         preamble = readInt(rb, IDX_Preamble);
 
-        switch (rb.consumerData.getMsgIdx()) {
+        switch (RingWalker.getMsgIdx(rb.consumerData)) {
             case 1:
                 
                 if (!eqASCII(rb, IDX1_AppVerId, "1.0")) {
@@ -536,7 +536,7 @@ public class ThreadingTest {
     
                 break;
             default:
-                System.err.println("Did not expect " + rb.consumerData.getMsgIdx());
+                System.err.println("Did not expect " + RingWalker.getMsgIdx(rb.consumerData));
         }
     }
 

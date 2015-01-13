@@ -120,8 +120,9 @@ public class RingWriter {
     	
     	rb.validateVarLength(length);
     	if ((bytePos&rb.byteMask) > ((bytePos+length)&rb.byteMask)) {
-    		int temp = 1 + rb.mask - (bytePos & rb.mask);
-    		
+   		
+    		int temp = 1 + rb.byteMask - (bytePos & rb.byteMask);    		
+    		//read from source and write into byteBuffer
     		source.get(rb.byteBuffer, bytePos & rb.byteMask, temp);
     		source.get(rb.byteBuffer, 0, length - temp);					    		
     	} else {					    	
@@ -193,6 +194,11 @@ public class RingWriter {
 			}
 	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
 	    }        
+	    
+	    //TODO: AAA, Do not store the absolute position, instead store the offset from the message boundary.
+	    //           1. this fixes the long problem when we send streams longer than 2 GB in length
+	    //           2. this allows pure SIMD copy of both primary and secondary rings for splitter.
+	    //           3. in theory we could map ring data directly to memory mapped IO.
 	    
 	    RingBuffer.addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, p, sourceLen);
 	}

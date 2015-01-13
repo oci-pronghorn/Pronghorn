@@ -1,5 +1,8 @@
 package com.ociweb.pronghorn.ring.stream;
 
+import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
+import static com.ociweb.pronghorn.ring.RingBuffer.tailPosition;
+
 import java.io.IOException;
 
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
@@ -9,9 +12,14 @@ import com.ociweb.pronghorn.ring.RingWriter;
 
 public class AppendableUTF8Ring implements Appendable {
 
-	final RingBuffer ringBuffer;
-	final char[] temp = new char[1];
-	final int chunk;
+	private final RingBuffer ringBuffer;
+	private final char[] temp = new char[1];
+	private final int chunk;
+	private long outputTarget;
+	private long tailPosCache;
+	
+	private int countDownInit = 0;
+	private int countDown;
 	
 	public AppendableUTF8Ring(RingBuffer ringBuffer) {
 		this.ringBuffer = ringBuffer;
@@ -19,21 +27,33 @@ public class AppendableUTF8Ring implements Appendable {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		chunk = ringBuffer.maxAvgVarLen>>3;
-		//TODO: B, should warn on small chunks and should auto divide content to fit? System.err.println("chunk:"+chunk);
+		int messagesPerRing = (1<<(ringBuffer.pBits-1));
+		outputTarget = 2-messagesPerRing;//this value is negative		
+		tailPosCache = tailPosition(ringBuffer);
+		
+		countDownInit = messagesPerRing>>2;
+		countDown = countDownInit;
+		
 	}
 	
 	@Override
 	public Appendable append(CharSequence csq) throws IOException {
-		RingWalker.blockWriteFragment(ringBuffer, 0);
+		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer); //TODO: make this same change for the ASCII appendable.
+        outputTarget+=2;
 		RingWriter.writeUTF8(ringBuffer, csq);
-		RingBuffer.publishWrites(ringBuffer);
+		
+		if ((--countDown)<=0) {
+			RingBuffer.publishWrites(ringBuffer);
+			countDown = countDownInit;
+		}
 		return this;
 	}
 
 	@Override
 	public Appendable append(CharSequence csq, int start, int end)
 			throws IOException {
-		RingWalker.blockWriteFragment(ringBuffer, 0);
+		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+        outputTarget+=2;
 		RingWriter.writeUTF8(ringBuffer, csq, start, end-start);
 		RingBuffer.publishWrites(ringBuffer);
 		return this;
@@ -41,7 +61,8 @@ public class AppendableUTF8Ring implements Appendable {
 
 	@Override
 	public Appendable append(char c) throws IOException {
-		RingWalker.blockWriteFragment(ringBuffer, 0);
+		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+        outputTarget+=2;
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
 		RingWriter.writeUTF8(ringBuffer, temp);
 		RingBuffer.publishWrites(ringBuffer);
@@ -49,6 +70,8 @@ public class AppendableUTF8Ring implements Appendable {
 	}
 	
 	public void flush() {
+		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
+        outputTarget+=2;
 		RingStreams.writeEOF(ringBuffer);
 	}
 

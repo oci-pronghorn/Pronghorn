@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 public class RingBufferPipeline {
@@ -58,9 +59,9 @@ public class RingBufferPipeline {
 		 
 		 long bytes = testMessages * (long)testArray.length;
 		 long bpms = (bytes*8)/duration;
-		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages);
-		 
-		 		 
+		 long msgPerMs = testMessages/duration;
+		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages+" msg/ms:"+msgPerMs+" MsgSize:"+testArray.length);
+	 		 
 	}
 
 	 	
@@ -161,7 +162,11 @@ public class RingBufferPipeline {
 							Thread.yield();//do something meaningful while we wait for new data
 						}
 						//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
-					} while (length>=0);		
+					} while (length>=0);
+					
+			      	float latencyAt50th = RingBuffer.responseTime(inputRing)/1000000f;//convert ns down to ms
+			      	System.out.println("Latency for input to copy stage: "+latencyAt50th+"ms");
+			      	 
 				}
 			};
 			
@@ -179,8 +184,8 @@ public class RingBufferPipeline {
 	                //two per message, and we only want half the buffer to be full
 	                long outputTarget = 2-(1<<primaryBits);//this value is negative
 	                
-	                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
+	                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 	                while (true) {
 	                    //read the message
 	                    // 	System.out.println("reading:"+messageCount);
@@ -217,6 +222,7 @@ public class RingBufferPipeline {
 	                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
 	                    
 	                }  
+	               // assertEquals(0,msgCount);
 				}
 			};
 		}

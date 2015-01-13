@@ -77,8 +77,8 @@ public final class RingBuffer {
     static final int JUMP_MASK = 0xFFFFF;
     public final RingWalker consumerData;
     
-    private final byte pBits;
-    private final byte bBits;
+    public final byte pBits;
+    public final byte bBits;
     
     private final AtomicBoolean shutDown = new AtomicBoolean(false);//TODO: A, create unit test examples for using this.
     
@@ -459,5 +459,16 @@ public final class RingBuffer {
 		return ring.consumerData.from;
 	}
 
+	/**
+	 * Latency in ns of the 50th percentile
+	 * Only returns meaningful results when used with the high level API and tryRead or blockRead
+	 * 
+	 * @param ring
+	 * @return
+	 */
+	public static long responseTime(RingBuffer ring) {
+		return RingWalker.responseTime(ring.consumerData);
+	}
+	
 	
 }
