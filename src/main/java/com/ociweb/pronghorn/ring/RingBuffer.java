@@ -46,6 +46,9 @@ public final class RingBuffer {
         public int value = 0, padding1, padding2, padding3, padding4, padding5, padding6, padding7;
     }
     
+    //TODO: AA, note original disrupter allows for multiple threads to each visit the same spot and each do mutation
+    //          there is no problem with doing this upgrade to the ring buffer support.
+    
     
     public final int maxSize;
     public final int[] buffer;
@@ -230,13 +233,12 @@ public final class RingBuffer {
     	
     	assert(sourceLen>=0);
         appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask& rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask & rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-
         addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     

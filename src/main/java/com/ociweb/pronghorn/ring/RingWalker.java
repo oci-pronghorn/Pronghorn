@@ -361,10 +361,10 @@ public class RingWalker {
 	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
 		
 		//TODO: based on fragment sizes can predict the head position at this call
-		
+
 		//TODO: hitting head and tail are an area to look at for improvement
 		boolean hasRoom = (ring.maxSize - RingBuffer.from(ring).fragDataSize[cursorPosition]) >=  (ring.workingHeadPos.value - ring.tailPos.longValue()) ;
-		
+	
 		
 		if (hasRoom && RingBuffer.from(ring).messageStarts.length>1) {
 		      //TODO: this is too complex and will be simplified 

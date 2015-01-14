@@ -269,8 +269,14 @@ public final class PrimitiveWriter {
     public static final void writeByteArrayData(byte[] data, int offset, int length, int mask, PrimitiveWriter writer) {
         if (writer.limit > writer.buffer.length - length) {
             writer.output.flush();
+            //safe place to do sanity check
+            if (writer.limit > writer.buffer.length - length) {            	
+            	System.err.println(writer.limit +"  wbl:"+writer.buffer.length+" length:"+length+"   post flush ");
+            	throw new ArrayIndexOutOfBoundsException(length);
+            }
         }
         
+        //TODO: AAAA, this copy is bad convert these loops to array copy
         int i = 0;
         while (i<length) {
             writer.buffer[writer.limit+i]=data[mask&(i+offset)];

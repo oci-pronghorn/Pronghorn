@@ -1,6 +1,7 @@
 package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.RingBuffer.*;
+import static org.junit.Assert.fail;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,7 +20,7 @@ public class RingBufferPipeline {
     
 	//The limiting factor for these tests is not the data copy but it is the contention over the hand-off when the head/tail are modified.
 	//so by setting matchMask to reduce the calls to publish a dramatic performance increase can be seen.  This will increase latency.
-	private final int batchMask = 0;//0xFFF;
+	private final int batchMask = 0xFFF;
 	
 	@Test
 	public void pipelineExample() {		 		 
@@ -39,6 +40,7 @@ public class RingBufferPipeline {
 		 long start = System.currentTimeMillis();
 		 
 		 //add all the stages start running
+		 
 		 j = 0;
 		 service.submit(simpleFirstStage(rings[j], highLevelAPI));
 		 int i = stages-2;
@@ -63,7 +65,6 @@ public class RingBufferPipeline {
 		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages+" msg/ms:"+msgPerMs+" MsgSize:"+testArray.length);
 	 		 
 	}
-
 	 	
 	 
 	private Runnable simpleFirstStage(final RingBuffer outputRing, boolean highLevelAPI) {
@@ -74,18 +75,27 @@ public class RingBufferPipeline {
 				
 				@Override
 				public void run() {
-					 int messageCount = testMessages;  
-					 while (--messageCount>=0) {
-						 RingWalker.blockWriteFragment(outputRing, MESSAGE_IDX);
-						 RingWriter.writeBytes(outputRing, testArray);
-						 
-						 if (0==(batchMask&messageCount)) {
-							 publishWrites(outputRing);
+					try {
+						 int messageCount = testMessages;  
+	
+						 while (--messageCount>=0) {
+							
+							 RingWalker.blockWriteFragment(outputRing, MESSAGE_IDX);
+							
+							 //TODO: need field specific method for writing 
+							 RingWriter.writeBytes(outputRing, testArray, 0, testArray.length);
+								 
+							 if (0==(batchMask&messageCount)) {
+								 publishWrites(outputRing);
+							 }
 						 }
-					 }
-					 addNullByteArray(outputRing);
-			      	 publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
-			      	 System.out.println("finished writing:"+testMessages);
+						 
+						 addNullByteArray(outputRing);
+				      	 publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
+				      	 System.out.println("finished writing:"+testMessages);
+					} catch (Throwable t) {
+						t.printStackTrace();
+					}
 				}
 			};		
 		} else {
@@ -137,36 +147,42 @@ public class RingBufferPipeline {
 				
 				@Override
 				public void run() {
-										
-					int length = 0;
-					do {
-						if (RingWalker.tryReadFragment(inputRing)) {
-							assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
+					try {					
+						int length = 0;
+						do {
 							
-							//wait until the target ring has room for this message
-							if (RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
+							if (RingWalker.tryReadFragment(inputRing)) {
+								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								
-								//copy this message from one ring to the next
-								//NOTE: in the normal world I would expect the data to be modified before getting moved.
-								length = RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
-														
-								//release the data from the input ring we are done with this message
-								releaseReadLock(inputRing);  
 								
-								//publish the new message to the next ring buffer
-								publishWrites(outputRing);
+								//wait until the target ring has room for this message
+								if (RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
+									
+									//copy this message from one ring to the next
+									//NOTE: in the normal world I would expect the data to be modified before getting moved.
+									length = RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
+															
+				//					System.err.println(RingBuffer.headPosition(outputRing)+" length "+length);
+									
+									//release the data from the input ring we are done with this message
+									releaseReadLock(inputRing);  
+									
+									//publish the new message to the next ring buffer
+									publishWrites(outputRing);
+								} else {
+									Thread.yield();//do something meaningful while we wait for space to write our new data
+								}
 							} else {
-								Thread.yield();//do something meaningful while we wait for space to write our new data
+								Thread.yield();//do something meaningful while we wait for new data
 							}
-						} else {
-							Thread.yield();//do something meaningful while we wait for new data
-						}
-						//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
-					} while (length>=0);
-					
-			      	float latencyAt50th = RingBuffer.responseTime(inputRing)/1000000f;//convert ns down to ms
-			      	System.out.println("Latency for input to copy stage: "+latencyAt50th+"ms");
-			      	 
+							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
+						} while (length!=-1);
+						
+				      	float latencyAt50th = RingBuffer.responseTime(inputRing)/1000000f;//convert ns down to ms
+				      	System.out.println("Latency for input to copy stage: "+latencyAt50th+"ms");
+					} catch (Throwable t) {
+						t.printStackTrace();
+					}
 				}
 			};
 			
@@ -233,7 +249,8 @@ public class RingBufferPipeline {
 		return new Runnable() {
 			
             @Override
-            public void run() {           	
+            public void run() {      
+            	try{
              	    long total = 0;
     	            	
                     //only enter this block when we know there are records to read
@@ -269,7 +286,9 @@ public class RingBufferPipeline {
                     	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
                         
                     }   
-                    
+            	} catch (Throwable t) {
+            		t.printStackTrace();
+            	}
             }                
         };
 	}

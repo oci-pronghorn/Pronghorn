@@ -688,7 +688,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
                    
-      // System.err.println((writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
+   //   System.err.println(("dwt: "+writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
               
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????

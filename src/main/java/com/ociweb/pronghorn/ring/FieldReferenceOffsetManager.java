@@ -45,7 +45,7 @@ public class FieldReferenceOffsetManager {
 			                                                                                    "Chunked Stream");
 		
 	private final static int[] EMPTY = new int[0];
-	private final String name;
+	public final String name;
 	
     /**
      * Constructor is only for unit tests.
@@ -62,13 +62,13 @@ public class FieldReferenceOffsetManager {
     	this(scriptTokens,preableBytes,scriptNames,scriptIds,(String)null);
     }
     
-    public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames) {
-    	this(scriptTokens,preableBytes,scriptNames,scriptIds,(String)null);
+    public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds,  String name) {
+    	this(scriptTokens,preableBytes,scriptNames,scriptIds, new String[scriptTokens.length], name);
     	//dictionary names provide a back channel to pass information that relates to template choices when decoding/encoding object    	
     }
     
     //NOTE: message fragments start at startsLocal values however they end when they hit end of group, sequence length or end the the array.
-	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String name) {
+	public FieldReferenceOffsetManager(int[] scriptTokens, short preableBytes, String[] scriptNames, long[] scriptIds, String[] scriptDictionaryNames, String name) {
 			
 		this.name = name;
 		//TODO: B, clientConfig must be able to skip reading the preamble,
@@ -93,7 +93,6 @@ public class FieldReferenceOffsetManager {
             fragScriptSize = null;
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
-            dictionaryNameScript = null;
         } else {
         	tokens = scriptTokens;
         	messageStarts = computeMessageStarts(); 
@@ -106,11 +105,11 @@ public class FieldReferenceOffsetManager {
             			
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes, messageStarts.length>1 ? 1 : 0);
             //consumer of this need not check for null because it is always created.
-            dictionaryNameScript = new String[scriptTokens.length];
         }
         tokensLen = null==tokens?0:tokens.length;
         
         
+        dictionaryNameScript = scriptDictionaryNames;
         fieldNameScript = scriptNames;
         fieldIdScript = scriptIds;
 	

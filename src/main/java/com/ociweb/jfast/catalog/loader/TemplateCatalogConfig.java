@@ -444,7 +444,8 @@ public class TemplateCatalogConfig {
 									        	  config.clientConfig.getPreableBytes(), 
 									              config.fieldNameScript(),
 									              config.fieldIdScript(),
-									              config.dictionaryScript());
+									              config.dictionaryScript(),
+									              "Catalog");
 		
 		
 	}
