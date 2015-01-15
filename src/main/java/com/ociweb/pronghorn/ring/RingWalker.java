@@ -231,21 +231,26 @@ public class RingWalker {
 	    //keep the queue fill size for Little's law 
 	    //also need to keep messages per second data
 	    recordRates(ringBufferConsumer, needStop);
+	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //Start new stack of fragments because this is a new message
 	    ringBufferConsumer.activeFragmentStackHead = 0;
 	    ringBufferConsumer.activeFragmentStack[ringBufferConsumer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
 	      
+	    int msgIdx = 0;
 	    if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBufferConsumer.from)) {
-	    	RingWalker.setMsgIdx(ringBufferConsumer,RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset)); //jumps over preamble to find templateId    	
-	    } else {
-	    	RingWalker.setMsgIdx(ringBufferConsumer,0);
+	    	msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId    
+	    	if (msgIdx<0) {
+	    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
+	    		//this is commonly used as the end of file marker
+	    		return true;
+	    	}
 	    }
+	    RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
 	    
 	    //start new message, can not be seq or optional group or end of message.
 	    
-    	ringBufferConsumer.cursor = RingWalker.getMsgIdx(ringBufferConsumer); //this is from the stream not the ring buffer.
-	    ringBufferConsumer.setNewMessage(true);
+    	ringBufferConsumer.cursor = msgIdx; 
 	    
 	    //////
 	    ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read

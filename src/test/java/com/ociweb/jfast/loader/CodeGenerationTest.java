@@ -154,7 +154,7 @@ public class CodeGenerationTest {
 
         FASTDecoder readerDispatch2 = null;
         try {
-            readerDispatch2 = DispatchLoader.loadGeneratedDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+            readerDispatch2 = DispatchLoader.loadGeneratedReaderDispatch(catBytes, FASTClassLoader.READER, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
         } catch (ReflectiveOperationException e) {
             e.printStackTrace();
             fail(e.getMessage());

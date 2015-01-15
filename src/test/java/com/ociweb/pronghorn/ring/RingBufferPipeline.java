@@ -150,7 +150,7 @@ public class RingBufferPipeline {
 					try {					
 						int length = 0;
 						do {
-							
+							//TODO: AA, this try may be releasing too early, need more detailed testing.
 							if (RingWalker.tryReadFragment(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								

@@ -443,7 +443,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
         //System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
@@ -587,7 +587,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
          //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+         FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
 
         System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 

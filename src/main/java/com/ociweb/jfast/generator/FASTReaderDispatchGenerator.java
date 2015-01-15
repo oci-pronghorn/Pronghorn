@@ -44,7 +44,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
         try {
 	        GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_READER_NAME, FASTDecoder.class.getSimpleName());
 	        GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData, alsoCompileTarget);       
-	        GeneratorUtils.buildEntryDispatchMethod(prembleBytes,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,ringBuffers,generatorData);
+	        GeneratorUtils.buildEntryDispatchMethod(prembleBytes,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveReader.class,generatorData);
 	        GeneratorUtils.generateTail(generatorData, target);
         } catch (IOException ioex) {
         	throw new RuntimeException(ioex);

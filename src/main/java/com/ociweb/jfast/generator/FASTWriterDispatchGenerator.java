@@ -10,7 +10,6 @@ import com.ociweb.jfast.field.LocalHeap;
 import com.ociweb.jfast.catalog.loader.TemplateCatalogConfig;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 import com.ociweb.pronghorn.ring.util.IntWriteOnceOrderedSet;
 import com.ociweb.jfast.stream.FASTEncoder;
@@ -24,8 +23,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
     
 
     public FASTWriterDispatchGenerator(byte[] catBytes, TemplateCatalogConfig catalog, List<JavaFileObject> alsoCompileTarget) {
-        super(catalog,
-        		RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
+        super(catalog );
 
         this.generatorData = new GeneratorData(catBytes, FASTWriterDispatchTemplates.class);
         this.alsoCompileTarget = alsoCompileTarget;
@@ -39,7 +37,7 @@ public class FASTWriterDispatchGenerator extends FASTWriterInterpreterDispatch {
         try {
 		    GeneratorUtils.generateHead(generatorData, target, FASTClassLoader.SIMPLE_WRITER_NAME, FASTEncoder.class.getSimpleName());
 		    GeneratorUtils.buildGroupMethods(new TemplateCatalogConfig(generatorData.origCatBytes),doneScripts,doneScriptsParas,target, this, generatorData, alsoCompileTarget);        
-		    GeneratorUtils.buildEntryDispatchMethod(preambleData.length,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, ringBuffers,generatorData);
+		    GeneratorUtils.buildEntryDispatchMethod(preambleData.length,doneScripts,doneScriptsParas,target,ENTRY_METHOD_NAME, PrimitiveWriter.class, generatorData);
 		    GeneratorUtils.generateTail(generatorData, target);
         }  catch (IOException ioex) {
         	throw new RuntimeException(ioex);

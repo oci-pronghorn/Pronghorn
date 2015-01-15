@@ -25,6 +25,7 @@ public class FieldReferenceOffsetManager {
     public final String[] dictionaryNameScript;
     public int maximumFragmentStackDepth;  
     public final float maxVarFieldPerUnit;
+    private int maxFragmentSize;
     
     //TODO: B, set these upon construction if needed.
     //      for a given template/schema there is only 1 absent value that can be supported
@@ -155,12 +156,14 @@ public class FieldReferenceOffsetManager {
                 if (debug) {
                     System.err.println();
                 }
+                int lastFragTotalSize = fragDataSize[fragmentStartIdx];
+                maxFragmentSize = Math.max(maxFragmentSize, lastFragTotalSize);
        //         System.err.println("new fragmetn at "+i);
                 if (varLenFieldCount>0) {
                 	//Caution: do not modify this logic unless you take into account the fact that
                 	//         * messages are made up of fragments and that some fragments are repeated others skipped
                 	//         * messages are not always complete and only some (head or tail) fragments may be in the buffer
-                	float varFieldPerUnit = varLenFieldCount/ (float)fragDataSize[fragmentStartIdx];
+                	float varFieldPerUnit = varLenFieldCount/ (float)lastFragTotalSize;
                 	assert(varFieldPerUnit<=.5) : "It takes 2 units to write a var field so this will never be larger than .5";
                 	
                 	if (varFieldPerUnit>varLenMaxDensity) {
@@ -219,12 +222,16 @@ public class FieldReferenceOffsetManager {
             
             i++;
         }
+        
+        
+        int lastFragTotalSize = fragDataSize[fragmentStartIdx];
+        maxFragmentSize = Math.max(maxFragmentSize, lastFragTotalSize);
         //must also add the very last fragment 
         if (varLenFieldCount>0) {
         	//Caution: do not modify this logic unless you take into account the fact that
         	//         * messages are made up of fragments and that some fragments are repeated others skipped
         	//         * messages are not always complete and only some (head or tail) fragments may be in the buffer
-        	float varFieldPerUnit = varLenFieldCount/ (float)fragDataSize[fragmentStartIdx];
+        	float varFieldPerUnit = varLenFieldCount/ (float)lastFragTotalSize;
         	assert(varFieldPerUnit<=.5) : "It takes 2 units to write a var field so this will never be larger than .5";
         	
         	if (varFieldPerUnit>varLenMaxDensity) {
@@ -391,6 +398,10 @@ public class FieldReferenceOffsetManager {
 	
 	public static long getAbsent64Value(FieldReferenceOffsetManager from) {
 		return from.absentLong;
+	}
+
+	public static int maxFragmentSize(FieldReferenceOffsetManager from) {
+		return from.maxFragmentSize;
 	}
     
 }

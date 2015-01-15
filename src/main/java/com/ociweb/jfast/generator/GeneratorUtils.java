@@ -43,7 +43,12 @@ public class GeneratorUtils {
         target.append("\n");        
         target.append("public static int[] hashedCat = new int[]"+(Arrays.toString(generatorData.hashedCat).replace('[', '{').replace(']', '}'))+";\n"); //static constant
         target.append("\n");
-        target.append("public "+name+"(byte[] catBytes, "+RingBuffers.class.getSimpleName()+" ringBuffers) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes),ringBuffers);}");//constructor
+        if (name.contains("Writer")) {
+        	target.append("public "+name+"(byte[] catBytes, "+RingBuffers.class.getSimpleName()+" ringBuffers) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes));}");//constructor 	
+        } else {
+        	target.append("public "+name+"(byte[] catBytes, "+RingBuffers.class.getSimpleName()+" ringBuffers) {super(new "+TemplateCatalogConfig.class.getSimpleName()+"(catBytes),ringBuffers);}");//constructor       	
+        }
+        
         target.append("\n");
 
     }
@@ -99,7 +104,7 @@ public class GeneratorUtils {
     public static void buildEntryDispatchMethod(int preambleLength,
     											IntWriteOnceOrderedSet doneScripts, List<String> doneScriptsParas, 
                                                 Appendable builder, String entryMethodName,
-                                                Class primClass, RingBuffers ringBuffers, GeneratorData generatorData) throws IOException {
+                                                Class primClass, GeneratorData generatorData) throws IOException {
     
         boolean isReader = PrimitiveReader.class==primClass;
         String primVarName = isReader ? "reader" : "writer";

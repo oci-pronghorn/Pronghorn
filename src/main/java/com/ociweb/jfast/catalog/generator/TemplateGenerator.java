@@ -81,12 +81,12 @@ public class TemplateGenerator implements ItemGenerator {
         result.append("</template>\n");
     }
 
-    public static void openTemplate(Appendable result, String name, int id, boolean reset, String dictionary) throws IOException {
+    public static void openTemplate(Appendable result, String name, long id, boolean reset, String dictionary) throws IOException {
         result.append("<template ");
         if (null!=name) {
         	result.append("name=\"").append(name).append("\" ");
         }
-        result.append("id=\"").append(Integer.toString(id)).append("\" ");
+        result.append("id=\"").append(Long.toString(id)).append("\" ");
         if (reset) {
             result.append("reset=\"").append("Y").append("\" ");
         }

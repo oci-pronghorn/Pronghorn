@@ -20,7 +20,7 @@ public class DispatchLoader {
     public static FASTDecoder loadDispatchReader(byte[] catalog, RingBuffers ringBuffers) {
         //always try to load the generated reader because it will be faster 
         try {
-            return loadGeneratedDispatch(catalog, FASTClassLoader.READER, ringBuffers);
+            return loadGeneratedReaderDispatch(catalog, FASTClassLoader.READER, ringBuffers);
         } catch (Exception e) {
         	log.error("Attempted to load dispatch reader.", e);
             return new FASTReaderInterpreterDispatch(catalog, ringBuffers);
@@ -33,24 +33,21 @@ public class DispatchLoader {
         return new FASTReaderInterpreterDispatch(catalog, ringBuffers);
     }
 
-    public static FASTEncoder loadDispatchWriter(byte[] catalog, RingBuffers ringBuffers) {
+    public static FASTEncoder loadDispatchWriter(byte[] catalog) {
         //always try to load the generated reader because it will be faster 
         try {
-            return loadGeneratedDispatch(catalog, FASTClassLoader.WRITER, ringBuffers);
+            return loadGeneratedWriterDispatch(catalog, FASTClassLoader.WRITER);
         } catch (Exception e) {
         	log.error("Attempted to load dispatch reader.", e);
-            return loadDispatchWriterDebug(catalog, ringBuffers);
+            return loadDispatchWriterDebug(catalog);
         }
     }
     
-    public static FASTEncoder loadDispatchWriterDebug(byte[] catBytes, RingBuffers ringBuffers) {
-    	TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes);
-//    	RingBuffers ringBuffers = RingBuffers.buildNoFanRingBuffers(catalog.scriptLength(), 
-//    			new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()));
-		return new FASTWriterInterpreterDispatch(catalog, ringBuffers);
+    public static FASTEncoder loadDispatchWriterDebug(byte[] catBytes) {
+		return new FASTWriterInterpreterDispatch(new TemplateCatalogConfig(catBytes));
     }
     
-    public static <T> T loadGeneratedDispatch(byte[] catBytes, String type, RingBuffers ringBuffers)
+    public static <T> T loadGeneratedReaderDispatch(byte[] catBytes, String type, RingBuffers ringBuffers)
             throws ReflectiveOperationException, SecurityException {
         
         ClassLoader parentClassLoader = FASTDecoder.class.getClassLoader();
@@ -74,6 +71,33 @@ public class DispatchLoader {
             //can not create instance because the class is no longer compatible with the rest of the code base so force a recompile
             Class generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
             return (T)generatedClass.getConstructor(catBytes.getClass(), ringBuffers.getClass()).newInstance(catBytes, ringBuffers);
+        }
+    }
+    
+    public static <T> T loadGeneratedWriterDispatch(byte[] catBytes, String type)
+            throws ReflectiveOperationException, SecurityException {
+        
+        ClassLoader parentClassLoader = FASTEncoder.class.getClassLoader();
+        
+        try {
+            Class generatedClass = new FASTClassLoader(catBytes, parentClassLoader).loadClass(type);
+            
+            int[] catHash = (int[])generatedClass.getField("hashedCat").get(null);
+            int[] expectedHash = GeneratorData.hashCatBytes(catBytes);
+            
+            if (!Arrays.equals(catHash, expectedHash)) {
+            	log.trace("Catalog mistmatch, attempting source regeneration and recompile.");
+                //the templates catalog this was generated for does not match the current value so force a recompile
+                generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
+            }
+                       
+            
+            return (T)generatedClass.getConstructor(catBytes.getClass()).newInstance(catBytes);
+        } catch (Throwable t) {
+        	log.error("Error in creating instance, attempting source regeneration and recompile.", t);
+            //can not create instance because the class is no longer compatible with the rest of the code base so force a recompile
+            Class generatedClass = new FASTClassLoader(catBytes, parentClassLoader, FORCE_COMPILE).loadClass(type);
+            return (T)generatedClass.getConstructor(catBytes.getClass()).newInstance(catBytes);
         }
     }
 

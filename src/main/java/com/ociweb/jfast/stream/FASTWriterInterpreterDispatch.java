@@ -10,7 +10,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
-import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.RingWalker;
 import com.ociweb.pronghorn.ring.token.OperatorMask;
@@ -21,20 +20,19 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates implements GeneratorDriving{ 
 
     public static FASTWriterInterpreterDispatch createFASTWriterInterpreterDispatch(TemplateCatalogConfig catalog) {
-		return new FASTWriterInterpreterDispatch(catalog, 
-				       RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+		return new FASTWriterInterpreterDispatch(catalog);
 	}
 
 	protected final long[] fieldIdScript;
     protected final String[] fieldNameScript;
     
-    public FASTWriterInterpreterDispatch(byte[] catBytes, RingBuffers ringBuffers) {
-        this(new TemplateCatalogConfig(catBytes), ringBuffers);
+    public FASTWriterInterpreterDispatch(byte[] catBytes) {
+        this(new TemplateCatalogConfig(catBytes));
     }    
   
 
-    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog, RingBuffers buffers) {
-        super(catalog, buffers);
+    public FASTWriterInterpreterDispatch(final TemplateCatalogConfig catalog) {
+        super(catalog);
         this.fieldIdScript = catalog.fieldIdScript();
         this.fieldNameScript = catalog.fieldNameScript();
     }
@@ -688,7 +686,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
        
         assert (gatherWriteData(writer, token, activeScriptCursor, fieldPos, rbRingBuffer));
                    
-   //   System.err.println(("dwt: "+writer.totalWritten(writer)+writer.limit)+" Write: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
+     //System.err.println("FASTWriterInterpreterDispatch: "+TokenBuilder.tokenToString(token)+" fieldPos "+fieldPos);
               
         if (0 == (token & (16 << TokenBuilder.SHIFT_TYPE))) {
             // 0????
@@ -846,7 +844,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 	                        if (isTemplate) {
 	                        	
 	                            //must start at a location after the preamble and templateId.
-	                            fieldPos = RingBuffers.getFrom(ringBuffers).templateOffset;
+	                            fieldPos = RingBuffer.from(rbRingBuffer).templateOffset;
 	                            
 	                            //only add the offset for the templateId if and when they are used
 	                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(RingBuffer.from(rbRingBuffer))) {

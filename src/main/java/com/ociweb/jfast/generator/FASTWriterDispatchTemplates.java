@@ -13,11 +13,11 @@ import com.ociweb.pronghorn.ring.RingReader;
 public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog) {
-        super(catalog, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())));
+        super(catalog);
     }    
     
     public FASTWriterDispatchTemplates(final TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
-        super(catalog,ringBuffers);
+        super(catalog);
     }    
 
     protected void genWriteCopyBytes(int source, int target, LocalHeap byteHeap) {
@@ -2140,7 +2140,8 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         //if (top == msgIdx) {
         //    PrimitiveWriter.writePMapBit((byte)0, writer);
         //} else {
-            PrimitiveWriter.writePMapBit((byte)1, writer);                   
+            PrimitiveWriter.writePMapBit((byte)1, writer);       
+            //System.err.println("encoded template id of:"+dispatch.fieldIdScript[msgIdx]+" for "+msgIdx);
             PrimitiveWriter.writeLongUnsigned(dispatch.fieldIdScript[msgIdx], writer);
         //    top = templateId;
         //}

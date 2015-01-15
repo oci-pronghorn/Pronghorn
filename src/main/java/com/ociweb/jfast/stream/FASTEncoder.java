@@ -8,7 +8,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArrayEquals;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 
 public abstract class FASTEncoder { 
@@ -48,28 +47,19 @@ public abstract class FASTEncoder {
     protected RingCharSequence ringCharSequence = new RingCharSequence();
     protected static final int INIT_VALUE_MASK = 0x80000000;
     protected final int TEXT_INSTANCE_MASK;
-
-    public final RingBuffers ringBuffers;
     
     public final byte[] preambleData;
     
-    
     public FASTEncoder(TemplateCatalogConfig catalog) {
-        this(catalog, 
-             RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM())) );
-        
-    }
-    
-    public FASTEncoder(TemplateCatalogConfig catalog, RingBuffers ringBuffers) {
         this(catalog.dictionaryFactory(), catalog.templatesCount(),
              catalog.maxNonTemplatePMapSize(), catalog.maxTemplatePMapSize(), catalog.dictionaryResetMembers(),
-             catalog.fullScript(), catalog.fieldIdScript(), catalog.getMaxGroupDepth(), ringBuffers, catalog.clientConfig().getPreableBytes());
+             catalog.fullScript(), catalog.fieldIdScript(), catalog.getMaxGroupDepth(), catalog.clientConfig().getPreableBytes());
     }
     
     
     public FASTEncoder(DictionaryFactory dcr, int maxTemplates, int nonTemplatePMapSize, int templatePMapSize,
                                 int[][] dictionaryMembers, int[] fullScript, long[] fieldIdScript,
-                                int maxNestedGroupDepth, RingBuffers ringBuffers, int preambleBytes) {
+                                int maxNestedGroupDepth, int preambleBytes) {
 
         this.fullScript = fullScript;
         this.dictionaryFactory = dcr;
@@ -100,7 +90,6 @@ public abstract class FASTEncoder {
 
         this.templateStack = new int[maxTemplates];
         this.dictionaryMembers = dictionaryMembers;
-        this.ringBuffers = ringBuffers;
         this.preambleData = new byte[preambleBytes];
     }
     
