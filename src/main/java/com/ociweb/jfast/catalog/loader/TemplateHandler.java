@@ -437,9 +437,9 @@ public class TemplateHandler extends DefaultHandler {
                 defaultConstValues.addInitInteger(token & TokenBuilder.MAX_INSTANCE, tmp < 0 ? tmp : optionalOffset
                         + tmp);// +1 for optional not applied to negative
                                // values.
-            }
+            } 
             // if no default is set the field must be undefined and therefore
-            // remains zero
+            // remains zero which is the signed 
 
             fieldOperatorValue = null;
 
@@ -485,14 +485,14 @@ public class TemplateHandler extends DefaultHandler {
         } else if (qName.equalsIgnoreCase("string")) {
 
             int token = buildToken(tokenBuilderByteCount);
+            int idx = token & TokenBuilder.MAX_INSTANCE;
 
             // only set if the value was given
             if (null != fieldOperatorValue && !fieldOperatorValue.isEmpty()) {
-                
-                int idx = token & TokenBuilder.MAX_INSTANCE;
-               // System.err.println("default value for "+fieldId+" "+fieldName+"  is "+fieldOperatorValue+" at "+idx+" pos "+catalogTemplateScriptIdx);
-                
                 defaultConstValues.addInit(idx, fieldOperatorValue.getBytes());
+            } else {
+            	//TODO: A, this needs a unit test to ensure this null is represented as null all the way to the dictionary
+                defaultConstValues.addInit(idx, null);
             }
             fieldOperatorValue = null;
 

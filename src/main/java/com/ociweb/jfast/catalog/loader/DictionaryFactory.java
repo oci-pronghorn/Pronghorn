@@ -123,9 +123,17 @@ public class DictionaryFactory {
         while (--c >= 0) {
             byteInitIndex[c] = PrimitiveReader.readIntegerUnsigned(reader);
             int len = PrimitiveReader.readIntegerUnsigned(reader);
-            byte[] value = new byte[len];
-            PrimitiveReader.readByteData(value, 0, len, reader);
-            byteInitValue[c] = value;
+            if (len>0) {
+            	byte[] value = new byte[len];
+            	PrimitiveReader.readByteData(value, 0, len, reader);
+            	byteInitValue[c] = value;
+            } else {
+            	if (len<0) {
+            		byteInitValue[c]=null;
+            	} else {
+            		byteInitValue[c]=new byte[0];
+            	}
+            }
         }
         byteInitTotalLength = PrimitiveReader.readIntegerUnsigned(reader);
 
@@ -159,8 +167,10 @@ public class DictionaryFactory {
         while (--c >= 0) {
             PrimitiveWriter.writeIntegerUnsigned(byteInitIndex[c], writer);
             byte[] value = byteInitValue[c];
-            PrimitiveWriter.writeIntegerUnsigned(value.length, writer);
-            PrimitiveWriter.writeByteArrayData(value, 0, value.length, writer);
+            PrimitiveWriter.writeIntegerUnsigned(null==value? -1 :value.length, writer);
+            if (null!=value && value.length>0) {
+            	PrimitiveWriter.writeByteArrayData(value, 0, value.length, writer);
+            }
         }
         PrimitiveWriter.writeIntegerUnsigned(byteInitTotalLength, writer);
 
@@ -212,7 +222,7 @@ public class DictionaryFactory {
 
         byteInitIndex[byteInitCount] = idx;
         byteInitValue[byteInitCount] = value;
-        byteInitTotalLength += value.length;
+        byteInitTotalLength +=  (null==value ? 0 :value.length);
         if (++byteInitCount >= byteInitValue.length) {
             int newLength = byteInitValue.length + INIT_GROW_STEP;
             int[] temp1 = new int[newLength];
@@ -260,8 +270,7 @@ public class DictionaryFactory {
             return null;
         }
         if (null==byteHeap) {
-        	byteHeap = new LocalHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength,
-                    byteInitIndex, byteInitValue);
+        	byteHeap = new LocalHeap(singleBytesSize, gapBytesSize, nextPowerOfTwo(bytesCount), byteInitTotalLength, byteInitIndex, byteInitValue);
             LocalHeap.reset(byteHeap);
         }
         

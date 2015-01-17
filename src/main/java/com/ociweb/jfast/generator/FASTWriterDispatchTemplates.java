@@ -398,15 +398,9 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 	    	
 	    	if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
 	            PrimitiveWriter.writePMapBit((byte)0, writer);
-	            
-	            //this null is not th same as the previous value so we do not end up here.
-	//            System.err.println("XXXX write bytes copy length:"+len); //if -1 is absent 0 
-	            
-	            
 	        } else {
 	            PrimitiveWriter.writePMapBit((byte)1, writer);
 	            
-//	            System.err.println("write len:"+(len+1));
 	            PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
 	            
 	            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);

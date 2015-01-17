@@ -1658,12 +1658,10 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadBytesCopy(int target, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
         {
             if (PrimitiveReader.readPMapBit(reader) != 0) {
-                int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
-  //              System.err.println("read length:"+length);
+                int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;                
                 PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
-   //         System.err.println("read len:"+len);
             LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
         }
     }

@@ -97,7 +97,8 @@ public class LocalHeap {
 
             i = byteInitValue.length;
             while (--i >= 0) {
-                int len = null == byteInitValue[i] ? 0 : byteInitValue[i].length;
+            	boolean isNull = null == byteInitValue[i];
+                int len = isNull ? 0 : byteInitValue[i].length;
                 startIdx -= len;
                 if (len > 0) {
                     System.arraycopy(byteInitValue[i], 0, initBuffer, startIdx, len);
@@ -105,8 +106,7 @@ public class LocalHeap {
                 // will be zero zero for values without constants.
                 int offset = byteInitIndex[i] << 1;
                 initTat[offset] = startIdx;
-                initTat[offset + 1] = stopIdx;
-
+                initTat[offset + 1] = isNull ? startIdx-1 : stopIdx; 
                 stopIdx = startIdx;
             }
         }
@@ -576,7 +576,6 @@ public class LocalHeap {
     }
 
     public static boolean equals(int idx, byte[] target, int targetIdx, int targetLen, int targetMask, LocalHeap heap) {
-        // System.err.println(idx +"  "+length);
          if (idx < 0) {
              int offset = idx << 1;
              return eq(target, targetIdx, targetLen, targetMask, heap.initTat[offset], heap.initTat[offset + 1], heap.initBuffer);
@@ -591,6 +590,9 @@ public class LocalHeap {
         if (len<0) {
             len = 0;
         }
+        if (length<0) {
+        	length = 0;
+        }//TODO: D, Investigate if we need to tell the difference between absent and zero length string of bytes
         if (len != length) {
             return false;
         }

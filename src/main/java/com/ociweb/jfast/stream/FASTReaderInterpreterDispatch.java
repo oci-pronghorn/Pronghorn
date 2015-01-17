@@ -1356,6 +1356,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                                                 // all the work.
                 // copy
                 genReadBytesCopy(idx, 0, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.workingHeadPos, rbRingBuffer);
+                //TODO: T, need unit tests to cover null vs zero length optional copy byte arrays, this case may not be 100% covered
             } else {
                 // default
                 int initId = LocalHeap.INIT_VALUE_MASK | idx;
