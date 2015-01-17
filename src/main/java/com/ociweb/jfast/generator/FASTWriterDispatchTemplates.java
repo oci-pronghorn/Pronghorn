@@ -297,6 +297,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     protected void genWriteBytesCopy(int target, int fieldPos, LocalHeap byteHeap, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
     	{
 	    	int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
+	    	assert(len>=0) :"must not be null, those have to be optional";
 	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
 	            PrimitiveWriter.writePMapBit((byte)0, writer);
 	        } else {
@@ -389,11 +390,23 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     public void genWriteBytesCopyOptional(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
     	{
+    		
+    		
 	    	int len = RingBuffer.readRingByteLen(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos);
-	        if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
+	        
+	        
+	    	
+	    	if (LocalHeap.equals(target,rbRingBuffer.byteBuffer,RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len),len,rbRingBuffer.byteMask,byteHeap)) {
 	            PrimitiveWriter.writePMapBit((byte)0, writer);
+	            
+	            //this null is not th same as the previous value so we do not end up here.
+	//            System.err.println("XXXX write bytes copy length:"+len); //if -1 is absent 0 
+	            
+	            
 	        } else {
 	            PrimitiveWriter.writePMapBit((byte)1, writer);
+	            
+//	            System.err.println("write len:"+(len+1));
 	            PrimitiveWriter.writeIntegerUnsigned(len+1, writer);
 	            
 	            int offset = RingBuffer.bytePosition(RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value), rbRingBuffer, len);

@@ -69,7 +69,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
 		        //because this point does extra checks it often caputres errors long after they have happened. TODO: Need better debugging tools     
 	            if (templateId<0) {
 	            	           	            	
-	            	System.err.println(dispatch.msgIdx+" "+Integer.toBinaryString(dispatch.msgIdx)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
+	            	System.err.println(templateId+"  "+dispatch.msgIdx+" "+Integer.toBinaryString(dispatch.msgIdx)+" start openPMap at pos "+startPos+"  error in feed at "+PrimitiveReader.totalRead(reader)); //expected to be 1 less
 	            	PrimitiveReader.printDebugData(reader);
 	            	throw new FASTException();
 	            }
@@ -1659,9 +1659,11 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
         {
             if (PrimitiveReader.readPMapBit(reader) != 0) {
                 int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
+  //              System.err.println("read length:"+length);
                 PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
             }
             int len = LocalHeap.valueLength(target,byteHeap);
+   //         System.err.println("read len:"+len);
             LocalHeap.addLocalHeapValue(target, len, rbMask, rbB, rbPos, byteHeap, rbRingBuffer);
         }
     }

@@ -612,13 +612,16 @@ public class TemplateLoaderTest {
             dictionaryFactory.reset(writerDispatch.rLongDictionary);
             dictionaryFactory.reset(writerDispatch.byteHeap);
             
+            //read from reader and puts messages on the queue
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or a fragment is read
 
+            		//confirms full message to read on the queue
                     if (RingWalker.tryReadFragment(queue)) {
                         if (RingWalker.isNewMessage(queue.consumerData)) {
                             msgs.incrementAndGet();
                         }
                         try{   
+                        	//write message found on the queue to the output writer
                             FASTDynamicWriter.write(dynamicWriter);
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));

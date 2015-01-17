@@ -772,8 +772,15 @@ public final class PrimitiveReader {
         // ensure all the bytes are in the buffer before calling visitor
         if (reader.limit - reader.position < length) {
             fetch(length, reader);
+            
+            //safe place to do sanity check
+            if (reader.limit - reader.position < length) {            	
+            	//System.err.println(reader.limit +"  wbl:"+reader.position+" length:"+length+"   post fetch ");
+            	throw new ArrayIndexOutOfBoundsException(length);
+            }
+            
         }
-       // System.err.println("reading length:"+length+" from "+offset);
+        //System.err.println("reading length:"+length+" from "+offset+" "+target.length+"  "+reader.position);
         System.arraycopy(reader.buffer, reader.position, target, offset, length);
         reader.position += length;
     }

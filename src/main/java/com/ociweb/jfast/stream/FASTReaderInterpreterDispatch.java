@@ -136,7 +136,8 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         int token = fullScript[activeScriptCursor];
         do {
             token = fullScript[activeScriptCursor];
-  //          System.err.println("reading:"+TokenBuilder.tokenToString(token)+" from "+reader.position);
+  
+            //System.err.println("reading:"+TokenBuilder.tokenToString(token)+" from "+reader.position);
     
             // The trick here is to keep all the conditionals in this method and
             // do the work elsewhere.
