@@ -276,7 +276,7 @@ public final class PrimitiveWriter {
             }
         }
         
-        //TODO: AAAA, this copy is bad convert these loops to array copy
+        //TODO: A, this copy is bad convert these loops to array copy
         int i = 0;
         while (i<length) {
             writer.buffer[writer.limit+i]=data[mask&(i+offset)];

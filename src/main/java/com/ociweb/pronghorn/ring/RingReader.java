@@ -16,6 +16,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     
     public final static int OFF_MASK  =   0xFFFFFFF;
     public final static int BASE_SHFT =   28;
+    public final static int POS_CONST_MASK = 0x7FFFFFFF;
     
 
     public final static double[] powdi = new double[]{
@@ -86,9 +87,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int len = RingReader.readDataLength(ring, idx);
 
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-            return readASCIIConst(ring,len,target,0x7FFFFFFF & pos);
+            return readASCIIConst(ring,len,target,POS_CONST_MASK & pos);
         } else {
-            return readASCIIRing(ring,len,target,pos);
+            return readASCIIRing(ring,len,target,restorePosition(ring,pos));
         }
     }
     
@@ -97,9 +98,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int len = RingReader.readDataLength(ring, idx);
 
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
-            return readUTF8Const(ring,len,target,0x7FFFFFFF & pos);
+            return readUTF8Const(ring,len,target,POS_CONST_MASK & pos);
         } else {
-            return readUTF8Ring(ring,len,target,pos);
+            return readUTF8Ring(ring,len,target,restorePosition(ring,pos));
         }
     }
    
@@ -137,9 +138,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         int bytesLength = RingReader.readDataLength(ring, idx);
         if (pos < 0) {
-            return readUTF8Const(ring,bytesLength,target, targetOffset, 0x7FFFFFFF & pos);
+            return readUTF8Const(ring,bytesLength,target, targetOffset, POS_CONST_MASK & pos);
         } else {
-            return readUTF8Ring(ring,bytesLength,target, targetOffset,pos);
+            return readUTF8Ring(ring,bytesLength,target, targetOffset,restorePosition(ring,pos));
         }
     }
     
@@ -202,20 +203,21 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
        
     public static int readASCII(RingBuffer ring, int idx, char[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readDataLength(ring, idx);
+        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
+		int pos = ring.buffer[ring.mask & (int)(tmp)];
+        int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
             try {
-                readASCIIConst(ring,len,target, targetOffset, 0x7FFFFFFF & pos);
+                readASCIIConst(ring,len,target, targetOffset, POS_CONST_MASK & pos);
             } catch (Exception e) {
                 
                 e.printStackTrace();
-                System.err.println("pos now :"+(0x7FFFFFFF & pos)+" len "+len);                
+                System.err.println("pos now :"+(POS_CONST_MASK & pos)+" len "+len);                
                 System.exit(0);
                 
             }
         } else {
-            readASCIIRing(ring,len,target, targetOffset,pos);
+            readASCIIRing(ring,len,target, targetOffset,restorePosition(ring,pos));
         }
         return len;
     }
@@ -340,9 +342,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         if (pos < 0) {
-            return eqUTF8Const(ring,len,seq,0x7FFFFFFF & pos);
+            return eqUTF8Const(ring,len,seq,POS_CONST_MASK & pos);
         } else {
-            return eqUTF8Ring(ring,len,seq,pos);
+            return eqUTF8Ring(ring,len,seq,restorePosition(ring,pos));
         }
     }
     
@@ -354,9 +356,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         }
         int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
         if (pos < 0) {
-            return eqASCIIConst(ring,len,seq,0x7FFFFFFF & pos);
+            return eqASCIIConst(ring,len,seq,POS_CONST_MASK & pos);
         } else {
-            return eqASCIIRing(ring,len,seq,pos);
+            return eqASCIIRing(ring,len,seq,restorePosition(ring,pos));
         }
     }
 
@@ -444,6 +446,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         
     }   
     
+    private static int restorePosition(RingBuffer ring, int pos) {
+    	
+    	//TODO: AAA, must add ring.bytesHeadPosition.long()+pos;
+    	//return ring.bytesHeadPos.get()+pos;
+    	return pos;
+    }
+    
     
     //Bytes
     
@@ -452,7 +461,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytesPosition(RingBuffer ring, int loc) {
-        return 0x7FFFFFFF & ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc) )];// first int is always the length
+        int tmp = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc) )];
+		return tmp<0 ? POS_CONST_MASK & tmp : restorePosition(ring,tmp);// first int is always the length
     }
 
     public static byte[] readBytesBackingArray(RingBuffer ring, int loc) {
@@ -461,12 +471,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     public static ByteBuffer readBytes(RingBuffer ring, int loc, ByteBuffer target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
-        int len = RingReader.readBytesLength(ring, loc);
+        long tmp = ring.workingTailPos.value + (OFF_MASK&loc);
+		int pos = ring.buffer[ring.mask & (int)(tmp)];
+        int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
-            return readBytesConst(ring,len,target,0x7FFFFFFF & pos);
+            return readBytesConst(ring,len,target,POS_CONST_MASK & pos);
         } else {
-            return readBytesRing(ring,len,target,pos);
+            return readBytesRing(ring,len,target,restorePosition(ring,pos));
         }
     }
     
@@ -488,12 +499,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readBytesLength(ring, idx);
+        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
+		int pos = ring.buffer[ring.mask & (int)(tmp)];
+        int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
-            readBytesConst(ring,len,target, targetOffset,0x7FFFFFFF & pos);
+            readBytesConst(ring,len,target, targetOffset,POS_CONST_MASK & pos);
         } else {
-            readBytesRing(ring,len,target, targetOffset,pos);
+            readBytesRing(ring,len,target, targetOffset,restorePosition(ring,pos));
         }
         return len;
     }
@@ -514,12 +526,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readBytesLength(ring, idx);
+        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
+		int pos = ring.buffer[ring.mask & (int)(tmp)];
+        int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
-            readBytesConst(ring,len,target, targetOffset,targetMask, 0x7FFFFFFF & pos);
+            readBytesConst(ring,len,target, targetOffset,targetMask, POS_CONST_MASK & pos);
         } else {
-            readBytesRing(ring.byteBuffer, pos, ring.byteMask, target, targetOffset, targetMask,	len);
+            readBytesRing(ring.byteBuffer, restorePosition(ring,pos), ring.byteMask, target, targetOffset, targetMask,	len);
         }
         return len;
     }
@@ -529,8 +542,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int length = readBytes(inputRing, fieldId, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
 		outputRing.validateVarLength(length);							
 		
-		int p = outputRing.byteWorkingHeadPos.value;
-		RingBuffer.addValue(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, p, length);							
+		int p = outputRing.byteWorkingHeadPos.value;                                
+		RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get()&outputRing.byteMask, p, length);							
 		outputRing.byteWorkingHeadPos.value = p + length;
 		return length;
 	}
@@ -542,21 +555,19 @@ public class RingReader {//TODO: B, build another static reader that does auto c
             };
     }
 
-    public static void readBytesRing(byte[] source, int sourceIdx,
-			int sourceMask, byte[] target, int targetIdx, int targetMask,
-			int length) {
-		int tStop = (targetIdx + length) & targetMask;
-		int tStart = targetIdx & targetMask;
-		int rStop = (sourceIdx + length) & sourceMask;
-		int rStart = sourceIdx & sourceMask;
+    public static void readBytesRing(byte[] source, int sourceIdx, int sourceMask, byte[] target, int targetIdx, int targetMask, int length) {
+    	final int tStop = (targetIdx + length) & targetMask;
+		final int tStart = targetIdx & targetMask;
+		final int rStop = (sourceIdx + length) & sourceMask;
+		final int rStart = sourceIdx & sourceMask;
 		if (tStop >= tStart) {
 			if (rStop >= rStart) {
 				//the source and target do not wrap
-				System.arraycopy(source, sourceIdx, target, tStart, length);
+				System.arraycopy(source, rStart, target, tStart, length);
 			} else {
 				//the source is wrapping but not the target
 				int srcFirstLen = (1 + sourceMask) - rStart;
-				System.arraycopy(source, sourceIdx, target, tStart, srcFirstLen);
+				System.arraycopy(source, rStart, target, tStart, srcFirstLen);
 				System.arraycopy(source, 0, target, tStart+srcFirstLen, length-srcFirstLen);
 			}    			
 		} else {
@@ -564,8 +575,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 				//the source does not wrap but the target does
 				// done as two copies
 			    int targFirstLen = (1 + targetMask) - tStart;
-			    System.arraycopy(source, sourceIdx, target, tStart, targFirstLen);
-			    System.arraycopy(source, sourceIdx + targFirstLen, target, 0, length - targFirstLen);
+			    System.arraycopy(source, rStart, target, tStart, targFirstLen);
+			    System.arraycopy(source, rStart + targFirstLen, target, 0, length - targFirstLen);
 			} else {
 		        if (length>0) {
 					//both the target and the source wrap
@@ -573,13 +584,13 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 				    int targFirstLen = (1 + targetMask) - tStart;
 				    if (srcFirstLen<targFirstLen) {
 				    	//split on src first
-				    	System.arraycopy(source, sourceIdx, target, tStart, srcFirstLen);
+				    	System.arraycopy(source, rStart, target, tStart, srcFirstLen);
 				    	System.arraycopy(source, 0, target, tStart+srcFirstLen, targFirstLen - srcFirstLen);
 				    	System.arraycopy(source, targFirstLen - srcFirstLen, target, 0, length - targFirstLen);    			    	
 				    } else {
 				    	//split on targ first
-				    	System.arraycopy(source, sourceIdx, target, tStart, targFirstLen);
-				    	System.arraycopy(source, sourceIdx + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
+				    	System.arraycopy(source, rStart, target, tStart, targFirstLen);
+				    	System.arraycopy(source, rStart + targFirstLen, target, 0, srcFirstLen - targFirstLen); 
 				    	System.arraycopy(source, 0, target, srcFirstLen - targFirstLen, length - srcFirstLen);
 				    }
 		        }

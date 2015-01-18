@@ -206,7 +206,7 @@ public final class RingBuffer {
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			appendPartialBytesArray(data, 0, len-len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			
-			addValue(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
+			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get()&outputRing.byteMask, outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 		}
 	}
@@ -232,14 +232,14 @@ public final class RingBuffer {
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	
     	assert(sourceLen>=0);
-        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);        
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteMask & rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
+        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-        addValue(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     
 
@@ -274,11 +274,21 @@ public final class RingBuffer {
         buffer[rbMask & (int)offset] = value;
     } 
     
-    public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2) {
-        
+    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int bytesHeadPos, int position, int length) {
+        //TODO: AA, at this point we can modify the pos that is set.
+    	//negative position is written as is because the internal array does not have any offset (but it could some day)
+    	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
+    	int tmp = position;
+//    	if (position>=0) {
+//    		tmp = (int)(position-bytesHeadPos);
+//    		if (tmp<0) {
+//    			throw new UnsupportedOperationException("bad value "+tmp+"  "+position+" "+bytesHeadPos);
+//    		}
+//    	}
+    	
         long p = headCache.value; 
-        buffer[rbMask & (int)p] = value1;
-        buffer[rbMask & (int)(p+1)] = value2;
+        buffer[rbMask & (int)p] = tmp;
+        buffer[rbMask & (int)(p+1)] = length;
         headCache.value = p+2;
         
     } 
@@ -293,6 +303,14 @@ public final class RingBuffer {
         
     }    
     
+    public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
+        
+        long p = headCache.value; 
+        buffer[rbMask & (int)p] = (int)(value >>> 32);
+        buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);
+        headCache.value = p+2;
+        
+    } 
     
     public static void dump(RingBuffer rb) {
                        
@@ -305,7 +323,6 @@ public final class RingBuffer {
     // these are needed for fast direct READ FROM here
 
     public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
-    //	System.err.println("read len:"+rbB[rbMask & (int)(rbPos.value + fieldPos + 1)]+" from "+rbPos.value+" field "+fieldPos);
         return rbB[rbMask & (int)(rbPos.value + fieldPos + 1)];// second int is always the length
     }
 

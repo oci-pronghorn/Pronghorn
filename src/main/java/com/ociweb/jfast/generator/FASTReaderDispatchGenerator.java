@@ -422,7 +422,7 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
+    protected void genReadTextConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, constIdx, constLen);
     }
     
@@ -452,8 +452,8 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     }
     
     @Override
-    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
-        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constValue, constInitLen, constValueLen);
+    protected void genReadTextConstantOptional(int constInit, int constValue, int constInitLen, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPos, PaddedLong rbPos) {
+        GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constValue, constInitLen, bytesHeadPos, constValueLen);
     }
     
     @Override
@@ -469,12 +469,12 @@ public class FASTReaderDispatchGenerator extends FASTReaderInterpreterDispatch {
     //byte methods
     
     @Override
-    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, PaddedLong rbPos) {
+    protected void genReadBytesConstant(int constIdx, int constLen, int[] rbB, int rbMask, int bytesHeadPos, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this, constIdx, constLen);
     }
     
     @Override
-    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, PaddedLong rbPos) {
+    protected void genReadBytesConstantOptional(int constInit, int constInitLen, int constValue, int constValueLen, int[] rbB, int rbMask, PrimitiveReader reader, int bytesHeadPosition, PaddedLong rbPos) {
         GeneratorUtils.generator(new Exception().getStackTrace(),generatorData,this,constInit,constInitLen, constValue, constValueLen);
     }
     

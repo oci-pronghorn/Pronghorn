@@ -1342,7 +1342,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // constant
                     int id =  token & MAX_BYTE_INSTANCE_MASK;
                     int idLength = LocalHeap.length(id,byteHeap);
-                    genReadBytesConstant(id, idLength, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos);
+                    genReadBytesConstant(id, idLength, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos);
                 } else {
                     // delta
                     int idx = token & MAX_BYTE_INSTANCE_MASK;
@@ -1396,7 +1396,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     int constValue =    idx;
                     int constValueLen = LocalHeap.length(constValue,byteHeap);
                     
-                    genReadBytesConstantOptional(constInit, constInitLen, constValue, constValueLen, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.workingHeadPos);
+                    genReadBytesConstantOptional(constInit, constInitLen, constValue, constValueLen, rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos);
                 } else {
                     // delta
                     genReadBytesDeltaOptional(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, rbRingBuffer.workingHeadPos, reader, rbRingBuffer);
@@ -1479,7 +1479,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     
                     int constValue = idx;
                    
-                    genReadBytesConstantOptional(constInit, LocalHeap.initLength(constId, byteHeap), constValue, LocalHeap.initLength(constValue, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.workingHeadPos);
+                    genReadBytesConstantOptional(constInit, LocalHeap.initLength(constId, byteHeap), constValue, LocalHeap.initLength(constValue, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos);
                                 
                 } else {
                     // delta   
@@ -1545,7 +1545,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     // constant
                     int constId = idx | LocalHeap.INIT_VALUE_MASK;
                     int constInit = LocalHeap.initStartOffset(constId, byteHeap)| LocalHeap.INIT_VALUE_MASK;
-                    genReadTextConstant(constInit, LocalHeap.initLength(constId, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos); //always fixed length
+                    genReadTextConstant(constInit, LocalHeap.initLength(constId, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos); //always fixed length
                 } else {
                     // delta
                     genReadASCIIDelta(idx, rbRingBuffer.buffer, rbRingBuffer.mask, byteHeap, reader, rbRingBuffer.workingHeadPos, rbRingBuffer);//always dynamic
@@ -1589,7 +1589,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     int constId = idx | LocalHeap.INIT_VALUE_MASK;
                     int constInit = LocalHeap.initStartOffset(constId, byteHeap)| LocalHeap.INIT_VALUE_MASK;
                     
-                    genReadBytesConstant(constInit, LocalHeap.initLength(constId, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos);
+                    genReadBytesConstant(constInit, LocalHeap.initLength(constId, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos);
                     
                 } else {
                     // delta 
@@ -1634,7 +1634,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                     
                     //TODO: B, redo text to avoid copy and have usage counter in text heap and, not sure we know which array to read from.
                     int constValue = token & MAX_BYTE_INSTANCE_MASK; 
-                    genReadTextConstantOptional(constInit, constValue, LocalHeap.initLength(constId, byteHeap), LocalHeap.initLength(constValue, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.workingHeadPos);
+                    genReadTextConstantOptional(constInit, constValue, LocalHeap.initLength(constId, byteHeap), LocalHeap.initLength(constValue, byteHeap), rbRingBuffer.buffer, rbRingBuffer.mask, reader, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.workingHeadPos);
                 }
             } else {
                 if (0 == (token & (2 << TokenBuilder.SHIFT_OPER))) {

@@ -127,6 +127,7 @@ public class GeneratorUtils {
                                     .replace("byteBuffer", "rb.byteBuffer")
                                     .replace("byteMask", "rb.byteMask")                                    
                                     .replace("rbB","rb.buffer")
+                                    .replace("bytesHeadPos", "rb.bytesHeadPos.get()") //TODO: BB, this needs to be refactor so this is not passed in each time.
                                     .replace("rbMask", "rb.mask");
             
             if (isReader) {

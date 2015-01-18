@@ -24,7 +24,7 @@ public class RingBufferPipeline {
 	
 	@Test
 	public void pipelineExample() {		 		 
-		 boolean highLevelAPI = true;		 
+		 boolean highLevelAPI = false;		 
 		
 		 //create all the threads, one for each stage
 		 ExecutorService service = Executors.newFixedThreadPool(stages);
@@ -62,7 +62,7 @@ public class RingBufferPipeline {
 		 long bytes = testMessages * (long)testArray.length;
 		 long bpms = (bytes*8)/duration;
 		 long msgPerMs = testMessages/duration;
-		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" pipeline "+stages+" msg/ms:"+msgPerMs+" MsgSize:"+testArray.length);
+		 System.out.println("Bytes:"+bytes+"  Gbits/sec:"+(bpms/1000000f)+" stages:"+stages+" msg/ms:"+msgPerMs+" MsgSize:"+testArray.length);
 	 		 
 	}
 	 	
