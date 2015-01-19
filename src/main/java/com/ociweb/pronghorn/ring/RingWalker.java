@@ -239,12 +239,36 @@ public class RingWalker {
 	      
 	    int msgIdx = 0;
 	    if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBufferConsumer.from)) {
-	    	msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId    
+	    	msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
 	    	if (msgIdx<0) {
-	    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
 	    		//this is commonly used as the end of file marker
+	    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
 	    		return true;
 	    	}
+	    } else {
+	    	//we only have 1 message so there is not normally a leading id to look at.
+	    	//first confirm that the ring looks like there is only 1 byte on it
+	    	if (ringBuffer.workingTailPos.value+1==ringBufferConsumer.getBnmHeadPosCache()) {
+	    		
+	    		//second ring does not need to exist or have data we just want to use the position indicator.
+	    		if ((ringBuffer.byteWorkingTailPos.value+1)==ringBuffer.bytesHeadPos.get()) {
+	    			
+	    		}
+	    		//the message size may only be one so
+	    		//second confirm that the workingHeadPos is less than zero (not a normal case)
+	    		//TODO: AAA, change to BytesHeadPosition ?? this may be much better! put flag on second ring unrefrenced by first!
+		    	if (ringBuffer.workingHeadPos.value <  0) {//TODO: this may not work because it should be volatile could remove if.. we block 1 int messages
+		    		msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId  
+		    		//third confirm this byte is what we expected
+			    	if (msgIdx<0) {
+			    		//this is commonly used as the end of file marker
+			    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
+			    		return true;
+			    	}    		
+			    	msgIdx = 0;//remove side effect
+		    		//there was no side effect so just return like normal
+		    	}
+	    	}	    	
 	    }
 	    RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
 	    

@@ -1618,14 +1618,14 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     
     protected void genReadASCIIDefault(int target, int defIdx, int defLen, int rbMask, int[] rbB, PrimitiveReader reader, LocalHeap byteHeap, PaddedLong rbPos, byte[] byteBuffer, int byteMask, RingBuffer rbRingBuffer) {
             if (0 == PrimitiveReader.readPMapBit(reader)) {
-                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, defIdx, defLen);
+                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), defIdx, defLen);
             } else {
                 int bytePos = rbRingBuffer.byteWorkingHeadPos.value;
                 int lenTemp = PrimitiveReader.readTextASCIIIntoRing(byteBuffer,
                                                                     bytePos, 
                                                                     byteMask,
                                                                     reader);
-                RingBuffer.addBytePosAndLen(rbB,rbMask,rbPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, bytePos, lenTemp);
+                RingBuffer.addBytePosAndLen(rbB,rbMask,rbPos, rbRingBuffer.bytesHeadPos.get(), bytePos, lenTemp);
                 rbRingBuffer.byteWorkingHeadPos.value = bytePos+lenTemp;                  
             }
     }    
@@ -1646,7 +1646,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
     protected void genReadBytesDefault(int target, int defIdx, int defLen, int optOff, int[] rbB, int rbMask, LocalHeap byteHeap, PrimitiveReader reader, PaddedLong rbPos, RingBuffer rbRingBuffer) {
         
         if (0 == PrimitiveReader.readPMapBit(reader)) {
-            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, defIdx, defLen);
+            RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), defIdx, defLen);
         } else {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - optOff;
             PrimitiveReader.readByteData(LocalHeap.rawAccess(byteHeap), LocalHeap.allocate(target, length, byteHeap), length, reader);
@@ -1740,7 +1740,7 @@ public abstract class FASTReaderDispatchTemplates extends FASTDecoder {
             int length = PrimitiveReader.readIntegerUnsigned(reader) - 1;
                 
             if (length<0) {
-                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.byteWorkingHeadPos.value, length);
+                RingBuffer.addBytePosAndLen(rbB, rbMask, rbPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, length);
                 return;
             }
             if (length>0) {        

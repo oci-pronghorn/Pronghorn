@@ -206,7 +206,7 @@ public final class RingBuffer {
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			appendPartialBytesArray(data, 0, len-len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			
-			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get()&outputRing.byteMask, outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
+			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 		}
 	}
@@ -239,7 +239,7 @@ public final class RingBuffer {
     }
     
     public static void addNullByteArray(RingBuffer rbRingBuffer) {
-        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get()&rbRingBuffer.byteMask, rbRingBuffer.byteWorkingHeadPos.value, -1);
+        addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, -1);
     }
     
 
@@ -323,7 +323,7 @@ public final class RingBuffer {
     // these are needed for fast direct READ FROM here
 
     public static int readRingByteLen(int fieldPos, int[] rbB, int rbMask, PaddedLong rbPos) {
-        return rbB[rbMask & (int)(rbPos.value + fieldPos + 1)];// second int is always the length
+        return rbB[(int) (rbMask & (rbPos.value + fieldPos + 1))];// second int is always the length
     }
 
 	public static int readRingByteLen(int idx, RingBuffer ring) {

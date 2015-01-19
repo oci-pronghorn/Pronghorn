@@ -191,12 +191,10 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
         PrimitiveWriter.writeNull(writer);
     }
     
-
-
+    
     protected void genWriteTextDelta(int target, int fieldPos, PrimitiveWriter writer, LocalHeap byteHeap, RingBuffer rbRingBuffer) {
         {
-    //    	System.err.println("value to encode for delta:"+     byteHeap.toString(target));
-        	
+                	
             int rawPos = RingBuffer.readValue(fieldPos,rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value);
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             
@@ -204,10 +202,17 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int offset = RingBuffer.bytePosition(rawPos, rbRingBuffer, length);
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
+            
+            //System.err.println("the string to be written "+new String(buffer,offset,length));
+            
             int byteMask = rbRingBuffer.byteMask;
             
             if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
-            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize);
+            	//TODO: are we reading past head??
+            	System.err.println("head position:"+rbRingBuffer.headPos.get() +"length from pos:"+rbRingBuffer.workingTailPos.value+"  "+Long.toBinaryString(rbRingBuffer.workingTailPos.value)+"  + "+fieldPos+" + one masked by "+Integer.toHexString(rbRingBuffer.mask));
+            	
+            	
+            	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize+" and "+rbRingBuffer.maxAvgVarLen);
             }
 
             // count matching front or back chars
