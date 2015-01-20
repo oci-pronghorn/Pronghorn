@@ -19,6 +19,7 @@ public class AppendableASCIIRing implements Appendable {
 	
 	private int countDownInit = 0;
 	private int countDown;
+	private final static int step = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
 	public AppendableASCIIRing(RingBuffer ringBuffer) {
 		
@@ -27,7 +28,7 @@ public class AppendableASCIIRing implements Appendable {
 			throw new UnsupportedOperationException("This class can only be used with the very simple RAW_BYTES catalog of messages.");
 		}
 		int messagesPerRing = (1<<(ringBuffer.pBits-1));
-		outputTarget = 2-messagesPerRing;//this value is negative		
+		outputTarget = step-messagesPerRing;//this value is negative		
 		tailPosCache = tailPosition(ringBuffer);
 		
 		countDownInit = messagesPerRing>>2;
@@ -38,7 +39,8 @@ public class AppendableASCIIRing implements Appendable {
 	@Override
 	public Appendable append(CharSequence csq) throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
-        outputTarget+=2;
+        outputTarget+=step;
+        RingWriter.writeInt(ringBuffer, 0);
 		RingWriter.writeASCII(ringBuffer, csq);
 		
 		if ((--countDown)<=0) {
@@ -52,7 +54,8 @@ public class AppendableASCIIRing implements Appendable {
 	public Appendable append(CharSequence csq, int start, int end)
 			throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
-        outputTarget+=2;
+        outputTarget+=step;
+        RingWriter.writeInt(ringBuffer, 0);
 		RingWriter.writeASCII(ringBuffer, csq, start, end-start);
 		
 		if ((--countDown)<=0) {
@@ -65,8 +68,9 @@ public class AppendableASCIIRing implements Appendable {
 	@Override
 	public Appendable append(char c) throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
-        outputTarget+=2;
+        outputTarget+=step;
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
+		RingWriter.writeInt(ringBuffer, 0);
 		RingWriter.writeASCII(ringBuffer, temp);
 		
 		if ((--countDown)<=0) {

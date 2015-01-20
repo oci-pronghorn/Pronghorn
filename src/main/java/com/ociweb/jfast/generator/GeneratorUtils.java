@@ -171,21 +171,15 @@ public class GeneratorUtils {
             builder.append("\n");
             builder.append("setActiveScriptCursor(rb.consumerData.cursor);\n");        
 
-            boolean singleMessageFragment = FieldReferenceOffsetManager.hasSingleMessageTemplate(generatorData.from);
-                        
-            //only wrap the beginMessage call with this conditional IFF the template supports multiple fragments where
-            //we may or may not begin a message.  TODO: C, can optimize further if there are multiple messages but all are 1 fragment long
-            if (!singleMessageFragment) {
-            	builder.append("if ("+RingWalker.class.getCanonicalName()+".isNewMessage(rb.consumerData)) {\n");                
-            }
+            builder.append("if ("+RingWalker.class.getCanonicalName()+".isNewMessage(rb.consumerData)) {\n");                
+            
             if (preambleLength==0) {
                 builder.append("    beginMessage(this);\n");
             } else {
                 builder.append("    beginMessage(writer, rb.buffer, rb.mask, rb.workingTailPos, this);\n");
             }
-            if (!singleMessageFragment) {
-            	builder.append("}\n"); 
-            }
+
+           	builder.append("}\n");            
 
         }
         

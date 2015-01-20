@@ -104,7 +104,7 @@ public class FieldReferenceOffsetManager {
             
             maximumFragmentStackDepth = scriptTokens.length;
             			
-            maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes, messageStarts.length>1 ? 1 : 0);
+            maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
             //consumer of this need not check for null because it is always created.
         }
         tokensLen = null==tokens?0:tokens.length;
@@ -124,7 +124,8 @@ public class FieldReferenceOffsetManager {
 		}
 	}
 	
-    private float buildFragScript(int[] scriptTokens, short preableBytes, int spaceForTemplateId) {
+    private float buildFragScript(int[] scriptTokens, short preableBytes) {
+    	int spaceForTemplateId = 1;
 		int scriptLength = scriptTokens.length;        
         boolean debug = false;       
         int i = 0;      
@@ -181,9 +182,8 @@ public class FieldReferenceOffsetManager {
                 //TODO: B, if optional group it will also need to be zero like seq
                 
                 //must be a group open only for a new message 
-                if (!isSeq && isGroupOpen) { 
-					int preambleInts = (preableBytes+3)>>2;                               
-                                                       
+                if ((!isSeq && isGroupOpen) || (0==fragmentStartIdx)) { 
+					int preambleInts = (preableBytes+3)>>2;                                            
                     fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
                 } else {
                 	
@@ -253,9 +253,6 @@ public class FieldReferenceOffsetManager {
     	return messageStarts;
     }
     
-    public static boolean hasSingleMessageTemplate(FieldReferenceOffsetManager from) {
-    	return 1 == from.messageStarts.length;
-    }
     
     private int[] computeMessageStarts() {
 		int countOfNeededStarts = 1; //zero is always a start regardless of the token type found at that location
@@ -329,8 +326,8 @@ public class FieldReferenceOffsetManager {
         	//System.err.println("looking at:"+fieldNameScript[x]);
             if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
                 
-                if (0==x) {
-                    return UPPER_BITS|0; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
+                if (0==x) {//1 because we need to offset for templateId
+                    return UPPER_BITS|1; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
                 } else {
                     return UPPER_BITS|from.fragDataSize[x];                    
                 }

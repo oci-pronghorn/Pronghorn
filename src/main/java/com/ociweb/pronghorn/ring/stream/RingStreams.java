@@ -59,6 +59,7 @@ public class RingStreams {
         	
         	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
         	
+        	int msgId = RingBuffer.takeValue(inputRing);
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
         				
@@ -123,7 +124,8 @@ public class RingStreams {
         	        	
         	//block until one more byteVector is ready.
         	
-        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        	                   	
+        	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);
+        	int msgId = RingBuffer.takeValue(inputRing);
         	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
         	int len = takeRingByteLen(inputRing);
         				
@@ -187,7 +189,7 @@ public class RingStreams {
 				if (size>0) {
 					//block until there is a slot to write into
 					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
-					
+					RingBuffer.addValue(outputRing, 0);
 					RingWriter.finishWriteBytesAlreadyStarted(outputRing, position, size);
 					RingBuffer.publishWrites(outputRing);
 					position += size;
@@ -225,6 +227,7 @@ public class RingStreams {
 
 			    int fragmentLength = (int)Math.min(blockSize, stop-position);
 		 
+			    RingBuffer.addValue(output, 0);
 		    	RingBuffer.addByteArray(data, position, fragmentLength, output);
 		    	RingBuffer.publishWrites(output);
 		        
@@ -236,6 +239,7 @@ public class RingStreams {
 	public static void writeEOF(RingBuffer ring) {
 		int fill = 1 + ring.mask - FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 		spinBlockOnTail(tailPosition(ring), headPosition(ring)-fill, ring);
+		RingBuffer.addValue(ring, -1); //end of file, message
 		RingBuffer.addNullByteArray(ring);
 		RingBuffer.publishWrites(ring);		
 	}

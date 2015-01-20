@@ -100,6 +100,7 @@ public class RingInputStream extends InputStream {
 	
 	private int sendNewContent(byte[] targetData, int targetOffset,	int targetLength) {
 		
+		int msgId = RingBuffer.takeValue(ring);
 		int meta = takeRingByteMetaData(ring);//side effect, this moves the pointer and must happen before we call for length
 		int sourceLength = takeRingByteLen(ring);
 		

@@ -855,12 +855,8 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
 	                        if (isTemplate) {
 	                        	
 	                            //must start at a location after the preamble and templateId.
-	                            fieldPos = RingBuffer.from(rbRingBuffer).templateOffset;
-	                            
-	                            //only add the offset for the templateId if and when they are used
-	                            if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(RingBuffer.from(rbRingBuffer))) {
-	                            	fieldPos = fieldPos+1;
-	                            }
+	                        	//add 1 for templateId room.
+	                            fieldPos = 1 + RingBuffer.from(rbRingBuffer).templateOffset;
 	                            
 	                            openMessage(token, templatePMapSize, fieldPos-1, writer, rbRingBuffer);
 	                                                        
@@ -1300,11 +1296,9 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
             fieldPos += (preambleData.length+3)>>2;//must adjust this because it is meta data and when generating it will be used.
         };
 
-        //only template id in message if the from has more than 1 template
-        if (null==ringBuffer || !FieldReferenceOffsetManager.hasSingleMessageTemplate(RingBuffer.from(ringBuffer))) {
-        	fieldPos++;          	
-        }
-        
+        //add 1 for template id 
+       	fieldPos++;          	
+                
     }
     
     @Override

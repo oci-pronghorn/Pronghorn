@@ -13,17 +13,20 @@ import org.junit.Test;
 public class RingBufferPipeline {
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 9000000;
+	private final int testMessages = 90000000;
 	private final int stages = 3;
-	private final byte primaryBits   = 19;
-	private final byte secondaryBits = 24;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte primaryBits   = 20;
+	private final byte secondaryBits = 25;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
+	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
+	
 	//The limiting factor for these tests is not the data copy but it is the contention over the hand-off when the head/tail are modified.
 	//so by setting matchMask to reduce the calls to publish a dramatic performance increase can be seen.  This will increase latency.
-	private final int batchMask = 0xFFF;
+	private final int batchMask = 0xFF;
 	
 	@Test
-	public void pipelineExample() {		 		 
+	public void pipelineExample() {	
+	
 		 boolean highLevelAPI = false;		 
 		
 		 //create all the threads, one for each stage
@@ -104,7 +107,7 @@ public class RingBufferPipeline {
 				@Override
 				public void run() {
 									
-				  int messageSize = 2;	
+				  int messageSize = msgSize;
 			      int fill =  (1<<primaryBits)-messageSize;
 			      
 		          int messageCount = testMessages;            
@@ -114,6 +117,7 @@ public class RingBufferPipeline {
 		          while (--messageCount>=0) {
 		        	  
 		              //write the record
+		        	  RingBuffer.addValue(outputRing, 0);
 	                  addByteArray(testArray, 0, testArray.length, outputRing);
 	                  
 				 	  if (0==(batchMask&messageCount)) {
@@ -128,6 +132,7 @@ public class RingBufferPipeline {
 		          }
 	
 		          //send negative length as poison pill to exit all runnables  
+		          RingBuffer.addValue(outputRing, -1);
 		      	  addNullByteArray(outputRing);
 		      	  publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
 		      	  System.out.println("finished writing:"+testMessages);
@@ -160,6 +165,7 @@ public class RingBufferPipeline {
 									
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
+									RingBuffer.addValue(outputRing, 0);
 									length = RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
 															
 				//					System.err.println(RingBuffer.headPosition(outputRing)+" length "+length);
@@ -193,19 +199,19 @@ public class RingBufferPipeline {
 				@Override
 				public void run() {
 	                //only enter this block when we know there are records to read
-	    		    long inputTarget = 2;
+	    		    long inputTarget = msgSize;
 	                long headPosCache = spinBlockOnHead(headPosition(inputRing), inputTarget, inputRing);	
 	                int msgCount = testMessages;   
 	                
 	                //two per message, and we only want half the buffer to be full
-	                long outputTarget = 2-(1<<primaryBits);//this value is negative
+	                long outputTarget = msgSize-(1<<primaryBits);//this value is negative
 	                
 	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
 	                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
 	                while (true) {
 	                    //read the message
 	                    // 	System.out.println("reading:"+messageCount);
-	                    	
+	                    int msgId = RingBuffer.takeValue(inputRing);	
 	                	int meta = takeRingByteMetaData(inputRing);
 	                	int len = takeRingByteLen(inputRing);
 	                	
@@ -217,24 +223,24 @@ public class RingBufferPipeline {
 	
 						
 						if (len<0) {
-							releaseReadLock(inputRing);  
+							releaseReadLock(inputRing); 
+							RingBuffer.addValue(outputRing, -1);
 							addNullByteArray(outputRing);
 							publishWrites(outputRing);
 							return;
 						}
 	
+						RingBuffer.addValue(outputRing, 0);
 						RingBuffer.addByteArrayWithMask(outputRing, mask, len, data, offset);						
-						outputTarget+=2;
+						outputTarget+=msgSize;
 						
 						 if (0==(batchMask& --msgCount)) {
 							 publishWrites(outputRing);
+							 releaseReadLock(inputRing);
 						 }
-	                    
-	                    releaseReadLock(inputRing);  
-	
-	                	
+  	                	
 	                	//block until one more byteVector is ready.
-	                	inputTarget += 2;
+	                	inputTarget += msgSize;
 	                	headPosCache = spinBlockOnHead(headPosCache, inputTarget, inputRing);	                        	    	                        		
 	                    
 	                }  
@@ -254,13 +260,13 @@ public class RingBufferPipeline {
              	    long total = 0;
     	            	
                     //only enter this block when we know there are records to read
-        		    long target = 2;
+        		    long target = msgSize;
                     long headPosCache = spinBlockOnHead(headPosition(inputRing), target, inputRing);	
                     long messageCount = 0;
                     while (true) {
                         //read the message
                         // 	System.out.println("reading:"+messageCount);
-                        	
+                        int msgId = RingBuffer.takeValue(inputRing); 	
                     	int meta = takeRingByteMetaData(inputRing);
                     	int len = takeRingByteLen(inputRing);
                     	
@@ -270,9 +276,10 @@ public class RingBufferPipeline {
    					
     					
                     	//doing nothing with the data
-                    	releaseReadLock(inputRing);
+   						releaseReadLock(inputRing);
 
-                    	if (len<0) {
+                    	if (len<0) {                     	
+                        	
                     		System.out.println("exited after reading: Msg:" + messageCount+" Bytes:"+total);
                     		return;
                     	}
@@ -282,7 +289,7 @@ public class RingBufferPipeline {
                     	total += len;
 
                     	//block until one more byteVector is ready.
-                    	target += 2;
+                    	target += msgSize;
                     	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		
                         
                     }   

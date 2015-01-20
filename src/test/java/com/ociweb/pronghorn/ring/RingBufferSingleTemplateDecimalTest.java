@@ -125,7 +125,7 @@ public class RingBufferSingleTemplateDecimalTest {
          
         
         int FIELD_LOC = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], FRAG_LOC, FROM);
-        
+
         int k = testSize;
         while (k>0) {
         	

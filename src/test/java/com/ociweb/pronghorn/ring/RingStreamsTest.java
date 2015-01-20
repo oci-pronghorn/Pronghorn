@@ -60,7 +60,7 @@ public class RingStreamsTest {
 		
 		int lenMask = (1<<(testBits-2))-1;
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)14);
+		RingBuffer testRing = new RingBuffer((byte)6,(byte)17);
 		
 		byte[] testData = new byte[testSize];
 		int j = testSize;
@@ -108,10 +108,10 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingOutputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer((byte)5,(byte)13);
 		int blockSize = testRing.maxAvgVarLen;
 		
-		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
+		RingBuffer targetRing = new RingBuffer((byte)5, (byte)13);
 		RingOutputStream ringOutputStream = new RingOutputStream(targetRing);
 		
 		int testBits = 11;
@@ -125,7 +125,7 @@ public class RingStreamsTest {
 		}
 		
 		int testIdx = 0;
-		int testTotal = testSize*40;
+		int testTotal = testSize*10;
 		
 		while (testIdx<testTotal) {
 			
@@ -242,11 +242,11 @@ public class RingStreamsTest {
 	@Test
 	public void testRingToRingInputStream() {
 		
-		RingBuffer testRing = new RingBuffer((byte)4,(byte)12);
+		RingBuffer testRing = new RingBuffer((byte)5,(byte)13);
 		int blockSize = testRing.maxAvgVarLen;
 		RingInputStream ringInputStream = new RingInputStream(testRing);
 		
-		RingBuffer targetRing = new RingBuffer((byte)4, (byte)12);
+		RingBuffer targetRing = new RingBuffer((byte)5, (byte)13);
 		
 		int testSize = 3000;
 		byte[] testData = new byte[testSize];

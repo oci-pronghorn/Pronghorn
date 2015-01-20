@@ -90,7 +90,7 @@ public class RingWalker {
 
     public static void setMsgIdx(RingWalker rw, int idx) {
 		assert(idx<rw.from.fragDataSize.length) : "Corrupt stream, expected message idx < "+rw.from.fragDataSize.length+" however found "+idx;
-		assert(idx>-2);
+		assert(idx>-3);
         rw.msgIdx = idx;
 	}
 
@@ -102,21 +102,20 @@ public class RingWalker {
         this.isNewMessage = isNewMessage;
     }
 
+    public static long getWaitingNextStop(RingWalker ringWalker) {
+        return ringWalker.waitingNextStop;
+    }  
 
-    public long getWaitingNextStop() {
-        return waitingNextStop;
+    public static void setWaitingNextStop(RingWalker ringWalker, long waitingNextStop) {
+    	ringWalker.waitingNextStop = waitingNextStop;
     }
 
-    public void setWaitingNextStop(long waitingNextStop) {
-        this.waitingNextStop = waitingNextStop;
+    public static long getBnmHeadPosCache(RingWalker ringWalker) {
+        return ringWalker.bnmHeadPosCache;
     }
 
-    public long getBnmHeadPosCache() {
-        return bnmHeadPosCache;
-    }
-
-    public void setBnmHeadPosCache(long bnmHeadPosCache) {
-        this.bnmHeadPosCache = bnmHeadPosCache;
+    public static void setBnmHeadPosCache(RingWalker ringWalker, long bnmHeadPosCache) {
+        ringWalker.bnmHeadPosCache = bnmHeadPosCache;
     }
 
     public int[] getSeqStack() {
@@ -151,8 +150,8 @@ public class RingWalker {
 	    if (ringBufferConsumer.waiting) {
 	        //only here if we already checked headPos against moveNextStop at least once and failed.
 	        
-	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
-	        ringBufferConsumer.waiting = (ringBufferConsumer.getWaitingNextStop()>(ringBufferConsumer.getBnmHeadPosCache() ));
+	        RingWalker.setBnmHeadPosCache(ringBufferConsumer,RingBuffer.headPosition(ringBuffer));
+	        ringBufferConsumer.waiting = (RingWalker.getWaitingNextStop(ringBufferConsumer)>(RingWalker.getBnmHeadPosCache(ringBufferConsumer) ));
 	        return !(ringBufferConsumer.waiting);
 	    }
 	         
@@ -207,20 +206,20 @@ public class RingWalker {
 	}
 
 	static boolean beginNewMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer, long cashWorkingTailPos) {
-		RingWalker.setMsgIdx(ringBufferConsumer,-1);
 	
 		//Now beginning a new message so release the previous one from the ring buffer
 		//This is the only safe place to do this and it must be done before we check for space needed by the next record.
 		RingBuffer.setWorkingTailPosition(ringBuffer, cashWorkingTailPos);
+
 		RingBuffer.releaseReadLock(ringBuffer);
-		
 		    	
 	    //if we can not start to read the next message because it does not have the template id yet      
 	    long needStop = cashWorkingTailPos + 1; //NOTE: do not make this bigger or hangs are likely
-	    if (needStop>ringBufferConsumer.getBnmHeadPosCache() ) {  
-	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
-	        if (needStop>ringBufferConsumer.getBnmHeadPosCache()) {
-	            RingWalker.setMsgIdx(ringBufferConsumer,-1);
+	    if (needStop>RingWalker.getBnmHeadPosCache(ringBufferConsumer) ) {  
+	        RingWalker.setBnmHeadPosCache(ringBufferConsumer,RingBuffer.headPosition(ringBuffer));
+	        if (needStop>RingWalker.getBnmHeadPosCache(ringBufferConsumer)) {
+	        	//this value is never valid so we use it to mark that we are waiting for data
+	            RingWalker.setMsgIdx(ringBufferConsumer,-2);
 	            if (RingBuffer.isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
 	    			throw new RingBufferException("Unexpected shutdown");
 	    		}
@@ -235,49 +234,21 @@ public class RingWalker {
 	    
 	    //Start new stack of fragments because this is a new message
 	    ringBufferConsumer.activeFragmentStackHead = 0;
-	    ringBufferConsumer.activeFragmentStack[ringBufferConsumer.activeFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
+	    ringBufferConsumer.activeFragmentStack[0] = ringBuffer.mask&(int)cashWorkingTailPos;
 	      
-	    int msgIdx = 0;
-	    if (!FieldReferenceOffsetManager.hasSingleMessageTemplate(ringBufferConsumer.from)) {
-	    	msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
-	    	if (msgIdx<0) {
-	    		//this is commonly used as the end of file marker
-	    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
-	    		return true;
-	    	}
-	    } else {
-	    	//we only have 1 message so there is not normally a leading id to look at.
-	    	//first confirm that the ring looks like there is only 1 byte on it
-	    	if (ringBuffer.workingTailPos.value+1==ringBufferConsumer.getBnmHeadPosCache()) {
-	    		
-	    		//second ring does not need to exist or have data we just want to use the position indicator.
-	    		if ((ringBuffer.byteWorkingTailPos.value+1)==ringBuffer.bytesHeadPos.get()) {
-	    			
-	    		}
-	    		//the message size may only be one so
-	    		//second confirm that the workingHeadPos is less than zero (not a normal case)
-	    		//TODO: AAA, change to BytesHeadPosition ?? this may be much better! put flag on second ring unrefrenced by first!
-		    	if (ringBuffer.workingHeadPos.value <  0) {//TODO: this may not work because it should be volatile could remove if.. we block 1 int messages
-		    		msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId  
-		    		//third confirm this byte is what we expected
-			    	if (msgIdx<0) {
-			    		//this is commonly used as the end of file marker
-			    		RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
-			    		return true;
-			    	}    		
-			    	msgIdx = 0;//remove side effect
-		    		//there was no side effect so just return like normal
-		    	}
-	    	}	    	
-	    }
+	    int msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
 	    RingWalker.setMsgIdx(ringBufferConsumer, msgIdx);
+    	if (msgIdx < 0) {
+    		//this is commonly used as the end of file marker
+    		return true;
+    	}
 	    
 	    //start new message, can not be seq or optional group or end of message.
 	    
     	ringBufferConsumer.cursor = msgIdx; 
 	    
 	    //////
-	    ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
+	    ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[msgIdx]);//save the size of this new fragment we are about to read
 	    return true;
 	}
 
@@ -338,12 +309,12 @@ public class RingWalker {
 	    ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
 	    
 	    //do not let client read fragment if it is not fully in the ring buffer.
-	    ringBufferConsumer.setWaitingNextStop(cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
+	    RingWalker.setWaitingNextStop(ringBufferConsumer,cashWorkingTailPos+ringBufferConsumer.activeFragmentDataSize);
 	    
 	    //
-	    if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
-	        ringBufferConsumer.setBnmHeadPosCache(RingBuffer.headPosition(ringBuffer));
-	        if (ringBufferConsumer.getWaitingNextStop()>ringBufferConsumer.getBnmHeadPosCache()) {
+	    if (RingWalker.getWaitingNextStop(ringBufferConsumer)>RingWalker.getBnmHeadPosCache(ringBufferConsumer)) {
+	        RingWalker.setBnmHeadPosCache(ringBufferConsumer,RingBuffer.headPosition(ringBuffer));
+	        if (RingWalker.getWaitingNextStop(ringBufferConsumer)>RingWalker.getBnmHeadPosCache(ringBufferConsumer)) {
 	            ringBufferConsumer.waiting = true;
 	            if (RingBuffer.isShutDown(ringBuffer) || Thread.currentThread().isInterrupted()) {
 	    			throw new RingBufferException("Unexpected shutdown");
@@ -356,8 +327,8 @@ public class RingWalker {
 
 	public static void reset(RingWalker consumerData) {
         consumerData.waiting = (false);
-        consumerData.setWaitingNextStop(-1);
-        consumerData.setBnmHeadPosCache(-1);
+        RingWalker.setWaitingNextStop(consumerData,(long) -1);
+        RingWalker.setBnmHeadPosCache(consumerData,(long) -1);
         consumerData.tailCache=-1;
         
         /////
@@ -393,12 +364,17 @@ public class RingWalker {
 
 		//TODO: hitting head and tail are an area to look at for improvement
 		boolean hasRoom = (ring.maxSize - RingBuffer.from(ring).fragDataSize[cursorPosition]) >=  (ring.workingHeadPos.value - ring.tailPos.longValue()) ;
-	
-		
-		if (hasRoom && RingBuffer.from(ring).messageStarts.length>1) {
-		      //TODO: this is too complex and will be simplified 
-			  if ((0 !=	(RingBuffer.from(ring).tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
+			
+		if (hasRoom) {
+			
+//			System.err.println("xx  "+TokenBuilder.tokenToString(RingBuffer.from(ring).tokens[cursorPosition])+ "   "+cursorPosition);
+						
+		      //TODO: this is too complex and will be simplified, only write if this is the beginning of a message. 
+			  if (0 == cursorPosition ||
+					  (0 !=	(RingBuffer.from(ring).tokens[cursorPosition] & (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER))) && 
 				        (RingBuffer.from(ring).tokens[cursorPosition] & (TokenBuilder.MASK_TYPE<<TokenBuilder.SHIFT_TYPE ))==(TypeMask.Group<<TokenBuilder.SHIFT_TYPE)) {
+
+//				  System.err.println("write id");
 
 				  //add template loc in prep for write
 				  RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
