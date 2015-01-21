@@ -8,6 +8,9 @@ import com.ociweb.pronghorn.ring.token.TypeMask;
 
 public class FieldReferenceOffsetManager {
 	
+	private static final String NAME_BYTE_ARRAY = "ByteArray";
+	private static final String NAME_CHUNKED_STREAM = "Chunked Stream";
+	
 	public static final int SEQ     = 0x10000000;
 	public static final int MSG_END = 0x80000000;
 	
@@ -36,15 +39,19 @@ public class FieldReferenceOffsetManager {
     private static int[] SINGLE_MESSAGE_BYTEARRAY_TOKENS = new int[]{TokenBuilder.buildToken(TypeMask.ByteArray, 
 														                                      OperatorMask.Field_None, 
 														                                      0)};
-	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{"ByteArray"};
+	private static String[] SINGLE_MESSAGE_BYTEARRAY_NAMES = new String[]{NAME_BYTE_ARRAY};
 	private static long[] SINGLE_MESSAGE_BYTEARRAY_IDS = new long[]{0};
 	private static final short ZERO_PREMABLE = 0;
 	public static final FieldReferenceOffsetManager RAW_BYTES = new FieldReferenceOffsetManager(SINGLE_MESSAGE_BYTEARRAY_TOKENS, 
 			                                                                                    ZERO_PREMABLE, 
 			                                                                                    SINGLE_MESSAGE_BYTEARRAY_NAMES, 
 			                                                                                    SINGLE_MESSAGE_BYTEARRAY_IDS,
-			                                                                                    "Chunked Stream");
+			                                                                                    NAME_CHUNKED_STREAM);
 		
+	public static int LOC_CHUNKED_STREAM = 0;
+	public static int LOC_CHUNKED_STREAM_FIELD = FieldReferenceOffsetManager.lookupFieldLocator(FieldReferenceOffsetManager.NAME_BYTE_ARRAY, LOC_CHUNKED_STREAM, FieldReferenceOffsetManager.RAW_BYTES);
+	
+	
 	private final static int[] EMPTY = new int[0];
 	public final String name;
 	

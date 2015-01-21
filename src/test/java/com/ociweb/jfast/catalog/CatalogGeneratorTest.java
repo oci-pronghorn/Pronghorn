@@ -275,9 +275,7 @@ public class CatalogGeneratorTest {
         
         //Use as bases for building single giant test file with test values provided, in ascii?
         totalWritten.addAndGet(PrimitiveWriter.totalWritten(writer));
-        
-        long nsLatency = RingWalker.responseTime(ringBuffer.consumerData);
-     
+             
         //TODO: D, write to flat file to produce google chart.
        //System.err.println(TypeMask.xmlTypeName[fieldType]+" "+OperatorMask.xmlOperatorName[fieldOperator]+" fields: "+ fieldCount+" latency:"+nsLatency+"ns total mil per second "+millionPerSecond);
         //System.err.println("bytes written:"+bytesWritten);

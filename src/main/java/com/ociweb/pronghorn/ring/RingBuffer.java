@@ -477,17 +477,5 @@ public final class RingBuffer {
 	public static FieldReferenceOffsetManager from(RingBuffer ring) {
 		return ring.consumerData.from;
 	}
-
-	/**
-	 * Latency in ns of the 50th percentile
-	 * Only returns meaningful results when used with the high level API and tryRead or blockRead
-	 * 
-	 * @param ring
-	 * @return
-	 */
-	public static long responseTime(RingBuffer ring) {
-		return RingWalker.responseTime(ring.consumerData);
-	}
-	
 	
 }

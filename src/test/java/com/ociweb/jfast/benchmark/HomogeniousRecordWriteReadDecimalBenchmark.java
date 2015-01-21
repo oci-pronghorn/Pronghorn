@@ -330,7 +330,7 @@ public class HomogeniousRecordWriteReadDecimalBenchmark extends Benchmark {
             j = intTestData.length;
             while (--j >= 0) {
                 
-                staticReader.decodeDecimal(reader,token,token, RingBuffers.get(staticReader.ringBuffers,0));
+                staticReader.dispatchReadByTokenForDecimal(reader,token,token, RingBuffers.get(staticReader.ringBuffers,0));
                 result |= j;
             }
             int idx = TokenBuilder.MAX_INSTANCE & groupToken;

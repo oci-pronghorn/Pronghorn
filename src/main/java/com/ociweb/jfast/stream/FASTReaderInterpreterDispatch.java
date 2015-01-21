@@ -162,7 +162,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                         // 011??
                         if (0 == (token & (2 << TokenBuilder.SHIFT_TYPE))) {
                             //Exponent token comes first and is of type Decimal, the Mantissa is second and is of type Long
-                            decodeDecimal(reader, token, fullScript[++activeScriptCursor],rbRingBuffer); //pull second token);
+                            dispatchReadByTokenForDecimal(reader, token, fullScript[++activeScriptCursor],rbRingBuffer); //pull second token);
                         } else {
                             if (readFromIdx>=0) {
                                 int source = token & MAX_BYTE_INSTANCE_MASK;
@@ -170,7 +170,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
                                 genReadCopyBytes(source, target, byteHeap); //NOTE: may find better way to suppor this with text, requires research.
                                 readFromIdx = -1; //reset for next field where it might be used.
                             }
-                            dispatchFieldBytes(token, reader);
+                            dispatchReadByTokenForBytes(token, reader);
                         }
                     }
                 }
@@ -264,7 +264,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
         return 1;//read one fragment 
     }
 
-    public void decodeDecimal(PrimitiveReader reader, int expToken, int mantToken, RingBuffer rbRingBuffer) {
+    public void dispatchReadByTokenForDecimal(PrimitiveReader reader, int expToken, int mantToken, RingBuffer rbRingBuffer) {
         //The previous dictionary value will need to have two read from values 
         //because these leverage the existing int/long implementations we only need to ensure readFromIdx is set between the two.
         // 0110? Decimal and DecimalOptional
@@ -636,7 +636,7 @@ public class FASTReaderInterpreterDispatch extends FASTReaderDispatchTemplates i
     
     //TODO: B, add new genCopy for each dictionary type and call as needed before the gen methods, LATER: integrate this behavior.
     
-    private void dispatchFieldBytes(int token, PrimitiveReader reader) {
+    private void dispatchReadByTokenForBytes(int token, PrimitiveReader reader) {
         
         // 0111?
         if (0 == (token & (1 << TokenBuilder.SHIFT_TYPE))) {
