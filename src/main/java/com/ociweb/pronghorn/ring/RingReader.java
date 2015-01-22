@@ -542,8 +542,10 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		int length = readBytes(inputRing, fieldId, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
 		outputRing.validateVarLength(length);							
 		
-		int p = outputRing.byteWorkingHeadPos.value;                                
-		RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), p, length);							
+		int p = outputRing.byteWorkingHeadPos.value;
+		
+		RingBuffer.setBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos.value+(OFF_MASK&fieldId), p, length);        
+		
 		outputRing.byteWorkingHeadPos.value = p + length;
 		return length;
 	}

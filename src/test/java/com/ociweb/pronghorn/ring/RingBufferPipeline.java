@@ -115,7 +115,8 @@ public class RingBufferPipeline {
 				
 		if (highLevelAPI) {
 			return new Runnable() {
-				final int MESSAGE_IDX = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;							 
+				final int MESSAGE_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;	
+				final int FIELD_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
 				 
 				@Override
 				public void run() {
@@ -125,17 +126,13 @@ public class RingBufferPipeline {
 	
 						 while (--messageCount>=0) {
 							
-							 RingWalker.blockWriteFragment(outputRing, MESSAGE_IDX);
-
-			 				 addByteArray(testArray, 0, testArray.length, outputRing);
-							
+							 RingWalker.blockWriteFragmentXXXX(outputRing, MESSAGE_LOC);
+							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);
 							 RingWalker.publishWrites(outputRing);
 
 						 }
+						 RingWalker.blockingFlush(outputRing);
 						 
-						 RingBuffer.addValue(outputRing, -1);
-						 addNullByteArray(outputRing);
-				      	 publishWrites(outputRing); //must publish the posion or it just sits here and everyone down stream hangs
 				      	 System.out.println("finished writing:"+testMessages);
 					} catch (Throwable t) {
 						t.printStackTrace();
@@ -200,12 +197,12 @@ public class RingBufferPipeline {
 						int msgId = 0;
 						do {
 							//TODO: AA, this try may be releasing too early, need more detailed testing.
-							if (RingWalker.tryReadFragment(inputRing)) {
+							if (RingWalker.tryReadFragmentSimple(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);
 																
 								//wait until the target ring has room for this message
-								if (0==msgId && RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
+								if (0==msgId && RingWalker.tryWriteFragmentXXXX(outputRing, MSG_ID)) {
 									
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
@@ -221,11 +218,10 @@ public class RingBufferPipeline {
 							}
 							//exit the loop logic is not defined by the ring but instead is defined by data/usage, in this case we use a null byte array aka (-1 length)
 						} while (msgId!=-1);
+												
+						RingBuffer.releaseReadLock(inputRing); //release all slots back to producer (not strictly needed as we are exiting)						
+						RingWalker.blockingFlush(outputRing);
 						
-						releaseReadLock(inputRing); //release everything
-						RingBuffer.addValue(outputRing, -1);
-						addNullByteArray(outputRing);
-						publishWrites(outputRing);
 
 					} catch (Throwable t) {
 						t.printStackTrace();
@@ -296,6 +292,9 @@ public class RingBufferPipeline {
 		if (highLevelAPI) {
 			return new Runnable() {
 				
+				final int MSG_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
+				final int FIELD_ID = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
+				
 	            @Override
 	            public void run() {      
 	            	try{
@@ -304,17 +303,15 @@ public class RingBufferPipeline {
 						int msgId = 0;
 						do {
 							//TODO: AA, this try may be releasing too early, need more detailed testing.
-							if (RingWalker.tryReadFragment(inputRing)) {
+							if (RingWalker.tryReadFragmentSimple(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
-								//msgId = RingWalker.getMsgIdx(inputRing);
+								msgId = RingWalker.getMsgIdx(inputRing);
 								
-								//do nothing with the data
-			                    msgId = RingBuffer.takeValue(inputRing);	
-			                	int meta = takeRingByteMetaData(inputRing);
-			                	int len = takeRingByteLen(inputRing);
-			                	
-			                	byte[] data = byteBackingArray(meta, inputRing);
-			                	int offset = bytePosition(meta, inputRing, len);
+																//do nothing with the data
+								int len = RingReader.readBytesLength(inputRing, FIELD_ID);
+								int pos = RingReader.readBytesPosition(inputRing, FIELD_ID);
+								byte[] dat = RingReader.readBytesBackingArray(inputRing, FIELD_ID);
+
 								
 							} else {
 								Thread.yield();//do something meaningful while we wait for new data

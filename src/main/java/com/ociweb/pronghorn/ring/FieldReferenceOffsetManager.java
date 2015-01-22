@@ -22,11 +22,12 @@ public class FieldReferenceOffsetManager {
     public int[] fragScriptSize;
     public int[] tokens;
     public int[] messageStarts;
+    public int[] fragDepth;
     
     public final String[] fieldNameScript;
     public final long[] fieldIdScript;
     public final String[] dictionaryNameScript;
-    public int maximumFragmentStackDepth;  
+    public final int maximumFragmentStackDepth;  
     public final float maxVarFieldPerUnit;
     private int maxFragmentSize;
     
@@ -99,6 +100,8 @@ public class FieldReferenceOffsetManager {
 			//Not convinced we should support this degenerate case (null script) but it does make some unit tests much easer to write.
             fragDataSize = null;
             fragScriptSize = null;
+            fragDepth = null;
+            
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
         } else {
@@ -106,17 +109,23 @@ public class FieldReferenceOffsetManager {
         	messageStarts = computeMessageStarts(); 
         	 
             fragDataSize  = new int[scriptTokens.length]; //size of fragments and offsets to fields, first field of each fragment need not use this!
-            
             fragScriptSize = new int[scriptTokens.length];
+            fragDepth = new int[scriptTokens.length];
             
-            maximumFragmentStackDepth = scriptTokens.length;
-            			
             maxVarFieldPerUnit = buildFragScript(scriptTokens, preableBytes);
+            
+            //walk all the depths to find the deepest point.
+            int m = 0; 
+            int i = fragDepth.length;
+            while (--i>=0) {
+            	m = Math.max(m, fragDepth[i]+1); //plus 1 because these are offsets and I want count
+            }
+            maximumFragmentStackDepth = m;
+            			
             //consumer of this need not check for null because it is always created.
         }
         tokensLen = null==tokens?0:tokens.length;
-        
-        
+                
         dictionaryNameScript = scriptDictionaryNames;
         fieldNameScript = scriptNames;
         fieldIdScript = scriptIds;
@@ -137,7 +146,7 @@ public class FieldReferenceOffsetManager {
         boolean debug = false;       
         int i = 0;      
         int fragmentStartIdx=0;
-        int depth = 0; //need script jump number
+        int depth = 0; //used for base jub location when using high level API.
         
         boolean nextTokenOpensFragment = true;// false; //must capture simple case when we do not have wrapping group?
         
@@ -182,20 +191,28 @@ public class FieldReferenceOffsetManager {
                 //NOTE: need performance test after rounding up the fragment size to the next nearest cache line. 
                 //fragDataSize[fragmentStartIdx] 
                 
-                depth++;                
                 fragmentStartIdx = i;    
                 
                 boolean isSeq = (0 != (scriptTokens[i] & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)));
                 //TODO: B, if optional group it will also need to be zero like seq
+                
+                fragDepth[fragmentStartIdx]= depth;//stack depth for reader and writer
                 
                 //must be a group open only for a new message 
                 if ((!isSeq && isGroupOpen) || (0==fragmentStartIdx)) { 
 					int preambleInts = (preableBytes+3)>>2;                                            
                     fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
                 } else {
-                	
-                	fragDataSize[fragmentStartIdx] = 0; //these are the starts of fragments that are not message starts
+                	if (isGroupOpen) {
+                		fragDataSize[fragmentStartIdx] = 0; //these are the starts of fragments that are not message starts
+                	} else {
+                		depth--;
+                		fragDataSize[fragmentStartIdx] = -1; //these are group closings
+                	}
                 }
+                depth++;                
+                
+                
                 varLenFieldCount = 0;//reset to zero so we can count the number of var fields for this next fragment
                 
                 
@@ -213,6 +230,7 @@ public class FieldReferenceOffsetManager {
             int token = scriptTokens[i];
             
             fragDataSize[i]=fragDataSize[fragmentStartIdx]; //keep the individual offsets per field
+            fragDepth[i] = fragDepth[fragmentStartIdx];
             
             int tokenType = TokenBuilder.extractType(token);
 			int fSize = TypeMask.ringBufferFieldSize[tokenType];
@@ -296,6 +314,8 @@ public class FieldReferenceOffsetManager {
 		}
 		result[--countOfNeededStarts] = 0;
 		
+		//System.err.println("the starts:"+Arrays.toString(result));
+		
 		return result;
 		
     }
@@ -304,6 +324,7 @@ public class FieldReferenceOffsetManager {
     	int i = from.messageStarts.length;
     	while(--i>=0) {
     		if (name.equals(from.fieldNameScript[from.messageStarts[i]])) {
+    			
     			return from.messageStarts[i];
     		}
     	}
@@ -327,23 +348,34 @@ public class FieldReferenceOffsetManager {
     public static int lookupFieldLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
         
-        int UPPER_BITS = 0xF0000000;
+		int UPPER_BITS;
+		if (FieldReferenceOffsetManager.isTemplateStart(from, x)) {
+			
+			//3 bits of zero, for now depth is limited to 127 on the stack
+			UPPER_BITS = 0x80000000;
+		} else {
+			
+			//TODO: what is the depth of this position?
+			
+			UPPER_BITS = 0xF0000000;
+		};
+		
+		
         
         while (true) {
         	//System.err.println("looking at:"+fieldNameScript[x]);
             if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
                 
                 if (0==x) {//1 because we need to offset for templateId
-                    return UPPER_BITS|1; //that slot does not hold offset but rather full fragment size but we know zero can be used here.
+                    return UPPER_BITS | from.templateOffset+1; 
                 } else {
-                    return UPPER_BITS|from.fragDataSize[x];                    
+                    return UPPER_BITS | from.fragDataSize[x];                    
                 }
                 
             }
             
             int type = TokenBuilder.extractType(from.tokens[x]);
             boolean isGroup = TypeMask.Group == type;    
-          //  boolean isGroupOpen = isGroup && (0 == (tokens[x] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
             boolean isGroupClosed = isGroup && (0 != (from.tokens[x] & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER)));
             boolean isSeqLength = TypeMask.GroupLength == type;
             
@@ -406,6 +438,17 @@ public class FieldReferenceOffsetManager {
 
 	public static int maxFragmentSize(FieldReferenceOffsetManager from) {
 		return from.maxFragmentSize;
+	}
+
+	//NOTE: we use a special mask because the 4th bit may be on or off depending on pmap usage
+	private static int TEMPL_MASK =  (0x17 << TokenBuilder.SHIFT_OPER) |
+			                         (TokenBuilder.MASK_TYPE << TokenBuilder.SHIFT_TYPE);
+	private static int TEMPL_VALUE = (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER) | 
+			                           (TypeMask.Group << TokenBuilder.SHIFT_TYPE);
+		
+	public static boolean isTemplateStart(FieldReferenceOffsetManager from, int cursorPosition) {		
+		return (0 == cursorPosition) || cursorPosition>=from.fragDepth.length || (0==from.fragDepth[cursorPosition]);
+				//((from.tokens[cursorPosition]&TEMPL_MASK)==TEMPL_VALUE);
 	}
     
 }

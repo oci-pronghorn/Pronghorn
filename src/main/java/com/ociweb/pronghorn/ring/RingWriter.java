@@ -2,10 +2,16 @@ package com.ociweb.pronghorn.ring;
 
 import java.nio.ByteBuffer;
 
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+
 
 
 public class RingWriter {
 
+  public final static int OFF_MASK  =   0xFFFFFFF;
+  public final static int STACK_OFF_MASK = 0x7;
+  public final static int STACK_OFF_SHIFT = 28;
+	
   static double[] powd = new double[] {
 	  1.0E-64,1.0E-63,1.0E-62,1.0E-61,1.0E-60,1.0E-59,1.0E-58,1.0E-57,1.0E-56,1.0E-55,1.0E-54,1.0E-53,1.0E-52,1.0E-51,1.0E-50,1.0E-49,1.0E-48,1.0E-47,1.0E-46,
 	  1.0E-45,1.0E-44,1.0E-43,1.0E-42,1.0E-41,1.0E-40,1.0E-39,1.0E-38,1.0E-37,1.0E-36,1.0E-35,1.0E-34,1.0E-33,1.0E-32,1.0E-31,1.0E-30,1.0E-29,1.0E-28,1.0E-27,1.0E-26,1.0E-25,1.0E-24,1.0E-23,1.0E-22,
@@ -121,6 +127,23 @@ public class RingWriter {
     public static void writeBytes(RingBuffer rb, byte[] source, int offset, int length) {
     	rb.validateVarLength(length);
         RingBuffer.addByteArray(source, offset, length, rb);
+    }
+
+    public static void writeInt(RingBuffer rb, int loc, int value) {
+		rb.buffer[rb.mask &(rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
+    }
+    
+    
+    public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length) {
+    	rb.validateVarLength(length);
+    	        
+    	assert(length>=0);
+		RingBuffer.appendPartialBytesArray(source, offset, length, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask);
+		
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos.value+(OFF_MASK&loc), rb.byteWorkingHeadPos.value, length);        
+		
+		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + length;
+		
     }
     
     @Deprecated

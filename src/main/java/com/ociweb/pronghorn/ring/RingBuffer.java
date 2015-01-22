@@ -275,10 +275,18 @@ public final class RingBuffer {
     } 
     
     public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int bytesHeadPos, int position, int length) {
-        //TODO: AA, at this point we can modify the pos that is set.
+    	long p = headCache.value; 
+        setBytePosAndLen(buffer, rbMask, p, position, length);        
+        headCache.value = p+2;
+        
+    }
+
+	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,
+			int positionDat, int lengthDat) {
+		//TODO: AA, at this point we can modify the pos that is set.
     	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
-    	int tmp = position;
+    	int tmp = positionDat;
 //    	if (position>=0) {
 //    		tmp = (int)(position-bytesHeadPos);
 //    		if (tmp<0) {
@@ -286,12 +294,9 @@ public final class RingBuffer {
 //    		}
 //    	}
     	
-        long p = headCache.value; 
-        buffer[rbMask & (int)p] = tmp;
-        buffer[rbMask & (int)(p+1)] = length;
-        headCache.value = p+2;
-        
-    } 
+        buffer[rbMask & (int)ringPos] = tmp;
+        buffer[rbMask & (int)(ringPos+1)] = lengthDat;
+	} 
     
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
         
