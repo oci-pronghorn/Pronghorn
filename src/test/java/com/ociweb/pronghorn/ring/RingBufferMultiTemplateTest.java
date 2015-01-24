@@ -150,8 +150,9 @@ public class RingBufferMultiTemplateTest {
 
 		        		//TODO: unlike the reader the writer only supports sequential write of the fields (this is to be fixed at some point)
 		        		
-		        		RingWriter.writeInt(ring, 42);
-		        		RingWriter.writeBytes(ring, buildMockData((j*blockSize)/testSize));       
+		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 42);
+						byte[] source = buildMockData((j*blockSize)/testSize);
+		        		RingBuffer.addByteArray(source, 0, source.length, ring);       
 		        				        		
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -164,10 +165,10 @@ public class RingBufferMultiTemplateTest {
 	        		if (tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
 		        		j--;
 		        			        			
-		        		RingWriter.writeInt(ring, 2014);
-		        		RingWriter.writeInt(ring, 12);
-		        		RingWriter.writeInt(ring, 9);
-		        		RingWriter.writeDecimal(ring, 2, 123456);
+		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 2014);
+		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 12);
+		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 9);
+		        		RingBuffer.addValues(ring.buffer, ring.mask, ring.workingHeadPos, 2, (long) 123456);
 		        		
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -180,7 +181,7 @@ public class RingBufferMultiTemplateTest {
 	        		if (tryWriteFragment(ring, MSG_RESET_LOC)) { 
 	        			j--;
 	        			
-	        			RingWriter.writeBytes(ring, ASCII_VERSION);
+	        			RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.

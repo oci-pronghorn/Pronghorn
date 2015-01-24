@@ -19,7 +19,6 @@ import com.ociweb.pronghorn.ring.RingBufferConfig;
 import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.RingWriter;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
 import com.ociweb.pronghorn.ring.util.hash.IntHashTableVisitor;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
@@ -247,7 +246,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = RingWriter.encodeSingleChar((int) key.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
+                    limit = RingBuffer.encodeSingleChar((int) key.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                 }
                 writer.limit = limit;
             }
@@ -263,7 +262,7 @@ public class TemplateCatalogConfig {
                 int limit = writer.limit;
                 int c = 0;
                 while (c < len) {
-                    limit = RingWriter.encodeSingleChar((int) prop.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
+                    limit = RingBuffer.encodeSingleChar((int) prop.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
                 }
                 writer.limit = limit;
             }
@@ -372,7 +371,7 @@ public class TemplateCatalogConfig {
 		    int limit = writer.limit;
 		    int c = 0;
 		    while (c < len1) {
-		        limit = RingWriter.encodeSingleChar((int) name.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
+		        limit = RingBuffer.encodeSingleChar((int) name.charAt(c++), writer.buffer, 0xFFFFFFFF, limit);
 		    }
 		    writer.limit = limit;
 		}

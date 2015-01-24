@@ -79,7 +79,7 @@ public class RingBufferSingleTemplateFloatTest {
         		        		
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
-        		RingWriter.writeFloatToIntBits(ring, 1f/(float)value);
+        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, Float.floatToIntBits(1f/(float)value));
 
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		

@@ -416,11 +416,11 @@ public class CatalogGeneratorTest {
                     
                     d = ReaderWriterPrimitiveTest.unsignedIntData.length;
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testMessageIdx);
+                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
                         
                         int j = fieldCount;
                         while (--j>=0) {
-                            RingWriter.writeInt(ringBuffer, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
+                            RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ReaderWriterPrimitiveTest.unsignedIntData[--d]);
                             
                             if (0 == d) {
                                 d = ReaderWriterPrimitiveTest.unsignedIntData.length;
@@ -446,10 +446,10 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                   
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testMessageIdx);
+                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
-                            RingWriter.writeLong(ringBuffer, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            RingBuffer.addLongValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
@@ -471,10 +471,10 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.unsignedLongData.length;
           
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testMessageIdx);
+                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
-                            RingWriter.writeDecimal(ringBuffer, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
+                            RingBuffer.addValues(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, exponent, ReaderWriterPrimitiveTest.unsignedLongData[--d]);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.unsignedLongData.length;
                             }
@@ -498,11 +498,12 @@ public class CatalogGeneratorTest {
                     d = ReaderWriterPrimitiveTest.stringData.length;
       
                     while (--i>=0) {
-                        RingWriter.writeInt(ringBuffer, testMessageIdx);
+                        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, testMessageIdx);
                         int j = fieldCount;
                         while (--j>=0) {
                             //TODO: B, this test is not using UTF8 encoding for the UTF8 type mask!!!! this is only ASCII enoding always.
-                            RingWriter.writeBytes(ringBuffer, ReaderWriterPrimitiveTest.stringDataBytes[--d]);
+                            byte[] source = ReaderWriterPrimitiveTest.stringDataBytes[--d];
+							RingBuffer.addByteArray(source, 0, source.length, ringBuffer);
                             if (0==d) {
                                 d = ReaderWriterPrimitiveTest.stringData.length;
                             }

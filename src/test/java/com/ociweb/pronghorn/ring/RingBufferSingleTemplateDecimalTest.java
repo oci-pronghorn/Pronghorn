@@ -87,7 +87,7 @@ public class RingBufferSingleTemplateDecimalTest {
         		int value = (--j*blockSize)/testSize;
         		
        // 		System.err.println("write "+2+" "+value);
-        		RingWriter.writeDecimal(ring, 2, value);
+        		RingBuffer.addValues(ring.buffer, ring.mask, ring.workingHeadPos, 2, (long) value);
         		
         		
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment

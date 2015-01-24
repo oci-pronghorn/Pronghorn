@@ -40,8 +40,11 @@ public class AppendableASCIIRing implements Appendable {
 	public Appendable append(CharSequence csq) throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
-        RingWriter.writeInt(ringBuffer, 0);
-		RingWriter.writeASCII(ringBuffer, csq);
+        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+		RingBuffer.validateVarLength(ringBuffer, csq.length());
+		int sourceLen = csq.length();
+		final int p = RingBuffer.addASCIIToBytes(csq, 0, sourceLen, ringBuffer); 
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos,  ringBuffer.bytesHeadPos.get(), p, sourceLen);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);
@@ -55,8 +58,11 @@ public class AppendableASCIIRing implements Appendable {
 			throws IOException {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
-        RingWriter.writeInt(ringBuffer, 0);
-		RingWriter.writeASCII(ringBuffer, csq, start, end-start);
+        RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+		int length = end-start;
+		RingBuffer.validateVarLength(ringBuffer, csq.length());
+		final int p = RingBuffer.addASCIIToBytes(csq, start, length, ringBuffer); 
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, length);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);
@@ -70,8 +76,11 @@ public class AppendableASCIIRing implements Appendable {
 		tailPosCache = spinBlockOnTail(tailPosCache, outputTarget, ringBuffer);
         outputTarget+=step;
 		temp[0]=c; //TODO: C, This should be optimized however callers should prefer to use the other two methods.
-		RingWriter.writeInt(ringBuffer, 0);
-		RingWriter.writeASCII(ringBuffer, temp);
+		RingBuffer.addValue(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, 0);
+		RingBuffer.validateVarLength(ringBuffer,temp.length);
+		int sourceLen = temp.length;
+		final int p = RingBuffer.addASCIIToBytes(temp, 0, sourceLen,	ringBuffer); 
+		RingBuffer.addBytePosAndLen(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingHeadPos, ringBuffer.bytesHeadPos.get(), p, sourceLen);
 		
 		if ((--countDown)<=0) {
 			RingBuffer.publishWrites(ringBuffer);

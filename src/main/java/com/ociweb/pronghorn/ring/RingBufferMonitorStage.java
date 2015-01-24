@@ -69,10 +69,10 @@ public class RingBufferMonitorStage implements Runnable {
 			
 			long currentTimeMillis = System.currentTimeMillis();
 			
-			RingWriter.writeLong(notifyRingBuffer, currentTimeMillis);
-			RingWriter.writeLong(notifyRingBuffer, RingBuffer.headPosition(observedRingBuffer));
-			RingWriter.writeLong(notifyRingBuffer, RingBuffer.tailPosition(observedRingBuffer));
-			RingWriter.writeInt(notifyRingBuffer, RingWalker.getMsgIdx(observedRingBuffer));
+			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, currentTimeMillis);
+			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.headPosition(observedRingBuffer));
+			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.tailPosition(observedRingBuffer));
+			RingBuffer.addValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingWalker.getMsgIdx(observedRingBuffer));
 			
 			RingWalker.publishWrites(notifyRingBuffer);			
 			

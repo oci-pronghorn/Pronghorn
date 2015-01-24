@@ -78,12 +78,21 @@ public class RingBufferSingleTemplateASCIITest {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingWriter.writeASCII(ring, testString); //data for each field is written in order (TODO: Need solution to allow for write out of order of fields)
+        			RingBuffer.validateVarLength(ring, testString.length());
+					int sourceLen = testString.length();
+					final int p = RingBuffer.addASCIIToBytes(testString, 0, sourceLen, ring); 
+					RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, sourceLen); //data for each field is written in order (TODO: Need solution to allow for write out of order of fields)
         		} else {
         			if (0 == (j&2)) {
-        				RingWriter.writeASCII(ring, testString.toCharArray());
+        				char[] source = testString.toCharArray();
+						RingBuffer.validateVarLength(ring,source.length);
+						int sourceLen = source.length;
+						final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	ring); 
+						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, sourceLen);
         			} else {
-        				RingWriter.writeASCII(ring, testString.toCharArray(),0,stringSize);
+        				RingBuffer.validateVarLength(ring, stringSize);
+						final int p = RingBuffer.addASCIIToBytes(testString.toCharArray(), 0, stringSize,	ring); 
+						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, stringSize);
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment

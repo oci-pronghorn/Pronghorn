@@ -190,7 +190,9 @@ public class RingStreams {
 					//block until there is a slot to write into
 					tailPosCache = spinBlockOnTail(tailPosCache, headPosition(outputRing)-fill, outputRing);
 					RingBuffer.addValue(outputRing, 0);
-					RingWriter.finishWriteBytesAlreadyStarted(outputRing, position, size);
+					RingBuffer.validateVarLength(outputRing, size);
+					RingBuffer.addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), position, size);
+					outputRing.byteWorkingHeadPos.value = position + size;
 					RingBuffer.publishWrites(outputRing);
 					position += size;
 				} else {

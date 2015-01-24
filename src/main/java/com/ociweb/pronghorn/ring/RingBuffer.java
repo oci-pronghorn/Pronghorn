@@ -1,5 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -157,19 +158,16 @@ public final class RingBuffer {
         
     }
     
-	public void validateVarLength(int length) {
-		
-	//	System.err.println("write len:"+length+" max is  "+maxAvgVarLen);
-		
-		int newAvg = (length+varLenMovingAverage)>>1;
-        if (newAvg>maxAvgVarLen)	{
-        	
-        	int bytesPerInt = (int)Math.ceil(length*RingBuffer.from(this).maxVarFieldPerUnit);
+	public static void validateVarLength(RingBuffer rb, int length) {
+		int newAvg = (length+rb.varLenMovingAverage)>>1;
+        if (newAvg>rb.maxAvgVarLen)	{
+            //compute some helpful information to add to the exception    	
+        	int bytesPerInt = (int)Math.ceil(length*RingBuffer.from(rb).maxVarFieldPerUnit);
         	int bitsDif = 32 - Integer.numberOfLeadingZeros(bytesPerInt - 1);
         	
-        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+pBits+","+bBits);
+        	throw new UnsupportedOperationException("Can not write byte array of length "+length+". The dif between primary and byte bits should be at least "+bitsDif+". "+rb.pBits+","+rb.bBits);
         }
-        varLenMovingAverage = newAvg;
+        rb.varLenMovingAverage = newAvg;
 	}
 
     
@@ -192,8 +190,141 @@ public final class RingBuffer {
 
     }
         
+    
+	public static int addASCIIToBytes(CharSequence source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
+		final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    if (sourceLen > 0) {
+	    	int targetMask = rbRingBuffer.byteMask;
+	    	int proposedEnd = p + sourceLen;
+			byte[] target = rbRingBuffer.byteBuffer;        	
+			
+	        int tStart = p & targetMask;
+			if (tStart < ((p + sourceLen - 1) & targetMask)) {
+				RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
+			} else {
+			    // done as two copies
+			    int firstLen = 1+ targetMask - tStart;
+			    RingBuffer.copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
+			    RingBuffer.copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			}
+	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+	    }
+		return p;
+	}
 
-    public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
+    public static int addASCIIToBytes(char[] source, int sourceIdx,	int sourceLen, RingBuffer rbRingBuffer) {
+		final int p = rbRingBuffer.byteWorkingHeadPos.value;
+	    if (sourceLen > 0) {
+	    	int targetMask = rbRingBuffer.byteMask;
+	    	int proposedEnd = p + sourceLen;
+			byte[] target = rbRingBuffer.byteBuffer;        	
+			
+	        int tStop = (p + sourceLen) & targetMask;
+			int tStart = p & targetMask;
+			if (tStop > tStart) {
+				copyASCIIToByte(source, sourceIdx, target, tStart, sourceLen);
+			} else {
+			    // done as two copies
+			    int firstLen = 1+ targetMask - tStart;
+			    copyASCIIToByte(source, sourceIdx, target, tStart, firstLen);
+			    copyASCIIToByte(source, sourceIdx + firstLen, target, 0, sourceLen - firstLen);
+			}
+	        rbRingBuffer.byteWorkingHeadPos.value = proposedEnd;
+	    }
+		return p;
+	}
+
+	public static void copyASCIIToByte(char[] source, int sourceIdx, byte[] target, int targetIdx, int len) {
+		int i = len;
+		while (--i>=0) {
+			target[targetIdx+i] = (byte)(0xFF&source[sourceIdx+i]);
+		}
+	}
+
+	public static void copyASCIIToByte(CharSequence source, int sourceIdx, byte[] target, int targetIdx, int len) {
+		int i = len;
+		while (--i>=0) {
+			target[targetIdx+i] = (byte)(0xFF&source.charAt(sourceIdx+i));
+		}
+	}
+
+	public static int copyUTF8ToByte(CharSequence source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	
+	    int pos = targetIdx;
+	    int c = 0;        
+	    while (c < charCount) {
+	        pos = encodeSingleChar((int) source.charAt(sourceIdx+c++), target, targetMask, pos);
+	    }		
+	    return pos - targetIdx;
+	}
+
+	public static int copyUTF8ToByte(char[] source, int sourceIdx, byte[] target, int targetMask, int targetIdx, int charCount) {
+	
+	    int pos = targetIdx;
+	    int c = 0;        
+	    while (c < charCount) {	    	
+	        pos = encodeSingleChar((int) source[sourceIdx+c++], target, targetMask, pos);
+	    }		
+	    return pos - targetIdx;
+	}
+
+	public static int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
+	
+	    if (c <= 0x007F) {
+	        // code point 7
+	        buffer[mask&pos++] = (byte) c;
+	    } else {
+	        if (c <= 0x07FF) {
+	            // code point 11
+	            buffer[mask&pos++] = (byte) (0xC0 | ((c >> 6) & 0x1F));
+	        } else {
+	            if (c <= 0xFFFF) {
+	                // code point 16
+	                buffer[mask&pos++] = (byte) (0xE0 | ((c >> 12) & 0x0F));
+	            } else {
+	                if (c < 0x1FFFFF) {
+	                    // code point 21
+	                    buffer[mask&pos++] = (byte) (0xF0 | ((c >> 18) & 0x07));
+	                } else {
+	                    if (c < 0x3FFFFFF) {
+	                        // code point 26
+	                        buffer[mask&pos++] = (byte) (0xF8 | ((c >> 24) & 0x03));
+	                    } else {
+	                        if (c < 0x7FFFFFFF) {
+	                            // code point 31
+	                            buffer[mask&pos++] = (byte) (0xFC | ((c >> 30) & 0x01));
+	                        } else {
+	                            throw new UnsupportedOperationException("can not encode char with value: " + c);
+	                        }
+	                        buffer[mask&pos++] = (byte) (0x80 | ((c >> 24) & 0x3F));
+	                    }
+	                    buffer[mask&pos++] = (byte) (0x80 | ((c >> 18) & 0x3F));
+	                }
+	                buffer[mask&pos++] = (byte) (0x80 | ((c >> 12) & 0x3F));
+	            }
+	            buffer[mask&pos++] = (byte) (0x80 | ((c >> 6) & 0x3F));
+	        }
+	        buffer[mask&pos++] = (byte) (0x80 | (c & 0x3F));	        
+	    }
+	
+	    return pos;
+	}
+
+	public static void addByteBuffer(RingBuffer rb, ByteBuffer source, int length) {
+		validateVarLength(rb, length);
+		int bytePos = rb.byteWorkingHeadPos.value;    
+		int partialLength = 1 + rb.byteMask - (bytePos & rb.byteMask);    		
+		if (partialLength<length) {   		
+			//read from source and write into byteBuffer
+			source.get(rb.byteBuffer, bytePos & rb.byteMask, partialLength);
+			source.get(rb.byteBuffer, 0, length - partialLength);					    		
+		} else {					    	
+			source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
+		}
+		rb.byteWorkingHeadPos.value = bytePos + length;
+	}
+
+	public static void addByteArrayWithMask(final RingBuffer outputRing, int mask, int len, byte[] data, int offset) {
 		if ((offset&mask) <= ((offset+len-1) & mask)) {
 			
 			//simple add bytes
@@ -206,7 +337,7 @@ public final class RingBuffer {
 			appendPartialBytesArray(data, offset&mask, len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			appendPartialBytesArray(data, 0, len-len1, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);        
 			
-			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteMask& outputRing.byteWorkingHeadPos.value, len);
+			addBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos, outputRing.bytesHeadPos.get(), outputRing.byteWorkingHeadPos.value, len);
 			outputRing.byteWorkingHeadPos.value = outputRing.byteWorkingHeadPos.value + len;
 		}
 	}
@@ -232,7 +363,9 @@ public final class RingBuffer {
     public static void addByteArray(byte[] source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
     	
     	assert(sourceLen>=0);
-        appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
+    	validateVarLength(rbRingBuffer, sourceLen);
+    	
+    	appendPartialBytesArray(source, sourceIdx, sourceLen, rbRingBuffer.byteBuffer, rbRingBuffer.byteWorkingHeadPos.value, rbRingBuffer.byteMask);   
         addBytePosAndLen(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingHeadPos, rbRingBuffer.bytesHeadPos.get(), rbRingBuffer.byteWorkingHeadPos.value, sourceLen);
         rbRingBuffer.byteWorkingHeadPos.value = rbRingBuffer.byteWorkingHeadPos.value + sourceLen;		
 		
@@ -274,15 +407,14 @@ public final class RingBuffer {
         buffer[rbMask & (int)offset] = value;
     } 
     
-    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int bytesHeadPos, int position, int length) {
+    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, long baseBytePos, int position, int length) {
     	long p = headCache.value; 
         setBytePosAndLen(buffer, rbMask, p, position, length);        
         headCache.value = p+2;
         
     }
 
-	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,
-			int positionDat, int lengthDat) {
+	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat) {
 		//TODO: AA, at this point we can modify the pos that is set.
     	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
@@ -307,6 +439,16 @@ public final class RingBuffer {
         headCache.value = p;
         
     }    
+    
+    public static void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
+        
+        long p = headCache.value; 
+        buffer[rbMask & (int)p++] = value1;
+        buffer[rbMask & (int)p++] = (int)(value2 >>> 32);
+        buffer[rbMask & (int)p++] = (int)(value2 & 0xFFFFFFFF);
+        headCache.value = p;
+        
+    }   
     
     public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
         

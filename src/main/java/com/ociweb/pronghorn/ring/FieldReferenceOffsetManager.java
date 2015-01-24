@@ -347,19 +347,8 @@ public class FieldReferenceOffsetManager {
      */
     public static int lookupFieldLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
-        
-		int UPPER_BITS;
-		if (FieldReferenceOffsetManager.isTemplateStart(from, x)) {
-			
-			//3 bits of zero, for now depth is limited to 127 on the stack
-			UPPER_BITS = 0x80000000;
-		} else {
-			
-			//TODO: what is the depth of this position?
-			
-			UPPER_BITS = 0xF0000000;
-		};
-		
+        		
+		final int UPPER_BITS = 0x80000000 | (from.fragDepth[framentStart]<<28);
 		
         
         while (true) {

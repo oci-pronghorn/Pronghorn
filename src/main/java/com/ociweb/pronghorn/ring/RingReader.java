@@ -33,6 +33,12 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     	0E-32f,1.0E-33f,1.0E-34f,1.0E-35f,1.0E-36f,1.0E-37f,1.0E-38f,1.0E-39f,1.0E-40f,1.0E-41f,0E-42f,1.0E-43f,1.0E-44f,1.0E-45f,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN,Float.NaN
     };
     
+    
+    //TODO: convert all these methods to use
+    ///  rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))
+    //TODO: add readShort and readByte
+    
+    
     public static int readInt(int[] buffer, int mask, PaddedLong pos, int idx) {
           return buffer[mask & (int)(pos.value + (OFF_MASK&idx))];
     }
@@ -540,7 +546,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 	public static int copyBytes(final RingBuffer inputRing,	final RingBuffer outputRing, int fieldId) {
 		//High level API example of reading bytes from one ring buffer into another array that wraps with a mask
 		int length = readBytes(inputRing, fieldId, outputRing.byteBuffer, outputRing.byteWorkingHeadPos.value, outputRing.byteMask);
-		outputRing.validateVarLength(length);							
+		RingBuffer.validateVarLength(outputRing, length);							
 		
 		int p = outputRing.byteWorkingHeadPos.value;
 		

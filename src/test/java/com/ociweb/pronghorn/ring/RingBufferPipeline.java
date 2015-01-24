@@ -16,7 +16,7 @@ public class RingBufferPipeline {
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
 	private final int testMessages = 100000000;
-	private final int stages = 3;
+	private final int stages = 4;
 	private final byte primaryBits   = 19;
 	private final byte secondaryBits = 25;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
@@ -241,7 +241,7 @@ public class RingBufferPipeline {
 	                int msgCount = testMessages;   
 	                
 	                //two per message, and we only want half the buffer to be full
-	                long outputTarget = msgSize-(1<<primaryBits);//this value is negative
+	                long outputTarget = msgSize-(1<<primaryBits);//this value is negative TODO: this target will be a problem for var lenght messages!!
 	                
 	                long tailPosCache = spinBlockOnTail(tailPosition(outputRing), outputTarget, outputRing);
 	                int mask = byteMask(outputRing); // data often loops around end of array so this mask is required
@@ -308,9 +308,9 @@ public class RingBufferPipeline {
 								msgId = RingWalker.getMsgIdx(inputRing);
 								
 																//do nothing with the data
-								int len = RingReader.readBytesLength(inputRing, FIELD_ID);
-								int pos = RingReader.readBytesPosition(inputRing, FIELD_ID);
-								byte[] dat = RingReader.readBytesBackingArray(inputRing, FIELD_ID);
+							//	int len = RingReader.readBytesLength(inputRing, FIELD_ID);
+							//	int pos = RingReader.readBytesPosition(inputRing, FIELD_ID);
+							//	byte[] dat = RingReader.readBytesBackingArray(inputRing, FIELD_ID);
 
 								
 							} else {

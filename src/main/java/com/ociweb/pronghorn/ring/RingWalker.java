@@ -26,12 +26,11 @@ public class RingWalker {
     public long tailCache;
     public final FieldReferenceOffsetManager from;
     
-    //TODO: AA, need unit test and finish implementation of the stack
-	final int[] activeReadFragmentStack;
-	int   activeReadFragmentStackHead = 0;
-	
-	final int[] activeWriteFragmentStack; //TODO: when the component falls off it should be reset to maxInt to ensure we get an exception if it is used.
-	int   activeWriteFragmentStackHead = 0;
+    //TODO: AA, need to add error checking to caputre the case when something on the stack has fallen off the ring
+    //      This can be a simple assert when we move the tail that it does not go past the value in stack[0];
+	final long[] activeReadFragmentStack;
+	final long[] activeWriteFragmentStack; 
+
 	
 	private long cachedTailPosition = 0;
 	
@@ -64,8 +63,8 @@ public class RingWalker {
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
         this.from = from;
-        this.activeWriteFragmentStack = new int[from.maximumFragmentStackDepth];
-        this.activeReadFragmentStack = new int[from.maximumFragmentStackDepth];
+        this.activeWriteFragmentStack = new long[from.maximumFragmentStackDepth];
+        this.activeReadFragmentStack = new long[from.maximumFragmentStackDepth];
         
     }
 
@@ -148,7 +147,7 @@ public class RingWalker {
     
     //this impl only works for simple case where every message is one fragment. 
     public static boolean tryReadFragmentSimple(RingBuffer ringBuffer) { 
-    	assert (0 == RingBuffer.from(ringBuffer).templateOffset) : "Preamble is not supported in this method";
+    	//assert (0 == RingBuffer.from(ringBuffer).templateOffset) : "Preamble is not supported in this method";
     	
     	//NOTE: if the stackHead is not zero then we are still in fragments?
     	//NOTE: if the cursor position depth?
@@ -158,7 +157,7 @@ public class RingWalker {
     	final RingWalker ringBufferConsumer = ringBuffer.consumerData; 
     	
     	
-//    	if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBufferConsumer.nextCursor)) {
+ ///   	if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBufferConsumer.nextCursor)) {
     		
 	    	///
 	    	//check the ring buffer looking for new message	
@@ -167,7 +166,7 @@ public class RingWalker {
 			long target = 1 + tmpNextWokingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
 			if (ringBufferConsumer.bnmHeadPosCache < target) {
 				//only update the cache with this CAS call if we are still waiting for data
-				if ((ringBufferConsumer.bnmHeadPosCache = RingBuffer.headPosition(ringBuffer)) < target) {
+				if ((ringBufferConsumer.bnmHeadPosCache = ringBuffer.headPos.get()) < target) {
 					ringBufferConsumer.isNewMessage = false; 
 					return false;
 				}
@@ -179,7 +178,7 @@ public class RingWalker {
 		    
 		    //
 		    //from the last known fragment move up the working tail position to this new fragment location
-		    RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
+		    ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		    
 		    //
 		    //batched release of the old positions back to the producer
@@ -192,11 +191,9 @@ public class RingWalker {
 				    
 			//
 		    //Start new stack of fragments because this is a new message
-		    ringBufferConsumer.activeReadFragmentStackHead = 0;
-		    ringBufferConsumer.activeReadFragmentStack[0] = ringBuffer.mask&(int)tmpNextWokingTail;
+		    ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;		    
 		    
-		    
-		    final int msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset);
+		    final int msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
 			ringBufferConsumer.msgIdx = msgIdx;
 	
 	    	if (msgIdx < 0) {
@@ -211,8 +208,7 @@ public class RingWalker {
 	    		
 	    		ringBufferConsumer.cursor = msgIdx;  
 	    		ringBufferConsumer.nextCursor = msgIdx + ringBufferConsumer.from.fragScriptSize[msgIdx];
-	    		
-	    		
+	    		    			    		
 	    		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+fragSize;//save the size of this new fragment we are about to read  		
 	    		
 	    	}
@@ -239,14 +235,15 @@ public class RingWalker {
 //		    //
 //		    //from the last known fragment move up the working tail position to this new fragment location
 //		    RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
+//		    //save the index into these fragments so the reader will be able to find them.
+//		    ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
 //		    
 //		    
 //		    //TODO: what is the next cursor?  script size+ last cursor unless this is a sequence then stay at location..
 //		    
-//		    //increment the head but when is it decremented?
-//		    //ringBufferConsumer.activeReadFragmentStackHead = 0;
-//		    //ringBufferConsumer.activeReadFragmentStack[0] = ringBuffer.mask&(int)tmpNextWokingTail;
-//		    //TODO: when we enter the top we need to pop off the old fragment if our depth is the same or less
+//		    if (true) {
+//		    	throw new UnsupportedOperationException("This code is not done yet.");
+//		    }
 //		    
 //        	
 //		    ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+fragSize;//save the size of this new fragment we are about to read 
@@ -319,15 +316,8 @@ public class RingWalker {
 	    }
 	    
 	    //save the index into these fragments so the reader will be able to find them.
-	    //if this fragment is not the same as the last must increment on the stack
-	    if (0 != fragStep) {//lastCursor != ringBufferConsumer.cursor) {
-	    	//TODO: this is not yet fully implemented.
-	//    	ringBufferConsumer.activeReadFragmentStack[++ringBufferConsumer.activeReadFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
-	    } else {
-	    	ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.activeReadFragmentStackHead] = ringBuffer.mask&(int)cashWorkingTailPos;
-	    }
-	    
-	    
+	    ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =cashWorkingTailPos;
+
 	    //after alignment with front of fragment, may be zero because we need to find the next message?
 		ringBufferConsumer.activeFragmentDataSize = (ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor]);//save the size of this new fragment we are about to read
 		
@@ -378,7 +368,6 @@ public class RingWalker {
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //Start new stack of fragments because this is a new message
-	    ringBufferConsumer.activeReadFragmentStackHead = 0;
 	    ringBufferConsumer.activeReadFragmentStack[0] = ringBuffer.mask&(int)cashWorkingTailPos;
 	      
 	    int msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
@@ -499,7 +488,7 @@ public class RingWalker {
 			
 		if (hasRoom) {							
 			if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {				 
-				 RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
+				 RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
 			 }	
 		}
 		return hasRoom;
@@ -522,11 +511,12 @@ public class RingWalker {
 			ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
 			if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {				 
 				//Start new stack of fragments because this is a new message
-				ring.consumerData.activeWriteFragmentStackHead = 0;
-				ring.consumerData.activeWriteFragmentStack[0] = ring.mask&(int)ring.consumerData.nextWorkingHead;
-				RingWriter.writeInt(ring, from.templateOffset, cursorPosition);
-			 }	
-			//
+				ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
+				ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
+			 } else {
+				//this fragment does not start a new message but its start position must be recorded for usage later
+				ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
+			 }
 			
 			ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
 		}
@@ -551,7 +541,7 @@ public class RingWalker {
 		ring.consumerData.cachedTailPosition = spinBlockOnTail(ring.consumerData.cachedTailPosition, ring.workingHeadPos.value - (ring.maxSize - from.fragDataSize[cursorPosition]), ring);
 
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {				 
-			 RingWriter.writeInt(ring, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
+			 RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, cursorPosition); //TODO: AA,  this is moving the position and probably a very bad idea as it has side effect
 		 }	
 
 	}
@@ -568,10 +558,11 @@ public class RingWalker {
 
 		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {
 			//Start new stack of fragments because this is a new message
-			ring.consumerData.activeWriteFragmentStackHead = 0;
-			ring.consumerData.activeWriteFragmentStack[0] = ring.mask&(int)consumerData.nextWorkingHead;
-			RingWriter.writeInt(ring, from.templateOffset, cursorPosition);
-
+			ring.consumerData.activeWriteFragmentStack[0] = consumerData.nextWorkingHead;
+			ring.buffer[ring.mask &(int)(consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
+		 } else {
+			//this fragment does not start a new message but its start position must be recorded for usage later
+			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=consumerData.nextWorkingHead;
 		 }	
 		
 		consumerData.nextWorkingHead = consumerData.nextWorkingHead + fragSize;

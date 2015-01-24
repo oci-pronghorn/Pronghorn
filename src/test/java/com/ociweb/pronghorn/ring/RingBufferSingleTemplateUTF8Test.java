@@ -79,12 +79,25 @@ public class RingBufferSingleTemplateUTF8Test {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingWriter.writeUTF8(ring, testString); //data for each field is written in order 
+        			RingBuffer.validateVarLength(ring, testString.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+					final int p = ring.byteWorkingHeadPos.value;	    
+					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length());
+					ring.byteWorkingHeadPos.value = p+byteLength;
+					RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength); //data for each field is written in order 
         		} else {
         			if (0 == (j&2)) {
-        				RingWriter.writeUTF8(ring, testChars);
+        				RingBuffer.validateVarLength(ring, testChars.length<<3);
+						int sourceLen = testChars.length; //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+						final int p = ring.byteWorkingHeadPos.value;
+						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, sourceLen);
+						ring.byteWorkingHeadPos.value = p+byteLength;
+						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength);
         			} else {
-        				RingWriter.writeUTF8(ring, testChars,0,stringSize);
+        				RingBuffer.validateVarLength(ring, stringSize<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
+						final int p = ring.byteWorkingHeadPos.value;
+						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, stringSize);		
+						ring.byteWorkingHeadPos.value = p+byteLength;    		
+						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength);
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
