@@ -32,96 +32,64 @@ public class RingWriter {
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, value);        
     }
     
+    public static void writeInt(RingBuffer rb, int loc, int value) {
+		rb.buffer[rb.mask &(rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
+    }
+       
+    
     @Deprecated
     public static void writeLong(RingBuffer rb, long value) {
         RingBuffer.addLongValue(rb.buffer, rb.mask, rb.workingHeadPos, value);    
     }
 
+    public static void writeLong(RingBuffer rb, int loc, long value) {
+        int[] buffer = rb.buffer;
+		int rbMask = rb.mask;		
+		long p = (rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));		
+		buffer[rbMask & (int)p] = (int)(value >>> 32);
+		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
+    }
+
+    
+    
     @Deprecated
     public static void writeDecimal(RingBuffer rb, int exponent, long mantissa) {
         RingBuffer.addValue(rb.buffer, rb.mask, rb.workingHeadPos, exponent, (int) (mantissa >>> 32), (int)mantissa & 0xFFFFFFFF );    
     }
 
+    public static void writeDecimal(RingBuffer rb, int loc, int exponent, long mantissa) {
+        int[] buffer = rb.buffer;
+		int rbMask = rb.mask;
+		
+		long p = (rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
+		
+		buffer[rbMask & (int)p++] = exponent;
+		buffer[rbMask & (int)p++] = (int) (mantissa >>> 32);
+		buffer[rbMask & (int)p++] = (int)mantissa & 0xFFFFFFFF;
+		  
+    }
+        
+    
     @Deprecated
     public static void writeFloatToIntBits(RingBuffer rb, float value) {
     	writeInt(rb, Float.floatToIntBits(value));
     }
+    
+    public static void writeFloatToIntBits(RingBuffer rb, int loc, float value) {
+    	writeInt(rb, loc, Float.floatToIntBits(value));
+    }
+    
+    
     
     @Deprecated
     public static void writeDoubleToLongBits(RingBuffer rb, double value) {
     	writeLong(rb, Double.doubleToLongBits(value));
     }    
     
-    //requires 12 bytes!
-    @Deprecated
-    public static void writeIntAsText(RingBuffer rb, int value) {
-		rb.validateVarLength(12);
-    	
-    	byte[] target = rb.byteBuffer;
-    	int max = 12+rb.byteWorkingHeadPos.value;
-    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
-    	//this will leave a gap but that is not a problem.
-    	int idx=max;
-    	int tmp = value;    	
-    	while (tmp!=0) {
-    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
-    		int t = tmp/10;
-    		int r = tmp%10;
-    		target[rb.byteMask&--idx] = (byte)('0'+r);
-    		tmp = t;
-    	}
-    	target[rb.byteMask& (idx-1)] = (byte)'-';
-    	//to make it positive we jump over the sign.
-    	idx -= (1&(value>>31));
-    	
-    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
-	}
+    public static void writeDoubleToLongBits(RingBuffer rb, int loc,  double value) {
+    	writeLong(rb, loc, Double.doubleToLongBits(value));
+    }    
     
-    @Deprecated
-    public static void writeLongAsText(RingBuffer rb, long value) {
-		rb.validateVarLength(21);
-    	
-    	byte[] target = rb.byteBuffer;
-    	int max = 12+rb.byteWorkingHeadPos.value;
-    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
-    	//this will leave a gap but that is not a problem.
-    	int idx=max;
-    	long tmp = value;    	
-    	while (tmp!=0) {
-    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
-    		long t = tmp/10;
-    		long r = tmp%10;
-    		target[rb.byteMask&--idx] = (byte)('0'+r);
-    		tmp = t;
-    	}
-    	target[rb.byteMask& (idx-1)] = (byte)'-';
-    	//to make it positive we jump over the sign.
-    	idx -= (1&(value>>31));
-    	
-    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
-    	rb.byteWorkingHeadPos.value = max;    	
-	}    
-    
-    
-        
-    //Because the stream needs to be safe and write the bytes ahead to the buffer we need 
-    //to set the new byte pos, pos/len ints as a separate call
-    @Deprecated
-    public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
-    	rb.validateVarLength(length);
-    	
-        RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, length);
-
-        rb.byteWorkingHeadPos.value = p + length;
-        
-    }
-
-    @Deprecated
-    public static void writeBytes(RingBuffer rb, byte[] source) {
-    	rb.validateVarLength(source.length);
-        RingBuffer.addByteArray(source, 0, source.length, rb);
-    }
     
     @Deprecated
     public static void writeBytes(RingBuffer rb, byte[] source, int offset, int length) {
@@ -129,10 +97,6 @@ public class RingWriter {
         RingBuffer.addByteArray(source, offset, length, rb);
     }
 
-    public static void writeInt(RingBuffer rb, int loc, int value) {
-		rb.buffer[rb.mask &(rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
-    }
-    
     
     public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length) {
     	rb.validateVarLength(length);
@@ -145,6 +109,26 @@ public class RingWriter {
 		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + length;
 		
     }
+        
+    
+    @Deprecated
+    public static void writeBytes(RingBuffer rb, byte[] source) {
+    	rb.validateVarLength(source.length);
+        RingBuffer.addByteArray(source, 0, source.length, rb);
+    }
+        
+    public static void writeBytes(RingBuffer rb, int loc, byte[] source) {
+    	int sourceLen = source.length;
+    	rb.validateVarLength(sourceLen);
+		
+        assert(sourceLen>=0);		
+        RingBuffer.appendPartialBytesArray(source, 0, sourceLen, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask);   
+		
+        RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos.value+(OFF_MASK&loc), rb.byteWorkingHeadPos.value, sourceLen);
+		
+		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + sourceLen;
+    }
+    
     
     @Deprecated
     public static void writeBytes(RingBuffer rb, ByteBuffer source, int length) {
@@ -165,6 +149,36 @@ public class RingWriter {
 		
 		rb.byteWorkingHeadPos.value = bytePos + length;
     }
+    
+
+    public static void writeBytes(RingBuffer rb, int loc, ByteBuffer source, int length) {
+    	assert(length>=0);
+    	int bytePos = rb.byteWorkingHeadPos.value;    	
+    	
+    	rb.validateVarLength(length);
+    	int partialLength = 1 + rb.byteMask - (bytePos & rb.byteMask);    		
+    	if (partialLength<length) {   		
+    		//read from source and write into byteBuffer
+    		source.get(rb.byteBuffer, bytePos & rb.byteMask, partialLength);
+    		source.get(rb.byteBuffer, 0, length - partialLength);					    		
+    	} else {					    	
+    		source.get(rb.byteBuffer, bytePos & rb.byteMask, length);
+    	}
+
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos.value+(OFF_MASK&loc), bytePos, length);        
+		
+		rb.byteWorkingHeadPos.value = bytePos + length;
+    }
+    
+    ////
+    
+
+    
+    /////////
+    
+    
+    
+    
     
     @Deprecated
     public static void writeASCII(RingBuffer rb, char[] source) {
@@ -375,6 +389,80 @@ public class RingWriter {
 	    }		
 	    return pos - targetIdx;
 	}
+    
+    
+    
+    //TODO: after this point continue to convert methods.
+    
+    
+    //requires 12 bytes!
+    @Deprecated
+    public static void writeIntAsText(RingBuffer rb, int value) {
+		rb.validateVarLength(12);
+    	
+    	byte[] target = rb.byteBuffer;
+    	int max = 12+rb.byteWorkingHeadPos.value;
+    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+    	//this will leave a gap but that is not a problem.
+    	int idx=max;
+    	int tmp = value;    	
+    	while (tmp!=0) {
+    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+    		int t = tmp/10;
+    		int r = tmp%10;
+    		target[rb.byteMask&--idx] = (byte)('0'+r);
+    		tmp = t;
+    	}
+    	target[rb.byteMask& (idx-1)] = (byte)'-';
+    	//to make it positive we jump over the sign.
+    	idx -= (1&(value>>31));
+    	
+    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
+    	rb.byteWorkingHeadPos.value = max;    	
+	}
+    
+    
+    
+    @Deprecated
+    public static void writeLongAsText(RingBuffer rb, long value) {
+		rb.validateVarLength(21);
+    	
+    	byte[] target = rb.byteBuffer;
+    	int max = 12+rb.byteWorkingHeadPos.value;
+    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+    	//this will leave a gap but that is not a problem.
+    	int idx=max;
+    	long tmp = value;    	
+    	while (tmp!=0) {
+    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+    		long t = tmp/10;
+    		long r = tmp%10;
+    		target[rb.byteMask&--idx] = (byte)('0'+r);
+    		tmp = t;
+    	}
+    	target[rb.byteMask& (idx-1)] = (byte)'-';
+    	//to make it positive we jump over the sign.
+    	idx -= (1&(value>>31));
+    	
+    	finishWriteBytesAlreadyStarted(rb, idx, max-idx);
+    	rb.byteWorkingHeadPos.value = max;    	
+	}    
+    
+    
+        
+    //Because the stream needs to be safe and write the bytes ahead to the buffer we need 
+    //to set the new byte pos, pos/len ints as a separate call
+    @Deprecated
+    public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int p, int length) {
+    	rb.validateVarLength(length);
+    	
+        RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), p, length);
+
+        rb.byteWorkingHeadPos.value = p + length;
+        
+    }
+
+
 
 	public static int encodeSingleChar(int c, byte[] buffer,int mask, int pos) {
 

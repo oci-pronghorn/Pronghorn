@@ -424,7 +424,7 @@ public class RingWalker {
 	                return true;
 	            } else {
 	                assert(seqLength>=0) : "The previous fragment has already been replaced or modified and it was needed for the length counter";
-	                ringWalker.getSeqStack()[ringWalker.incSeqStackHead()]=seqLength;
+	                ringWalker.seqStack[ringWalker.incSeqStackHead()]=seqLength;
 	                //this is the first run so we are already positioned at the top   
 	            }
 	            return false;   
