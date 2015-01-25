@@ -157,7 +157,7 @@ public class RingWalker {
     	final RingWalker ringBufferConsumer = ringBuffer.consumerData; 
     	
     	
- ///   	if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBufferConsumer.nextCursor)) {
+    	if (FieldReferenceOffsetManager.isTemplateStart(RingBuffer.from(ringBuffer), ringBufferConsumer.nextCursor)) {
     		
 	    	///
 	    	//check the ring buffer looking for new message	
@@ -184,7 +184,7 @@ public class RingWalker {
 		    //batched release of the old positions back to the producer
 		    //could be done every time but batching reduces contention
 		    //this batching is only done per-message so the fragments can remain and be read
-			if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {
+			if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {			
 				RingBuffer.releaseReadLock(ringBuffer);
 				ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
 			}
@@ -196,6 +196,8 @@ public class RingWalker {
 		    final int msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
 			ringBufferConsumer.msgIdx = msgIdx;
 	
+			//System.err.println("pos:"+msgIdx+"  "+ringBufferConsumer.from.fragDataSize.length);
+			
 	    	if (msgIdx < 0) {
 	    		//this is commonly used as the end of file marker    		
 	    		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+1;
@@ -207,49 +209,81 @@ public class RingWalker {
 	    		assert(ringBufferConsumer.bnmHeadPosCache >= (ringBufferConsumer.nextWorkingTail + fragSize)) : "Partial fragment detected";
 	    		
 	    		ringBufferConsumer.cursor = msgIdx;  
-	    		ringBufferConsumer.nextCursor = msgIdx + ringBufferConsumer.from.fragScriptSize[msgIdx];
-	    		    			    		
+	    		ringBufferConsumer.nextCursor = msgIdx + ringBufferConsumer.from.fragScriptSize[msgIdx];	    		    			    		
 	    		ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+fragSize;//save the size of this new fragment we are about to read  		
 	    		
 	    	}
 	    	return true;   
-//        } else {
-//			//this fragment does not start a message
-//		    ringBufferConsumer.isNewMessage = false;
-//		    
-//	    	///
-//	    	//check the ring buffer looking for full next fragment
-//			//return false if we don't have enough data 
-//		    ringBufferConsumer.cursor = ringBufferConsumer.nextCursor;		    
-//		    final int fragSize = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor];
-//			long tmpNextWokingTail = ringBufferConsumer.nextWorkingTail;
-//			long target = fragSize + tmpNextWokingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
-//			if (ringBufferConsumer.bnmHeadPosCache < target) {
-//				//only update the cache with this CAS call if we are still waiting for data
-//				if ((ringBufferConsumer.bnmHeadPosCache = RingBuffer.headPosition(ringBuffer)) < target) {
-//					ringBufferConsumer.isNewMessage = false; 
-//					return false;
-//				}
-//			}
-//        	
-//		    //
-//		    //from the last known fragment move up the working tail position to this new fragment location
-//		    RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
-//		    //save the index into these fragments so the reader will be able to find them.
-//		    ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
-//		    
-//		    
-//		    //TODO: what is the next cursor?  script size+ last cursor unless this is a sequence then stay at location..
-//		    
-//		    if (true) {
-//		    	throw new UnsupportedOperationException("This code is not done yet.");
-//		    }
-//		    
-//        	
-//		    ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+fragSize;//save the size of this new fragment we are about to read 
-//        	
-//        	return true;
-//        }
+        } else {
+			//this fragment does not start a message
+		    ringBufferConsumer.isNewMessage = false;
+		    
+	    	///
+	    	//check the ring buffer looking for full next fragment
+			//return false if we don't have enough data 
+		    ringBufferConsumer.cursor = ringBufferConsumer.nextCursor;		    
+		    final int fragSize = ringBufferConsumer.from.fragDataSize[ringBufferConsumer.cursor];
+		    final int scriptFragSize = ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
+			long tmpNextWokingTail = ringBufferConsumer.nextWorkingTail;
+			final long target = fragSize + tmpNextWokingTail; //One for the template ID NOTE: Caution, this simple implementation does NOT support preamble
+			if (ringBufferConsumer.bnmHeadPosCache < target) {
+				//only update the cache with this CAS call if we are still waiting for data
+				if ((ringBufferConsumer.bnmHeadPosCache = RingBuffer.headPosition(ringBuffer)) < target) {
+					ringBufferConsumer.isNewMessage = false; 
+					return false;
+				}
+			}
+        	
+		    //
+		    //from the last known fragment move up the working tail position to this new fragment location
+		    RingBuffer.setWorkingTailPosition(ringBuffer, tmpNextWokingTail);
+		    //save the index into these fragments so the reader will be able to find them.
+		    ringBufferConsumer.activeReadFragmentStack[ringBufferConsumer.from.fragDepth[ringBufferConsumer.cursor]] =tmpNextWokingTail;
+	
+		    
+	        int endingToken = ringBufferConsumer.from.tokens[ringBufferConsumer.cursor + scriptFragSize -1];
+	        //if last token of last fragment was length then begin new sequence
+	        int type = (endingToken >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE;
+	        if (TypeMask.GroupLength == type) {
+	        	
+	        	int seqLength = RingBuffer.readInt(ringBuffer.buffer, ringBuffer.mask,  target-1);
+	        	
+	        	if (seqLength == 0) {
+	        		//jump over and skip this altogether, the next thing at working tail will be later in the script
+	        		ringBufferConsumer.cursor = ringBufferConsumer.cursor + scriptFragSize;
+	        		ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + ringBufferConsumer.from.fragScriptSize[ringBufferConsumer.cursor];
+	        		
+	        	} else {
+	        		ringBufferConsumer.seqStack[ringBufferConsumer.incSeqStackHead()]=seqLength;	        		
+	        		ringBufferConsumer.nextCursor = ringBufferConsumer.cursor;
+	        	}
+	        } else {
+	        	
+	        	
+		        //if last token of last fragment was seq close then subtract and move back.
+		        if (TypeMask.Group==type &&  //TODO: AAA, too complext must simplify.
+		            0 != (endingToken & (OperatorMask.Group_Bit_Seq << TokenBuilder.SHIFT_OPER)) &&
+		            0 != (endingToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))            
+		                ) {
+		            //check top of the stack
+		            if (--ringBufferConsumer.getSeqStack()[ringBufferConsumer.getSeqStackHead()]>0) {
+		            	//stay on cursor location we are counting down.
+		                ringBufferConsumer.nextCursor = ringBufferConsumer.cursor;
+		               return false;
+		            } else {
+		                //done, already positioned to continue
+		            	ringBufferConsumer.setSeqStackHead(ringBufferConsumer.getSeqStackHead() - 1); 
+		            }
+		        }  
+	        	
+	        	//this was not a sequence so the next point is found by a simple addition of the fragSize
+	        	ringBufferConsumer.nextCursor = ringBufferConsumer.cursor + fragSize;
+	        }
+	        ringBufferConsumer.nextWorkingTail = target;//save the size of this new fragment we are about to read 
+        	
+        	
+        	return true;
+        }
     	
     }
     
@@ -302,7 +336,7 @@ public class RingWalker {
 	    //////////////
 	    ////Never call these when we jump back for loop
 	    //////////////
-	    if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer)) {//TokenBuilder.t
+	    if (sequenceLengthDetector(ringBuffer, fragStep, ringBufferConsumer, lastCursor)) {//TokenBuilder.t
 	        //detecting end of message
 	        int token;//do not set before cursor is checked to ensure it is not after the script length
 	        if ((ringBufferConsumer.cursor>=ringBufferConsumer.from.tokensLen) ||
@@ -368,9 +402,8 @@ public class RingWalker {
 	    ringBufferConsumer.setNewMessage(true);
 	    
 	    //Start new stack of fragments because this is a new message
-	    ringBufferConsumer.activeReadFragmentStack[0] = ringBuffer.mask&(int)cashWorkingTailPos;
-	      
-	    int msgIdx = RingReader.readInt(ringBuffer,  ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
+	    ringBufferConsumer.activeReadFragmentStack[0] = cashWorkingTailPos;
+	    int msgIdx = RingBuffer.readInt(ringBuffer.buffer, ringBuffer.mask, ringBuffer.workingTailPos.value+ringBufferConsumer.from.templateOffset); //jumps over preamble to find templateId   
 		ringBufferConsumer.msgIdx = msgIdx;
     	if (msgIdx < 0) {
     		//this is commonly used as the end of file marker
@@ -389,7 +422,7 @@ public class RingWalker {
 	}
 
 		//only called after moving forward.
-	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, RingWalker ringWalker) {
+	    static boolean sequenceLengthDetector(RingBuffer ringBuffer, int jumpSize, RingWalker ringWalker, int lastCursor) {
 	        if(0==ringWalker.cursor) {
 	            return false;
 	        }
@@ -398,7 +431,12 @@ public class RingWalker {
 	        //if last token of last fragment was length then begin new sequence
 	        int type = (endingToken >>> TokenBuilder.SHIFT_TYPE) & TokenBuilder.MASK_TYPE;
 	        if (TypeMask.GroupLength == type) {
-	            int seqLength = RingReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
+	        	
+	        	int seqLength = RingBuffer.readInt(ringBuffer.buffer, ringBuffer.mask, (int)ringBuffer.workingTailPos.value-1);
+	        	
+	            //int seqLengthOld = RingReader.readInt(ringBuffer, -1); //length is always at the end of the fragment.
+	            //System.err.println(seqLengthNew+" vs "+seqLength);
+	            
 	            if (seqLength == 0) {
 	//                int jump = (TokenBuilder.MAX_INSTANCE&from.tokens[cursor-jumpSize])+2;
 	                int fragJump = ringWalker.from.fragScriptSize[ringWalker.cursor+1]; //script jump  //TODO: not sure this is right when they are nested?
@@ -418,7 +456,7 @@ public class RingWalker {
 	            }
 	            return false;   
 	            
-	        }
+	        } else
 	                
 	        
 	        //if last token of last fragment was seq close then subtract and move back.
@@ -427,13 +465,12 @@ public class RingWalker {
 	            0 != (endingToken & (OperatorMask.Group_Bit_Close << TokenBuilder.SHIFT_OPER))            
 	                ) {
 	            //check top of the stack
-	            if (--ringWalker.getSeqStack()[ringWalker.getSeqStackHead()]>0) {
-	                int jump = (TokenBuilder.MAX_INSTANCE&endingToken)+1;
-	               ringWalker.cursor = (ringWalker.cursor - jump);
+	            if (--ringWalker.seqStack[ringWalker.seqStackHead]>0) {	            	
+	               ringWalker.cursor = lastCursor;
 	               return false;
 	            } else {
 	                //done, already positioned to continue
-	                ringWalker.setSeqStackHead(ringWalker.getSeqStackHead() - 1);                
+	                ringWalker.setSeqStackHead(ringWalker.seqStackHead - 1);                
 	                return true;
 	            }
 	        }                   
@@ -474,8 +511,8 @@ public class RingWalker {
      * @return
      */
 	@Deprecated
-	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) {
-		
+	public static boolean tryWriteFragment(RingBuffer ring, int cursorPosition) { //TODO: AAA, merge these two one the side effects are removed.
+//		if (true)	return tryWriteFragmentXXXX(ring,cursorPosition);
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);
 		long target = ring.workingHeadPos.value - (ring.maxSize - from.fragDataSize[cursorPosition]);
 
@@ -569,23 +606,6 @@ public class RingWalker {
 	}
 	
 	
-	/**
-	 * Blocking call however it will also call run on other work each time it runs out of work todo.
-	 * 
-	 * @param ring
-	 * @param cursorPosition
-	 * @param otherWork
-	 */
-	public static void blockWriteFragment(RingBuffer ring, int cursorPosition, Runnable otherWork) {
-		while (!tryWriteFragment(ring, cursorPosition)) {
-			if (RingBuffer.isShutDown(ring) || Thread.currentThread().isInterrupted()) {
-    			throw new RingBufferException("Unexpected shutdown");
-    		}
-			otherWork.run();
-        }
-	}
-
-
 	public static void publishWrites(RingBuffer outputRing) {
 		RingWalker ringBufferConsumer = outputRing.consumerData;
 		outputRing.workingHeadPos.value = ringBufferConsumer.nextWorkingHead;

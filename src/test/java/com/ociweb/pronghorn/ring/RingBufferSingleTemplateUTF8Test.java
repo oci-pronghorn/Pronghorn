@@ -1,7 +1,8 @@
 package com.ociweb.pronghorn.ring;
 
+import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
-import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage; 
+import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragmentSimple;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -81,7 +82,7 @@ public class RingBufferSingleTemplateUTF8Test {
         		if (0 == (j&1)) {
         			RingBuffer.validateVarLength(ring, testString.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 					final int p = ring.byteWorkingHeadPos.value;	    
-					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length());
+					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length()); //TODO: AAA, these are using updates with side effect and must be swapped.
 					ring.byteWorkingHeadPos.value = p+byteLength;
 					RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength); //data for each field is written in order 
         		} else {
@@ -150,7 +151,7 @@ public class RingBufferSingleTemplateUTF8Test {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (tryReadFragmentSimple(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 	        	target.setLength(0);
 	        	assertTrue(isNewMessage(ring));//would use this method rarely to determine if fragment starts new message

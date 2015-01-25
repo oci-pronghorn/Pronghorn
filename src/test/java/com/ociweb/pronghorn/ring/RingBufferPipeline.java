@@ -45,7 +45,7 @@ public class RingBufferPipeline {
 		//create all the threads, one for each stage
 		 ExecutorService service = Executors.newFixedThreadPool(stages);
 		 
-		 ScheduledThreadPoolExecutor ste = new ScheduledThreadPoolExecutor(stages*2, new ThreadFactory(){
+		 ScheduledThreadPoolExecutor ste = new ScheduledThreadPoolExecutor(2/*stages*2*/, new ThreadFactory(){
 
 			@Override
 			public Thread newThread(Runnable r) {
@@ -67,7 +67,7 @@ public class RingBufferPipeline {
 	  		 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
 			 monitors[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);			 
 		
-			 ste.scheduleAtFixedRate(monitors[j], j, 100, TimeUnit.MILLISECONDS);
+			 ste.scheduleAtFixedRate(monitors[j], j, 33, TimeUnit.MILLISECONDS);
 			 
 			 ste.submit(dumpMonitor(monitorRings[j]));
 			 

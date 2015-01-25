@@ -191,6 +191,102 @@ public final class RingBuffer {
     }
         
     
+	public static int readInt(int[] buffer, int mask, long index) {
+		return buffer[mask & (int)(index)];
+	}
+
+	public static long readLong(int[] buffer, int mask, long index) {
+		return (((long) buffer[mask & (int)index]) << 32) | (((long) buffer[mask & (int)(index + 1)]) & 0xFFFFFFFFl);
+	}
+
+	/**
+	   * Convert bytes into chars using UTF-8.
+	   * 
+	   *  High 32   BytePosition
+	   *  Low  32   Char (caller can cast response to char to get the decoded value)  
+	   * 
+	   */
+	  public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
+	      //TODO: these masks appear to be wrong.
+		  
+		  // 7  //high bit zero all others its 1
+		  // 5 6
+		  // 4 6 6
+		  // 3 6 6 6
+		  // 2 6 6 6 6
+		  // 1 6 6 6 6 6
+		  
+	    int sourcePos = (int)(posAndChar >> 32); 
+	    
+	    byte b;   
+	    if ((b = source[mask&sourcePos++]) >= 0) {
+	        // code point 7
+	        return (((long)sourcePos)<<32) | (long)b; //1 byte result of 7 bits with high zero
+	    } 
+	    
+	    int result;
+	    if (((byte) (0xFF & (b << 2))) >= 0) {
+	        if ((b & 0x40) == 0) {        	
+	            ++sourcePos;
+	            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	        }
+	        // code point 11
+	        result = (b & 0x1F); //5 bits
+	    } else {
+	        if (((byte) (0xFF & (b << 3))) >= 0) {
+	            // code point 16
+	            result = (b & 0x0F); //4 bits
+	        } else {
+	            if (((byte) (0xFF & (b << 4))) >= 0) {
+	                // code point 21
+	                result = (b & 0x07); //3 bits
+	            } else {
+	                if (((byte) (0xFF & (b << 5))) >= 0) {
+	                    // code point 26
+	                    result = (b & 0x03); // 2 bits
+	                } else {
+	                    if (((byte) (0xFF & (b << 6))) >= 0) {
+	                        // code point 31
+	                        result = (b & 0x01); // 1 bit
+	                    } else {
+	                        // the high bit should never be set
+	                        sourcePos += 5;
+	                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	                    }
+	
+	                    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+	                        sourcePos += 5;
+	                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	                    }
+	                    result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
+	                }
+	                if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+	                    sourcePos += 4;
+	                    return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	                }
+	                result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
+	            }
+	            if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+	                sourcePos += 3;
+	                return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	            }
+	            result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
+	        }
+	        if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+	            sourcePos += 2;
+	            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	        }
+	        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
+	    }
+	    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
+	       System.err.println("Invalid encoding, low byte must have bits of 10xxxxxx but we find "+Integer.toBinaryString(source[mask&sourcePos]));
+	       sourcePos += 1;
+	       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
+	    }
+	    long chr = ((result << 6) | (int)(source[mask&sourcePos++] & 0x3F)); //6 bits
+	    return (((long)sourcePos)<<32) | chr;
+	  }
+
 	public static int addASCIIToBytes(CharSequence source, int sourceIdx, int sourceLen, RingBuffer rbRingBuffer) {
 		final int p = rbRingBuffer.byteWorkingHeadPos.value;
 	    if (sourceLen > 0) {
@@ -535,6 +631,8 @@ public final class RingBuffer {
     }
     
     public static void publishWrites(RingBuffer ring) {
+    	
+    	ring.workingHeadPos.value = Math.max(ring.consumerData.nextWorkingHead, ring.workingHeadPos.value); //TODO: AA, this is only needed until we fully transition over to the new API
     	
     	//prevent long running arrays from rolling over in second byte ring
     	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;

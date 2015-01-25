@@ -18,7 +18,6 @@ import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputByteArray;
 import com.ociweb.jfast.primitive.adapter.FASTOutputByteArray;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
 
 public class UTF8EncodeDecodeTest {
 
@@ -153,7 +152,7 @@ public class UTF8EncodeDecodeTest {
             
             long charAndPos = 0;        //convert bytes to chars
             while (charAndPos>>32 < byteCount  ) {
-                charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 target[offset++]=(char)charAndPos;
             }
         }
@@ -178,7 +177,7 @@ public class UTF8EncodeDecodeTest {
             
             long charAndPos = 0;   //convert bytes to chars     
             while (charAndPos>>32 < byteCount  ) {
-                charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 target[offset++]=(char)charAndPos;
             }
         }
@@ -231,7 +230,7 @@ public class UTF8EncodeDecodeTest {
             
             long charAndPos = 0;        //convert bytes to chars
             while (charAndPos>>32 < byteCount  ) {
-                charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 try{
                     target1.append((char)charAndPos);
                 } catch (IOException e) {
@@ -260,7 +259,7 @@ public class UTF8EncodeDecodeTest {
             
             long charAndPos = 0;        
             while (charAndPos>>32 < byteCount  ) {//convert bytes to chars
-                charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                 try{
                     target1.append((char)charAndPos);
                 } catch (IOException e) {

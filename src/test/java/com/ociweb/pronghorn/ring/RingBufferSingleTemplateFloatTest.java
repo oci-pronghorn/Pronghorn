@@ -1,6 +1,6 @@
 package com.ociweb.pronghorn.ring;
 
-import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
+import static com.ociweb.pronghorn.ring.RingWalker.*;
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage; 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -20,9 +20,9 @@ public class RingBufferSingleTemplateFloatTest {
 	private static long[] SINGLE_MESSAGE_IDS = new long[]{0};
 	private static final short ZERO_PREMABLE = 0;
 	public static final FieldReferenceOffsetManager FLOAT_SCRIPT = new FieldReferenceOffsetManager(SINGLE_MESSAGE_TOKENS, 
-	              ZERO_PREMABLE, 
-	              SINGLE_MESSAGE_NAMES, 
-	              SINGLE_MESSAGE_IDS);
+																					              ZERO_PREMABLE, 
+																					              SINGLE_MESSAGE_NAMES, 
+																					              SINGLE_MESSAGE_IDS);
 	
 	
 	final FieldReferenceOffsetManager FROM = FLOAT_SCRIPT;
@@ -48,10 +48,11 @@ public class RingBufferSingleTemplateFloatTest {
         
         
         int k = testSize;
-        while (tryReadFragment(ring)) {
+        while (tryReadFragmentSimple(ring)) {
+        	
         	--k;
         	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
-	        		 
+ 
         }    
     }
 
@@ -60,35 +61,40 @@ public class RingBufferSingleTemplateFloatTest {
 		assertTrue(isNewMessage(ring));
 		assertEquals(0, RingWalker.messageIdx(ring));
 		
+		
 		float expectedValue = 1f/(float)((varDataMax*(k))/testSize);		        	
-		float value = RingReader.readIntBitsToFloat(ring, FIELD_LOC);	        	
+		float value = RingReader.readIntBitsToFloat(ring, FIELD_LOC);	
 		assertEquals(expectedValue, value, .00001);
 	}
 
 	private void writeTestValue(RingBuffer ring, int blockSize, int testSize) {
+		
+		int FIELD_LOC = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], FRAG_LOC, FROM);
+		assertTrue(0==RingBuffer.contentRemaining(ring));
 		int j = testSize;
         while (true) {
-        	
+        	        	
         	if (j == 0) {
+        		int content = RingBuffer.contentRemaining(ring);
+        		assertEquals(testSize*2,content);
         		return;//done
         	}
-        
-        	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
-     		
-        		int value = (--j*blockSize)/testSize;
-        		        		
-        		//because there is only 1 template we do not write the template id it is assumed to be zero.
-        		//now we write the data for the message
-        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, Float.floatToIntBits(1f/(float)value));
-
-        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+               	        	
+        	if (RingWalker.tryWriteFragmentXXXX(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
         		
+        		int value = (--j*blockSize)/testSize;        		        		
+        		RingWriter.writeFloatAsIntBits(ring, FIELD_LOC, 1f/(float)value);        		
+        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
+        		        		
         	} else {
         		//Unable to write because there is no room so do something else while we are waiting.
         		Thread.yield();
         	}        	
         	
         }
+        
+        
+        
 	}
     
     @Test
@@ -123,7 +129,7 @@ public class RingBufferSingleTemplateFloatTest {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (tryReadFragmentSimple(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 
 	        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);

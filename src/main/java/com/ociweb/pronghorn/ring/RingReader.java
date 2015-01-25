@@ -18,6 +18,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     public final static int BASE_SHFT =   28;
     public final static int POS_CONST_MASK = 0x7FFFFFFF;
     
+    public final static int STACK_OFF_MASK = 0x7;
+    public final static int STACK_OFF_SHIFT = 28;
 
     public final static double[] powdi = new double[]{
     	1.0E64,1.0E63,1.0E62,1.0E61,1.0E60,1.0E59,1.0E58,1.0E57,1.0E56,1.0E55,1.0E54,1.0E53,1.0E52,1.0E51,1.0E50,1.0E49,1.0E48,1.0E47,1.0E46,1.0E45,1.0E44,1.0E43,1.0E42,1.0E41,1.0E40,1.0E39,1.0E38,1.0E37,1.0E36,1.0E35,1.0E34,1.0E33,
@@ -37,60 +39,66 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     //TODO: convert all these methods to use
     ///  rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))
     //TODO: add readShort and readByte
+
     
+    /**
+     * These deprecated methods will be deleted in Feb 2015
+     * They should be in-lined or replaced before then
+     */
+    @Deprecated
+    public static int readInt(int[] buffer, int mask, PaddedLong pos, int loc) {
+          return RingBuffer.readInt(buffer, mask, pos.value +  loc);
+    }
+	@Deprecated
+    public static long readLong(int[] buffer, int mask, PaddedLong pos, int loc) {
+    	return RingBuffer.readLong(buffer, mask, pos.value + loc);
+    }
     
-    public static int readInt(int[] buffer, int mask, PaddedLong pos, int idx) {
-          return buffer[mask & (int)(pos.value + (OFF_MASK&idx))];
+	public static int readInt(RingBuffer ring, int loc) {
+        return RingBuffer.readInt(ring.buffer, ring.mask, ring.workingTailPos.value+(OFF_MASK&loc));//*/ ring.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
     }
 
-    public static int readInt(RingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
+	public static long readLong(RingBuffer ring, int loc) {
+//		if (true)
+//			throw new UnsupportedOperationException();
+//		
+        long i = ring.workingTailPos.value + (OFF_MASK&loc);   
+        return RingBuffer.readLong(ring.buffer, ring.mask, i);
     }
 
-    //int[] rbB, int rbMask, PaddedLong rbPos
-    public static long readLong(int[] buffer, int mask, PaddedLong pos, int idx) {
-        long i = pos.value + (OFF_MASK&idx);        
-        return (((long) buffer[mask & (int)i]) << 32) | (((long) buffer[mask & (int)(i + 1)]) & 0xFFFFFFFFl);
+    public static double readDouble(RingBuffer ring, int loc) {
+        return ((double)readDecimalMantissa(ring,(OFF_MASK&loc)))*powdi[64 + readDecimalExponent(ring,(OFF_MASK&loc))];
     }
 
-    public static long readLong(RingBuffer ring, int idx) {
-        long i = ring.workingTailPos.value + (OFF_MASK&idx);        
-        return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
-    }
-
-    public static double readDouble(RingBuffer ring, int idx) {
-        return ((double)readDecimalMantissa(ring,(OFF_MASK&idx)))*powdi[64 + readDecimalExponent(ring,(OFF_MASK&idx))];
-    }
-
-    public static double readLongBitsToDouble(RingBuffer ring, int idx) {
-        return Double.longBitsToDouble(readLong(ring,idx));
+    public static double readLongBitsToDouble(RingBuffer ring, int loc) {
+        return Double.longBitsToDouble(readLong(ring,loc));
     }    
     
-    public static float readFloat(RingBuffer ring, int idx) {
-        return ((float)readDecimalMantissa(ring,(OFF_MASK&idx)))*powfi[64 + readDecimalExponent(ring,(OFF_MASK&idx))];
+    public static float readFloat(RingBuffer ring, int loc) {
+        return ((float)readDecimalMantissa(ring,(OFF_MASK&loc)))*powfi[64 + readDecimalExponent(ring,(OFF_MASK&loc))];
     }
     
-    public static float readIntBitsToFloat(RingBuffer ring, int idx) {
-        return Float.intBitsToFloat(readInt(ring,idx));
+    public static float readIntBitsToFloat(RingBuffer ring, int loc) {
+        return Float.intBitsToFloat(readInt(ring,loc));
     }    
     
-    public static int readDecimalExponent(RingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
+    public static int readDecimalExponent(RingBuffer ring, int loc) {
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
     }
     
-    public static long readDecimalMantissa(RingBuffer ring, int idx) {
-        long i = ring.workingTailPos.value + (OFF_MASK&idx) + 1; //plus one to skip over exponent
+    public static long readDecimalMantissa(RingBuffer ring, int loc) {
+        long i = ring.workingTailPos.value + (OFF_MASK&loc) + 1; //plus one to skip over exponent
         return (((long) ring.buffer[ring.mask & (int)i]) << 32) | (((long) ring.buffer[ring.mask & (int)(i + 1)]) & 0xFFFFFFFFl);
     }
     
 
-    public static int readDataLength(RingBuffer ring, int idx) {
-        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx) + 1)];// second int is always the length
+    public static int readDataLength(RingBuffer ring, int loc) {
+        return ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc) + 1)];// second int is always the length
     }
     
-    public static Appendable readASCII(RingBuffer ring, int idx, Appendable target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readDataLength(ring, idx);
+    public static Appendable readASCII(RingBuffer ring, int loc, Appendable target) {
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
+        int len = RingReader.readDataLength(ring, loc);
 
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readASCIIConst(ring,len,target,POS_CONST_MASK & pos);
@@ -99,9 +107,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         }
     }
     
-    public static Appendable readUTF8(RingBuffer ring, int idx, Appendable target) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int len = RingReader.readDataLength(ring, idx);
+    public static Appendable readUTF8(RingBuffer ring, int loc, Appendable target) {
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
+        int len = RingReader.readDataLength(ring, loc);
 
         if (pos < 0) {//NOTE: only useses const for const or default, may be able to optimize away this conditional.
             return readUTF8Const(ring,len,target,POS_CONST_MASK & pos);
@@ -116,7 +124,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			  long limit = ((long)ringPos+bytesLen)<<32;
 			  
 			  while (charAndPos<limit) {		      
-			      charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap            
+			      charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF); //constants do not wrap            
 			      target.append((char)charAndPos);
 			  }
 		  } catch (IOException e) {
@@ -131,7 +139,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 			  long limit = ((long)ringPos+bytesLen)<<32;
 			  
 			  while (charAndPos<limit) {		      
-			      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);            
+			      charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);            
 			      target.append((char)charAndPos);
 			  }
 		  } catch (IOException e) {
@@ -140,9 +148,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		  return target;       
 	}
 	
-    public static int readUTF8(RingBuffer ring, int idx, char[] target, int targetOffset) {
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
-        int bytesLength = RingReader.readDataLength(ring, idx);
+    public static int readUTF8(RingBuffer ring, int loc, char[] target, int targetOffset) {
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
+        int bytesLength = RingReader.readDataLength(ring, loc);
         if (pos < 0) {
             return readUTF8Const(ring,bytesLength,target, targetOffset, POS_CONST_MASK & pos);
         } else {
@@ -150,34 +158,34 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         }
     }
     
-	private static int readUTF8Const(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
+	private static int readUTF8Const(RingBuffer ring, int bytesLen, char[] target, int targetloc, int ringPos) {
 	  
 	  long charAndPos = ((long)ringPos)<<32;
 	  long limit = ((long)ringPos+bytesLen)<<32;
 			  
-	  int i = targetIdx;
+	  int i = targetloc;
 	  while (charAndPos<limit) {
 	      
-	      charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
+	      charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, 0xFFFFFFFF);//constants never loop back            
 	      target[i++] = (char)charAndPos;
 	
 	  }
-	  return i - targetIdx;    
+	  return i - targetloc;    
 	}
     
-	private static int readUTF8Ring(RingBuffer ring, int bytesLen, char[] target, int targetIdx, int ringPos) {
+	private static int readUTF8Ring(RingBuffer ring, int bytesLen, char[] target, int targetloc, int ringPos) {
 		  
 		  long charAndPos = ((long)ringPos)<<32;
 		  long limit = ((long)(ringPos+bytesLen))<<32;
 						  
-		  int i = targetIdx;
+		  int i = targetloc;
 		  while (charAndPos<limit) {
 		      
-		      charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
+		      charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, ring.byteMask);    
 		      target[i++] = (char)charAndPos;
 		
 		  }
-		  return i - targetIdx;
+		  return i - targetloc;
 		         
 	}
 	
@@ -208,8 +216,8 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return target;
     }
        
-    public static int readASCII(RingBuffer ring, int idx, char[] target, int targetOffset) {
-        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
+    public static int readASCII(RingBuffer ring, int loc, char[] target, int targetOffset) {
+        long tmp = ring.workingTailPos.value + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
@@ -229,124 +237,34 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
 
-    private static void readASCIIConst(RingBuffer ring, int len, char[] target, int targetIdx, int pos) {
+    private static void readASCIIConst(RingBuffer ring, int len, char[] target, int targetloc, int pos) {
         byte[] buffer = ring.constByteBuffer;
         while (--len >= 0) {
             char c = (char)buffer[pos++];
-            target[targetIdx++] = c;
+            target[targetloc++] = c;
         }
         
     }
     
-
     
-    private static void readASCIIRing(RingBuffer ring, int len, char[] target, int targetIdx, int pos) {
+    private static void readASCIIRing(RingBuffer ring, int len, char[] target, int targetloc, int pos) {
         byte[] buffer = ring.byteBuffer;
         int mask = ring.byteMask;
         while (--len >= 0) {
-            target[targetIdx++]=(char)buffer[mask & pos++];
+            target[targetloc++]=(char)buffer[mask & pos++];
         }
     }
    
     
-  /**
-   * Convert bytes into chars using UTF-8.
-   * 
-   *  High 32   BytePosition
-   *  Low  32   Char (caller can cast response to char to get the decoded value)  
-   * 
-   */
-  public static long decodeUTF8Fast(byte[] source, long posAndChar, int mask) { //pass in long of last position?
-      //TODO: these masks appear to be wrong.
-	  
-	  // 7  //high bit zero all others its 1
-	  // 5 6
-	  // 4 6 6
-	  // 3 6 6 6
-	  // 2 6 6 6 6
-	  // 1 6 6 6 6 6
-	  
-    int sourcePos = (int)(posAndChar >> 32); 
-    
-    byte b;   
-    if ((b = source[mask&sourcePos++]) >= 0) {
-        // code point 7
-        return (((long)sourcePos)<<32) | (long)b; //1 byte result of 7 bits with high zero
-    } 
-    
-    int result;
-    if (((byte) (0xFF & (b << 2))) >= 0) {
-        if ((b & 0x40) == 0) {        	
-            ++sourcePos;
-            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-        }
-        // code point 11
-        result = (b & 0x1F); //5 bits
-    } else {
-        if (((byte) (0xFF & (b << 3))) >= 0) {
-            // code point 16
-            result = (b & 0x0F); //4 bits
-        } else {
-            if (((byte) (0xFF & (b << 4))) >= 0) {
-                // code point 21
-                result = (b & 0x07); //3 bits
-            } else {
-                if (((byte) (0xFF & (b << 5))) >= 0) {
-                    // code point 26
-                    result = (b & 0x03); // 2 bits
-                } else {
-                    if (((byte) (0xFF & (b << 6))) >= 0) {
-                        // code point 31
-                        result = (b & 0x01); // 1 bit
-                    } else {
-                        // the high bit should never be set
-                        sourcePos += 5;
-                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                    }
-
-                    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                        sourcePos += 5;
-                        return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                    }
-                    result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
-                }
-                if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                    sourcePos += 4;
-                    return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-                }
-                result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
-            }
-            if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-                sourcePos += 3;
-                return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-            }
-            result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
-        }
-        if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-            sourcePos += 2;
-            return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-        }
-        result = (result << 6) | (int)(source[mask&sourcePos++] & 0x3F);
-    }
-    if ((source[mask&sourcePos] & 0xC0) != 0x80) {
-       System.err.println("Invalid encoding, low byte must have bits of 10xxxxxx but we find "+Integer.toBinaryString(source[mask&sourcePos]));
-       sourcePos += 1;
-       return (((long)sourcePos)<<32) | 0xFFFD; // Bad data replacement char
-    }
-    long chr = ((result << 6) | (int)(source[mask&sourcePos++] & 0x3F)); //6 bits
-    return (((long)sourcePos)<<32) | chr;
-  }
-    
-    
-    public static boolean eqUTF8(RingBuffer ring, int idx, CharSequence seq) {
-        int len = RingReader.readDataLength(ring, idx);
+  public static boolean eqUTF8(RingBuffer ring, int loc, CharSequence seq) {
+        int len = RingReader.readDataLength(ring, loc);
         if (0==len && seq.length()==0) {
             return true;
         }
         //char count is not comparable to byte count for UTF8 of length greater than zero.
         //must convert one to the other before comparison.
         
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
         if (pos < 0) {
             return eqUTF8Const(ring,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -355,12 +273,12 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
     
     
-    public static boolean eqASCII(RingBuffer ring, int idx, CharSequence seq) {
-        int len = RingReader.readDataLength(ring, idx);
+    public static boolean eqASCII(RingBuffer ring, int loc, CharSequence seq) {
+        int len = RingReader.readDataLength(ring, loc);
         if (len!=seq.length()) {
             return false;
         }
-        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&idx))];
+        int pos = ring.buffer[ring.mask & (int)(ring.workingTailPos.value + (OFF_MASK&loc))];
         if (pos < 0) {
             return eqASCIIConst(ring,len,seq,POS_CONST_MASK & pos);
         } else {
@@ -397,7 +315,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int chars = seq.length();
         while (--chars>=0) {
             
-            charAndPos = decodeUTF8Fast(ring.constByteBuffer, charAndPos, Integer.MAX_VALUE);
+            charAndPos = RingBuffer.decodeUTF8Fast(ring.constByteBuffer, charAndPos, Integer.MAX_VALUE);
             
             if (seq.charAt(i++) != (char)charAndPos) {
                 return false;
@@ -436,7 +354,7 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         int chars = seq.length();
         while (--chars>=0 && charAndPos<limit) {
             
-            charAndPos = decodeUTF8Fast(ring.byteBuffer, charAndPos, mask);
+            charAndPos = RingBuffer.decodeUTF8Fast(ring.byteBuffer, charAndPos, mask);
             
             if (seq.charAt(i++) != (char)charAndPos) {
                 return false;
@@ -504,9 +422,15 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return target;
     }
     
-    public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset) {
-        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
-		int pos = ring.buffer[ring.mask & (int)(tmp)];
+    public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset) {
+    	
+  //  	long tmp = ring.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc);
+    	
+    	
+       long tmp = ring.workingTailPos.value + (OFF_MASK&loc);
+    	
+	
+       int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
             readBytesConst(ring,len,target, targetOffset,POS_CONST_MASK & pos);
@@ -516,23 +440,23 @@ public class RingReader {//TODO: B, build another static reader that does auto c
         return len;
     }
     
-    private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetIdx, int pos) {
+    private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {
-                target[targetIdx++]=buffer[pos++];
+                target[targetloc++]=buffer[pos++];
             };
     }
 
-    private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetIdx, int pos) {
+    private static void readBytesRing(RingBuffer ring, int len, byte[] target, int targetloc, int pos) {
             byte[] buffer = ring.byteBuffer;
             int mask = ring.byteMask;
             while (--len >= 0) {
-                target[targetIdx++]=buffer[mask & pos++];
+                target[targetloc++]=buffer[mask & pos++];
             }
     }
     
-    public static int readBytes(RingBuffer ring, int idx, byte[] target, int targetOffset, int targetMask) {
-        long tmp = ring.workingTailPos.value + (OFF_MASK&idx);
+    public static int readBytes(RingBuffer ring, int loc, byte[] target, int targetOffset, int targetMask) {
+        long tmp = ring.workingTailPos.value + (OFF_MASK&loc);
 		int pos = ring.buffer[ring.mask & (int)(tmp)];
         int len = ring.buffer[ring.mask & (int)(tmp + 1)];
         if (pos < 0) {
@@ -556,18 +480,18 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		return length;
 	}
     
-    private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetIdx, int targetMask, int pos) {
+    private static void readBytesConst(RingBuffer ring, int len, byte[] target, int targetloc, int targetMask, int pos) {
             byte[] buffer = ring.constByteBuffer;
             while (--len >= 0) {//TODO: A,  need to replace with intrinsics.
-                target[targetMask & targetIdx++]=buffer[pos++];
+                target[targetMask & targetloc++]=buffer[pos++];
             };
     }
 
-    public static void readBytesRing(byte[] source, int sourceIdx, int sourceMask, byte[] target, int targetIdx, int targetMask, int length) {
-    	final int tStop = (targetIdx + length) & targetMask;
-		final int tStart = targetIdx & targetMask;
-		final int rStop = (sourceIdx + length) & sourceMask;
-		final int rStart = sourceIdx & sourceMask;
+    private static void readBytesRing(byte[] source, int sourceloc, int sourceMask, byte[] target, int targetloc, int targetMask, int length) {
+    	final int tStop = (targetloc + length) & targetMask;
+		final int tStart = targetloc & targetMask;
+		final int rStop = (sourceloc + length) & sourceMask;
+		final int rStart = sourceloc & sourceMask;
 		if (tStop >= tStart) {
 			if (rStop >= rStart) {
 				//the source and target do not wrap

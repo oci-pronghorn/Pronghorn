@@ -178,8 +178,8 @@ public class CodeGenerationTest {
                 FASTReaderReactor.pump(reactor2) >= 0) {
 
             while (RingBuffer.contentRemaining(queue1)>0 && RingBuffer.contentRemaining(queue2)>0) {
-                int int1 = RingReader.readInt(queue1, 1);
-                int int2 = RingReader.readInt(queue2, 1);
+				int int1 = RingBuffer.readInt(queue1.buffer, queue1.mask, queue1.workingTailPos.value+1);
+                int int2 = RingBuffer.readInt(queue2.buffer, queue2.mask, queue2.workingTailPos.value+1);
 
                 if (int1 != int2) {
                     errCount++;

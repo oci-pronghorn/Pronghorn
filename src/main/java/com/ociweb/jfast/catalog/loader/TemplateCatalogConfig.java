@@ -14,13 +14,9 @@ import com.ociweb.jfast.error.FASTException;
 import com.ociweb.jfast.primitive.PrimitiveReader;
 import com.ociweb.jfast.primitive.PrimitiveWriter;
 import com.ociweb.jfast.primitive.adapter.FASTInputStream;
-import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingBufferConfig;
-import com.ociweb.pronghorn.ring.RingBuffers;
-import com.ociweb.pronghorn.ring.RingReader;
 import com.ociweb.pronghorn.ring.FieldReferenceOffsetManager;
-import com.ociweb.pronghorn.ring.util.hash.IntHashTable;
-import com.ociweb.pronghorn.ring.util.hash.IntHashTableVisitor;
+import com.ociweb.pronghorn.ring.RingBuffer;
+import com.ociweb.pronghorn.ring.RingBuffers;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTable;
 import com.ociweb.pronghorn.ring.util.hash.LongHashTableVisitor;
 
@@ -189,7 +185,7 @@ public class TemplateCatalogConfig {
 		        
 		        long charAndPos = 0;  //convert bytes to chars
 		        while (charAndPos>>32 < len  ) { 
-		            charAndPos = RingReader.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
+		            charAndPos = RingBuffer.decodeUTF8Fast(tmp, charAndPos, Integer.MAX_VALUE);
 		            builder.append((char)charAndPos);
 
 		        }

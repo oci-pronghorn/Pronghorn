@@ -28,7 +28,6 @@ import com.ociweb.jfast.primitive.adapter.FASTOutputByteBuffer;
 import com.ociweb.jfast.primitive.adapter.FASTOutputSocketChannel;
 import com.ociweb.jfast.primitive.adapter.FASTOutputStream;
 import com.ociweb.pronghorn.ring.RingBuffer;
-import com.ociweb.pronghorn.ring.RingReader;
 
 public class ReaderWriterPrimitiveTest {
 
@@ -914,7 +913,7 @@ public class ReaderWriterPrimitiveTest {
                 //convert bytes into chars
                 long charAndPos = 0;        
                 while (charAndPos>>32 < len  ) {
-                    charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                    charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                     builder.append((char)charAndPos);
 
                 }
@@ -981,7 +980,7 @@ public class ReaderWriterPrimitiveTest {
                         
                         long charAndPos = 0;        
                         while (charAndPos>>32 < len  ) {//convert bytes to chars
-                            charAndPos = RingReader.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
+                            charAndPos = RingBuffer.decodeUTF8Fast(temp, charAndPos, Integer.MAX_VALUE);
                             target[offset++]=(char)charAndPos;
                         }
                     }

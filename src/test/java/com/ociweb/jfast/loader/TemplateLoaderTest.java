@@ -187,7 +187,7 @@ public class TemplateLoaderTest {
                         int i = 0;
                         int s = preamble.length;
                         while (i < s) {
-                            RingReader.readInt(queue, bufferIdx);
+                         	RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx);
                             i += 4;
                             bufferIdx++;
                         }
@@ -368,11 +368,11 @@ public class TemplateLoaderTest {
         rb.reset();
 
         while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-            RingWalker.tryReadFragment(rb);
-
-            if (RingWalker.isNewMessage(rb.consumerData)) {
-                int templateId = RingWalker.getMsgIdx(rb.consumerData);
-                msgs.incrementAndGet();
+            if (RingWalker.tryReadFragment(rb)) {	
+	            if (RingWalker.isNewMessage(rb.consumerData)) {
+	                int templateId = RingWalker.getMsgIdx(rb.consumerData);
+	                msgs.incrementAndGet();
+	            }
             }
         }
         System.out.println("total messages:"+msgs);
