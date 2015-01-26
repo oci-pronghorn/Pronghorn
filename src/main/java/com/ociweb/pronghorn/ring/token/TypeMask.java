@@ -38,7 +38,7 @@ public final class TypeMask {
     public final static int TemplateRef = 0x12;            // 10010
     // 1
     //for sequence this is an uint32
-    public final static int GroupLength = 0x14;            // 10100 
+    public final static int GroupLength = 0x14;            // 10100   10?00
 
     public final static int Dictionary = 0x18;             // 11000
     public final static int SpacerGap = 0x1C;              // 11100  //TODO: C, add call to this and gen method.  must add new SpacerGap  into the script as needed, set in the ClientConfig to inject to the template.

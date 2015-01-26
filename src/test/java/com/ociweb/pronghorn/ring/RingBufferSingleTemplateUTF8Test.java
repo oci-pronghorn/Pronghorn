@@ -11,6 +11,8 @@ import java.util.Arrays;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+
 public class RingBufferSingleTemplateUTF8Test {
 
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
@@ -64,6 +66,7 @@ public class RingBufferSingleTemplateUTF8Test {
 
 	private void populateRingBufferWithUTF8(RingBuffer ring, int blockSize, int testSize) {
 		int j = testSize;
+		int base = RingBuffer.from(ring).templateOffset;
         while (true) {
         	
         	if (j == 0) {
@@ -82,9 +85,10 @@ public class RingBufferSingleTemplateUTF8Test {
         		if (0 == (j&1)) {
         			RingBuffer.validateVarLength(ring, testString.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 					final int p = ring.byteWorkingHeadPos.value;	    
-					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length()); //TODO: AAA, these are using updates with side effect and must be swapped.
+					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length()); 
 					ring.byteWorkingHeadPos.value = p+byteLength;
-					RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength); //data for each field is written in order 
+					
+					RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
         		} else {
         			if (0 == (j&2)) {
         				RingBuffer.validateVarLength(ring, testChars.length<<3);
@@ -92,13 +96,15 @@ public class RingBufferSingleTemplateUTF8Test {
 						final int p = ring.byteWorkingHeadPos.value;
 						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, sourceLen);
 						ring.byteWorkingHeadPos.value = p+byteLength;
-						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength);
+						
+						RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
         			} else {
         				RingBuffer.validateVarLength(ring, stringSize<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
 						final int p = ring.byteWorkingHeadPos.value;
 						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, stringSize);		
-						ring.byteWorkingHeadPos.value = p+byteLength;    		
-						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, byteLength);
+						ring.byteWorkingHeadPos.value = p+byteLength;
+						
+						RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment

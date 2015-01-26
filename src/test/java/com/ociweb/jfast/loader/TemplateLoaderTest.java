@@ -1,7 +1,6 @@
 package com.ociweb.jfast.loader;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -171,69 +170,72 @@ public class TemplateLoaderTest {
             rb.reset();
 
             while (FASTReaderReactor.pump(reactor)>=0) { //continue if there is no room or if a fragment is read.
-                RingWalker.tryReadFragment(rb);
-
-                frags++;
-                if (RingWalker.isNewMessage(rb.consumerData)) {
-                    int msgIdx = RingWalker.getMsgIdx(rb.consumerData);
-                    
-                    msgs.incrementAndGet();
-                    
-
-                    // this is a template message.
-                    int bufferIdx = 0;
-                    
-                    if (preamble.length > 0) {
-                        int i = 0;
-                        int s = preamble.length;
-                        while (i < s) {
-                         	RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx);
-                            i += 4;
-                            bufferIdx++;
-                        }
-                    }
-
-                   // int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
-                    bufferIdx += 1;// point to first field
-                    assertTrue("found " + msgIdx, 36 == msgIdx || 3 == msgIdx || 0 == msgIdx);
-
-                    int i = msgIdx;
-                    // System.err.println("new templateId "+templateId);
-                    while (true) {
-                        int token = fullScript[i++];
-                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
-
-                        if (isText(token)) {
-                            totalBytesOut.addAndGet(4 * RingReader.readDataLength(queue, bufferIdx));
-                        }
-
-                        // find the next index after this token.
-                        int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
-                        bufferIdx += fSize;
-
-                        if (i==fullScript.length) {
-                        	break;
-                        }
-                        if (TypeMask.GroupLength == TokenBuilder.extractType(token)) {
-                        	break;
-                        }
-                        if (TypeMask.Group == TokenBuilder.extractType(token) && 
-                        	0!=(OperatorMask.Group_Bit_Close & TokenBuilder.extractOper(token))	) {
-                        	break;
-                        }
-                        
-                    }
-                    totalBytesOut.addAndGet(4 * bufferIdx);
-                    totalRingInts.addAndGet(bufferIdx);
-
-                    // must dump values in buffer or we will hang when reading.
-                    // only dump at end of template not end of sequence.
-                    // the removePosition must remain at the beginning until
-                    // message is complete.
-                    
-                    //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
-                    //FASTRingBuffer.dump(queue);
-                //    rb.tailPos.lazySet(rb.workingTailPos.value);
+                if (RingWalker.tryReadFragment(rb)) {
+	
+	                frags++;
+	                if (RingWalker.isNewMessage(rb.consumerData)) {
+	                    final int msgIdx = RingWalker.getMsgIdx(rb.consumerData);
+	                    
+	                    msgs.incrementAndGet();
+	                    
+	
+	                    // this is a template message.
+	                    int bufferIdx = 0;
+	                    
+	                    if (preamble.length > 0) {
+	                        int i = 0;
+	                        int s = preamble.length;
+	                        while (i < s) {
+	                         	RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx);
+	                            i += 4;
+	                            bufferIdx++;
+	                        }
+	                    }
+	
+	                   // int templateId2 = FASTRingBufferReader.readInt(queue, bufferIdx);
+	                    bufferIdx += 1;// point to first field
+	                    assertTrue("found " + msgIdx, 36 == msgIdx || 3 == msgIdx || 0 == msgIdx);
+	
+	                    int i = msgIdx;
+	                    // System.err.println("new templateId "+templateId);
+	                    while (true) {
+	                        int token = fullScript[i++];
+	                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
+	
+	                        if (isText(token)) {
+	                            totalBytesOut.addAndGet(4 * RingReader.readDataLength(queue, bufferIdx));
+	                        }
+	
+	                        // find the next index after this token.
+	                        int fSize = TypeMask.ringBufferFieldSize[TokenBuilder.extractType(token)];
+	                        bufferIdx += fSize;
+	
+	                        if (i==fullScript.length) {
+	                        	break;
+	                        }
+	                        if (TypeMask.GroupLength == TokenBuilder.extractType(token)) {
+	                        	break;
+	                        }
+	                        if (TypeMask.Group == TokenBuilder.extractType(token) && 
+	                        	0!=(OperatorMask.Group_Bit_Close & TokenBuilder.extractOper(token))	) {
+	                        	break;
+	                        }
+	                        
+	                    }
+	                    totalBytesOut.addAndGet(4 * bufferIdx);
+	                    totalRingInts.addAndGet(bufferIdx);
+	
+	                    // must dump values in buffer or we will hang when reading.
+	                    // only dump at end of template not end of sequence.
+	                    // the removePosition must remain at the beginning until
+	                    // message is complete.
+	                    
+	                    //NOTE: MUST NOT DUMP IN THE MIDDLE OF THIS LOOP OR THE PROCESSING GETS OFF TRACK
+	                    //FASTRingBuffer.dump(queue);
+	                //    rb.tailPos.lazySet(rb.workingTailPos.value);
+	                }
+                } else {
+                	fail("No data?");
                 }
             }
             

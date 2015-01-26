@@ -76,6 +76,8 @@ public class RingBufferSingleTemplateDecimalTest {
 
 	private void writeTestValue(RingBuffer ring, int blockSize, int testSize) {
 		int j = testSize;
+		int base = RingBuffer.from(ring).templateOffset;
+		
         while (true) {
         	
         	if (j == 0) {
@@ -86,10 +88,8 @@ public class RingBufferSingleTemplateDecimalTest {
      		
         		int value = (--j*blockSize)/testSize;
         		
-       // 		System.err.println("write "+2+" "+value);
-        		RingBuffer.addValues(ring.buffer, ring.mask, ring.workingHeadPos, 2, (long) value);  //TODO: AAA, this has side effect and must be fixed.
-        		
-        		
+        		RingBuffer.setValues(ring.buffer, ring.mask, ring.workingHeadPos.value + base, 2, (long) value); 
+        	
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		
         	} else {

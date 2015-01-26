@@ -90,7 +90,7 @@ public class AppendableASCIIRing implements Appendable {
 	}
 
 	public void flush() {
-		RingWalker.blockWriteFragment(ringBuffer, 0);
+		RingWalker.blockWriteFragment(ringBuffer,0);
 		RingStreams.writeEOF(ringBuffer);
 	}
 }

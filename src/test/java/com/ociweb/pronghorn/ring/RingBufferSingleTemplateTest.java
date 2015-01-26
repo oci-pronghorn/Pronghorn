@@ -52,7 +52,7 @@ public class RingBufferSingleTemplateTest {
         		return;//done
         	}
         
-        	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (RingWalker.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int arraySize = (--j*blockSize)/testSize;
         		byte[] arrayData = buildTestData(arraySize);

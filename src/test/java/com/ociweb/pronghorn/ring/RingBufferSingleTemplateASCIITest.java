@@ -70,7 +70,7 @@ public class RingBufferSingleTemplateASCIITest {
         		return;//done
         	}
         
-        	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (RingWalker.tryWriteFragment(ring,FRAG_LOC)) { //returns true if there is room to write this fragment
      		
         		int stringSize = (--j*blockSize)/testSize;
         		String testString = buildTestString(stringSize);

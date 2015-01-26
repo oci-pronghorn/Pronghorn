@@ -80,7 +80,7 @@ public class RingBufferSingleTemplateFloatTest {
         		return;//done
         	}
                	        	
-        	if (RingWalker.tryWriteFragmentXXXX(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
+        	if (RingWalker.tryWriteFragment(ring, FRAG_LOC)) { //returns true if there is room to write this fragment
         		
         		int value = (--j*blockSize)/testSize;        		        		
         		RingWriter.writeFloatAsIntBits(ring, FIELD_LOC, 1f/(float)value);        		

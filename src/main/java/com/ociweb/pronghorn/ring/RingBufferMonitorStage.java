@@ -65,7 +65,7 @@ public class RingBufferMonitorStage implements Runnable {
 	public void run() {
 		try {
 			
-			RingWalker.blockWriteFragment(notifyRingBuffer, TEMPLATE_LOC);
+			RingWalker.blockWriteFragment(notifyRingBuffer,TEMPLATE_LOC);
 			
 			long currentTimeMillis = System.currentTimeMillis();
 			

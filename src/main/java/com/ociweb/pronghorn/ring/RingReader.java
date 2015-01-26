@@ -59,15 +59,11 @@ public class RingReader {//TODO: B, build another static reader that does auto c
     }
 
 	public static long readLong(RingBuffer ring, int loc) {
-//		if (true)
-//			throw new UnsupportedOperationException();
-//		
-        long i = ring.workingTailPos.value + (OFF_MASK&loc);   
-        return RingBuffer.readLong(ring.buffer, ring.mask, i);
+        return RingBuffer.readLong(ring.buffer, ring.mask, ring.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] +(OFF_MASK&loc));
     }
 
     public static double readDouble(RingBuffer ring, int loc) {
-        return ((double)readDecimalMantissa(ring,(OFF_MASK&loc)))*powdi[64 + readDecimalExponent(ring,(OFF_MASK&loc))];
+        return ((double)readDecimalMantissa(ring,loc))*powdi[64 + readDecimalExponent(ring,loc)];
     }
 
     public static double readLongBitsToDouble(RingBuffer ring, int loc) {
@@ -474,7 +470,9 @@ public class RingReader {//TODO: B, build another static reader that does auto c
 		
 		int p = outputRing.byteWorkingHeadPos.value;
 		
-		RingBuffer.setBytePosAndLen(outputRing.buffer, outputRing.mask, outputRing.workingHeadPos.value+(OFF_MASK&fieldId), p, length);        
+		RingBuffer.setBytePosAndLen(outputRing.buffer, outputRing.mask, 
+				outputRing.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(fieldId>>STACK_OFF_SHIFT)]+(OFF_MASK&fieldId), p, length); 
+		//		outputRing.workingHeadPos.value+(OFF_MASK&fieldId), p, length);    xx    
 		
 		outputRing.byteWorkingHeadPos.value = p + length;
 		return length;

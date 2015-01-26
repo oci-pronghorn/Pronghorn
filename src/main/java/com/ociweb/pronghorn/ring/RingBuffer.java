@@ -538,13 +538,17 @@ public final class RingBuffer {
     
     public static void addValues(int[] buffer, int rbMask, PaddedLong headCache, int value1, long value2) {
         
-        long p = headCache.value; 
-        buffer[rbMask & (int)p++] = value1;
-        buffer[rbMask & (int)p++] = (int)(value2 >>> 32);
-        buffer[rbMask & (int)p++] = (int)(value2 & 0xFFFFFFFF);
-        headCache.value = p;
+        headCache.value = setValues(buffer, rbMask, headCache.value, value1, value2);
         
-    }   
+    }
+
+	public static long setValues(int[] buffer, int rbMask, long pos,
+			int value1, long value2) {
+		buffer[rbMask & (int)pos++] = value1;
+        buffer[rbMask & (int)pos++] = (int)(value2 >>> 32);
+        buffer[rbMask & (int)pos++] = (int)(value2 & 0xFFFFFFFF);
+		return pos;
+	}   
     
     public static void addLongValue(int[] buffer, int rbMask, PaddedLong headCache, long value) {
         
@@ -632,7 +636,8 @@ public final class RingBuffer {
     
     public static void publishWrites(RingBuffer ring) {
     	
-    	ring.workingHeadPos.value = Math.max(ring.consumerData.nextWorkingHead, ring.workingHeadPos.value); //TODO: AA, this is only needed until we fully transition over to the new API
+    	//TODO: AA, this is only needed until we fully transition over to the new API, try removing after read API is fully upgraded to new stack based lookup.
+    	ring.workingHeadPos.value = Math.max(ring.consumerData.nextWorkingHead, ring.workingHeadPos.value);
     	
     	//prevent long running arrays from rolling over in second byte ring
     	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;

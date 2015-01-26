@@ -55,6 +55,7 @@ public class FieldReferenceOffsetManager {
 	
 	private final static int[] EMPTY = new int[0];
 	public final String name;
+	private final boolean hasSimpleMessagesOnly;
 	
     /**
      * Constructor is only for unit tests.
@@ -104,6 +105,7 @@ public class FieldReferenceOffsetManager {
             
             maximumFragmentStackDepth = 0;
             maxVarFieldPerUnit = .5f;
+            hasSimpleMessagesOnly = false; //unknown case so set false.
         } else {
         	tokens = scriptTokens;
         	messageStarts = computeMessageStarts(); 
@@ -121,6 +123,9 @@ public class FieldReferenceOffsetManager {
             	m = Math.max(m, fragDepth[i]+1); //plus 1 because these are offsets and I want count
             }
             maximumFragmentStackDepth = m;
+            
+            //when the max depth is only one it is because there are no sub fagments found inside any messages
+            hasSimpleMessagesOnly = (1==maximumFragmentStackDepth);
             			
             //consumer of this need not check for null because it is always created.
         }
@@ -435,9 +440,9 @@ public class FieldReferenceOffsetManager {
 	private static int TEMPL_VALUE = (OperatorMask.Group_Bit_Templ << TokenBuilder.SHIFT_OPER) | 
 			                           (TypeMask.Group << TokenBuilder.SHIFT_TYPE);
 		
-	public static boolean isTemplateStart(FieldReferenceOffsetManager from, int cursorPosition) {		
-		return (0 == cursorPosition) || cursorPosition>=from.fragDepth.length || (0==from.fragDepth[cursorPosition]);
-				//((from.tokens[cursorPosition]&TEMPL_MASK)==TEMPL_VALUE);
+	public static boolean isTemplateStart(FieldReferenceOffsetManager from, int cursorPosition) {
+		//checks the shortcut hasSimpleMessagesOnly first before any complex logic
+		return from.hasSimpleMessagesOnly || (cursorPosition<=0) || cursorPosition>=from.fragDepth.length || (0==from.fragDepth[cursorPosition]);
 	}
     
 }

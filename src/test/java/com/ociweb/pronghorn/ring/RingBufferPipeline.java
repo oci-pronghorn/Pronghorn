@@ -18,7 +18,7 @@ public class RingBufferPipeline {
 	private final int testMessages = 100000000;
 	private final int stages = 4;
 	private final byte primaryBits   = 19;
-	private final byte secondaryBits = 25;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
+	private final byte secondaryBits = 26;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.
     
 	private final int msgSize = FieldReferenceOffsetManager.RAW_BYTES.fragDataSize[0];
 	
@@ -126,7 +126,7 @@ public class RingBufferPipeline {
 	
 						 while (--messageCount>=0) {
 							
-							 RingWalker.blockWriteFragmentXXXX(outputRing, MESSAGE_LOC);
+							 RingWalker.blockWriteFragment(outputRing, MESSAGE_LOC);
 							 RingWriter.writeBytes(outputRing, FIELD_LOC, testArray, 0, testArray.length);
 							 RingWalker.publishWrites(outputRing);
 
@@ -191,8 +191,8 @@ public class RingBufferPipeline {
 				@Override
 				public void run() {
 					try {			
-						RingWalker.setReleaseBatchSize(inputRing, 64);
-						RingWalker.setPublishBatchSize(outputRing, 128);
+						RingWalker.setReleaseBatchSize(inputRing, 8);
+						RingWalker.setPublishBatchSize(outputRing, 64);
 						
 						int msgId = 0;
 						do {
@@ -202,8 +202,8 @@ public class RingBufferPipeline {
 								msgId = RingWalker.getMsgIdx(inputRing);
 																
 								//wait until the target ring has room for this message
-								if (0==msgId && RingWalker.tryWriteFragmentXXXX(outputRing, MSG_ID)) {
-									
+								if (0==msgId && RingWalker.tryWriteFragment(outputRing, MSG_ID)) {
+																		
 									//copy this message from one ring to the next
 									//NOTE: in the normal world I would expect the data to be modified before getting moved.
 									RingReader.copyBytes(inputRing, outputRing, FIELD_ID);							
@@ -298,11 +298,11 @@ public class RingBufferPipeline {
 	            @Override
 	            public void run() {      
 	            	try{
-						RingWalker.setReleaseBatchSize(inputRing, 128);
+						RingWalker.setReleaseBatchSize(inputRing, 32);
 						
 						int msgId = 0;
 						do {
-							//TODO: AA, this try may be releasing too early, need more detailed testing.
+							
 							if (RingWalker.tryReadFragmentSimple(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);

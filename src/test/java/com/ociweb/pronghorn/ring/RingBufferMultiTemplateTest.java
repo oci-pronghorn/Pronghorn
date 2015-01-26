@@ -5,7 +5,7 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTempla
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
 import static com.ociweb.pronghorn.ring.RingWalker.messageIdx;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragmentSimple;
-import static com.ociweb.pronghorn.ring.RingWalker.tryWriteFragmentXXXX;
+import static com.ociweb.pronghorn.ring.RingWalker.tryWriteFragment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -88,16 +88,17 @@ public class RingBufferMultiTemplateTest {
         		//must cast for this test because the id can be 64 bits but we can only switch on 32 bit numbers
         		int templateId = (int)FROM.fieldIdScript[msgLoc];
         		       		
-        		System.err.println("read TemplateID:"+templateId);
+        	//	System.err.println("read TemplateID:"+templateId);
         		switch (templateId) {
 	        		case 2:
-	        			System.err.println("checking with "+k);
+	        		//	System.err.println("checking with "+k);
 	        			
 	        			assertEquals(MSG_BOXES_LOC,msgLoc);
 	        			//reading out of order by design to ensure that random access works
 	        			int ownLen = RingReader.readBytes(ring, BOX_OWNER_LOC, target, 0);
 	        			assertEquals(expectedLength,ownLen);
 
+	        			System.err.println("BOX LOC:"+Integer.toHexString(BOX_COUNT_LOC));
 	        			int count = RingReader.readInt(ring, BOX_COUNT_LOC);
 	        			assertEquals(42,count);
 	        				        			
@@ -152,22 +153,20 @@ public class RingBufferMultiTemplateTest {
         	//for this test we just round robin the message types.
         	int selectedTemplateId  =  templateIds[j%templateIds.length];
         	
-        	System.err.println("write template:"+selectedTemplateId);
+        	//System.err.println("write template:"+selectedTemplateId);
         	
         	switch(selectedTemplateId) {
 	        	case 2: //boxes
-	        		if (tryWriteFragmentXXXX(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
+	        		if (tryWriteFragment(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
 		        		j--;
-
-		        		ring.workingHeadPos.value++; //TODO: should this be ehre or inside the tryWrite?
 		        		
-		        		//TODO: unlike the reader the writer only supports sequential write of the fields (this is to be fixed at some point)
+		        		//TODO: AAAA, these writes are using the working offset.
 		        		
 		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 42);
 						byte[] source = buildMockData((j*blockSize)/testSize);
 		        		RingBuffer.addByteArray(source, 0, source.length, ring);   
 		        		
-		        		System.err.println(j+" wrote length:"+source.length);
+		        		//System.err.println(j+" wrote length:"+source.length);
 		        				        		
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
@@ -177,11 +176,9 @@ public class RingBufferMultiTemplateTest {
 	            	}       
 	        		break;
 	        	case 1: //samples
-	        		if (tryWriteFragmentXXXX(ring, MSG_SAMPLE_LOC)) { 
+	        		if (tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
 		        		j--;
-		        		
-		        		ring.workingHeadPos.value++;
-		        		
+		        				        		
 		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 2014);
 		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 12);
 		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 9);
@@ -195,10 +192,8 @@ public class RingBufferMultiTemplateTest {
 	            	}  
 	        		break;
 	        	case 4: //reset
-	        		if (tryWriteFragmentXXXX(ring, MSG_RESET_LOC)) { 
+	        		if (tryWriteFragment(ring, MSG_RESET_LOC)) { 
 	        			j--;
-	        			
-	        			ring.workingHeadPos.value++;
 	        			
 	        			RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
