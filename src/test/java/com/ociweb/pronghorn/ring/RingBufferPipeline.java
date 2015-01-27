@@ -67,7 +67,7 @@ public class RingBufferPipeline {
 	  		 monitorRings[j] = new RingBuffer((byte)16,(byte)2,null,montorFROM);
 			 monitors[j] = new RingBufferMonitorStage(rings[j], monitorRings[j]);			 
 		
-			 ste.scheduleAtFixedRate(monitors[j], j, 33, TimeUnit.MILLISECONDS);
+			 ste.scheduleAtFixedRate(monitors[j], j, 40, TimeUnit.MILLISECONDS);
 			 
 			 ste.submit(dumpMonitor(monitorRings[j]));
 			 
@@ -196,8 +196,7 @@ public class RingBufferPipeline {
 						
 						int msgId = 0;
 						do {
-							//TODO: AA, this try may be releasing too early, need more detailed testing.
-							if (RingWalker.tryReadFragmentSimple(inputRing)) {
+							if (RingWalker.tryReadFragment(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);
 																
@@ -303,7 +302,7 @@ public class RingBufferPipeline {
 						int msgId = 0;
 						do {
 							
-							if (RingWalker.tryReadFragmentSimple(inputRing)) {
+							if (RingWalker.tryReadFragment(inputRing)) {
 								assert(RingWalker.isNewMessage(inputRing)) : "This test should only have one simple message made up of one fragment";
 								msgId = RingWalker.getMsgIdx(inputRing);
 								
@@ -398,7 +397,10 @@ public class RingBufferPipeline {
                         int tmpId = RingReader.readInt(inputRing, RingBufferMonitorStage.TEMPLATE_MSG_LOC);
                         
                         inputRing.workingTailPos.value+=7;
-                                          
+                                 
+                        int queueDepth = (int)(head-tail);
+                        //vs what?
+                        
                         
                       //  System.err.println(time+"  "+head+"  "+tail+"   "+tmpId);
     					

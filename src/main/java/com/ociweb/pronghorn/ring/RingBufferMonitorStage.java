@@ -16,6 +16,7 @@ public class RingBufferMonitorStage implements Runnable {
 	public static final int TEMPLATE_HEAD_LOC;
 	public static final int TEMPLATE_TAIL_LOC;
 	public static final int TEMPLATE_MSG_LOC;
+	public static final int TEMPLATE_SIZE_LOC;
 	
 	static {
 		FieldReferenceOffsetManager from = buildFROM();
@@ -26,6 +27,7 @@ public class RingBufferMonitorStage implements Runnable {
 		TEMPLATE_HEAD_LOC = FieldReferenceOffsetManager.lookupFieldLocator("Head", TEMPLATE_LOC, from);
 		TEMPLATE_TAIL_LOC = FieldReferenceOffsetManager.lookupFieldLocator("Tail", TEMPLATE_LOC, from);
 		TEMPLATE_MSG_LOC = FieldReferenceOffsetManager.lookupFieldLocator("TemplateId", TEMPLATE_LOC, from);
+		TEMPLATE_SIZE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("BufferSize", TEMPLATE_LOC, from);
 	}
 	
 	/**
@@ -73,6 +75,7 @@ public class RingBufferMonitorStage implements Runnable {
 			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.headPosition(observedRingBuffer));
 			RingBuffer.addLongValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingBuffer.tailPosition(observedRingBuffer));
 			RingBuffer.addValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, RingWalker.getMsgIdx(observedRingBuffer));
+			RingBuffer.addValue(notifyRingBuffer.buffer, notifyRingBuffer.mask, notifyRingBuffer.workingHeadPos, observedRingBuffer.maxSize);
 			
 			RingWalker.publishWrites(notifyRingBuffer);			
 			

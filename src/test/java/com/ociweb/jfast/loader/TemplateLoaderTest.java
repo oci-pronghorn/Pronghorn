@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.net.URL;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -69,7 +70,7 @@ public class TemplateLoaderTest {
     public void buildRawCatalog() {
 
         byte[] catalogByteArray = buildRawCatalogData(new ClientConfig());
-        assertEquals(757, catalogByteArray.length);
+        assertEquals(762, catalogByteArray.length);
                
         
         // reconstruct Catalog object from stream
@@ -121,7 +122,7 @@ public class TemplateLoaderTest {
         
         byte[] catBytes = buildRawCatalogData(new ClientConfig());
         final TemplateCatalogConfig catalog = new TemplateCatalogConfig(catBytes); 
-
+        
         // connect to file
         URL sourceData = getClass().getResource("/performance/complex30000.dat");
         File sourceDataFile = new File(sourceData.getFile().replace("%20", " "));
@@ -203,7 +204,13 @@ public class TemplateLoaderTest {
 	                        // System.err.println("xxx:"+bufferIdx+" "+TokenBuilder.tokenToString(token));
 	
 	                        if (isText(token)) {
-	                            totalBytesOut.addAndGet(4 * RingReader.readDataLength(queue, bufferIdx));
+	                            
+	                        	
+	                        //	assert((bufferIdx&0x1E<<RingReader.OFF_BITS)==0x8<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0x5<<RingReader.OFF_BITS || (bufferIdx&0x1E<<RingReader.OFF_BITS)==0xE<<RingReader.OFF_BITS) : "Expected to read some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((bufferIdx>>RingReader.OFF_BITS)&TokenBuilder.MASK_TYPE);
+							//	int readDataLength = queue.buffer[queue.mask & (int)(queue.consumerData.activeReadFragmentStack[RingReader.STACK_OFF_MASK&(bufferIdx>>RingReader.STACK_OFF_SHIFT)] + (RingReader.OFF_MASK&bufferIdx) + 1)];
+								
+								int readDataLength = RingBuffer.readInt(queue.buffer, queue.mask, queue.workingTailPos.value+bufferIdx+1);
+								totalBytesOut.addAndGet(4 * readDataLength);
 	                        }
 	
 	                        // find the next index after this token.

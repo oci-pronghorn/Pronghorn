@@ -48,7 +48,7 @@ public class RingBufferSingleTemplateFloatTest {
         
         
         int k = testSize;
-        while (tryReadFragmentSimple(ring)) {
+        while (tryReadFragment(ring)) {
         	
         	--k;
         	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);
@@ -129,7 +129,7 @@ public class RingBufferSingleTemplateFloatTest {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragmentSimple(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 
 	        	testReadValue(ring, varDataMax, testSize, FIELD_LOC, k);

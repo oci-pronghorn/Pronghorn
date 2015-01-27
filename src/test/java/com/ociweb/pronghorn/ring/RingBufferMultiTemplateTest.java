@@ -4,7 +4,7 @@ import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupFieldL
 import static com.ociweb.pronghorn.ring.FieldReferenceOffsetManager.lookupTemplateLocator;
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
 import static com.ociweb.pronghorn.ring.RingWalker.messageIdx;
-import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragmentSimple;
+import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
 import static com.ociweb.pronghorn.ring.RingWalker.tryWriteFragment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -77,7 +77,7 @@ public class RingBufferMultiTemplateTest {
        
         //now read the data back
         int k = testSize;
-        while (tryReadFragmentSimple(ring)) {
+        while (tryReadFragment(ring)) {
         	if (isNewMessage(ring)) {
         		
         		--k;
@@ -94,14 +94,14 @@ public class RingBufferMultiTemplateTest {
 	        		//	System.err.println("checking with "+k);
 	        			
 	        			assertEquals(MSG_BOXES_LOC,msgLoc);
-	        			//reading out of order by design to ensure that random access works
+	        			
+	        			int count = RingReader.readInt(ring, BOX_COUNT_LOC);
+	        			assertEquals(42,count);
+	        			
 	        			int ownLen = RingReader.readBytes(ring, BOX_OWNER_LOC, target, 0);
 	        			assertEquals(expectedLength,ownLen);
 
-	        			System.err.println("BOX LOC:"+Integer.toHexString(BOX_COUNT_LOC));
-	        			int count = RingReader.readInt(ring, BOX_COUNT_LOC);
-	        			assertEquals(42,count);
-	        				        			
+	        		//	System.err.println("BOX LOC:"+Integer.toHexString(BOX_COUNT_LOC));
 	        			break;
 	        		case 1:
 	        			assertEquals(MSG_SAMPLE_LOC,msgLoc);
@@ -159,15 +159,11 @@ public class RingBufferMultiTemplateTest {
 	        	case 2: //boxes
 	        		if (tryWriteFragment(ring, MSG_BOXES_LOC)) { //AUTO writes template id as needed
 		        		j--;
+		        		byte[] source = buildMockData((j*blockSize)/testSize);
 		        		
-		        		//TODO: AAAA, these writes are using the working offset.
-		        		
-		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 42);
-						byte[] source = buildMockData((j*blockSize)/testSize);
-		        		RingBuffer.addByteArray(source, 0, source.length, ring);   
-		        		
-		        		//System.err.println(j+" wrote length:"+source.length);
-		        				        		
+		        		RingWriter.writeInt(ring, BOX_COUNT_LOC, 42);
+		        		RingWriter.writeBytes(ring, BOX_OWNER_LOC, source);
+		        				        				        		
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
@@ -179,11 +175,11 @@ public class RingBufferMultiTemplateTest {
 	        		if (tryWriteFragment(ring, MSG_SAMPLE_LOC)) { 
 		        		j--;
 		        				        		
-		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 2014);
-		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 12);
-		        		RingBuffer.addValue(ring.buffer, ring.mask, ring.workingHeadPos, 9);
-		        		RingBuffer.addValues(ring.buffer, ring.mask, ring.workingHeadPos, 2, (long) 123456);
-		        		
+		        		RingWriter.writeInt(ring, SAMPLE_YEAR_LOC ,2014);
+		        		RingWriter.writeInt(ring, SAMPLE_MONTH_LOC ,12);
+		        		RingWriter.writeInt(ring, SAMPLE_DATE_LOC ,9);
+		        		RingWriter.writeDecimal(ring,  SAMPLE_WEIGHT, 2, (long) 123456);
+		        				        		
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.
@@ -195,7 +191,8 @@ public class RingBufferMultiTemplateTest {
 	        		if (tryWriteFragment(ring, MSG_RESET_LOC)) { 
 	        			j--;
 	        			
-	        			RingBuffer.addByteArray(ASCII_VERSION, 0, ASCII_VERSION.length, ring);
+	        			RingWriter.writeBytes(ring, REST_VERSION, ASCII_VERSION);
+	        			
 		        		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
 	        		} else {
 	            		//Unable to write because there is no room so do something else while we are waiting.

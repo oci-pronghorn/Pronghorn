@@ -828,7 +828,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
       protected void genWriteDecimalDefaultOptionalNone(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
       {
-        int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+        int exponentValue = rbRingBuffer.buffer[rbRingBuffer.mask & (int)(rbRingBuffer.workingTailPos.value+ fieldPos)];  
         if (exponentValueOfNull == exponentValue) {
             if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -846,14 +846,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             }
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
            
-            PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+            PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1), writer); 
         }
       }
     }
 
     protected void genWriteDecimalIncrementOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -873,14 +873,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1), writer); 
             }   
         }
     }
 
     protected void genWriteDecimalCopyOptionalNone(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
     //        System.err.println("t write exponent:"+exponentValue);
             if (exponentValueOfNull == exponentValue) {
       //      	System.err.println("t nullllll");
@@ -907,7 +907,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                long mantissa = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long mantissa = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
     //            System.err.println("t write mantissa:"+mantissa);
 				PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = mantissa, writer); 
             }
@@ -916,21 +916,21 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalConstantOptionalNone(int exponentValueOfNull, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         { 
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull==exponentValue) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer);        
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1), writer);        
             }     
         }
     }
 
     protected void genWriteDecimalDeltaOptionalNone(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -947,14 +947,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1), writer); 
             }
         }
     }
 
     protected void genWriteDecimalNoneOptionalNone(int exponentTarget, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -962,7 +962,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                
-                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos), writer); 
+                PrimitiveWriter.writeLongSigned(rLongDictionary[mantissaTarget] = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1), writer); 
             }
         }
     }
@@ -972,7 +972,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
    
      protected void genWriteDecimalDefaultOptionalDefault(int exponentSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
       {
-        int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+        int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
         if (exponentValueOfNull == exponentValue) {
             if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -989,7 +989,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                 PrimitiveWriter.writeIntegerSigned(value, writer);
             }
             assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-            long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+            long value1 = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
            
             //mantissa
             if (value1 == mantissaConstDefault) {
@@ -1004,7 +1004,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalIncrementOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1023,7 +1023,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(value, writer);
                 } 
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value1 = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                
                 //mantissa
                 if (value1 == mantissaConstDefault) {
@@ -1038,7 +1038,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalCopyOptionalDefault(int exponentTarget, int exponentSource, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1056,7 +1056,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeIntegerSigned(rIntDictionary[exponentTarget] = value, writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value1 = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value1 = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                
                 //mantissa
                 if (value1 == mantissaConstDefault) {
@@ -1071,13 +1071,13 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalConstantOptionalDefault(int exponentValueOfNull, int mantissaTarget, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         { 
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull==exponentValue) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
             } else {
                 PrimitiveWriter.writePMapBit((byte)1, writer);  // 1 for const, 0 for absent
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1092,7 +1092,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalDeltaOptionalDefault(int exponentTarget, int mantissaTarget, int exponentSource, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1108,7 +1108,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                     PrimitiveWriter.writeLongSigned((1+(dif + (dif >>> 63))), writer);
                 }
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1123,14 +1123,14 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
     protected void genWriteDecimalNoneOptionalDefault(int exponentTarget, int mantissaTarget, int exponentValueOfNull, long mantissaConstDefault, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
         {   
-            int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+            int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
             if (exponentValueOfNull == exponentValue) {
                 rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
             } else {
                 PrimitiveWriter.writeIntegerSignedOptional(exponentValue, writer);
                 assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
-                long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                
                 //mantissa
                 if (value == mantissaConstDefault) {
@@ -1149,7 +1149,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteDecimalDefaultOptionalIncrement(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
      {
-       int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+       int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
        if (exponentValueOfNull == exponentValue) {
            if (0 == rIntDictionary[exponentSource]) { // stored value was null;
             PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1168,7 +1168,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
            assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
           
            //mantissa
-           long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+           long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
            if (value == (1 + rLongDictionary[mantissaSource])) {
            PrimitiveWriter.writePMapBit((byte)0, writer);
         } else {
@@ -1182,7 +1182,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
    protected void genWriteDecimalIncrementOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1203,7 +1203,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1217,7 +1217,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
    protected void genWriteDecimalCopyOptionalIncrement(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1237,7 +1237,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1251,7 +1251,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
    protected void genWriteDecimalConstantOptionalIncrement(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        { 
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
            if (exponentValueOfNull==exponentValue) {
                PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
            } else {
@@ -1259,7 +1259,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1273,7 +1273,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
    protected void genWriteDecimalDeltaOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                rIntDictionary[exponentTarget] = 0;
             PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1291,7 +1291,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1305,7 +1305,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
    protected void genWriteDecimalNoneOptionalIncrement(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {   
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
            if (exponentValueOfNull == exponentValue) {
                rIntDictionary[exponentTarget] = 0;
             PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1314,7 +1314,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
               
                //mantissa
-               long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+               long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                if (value == (1 + rLongDictionary[mantissaSource])) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1330,7 +1330,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
    
    protected void genWriteDecimalDefaultOptionalCopy(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
        {
-         int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+         int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
          if (exponentValueOfNull == exponentValue) {
              if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1349,7 +1349,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
              assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
             
              //mantissa
-             long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);   
+             long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);   
              if (value == rLongDictionary[mantissaSource]) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -1362,7 +1362,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
      protected void genWriteDecimalIncrementOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1383,7 +1383,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1396,7 +1396,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
      protected void genWriteDecimalCopyOptionalCopy(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1418,7 +1418,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                  {
 	                 //mantissa
-	                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+	                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
 	                 if (value == rLongDictionary[mantissaSource]) {
 	                    PrimitiveWriter.writePMapBit((byte)0, writer);
 	                } else {
@@ -1432,7 +1432,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
      protected void genWriteDecimalConstantOptionalCopy(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          { 
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
              if (exponentValueOfNull==exponentValue) {
                  PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
              } else {
@@ -1440,7 +1440,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1453,7 +1453,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
      protected void genWriteDecimalDeltaOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
              if (exponentValueOfNull == exponentValue) {
                  rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1471,7 +1471,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
                 } else {
@@ -1484,7 +1484,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
      protected void genWriteDecimalNoneOptionalCopy(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
          {   
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
              System.err.println("write exponent:"+exponentValue);
              if (exponentValueOfNull == exponentValue) {
                  rIntDictionary[exponentTarget] = 0;
@@ -1494,7 +1494,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                 
                  //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos);
+                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1);
                  System.err.println("write mantissa:"+value);
                  if (value == rLongDictionary[mantissaSource]) {
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1510,7 +1510,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
   
      protected void genWriteDecimalDefaultOptionalConstant(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, int[] rIntDictionary, FASTEncoder dispatch) {
          {
-           int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+           int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
            if (exponentValueOfNull == exponentValue) {
                if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                 PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1536,7 +1536,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
        protected void genWriteDecimalIncrementOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {
-               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+               int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
                if (exponentValueOfNull == exponentValue) {
                    if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1564,7 +1564,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
        protected void genWriteDecimalCopyOptionalConstant(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1591,7 +1591,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
        protected void genWriteDecimalConstantOptionalConstant(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            { 
-               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = rbRingBuffer.buffer[rbRingBuffer.mask & (int)(rbRingBuffer.workingTailPos.value+ fieldPos)]; 
                if (exponentValueOfNull==exponentValue) {
                    PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
                } else {
@@ -1606,7 +1606,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
        protected void genWriteDecimalDeltaOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1631,7 +1631,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
        protected void genWriteDecimalNoneOptionalConstant(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, FASTEncoder dispatch) {
            {   
-               int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+               int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                if (exponentValueOfNull == exponentValue) {
                    rIntDictionary[exponentTarget] = 0;
                 PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1649,7 +1649,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
        
        protected void genWriteDecimalDefaultOptionalDelta(int exponentSource, int mantissaSource, int mantissaTarget, int exponentConstDefault, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] rLongDictionary, int[] rIntDictionary, FASTEncoder dispatch) {
            {
-             int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+             int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
              if (exponentValueOfNull == exponentValue) {
                  if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                     PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1668,7 +1668,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                  assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
 
                  //mantissa
-                 long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                 long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                   PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                  rLongDictionary[mantissaTarget] = value;
              }
@@ -1677,7 +1677,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
          protected void genWriteDecimalIncrementOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {
-                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos);  
+                 int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos);  
                  if (exponentValueOfNull == exponentValue) {
                      if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                         PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1698,7 +1698,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }   
@@ -1707,7 +1707,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
          protected void genWriteDecimalCopyOptionalDelta(int exponentTarget, int exponentSource, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
              {   
-                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      if (0 == rIntDictionary[exponentSource]) { // stored value was null;
                         PrimitiveWriter.writePMapBit((byte)0, writer);
@@ -1727,7 +1727,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      longValue[mantissaTarget] = value;
                  }
@@ -1736,7 +1736,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
          protected void genWriteDecimalConstantOptionalDelta(int exponentValueOfNull, int mantissaSource, int mantissaTarget, int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer, long[] longValue, FASTEncoder dispatch) {
              { 
-                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                  if (exponentValueOfNull==exponentValue) {
                      PrimitiveWriter.writePMapBit((byte)0, writer);  // 1 for const, 0 for absent
                  } else {
@@ -1744,7 +1744,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      longValue[mantissaTarget] = value;
                  }     
@@ -1753,7 +1753,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
 
          protected void genWriteDecimalDeltaOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentSource, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {   
-                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      rIntDictionary[exponentTarget] = 0;
                     PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1771,7 +1771,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }
@@ -1781,7 +1781,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
          protected void genWriteDecimalNoneOptionalDelta(int exponentTarget, int mantissaSource, int mantissaTarget, int exponentValueOfNull, int fieldPos, PrimitiveWriter writer, int[] rIntDictionary, RingBuffer rbRingBuffer, long[] rLongDictionary, FASTEncoder dispatch) {
              {  
                  //FASTEncoder dispatch
-                 int exponentValue = RingReader.readDecimalExponent(rbRingBuffer, fieldPos); 
+                 int exponentValue = RingBuffer.readInt(rbRingBuffer.buffer,rbRingBuffer.mask,rbRingBuffer.workingTailPos.value+ fieldPos); 
                  if (exponentValueOfNull == exponentValue) {
                      rIntDictionary[exponentTarget] = 0;
                     PrimitiveWriter.writeNull(writer);// null for None and Delta (both do not use pmap)
@@ -1790,7 +1790,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
                      assert(FASTEncoder.notifyFieldPositions(writer, dispatch.activeScriptCursor));
                     
                      //mantissa
-                     long value = RingReader.readDecimalMantissa(rbRingBuffer, fieldPos); 
+                     long value = RingBuffer.readLong(rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos.value + fieldPos + 1); 
                      PrimitiveWriter.writeLongSigned(value - rLongDictionary[mantissaSource], writer);
                      rLongDictionary[mantissaTarget] = value;
                  }

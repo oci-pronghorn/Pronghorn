@@ -264,7 +264,8 @@ public class TemplateHandler extends DefaultHandler {
         	int token = TokenBuilder.buildToken(TypeMask.Group, OperatorMask.Group_Bit_Seq, catalogTemplateScriptIdx + 1);
 
             basicGroupStart(attributes, token);
-
+            //add 1 because we moved the length back up to the previous location
+            catalogScriptFieldNames[catalogTemplateScriptIdx+1] = fieldName;
             // sequence token is not added to the script until the Length field
             // is seen
 
@@ -687,9 +688,6 @@ public class TemplateHandler extends DefaultHandler {
 
 		//add closing group to script
 		catalogScriptTokens[catalogTemplateScriptIdx] = TokenBuilder.buildToken(TypeMask.Group, opMask, groupSize);
-		
-		catalogScriptFieldNames[catalogTemplateScriptIdx] = fieldName;
-		fieldName=null;//ensure it is only used once
 		
 		catalogScriptFieldIds[catalogTemplateScriptIdx++] = 0;
 

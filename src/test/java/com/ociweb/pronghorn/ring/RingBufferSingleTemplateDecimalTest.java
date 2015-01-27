@@ -29,6 +29,7 @@ public class RingBufferSingleTemplateDecimalTest {
 	              SINGLE_MESSAGE_IDS);
 	
 	final int FRAG_LOC = 0;
+	final int FRAG_FIELD = FieldReferenceOffsetManager.lookupFieldLocator(SINGLE_MESSAGE_NAMES[0], 0, FROM);
 	
     @Test
     public void simpleWriteRead() {
@@ -76,7 +77,6 @@ public class RingBufferSingleTemplateDecimalTest {
 
 	private void writeTestValue(RingBuffer ring, int blockSize, int testSize) {
 		int j = testSize;
-		int base = RingBuffer.from(ring).templateOffset;
 		
         while (true) {
         	
@@ -88,7 +88,7 @@ public class RingBufferSingleTemplateDecimalTest {
      		
         		int value = (--j*blockSize)/testSize;
         		
-        		RingBuffer.setValues(ring.buffer, ring.mask, ring.workingHeadPos.value + base, 2, (long) value); 
+        		RingWriter.writeDecimal(ring, FRAG_FIELD, 2, (long) value );
         	
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
         		

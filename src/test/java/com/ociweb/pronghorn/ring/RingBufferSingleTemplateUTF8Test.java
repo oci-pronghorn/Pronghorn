@@ -2,7 +2,7 @@ package com.ociweb.pronghorn.ring;
 
 import static com.ociweb.pronghorn.ring.RingWalker.isNewMessage;
 import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
-import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragmentSimple;
+import static com.ociweb.pronghorn.ring.RingWalker.tryReadFragment;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -16,7 +16,7 @@ import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
 public class RingBufferSingleTemplateUTF8Test {
 
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
-	final int FRAG_LOC = 0;
+	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
 	
 	final byte primaryRingSizeInBits = 8; 
 	final byte byteRingSizeInBits = 19;
@@ -31,9 +31,7 @@ public class RingBufferSingleTemplateUTF8Test {
 
         populateRingBufferWithUTF8(ring, varDataMax, testSize);
         
-        //now read the data back        
-        int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
-        
+                
         StringBuilder target = new StringBuilder();
         char[] target2 = new char[varDataMax << 1]; //HACK
         
@@ -49,11 +47,11 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	assert(testString.length()==expectedCharLength);
 	        	
 	        	if (0==(k&1)) {
-		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, BYTE_LOC, target)).length();
+		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target)).length();
 		        	assertEquals(expectedCharLength,actualLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
-		        	int actualLength = RingReader.readUTF8(ring, BYTE_LOC, target2, 0);
+		        	int actualLength = RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
 		        	assertEquals(expectedCharLength,actualLength);
 		        	assertTrue("exp:"+testString+" vs \nfnd:"+new String(Arrays.copyOfRange(target2, 0, expectedCharLength)),		        			    
 		        			    Arrays.equals(testString.toCharArray(), Arrays.copyOfRange(target2, 0, expectedCharLength) )
@@ -66,7 +64,6 @@ public class RingBufferSingleTemplateUTF8Test {
 
 	private void populateRingBufferWithUTF8(RingBuffer ring, int blockSize, int testSize) {
 		int j = testSize;
-		int base = RingBuffer.from(ring).templateOffset;
         while (true) {
         	
         	if (j == 0) {
@@ -83,28 +80,15 @@ public class RingBufferSingleTemplateUTF8Test {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingBuffer.validateVarLength(ring, testString.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-					final int p = ring.byteWorkingHeadPos.value;	    
-					int byteLength = RingBuffer.copyUTF8ToByte(testString, 0, ring.byteBuffer, ring.byteMask, p, testString.length()); 
-					ring.byteWorkingHeadPos.value = p+byteLength;
-					
-					RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
+        			RingWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testString);
+      
         		} else {
         			if (0 == (j&2)) {
-        				RingBuffer.validateVarLength(ring, testChars.length<<3);
-						int sourceLen = testChars.length; //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-						final int p = ring.byteWorkingHeadPos.value;
-						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, sourceLen);
-						ring.byteWorkingHeadPos.value = p+byteLength;
-						
-						RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
+        				RingWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testChars);
+      
         			} else {
-        				RingBuffer.validateVarLength(ring, stringSize<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
-						final int p = ring.byteWorkingHeadPos.value;
-						int byteLength = RingBuffer.copyUTF8ToByte(testChars, 0, ring.byteBuffer, ring.byteMask, p, stringSize);		
-						ring.byteWorkingHeadPos.value = p+byteLength;
-						
-						RingBuffer.setBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos.value+base, p, byteLength);        
+        				RingWriter.writeUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, testChars, 0, stringSize);
+    
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
@@ -149,7 +133,6 @@ public class RingBufferSingleTemplateUTF8Test {
     	StringBuilder target = new StringBuilder();
     	char[] target2 = new char[varDataMax];
         
-        int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
         
         int k = testSize;
         while (k>0) {
@@ -157,7 +140,7 @@ public class RingBufferSingleTemplateUTF8Test {
         	//This is the example code that one would normally use.
         	
         	//System.err.println("content "+ring.contentRemaining(ring));
-	        if (tryReadFragmentSimple(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
+	        if (tryReadFragment(ring)) { //this method releases old messages as needed and moves pointer up to the next fragment
 	        	k--;//count down all the expected messages so we stop this test at the right time
 	        	target.setLength(0);
 	        	assertTrue(isNewMessage(ring));//would use this method rarely to determine if fragment starts new message
@@ -167,11 +150,11 @@ public class RingBufferSingleTemplateUTF8Test {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&2)) {
-		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, BYTE_LOC, target)).length();
+		        	int actualLength = ((StringBuilder)RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target)).length();
 		        	assertEquals(expectedLength,actualLength);	
 		        	assertEquals(testString,target.toString());
 	        	}  else {
-	        		int actualLength = RingReader.readUTF8(ring, BYTE_LOC, target2, 0);
+	        		int actualLength = RingReader.readUTF8(ring, FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
 		        			    Arrays.equals(testString.toCharArray(), 

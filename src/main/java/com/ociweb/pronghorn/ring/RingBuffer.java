@@ -34,8 +34,6 @@ import com.ociweb.pronghorn.ring.util.PaddedAtomicLong;
 
 //TODO: B, build  null ring buffer to drop messages.
 
-//TODO: AA, check if low level api will update stats
-//TODO: AA, auto optimized publish rate based on ring buffer status and full frequency
 
 public final class RingBuffer {
    
@@ -191,6 +189,42 @@ public final class RingBuffer {
     }
         
     
+	public static int leftConvertIntToASCII(RingBuffer rb, int value, int idx) {
+		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+		//this will leave a gap but that is not a problem.
+		byte[] target = rb.byteBuffer;
+		int tmp = value;    	
+		while (tmp!=0) {
+			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+			int t = tmp/10;
+			int r = tmp%10;
+			target[rb.byteMask&--idx] = (byte)('0'+r);
+			tmp = t;
+		}
+		target[rb.byteMask& (idx-1)] = (byte)'-';
+		//to make it positive we jump over the sign.
+		idx -= (1&(value>>31));
+		return idx;
+	}
+
+	public static int leftConvertLongToASCII(RingBuffer rb, long value,	int idx) {
+		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
+		//this will leave a gap but that is not a problem.
+		byte[] target = rb.byteBuffer;
+		long tmp = value;    	
+		while (tmp!=0) {
+			//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
+			long t = tmp/10;
+			long r = tmp%10;
+			target[rb.byteMask&--idx] = (byte)('0'+r);
+			tmp = t;
+		}
+		target[rb.byteMask& (idx-1)] = (byte)'-';
+		//to make it positive we jump over the sign.
+		idx -= (1&(value>>63));
+		return idx;
+	}
+
 	public static int readInt(int[] buffer, int mask, long index) {
 		return buffer[mask & (int)(index)];
 	}
@@ -636,7 +670,7 @@ public final class RingBuffer {
     
     public static void publishWrites(RingBuffer ring) {
     	
-    	//TODO: AA, this is only needed until we fully transition over to the new API, try removing after read API is fully upgraded to new stack based lookup.
+    	//TODO: AAAA, this is only needed until we fully transition over to the new API, try removing after read API is fully upgraded to new stack based lookup.
     	ring.workingHeadPos.value = Math.max(ring.consumerData.nextWorkingHead, ring.workingHeadPos.value);
     	
     	//prevent long running arrays from rolling over in second byte ring

@@ -55,7 +55,15 @@ public class FieldReferenceOffsetManager {
 	
 	private final static int[] EMPTY = new int[0];
 	public final String name;
-	private final boolean hasSimpleMessagesOnly;
+	public final boolean hasSimpleMessagesOnly;
+	
+    private static final int STACK_OFF_BITS = 4; //Maximum stack depth of nested groups is 16, this can be increased if needed.
+    
+    public static final int RW_FIELD_OFF_BITS = (32-(STACK_OFF_BITS+TokenBuilder.BITS_TYPE));
+    public final static int RW_STACK_OFF_MASK = (1<<STACK_OFF_BITS)-1;
+    public final static int RW_STACK_OFF_SHIFT = 32-STACK_OFF_BITS;
+    public final static int RW_FIELD_OFF_MASK = (1<<RW_FIELD_OFF_BITS)-1; 
+    
 	
     /**
      * Constructor is only for unit tests.
@@ -336,10 +344,7 @@ public class FieldReferenceOffsetManager {
     	throw new UnsupportedOperationException("Unable to find template name: "+name);
     }
     
-    
-    public static String lookupFieldName(int fragmentStart, int position, FieldReferenceOffsetManager from) {
-		return from.fieldNameScript[fragmentStart+position];
-	}
+
     
     /**
      * This does not return the token found in the script but rather a special value that can be used to 
@@ -353,18 +358,23 @@ public class FieldReferenceOffsetManager {
     public static int lookupFieldLocator(String target, int framentStart, FieldReferenceOffsetManager from) {
 		int x = framentStart;
         		
-		final int UPPER_BITS = 0x80000000 | (from.fragDepth[framentStart]<<28);
-		
+		//upper bits is 4 bits of information
+		final int stackOff = from.fragDepth[framentStart]<<RW_STACK_OFF_SHIFT;
         
         while (true) {
         	//System.err.println("looking at:"+fieldNameScript[x]);
             if (from.fieldNameScript[x].equalsIgnoreCase(target)) {
+            	
+            	int fieldType = TokenBuilder.extractType(from.tokens[x])<<RW_FIELD_OFF_BITS;
+            	//type is 5 bits of information
+            	
+                //the remaining bits for the offset is 32 -(4+5) or 23 which is 8M for the fixed portion of any fragment
+            	
+            	int fieldOff =  (0==x) ? from.templateOffset+1 : from.fragDataSize[x];
+            	assert(fieldOff>=0);
+            	assert(fieldOff < (1<<RW_FIELD_OFF_BITS)) : "Fixed portion of a fragment can not be larger than "+(1<<RW_FIELD_OFF_BITS)+" bytes";
                 
-                if (0==x) {//1 because we need to offset for templateId
-                    return UPPER_BITS | from.templateOffset+1; 
-                } else {
-                    return UPPER_BITS | from.fragDataSize[x];                    
-                }
+                return stackOff | fieldType | fieldOff;
                 
             }
             

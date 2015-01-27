@@ -12,7 +12,8 @@ import org.junit.Test;
 public class RingBufferSingleTemplateASCIITest {
 
 	final FieldReferenceOffsetManager FROM = FieldReferenceOffsetManager.RAW_BYTES;
-	final int FRAG_LOC = 0;
+	final int FRAG_LOC = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM;
+	final int FRAG_FIELD = FieldReferenceOffsetManager.LOC_CHUNKED_STREAM_FIELD;
 	
     @Test
     public void simpleBytesWriteRead() {
@@ -28,10 +29,7 @@ public class RingBufferSingleTemplateASCIITest {
         int testSize = (1<<primaryRingSizeInBits)/messageSize;
 
         populateRingBufferWithASCII(ring, varDataMax, testSize);
-        
-        //now read the data back        
-        int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
-        
+                
         StringBuilder target = new StringBuilder();
         char[] target2 = new char[varDataMax];
         
@@ -45,11 +43,11 @@ public class RingBufferSingleTemplateASCIITest {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&1)) {
-		        	int actualLength = ((StringBuilder)RingReader.readASCII(ring, BYTE_LOC, target)).length();
+		        	int actualLength = ((StringBuilder)RingReader.readASCII(ring, FRAG_FIELD, target)).length();
 		        	assertEquals(expectedLength,actualLength);
 		        	assertEquals(testString,target.toString());
 	        	} else {
-		        	int actualLength = RingReader.readASCII(ring, BYTE_LOC, target2, 0);
+		        	int actualLength = RingReader.readASCII(ring, FRAG_FIELD, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
 		        			    Arrays.equals(testString.toCharArray(), 
@@ -78,21 +76,13 @@ public class RingBufferSingleTemplateASCIITest {
         		//because there is only 1 template we do not write the template id it is assumed to be zero.
         		//now we write the data for the message
         		if (0 == (j&1)) {
-        			RingBuffer.validateVarLength(ring, testString.length());
-					int sourceLen = testString.length();
-					final int p = RingBuffer.addASCIIToBytes(testString, 0, sourceLen, ring); 
-					RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, sourceLen); //data for each field is written in order (TODO: Need solution to allow for write out of order of fields)
+        			RingWriter.writeASCII(ring, FRAG_FIELD, testString);
         		} else {
         			if (0 == (j&2)) {
         				char[] source = testString.toCharArray();
-						RingBuffer.validateVarLength(ring,source.length);
-						int sourceLen = source.length;
-						final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	ring); 
-						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, sourceLen);
+        				RingWriter.writeASCII(ring, FRAG_FIELD, source);
         			} else {
-        				RingBuffer.validateVarLength(ring, stringSize);
-						final int p = RingBuffer.addASCIIToBytes(testString.toCharArray(), 0, stringSize,	ring); 
-						RingBuffer.addBytePosAndLen(ring.buffer, ring.mask, ring.workingHeadPos, ring.bytesHeadPos.get(), p, stringSize);
+        				RingWriter.writeASCII(ring, FRAG_FIELD, testString.toCharArray(), 0, stringSize);
         			}
         		}
         		RingBuffer.publishWrites(ring); //must always publish the writes if message or fragment
@@ -140,7 +130,6 @@ public class RingBufferSingleTemplateASCIITest {
     	StringBuilder target = new StringBuilder();
     	char[] target2 = new char[varDataMax];
         
-        int BYTE_LOC = FieldReferenceOffsetManager.lookupFieldLocator("ByteArray", FRAG_LOC, FROM);
         
         int k = testSize;
         while (k>0) {
@@ -158,11 +147,11 @@ public class RingBufferSingleTemplateASCIITest {
 	        	String testString = buildTestString(expectedLength);
 	        	
 	        	if (0==(k&2)) {
-		        	int actualLength = ((StringBuilder)RingReader.readASCII(ring, BYTE_LOC, target)).length();
+		        	int actualLength = ((StringBuilder)RingReader.readASCII(ring, FRAG_FIELD, target)).length();
 		        	assertEquals(expectedLength,actualLength);	
 		        	assertEquals(testString,target.toString());
 	        	}  else {
-	        		int actualLength = RingReader.readASCII(ring, BYTE_LOC, target2, 0);
+	        		int actualLength = RingReader.readASCII(ring, FRAG_FIELD, target2, 0);
 		        	assertEquals(expectedLength,actualLength);
 		        	assertTrue(testString+" vs "+new String(target2, 0, actualLength),		        			    
 		        			    Arrays.equals(testString.toCharArray(), 

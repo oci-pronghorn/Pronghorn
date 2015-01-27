@@ -3,14 +3,17 @@ package com.ociweb.pronghorn.ring;
 import java.nio.ByteBuffer;
 
 import com.ociweb.pronghorn.ring.RingBuffer.PaddedLong;
+import com.ociweb.pronghorn.ring.token.TokenBuilder;
+import com.ociweb.pronghorn.ring.token.TypeMask;
 
 
 
 public class RingWriter {
 
-  public final static int OFF_MASK  =   0xFFFFFFF;
-  public final static int STACK_OFF_MASK = 0x7;
-  public final static int STACK_OFF_SHIFT = 28;
+  public final static int OFF_MASK  =   FieldReferenceOffsetManager.RW_FIELD_OFF_MASK;
+  public final static int STACK_OFF_MASK = FieldReferenceOffsetManager.RW_STACK_OFF_MASK;
+  public final static int STACK_OFF_SHIFT = FieldReferenceOffsetManager.RW_STACK_OFF_SHIFT;
+  public final static int OFF_BITS = FieldReferenceOffsetManager.RW_FIELD_OFF_BITS;
 	
   static double[] powd = new double[] {
 	  1.0E-64,1.0E-63,1.0E-62,1.0E-61,1.0E-60,1.0E-59,1.0E-58,1.0E-57,1.0E-56,1.0E-55,1.0E-54,1.0E-53,1.0E-52,1.0E-51,1.0E-50,1.0E-49,1.0E-48,1.0E-47,1.0E-46,
@@ -137,7 +140,7 @@ public class RingWriter {
     public static void writeIntAsText(RingBuffer rb, int value) {
     	RingBuffer.validateVarLength(rb, 12);
     	int max = 12+rb.byteWorkingHeadPos.value;
-    	int idx = leftConvertIntToASCII(rb, value, max);
+    	int idx = RingBuffer.leftConvertIntToASCII(rb, value, max);
     	RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), idx, max-idx);
     	rb.byteWorkingHeadPos.value = max;    	
     }
@@ -145,7 +148,7 @@ public class RingWriter {
     public static void writeLongAsText(RingBuffer rb, long value) {
     	RingBuffer.validateVarLength(rb, 21);
     	int max = 21+rb.byteWorkingHeadPos.value;
-    	int idx = leftConvertLongToASCII(rb, value, max);
+    	int idx = RingBuffer.leftConvertLongToASCII(rb, value, max);
     	RingBuffer.addBytePosAndLen(rb.buffer, rb.mask, rb.workingHeadPos, rb.bytesHeadPos.get(), idx, max-idx);
     	rb.byteWorkingHeadPos.value = max;    	
     } //  */
@@ -155,18 +158,22 @@ public class RingWriter {
     ///////////////////////////////
     
     public static void writeInt(RingBuffer rb, int loc, int value) {
+    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		rb.buffer[rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
     
     public static void writeShort(RingBuffer rb, int loc, short value) {
+    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
     	rb.buffer[rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
 
     public static void writeByte(RingBuffer rb, int loc, byte value) {
+    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		rb.buffer[rb.mask &((int)rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc))] = value;         
     }
 
     public static void writeLong(RingBuffer rb, int loc, long value) {
+    	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
         int[] buffer = rb.buffer;
 		int rbMask = rb.mask;	
 		
@@ -176,41 +183,57 @@ public class RingWriter {
 		buffer[rbMask & (int)(p+1)] = (int)(value & 0xFFFFFFFF);		
     }
 
-    public static void writeDecimal(RingBuffer rb, int loc, int exponent, long mantissa) {
+    public static void writeDecimal(RingBuffer rb, int loc, int exponent, long mantissa) {    	
+    	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);     	
         int[] buffer = rb.buffer;
 		int rbMask = rb.mask;
-		
+
 		long p = (rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc));
 		
 		buffer[rbMask & (int)p++] = exponent;
 		buffer[rbMask & (int)p++] = (int) (mantissa >>> 32);
-		buffer[rbMask & (int)p++] = (int)mantissa & 0xFFFFFFFF;
-		  
+		buffer[rbMask & (int)p] = (int)mantissa & 0xFFFFFFFF;		  
     }
-
+    
+    public static void writeFloat(RingBuffer rb, int loc, float value, int places) {
+    	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);   	
+    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)(value*powd[64+places]));
+    }
+    public static void writeDouble(RingBuffer rb, int loc, double value, int places) {
+    	assert((loc&0x1E<<OFF_BITS)==(0x0C<<OFF_BITS)) : "Expected to write some type of decimal but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
+    	RingBuffer.setValues(rb.buffer, rb.mask, (rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc)), places, (long)(value*powd[64+places]));
+    }
+    
     public static void writeFloatAsIntBits(RingBuffer rb, int loc, float value) {
+    	assert((loc&0x1C<<OFF_BITS)==0) : "Expected to write some type of int but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
     	writeInt(rb, loc, Float.floatToIntBits(value));
     }
     
     public static void writeDoubleAsLongBits(RingBuffer rb, int loc,  double value) {
+    	assert((loc&0x1C<<OFF_BITS)==(0x4<<OFF_BITS)) : "Expected to write some type of long but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE); 
     	writeLong(rb, loc, Double.doubleToLongBits(value));
     }    
-          
+          //<<OFF_BITS
     public static void finishWriteBytesAlreadyStarted(RingBuffer rb, int loc,  int p, int length) {
+		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		
     	RingBuffer.validateVarLength(rb, length);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), p, length);
         rb.byteWorkingHeadPos.value = p + length;        
     }
     
     public static void writeBytes(RingBuffer rb, int loc, byte[] source, int offset, int length) {
-    	    	        
+		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		
     	assert(length>=0);
 		RingBuffer.appendPartialBytesArray(source, offset, length, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask);		
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length);
 		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + length;	
     }
         
-    public static void writeBytes(RingBuffer rb, int loc, byte[] source) {
+    public static void writeBytes(RingBuffer rb, int loc, byte[] source) { // 01000
+		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		
     	int sourceLen = source.length;
     	RingBuffer.validateVarLength(rb, sourceLen);
 		
@@ -220,7 +243,9 @@ public class RingWriter {
 		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + sourceLen;
     }
         
-	public static void writeBytes(RingBuffer rb, int loc, ByteBuffer source, int length) {
+	public static void writeBytes(RingBuffer rb, int loc, ByteBuffer source, int length) {		
+		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+		
     	assert(length>=0);
     	int bytePos = rb.byteWorkingHeadPos.value;
     	RingBuffer.addByteBuffer(rb, source, length);
@@ -228,6 +253,8 @@ public class RingWriter {
     }
     
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source) {
+    	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
@@ -236,6 +263,8 @@ public class RingWriter {
     }
 
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
+    	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb, source.length()<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
@@ -244,6 +273,8 @@ public class RingWriter {
     }
         
     public static void writeUTF8(RingBuffer rb, int loc, char[] source) {
+    	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+    	
     	RingBuffer.validateVarLength(rb, source.length<<3); //UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length);
@@ -252,6 +283,8 @@ public class RingWriter {
     }
       
     public static void writeUTF8(RingBuffer rb, int loc, char[] source, int offset, int length) {
+    	assert((loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+    	
     	RingBuffer.validateVarLength(rb, length<<3);//UTF8 encoded bytes are longer than the char count (6 is the max but math for 8 is cheaper)
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
@@ -260,6 +293,8 @@ public class RingWriter {
     }
 
     public static void writeASCII(RingBuffer rb, int loc, char[] source) {
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb,source.length);
 		int sourceLen = source.length;
         final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	rb);
@@ -267,12 +302,16 @@ public class RingWriter {
     }
     
     public static void writeASCII(RingBuffer rb, int loc, char[] source, int offset, int length) {
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb,length);
         final int p = RingBuffer.addASCIIToBytes(source, offset, length,	rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length);
     }   
     
     public static void writeASCII(RingBuffer rb, int loc, CharSequence source) {
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb, source.length());
 		int sourceLen = source.length();
         final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen, rb);
@@ -280,63 +319,30 @@ public class RingWriter {
     }
     
     public static void writeASCII(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	RingBuffer.validateVarLength(rb, source.length());
         final int p = RingBuffer.addASCIIToBytes(source, offset, length, rb);
 		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length);
     }
     
     public static void writeIntAsText(RingBuffer rb, int loc, int value) {
-		RingBuffer.validateVarLength(rb, 12);
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+
     	int max = 12+rb.byteWorkingHeadPos.value;
-    	int idx = leftConvertIntToASCII(rb, value, max);    	
+    	int idx = RingBuffer.leftConvertIntToASCII(rb, value, max);    	
     	finishWriteBytesAlreadyStarted(rb, loc, idx, max-idx);
     	rb.byteWorkingHeadPos.value = max;    	
 	}
 
-    public static void writeLongAsText(RingBuffer rb, int loc, long value) {
-		RingBuffer.validateVarLength(rb, 21);    	
+    public static void writeLongAsText(RingBuffer rb, int loc, long value) { 
+    	assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
+  
     	int max = 21+rb.byteWorkingHeadPos.value;
-    	int idx = leftConvertLongToASCII(rb, value, max);
+    	int idx = RingBuffer.leftConvertLongToASCII(rb, value, max);
     	finishWriteBytesAlreadyStarted(rb, loc, idx, max-idx);
     	rb.byteWorkingHeadPos.value = max;    	
-	}    
-           
-
-    public static int leftConvertLongToASCII(RingBuffer rb, long value,	int idx) {
-    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
-    	//this will leave a gap but that is not a problem.
-    	byte[] target = rb.byteBuffer;
-    	long tmp = value;    	
-    	while (tmp!=0) {
-    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
-    		long t = tmp/10;
-    		long r = tmp%10;
-    		target[rb.byteMask&--idx] = (byte)('0'+r);
-    		tmp = t;
-    	}
-    	target[rb.byteMask& (idx-1)] = (byte)'-';
-    	//to make it positive we jump over the sign.
-    	idx -= (1&(value>>63));
-    	return idx;
-    }    
-
-    public static int leftConvertIntToASCII(RingBuffer rb, int value, int idx) {
-    	//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
-    	//this will leave a gap but that is not a problem.
-    	byte[] target = rb.byteBuffer;
-    	int tmp = value;    	
-    	while (tmp!=0) {
-    		//do not touch these 2 lines they make use of secret behavior in hot spot that does a single divide.
-    		int t = tmp/10;
-    		int r = tmp%10;
-    		target[rb.byteMask&--idx] = (byte)('0'+r);
-    		tmp = t;
-    	}
-    	target[rb.byteMask& (idx-1)] = (byte)'-';
-    	//to make it positive we jump over the sign.
-    	idx -= (1&(value>>31));
-    	return idx;
-    }
+	}
 	
     
 }
