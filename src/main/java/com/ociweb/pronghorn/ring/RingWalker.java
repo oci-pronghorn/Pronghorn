@@ -14,10 +14,7 @@ public class RingWalker {
     private long waitingNextStop;
     private long bnmHeadPosCache;
     public int cursor;
-    
-    @Deprecated
-    public int activeFragmentDataSize;
-    
+        
     public long nextWorkingTail; //NOTE: assumes that ring tail also starts at zero
     public long nextWorkingHead;;
     
@@ -58,7 +55,6 @@ public class RingWalker {
         this.waitingNextStop = waitingNextStop;
         this.bnmHeadPosCache = bnmHeadPosCache;
         this.cursor = cursor;
-        this.activeFragmentDataSize = activeFragmentDataSize;
         this.seqStack = seqStack;
         this.seqStackHead = seqStackHead;
         this.tailCache = tailCache;
@@ -346,7 +342,7 @@ public class RingWalker {
 	}
     
  
-	public static void reset(RingWalker consumerData) {
+	public static void reset(RingWalker consumerData, int ringPos) {
         consumerData.waiting = (false);
         RingWalker.setWaitingNextStop(consumerData,(long) -1);
         RingWalker.setBnmHeadPosCache(consumerData,(long) -1);
@@ -356,13 +352,11 @@ public class RingWalker {
         consumerData.cursor = (-1);
         consumerData.nextCursor = (-1);
         consumerData.setSeqStackHead(-1);
-        consumerData.nextWorkingHead=0;
-        consumerData.nextWorkingTail=0;
-        
+        consumerData.nextWorkingHead=ringPos;
+        consumerData.nextWorkingTail=ringPos;        
         
         RingWalker.setMsgIdx(consumerData,-1);
         consumerData.setNewMessage(false);
-        consumerData.activeFragmentDataSize = (0);
         
     }
 

@@ -183,12 +183,27 @@ public final class RingBuffer {
         byteWorkingTailPos.value = 0;
         bytesTailPos.set(0);
         
-        RingWalker.reset(consumerData);
-        
-
+        RingWalker.reset(consumerData, 0);
     }
         
-    
+    /**
+     * Rest to desired position, helpful in unit testing to force wrap off the end.
+     * @param toPos
+     */
+    public void reset(int toPos, int bPos) {
+
+    	workingHeadPos.value = toPos;
+        workingTailPos.value = toPos;
+        tailPos.set(toPos);
+        headPos.set(toPos); 
+        byteWorkingHeadPos.value = bPos;
+        bytesHeadPos.set(bPos);
+        byteWorkingTailPos.value = bPos;
+        bytesTailPos.set(bPos);
+        
+        RingWalker.reset(consumerData, toPos);
+    }
+
 	public static int leftConvertIntToASCII(RingBuffer rb, int value, int idx) {
 		//max places is value for -2B therefore its 11 places so we start out that far and work backwards.
 		//this will leave a gap but that is not a problem.
@@ -537,22 +552,28 @@ public final class RingBuffer {
         buffer[rbMask & (int)offset] = value;
     } 
     
-    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, long baseBytePos, int position, int length) {
+    public static void addBytePosAndLen(int[] buffer, int rbMask, PaddedLong headCache, int baseBytePos, int position, int length) {
     	long p = headCache.value; 
-        setBytePosAndLen(buffer, rbMask, p, position, length);        
+        setBytePosAndLen(buffer, rbMask, p, position, length, baseBytePos);        
         headCache.value = p+2;
         
     }
 
-	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat) {
-		//TODO: AA, at this point we can modify the pos that is set.
+	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int bytesHeadPos) {
+		
+		//TODO: AAAAA, at this point we can modify the pos that is set
+		
+		
     	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	int tmp = positionDat;
-//    	if (position>=0) {
-//    		tmp = (int)(position-bytesHeadPos);
+//    	if (positionDat>=0) {
+//   
+////    		System.err.println("set after "+bytesHeadPos);
+//    		
+//    		tmp = (int)(positionDat-bytesHeadPos);
 //    		if (tmp<0) {
-//    			throw new UnsupportedOperationException("bad value "+tmp+"  "+position+" "+bytesHeadPos);
+//    			throw new UnsupportedOperationException("bad value "+tmp+"  "+positionDat+" "+bytesHeadPos);
 //    		}
 //    	}
     	
@@ -560,6 +581,21 @@ public final class RingBuffer {
         buffer[rbMask & (int)(ringPos+1)] = lengthDat;
 	} 
     
+	public static int restorePosition(RingBuffer ring, int pos) {
+		
+		if (pos<0) {
+			throw new UnsupportedOperationException("bad value "+pos);
+		}
+		
+		//TODO: looks like the read does not use this and thats the problme
+	//	System.err.println("read after "+ring.bytesTailPos.get());
+		
+		//TODO: AAAAA, must add ring.bytesHeadPosition.long()+pos;
+	//	return pos+ring.bytesTailPos.get();//+pos;
+		return pos;
+	}
+
+	
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
         
         long p = headCache.value; 
@@ -617,7 +653,10 @@ public final class RingBuffer {
     
     public static int bytePosition(int meta, RingBuffer ring, int len) {
     	
-    	int pos = meta&0x7FFFFFFF;//may be negative when it is a constant but lower bits are always position
+    	//may be negative when it is a constant but lower bits are always position
+    	
+    	int pos = restorePosition(ring, meta & 0x7FFFFFFF);
+    	
     	
     	int end = pos + len; //need this in order to find the tail to detect overlap 	
     	if (end > ring.byteWorkingTailPos.value) {
@@ -670,9 +709,13 @@ public final class RingBuffer {
     
     public static void publishWrites(RingBuffer ring) {
     	
-    	//TODO: AAAA, this is only needed until we fully transition over to the new API, try removing after read API is fully upgraded to new stack based lookup.
-    	ring.workingHeadPos.value = Math.max(ring.consumerData.nextWorkingHead, ring.workingHeadPos.value);
-    	
+    	//for the low level API workingHeadPos is fine as is but when using the high level API it needs to be moved.
+    	//if desired this conditional could be removed by having high/low level publish methods
+    	if (ring.consumerData.nextWorkingHead>ring.workingHeadPos.value) {
+    		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
+    	}
+    	    
+    	//TODO: AAAAA, removing this in favor of relative positions.
     	//prevent long running arrays from rolling over in second byte ring
     	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
     	ring.byteWorkingTailPos.value = ring.byteMask & ring.byteWorkingTailPos.value;

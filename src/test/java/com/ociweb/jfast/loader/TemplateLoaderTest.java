@@ -490,9 +490,7 @@ public class TemplateLoaderTest {
                         }                            
                         grps++;
                     }
-
-            }
-            
+            }            
 
             queue.reset();
 

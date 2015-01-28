@@ -218,7 +218,7 @@ public class RingWriter {
 		assert((loc&0x1E<<OFF_BITS)==0x8<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0x5<<OFF_BITS || (loc&0x1E<<OFF_BITS)==0xE<<OFF_BITS) : "Expected to write some type of ASCII/UTF8/BYTE but found "+TypeMask.toString((loc>>OFF_BITS)&TokenBuilder.MASK_TYPE);
 		
     	RingBuffer.validateVarLength(rb, length);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), p, length);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), p, length, rb.bytesHeadPos.get());
         rb.byteWorkingHeadPos.value = p + length;        
     }
     
@@ -227,7 +227,7 @@ public class RingWriter {
 		
     	assert(length>=0);
 		RingBuffer.appendPartialBytesArray(source, offset, length, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask);		
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, length, rb.bytesHeadPos.get());
 		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + length;	
     }
         
@@ -239,7 +239,7 @@ public class RingWriter {
 		
         assert(sourceLen>=0);		
         RingBuffer.appendPartialBytesArray(source, 0, sourceLen, rb.byteBuffer, rb.byteWorkingHeadPos.value, rb.byteMask);   	
-        RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, sourceLen);
+        RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), rb.byteWorkingHeadPos.value, sourceLen, rb.bytesHeadPos.get());
 		rb.byteWorkingHeadPos.value = rb.byteWorkingHeadPos.value + sourceLen;
     }
         
@@ -249,7 +249,7 @@ public class RingWriter {
     	assert(length>=0);
     	int bytePos = rb.byteWorkingHeadPos.value;
     	RingBuffer.addByteBuffer(rb, source, length);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[STACK_OFF_MASK&(loc>>STACK_OFF_SHIFT)] + (OFF_MASK&loc), bytePos, length, rb.bytesHeadPos.get());
     }
     
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source) {
@@ -259,7 +259,7 @@ public class RingWriter {
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length());
 		rb.byteWorkingHeadPos.value = p+byteLength;
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, rb.bytesHeadPos.get());
     }
 
     public static void writeUTF8(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
@@ -269,7 +269,7 @@ public class RingWriter {
         final int p = rb.byteWorkingHeadPos.value;	    
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
 		rb.byteWorkingHeadPos.value = p+byteLength;
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, rb.bytesHeadPos.get());
     }
         
     public static void writeUTF8(RingBuffer rb, int loc, char[] source) {
@@ -279,7 +279,7 @@ public class RingWriter {
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, 0, rb.byteBuffer, rb.byteMask, p, source.length);
 		rb.byteWorkingHeadPos.value = p+byteLength;       
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, rb.bytesHeadPos.get());
     }
       
     public static void writeUTF8(RingBuffer rb, int loc, char[] source, int offset, int length) {
@@ -289,7 +289,7 @@ public class RingWriter {
         final int p = rb.byteWorkingHeadPos.value;		
 		int byteLength = RingBuffer.copyUTF8ToByte(source, offset, rb.byteBuffer, rb.byteMask, p, length);
 		rb.byteWorkingHeadPos.value = p+byteLength;       
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, byteLength, rb.bytesHeadPos.get());
     }
 
     public static void writeASCII(RingBuffer rb, int loc, char[] source) {
@@ -298,7 +298,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb,source.length);
 		int sourceLen = source.length;
         final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen,	rb);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen, rb.bytesHeadPos.get());
     }
     
     public static void writeASCII(RingBuffer rb, int loc, char[] source, int offset, int length) {
@@ -306,7 +306,7 @@ public class RingWriter {
 
     	RingBuffer.validateVarLength(rb,length);
         final int p = RingBuffer.addASCIIToBytes(source, offset, length,	rb);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length, rb.bytesHeadPos.get());
     }   
     
     public static void writeASCII(RingBuffer rb, int loc, CharSequence source) {
@@ -315,7 +315,7 @@ public class RingWriter {
     	RingBuffer.validateVarLength(rb, source.length());
 		int sourceLen = source.length();
         final int p = RingBuffer.addASCIIToBytes(source, 0, sourceLen, rb);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, sourceLen, rb.bytesHeadPos.get());
     }
     
     public static void writeASCII(RingBuffer rb, int loc, CharSequence source, int offset, int length) {
@@ -323,7 +323,7 @@ public class RingWriter {
 
     	RingBuffer.validateVarLength(rb, source.length());
         final int p = RingBuffer.addASCIIToBytes(source, offset, length, rb);
-		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length);
+		RingBuffer.setBytePosAndLen(rb.buffer, rb.mask, rb.consumerData.activeWriteFragmentStack[RingWriter.STACK_OFF_MASK&(loc>>RingWriter.STACK_OFF_SHIFT)] + (RingWriter.OFF_MASK&loc), p, length, rb.bytesHeadPos.get());
     }
     
     public static void writeIntAsText(RingBuffer rb, int loc, int value) {

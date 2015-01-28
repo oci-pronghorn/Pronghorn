@@ -208,10 +208,6 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             int byteMask = rbRingBuffer.byteMask;
             
             if (length>rbRingBuffer.maxAvgVarLen || length > writer.bufferSize) {
-            	//TODO: are we reading past head??
-            	System.err.println("head position:"+rbRingBuffer.headPos.get() +"length from pos:"+rbRingBuffer.workingTailPos.value+"  "+Long.toBinaryString(rbRingBuffer.workingTailPos.value)+"  + "+fieldPos+" + one masked by "+Integer.toHexString(rbRingBuffer.mask));
-            	
-            	
             	throw new UnsupportedOperationException("Text is too long found length:"+length+" writer limited to:"+writer.bufferSize+" and "+rbRingBuffer.maxAvgVarLen);
             }
 

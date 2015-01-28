@@ -437,18 +437,21 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                 prevToken = token;
                 token = tokenLookup[f];
+                RingBuffer ringBuffer = RingBuffers.get(fr.ringBuffers,0);
                 if (TokenBuilder.isOpperator(token, OperatorMask.Field_Constant)) {
                     if (sendNulls && (i & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+                        int idx = fr.readBytes(tokenLookup[f], reader, ringBuffer);                        
+                  //      ringBuffer.byteWorkingTailPos.value += LocalHeap.length(idx, byteHeap);
+                        
                         if (!LocalHeap.isNull(idx,byteHeap)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
                         }
 
                     } else {
                         try {
-                            int textIdx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
-
+                            int textIdx = fr.readBytes(tokenLookup[f], reader, ringBuffer);
+                  //          ringBuffer.byteWorkingTailPos.value += LocalHeap.length(textIdx, byteHeap);
                             byte[] tdc = testConst;                           
                             
                             assertEquals(tdc.length, LocalHeap.length(textIdx,byteHeap));
@@ -469,7 +472,9 @@ public class StreamingBytesTest extends BaseStreamingTest {
                 } else {
                     if (sendNulls && (f & 0xF) == 0 && TokenBuilder.isOptional(token)) {
 
-                        int idx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+						int idx = fr.readBytes(tokenLookup[f], reader, ringBuffer);
+				//		ringBuffer.byteWorkingTailPos.value += LocalHeap.length(idx, byteHeap);
+						
                         if (!LocalHeap.isNull(idx,byteHeap)) {
                             assertEquals("Error:" + TokenBuilder.tokenToString(token) + "Expected null found len "
                                     + LocalHeap.length(idx,byteHeap), Boolean.TRUE, LocalHeap.isNull(idx,byteHeap));
@@ -477,11 +482,11 @@ public class StreamingBytesTest extends BaseStreamingTest {
 
                     } else {
                         try {
-                            int heapIdx = fr.readBytes(tokenLookup[f], reader, RingBuffers.get(fr.ringBuffers,0));
+							int heapIdx = fr.readBytes(tokenLookup[f], reader, ringBuffer);
+					//		ringBuffer.byteWorkingTailPos.value += LocalHeap.length(heapIdx, byteHeap);
 
                             if ((1 & i) == 0) {                              
-                                assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:"
-                                        + TokenBuilder.tokenToString(prevToken),
+                                assertTrue("Error: Token:" + TokenBuilder.tokenToString(token) + " PrevToken:" + TokenBuilder.tokenToString(prevToken),
                                         LocalHeap.equals(heapIdx,testDataBytes[f],0,testDataBytes[f].length,0xFFFFFFFF,byteHeap));
                             } else {
                                 byte[] tdc = testDataBytes[f];
@@ -500,6 +505,8 @@ public class StreamingBytesTest extends BaseStreamingTest {
                     }
                 }
 
+                RingBuffer.releaseReadLock(ringBuffer);
+                
                 g = groupManagementRead(fieldsPerGroup, fr, i, g, groupToken, f, maxMPapBytes, reader);
             }
         }
