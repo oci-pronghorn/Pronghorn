@@ -15,7 +15,7 @@ import org.junit.Test;
 public class RingBufferPipeline {
 	
 	private final byte[] testArray = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ:,.-_+()*@@@@@@@@@@@@@@@".getBytes();//, this is a reasonable test message.".getBytes();
-	private final int testMessages = 100000000;
+	private final int testMessages = 1000000;
 	private final int stages = 4;
 	private final byte primaryBits   = 19;
 	private final byte secondaryBits = 26;//TODO: Warning if this is not big enough it will hang. but not if we fix the split logic.

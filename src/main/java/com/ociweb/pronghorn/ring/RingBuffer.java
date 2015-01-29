@@ -559,42 +559,34 @@ public final class RingBuffer {
         
     }
 
+    //TODO: AAA, add tail step size for the high level API fixed offsets. (abs position in the ring buffer? not len)
+    
 	public static void setBytePosAndLen(int[] buffer, int rbMask, long ringPos,	int positionDat, int lengthDat, int bytesHeadPos) {
-		
-		//TODO: AAAAA, at this point we can modify the pos that is set
-		
-		
-    	//negative position is written as is because the internal array does not have any offset (but it could some day)
+	   	//negative position is written as is because the internal array does not have any offset (but it could some day)
     	//positive position is written after subtracting the rbRingBuffer.bytesHeadPos.longValue()
     	int tmp = positionDat;
-//    	if (positionDat>=0) {
-//   
-////    		System.err.println("set after "+bytesHeadPos);
-//    		
-//    		tmp = (int)(positionDat-bytesHeadPos);
-//    		if (tmp<0) {
-//    			throw new UnsupportedOperationException("bad value "+tmp+"  "+positionDat+" "+bytesHeadPos);
-//    		}
-//    	}
+    	if (positionDat>=0) {
+    		tmp = (int)(positionDat-bytesHeadPos);
+    		assert(tmp>=0);
+    	}
     	
         buffer[rbMask & (int)ringPos] = tmp;
         buffer[rbMask & (int)(ringPos+1)] = lengthDat;
 	} 
     
 	public static int restorePosition(RingBuffer ring, int pos) {
-		
-		if (pos<0) {
-			throw new UnsupportedOperationException("bad value "+pos);
-		}
-		
-		//TODO: looks like the read does not use this and thats the problme
-	//	System.err.println("read after "+ring.bytesTailPos.get());
-		
-		//TODO: AAAAA, must add ring.bytesHeadPosition.long()+pos;
-	//	return pos+ring.bytesTailPos.get();//+pos;
-		return pos;
+		assert(pos>=0);
+		return pos+ring.bytesTailPos.get();
 	}
 
+    public static int bytePosition(int meta, RingBuffer ring, int len) {
+    	    	    	
+    	//NOTE: must move this working position for the relative text positions until it gets managed by high level API.
+        if (len>=0) {
+        	ring.byteWorkingTailPos.value += len;
+        }
+        return restorePosition(ring, meta & 0x7FFFFFFF);
+    }   
 	
     public static void addValue(int[] buffer, int rbMask, PaddedLong headCache, int value1, int value2, int value3) {
         
@@ -651,20 +643,7 @@ public final class RingBuffer {
 		return ring.buffer[(int)(ring.mask & (ring.workingTailPos.value++))];// second int is always the length     
 	}
     
-    public static int bytePosition(int meta, RingBuffer ring, int len) {
-    	
-    	//may be negative when it is a constant but lower bits are always position
-    	
-    	int pos = restorePosition(ring, meta & 0x7FFFFFFF);
-    	
-    	
-    	int end = pos + len; //need this in order to find the tail to detect overlap 	
-    	if (end > ring.byteWorkingTailPos.value) {
-    		ring.byteWorkingTailPos.value = end;
-    	}
-    	
-        return pos; 
-    }    
+ 
 
     public static byte[] byteBackingArray(int meta, RingBuffer rbRingBuffer) {
         return rbRingBuffer.bufferLookup[meta>>>31];
@@ -715,13 +694,13 @@ public final class RingBuffer {
     		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
     	}
     	    
-    	//TODO: AAAAA, removing this in favor of relative positions.
-    	//prevent long running arrays from rolling over in second byte ring
-    	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
-    	ring.byteWorkingTailPos.value = ring.byteMask & ring.byteWorkingTailPos.value;
-    	if (ring.byteWorkingHeadPos.value < ring.byteWorkingTailPos.value ) {
-    		ring.byteWorkingHeadPos.value += (ring.byteMask + 1);
-    	}
+//    	//TODO: AAAAA, removing this in favor of relative positions.
+//    	//prevent long running arrays from rolling over in second byte ring
+//    	ring.byteWorkingHeadPos.value = ring.byteMask & ring.byteWorkingHeadPos.value;
+//    	ring.byteWorkingTailPos.value = ring.byteMask & ring.byteWorkingTailPos.value;
+//    	if (ring.byteWorkingHeadPos.value < ring.byteWorkingTailPos.value ) {
+//    		ring.byteWorkingHeadPos.value += (ring.byteMask + 1);
+//    	}
 
     	//publish writes
     	ring.headPos.lazySet(ring.workingHeadPos.value);

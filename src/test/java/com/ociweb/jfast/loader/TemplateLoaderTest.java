@@ -433,7 +433,7 @@ public class TemplateLoaderTest {
 
         PrimitiveReader reader = new PrimitiveReader(2048, fastInput, maxPMapCountInBytes);
         
-        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReader(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
+        FASTDecoder readerDispatch = DispatchLoader.loadDispatchReaderDebug(catBytes, RingBuffers.buildNoFanRingBuffers(new RingBuffer((byte)catalog.clientConfig().getPrimaryRingBits(),(byte)catalog.clientConfig().getTextRingBits(),catalog.ringByteConstants(), catalog.getFROM()))); 
         
        // readerDispatch = new FASTReaderInterpreterDispatch(catBytes);//not using compiled code
       
@@ -452,7 +452,7 @@ public class TemplateLoaderTest {
         
         //unusual case just for checking performance. Normally one could not pass the catalog.ringBuffer() in like this.        
         //FASTEncoder writerDispatch = new FASTWriterInterpreterDispatch(catalog, readerDispatch.ringBuffers);
-        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriter(catBytes);
+        FASTEncoder writerDispatch = DispatchLoader.loadDispatchWriterDebug(catBytes);
         //System.err.println("using: "+writerDispatch.getClass().getSimpleName());
 
         FASTDynamicWriter dynamicWriter = new FASTDynamicWriter(writer, queue, writerDispatch);
@@ -487,7 +487,8 @@ public class TemplateLoaderTest {
                         } catch (FASTException e) {
                             System.err.println("ERROR: cursor at "+writerDispatch.getActiveScriptCursor()+" "+TokenBuilder.tokenToString(RingBuffer.from(queue).tokens[writerDispatch.getActiveScriptCursor()]));
                             throw e;
-                        }                            
+                        }    
+                       
                         grps++;
                     }
             }            
@@ -522,6 +523,7 @@ public class TemplateLoaderTest {
                     if (RingWalker.tryReadFragment(queue)) {
                        if (RingWalker.getMsgIdx(queue.consumerData)>=0) { //skip if we are waiting for more content.
                                 FASTDynamicWriter.write(dynamicWriter);  
+                             //   RingBuffer.releaseReadLock(queue);
                        }
                     }
             }

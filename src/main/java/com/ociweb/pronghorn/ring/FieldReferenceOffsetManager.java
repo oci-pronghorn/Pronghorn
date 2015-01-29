@@ -100,7 +100,10 @@ public class FieldReferenceOffsetManager {
             preambleOffset = 0;
             templateOffset = (pb+3)>>2;
         }
-                
+          
+        dictionaryNameScript = scriptDictionaryNames;
+        fieldNameScript = scriptNames;
+        fieldIdScript = scriptIds;
         
 		if (null == scriptTokens) {
 			tokens = EMPTY;
@@ -139,9 +142,7 @@ public class FieldReferenceOffsetManager {
         }
         tokensLen = null==tokens?0:tokens.length;
                 
-        dictionaryNameScript = scriptDictionaryNames;
-        fieldNameScript = scriptNames;
-        fieldIdScript = scriptIds;
+
 	
 	}
 
@@ -213,7 +214,8 @@ public class FieldReferenceOffsetManager {
                 
                 //must be a group open only for a new message 
                 if ((!isSeq && isGroupOpen) || (0==fragmentStartIdx)) { 
-					int preambleInts = (preableBytes+3)>>2;                                            
+					int preambleInts = (preableBytes+3)>>2;     
+                    assert(0==depth) : "check for length without following body, could be checked earlier in XML";
                     fragDataSize[fragmentStartIdx] = preambleInts+spaceForTemplateId;  //these are the starts of messages
                 } else {
                 	if (isGroupOpen) {

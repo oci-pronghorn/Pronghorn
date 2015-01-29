@@ -1343,7 +1343,7 @@ public class FASTWriterInterpreterDispatch extends FASTWriterDispatchTemplates i
         if (rbRingBuffer.mask!=0 && RingWalker.isNewMessage(rbRingBuffer.consumerData)) {     //TODO: D, optimize, checks that this is not the code generation    
             callBeginMessage(writer, rbRingBuffer);
         }
-        
+
         //loop over every cursor position and dispatch to do the right activity
         int stop = fullScript.length;       
         while (activeScriptCursor<stop) {

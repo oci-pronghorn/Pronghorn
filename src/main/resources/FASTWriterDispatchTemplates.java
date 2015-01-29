@@ -88,7 +88,7 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
             // constant from heap or dynamic from char ringBuffer
             byte[] buffer = RingBuffer.byteBackingArray(rawPos, rbRingBuffer);
             int byteMask = rbRingBuffer.byteMask;                           
-            
+      
             if (LocalHeap.equals(target,buffer,offset,length,byteMask,byteHeap)) {
                 PrimitiveWriter.writePMapBit((byte)0, writer);
             } else {
@@ -265,7 +265,6 @@ public abstract class FASTWriterDispatchTemplates extends FASTEncoder {
     
     protected void genWriteTextNoneOptional(int fieldPos, PrimitiveWriter writer, RingBuffer rbRingBuffer) {
         {
-
             int length = RingBuffer.readRingByteLen(fieldPos, rbRingBuffer.buffer, rbRingBuffer.mask, rbRingBuffer.workingTailPos);
             if (length<0) {
                 PrimitiveWriter.writeNull(writer);

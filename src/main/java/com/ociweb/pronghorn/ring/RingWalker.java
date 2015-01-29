@@ -3,6 +3,8 @@ package com.ociweb.pronghorn.ring;
 import static com.ociweb.pronghorn.ring.RingBuffer.releaseReadLock;
 import static com.ociweb.pronghorn.ring.RingBuffer.spinBlockOnTail;
 
+import java.util.Arrays;
+
 import com.ociweb.pronghorn.ring.token.OperatorMask;
 import com.ociweb.pronghorn.ring.token.TokenBuilder;
 import com.ociweb.pronghorn.ring.token.TypeMask;
@@ -177,6 +179,7 @@ public class RingWalker {
 
 
 	private static boolean prepReadMessage(RingBuffer ringBuffer, RingWalker ringBufferConsumer) {
+	
 		///
 		//check the ring buffer looking for new message	
 		//return false if we don't have enough data to read the first id and therefore the message
@@ -199,7 +202,13 @@ public class RingWalker {
 	private static void prepReadFragment(RingBuffer ringBuffer,
 			final RingWalker ringBufferConsumer, final int scriptFragSize,
 			long tmpNextWokingTail, final long target) {
-		//
+		
+		//TODO: AAA still testing, needed so the release happens as frequently as the publish in an attempt to fix the relative string locations.
+		if ((--ringBufferConsumer.batchReleaseCountDown<=0)) {	
+			RingBuffer.releaseReadLock(ringBuffer);
+			ringBufferConsumer.batchReleaseCountDown = ringBufferConsumer.batchReleaseCountDownInit;
+		}
+		
 		//from the last known fragment move up the working tail position to this new fragment location
 		ringBuffer.workingTailPos.value = tmpNextWokingTail;
 		//save the index into these fragments so the reader will be able to find them.
@@ -295,7 +304,7 @@ public class RingWalker {
 		
 		//
 		//from the last known fragment move up the working tail position to this new fragment location
-		ringBuffer.workingTailPos.value = tmpNextWokingTail;//+1;//TODO: AAAAA, determine how to make this 1
+		ringBuffer.workingTailPos.value = tmpNextWokingTail;//TODO: AAAAA, determine how to make this 1
 		
 		//
 		//batched release of the old positions back to the producer
@@ -318,13 +327,11 @@ public class RingWalker {
 		ringBufferConsumer.activeReadFragmentStack[0] = tmpNextWokingTail;
 		
 		ringBufferConsumer.msgIdx = ringBuffer.buffer[ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)];
-
-		//System.err.println("pos:"+msgIdx+"  "+ringBufferConsumer.from.fragDataSize.length);
-		
 		int[] fragDataSize = ringBufferConsumer.from.fragDataSize;
+
 		if (ringBufferConsumer.msgIdx >= 0 && ringBufferConsumer.msgIdx < fragDataSize.length) {
 			//assert that we can read the fragment size. if not we get a partial fragment failure.
-			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : "Partial fragment detected";
+			assert(ringBuffer.headPos.get() >= (ringBufferConsumer.nextWorkingTail + fragDataSize[ringBufferConsumer.msgIdx])) : "Partial fragment detected at "+ringBuffer.headPos.get()+" needs "+fragDataSize[ringBufferConsumer.msgIdx]+" for msgIdx:"+ringBufferConsumer.msgIdx;
 			    		
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail + fragDataSize[ringBufferConsumer.msgIdx];//save the size of this new fragment we are about to read  		    		
 			ringBufferConsumer.cursor = ringBufferConsumer.msgIdx;  
@@ -334,6 +341,15 @@ public class RingWalker {
 			} 
 			
 		} else {
+			//rare so we can afford some extra checking at this point 
+			if (ringBufferConsumer.msgIdx > fragDataSize.length) {
+				//this is very large so it is probably bad data, catch it now and send back a meaningful error
+				int limit = (ringBuffer.mask & (int)(tmpNextWokingTail + ringBufferConsumer.from.templateOffset))+1;
+				throw new UnsupportedOperationException("Bad msgId:"+ringBufferConsumer.msgIdx+
+						" encountered at last absolute position:"+(tmpNextWokingTail + ringBufferConsumer.from.templateOffset)+
+						" recent primary ring context:"+Arrays.toString( Arrays.copyOfRange(ringBuffer.buffer, Math.max(0, limit-10), limit )));
+			}		
+			
 			//this is commonly used as the end of file marker    		
 			ringBufferConsumer.nextWorkingTail = tmpNextWokingTail+1;
 		}
@@ -398,7 +414,10 @@ public class RingWalker {
 
 	private static void prepWriteFragment(RingBuffer ring, int cursorPosition,	FieldReferenceOffsetManager from, int fragSize) {
 		ring.workingHeadPos.value = ring.consumerData.nextWorkingHead;
-		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {				 
+		if (FieldReferenceOffsetManager.isTemplateStart(from, cursorPosition)) {			
+			
+			//ring.consumerData.nextWorkingHead = ring.workingHeadPos.value; //TODO: test if this is needed or not?
+			
 			//Start new stack of fragments because this is a new message
 			ring.consumerData.activeWriteFragmentStack[0] = ring.consumerData.nextWorkingHead;
 			ring.buffer[ring.mask &(int)(ring.consumerData.nextWorkingHead + from.templateOffset)] = cursorPosition;
@@ -407,7 +426,6 @@ public class RingWalker {
 			//this fragment does not start a new message but its start position must be recorded for usage later
 			ring.consumerData.activeWriteFragmentStack[from.fragDepth[cursorPosition]]=ring.consumerData.nextWorkingHead;
 		 }
-		
 		ring.consumerData.nextWorkingHead = ring.consumerData.nextWorkingHead + fragSize;
 	}
 
@@ -426,13 +444,13 @@ public class RingWalker {
 	 * if the fragment needs a template id it is written and the workingHeadPosition is set to the first field. 
 	 */
 	public static void blockWriteFragment(RingBuffer ring, int cursorPosition) {
-		
+
 		FieldReferenceOffsetManager from = RingBuffer.from(ring);
 		
 		RingWalker consumerData = ring.consumerData;
 		int fragSize = from.fragDataSize[cursorPosition];
 		consumerData.cachedTailPosition = spinBlockOnTail(consumerData.cachedTailPosition, consumerData.nextWorkingHead - (ring.maxSize - fragSize), ring);
-		
+		//TODO: what is the next working head set to??
 		prepWriteFragment(ring, cursorPosition, from, fragSize);
 	}
 	
