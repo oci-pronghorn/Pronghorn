@@ -269,11 +269,12 @@ public class RingStreams {
 	    	
 	    	headPosCache = spinBlockOnHead(headPosCache, target, inputRing);	                        	    	                        		           
 	    	
+	    	int msg = RingBuffer.takeValue(inputRing);
 	    	int meta = takeRingByteMetaData(inputRing);//side effect, this moves the pointer.
 	    	int len = takeRingByteLen(inputRing);
 	    	int byteMask = inputRing.byteMask;
 	    				
-	    	if (len<0) { //exit logic
+	    	if (msg<0) { //exit logic
 	    		releaseReadLock(inputRing);
 	    		visitor.close();
 	      		return;
